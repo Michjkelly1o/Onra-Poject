@@ -16,6 +16,7 @@ import { purchaseCart } from "@/lib/customer/purchase";
 import { appointmentDraft } from "@/lib/customer/booking-flow";
 import { useAppointment } from "@/lib/customer/appointments-data";
 import { addAppointmentBooking } from "@/lib/customer/appointment-bookings";
+import { useFlexibleInstructorsForSlot } from "@/lib/customer/slot-availability";
 import { addCustomerNotification } from "@/lib/customer/notifications-feed";
 import { to12h } from "@/lib/customer/dates";
 
@@ -42,6 +43,16 @@ export default function AppointmentProcessingPage() {
     const member = useCurrentCustomer();
     const debitWallet = useAppStore((s) => s.debitWallet);
     const walletTxns = useAppStore((s) => s.walletTransactions);
+    // Mirror the booking into the shared admin store so it shows on the admin
+    // schedule + Appointment Details (Flexible badge + Reassign).
+    const addCustomerAppointment = useAppStore((s) => s.addCustomerAppointment);
+    // "Preference: Flexible" — the qualified instructors genuinely free for the
+    // chosen slot. We auto-assign one at write time (below).
+    const flexibleInstructorIds = useFlexibleInstructorsForSlot(
+        appointment,
+        appointmentDraft.slotISO,
+        appointmentDraft.slotTime,
+    );
     const [step, setStep] = useState(0);
     const wroteRef = useRef(false);
 
@@ -51,13 +62,50 @@ export default function AppointmentProcessingPage() {
         // the booking so the cancel/refund flow can show "Refund via <method>".
         const paymentMethod =
             new URLSearchParams(window.location.search).get("method") ?? undefined;
+        const isFlexible = appointmentDraft.flexible;
+        // Never book a flexible slot with no available instructor. The slot was
+        // only offered because ≥1 qualified instructor was free, but availability
+        // can shift between slot-pick and confirm (another booking on that slot,
+        // cross-tab). If the pool is now empty, abort the write and send the
+        // customer back to re-pick a still-available slot rather than record an
+        // instructor-less booking. Guards the "never book without an instructor"
+        // rule against the concurrency edge.
+        if (isFlexible && flexibleInstructorIds.length === 0) {
+            router.replace(`/customer/appointments/${id}/slot`);
+            return;
+        }
         // Record the booking once (synchronous), then sequence the steps over it.
         if (!wroteRef.current && appointment && appointmentDraft.slotISO && appointmentDraft.slotTime) {
             wroteRef.current = true;
-            const inst = appointmentDraft.instructorId
-                ? instructors.find((i) => i.id === appointmentDraft.instructorId) ?? null
+            // Flexible → auto-assign one of the qualified instructors free for
+            // this slot (first available; the slot was only offered because ≥1
+            // is free). Otherwise use the customer's chosen instructor.
+            const assignedInstructorId = isFlexible
+                ? (flexibleInstructorIds[0] ?? null)
+                : appointmentDraft.instructorId;
+            const inst = assignedInstructorId
+                ? instructors.find((i) => i.id === assignedInstructorId) ?? null
                 : null;
             const branch = branches.find((b) => b.id === appointment.branchId) ?? null;
+            // Create the shared admin appointment first so we can link its id
+            // onto the customer booking (enables admin reassign/cancel to
+            // reflect back, and the customer cancel to cascade to admin).
+            const adminAppointmentId = member
+                ? addCustomerAppointment({
+                    serviceId: appointment.id,
+                    dateISO: appointmentDraft.slotISO,
+                    startTime: appointmentDraft.slotTime,
+                    durationMins: appointment.durationMins,
+                    instructorId: assignedInstructorId,
+                    flexible: isFlexible,
+                    customer: {
+                        id: member.id,
+                        name: `${member.firstName} ${member.lastName}`.trim(),
+                        initials: member.initials,
+                        imageUrl: member.imageUrl,
+                    },
+                })
+                : undefined;
             bookingId = addAppointmentBooking({
                 appointmentId: appointment.id,
                 name: appointment.name,
@@ -73,10 +121,12 @@ export default function AppointmentProcessingPage() {
                 branchAddress: branch ? [branch.address, branch.city, branch.country].filter(Boolean).join(", ") : undefined,
                 slotISO: appointmentDraft.slotISO,
                 slotTime: appointmentDraft.slotTime,
-                instructorId: appointmentDraft.instructorId,
+                instructorId: assignedInstructorId,
+                flexible: isFlexible,
                 instructorName: inst?.name,
                 instructorImageUrl: inst?.imageUrl,
                 instructorInitials: inst?.initials,
+                adminAppointmentId,
                 paymentMethod,
             });
             const when = `${new Date(`${appointmentDraft.slotISO}T00:00:00`).toLocaleDateString("en-GB", {

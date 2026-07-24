@@ -164,27 +164,34 @@ export function computeMarketingKpis(
     const avgLtv = ltvValues.length > 0 ? ltvValues.reduce((a, b) => a + b, 0) / ltvValues.length : 0;
     const cacLtvRatio = avgLtv > 0 ? cacCur / avgLtv : 0;
 
+    // Silence unused vars — the compute for Top source / Lead → trial /
+    // Open leads / Avg time to first contact still runs (cheap), but the
+    // tiles were removed per client 2026-07-24. Kept in scope so a
+    // future re-add costs one line each.
+    void topSource;
+    void topSourcePct;
+    void leadToTrialCur;
+    void leadToTrialPrior;
+    void openLeadsNow;
+    void avgTimeContactCur;
+    void refConvCur;
+    void refConvPrior;
+
+    // Client 2026-07-24 tile order — New leads · Lead → paid conversion ·
+    // Avg time to convert · Campaign reach / sends · Campaign engagement ·
+    // Campaign-attributed bookings · Campaign-attributed revenue ·
+    // Promotion redemptions · Referrals · CPL · CAC · ROAS · CAC : LTV
+    // ratio. Removed: Top source, Lead → trial conversion, Open leads by
+    // stage, Avg time to first contact, Referral conversion.
     return [
         { label: "New leads",                   value: num(newLeadsCur),                 change: delta(newLeadsCur, newLeadsPrior),   period,
           description: "New prospects captured in period, by configurable source.",
           drillTo: "/reports/lead-data" },
-        { label: "Top source",                  value: `${topSource} · ${pct(topSourcePct)}`,                                                                       period: `top of ${num(newLeadsCur)} leads`,
-          description: "Highest-volume acquisition source in period.",
-          drillTo: "/reports/lead-data" },
-        { label: "Lead → trial conversion",     value: pct(leadToTrialCur),              change: delta(leadToTrialCur, leadToTrialPrior), period,
-          description: "Leads who booked a trial / intro.",
-          drillTo: "/reports/lead-conversion" },
         { label: "Lead → paid conversion",      value: pct(leadToPaidCur),               change: delta(leadToPaidCur, leadToPaidPrior),   period,
           description: "Leads who became paying customers (full funnel).",
           drillTo: "/reports/lead-conversion" },
         { label: "Avg time to convert",         value: `${avgTimeConvertCur.toFixed(1)} days`,                                                                     period,
           description: "Avg days from lead created to first purchase.",
-          drillTo: "/reports/lead-conversion" },
-        { label: "Open leads by stage",         value: num(openLeadsNow),                                                                                          period: "as of today",
-          description: "Leads currently in follow-up (New, Contacted, Trial booked).",
-          drillTo: "/reports/lead-data" },
-        { label: "Avg time to first contact",   value: `${avgTimeContactCur.toFixed(1)} hrs`,                                                                     period,
-          description: "Avg time from lead created to first staff touch.",
           drillTo: "/reports/lead-conversion" },
         { label: "Campaign reach / sends",      value: num(sendsCur),                    change: delta(sendsCur, sendsPrior),          period,
           description: "Messages sent across email, WhatsApp, push.",
@@ -203,9 +210,6 @@ export function computeMarketingKpis(
           drillTo: "/reports/promo-redemptions" },
         { label: "Referrals",                   value: num(refCur.length),               change: delta(refCur.length, refPrior.length), period,
           description: "Referrals captured in period.",
-          drillTo: "/reports/referrals" },
-        { label: "Referral conversion",         value: pct(refConvCur),                  change: delta(refConvCur, refConvPrior),        period,
-          description: "Referred customers who reactivated / joined ÷ total referrals.",
           drillTo: "/reports/referrals" },
         { label: "Cost per lead (CPL)",         value: aed(cplCur),                      change: delta(cplCur, cplPrior),                period,
           description: "Marketing spend ÷ new leads.",

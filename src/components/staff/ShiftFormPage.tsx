@@ -17,7 +17,7 @@
 //   • Start ≥ End (end must be strictly after start)
 //   • No days picked
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { XClose, Clock, MarkerPin01, Check } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -134,6 +134,21 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
         [branches],
     );
 
+    // Branch operating days ([Sun..Sat]) — a day the branch is NOT closed.
+    // Drives the Shift days picker: closed days are disabled + can't be picked,
+    // and picking a branch pre-selects its operating days (client 2026-07-24).
+    function operatingDaysFor(branchId: string): boolean[] {
+        if (!branchId) return [false, false, false, false, false, false, false];
+        return Array.from({ length: 7 }, (_, dow) => {
+            const row = businessHours.find(h => h.branch_id === branchId && h.day_of_week === dow);
+            return row ? !row.is_closed : false;
+        });
+    }
+    const branchOperatingDays = useMemo(
+        () => operatingDaysFor(form.branchId),
+        [form.branchId, businessHours], // eslint-disable-line react-hooks/exhaustive-deps
+    );
+
     // ── Branch hours window ────────────────────────────────────────────────
     //
     // Shift hours must sit inside the branch's open window. We take the
@@ -167,9 +182,14 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
         [branchHoursWindow, form.startTime],
     );
 
-    // Snap stale picks to the new window whenever the branch changes — keeps
-    // the picker honest without surprising the admin.
+    // Snap stale picks to the new window whenever the branch CHANGES — keeps
+    // the picker honest without surprising the admin. Skips the first run so
+    // opening an existing shift for edit never silently rewrites its stored
+    // hours (client 2026-07-24 audit): the snap only fires on an explicit
+    // branch pick, not on mount.
+    const didMountRef = useRef(false);
     useEffect(() => {
+        if (!didMountRef.current) { didMountRef.current = true; return; }
         if (!form.branchId) return;
         if (form.startTime < branchHoursWindow.open || form.startTime >= branchHoursWindow.close) {
             setForm(p => ({ ...p, startTime: branchHoursWindow.open }));
@@ -190,13 +210,19 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
 
     function handleSubmit() {
         if (!isValid) return;
+        // A shift can't run on a day its branch is closed — clamp saved days to
+        // the branch's operating days (client 2026-07-24). Skip the clamp when
+        // the branch has no business-hours data so we don't wipe the selection.
+        const savedDays = branchOperatingDays.some(Boolean)
+            ? form.workingDays.map((v, i) => v && branchOperatingDays[i])
+            : form.workingDays;
         if (mode === "edit" && existing) {
             updateShift(existing.id, {
                 name:         form.name.trim(),
                 branch_id:    form.branchId,
                 start_time:   form.startTime,
                 end_time:     form.endTime,
-                working_days: form.workingDays,
+                working_days: savedDays,
             });
             showToast(
                 "Shift updated successfully",
@@ -209,7 +235,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
                 branch_id:       form.branchId,
                 start_time:      form.startTime,
                 end_time:        form.endTime,
-                working_days:    form.workingDays,
+                working_days:    savedDays,
                 // Client 2026-07-22 spec: staffing target lives on the
                 // list expand (edited inline). Form defaults to 1 so a
                 // freshly created shift is immediately actionable.
@@ -292,7 +318,10 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
                                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                                     placeholder="Select branch"
                                     value={form.branchId}
-                                    onChange={v => set({ branchId: v })}
+                                    // Picking a branch enables the day/hour
+                                    // fields and pre-selects the branch's
+                                    // operating days (admin can then trim them).
+                                    onChange={v => set({ branchId: v, workingDays: operatingDaysFor(v) })}
                                     options={branchOptions}
                                     width="w-full"
                                 />
@@ -314,6 +343,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
                                             onChange={v => set({ startTime: v })}
                                             options={startOptions}
                                             width="w-full"
+                                            disabled={!form.branchId}
                                         />
                                     </div>
                                     <span className="text-[14px] text-[#667085] shrink-0">—</span>
@@ -325,6 +355,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
                                             onChange={v => set({ endTime: v })}
                                             options={endOptions}
                                             width="w-full"
+                                            disabled={!form.branchId}
                                         />
                                     </div>
                                 </div>
@@ -336,27 +367,38 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
                                 )}
                             </div>
 
-                            {/* Shift days — pill multi-toggle in Mon..Sun visual order. */}
+                            {/* Shift days — pill multi-toggle in Mon..Sun visual
+                                order. Disabled until a branch is picked; days the
+                                branch is closed on stay disabled so a shift can't
+                                land on a non-operating day (client 2026-07-24). */}
                             <div className="flex flex-col gap-[6px]">
                                 <label className="text-[14px] font-medium text-[#344054]">Shift days</label>
                                 <div className="flex flex-wrap gap-2">
                                     {DAY_PILLS.map(d => {
                                         const selected = form.workingDays[d.index];
+                                        // Closed day (branch not operating) or no
+                                        // branch yet → can't be toggled.
+                                        const dayDisabled = !form.branchId || !branchOperatingDays[d.index];
                                         return (
                                             <button key={d.label} type="button"
-                                                onClick={() => toggleDay(d.index)}
+                                                disabled={dayDisabled}
+                                                onClick={() => !dayDisabled && toggleDay(d.index)}
                                                 className={cn(
                                                     "px-4 py-[8px] rounded-[8px] text-[14px] font-medium transition-all",
-                                                    selected
-                                                        ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                                        : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                                    dayDisabled
+                                                        ? "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed"
+                                                        : selected
+                                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                                                            : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
                                                 )}>
                                                 {d.label}
                                             </button>
                                         );
                                     })}
                                 </div>
-                                {!form.workingDays.some(Boolean) && (
+                                {!form.branchId ? (
+                                    <p className="text-[13px] text-[#667085]">Select a branch first — shift days follow the branch's operating days.</p>
+                                ) : !form.workingDays.some(Boolean) && (
                                     <p className="text-[13px] text-[#475467]">Pick at least one day.</p>
                                 )}
                             </div>

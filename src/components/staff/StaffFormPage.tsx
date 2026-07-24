@@ -31,10 +31,11 @@ import { Toast } from "@/components/ui/Toast";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import {
     useAppStore,
-    type Staff, type StaffStatus,
+    type Staff, type StaffStatus, type Shift,
 } from "@/lib/store";
 import { isValidEmail } from "@/lib/validation";
 import { FieldLabel } from "@/components/patterns/FieldLabel";
+import { daysIntersect, timeRangesOverlap } from "@/lib/staff/shift-conflict";
 
 // ─── Form value ────────────────────────────────────────────────────────────
 
@@ -58,8 +59,10 @@ interface FormValue {
     shortIntro: string;
     /** Years of experience as a single integer; "" until typed. */
     workingExperienceYears: string;
-    /** Assigned shift id (optional). Empty = no shift assigned yet. */
-    shiftId: string;
+    /** Assigned shift ids (optional). A staff member can hold multiple
+     *  shifts. Empty = no shift assigned yet. Filtered by the person's
+     *  branch; overlapping shifts can't be co-selected (client 2026-07-24). */
+    shiftIds: string[];
     /** Categories the instructor is qualified to teach. Drives the
      *  cross-module instructor gating — class template / schedule /
      *  service / appointment dropdowns disable instructors who don't
@@ -74,11 +77,11 @@ function emptyForm(): FormValue {
         imageUrl: undefined,
         roleId: "", branchId: "", payRateId: "",
         shortIntro: "", workingExperienceYears: "",
-        shiftId: "", categoryIds: [],
+        shiftIds: [], categoryIds: [],
     };
 }
 
-function formFromStaff(s: Staff): FormValue {
+function formFromStaff(s: Staff, assignedShiftIds: string[]): FormValue {
     const split = splitPhone(s.phone);
     return {
         firstName: s.firstName,
@@ -93,7 +96,7 @@ function formFromStaff(s: Staff): FormValue {
         payRateId: s.payRateId ?? "",
         shortIntro: s.shortIntro ?? "",
         workingExperienceYears: s.workingExperienceYears != null ? String(s.workingExperienceYears) : "",
-        shiftId: s.shiftId ?? "",
+        shiftIds: assignedShiftIds,
         categoryIds: s.categoryIds ?? [],
     };
 }
@@ -308,6 +311,160 @@ function MultiCategoryDropdown({ options, selectedIds, onChange }: {
     );
 }
 
+// ─── Shift format helpers ──────────────────────────────────────────────────
+
+/** "07:00" → "07:00 AM"; "12:00" → "12:00 PM". */
+function to12h(hhmm: string): string {
+    const [h, m] = hhmm.split(":").map(Number);
+    const period = h < 12 ? "AM" : "PM";
+    const hr = h % 12 === 0 ? 12 : h % 12;
+    return `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/** 7-bit [Sun..Sat] mask → "Mon - Sat" / "Mon, Wed, Fri" / "Every day". */
+function shiftDaysLabel(days: boolean[]): string {
+    const NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const on = days.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
+    if (on.length === 0) return "No days";
+    if (on.length === 7) return "Every day";
+    const contiguous = on.length === on[on.length - 1] - on[0] + 1;
+    if (contiguous && on.length >= 3) return `${NAMES[on[0]]} - ${NAMES[on[on.length - 1]]}`;
+    return on.map(i => NAMES[i]).join(", ");
+}
+
+// ─── Multi-select dropdown — Assign shift ──────────────────────────────────
+//
+// Mirrors `MultiCategoryDropdown`'s chrome (pill trigger, checkable panel,
+// closes on outside click + Esc) so the design stays consistent with the
+// Categories field. Adds shift-specific behaviour:
+//   • each row shows a "Mon - Sat • 07:00 AM - 12:00 PM" subtitle;
+//   • a shift that overlaps an ALREADY-SELECTED shift (shared weekday +
+//     clashing clock time) is disabled and shows an "Overlap with another
+//     shift" amber badge — a staff member can hold multiple shifts, but
+//     never two that collide (client 2026-07-24).
+
+function MultiShiftDropdown({ options, selectedIds, onChange, disabled, emptyLabel }: {
+    options: Shift[];
+    selectedIds: string[];
+    onChange: (next: string[]) => void;
+    /** When true the trigger is inert (e.g. no branch picked yet). */
+    disabled?: boolean;
+    /** Panel message when there are no options. */
+    emptyLabel?: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function clickAway(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        function escape(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+        document.addEventListener("mousedown", clickAway);
+        document.addEventListener("keydown", escape);
+        return () => {
+            document.removeEventListener("mousedown", clickAway);
+            document.removeEventListener("keydown", escape);
+        };
+    }, []);
+
+    const byId = useMemo(() => new Map(options.map(o => [o.id, o] as const)), [options]);
+
+    /** True when `shift` clashes on a shared weekday + time with any shift
+     *  already selected (excluding itself). */
+    function overlapsSelection(shift: Shift): boolean {
+        return selectedIds.some(id => {
+            if (id === shift.id) return false;
+            const other = byId.get(id);
+            return !!other
+                && daysIntersect(shift.working_days, other.working_days)
+                && timeRangesOverlap(shift.start_time, shift.end_time, other.start_time, other.end_time);
+        });
+    }
+
+    function toggle(id: string) {
+        onChange(selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]);
+    }
+    function remove(id: string) { onChange(selectedIds.filter(x => x !== id)); }
+
+    const selectedOptions = selectedIds
+        .map(id => byId.get(id))
+        .filter((o): o is Shift => !!o);
+
+    return (
+        <div ref={ref} className="relative w-full">
+            <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(p => !p)}
+                className={cn(
+                    "flex items-center gap-2 w-full min-h-[40px] px-[14px] py-[6px] border-1 rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                    disabled
+                        ? "bg-[#f9fafb] border-[#e4e7ec] cursor-not-allowed"
+                        : open
+                            ? "bg-white border-[#7ba08c] ring-2 ring-[#aad4bd]"
+                            : "bg-white border-[#d0d5dd] hover:border-[#aad4bd]",
+                )}>
+                <div className="flex-1 flex flex-wrap items-center gap-1.5">
+                    {selectedOptions.length === 0 ? (
+                        <span className="text-[14px] text-[#667085]">
+                            {disabled ? "Select a branch first" : "No shift assigned"}
+                        </span>
+                    ) : (
+                        selectedOptions.map(o => (
+                            <span key={o.id}
+                                className="inline-flex items-center gap-1.5 pl-2 pr-1 py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
+                                {o.name}
+                                <span role="button" tabIndex={0} aria-label={`Remove ${o.name}`}
+                                    onClick={e => { e.stopPropagation(); remove(o.id); }}
+                                    onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); remove(o.id); } }}
+                                    className="w-4 h-4 inline-flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] hover:bg-[#f2f4f7] transition-colors text-[16px] leading-none cursor-pointer">×</span>
+                            </span>
+                        ))
+                    )}
+                </div>
+                <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+            </button>
+            {open && !disabled && (
+                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 max-h-[300px] overflow-y-auto">
+                    {options.length === 0 ? (
+                        <p className="px-4 py-3 text-[14px] text-[#667085]">{emptyLabel ?? "No shifts available."}</p>
+                    ) : (
+                        options.map(opt => {
+                            const selected = selectedIds.includes(opt.id);
+                            const overlap = !selected && overlapsSelection(opt);
+                            return (
+                                <button key={opt.id} type="button"
+                                    disabled={overlap}
+                                    onClick={() => !overlap && toggle(opt.id)}
+                                    className={cn(
+                                        "flex items-center gap-3 w-full px-4 py-[10px] text-left transition-colors",
+                                        overlap ? "cursor-not-allowed opacity-60" : "hover:bg-[#f9fafb]",
+                                    )}>
+                                    <span className={cn(
+                                        "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors mt-[2px]",
+                                        selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                    )}>
+                                        {selected && <Check className="w-3 h-3 text-white" />}
+                                    </span>
+                                    <span className="flex-1 min-w-0">
+                                        <span className="block text-[14px] font-medium text-[#344054]">{opt.name}</span>
+                                        <span className="block text-[13px] text-[#667085]">
+                                            {shiftDaysLabel(opt.working_days)} • {to12h(opt.start_time)} - {to12h(opt.end_time)}
+                                        </span>
+                                    </span>
+                                    {overlap && (
+                                        <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708] whitespace-nowrap">
+                                            Overlap with another shift
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // Local FieldLabel removed — uses canonical `<FieldLabel label="..." />`
 // from `@/components/patterns/FieldLabel`.
 
@@ -444,15 +601,31 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     const allPayRates = useAppStore(s => s.payRates);
     const branches    = useAppStore(s => s.branches);
     const shifts      = useAppStore(s => s.shifts);
+    const shiftAssignments = useAppStore(s => s.shiftAssignments);
     const classCategories = useAppStore(s => s.classCategories);
     const addStaff    = useAppStore(s => s.addStaff);
     const updateStaff = useAppStore(s => s.updateStaff);
+    const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
+    const removeShiftAssignment = useAppStore(s => s.removeShiftAssignment);
     const showToast   = useAppStore(s => s.showToast);
 
     const existing = mode === "edit" && staffId ? allStaff.find(s => s.id === staffId) : undefined;
 
+    // Current shift ids for an edited staff — union of their M2M assignments
+    // + the legacy primary `shiftId`, so the form reflects everything they
+    // already hold.
+    const assignedShiftIds = useMemo(() => {
+        if (!existing) return [];
+        // Legacy primary first so a no-op re-save keeps the same "primary"
+        // shift pointer (shiftIds[0] → staff.shiftId). Then the M2M rows.
+        const set = new Set<string>();
+        if (existing.shiftId) set.add(existing.shiftId);
+        for (const a of shiftAssignments) if (a.staff_id === existing.id) set.add(a.shift_id);
+        return Array.from(set);
+    }, [existing, shiftAssignments]);
+
     const [form, setForm] = useState<FormValue>(() => {
-        if (existing) return formFromStaff(existing);
+        if (existing) return formFromStaff(existing, assignedShiftIds);
         const empty = emptyForm();
         if (prefilledRoleId) empty.roleId = prefilledRoleId;
         return empty;
@@ -461,10 +634,10 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
 
     useEffect(() => {
         if (mode === "edit" && existing && !hydrated) {
-            setForm(formFromStaff(existing));
+            setForm(formFromStaff(existing, assignedShiftIds));
             setHydrated(true);
         }
-    }, [mode, existing, hydrated]);
+    }, [mode, existing, hydrated, assignedShiftIds]);
 
     useEffect(() => {
         if (mode === "edit" && staffId && allStaff.length > 0 && !existing) {
@@ -501,6 +674,18 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
         [branches],
     );
 
+    // Shifts offered in the Assign shift picker — scoped to the person's OWN
+    // branch (a South staffer can only hold South shifts). Owner spans every
+    // location, so they see all active shifts. Empty until a branch is picked.
+    const isOwnerRoleSel = allRoles.find(r => r.id === form.roleId)?.type === "owner";
+    const shiftOptions = useMemo(
+        () => shifts.filter(sh =>
+            sh.status === "active"
+            && (isOwnerRoleSel || (!!form.branchId && sh.branch_id === form.branchId)),
+        ),
+        [shifts, form.branchId, isOwnerRoleSel],
+    );
+
     // Resolve selected role + pay rate for the preview + the instructor branch.
     const selectedRole    = allRoles.find(r => r.id === form.roleId);
     const selectedPayRate = allPayRates.find(p => p.id === form.payRateId);
@@ -532,7 +717,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             // Format "Mar 14, 2026" — match existing seed convention.
             const now = new Date();
             const joinedDate = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-            addStaff({
+            const newStaffId = addStaff({
                 firstName: form.firstName.trim(),
                 lastName: form.lastName.trim(),
                 fullName,
@@ -547,16 +732,23 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                 tempPassword: form.tempPassword,
                 payRateId: form.payRateId || undefined,
                 joinedDate,
+                // Assign shift — ALL roles now. The first selected shift is
+                // the legacy primary (mirrored into the M2M table by addStaff);
+                // the rest are added as M2M rows below.
+                shiftId: form.shiftIds[0] || undefined,
                 // Instructor-only — guarded behind isInstructor so non-
                 // instructor rows don't pick up empty optional fields.
                 ...(isInstructor ? {
                     shortIntro: form.shortIntro.trim() || undefined,
                     workingExperienceYears: form.workingExperienceYears
                         ? Number(form.workingExperienceYears) : undefined,
-                    shiftId: form.shiftId || undefined,
                     categoryIds: form.categoryIds.length > 0 ? form.categoryIds : undefined,
                 } : {}),
             });
+            // Additional shifts beyond the primary → M2M assignments.
+            for (const sid of form.shiftIds.slice(1)) {
+                addShiftAssignment({ shift_id: sid, staff_id: newStaffId });
+            }
             showToast("Invitation sent", `Invite sent to ${form.email.trim().toLowerCase()}.`, "success", "check");
             router.push(returnTo);
             return;
@@ -578,16 +770,28 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             // person between branches is a staff-record edit (Owner = null).
             branchId: isOwnerRole ? null : form.branchId,
             payRateId: form.payRateId || undefined,
+            // Assign shift — ALL roles. Primary = first selected; the M2M
+            // reconcile below adds the rest and drops any deselected shift.
+            shiftId: form.shiftIds[0] || undefined,
             // Same guard as create — instructor-specific fields only
             // patched when the row is an instructor.
             ...(isInstructor ? {
                 shortIntro: form.shortIntro.trim() || undefined,
                 workingExperienceYears: form.workingExperienceYears
                     ? Number(form.workingExperienceYears) : undefined,
-                shiftId: form.shiftId || undefined,
                 categoryIds: form.categoryIds.length > 0 ? form.categoryIds : undefined,
             } : {}),
         });
+        // Reconcile M2M shift assignments — add every selected shift
+        // (idempotent) and remove any the admin deselected. updateStaff already
+        // set the primary row for shiftIds[0]; addShiftAssignment is a no-op for
+        // pairs that already exist.
+        for (const sid of form.shiftIds) {
+            addShiftAssignment({ shift_id: sid, staff_id: staffId });
+        }
+        for (const a of shiftAssignments.filter(a => a.staff_id === staffId && !form.shiftIds.includes(a.shift_id))) {
+            removeShiftAssignment(a.id);
+        }
         showToast("Staff updated", `${fullName} details saved.`, "success", "check");
         router.push(returnTo);
     }
@@ -718,7 +922,10 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                         placeholder="Select branch"
                                         options={branchOptions}
                                         value={form.branchId}
-                                        onChange={v => set({ branchId: v })}
+                                        // Changing branch clears the shift picks —
+                                        // shifts are branch-scoped, so a South
+                                        // shift can't linger when moving to North.
+                                        onChange={v => set({ branchId: v, shiftIds: [] })}
                                         width="w-full"
                                     />
                                 )}
@@ -752,22 +959,27 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                         />
                                         <p className="text-[14px] text-[#475467]">in year</p>
                                     </div>
-
-                                    <div className="flex flex-col gap-[6px]">
-                                        <FieldLabel label="Assign shift (optional)" />
-                                        <SelectInput
-                                            placeholder="Select shift"
-                                            options={[
-                                                { value: "", label: "No shift assigned" },
-                                                ...shifts.map(sh => ({ value: sh.id, label: sh.name })),
-                                            ]}
-                                            value={form.shiftId}
-                                            onChange={v => set({ shiftId: v })}
-                                            width="w-full"
-                                        />
-                                    </div>
                                 </>
                             )}
+
+                            {/* Assign shift — ALL roles (client 2026-07-24).
+                                Multi-select, scoped to the person's branch,
+                                overlapping shifts disabled. Optional. */}
+                            <div className="flex flex-col gap-[6px]">
+                                <FieldLabel label="Assign shift (optional)" />
+                                <MultiShiftDropdown
+                                    options={shiftOptions}
+                                    selectedIds={form.shiftIds}
+                                    onChange={ids => set({ shiftIds: ids })}
+                                    disabled={!isOwnerRole && !form.branchId}
+                                    emptyLabel={
+                                        !isOwnerRole && !form.branchId
+                                            ? "Select a branch first."
+                                            : "No active shifts at this branch."
+                                    }
+                                />
+                                <p className="text-[14px] text-[#475467]">A staff member can hold multiple shifts from their own branch. Overlapping shifts can't be selected.</p>
+                            </div>
 
                             {/* Default pay rate — always visible per Figma 6236-395249.
                                 For non-instructor roles it stays optional (the

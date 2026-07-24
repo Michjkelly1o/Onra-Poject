@@ -27,11 +27,12 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { DotsVertical, ClockPlus, RefreshCcw01, Trash01, SearchLg, Eye } from "@untitledui/icons";
+import { DotsVertical, ClockPlus, Trash01, SearchLg, Eye, Plus } from "@untitledui/icons";
 import { Modal } from "@/components/modals/Modal";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type Staff, type Shift, type ShiftAssignment } from "@/lib/store";
-import { findShiftConflict } from "@/lib/staff/shift-conflict";
+import { findShiftConflict, timeRangesOverlap } from "@/lib/staff/shift-conflict";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
 //
@@ -106,20 +107,104 @@ function shiftPalette(shift: Shift, index: number) {
 }
 
 /** Shift card — reuses the schedule class-card visual language: a coloured
- *  left stripe, tinted body, shift name + time range. */
-function ShiftCard({ shift, index }: { shift: Shift; index: number }) {
+ *  left stripe, tinted body, shift name + time range. A hover trash button
+ *  (top-right) unassigns THIS shift on THIS day only (client 2026-07-24). */
+function ShiftCard({ shift, index, onUnassign }: { shift: Shift; index: number; onUnassign?: () => void }) {
     const c = shiftPalette(shift, index);
     const time = `${to12h(shift.start_time)} - ${to12h(shift.end_time)}`;
     return (
         <div
-            className="relative w-full overflow-hidden rounded-[8px] border pl-[10px] pr-2 py-1.5"
+            className="group/card relative w-full overflow-hidden rounded-[8px] border pl-[10px] pr-2 py-1.5"
             style={{ backgroundColor: c.bg, borderColor: c.border }}
             title={`${shift.name} · ${time}`}
         >
             <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-[8px]" style={{ backgroundColor: c.stripe }} aria-hidden />
-            <p className="truncate text-[12px] font-semibold leading-4" style={{ color: c.name }}>{shift.name}</p>
+            <p className="truncate text-[12px] font-semibold leading-4 pr-4" style={{ color: c.name }}>{shift.name}</p>
             <p className="truncate text-[11px] leading-4" style={{ color: c.time }}>{time}</p>
+            {onUnassign && (
+                <button type="button" aria-label="Unassign shift"
+                    onClick={(e) => { e.stopPropagation(); onUnassign(); }}
+                    className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-[4px] bg-white/70 text-[#667085] opacity-0 transition-opacity hover:bg-white hover:text-[#b42318] group-hover/card:opacity-100">
+                    <Trash01 className="size-3.5" />
+                </button>
+            )}
         </div>
+    );
+}
+
+/** Per-cell "+ Add" affordance (client 2026-07-24). Hovering a day cell reveals
+ *  a dashed "Add" button that opens the SAME searchable Assign-shift picker as
+ *  the staff-row 3-dot menu (reused `ShiftPickerPanel`), so both entry points
+ *  are visually identical.
+ *
+ *  This picker is DAY-SPECIFIC: it offers every active shift at the staff
+ *  member's branch that runs on THIS weekday and that the staff isn't already
+ *  working on THIS day — INCLUDING shifts they hold on other days (client
+ *  2026-07-24: e.g. add Afternoon on Thursday even though they already have
+ *  Afternoon Mon–Wed). Shifts that would clash on time with one they already
+ *  work this day are excluded. Picking assigns the shift for THIS day only. */
+function DayAddShiftMenu({ staffBranchId, dayIdx, shifts, staffDayShiftIds, staffDayShifts, onPick }: {
+    staffBranchId: string | null;
+    dayIdx: number;
+    shifts: Shift[];
+    /** Shift ids the staff already works on THIS day (excluded). */
+    staffDayShiftIds: Set<string>;
+    /** Shift objects the staff works THIS day (for the time-overlap check). */
+    staffDayShifts: Shift[];
+    onPick: (shiftId: string) => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const btnRef = useRef<HTMLButtonElement>(null);
+    const popRef = useRef<HTMLDivElement>(null);
+    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+    useEffect(() => {
+        if (!open) { setPos(null); return; }
+        const r = btnRef.current?.getBoundingClientRect();
+        if (r) setPos({ top: r.bottom + 4, left: Math.min(r.left, window.innerWidth - 396) });
+        const onDoc = (e: MouseEvent) => {
+            if (popRef.current?.contains(e.target as Node) || btnRef.current?.contains(e.target as Node)) return;
+            setOpen(false);
+        };
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+        document.addEventListener("mousedown", onDoc);
+        document.addEventListener("keydown", onKey);
+        return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
+    }, [open]);
+
+    // Branch-scoped active shifts that run on THIS weekday.
+    const branchDayShifts = shifts.filter(sh =>
+        sh.status === "active"
+        && (staffBranchId == null || sh.branch_id === staffBranchId)
+        && sh.working_days[dayIdx],
+    );
+    // Exclude only shifts already worked THIS day + any that would clash on time.
+    const available = branchDayShifts.filter(sh =>
+        !staffDayShiftIds.has(sh.id)
+        && !staffDayShifts.some(held => timeRangesOverlap(sh.start_time, sh.end_time, held.start_time, held.end_time)),
+    );
+
+    return (
+        <>
+            <button ref={btnRef} type="button" aria-label="Assign shift"
+                onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+                className={cn(
+                    "mt-0.5 flex w-full items-center justify-center gap-1 rounded-[6px] border border-dashed border-[#d0d5dd] py-1 text-[12px] font-medium text-[#667085] transition-colors hover:border-[#7ba08c] hover:text-[#3b5446]",
+                    "opacity-0 group-hover/cell:opacity-100", open && "opacity-100",
+                )}>
+                <Plus className="size-3.5" /> Add
+            </button>
+            {open && pos && createPortal(
+                <div ref={popRef} className="fixed z-[80]" style={{ top: pos.top, left: pos.left }}>
+                    <ShiftPickerPanel
+                        available={available}
+                        emptyLabel={branchDayShifts.length === 0 ? "No shifts run on this day." : "All shifts already assigned for this day."}
+                        onPick={(id) => { setOpen(false); onPick(id); }}
+                    />
+                </div>,
+                document.body,
+            )}
+        </>
     );
 }
 
@@ -142,6 +227,42 @@ function PickerShiftRow({ shift, index, onPick }: { shift: Shift; index: number;
             <p className="pl-1 text-[14px] font-semibold leading-5 text-[#101828]">{shift.name}</p>
             <p className="pl-1 text-[12px] leading-4 text-[#667085]">{dayLabel} • {time}</p>
         </button>
+    );
+}
+
+/** Shared searchable shift picker — search box + PickerShiftRow chips. Used by
+ *  BOTH the staff-row 3-dot "Assign shift" and the per-cell "+" so the two
+ *  entry points show the exact same component (client 2026-07-24). */
+function ShiftPickerPanel({ available, emptyLabel, onPick }: {
+    available: Shift[];
+    emptyLabel: string;
+    onPick: (shiftId: string) => void;
+}) {
+    const [query, setQuery] = useState("");
+    const q = query.trim().toLowerCase();
+    const filtered = q ? available.filter(sh => sh.name.toLowerCase().includes(q)) : available;
+    return (
+        <div className="w-[380px] max-h-[420px] overflow-y-auto rounded-[12px] border border-[#e4e7ec] bg-white p-3 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+            <div className="mb-3 flex items-center gap-2 rounded-[8px] border border-[#d0d5dd] px-3 py-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <SearchLg className="size-4 shrink-0 text-[#667085]" />
+                <input
+                    autoFocus
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search..."
+                    className="min-w-0 flex-1 bg-transparent text-[14px] text-[#101828] outline-none placeholder:text-[#667085]"
+                />
+            </div>
+            <div className="flex flex-col gap-2.5">
+                {filtered.length === 0 ? (
+                    <p className="px-1 py-4 text-center text-[13px] text-[#98a2b3]">
+                        {available.length > 0 ? "No shifts found." : emptyLabel}
+                    </p>
+                ) : filtered.map((sh, i) => (
+                    <PickerShiftRow key={sh.id} shift={sh} index={i} onPick={() => onPick(sh.id)} />
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -176,13 +297,12 @@ function StaffShiftMenu({
 }) {
     const [open, setOpen] = useState(false);
     const [picker, setPicker] = useState(false);
-    const [query, setQuery] = useState("");
     const btnRef = useRef<HTMLButtonElement>(null);
     const popRef = useRef<HTMLDivElement>(null);
     const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
     useEffect(() => {
-        if (!open) { setPicker(false); setQuery(""); return; }
+        if (!open) { setPicker(false); return; }
         const r = btnRef.current?.getBoundingClientRect();
         if (r) setPos({ top: r.bottom + 4, left: r.left });
     }, [open]);
@@ -210,8 +330,6 @@ function StaffShiftMenu({
         sh.status === "active" && (staffBranchId == null || sh.branch_id === staffBranchId),
     );
     const available = branchActive.filter(sh => !assignedShiftIds.has(sh.id));
-    const q = query.trim().toLowerCase();
-    const filtered = q ? available.filter(sh => sh.name.toLowerCase().includes(q)) : available;
 
     return (
         <>
@@ -251,33 +369,14 @@ function StaffShiftMenu({
                         )}
                     </div>
 
-                    {/* Shift picker */}
+                    {/* Shift picker — shared ShiftPickerPanel (same component as
+                        the per-cell "+"). */}
                     {picker && (
-                        <div className="w-[380px] max-h-[420px] overflow-y-auto rounded-[12px] border border-[#e4e7ec] bg-white p-3 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
-                            <div className="mb-3 flex items-center gap-2 rounded-[8px] border border-[#d0d5dd] px-3 py-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                <SearchLg className="size-4 shrink-0 text-[#667085]" />
-                                <input
-                                    autoFocus
-                                    value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
-                                    placeholder="Search..."
-                                    className="min-w-0 flex-1 bg-transparent text-[14px] text-[#101828] outline-none placeholder:text-[#667085]"
-                                />
-                            </div>
-                            <div className="flex flex-col gap-2.5">
-                                {filtered.length === 0 ? (
-                                    <p className="px-1 py-4 text-center text-[13px] text-[#98a2b3]">
-                                        {available.length > 0
-                                            ? "No shifts found."
-                                            : branchActive.length === 0
-                                                ? "No active shifts at this branch."
-                                                : "All shifts already assigned."}
-                                    </p>
-                                ) : filtered.map((sh, i) => (
-                                    <PickerShiftRow key={sh.id} shift={sh} index={i} onPick={() => { setOpen(false); onAssign(sh.id); }} />
-                                ))}
-                            </div>
-                        </div>
+                        <ShiftPickerPanel
+                            available={available}
+                            emptyLabel={branchActive.length === 0 ? "No active shifts at this branch." : "All shifts already assigned."}
+                            onPick={(id) => { setOpen(false); onAssign(id); }}
+                        />
                     )}
                 </div>,
                 document.body,
@@ -357,16 +456,25 @@ interface ShiftsWeekViewProps {
      *  the parent doesn't pass one — keeps the component runnable
      *  standalone in tests / storybook. */
     weekStart?: Date;
+    /** Week-view Role filter (client 2026-07-24). Empty = all roles. Owner is
+     *  already excluded from the grid regardless. */
+    roleIds?: string[];
+    /** Week-view Shift-name filter. Empty = all shifts. When set, only these
+     *  shifts' cards render and staff holding none of them are hidden. */
+    shiftIds?: string[];
 }
 
-export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart }: ShiftsWeekViewProps) {
+export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [] }: ShiftsWeekViewProps) {
     const staff            = useAppStore(s => s.staff);
     const router = useRouter();
     const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
     const removeShiftAssignment = useAppStore(s => s.removeShiftAssignment);
+    const updateShiftAssignmentDays = useAppStore(s => s.updateShiftAssignmentDays);
     const showToast             = useAppStore(s => s.showToast);
     // Unassign confirmation target — { assignmentId, staffName }.
     const [unassignTarget, setUnassignTarget] = useState<{ staffId: string; staffName: string } | null>(null);
+    // Per-day unassign confirmation (single shift card → this day only).
+    const [unassignDay, setUnassignDay] = useState<{ assignmentId: string; shiftName: string; staffName: string; dayIdx: number; dayLabel: string } | null>(null);
     const roles            = useAppStore(s => s.roles);
     const shifts           = useAppStore(s => s.shifts);
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
@@ -394,13 +502,17 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
             if (branchId && s.branchId !== branchId) return false;
             const t = roleTypeById.get(s.roleId);
             if (t === "owner") return false;
+            // Week-view Role filter.
+            if (roleIds.length > 0 && !roleIds.includes(s.roleId)) return false;
+            // Week-view Shift-name filter — keep only staff holding a selected shift.
+            if (shiftIds.length > 0 && !shiftAssignments.some(a => a.staff_id === s.id && shiftIds.includes(a.shift_id))) return false;
             if (q) {
                 const hay = `${s.fullName} ${s.email}`.toLowerCase();
                 if (!hay.includes(q)) return false;
             }
             return true;
         });
-    }, [staff, branchId, search, roleTypeById]);
+    }, [staff, branchId, search, roleTypeById, roleIds, shiftIds, shiftAssignments]);
 
     const groups = useMemo(() => {
         const opsBucket:      Staff[] = [];
@@ -474,6 +586,40 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
             `${newShift.name} assigned to ${staffMember.fullName}.`,
             "success", "check",
         );
+    }
+
+    /** Assign `shiftId` to `staffMember` for ONE specific weekday only (the
+     *  per-cell "+" flow). Adds the day to an existing assignment for that
+     *  shift (keeping its other days), or creates a new single-day assignment.
+     *  Never touches other days — client 2026-07-24 item 2. Overlap is
+     *  pre-filtered by the picker, so no conflict here. Always toasts (item 9). */
+    function assignShiftDay(staffMember: Staff, shiftId: string, dayIdx: number, dayLabel: string) {
+        const shift = shiftsById.get(shiftId);
+        if (!shift) return;
+        const existing = shiftAssignments.find(a => a.staff_id === staffMember.id && a.shift_id === shiftId);
+        if (existing) {
+            updateShiftAssignmentDays(existing.id, existing.days_of_week.map((v, i) => i === dayIdx ? true : v));
+        } else {
+            const singleDay = [false, false, false, false, false, false, false];
+            singleDay[dayIdx] = true;
+            addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, days_of_week: singleDay });
+        }
+        showToast("Shift assigned", `${shift.name} assigned to ${staffMember.fullName} on ${dayLabel}.`, "success", "check");
+    }
+
+    /** Confirm handler for the per-card trash → remove THIS day from the
+     *  assignment, keeping the staff member's other shift days intact. If it
+     *  was the last day, the whole assignment is removed. */
+    function confirmUnassignDay() {
+        if (!unassignDay) return;
+        const a = shiftAssignments.find(x => x.id === unassignDay.assignmentId);
+        if (a) {
+            const nextDays = a.days_of_week.map((v, i) => i === unassignDay.dayIdx ? false : v);
+            if (nextDays.some(Boolean)) updateShiftAssignmentDays(a.id, nextDays);
+            else removeShiftAssignment(a.id);
+        }
+        showToast("Shift unassigned", `${unassignDay.shiftName} removed from ${unassignDay.staffName} on ${unassignDay.dayLabel}.`, "success", "trash");
+        setUnassignDay(null);
     }
 
     // ── Render ────────────────────────────────────────────────────────────
@@ -625,15 +771,34 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                                         // Week view shows SHIFTS ONLY (client
                                         // 2026-07-23) — class schedules + time off
                                         // are viewed via the "View schedule" action.
-                                        const dayShifts = shiftsForStaffOnDay(s.id, day);
+                                        const allDayShifts = shiftsForStaffOnDay(s.id, day);
+                                        const dayShifts = allDayShifts
+                                            .filter(({ shift }) => shiftIds.length === 0 || shiftIds.includes(shift.id));
+                                        const dayIdx = jsDayIndex(day);
+                                        const dayLabel = day.toLocaleDateString("en-US", { weekday: "long" });
                                         return (
                                             <div
                                                 key={isoDayLocal(day)}
-                                                className="px-2 py-3 border-l border-[#e4e7ec] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
+                                                className="group/cell relative px-2 py-3 border-l border-[#e4e7ec] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
                                                 {dayShifts.map(({ shift, assignment }, si) => (
-                                                    <ShiftCard key={assignment.id} shift={shift} index={si} />
+                                                    <ShiftCard key={assignment.id} shift={shift} index={si}
+                                                        onUnassign={() => setUnassignDay({
+                                                            assignmentId: assignment.id,
+                                                            shiftName: shift.name,
+                                                            staffName: s.fullName,
+                                                            dayIdx,
+                                                            dayLabel,
+                                                        })} />
                                                 ))}
+                                                <DayAddShiftMenu
+                                                    staffBranchId={s.branchId}
+                                                    dayIdx={dayIdx}
+                                                    shifts={shifts}
+                                                    staffDayShiftIds={new Set(allDayShifts.map(d => d.shift.id))}
+                                                    staffDayShifts={allDayShifts.map(d => d.shift)}
+                                                    onPick={(shiftId) => assignShiftDay(s, shiftId, dayIdx, dayLabel)}
+                                                />
                                             </div>
                                         );
                                     })}
@@ -667,6 +832,20 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart 
                     if (unassignTarget) shiftAssignments.filter(a => a.staff_id === unassignTarget.staffId).forEach(a => removeShiftAssignment(a.id));
                     setUnassignTarget(null);
                 }}
+            />
+
+            {/* Per-day unassign confirm — removes ONE shift on ONE day. */}
+            <ConfirmModal
+                open={!!unassignDay}
+                onClose={() => setUnassignDay(null)}
+                onConfirm={confirmUnassignDay}
+                icon={Trash01}
+                tone="danger"
+                title="Unassign shift?"
+                description={unassignDay
+                    ? `Remove ${unassignDay.shiftName} from ${unassignDay.staffName} on ${unassignDay.dayLabel}? Their other shift days stay unchanged.`
+                    : ""}
+                confirmLabel="Unassign"
             />
         </div>
     );

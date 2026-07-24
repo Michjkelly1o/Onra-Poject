@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore, type Shift, type ShiftAssignment, type Staff } from "@/lib/store";
+import { timeRangesOverlap } from "@/lib/staff/shift-conflict";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
@@ -388,26 +389,82 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     );
 }
 
-// ─── Filter side panel — Status pills only (minimum viable) ────────────────
+// ─── Filter side panel — view-mode aware (client 2026-07-24) ───────────────
+//
+//   • List view → Working days (Mon–Sun, multi) + Status.
+//   • Week view → Role (excludes Owner) + Shift name (multi, scoped to the
+//     branch picked in the global selector — "All locations" shows every shift).
 
 type StatusFilter = Shift["status"][];
 
-function FilterPanel({ open, onClose, applied, onApply }: {
+interface ListShiftFilter { statuses: Shift["status"][]; days: number[] }
+interface WeekShiftFilter { roleIds: string[]; shiftIds: string[] }
+const EMPTY_LIST_FILTER: ListShiftFilter = { statuses: [], days: [] };
+const EMPTY_WEEK_FILTER: WeekShiftFilter = { roleIds: [], shiftIds: [] };
+
+// Mon-first pill order; index maps to the [Sun..Sat] working_days array.
+const DAY_FILTER_PILLS = [
+    { label: "Mon", index: 1 }, { label: "Tue", index: 2 }, { label: "Wed", index: 3 },
+    { label: "Thu", index: 4 }, { label: "Fri", index: 5 }, { label: "Sat", index: 6 },
+    { label: "Sun", index: 0 },
+] as const;
+
+function PillBtn({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+    return (
+        <button type="button" onClick={onClick}
+            className={cn(
+                "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all",
+                selected
+                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+            )}>
+            {label}
+        </button>
+    );
+}
+
+function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onApplyList, onApplyWeek, roleOptions, shiftNameOptions }: {
     open: boolean;
     onClose: () => void;
-    applied: StatusFilter;
-    onApply: (next: StatusFilter) => void;
+    viewMode: "list" | "week";
+    appliedList: ListShiftFilter;
+    appliedWeek: WeekShiftFilter;
+    onApplyList: (next: ListShiftFilter) => void;
+    onApplyWeek: (next: WeekShiftFilter) => void;
+    /** Roles for the week filter — Owner already excluded by the caller. */
+    roleOptions: { id: string; name: string }[];
+    /** Shifts for the week filter's Shift name — scoped to the global branch. */
+    shiftNameOptions: { id: string; name: string }[];
 }) {
-    const [pending, setPending] = useState<StatusFilter>([]);
-    useEffect(() => { if (open) setPending([...applied]); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+    const isWeek = viewMode === "week";
+    const [pendingList, setPendingList] = useState<ListShiftFilter>(EMPTY_LIST_FILTER);
+    const [pendingWeek, setPendingWeek] = useState<WeekShiftFilter>(EMPTY_WEEK_FILTER);
+    useEffect(() => {
+        if (!open) return;
+        setPendingList({ statuses: [...appliedList.statuses], days: [...appliedList.days] });
+        setPendingWeek({ roleIds: [...appliedWeek.roleIds], shiftIds: [...appliedWeek.shiftIds] });
+    }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
     useEffect(() => {
         function h(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
         if (open) document.addEventListener("keydown", h);
         return () => document.removeEventListener("keydown", h);
     }, [open, onClose]);
-    function toggle(v: Shift["status"]) {
-        setPending(p => p.includes(v) ? p.filter(x => x !== v) : [...p, v]);
+
+    const toggle = <T,>(arr: T[], v: T): T[] => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
+    const hasAny = isWeek
+        ? pendingWeek.roleIds.length > 0 || pendingWeek.shiftIds.length > 0
+        : pendingList.statuses.length > 0 || pendingList.days.length > 0;
+
+    function apply() {
+        if (isWeek) onApplyWeek(pendingWeek); else onApplyList(pendingList);
+        onClose();
     }
+    function clear() {
+        if (isWeek) { setPendingWeek(EMPTY_WEEK_FILTER); onApplyWeek(EMPTY_WEEK_FILTER); }
+        else        { setPendingList(EMPTY_LIST_FILTER); onApplyList(EMPTY_LIST_FILTER); }
+        onClose();
+    }
+
     return (
         <SlidePanel open={open} onClose={onClose} width={400} zIndex={50}>
                 <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
@@ -418,30 +475,65 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
-                        <div className="flex flex-wrap gap-2">
-                            {(["active", "inactive", "archive"] as const).map(s => (
-                                <button key={s} type="button" onClick={() => toggle(s)}
-                                    className={cn(
-                                        "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all",
-                                        pending.includes(s)
-                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                            : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-                                    )}>
-                                    {STATUS_LABEL[s]}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                    {isWeek ? (
+                        <>
+                            <div className="flex flex-col gap-2">
+                                <p className="text-[14px] font-medium text-[#344054]">Role</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {roleOptions.map(r => (
+                                        <PillBtn key={r.id} label={r.name}
+                                            selected={pendingWeek.roleIds.includes(r.id)}
+                                            onClick={() => setPendingWeek(p => ({ ...p, roleIds: toggle(p.roleIds, r.id) }))} />
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                            <div className="flex flex-col gap-2">
+                                <p className="text-[14px] font-medium text-[#344054]">Shift name</p>
+                                {shiftNameOptions.length === 0 ? (
+                                    <p className="text-[13px] text-[#98a2b3]">No shifts at this location.</p>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                        {shiftNameOptions.map(sh => (
+                                            <PillBtn key={sh.id} label={sh.name}
+                                                selected={pendingWeek.shiftIds.includes(sh.id)}
+                                                onClick={() => setPendingWeek(p => ({ ...p, shiftIds: toggle(p.shiftIds, sh.id) }))} />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex flex-col gap-2">
+                                <p className="text-[14px] font-medium text-[#344054]">Working days</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {DAY_FILTER_PILLS.map(d => (
+                                        <PillBtn key={d.label} label={d.label}
+                                            selected={pendingList.days.includes(d.index)}
+                                            onClick={() => setPendingList(p => ({ ...p, days: toggle(p.days, d.index) }))} />
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                            <div className="flex flex-col gap-2">
+                                <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {(["active", "inactive", "archive"] as const).map(s => (
+                                        <PillBtn key={s} label={STATUS_LABEL[s]}
+                                            selected={pendingList.statuses.includes(s)}
+                                            onClick={() => setPendingList(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={pending.length === 0}
-                        onClick={() => { setPending([]); onApply([]); onClose(); }}>
+                    <Button variant="secondary-gray" size="md" disabled={!hasAny} onClick={clear}>
                         Clear filter
                     </Button>
-                    <Button variant="primary" size="md" disabled={pending.length === 0}
-                        onClick={() => { onApply(pending); onClose(); }}>
+                    <Button variant="primary" size="md" onClick={apply}>
                         Apply
                     </Button>
                 </div>
@@ -531,7 +623,9 @@ export function ShiftManagementTab({
     const updateShift       = useAppStore(s => s.updateShift);
     const showToast         = useAppStore(s => s.showToast);
 
-    const [appliedStatuses, setAppliedStatuses] = useState<StatusFilter>([]);
+    const roles             = useAppStore(s => s.roles);
+    const [appliedList, setAppliedList] = useState<ListShiftFilter>(EMPTY_LIST_FILTER);
+    const [appliedWeek, setAppliedWeek] = useState<WeekShiftFilter>(EMPTY_WEEK_FILTER);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -546,13 +640,21 @@ export function ShiftManagementTab({
 
     // Reset page when filters / search / branch / sub-tab state change so
     // the admin lands on page 1 of the new result set.
-    useEffect(() => { setPage(1); }, [branchId, search, appliedStatuses]);
+    useEffect(() => { setPage(1); }, [branchId, search, appliedList]);
+
+    // Week Shift-name filter is branch-scoped — clear it when the global branch
+    // changes so a stale off-branch shift filter can't empty the grid (client
+    // 2026-07-24 audit). Role filter is branch-agnostic, so it stays.
+    useEffect(() => { setAppliedWeek(w => (w.shiftIds.length ? { ...w, shiftIds: [] } : w)); }, [branchId]);
 
     // Surface the active-filter state up so the toolbar Filter button can
-    // render its green dot.
+    // render its green dot — per view mode (list vs week filter sets differ).
     useEffect(() => {
-        onFilterStateChange?.(appliedStatuses.length > 0);
-    }, [appliedStatuses, onFilterStateChange]);
+        const active = viewMode === "week"
+            ? appliedWeek.roleIds.length > 0 || appliedWeek.shiftIds.length > 0
+            : appliedList.statuses.length > 0 || appliedList.days.length > 0;
+        onFilterStateChange?.(active);
+    }, [viewMode, appliedList, appliedWeek, onFilterStateChange]);
 
     // ── Derived lookups ────────────────────────────────────────────────────
     //
@@ -592,16 +694,30 @@ export function ShiftManagementTab({
     // the row and reveal assigned staff + per-staff days.
     const [expandedShiftId, setExpandedShiftId] = useState<string | null>(null);
 
-    // ── Filter + search ───────────────────────────────────────────────────
+    // ── Filter + search (LIST view — Working days + Status) ─────────────────
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return shifts.filter(s => {
             if (branchId && s.branch_id !== branchId)                 return false;
-            if (appliedStatuses.length && !appliedStatuses.includes(s.status)) return false;
+            if (appliedList.statuses.length && !appliedList.statuses.includes(s.status)) return false;
+            // Working-days filter — shift qualifies if it runs on ANY selected day.
+            if (appliedList.days.length && !appliedList.days.some(d => s.working_days[d])) return false;
             if (q && !s.name.toLowerCase().includes(q))               return false;
             return true;
         });
-    }, [shifts, branchId, search, appliedStatuses]);
+    }, [shifts, branchId, search, appliedList]);
+
+    // Options for the WEEK-view filter panel.
+    const weekRoleOptions = useMemo(
+        () => roles.filter(r => r.status === "active" && r.type !== "owner").map(r => ({ id: r.id, name: r.name })),
+        [roles],
+    );
+    const weekShiftNameOptions = useMemo(
+        () => shifts
+            .filter(sh => sh.status === "active" && (!branchId || sh.branch_id === branchId))
+            .map(sh => ({ id: sh.id, name: sh.name })),
+        [shifts, branchId],
+    );
 
     // ── Pagination slice ──────────────────────────────────────────────────
     // ── Shift sort — Name / Branch / Days (count) / Hours (start) /
@@ -741,7 +857,8 @@ export function ShiftManagementTab({
         <>
             {viewMode === "week" ? (
                 <div className="relative flex flex-col flex-1">
-                    <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart} />
+                    <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart}
+                        roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds} />
                 </div>
             ) : (
             /* Table card — wrapped in px-6 so the table edges line up with
@@ -894,7 +1011,33 @@ export function ShiftManagementTab({
                                                         shift={s}
                                                         assignments={assignmentsByShift.get(s.id) ?? []}
                                                         staffById={staffById}
-                                                        onChangeDays={(assignmentId, days) => updateShiftAssignmentDays(assignmentId, days)}
+                                                        onChangeDays={(assignmentId, days) => {
+                                                            const a = shiftAssignments.find(x => x.id === assignmentId);
+                                                            if (!a) return;
+                                                            // Zero-day → remove the row rather than keep a phantom
+                                                            // all-false assignment (client 2026-07-24 audit).
+                                                            if (!days.some(Boolean)) { removeShiftAssignment(assignmentId); return; }
+                                                            // Overlap guard on any newly-added day — block a same-day
+                                                            // time clash with another shift the staff already works.
+                                                            const sh = shifts.find(x => x.id === a.shift_id);
+                                                            if (sh) {
+                                                                const others = shiftAssignments.filter(x => x.staff_id === a.staff_id && x.id !== assignmentId);
+                                                                for (let d = 0; d < 7; d++) {
+                                                                    if (!days[d] || a.days_of_week[d]) continue; // only newly-on days
+                                                                    const clash = others.find(x => {
+                                                                        if (!x.days_of_week[d]) return false;
+                                                                        const other = shifts.find(y => y.id === x.shift_id);
+                                                                        return !!other && timeRangesOverlap(sh.start_time, sh.end_time, other.start_time, other.end_time);
+                                                                    });
+                                                                    if (clash) {
+                                                                        const other = shifts.find(y => y.id === clash.shift_id);
+                                                                        showToast("Shift conflict", `${staffById.get(a.staff_id)?.fullName ?? "This staff member"} already works ${other?.name ?? "another shift"} at that time on ${WEEKDAY_FULL[d]}.`, "error", "alert");
+                                                                        return;
+                                                                    }
+                                                                }
+                                                            }
+                                                            updateShiftAssignmentDays(assignmentId, days);
+                                                        }}
                                                         onRemoveAssignment={(assignmentId) => setRemoveAssignmentId(assignmentId)}
                                                         onChangeTarget={(nextTarget) => updateShift(s.id, { staffing_target: Math.max(0, nextTarget) })}
                                                     />
@@ -940,8 +1083,13 @@ export function ShiftManagementTab({
             <FilterPanel
                 open={filterOpen}
                 onClose={onCloseFilter}
-                applied={appliedStatuses}
-                onApply={setAppliedStatuses}
+                viewMode={viewMode}
+                appliedList={appliedList}
+                appliedWeek={appliedWeek}
+                onApplyList={setAppliedList}
+                onApplyWeek={setAppliedWeek}
+                roleOptions={weekRoleOptions}
+                shiftNameOptions={weekShiftNameOptions}
             />
 
             {pendingConfirm && (() => {

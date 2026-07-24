@@ -34,9 +34,18 @@ export interface AppointmentBooking {
     slotISO: string;
     slotTime: string;
     instructorId: string | null;
+    /** True when booked with "Preference: Flexible" — the studio auto-assigned
+     *  the instructor. Drives the admin Flexible badge + reassign gate. Client
+     *  2026-07-24. */
+    flexible?: boolean;
     instructorName?: string;
     instructorImageUrl?: string;
     instructorInitials?: string;
+    /** Link to the mirrored admin `appointments` row (created at booking time via
+     *  the store's `addCustomerAppointment`). Lets the detail page reflect an
+     *  admin-side instructor reassignment / cancellation, and lets a customer
+     *  cancel cascade to the admin schedule. Client 2026-07-24. */
+    adminAppointmentId?: string;
     /** ISO created-at — newest first. */
     bookingTime: string;
     /** Lifecycle — "booked" on create, "cancelled" after the cancel flow. */

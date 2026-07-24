@@ -21,7 +21,7 @@
 // Pending status: sidebar actions footer ONLY shows "Resend invitation".
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
     XClose, Check, Edit02, UserSquare, Archive, RefreshCcw01, SlashCircle01,
     Trash01, Send01, ArrowUp, ArrowDown, ArrowUpRight,
@@ -185,9 +185,9 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory }: {
                             }
                         </div>
                         <Metadata label="Branch location" value={branchLabel} />
-                        {role?.type === "instructor" && (
-                            <Metadata label="Default pay rate" value={payRateName || "—"} />
-                        )}
+                        {/* Default pay rate — shown for ALL roles (client
+                            2026-07-24), matching the instructor side menu. */}
+                        <Metadata label="Default pay rate" value={payRateName || "—"} />
                     </div>
                 </div>
 
@@ -484,6 +484,14 @@ function WorkingDaysStrip({ workingDays }: { workingDays: boolean[] }) {
     );
 }
 
+/** "07:00" → "07:00 AM"; "17:00" → "05:00 PM". Shared by both overview tabs. */
+function fmtShift12(t: string): string {
+    const [h, m] = t.split(":").map(Number);
+    const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const ampm = h < 12 ? "AM" : "PM";
+    return `${String(hh).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
+}
+
 function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
@@ -551,13 +559,23 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
     // Union of working_days across every shift so the "Working days" strip
     // shows every day the staff might be on the floor.
     const combinedWorkingDays = useMemo(() => {
-        if (assignedShifts.length === 0) return null;
+        // Honor each ASSIGNMENT's days_of_week (∩ the shift's working_days) so a
+        // staffer narrowed to e.g. "Afternoon, Thu only" shows just Thursday —
+        // not the shift's full day range (client 2026-07-24 audit).
+        const mine = shiftAssignments.filter(a => a.staff_id === staff.id);
         const out = [false, false, false, false, false, false, false];
-        for (const sh of assignedShifts) {
-            for (let i = 0; i < 7; i++) if (sh.working_days[i]) out[i] = true;
+        let any = false;
+        for (const a of mine) {
+            const sh = shifts.find(x => x.id === a.shift_id);
+            if (!sh) continue;
+            for (let i = 0; i < 7; i++) if (a.days_of_week[i] && sh.working_days[i]) { out[i] = true; any = true; }
         }
-        return out;
-    }, [assignedShifts]);
+        if (!any && staff.shiftId) {
+            const sh = shifts.find(x => x.id === staff.shiftId);
+            if (sh) for (let i = 0; i < 7; i++) if (sh.working_days[i]) { out[i] = true; any = true; }
+        }
+        return any ? out : null;
+    }, [shiftAssignments, shifts, staff.id, staff.shiftId]);
     const assignedCategoryNames = (staff.categoryIds ?? [])
         .map(id => classCategories.find(c => c.id === id)?.name)
         .filter((n): n is string => !!n);
@@ -697,14 +715,32 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
 // longer renders it.
 
 function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
-    // Shift management is instructor-only (client Jul 2026), so non-instructor
-    // staff have no shift. Their working days come from their BRANCH's business
-    // hours instead (day_of_week where the branch isn't closed).
+    // Client 2026-07-24 — non-instructor staff can now hold shifts too, so their
+    // Working days + Shift hours derive from their assigned shifts (M2M + legacy
+    // primary), exactly like instructors. When they have no shift, Working days
+    // falls back to the BRANCH's operating days.
     const businessHours = useAppStore(s => s.businessHours);
+    const shifts        = useAppStore(s => s.shifts);
+    const shiftAssignments = useAppStore(s => s.shiftAssignments);
 
-    // Build a [Sun..Sat] boolean strip from the branch's business hours —
-    // matches the order WorkingDaysStrip renders (0=Sun … 6=Sat).
-    const workingDays = useMemo<boolean[]>(() => {
+    // Assigned shifts — M2M assignments blended with the legacy primary.
+    const assignedShifts = useMemo(() => {
+        const seen = new Set<string>();
+        const out: typeof shifts = [];
+        for (const a of shiftAssignments) {
+            if (a.staff_id !== staff.id) continue;
+            const sh = shifts.find(x => x.id === a.shift_id);
+            if (sh && !seen.has(sh.id)) { seen.add(sh.id); out.push(sh); }
+        }
+        if (out.length === 0 && staff.shiftId) {
+            const sh = shifts.find(x => x.id === staff.shiftId);
+            if (sh) out.push(sh);
+        }
+        return out;
+    }, [shiftAssignments, shifts, staff.id, staff.shiftId]);
+
+    // Branch operating days (fallback when no shift). [Sun..Sat], 0=Sun … 6=Sat.
+    const branchWorkingDays = useMemo<boolean[]>(() => {
         const branchRows = staff.branchId
             ? businessHours.filter(h => h.branch_id === staff.branchId)
             : [];
@@ -713,12 +749,32 @@ function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
             return row ? !row.is_closed : false;
         });
     }, [businessHours, staff.branchId]);
+    // Union of assigned-shift working days.
+    const shiftWorkingDays = useMemo<boolean[] | null>(() => {
+        // Per-assignment days_of_week ∩ shift working_days (client 2026-07-24
+        // audit) — a narrowed assignment shows only the days actually worked.
+        const mine = shiftAssignments.filter(a => a.staff_id === staff.id);
+        const out = [false, false, false, false, false, false, false];
+        let any = false;
+        for (const a of mine) {
+            const sh = shifts.find(x => x.id === a.shift_id);
+            if (!sh) continue;
+            for (let i = 0; i < 7; i++) if (a.days_of_week[i] && sh.working_days[i]) { out[i] = true; any = true; }
+        }
+        if (!any && staff.shiftId) {
+            const sh = shifts.find(x => x.id === staff.shiftId);
+            if (sh) for (let i = 0; i < 7; i++) if (sh.working_days[i]) { out[i] = true; any = true; }
+        }
+        return any ? out : null;
+    }, [shiftAssignments, shifts, staff.id, staff.shiftId]);
     const hasBranchHours = staff.branchId != null && businessHours.some(h => h.branch_id === staff.branchId);
+    const workingDays = shiftWorkingDays ?? branchWorkingDays;
+    const showWorkingDays = shiftWorkingDays != null || hasBranchHours;
 
     return (
         <div className="px-6 pb-6 flex flex-col gap-6">
-            {/* Personal information — flush 2-col grid, mirrors the
-                instructor overview above (minus shift, which is instructor-only). */}
+            {/* Personal information — flush 2-col grid, now including Working
+                days + Shift hours for every role (client 2026-07-24). */}
             <div className="flex flex-col gap-3">
                 <p className="text-[14px] text-[#667085]">Personal information</p>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-5">
@@ -727,7 +783,13 @@ function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
                     <InfoField label="Email"       value={staff.email} />
                     <InfoField label="Phone"       value={staff.phone} />
                     <InfoField label="Working days"
-                        value={hasBranchHours ? <WorkingDaysStrip workingDays={workingDays} /> : "—"} />
+                        value={showWorkingDays ? <WorkingDaysStrip workingDays={workingDays} /> : "—"} />
+                    <InfoField label="Shift hours"
+                        value={assignedShifts.length > 0
+                            ? assignedShifts
+                                  .map(sh => `${sh.name} (${fmtShift12(sh.start_time)} – ${fmtShift12(sh.end_time)})`)
+                                  .join(", ")
+                            : "—"} />
                 </div>
             </div>
         </div>
@@ -745,7 +807,6 @@ type TabId = "overview" | "permissions";
 
 export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: StaffDetailPageProps) {
     const router = useRouter();
-    const pathname = usePathname();
     const allStaff           = useAppStore(s => s.staff);
     const allRoles           = useAppStore(s => s.roles);
     const payRates           = useAppStore(s => s.payRates);
@@ -837,7 +898,13 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
         setPendingConfirm(null);
     }
     function handleSidebarAction(kind: "edit_details" | "change_role" | "resend_invite" | ConfirmKind) {
-        if (kind === "edit_details")  return router.push(`/staff/members/${staff!.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
+        if (kind === "edit_details") {
+            // Edit → back returns to THIS detail, carrying its own returnTo so
+            // the chain lands on wherever the detail was opened from (Staff tab,
+            // or a Shift detail's roster) — not a reset to the Staff tab.
+            const selfUrl = `/staff/members/${staff!.id}?returnTo=${encodeURIComponent(returnTo)}`;
+            return router.push(`/staff/members/${staff!.id}/edit?returnTo=${encodeURIComponent(selfUrl)}`);
+        }
         if (kind === "change_role")   return setChangeRoleOpen(true);
         if (kind === "resend_invite") return handleResend();
         setPendingConfirm(kind);

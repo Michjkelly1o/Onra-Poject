@@ -116,37 +116,53 @@ export function computeClassKpis(
     const avgClassSizeCur   = classesCur   > 0 ? tCur.attended   / classesCur   : 0;
     const avgClassSizePrior = classesPrior > 0 ? tPrior.attended / classesPrior : 0;
 
-    // Silence unused var — kept for future use once we introduce prior
-    // comparison on the "current-only" cards without warning.
-    void scheduleById;
+    // Client 2026-07-24 — Cancellations moved from the Customer tab. Scope
+    // is bookings tied to sessions in the window (class-side view), not
+    // the booking-time window the Customer tab used.
+    const cancOnTimeCur   = bookingsCur.filter(b => b.status === "cancelled" && b.attendanceStatus !== "late_cancel").length;
+    const cancOnTimePrior = bookingsPrior.filter(b => b.status === "cancelled" && b.attendanceStatus !== "late_cancel").length;
+    const cancLateCur     = bookingsCur.filter(b => b.attendanceStatus === "late_cancel").length;
+    const cancLatePrior   = bookingsPrior.filter(b => b.attendanceStatus === "late_cancel").length;
 
+    // Silence unused vars — kept for future use once we introduce prior
+    // comparison on the "current-only" cards without warning. `occupancy*`
+    // and `noShowRate*` / `uniqueCur` are retained even though their tiles
+    // were removed per client 2026-07-24; the tally already computes them.
+    void scheduleById;
+    void occupancyCur;
+    void occupancyPrior;
+    void noShowRateCur;
+    void noShowRatePrior;
+    void uniqueCur;
+
+    // Client 2026-07-24 tile order — Classes scheduled · Attendance rate ·
+    // Total attendance · Cancellations on time · Cancellations late ·
+    // No-shows · Waitlist conversions · Avg class size. Removed: Class
+    // occupancy, No-show rate, Unique attendees.
     return [
-        { label: "Classes scheduled",   value: num(classesCur),           change: delta(classesCur, classesPrior),     period,
+        { label: "Classes scheduled",    value: num(classesCur),           change: delta(classesCur, classesPrior),     period,
           description: "Sessions on the calendar in period.",
           drillTo: "/reports/class-performance" },
-        { label: "Class occupancy",     value: pct(occupancyCur),         change: delta(occupancyCur, occupancyPrior), period,
-          description: "Booked seats ÷ capacity. Low = demand/scheduling problem.",
+        { label: "Attendance rate",      value: pct(attRateCur),           change: delta(attRateCur, attRatePrior),     period,
+          description: "Attended ÷ booked.",
           drillTo: "/reports/class-performance" },
-        { label: "Attendance rate",     value: pct(attRateCur),           change: delta(attRateCur, attRatePrior),     period,
-          description: "Attended ÷ booked. Low = no-show problem.",
-          drillTo: "/reports/class-performance" },
-        { label: "Total attended",      value: num(attendedCur),          change: delta(tCur.attended, tPrior.attended), period,
+        { label: "Total attendance",     value: num(attendedCur),          change: delta(tCur.attended, tPrior.attended), period,
           description: "Total attendances across classes.",
           drillTo: "/reports/bookings" },
-        { label: "No-shows",            value: num(noShowsCur),           change: delta(tCur.noShows, tPrior.noShows), period,
+        { label: "Cancellations — on time", value: num(cancOnTimeCur),      change: delta(cancOnTimeCur, cancOnTimePrior), period,
+          description: "Cancelled before the cutoff window — credit returned.",
+          drillTo: "/reports/cancellations-noshows" },
+        { label: "Cancellations — late", value: num(cancLateCur),          change: delta(cancLateCur, cancLatePrior), period,
+          description: "Cancelled after the cutoff window — credit lost.",
+          drillTo: "/reports/cancellations-noshows" },
+        { label: "No-shows",             value: num(noShowsCur),           change: delta(tCur.noShows, tPrior.noShows), period,
           description: "Never cancelled and never showed up (3rd cancellation type).",
           drillTo: "/reports/cancellations-noshows" },
-        { label: "No-show rate",        value: pct(noShowRateCur),        change: delta(noShowRateCur, noShowRatePrior), period,
-          description: "No-shows ÷ booked.",
-          drillTo: "/reports/cancellations-noshows" },
-        { label: "Unique attendees",    value: num(uniqueCur),            change: delta(tCur.uniqueAttendees, tPrior.uniqueAttendees), period,
-          description: "Distinct people who attended.",
-          drillTo: "/reports/bookings" },
-        { label: "Avg class size",      value: avgClassSizeCur.toFixed(1), change: delta(avgClassSizeCur, avgClassSizePrior), period,
-          description: "Attendees ÷ classes run.",
-          drillTo: "/reports/class-performance" },
         { label: "Waitlist conversions", value: num(waitConvCur),          change: delta(tCur.waitlistConverted, tPrior.waitlistConverted), period,
           description: "Waitlisted → confirmed seats.",
           drillTo: "/reports/bookings" },
+        { label: "Avg class size",       value: avgClassSizeCur.toFixed(1), change: delta(avgClassSizeCur, avgClassSizePrior), period,
+          description: "Attendees ÷ classes run.",
+          drillTo: "/reports/class-performance" },
     ];
 }

@@ -747,7 +747,7 @@ export function ChatThread({
             kind: "branch",
             spec: {
                 title: isFlowC
-                    ? "Create a branch to continue"
+                    ? "Create a branch, or import as global?"
                     : "Which branch should we use?",
                 allowOther: false,
                 options: [
@@ -757,6 +757,20 @@ export function ChatThread({
                               id: b.id,
                               label: b.name,
                           }))),
+                    // Client 2026-07-24 — "Global" numbered option: the user
+                    // is telling us these records don't belong to any single
+                    // branch at import time (tax rates being the canonical
+                    // example). The row's branch is left null; the admin
+                    // applies branch(es) later in the entity's own module
+                    // (Apply tax rates / edit the record).
+                    {
+                        id: "__global_branch",
+                        label: "Global — apply to branches later",
+                    },
+                    // "+ Add new branch" sits LAST — a create-new action per
+                    // client 2026-07-24 review; the branch picks + Global
+                    // read first, and the escape hatch to Settings comes
+                    // after them.
                     { id: "__add_new_branch", label: "+ Add new branch" },
                 ],
             },
@@ -791,31 +805,51 @@ export function ChatThread({
     }
 
     const onMigQuestionsComplete = (answers: AiQuestionAnswer[]) => {
-        // Apply the state effects for each answer + collect the message
-        // chunk the AI will see. Walked in step order — insight/general
-        // questions first, then branch, mapping, summary.
-        const chunks: string[] = [];
+        // Client 2026-07-24 (Figma 421:472399) — the user's outgoing
+        // message now reads as a stack of `Q: … / A: …` pairs, one per
+        // step, blank-line separated. Applies to EVERY AiQuestionPrompt
+        // completion (branch pick, mapping action, summary action,
+        // insight ask_questions, format picker) — same shape everywhere.
+        // The model reads the Q/A block and dispatches per the prompt
+        // rules (see buildMigrationPrompt "Interpreting Q/A" section).
+        //
+        // Side effects (parsedFile.mapping / defaultBranchId,
+        // isCommitInFlight) still apply per option so downstream tools
+        // see the picked state without needing the model to relay it.
+        const qaPairs: string[] = [];
+        const answerLabel = (
+            entry: { spec: import("@/ai-agent/components/AiQuestionPrompt").AiQuestionSpec },
+            answer: AiQuestionAnswer,
+        ): string | null => {
+            if (answer.kind === "option") {
+                const opt = entry.spec.options.find((o) => o.id === answer.optionId);
+                return opt?.label ?? null;
+            }
+            if (answer.kind === "other") return answer.text;
+            return null;
+        };
         for (let i = 0; i < migQuestionEntries.length; i++) {
             const entry = migQuestionEntries[i];
             const answer = answers[i];
             if (!answer) continue;
-            if (entry.kind === "insight") {
-                if (answer.kind === "option") {
-                    const opt = entry.spec.options.find((o) => o.id === answer.optionId);
-                    if (opt) chunks.push(`${entry.spec.title ?? "Question"}: ${opt.label}`);
-                } else if (answer.kind === "other") {
-                    chunks.push(`${entry.spec.title ?? "Question"}: ${answer.text}`);
-                }
-                continue;
+            const label = answerLabel(entry, answer);
+            if (label !== null) {
+                qaPairs.push(`Q: ${entry.spec.title ?? "Question"}\nA: ${label}`);
             }
+            // Side effects only fire on option picks (skip / other don't
+            // carry an option id we can act on).
             if (answer.kind !== "option") continue;
             const optId = answer.optionId;
             if (entry.kind === "branch") {
-                if (optId === "__add_new_branch") {
-                    chunks.push(
-                        "I'll add a new branch first — direct me to the branches settings.",
-                    );
-                } else {
+                if (optId === "__global_branch") {
+                    setParsedFile((prev) => {
+                        if (!prev) return prev;
+                        const next: ParsedFile = { ...prev };
+                        delete next.defaultBranchId;
+                        parsedFileRef.current = next;
+                        return next;
+                    });
+                } else if (optId !== "__add_new_branch") {
                     const branch = activeBranchesForPicker.find((b) => b.id === optId);
                     if (branch) {
                         setParsedFile((prev) => {
@@ -827,9 +861,6 @@ export function ChatThread({
                             parsedFileRef.current = next;
                             return next;
                         });
-                        chunks.push(
-                            `Use ${branch.name} for all imported records — proceed to mapping.`,
-                        );
                     }
                 }
             } else if (entry.kind === "mapping") {
@@ -841,46 +872,29 @@ export function ChatThread({
                         parsedFileRef.current = next;
                         return next;
                     });
-                    chunks.push(
-                        "Accept all suggested mappings and preview the import.",
-                    );
-                } else if (optId === "skip_unmatched") {
-                    if (pendingMapping) {
-                        setParsedFile((prev) => {
-                            if (!prev) return prev;
-                            const merged = { ...(prev.mapping ?? {}) };
-                            for (const m of pendingMapping.mappings) {
-                                const cur = Object.prototype.hasOwnProperty.call(
-                                    merged,
-                                    m.source,
-                                )
-                                    ? merged[m.source]
-                                    : m.target;
-                                if (cur === null) merged[m.source] = null;
-                            }
-                            const next: ParsedFile = { ...prev, mapping: merged };
-                            parsedFileRef.current = next;
-                            return next;
-                        });
-                    }
-                    chunks.push(
-                        "Skip the unmatched columns and preview the import.",
-                    );
-                } else if (optId === "done_manual") {
-                    chunks.push(
-                        "I'm done with the manual mapping — preview the import.",
-                    );
+                } else if (optId === "skip_unmatched" && pendingMapping) {
+                    setParsedFile((prev) => {
+                        if (!prev) return prev;
+                        const merged = { ...(prev.mapping ?? {}) };
+                        for (const m of pendingMapping.mappings) {
+                            const cur = Object.prototype.hasOwnProperty.call(
+                                merged,
+                                m.source,
+                            )
+                                ? merged[m.source]
+                                : m.target;
+                            if (cur === null) merged[m.source] = null;
+                        }
+                        const next: ParsedFile = { ...prev, mapping: merged };
+                        parsedFileRef.current = next;
+                        return next;
+                    });
                 }
             } else if (entry.kind === "summary") {
-                if (optId === "yes_start") {
-                    setIsCommitInFlight(true);
-                    chunks.push("Yes, start the import.");
-                } else if (optId === "no_back") {
-                    chunks.push("No, take me back to mapping.");
-                }
+                if (optId === "yes_start") setIsCommitInFlight(true);
             }
         }
-        if (chunks.length > 0) send(chunks.join(" "));
+        if (qaPairs.length > 0) send(qaPairs.join("\n\n"));
     };
 
     const migQuestionsPanel = migQuestionEntries.length > 0 ? (

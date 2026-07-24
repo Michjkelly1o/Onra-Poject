@@ -54,9 +54,16 @@ function getCategoryColor(category: string) {
 
 const INSTRUCTORS: Instructor[] = SCHEDULE_INSTRUCTORS;
 
-// Demo "today" anchor — every other date default is derived from this.
-// Update once and the day/week/month tabs all reflow.
-const TODAY_ISO = "2026-05-15";
+// "Today" anchor — every other date default (Monday of the week, current
+// month, day-view date) derives from this, so the day/week/month tabs all
+// reflow off one value. Client 2026-07-24: use the actual DEVICE date instead
+// of a fixed demo date so the Schedule always opens on the real current day.
+// Local date parts (matching `isoDay` in prototype_demo_data.ts) so it lines
+// up with the real-date-anchored `DEMO_NOW_*` class schedules.
+const TODAY_ISO = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+})();
 function isoToMonday(iso: string): string {
     // Parse as UTC so positive-UTC timezones (e.g. UAE +4) don't shift days.
     const d = new Date(iso + "T00:00:00Z");
@@ -763,7 +770,7 @@ function ClassBlock({ cls, onClick, gridStartHour, gridHeight }: {
     );
 }
 
-function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchIds, blockedTimes, onClassClick }: {
+function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchIds, blockedTimes, focusInstructorId, searchQuery, onClassClick }: {
     /** ISO date the view is anchored to ("2026-05-15"). Filter is dateISO-based
      *  so newly-created schedules surface regardless of display-string format. */
     dateISO: string;
@@ -782,17 +789,38 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
      *  overlay floats above the columns per (start, end) tuple so the
      *  admin can read the block at a glance. */
     blockedTimes: BlockedTime[];
+    /** Instructor to bring to the FRONT of the Day view + auto-scroll to
+     *  (from the toolbar Filter). Client 2026-07-24. */
+    focusInstructorId?: string;
+    /** The toolbar Search query. When it matches an instructor name, that
+     *  instructor is focused (moved first + scrolled) in the Day view. */
+    searchQuery?: string;
     onClassClick: (cls: ClassInstance, e: React.MouseEvent) => void;
 }) {
     const dayClasses = classes.filter(c => c.dateISO === dateISO);
     const instructorIds = Array.from(new Set(dayClasses.map(c => c.instructorId)));
-    const allInstructors = INSTRUCTORS.filter(i => instructorIds.includes(i.id));
-    const missingInstructors = INSTRUCTORS.filter(i => !instructorIds.includes(i.id)).slice(0, Math.max(0, 4 - allInstructors.length));
+
+    // Client 2026-07-24 — the Day view now lists EVERY instructor (not just 4)
+    // in a horizontally-scrollable header/grid so the admin can browse them
+    // all. Instructors with classes today lead, then the rest.
+    const withClasses    = INSTRUCTORS.filter(i => instructorIds.includes(i.id));
+    const withoutClasses = INSTRUCTORS.filter(i => !instructorIds.includes(i.id));
+
+    // Client 2026-07-24 — the toolbar Search (shared across every view) drives
+    // the Day-view instructor focus: when the query matches an instructor name,
+    // that instructor is moved first + scrolled into view. No separate Day-view
+    // search box (removed — the section-header search is the single source).
+    const searchMatchId = useMemo(() => {
+        const q = (searchQuery ?? "").trim().toLowerCase();
+        if (!q) return undefined;
+        return INSTRUCTORS.find(i => i.name.toLowerCase().includes(q))?.id;
+    }, [searchQuery]);
+    // Focus priority: the search-name match, else the toolbar Filter selection.
+    const focusId = searchMatchId ?? focusInstructorId;
+
     // Open-session recovery/wellness sessions (e.g. Sauna / Breathwork) have
-    // no instructor assigned — they'd be silently dropped from the Day view
-    // (every other column matches an exact instructor id), so this synthetic
-    // "Recovery" lane at the right catches every instructor-less card. In the
-    // current data those are exactly the recovery sessions.
+    // no instructor assigned — this synthetic "Recovery" lane catches every
+    // instructor-less card.
     const hasRecovery = dayClasses.some(c => !c.instructorId);
     const recoveryColumn: Instructor = {
         id: "__recovery__",
@@ -801,9 +829,53 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
         color: "var(--brand-tertiary)",
         branchId: null,
     };
-    const columns: Instructor[] = hasRecovery
-        ? [...allInstructors, ...missingInstructors, recoveryColumn]
-        : [...allInstructors, ...missingInstructors];
+    // Base order (with-classes first), then move the focused instructor to the
+    // very front so they're immediately visible — item 2.
+    const columns: Instructor[] = useMemo(() => {
+        let ordered = [...withClasses, ...withoutClasses];
+        if (focusId) {
+            const idx = ordered.findIndex(i => i.id === focusId);
+            if (idx > 0) ordered = [ordered[idx], ...ordered.slice(0, idx), ...ordered.slice(idx + 1)];
+        }
+        return hasRecovery ? [...ordered, recoveryColumn] : ordered;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [instructorIds.join(","), focusId, hasRecovery]);
+
+    // ── Horizontal scroll (item 1) ──────────────────────────────────────────
+    // Keep the "4 instructors fit the width" group layout by sizing each column
+    // to a quarter of the visible instructor area; the rest scroll horizontally.
+    // The header + time-grid columns share one measured width and sync their
+    // horizontal scroll so they never drift.
+    const rootRef = useRef<HTMLDivElement>(null);
+    const headerScrollRef = useRef<HTMLDivElement>(null);
+    const bodyScrollRef = useRef<HTMLDivElement>(null);
+    const [colWidth, setColWidth] = useState(240);
+    useEffect(() => {
+        const el = rootRef.current;
+        if (!el) return;
+        const measure = () => {
+            // root width − left pad (24) − time gutter (64) − right pad (24),
+            // split across 4 columns; clamped so columns never get too narrow.
+            const avail = el.clientWidth - 24 - 64 - 24;
+            setColWidth(Math.max(200, Math.floor(avail / 4)));
+        };
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+    function syncScroll(from: "header" | "body") {
+        const src = from === "header" ? headerScrollRef.current : bodyScrollRef.current;
+        const dst = from === "header" ? bodyScrollRef.current : headerScrollRef.current;
+        if (src && dst && dst.scrollLeft !== src.scrollLeft) dst.scrollLeft = src.scrollLeft;
+    }
+    // Auto-scroll the focused instructor into view (they're first → scrollLeft 0).
+    useEffect(() => {
+        if (!focusId) return;
+        if (headerScrollRef.current) headerScrollRef.current.scrollLeft = 0;
+        if (bodyScrollRef.current)   bodyScrollRef.current.scrollLeft = 0;
+    }, [focusId]);
+    const contentWidth = columns.length * colWidth;
 
     // Grid hour range = the branch's open hours for this weekday (or the
     // union envelope across every active branch when "All locations" is
@@ -823,41 +895,47 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
     const showCurrentTime = currentMinutes > 0 && currentMinutes < (gridEndHour - gridStartHour) * 60;
 
     return (
-        <div className="flex flex-col overflow-hidden flex-1">
-            {/* Instructor column headers */}
+        <div ref={rootRef} className="flex flex-col overflow-hidden flex-1">
+            {/* Instructor column headers — horizontally scrollable (synced). */}
             <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
                 <div className="w-16 shrink-0" />
-                {columns.map(instructor => {
-                    const isRecoveryCol = instructor.id === "__recovery__";
-                    // Mirror the body's filter rule for the count badge so
-                    // header + cards stay in sync.
-                    const count = isRecoveryCol
-                        ? dayClasses.filter(c => !c.instructorId).length
-                        : dayClasses.filter(c => c.instructorId === instructor.id).length;
-                    return (
-                        <div key={instructor.id} className="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 border-l border-[#f2f4f7]">
-                            <InstructorAvatar initials={instructor.initials} color={instructor.color} size={36} />
-                            <div className="min-w-0">
-                                <p className="text-[14px] font-semibold text-[#101828] truncate">{instructor.name}</p>
-                                <div className="flex items-center gap-1">
-                                    <Calendar className="w-[12px] h-[12px] text-[#667085]" />
-                                    <span className="text-[12px] text-[#667085]">
-                                        {count} {isRecoveryCol
-                                            ? (count === 1 ? "appointment" : "appointments")
-                                            : (count === 1 ? "class" : "classes")}
-                                    </span>
+                <div ref={headerScrollRef} onScroll={() => syncScroll("header")} className="flex-1 overflow-x-auto scrollbar-hide">
+                    <div className="flex" style={{ width: contentWidth }}>
+                        {columns.map(instructor => {
+                            const isRecoveryCol = instructor.id === "__recovery__";
+                            // Mirror the body's filter rule for the count badge so
+                            // header + cards stay in sync.
+                            const count = isRecoveryCol
+                                ? dayClasses.filter(c => !c.instructorId).length
+                                : dayClasses.filter(c => c.instructorId === instructor.id).length;
+                            const isFocused = !!focusId && instructor.id === focusId;
+                            return (
+                                <div key={instructor.id} style={{ width: colWidth }}
+                                    className={cn("shrink-0 min-w-0 flex items-center gap-3 px-4 py-3 border-l border-[#f2f4f7]", isFocused && "bg-[#f5fffa]")}>
+                                    <InstructorAvatar initials={instructor.initials} color={instructor.color} size={36} />
+                                    <div className="min-w-0">
+                                        <p className="text-[14px] font-semibold text-[#101828] truncate">{instructor.name}</p>
+                                        <div className="flex items-center gap-1">
+                                            <Calendar className="w-[12px] h-[12px] text-[#667085]" />
+                                            <span className="text-[12px] text-[#667085]">
+                                                {count} {isRecoveryCol
+                                                    ? (count === 1 ? "appointment" : "appointments")
+                                                    : (count === 1 ? "class" : "classes")}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                            );
+                        })}
+                    </div>
+                </div>
                 <div className="w-6 shrink-0" />
             </div>
 
             {/* Scrollable time grid */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6">
-                <div className="flex" style={{ minHeight: gridHeight }}>
-                    {/* Time labels */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide">
+                <div className="flex pl-6" style={{ minHeight: gridHeight }}>
+                    {/* Time labels — fixed left gutter */}
                     <div className="w-16 shrink-0 flex flex-col">
                         {hours.map(h => (
                             <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
@@ -867,29 +945,26 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                         ))}
                     </div>
 
-                    {/* Grid columns */}
-                    <div className="flex-1 relative">
-                        {hours.map((_, i) => (
-                            <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
-                        ))}
+                    {/* Instructor columns — horizontally scrollable (synced with header). */}
+                    <div ref={bodyScrollRef} onScroll={() => syncScroll("body")} className="flex-1 overflow-x-auto scrollbar-hide pr-6">
+                        <div className="relative" style={{ width: contentWidth, minHeight: gridHeight }}>
+                            {hours.map((_, i) => (
+                                <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
+                            ))}
 
-                        {/* Current time line */}
-                        {showCurrentTime && (
-                            <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: currentTop }}>
-                                <div className="w-2.5 h-2.5 rounded-full bg-[#f79009] shrink-0 -ml-1.5" />
-                                <div className="flex-1 border-t-2 border-[#f79009]" />
-                            </div>
-                        )}
+                            {/* Current time line */}
+                            {showCurrentTime && (
+                                <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: currentTop }}>
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#f79009] shrink-0 -ml-1.5" />
+                                    <div className="flex-1 border-t-2 border-[#f79009]" />
+                                </div>
+                            )}
 
-                        {/* Instructor columns — each carries its own shaded
-                            BlockedStrip(s) with the centered "Blocked HH:MM
-                            – HH:MM" label baked in. The label is scoped to
-                            the column the block applies to so unblocked
-                            instructor columns next to a blocked one render
-                            clean (no misleading badge floating over their
-                            time band). */}
-                        <div className="absolute inset-0 flex">
-                            {columns.map(instructor => {
+                            {/* Instructor columns — each carries its own shaded
+                                BlockedStrip(s) with the centered "Blocked HH:MM
+                                – HH:MM" label baked in. */}
+                            <div className="absolute inset-0 flex">
+                                {columns.map(instructor => {
                                 const isRecoveryCol = instructor.id === "__recovery__";
                                 // Recovery column catches every card whose
                                 // instructorId is empty (open recovery/wellness
@@ -913,7 +988,7 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                                         return dateISO >= from && dateISO <= to && b.staff_ids.includes(instructor.id);
                                     });
                                 return (
-                                    <div key={instructor.id} className="flex-1 min-w-0 relative border-l border-[#f2f4f7]" style={{ minHeight: gridHeight }}>
+                                    <div key={instructor.id} style={{ width: colWidth, minHeight: gridHeight }} className="shrink-0 relative border-l border-[#f2f4f7]">
                                         {/* Per-instructor blocked strips —
                                             label is centered within the
                                             column the block belongs to. */}
@@ -934,6 +1009,7 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchId
                             })}
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -1875,7 +1951,7 @@ function SchedulePage() {
                 })()}
 
                 {activeTab === "day" && (
-                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} blockedTimes={blockedTimes} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} blockedTimes={blockedTimes} classes={filteredClasses} focusInstructorId={applied.instructors[0]} searchQuery={search} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "week" && (

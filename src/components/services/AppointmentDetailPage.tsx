@@ -38,7 +38,7 @@ import { useRouter } from "next/navigation";
 import {
     XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, CheckCircle,
     SearchMd, Eye, AlignLeft, ChevronLeft, RefreshCcw01, Star01,
-    FilterLines,
+    FilterLines, Shuffle01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { branchTzLabel } from "@/lib/branch-time";
@@ -469,6 +469,18 @@ function LeftPanel({ appointment, onCancelAppointment }: {
     const branch = useAppStore(s => s.branches).find(b => b.id === appointment.branchId);
     const branchTzShort = branch ? branchTzLabel(branch) : undefined;
 
+    // Flexible booking — the studio auto-assigned the instructor, so admins may
+    // reassign it here (only on a still-upcoming/ongoing flexible appointment).
+    const reassignInstructor = useAppStore(s => s.reassignAppointmentInstructor);
+    const allInstructors     = useAppStore(s => s.instructors);
+    const showToast          = useAppStore(s => s.showToast);
+    const [reassignOpen, setReassignOpen] = useState(false);
+    // Active + same-branch only — mirrors the customer-side flexible pool
+    // (useQualifiedInstructorIds), so an admin can't reassign to an inactive
+    // instructor the booking flow would never have offered.
+    const branchInstructors = allInstructors.filter(i => i.status === "active" && i.branchId === appointment.branchId);
+    const canReassign = !!appointment.flexible && (isUpcoming || isOngoing);
+
     return (
         <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
             {/* Banner */}
@@ -488,7 +500,15 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div>
                         <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{appointment.serviceName}</h2>
-                        <p className="text-[14px] text-[#667085] leading-[20px] mt-1">{appointment.openSession ? "Open session" : "Private session"}</p>
+                        <div className="flex items-center flex-wrap gap-2 mt-1">
+                            <p className="text-[14px] text-[#667085] leading-[20px]">{appointment.openSession ? "Open session" : "Private session"}</p>
+                            {/* Flexible booking indicator — client 2026-07-24. */}
+                            {appointment.flexible && (
+                                <span className="inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full text-[12px] font-medium bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]">
+                                    <Shuffle01 className="w-3 h-3" aria-hidden /> Flexible
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {/* Field order per Figma 7617:132516 (open session) +
@@ -537,8 +557,46 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                         </div>
                         {!appointment.openSession && appointment.instructorName && (
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[#667085]">Instructor</p>
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[14px] text-[#667085]">Instructor</p>
+                                    {/* Reassign — only on a Flexible appointment that's still
+                                        upcoming/ongoing (a completed/cancelled one is locked). */}
+                                    {canReassign && (
+                                        <button type="button" onClick={() => setReassignOpen(o => !o)}
+                                            className="text-[13px] font-medium text-[#658774] hover:text-[#3b5446] transition-colors">
+                                            {reassignOpen ? "Cancel" : "Reassign"}
+                                        </button>
+                                    )}
+                                </div>
                                 <p className="text-[16px] font-medium text-[#101828]">{appointment.instructorName}</p>
+                                {reassignOpen && canReassign && (
+                                    <div className="mt-1 flex flex-col gap-1 rounded-[10px] border-1 border-[#e4e7ec] p-1.5 max-h-[240px] overflow-y-auto">
+                                        {branchInstructors.length === 0 ? (
+                                            <p className="px-2 py-2 text-[13px] text-[#98a2b3]">No instructors at this branch.</p>
+                                        ) : branchInstructors.map(i => {
+                                            const current = i.id === appointment.instructorId;
+                                            return (
+                                                <button key={i.id} type="button"
+                                                    onClick={() => {
+                                                        if (!current) {
+                                                            reassignInstructor(appointment.id, i.id);
+                                                            showToast("Instructor reassigned", `${appointment.serviceName} reassigned to ${i.name}.`, "success", "check");
+                                                        }
+                                                        setReassignOpen(false);
+                                                    }}
+                                                    className={cn("flex items-center gap-2.5 rounded-[8px] px-2 py-2 text-left transition-colors", current ? "bg-[#f5fffa]" : "hover:bg-[#f9fafb]")}>
+                                                    <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-[11px] font-semibold text-white" style={{ backgroundColor: i.color }}>
+                                                        {i.imageUrl
+                                                            ? <img src={i.imageUrl} alt="" className="size-full object-cover" />
+                                                            : i.initials}
+                                                    </span>
+                                                    <span className="flex-1 min-w-0 truncate text-[14px] font-medium text-[#344054]">{i.name}</span>
+                                                    {current && <Check className="w-4 h-4 shrink-0 text-[#658774]" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         )}
                         <div className="flex flex-col gap-1">

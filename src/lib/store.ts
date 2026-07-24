@@ -643,6 +643,11 @@ export interface Appointment {
     instructorInitials?: string;
     instructorColor?: string;
     instructorImageUrl?: string;
+    /** True when this private appointment was booked with the customer's
+     *  "Preference: Flexible" — the studio auto-assigned the instructor. Drives
+     *  the Appointment Details "Flexible" badge + the Reassign-instructor action
+     *  (only flexible appointments can be reassigned). Client 2026-07-24. */
+    flexible?: boolean;
     /** True when the parent service is open_session — drives "Open session"
      *  badges + the bulk-select roster on the appointment detail page. */
     openSession: boolean;
@@ -3328,9 +3333,28 @@ const INITIAL_PAY_RATES:        PayRate[]        = SEED_PAY_RATES.map(payRateFro
 const INITIAL_INSTRUCTORS:      Instructor[]     = SEED_INSTRUCTORS.map(instructorFromSeed);
 const INITIAL_PAYROLL_ENTRIES:  PayrollEntry[]   = SEED_PAYROLL_ENTRIES.map(payrollEntryFromSeed);
 const INITIAL_ROLES:            Role[]           = SEED_ROLES.map(roleFromSeed);
-const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed);
 const INITIAL_SHIFTS:              Shift[]           = SEED_SHIFTS;
-const INITIAL_SHIFT_ASSIGNMENTS:   ShiftAssignment[] = SEED_SHIFT_ASSIGNMENTS;
+// Same-branch invariant (client 2026-07-24): a staff member can only hold
+// shifts at their OWN branch. The seed carries a few legacy cross-branch rows
+// (e.g. a West/East instructor pointed at a South shift); sanitize both the
+// legacy `shiftId` and the M2M assignment rows at boot so no surface ever
+// renders a cross-branch shift. Owner (null branch) spans every location and
+// is exempt. Mirrored on rehydrate (onRehydrateStorage) for persisted state.
+const _SHIFT_BRANCH = new Map(INITIAL_SHIFTS.map(sh => [sh.id, sh.branch_id] as const));
+const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed).map(s => {
+    if (s.shiftId && s.branchId != null) {
+        const shb = _SHIFT_BRANCH.get(s.shiftId);
+        if (shb !== undefined && shb !== s.branchId) return { ...s, shiftId: undefined };
+    }
+    return s;
+});
+const _STAFF_BRANCH = new Map(INITIAL_STAFF.map(s => [s.id, s.branchId] as const));
+const INITIAL_SHIFT_ASSIGNMENTS:   ShiftAssignment[] = SEED_SHIFT_ASSIGNMENTS.filter(a => {
+    const sb = _STAFF_BRANCH.get(a.staff_id);
+    const shb = _SHIFT_BRANCH.get(a.shift_id);
+    if (sb == null || shb === undefined) return true; // owner / unknown → keep
+    return sb === shb;
+});
 const INITIAL_BLOCKED_TIMES:       BlockedTime[]     = SEED_BLOCKED_TIMES;
 const INITIAL_NOTIFICATION_SETTINGS: NotificationSetting[] = SEED_NOTIFICATION_SETTINGS.map(notificationSettingFromSeed);
 // Admin + instructor notifications live in one initial array — the bell +
@@ -3448,7 +3472,13 @@ function syncInstructorsFromStaff(
 
 const INITIAL_TEMPLATES: ClassTemplate[] = SEED_CLASS_TEMPLATES.map(templateFromSeed);
 const INITIAL_SERVICES:  Service[]       = SEED_SERVICES.map(serviceFromSeed);
-const INITIAL_APPOINTMENTS:         Appointment[]        = SEED_APPOINTMENTS.map(a => appointmentFromSeed(a, INITIAL_SERVICES));
+const INITIAL_APPOINTMENTS:         Appointment[]        = SEED_APPOINTMENTS.map(a => appointmentFromSeed(a, INITIAL_SERVICES))
+    // Client 2026-07-24 — flag a demonstrable subset of PRIVATE appointments as
+    // "booked with Preference: Flexible" (studio-assigned instructor) so the
+    // Appointment Details Flexible badge + Reassign-instructor action have live
+    // data. Every 2nd private appointment, deterministically. Reuses existing
+    // appointment records — no new/duplicate entity, no seed-file change.
+    .map((a, i) => (!a.openSession && a.instructorId && i % 2 === 0 ? { ...a, flexible: true } : a));
 const INITIAL_APPOINTMENT_BOOKINGS: AppointmentBooking[] = SEED_APPOINTMENT_BOOKINGS.map(appointmentBookingFromSeed);
 const INITIAL_APPOINTMENT_RATINGS:  AppointmentRating[]  = SEED_APPOINTMENT_RATINGS.map(appointmentRatingFromSeed);
 const INITIAL_SCHEDULES: ClassSchedule[] = SEED_CLASS_SCHEDULE.map(s => scheduleFromSeed(s, INITIAL_TEMPLATES));
@@ -3750,6 +3780,26 @@ export interface AppState {
      *  Mirrors `cancelClassSchedule` 1:1, including the `refund` flag.
      *  Refund-on by default: admin cancellation always returns credits. */
     cancelAppointment: (id: string, refund: boolean, cancelledBy?: string) => void;
+    /** Reassign the instructor on a Flexible private appointment (client
+     *  2026-07-24). Updates the appointment's instructor fields from the
+     *  `instructors` slice + records an audit entry. */
+    reassignAppointmentInstructor: (appointmentId: string, instructorId: string) => void;
+    /** Mirror a customer-side appointment booking into the shared admin store
+     *  as a real `Appointment` (+ its single roster `AppointmentBooking`), so a
+     *  session booked in the customer app appears on the admin schedule and
+     *  opens in Appointment Details (Flexible badge + Reassign included).
+     *  Reuses the existing appointment data model — no separate entity. Returns
+     *  the new appointment id (persisted on the customer booking as the link).
+     *  Client 2026-07-24. */
+    addCustomerAppointment: (input: {
+        serviceId: string;
+        dateISO: string;
+        startTime: string;
+        durationMins: number;
+        instructorId: string | null;
+        flexible: boolean;
+        customer: { id: string; name: string; initials: string; color?: string; imageUrl?: string };
+    }) => string;
     /** Cancel a single customer's booking. Mirrors `cancelClassBooking`
      *  including the `refund` flag — when true the customer's credit is
      *  returned (no-op for the prototype since credit ledgers aren't
@@ -4939,6 +4989,125 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     // ─── Appointments (Module 13 — Phase 4) ─────────────────────────────────
+    addCustomerAppointment: (input) => {
+        const state = get();
+        const service = state.services.find(s => s.id === input.serviceId);
+        const branch = state.branches.find(b => b.id === (service?.branchId ?? ""));
+        const room = service?.roomId ? state.rooms.find(r => r.id === service.roomId) : undefined;
+        const inst = input.instructorId ? state.instructors.find(i => i.id === input.instructorId) : undefined;
+        // endTime = start + duration; displayTime mirrors the seed's fmtDisplay.
+        const [sh, sm] = input.startTime.split(":").map(Number);
+        const totalMin = sh * 60 + sm + input.durationMins;
+        const endTime = `${String(Math.floor(totalMin / 60) % 24).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
+        const fmt12 = (t: string): string => {
+            const [h, m] = t.split(":").map(Number);
+            const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
+            return `${hh}:${String(m ?? 0).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+        };
+        const [eh] = endTime.split(":").map(Number);
+        const displayTime = (sh < 12) === (eh < 12)
+            ? `${fmt12(input.startTime).replace(/\s(AM|PM)$/, "")} - ${fmt12(endTime)}`
+            : `${fmt12(input.startTime)} - ${fmt12(endTime)}`;
+        const nowISO = new Date().toISOString();
+        const rand = Math.floor(Math.random() * 1e6).toString(36);
+        // Open (recovery) sessions are multi-customer: several bookings for the
+        // same service+date+time share ONE appointment (booked++ / roster++),
+        // matching the seed's open-session shape. Private (1:1) always mints a
+        // fresh appointment. Reuse only a live (non-cancelled) instance.
+        if (service?.openSession) {
+            const existing = state.appointments.find(a =>
+                a.serviceId === input.serviceId &&
+                a.dateISO === input.dateISO &&
+                a.startTime === input.startTime &&
+                a.status !== "Cancelled");
+            if (existing) {
+                const booking: AppointmentBooking = {
+                    id: `apptbk_cust_${Date.now().toString(36)}_${rand}`,
+                    appointmentId: existing.id,
+                    customerId: input.customer.id,
+                    customerName: input.customer.name,
+                    customerInitials: input.customer.initials,
+                    customerColor: input.customer.color ?? "#e0e0e0",
+                    customerImageUrl: input.customer.imageUrl,
+                    status: "Booked",
+                    bookedAt: nowISO,
+                };
+                set(s => ({
+                    appointments: s.appointments.map(a => a.id === existing.id ? { ...a, booked: a.booked + 1 } : a),
+                    appointmentBookings: [booking, ...s.appointmentBookings],
+                }));
+                get().recordAudit("Booked appointment (customer app)", "appointment", existing.id, `${existing.serviceName} — ${input.customer.name}`);
+                return existing.id;
+            }
+        }
+        const apptId = `appt_cust_${Date.now().toString(36)}_${rand}`;
+        const appointment: Appointment = {
+            id: apptId,
+            serviceId: input.serviceId,
+            type: service?.type ?? "private",
+            serviceName: service?.name ?? "",
+            serviceCategory: service?.category ?? "",
+            coverColor: service?.coverColor ?? "#f1f2ed",
+            coverImage: service?.coverImage,
+            branchId: service?.branchId ?? "",
+            branchName: branch?.name ?? service?.branchName ?? "",
+            roomId: service?.roomId ?? "",
+            roomName: room?.name ?? "",
+            ...(inst ? {
+                instructorId: inst.id,
+                instructorName: inst.name,
+                instructorInitials: inst.initials,
+                instructorColor: inst.color,
+                instructorImageUrl: inst.imageUrl,
+            } : {}),
+            flexible: input.flexible,
+            openSession: service?.openSession ?? false,
+            dateISO: input.dateISO,
+            date: dateLabelFromISO(input.dateISO),
+            startTime: input.startTime,
+            endTime,
+            displayTime,
+            capacity: service?.openSession ? (service?.capacity ?? 0) : 1,
+            booked: 1,
+            status: liveScheduleStatus(input.dateISO, input.startTime, endTime, "Upcoming"),
+            rating: 0,
+            ratingCount: 0,
+            createdAt: nowISO,
+        };
+        const booking: AppointmentBooking = {
+            id: `apptbk_cust_${Date.now().toString(36)}_${rand}`,
+            appointmentId: apptId,
+            customerId: input.customer.id,
+            customerName: input.customer.name,
+            customerInitials: input.customer.initials,
+            customerColor: input.customer.color ?? "#e0e0e0",
+            customerImageUrl: input.customer.imageUrl,
+            status: "Booked",
+            bookedAt: nowISO,
+        };
+        set(s => ({
+            appointments: [appointment, ...s.appointments],
+            appointmentBookings: [booking, ...s.appointmentBookings],
+        }));
+        get().recordAudit("Booked appointment (customer app)", "appointment", apptId, `${appointment.serviceName} — ${input.customer.name}`);
+        return apptId;
+    },
+    reassignAppointmentInstructor: (appointmentId, instructorId) => {
+        const inst = get().instructors.find(i => i.id === instructorId);
+        const target = get().appointments.find(a => a.id === appointmentId);
+        if (!inst || !target) return;
+        set(state => ({
+            appointments: state.appointments.map(a => a.id === appointmentId ? {
+                ...a,
+                instructorId: inst.id,
+                instructorName: inst.name,
+                instructorInitials: inst.initials,
+                instructorColor: inst.color,
+                instructorImageUrl: inst.imageUrl,
+            } : a),
+        }));
+        get().recordAudit("Reassigned appointment instructor", "appointment", appointmentId, `${target.serviceName} → ${inst.name}`);
+    },
     cancelAppointment: (id, refund, cancelledBy) => {
         const target = get().appointments.find(a => a.id === id);
         if (!target || target.status === "Cancelled") return;
@@ -9693,6 +9862,29 @@ export const useAppStore = create<AppState>()(persist(
         // clock on every hydrate — one place, so admin and customer agree.
         onRehydrateStorage: () => (state) => {
             if (!state) return;
+            // v83 (2026-07-24) — same-branch shift invariant. A staff member
+            // can only hold shifts at their OWN branch. Drop any persisted
+            // cross-branch assignment + clear a legacy `shiftId` pointing across
+            // branches (Owner/null branch exempt). Keeps the week grid, staff
+            // detail, and availability consistent with the branch-scoped assign
+            // surfaces — no version bump needed.
+            if (Array.isArray(state.shiftAssignments) && Array.isArray(state.shifts) && Array.isArray(state.staff)) {
+                const shiftBranch = new Map(state.shifts.map(sh => [sh.id, sh.branch_id] as const));
+                const staffBranch = new Map(state.staff.map(s => [s.id, s.branchId] as const));
+                state.shiftAssignments = state.shiftAssignments.filter(a => {
+                    const sb = staffBranch.get(a.staff_id);
+                    const shb = shiftBranch.get(a.shift_id);
+                    if (sb == null || shb === undefined) return true; // owner / unknown → keep
+                    return sb === shb;
+                });
+                state.staff = state.staff.map(s => {
+                    if (s.shiftId && s.branchId != null) {
+                        const shb = shiftBranch.get(s.shiftId);
+                        if (shb !== undefined && shb !== s.branchId) return { ...s, shiftId: undefined };
+                    }
+                    return s;
+                });
+            }
             state.classSchedules = state.classSchedules.map((c) => ({
                 ...c,
                 status: liveScheduleStatus(c.dateISO, c.startTime, c.endTime, c.status),
@@ -9701,6 +9893,18 @@ export const useAppStore = create<AppState>()(persist(
                 ...a,
                 status: liveScheduleStatus(a.dateISO, a.startTime, a.endTime, a.status),
             }));
+            // v83.1 (2026-07-24) — "Preference: Flexible" backfill. Pre-existing
+            // snapshots have no `flexible` flag on their appointment rows, so the
+            // Appointment Details Flexible badge + Reassign action would have no
+            // live data on any browser with prior demo state. Backfill using the
+            // same deterministic rule as the seed (every 2nd private appointment)
+            // for rows where the flag is still undefined — idempotent, keeps any
+            // admin-set value, and needs no version bump / state wipe.
+            state.appointments = state.appointments.map((a, i) => {
+                if (a.flexible !== undefined) return a;
+                const flexibleByRule = !a.openSession && !!a.instructorId && i % 2 === 0;
+                return { ...a, flexible: flexibleByRule };
+            });
             // v77 (2026-07-20) — FreezePolicy v2 migration.
             // Any pre-v77 snapshot has `allow_exceptions` but not
             // `require_reason`; missing v2 fields need sensible
