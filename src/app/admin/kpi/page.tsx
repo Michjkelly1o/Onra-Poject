@@ -270,9 +270,11 @@ export default function KpiPage() {
         <div className="flex flex-col gap-6 animate-fade-in">
             {/* Tab strip + toolbar on ONE row (client 2026-07-24) — same
                 pattern the Dashboard uses. Left = tabs, right = location /
-                search / date filter. Both sides align on the tab strip's
-                border-b via items-center + matching h-10 controls. */}
-            <div className="border-b border-[#e4e7ec]">
+                search / date filter. Container's outer border-b removed
+                per client 2026-07-24 revision — the active tab's own
+                border-b-2 accent is enough visual structure without a
+                horizontal rule spanning the whole width. */}
+            <div>
                 <div className="flex gap-3 items-center justify-between">
                     {/* Left: tabs */}
                     <div className="flex gap-3 items-center flex-shrink-0">
