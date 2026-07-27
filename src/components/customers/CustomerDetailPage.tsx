@@ -48,6 +48,7 @@ import { CustomerPaymentsTab } from "./CustomerPaymentsTab";
 import { CustomerDetailsTab } from "./CustomerDetailsTab";
 import { CustomerAgreementsTab } from "./CustomerAgreementsTab";
 import { CustomerReferralsTab } from "./CustomerReferralsTab";
+import { CustomerFollowUpsTab } from "./CustomerFollowUpsTab";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { derivePlanBalances } from "@/lib/plan-credits";
@@ -63,7 +64,12 @@ import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 // "Wallet" tab removed (client Jul 2026 — the referral account credit is now
 // surfaced on the Referrals tab, and the wallet ceased to be a standalone
 // payment method in POS; the balance is applied via a toggle on checkout).
-const TABS = ["Plan", "Bookings", "Payments", "Details", "Agreements", "Referrals"] as const;
+// v83 Phase 5 (client 2026-07-24) — "Follow-ups" tab added between Payments
+// and Details. Renders only visually differently for Lead / Trialist rows
+// (where open tasks are expected); other lifecycle stages just see an
+// empty state + the closed history. Kept tab present for every customer
+// so the location is stable and staff can always audit the log.
+const TABS = ["Plan", "Bookings", "Payments", "Follow-ups", "Details", "Agreements", "Referrals"] as const;
 type TabId = typeof TABS[number];
 
 type PlanStatus = CustomerPlan["status"];
@@ -1520,6 +1526,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                             <CustomerBookingsTab customerId={customerId} />
                         ) : tab === "Payments" ? (
                             <CustomerPaymentsTab customerId={customerId} />
+                        ) : tab === "Follow-ups" ? (
+                            <CustomerFollowUpsTab customerId={customerId} />
                         ) : tab === "Details" ? (
                             <CustomerDetailsTab customerId={customerId} />
                         ) : tab === "Agreements" ? (
