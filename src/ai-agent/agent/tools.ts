@@ -431,7 +431,7 @@ export function insightTools(
                 "Export data to a downloadable file (CSV or XLSX). Use whenever the user asks to export / download / 'save as CSV' / 'give me an XLSX' / 'send me a report'. Describe the data like an analyze/list query: dataset + filters, and EITHER a group_by (+metric) for an aggregated report (e.g. revenue by branch) OR columns for a record list (e.g. all active customers). " +
                 "\n\nClient 2026-07-24 flow — DO IT EXACTLY LIKE THIS: " +
                 "\n1) Make ONE ask_questions call whose `questions` array holds BOTH steps in order: (a) title 'Anything you'd like to do with this?' with options 'Export report' + 'Send report to email'; (b) title 'Which format would you like for the report?' with options 'PDF', 'CSV', 'XLSX'. Do NOT call ask_questions twice, do NOT also ask the same thing in plain text — the panel IS the ask, and it renders its own pager. Output no text alongside the call. " +
-                "\n2) The user's next message arrives as a Q/A block covering BOTH answers. Read both A: lines. If A: line 1 is 'Send report to email', acknowledge and say email delivery is coming soon; do NOT call this tool. If A: line 2 is 'PDF', apologise (PDF isn't available yet), offer CSV or XLSX, and do NOT call this tool. Otherwise call this tool with format 'csv' or 'xlsx' based on A: line 2. " +
+                "\n2) The user's next message arrives as a Q/A block covering BOTH answers. Read both A: lines. If A: line 1 is 'Send report to email', acknowledge and say email delivery is coming soon; do NOT call this tool. Otherwise call this tool with format 'csv', 'xlsx', or 'pdf' based on A: line 2 — all three are supported. " +
                 "\n3) Never re-ask for the format after the panel returned. If somehow only one A: line arrived, call ask_questions ONCE more with the SINGLE missing step — never repeat one you already have.",
             parameters: z.object({
                 dataset: z.enum(DATASETS),
@@ -449,7 +449,7 @@ export function insightTools(
                 title: z.string().describe("report title, e.g. 'Active customers' or 'Revenue by branch'"),
                 format: z
                     .enum(["csv", "xlsx", "pdf"])
-                    .describe("File format the user picked in the preceding ask_questions step. Send csv or xlsx — PDF is accepted here as a safety net (renders via a legacy jspdf fallback client-side) but the prompt tells you to apologise and offer CSV or XLSX first. Only send pdf if the user has already rejected both alternatives."),
+                    .describe("File format the user picked in the preceding ask_questions step. All three are supported end-to-end — csv and xlsx stream from the API, pdf renders client-side via jspdf into the same file bubble."),
             }),
             execute: async (spec) =>
                 guard(() => {
