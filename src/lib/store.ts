@@ -7383,6 +7383,69 @@ export const useAppStore = create<AppState>()(persist(
         };
         set(state => ({ leads: [next, ...state.leads] }));
         get().recordAudit("Imported lead", "customer", id, next.contact_name);
+        // v83 dual-write (client 2026-07-24) — every lead also lands as a
+        // Customer row with `lifecycleTag: "Lead"` so the admin surface can
+        // filter by lifecycle tag without a second read path. The legacy
+        // `leads` slice is retained for the AI Agent's analyze / migrate /
+        // reports flows (unchanged). Dedup by email OR phone so an
+        // AI-Agent-driven bulk import doesn't create duplicate mirrors.
+        const existing = get().customers.find(c => {
+            if (next.contact_email && c.email && c.email.toLowerCase() === next.contact_email.toLowerCase()) return true;
+            if (next.phone && c.phone && c.phone === next.phone) return true;
+            return false;
+        });
+        if (!existing) {
+            const [firstName, ...restName] = (next.contact_name ?? "").trim().split(/\s+/);
+            const lastName = restName.join(" ");
+            const initials = `${(firstName || "?").charAt(0)}${(lastName || "").charAt(0)}`.toUpperCase() || "?";
+            const mirrorId = `cu_from_${id}`;
+            const mirror: Customer = {
+                id: mirrorId,
+                firstName: firstName || next.contact_name || "Lead",
+                lastName: lastName || "",
+                initials,
+                email: next.contact_email ?? "",
+                phone: next.phone,
+                branchId: next.branch_id,
+                planKind: null,
+                createdAt: next.added_at ?? new Date().toISOString(),
+                status: "active",
+                gender: next.gender,
+                lifecycleTag: "Lead",
+                followUpStatus: "New",
+                assignedTo: next.assigned_to_staff_id,
+                // Map lead.source (label) to a lead source id when the label
+                // matches a seeded source; else store the raw label in the
+                // legacy `marketingSource` field so reports still see it.
+                sourceId: get().leadSources.find(s =>
+                    s.label.toLowerCase() === (next.source ?? "").toLowerCase(),
+                )?.id,
+                marketingSource: next.source,
+            };
+            set(state => ({ customers: [mirror, ...state.customers] }));
+        } else {
+            // Existing customer — patch the lifecycle fields only. Preserve
+            // whatever `lifecycleTag` the recompute already assigned (a paid
+            // member returning as a "lead" should NOT be downgraded to Lead).
+            set(state => ({
+                customers: state.customers.map(c =>
+                    c.id === existing.id
+                        ? {
+                            ...c,
+                            lifecycleTag: c.lifecycleTag ?? "Lead",
+                            followUpStatus: c.followUpStatus ?? "New",
+                            assignedTo: c.assignedTo ?? next.assigned_to_staff_id,
+                            sourceId:
+                                c.sourceId ??
+                                get().leadSources.find(s =>
+                                    s.label.toLowerCase() === (next.source ?? "").toLowerCase(),
+                                )?.id,
+                            marketingSource: c.marketingSource ?? next.source,
+                        }
+                        : c,
+                ),
+            }));
+        }
         return id;
     },
     setPackageStatus: (ids, status) => {
@@ -9948,7 +10011,17 @@ export const useAppStore = create<AppState>()(persist(
         //   `shiftAssignments` array from every staff row's `shift_id`
         //   when the persisted slice is missing / empty. Bump forces
         //   pre-v82 snapshots to reseed cleanly.
-        version: 82,
+        // v83 (2026-07-24): Customer & Lead Management foundation.
+        //   Customer extended with 5 optional fields (lifecycleTag,
+        //   isVip, followUpStatus, assignedTo, sourceId). Three new
+        //   slices seeded: followUpTasks (empty), leadSources (10
+        //   defaults), followUpStages (6 defaults). Rehydrate hook
+        //   backfills the three slices for pre-v83 snapshots AND
+        //   mirrors every retained `leads[]` row into `customers`
+        //   with `lifecycleTag: "Lead"` (dedup by email OR phone).
+        //   The `leads` slice is INTENTIONALLY retained — the AI
+        //   Agent's migrate / analyze / reports flows still read it.
+        version: 83,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -10065,6 +10138,81 @@ export const useAppStore = create<AppState>()(persist(
                     });
                 }
                 state.shiftAssignments = derived;
+            }
+            // v83 (2026-07-24) — Customer & Lead Management foundation.
+            //
+            // Two independent sub-migrations, both idempotent so a v83 tab
+            // re-hydrating doesn't duplicate work:
+            //
+            //  1. NEW-SLICE DEFAULTS — Pre-v83 snapshots don't carry the
+            //     three new slices at all (Zustand's persist middleware
+            //     silently drops fields the persisted payload doesn't have).
+            //     Backfill leadSources + followUpStages from the module-
+            //     scope seeds so Settings (Phase 6) has editable rows even
+            //     for testers who don't wipe localStorage. followUpTasks
+            //     stays empty by design — tasks materialise as triggers fire.
+            //
+            //  2. LEAD → CUSTOMER MIRROR — For each row in the retained
+            //     `leads` slice, upsert a Customer with `lifecycleTag: "Lead"`
+            //     if none matches by email OR phone. The `leads` slice is
+            //     kept AS-IS (still the AI Agent's sales-funnel dataset);
+            //     the mirror gives the admin's new lifecycle views a
+            //     Customer row to render. Dedup rule matches addLead's
+            //     runtime dedup so bulk import + this hydrate sweep can't
+            //     race and create two mirrors for the same person.
+            if (!Array.isArray(state.leadSources) || state.leadSources.length === 0) {
+                state.leadSources = [...INITIAL_LEAD_SOURCES];
+            }
+            if (!Array.isArray(state.followUpStages) || state.followUpStages.length === 0) {
+                state.followUpStages = [...INITIAL_FOLLOW_UP_STAGES];
+            }
+            if (!Array.isArray(state.followUpTasks)) {
+                state.followUpTasks = [];
+            }
+            if (Array.isArray(state.leads) && Array.isArray(state.customers)) {
+                const emailToCustomer = new Map<string, Customer>();
+                const phoneToCustomer = new Map<string, Customer>();
+                for (const c of state.customers) {
+                    if (c.email) emailToCustomer.set(c.email.toLowerCase(), c);
+                    if (c.phone) phoneToCustomer.set(c.phone, c);
+                }
+                const newMirrors: Customer[] = [];
+                for (const lead of state.leads) {
+                    const matchByEmail = lead.contact_email
+                        ? emailToCustomer.get(lead.contact_email.toLowerCase())
+                        : undefined;
+                    const matchByPhone = lead.phone ? phoneToCustomer.get(lead.phone) : undefined;
+                    const existing = matchByEmail ?? matchByPhone;
+                    if (existing) continue; // dedup — same person already in customers[]
+                    const [firstName, ...restName] = (lead.contact_name ?? "").trim().split(/\s+/);
+                    const lastName = restName.join(" ");
+                    const initials = `${(firstName || "?").charAt(0)}${(lastName || "").charAt(0)}`.toUpperCase() || "?";
+                    const mirrorId = `cu_from_${lead.id}`;
+                    if (state.customers.some(c => c.id === mirrorId)) continue;
+                    newMirrors.push({
+                        id: mirrorId,
+                        firstName: firstName || lead.contact_name || "Lead",
+                        lastName: lastName || "",
+                        initials,
+                        email: lead.contact_email ?? "",
+                        phone: lead.phone,
+                        branchId: lead.branch_id,
+                        planKind: null,
+                        createdAt: lead.added_at ?? new Date().toISOString(),
+                        status: "active",
+                        gender: lead.gender,
+                        lifecycleTag: "Lead",
+                        followUpStatus: "New",
+                        assignedTo: lead.assigned_to_staff_id,
+                        sourceId: state.leadSources.find(
+                            s => s.label.toLowerCase() === (lead.source ?? "").toLowerCase(),
+                        )?.id,
+                        marketingSource: lead.source,
+                    });
+                }
+                if (newMirrors.length > 0) {
+                    state.customers = [...newMirrors, ...state.customers];
+                }
             }
             // v78 (2026-07-21) — Freeze policy v2 Phase 4.
             // Auto-resume + reminder sweep. Runs at hydrate so an
