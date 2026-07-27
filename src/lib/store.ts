@@ -86,6 +86,10 @@ import {
     computeLifecycleTag,
     applyLifecycleResult,
 } from "./customer/lifecycle";
+import {
+    generateFollowUpTasks,
+    applyGeneratedTasks,
+} from "./customer/follow-up-tasks";
 
 // ─── Seed imports (snake_case, DB-ready) ─────────────────────────────────────
 //
@@ -4158,6 +4162,23 @@ export interface AppState {
      *  supplied. Used by the AI Agent migration importer (leads entity). */
     addLead: (input: Omit<Lead, "id" | "added_at"> & { id?: string; added_at?: string }) => string;
 
+    // ── Customer & Lead Management v83 — task engine (client 2026-07-24) ───
+    /** Manually log an enquiry for a customer — creates a follow-up task
+     *  with the `enquiry_logged` trigger. Wired to the Phase-5 "Log
+     *  enquiry" button on the profile Follow-ups tab. Returns the new
+     *  task's id, or null when the customer isn't eligible (status
+     *  "Lost", already has an open enquiry task, or already past
+     *  pre-conversion). */
+    logCustomerEnquiry: (customerId: string, note?: string) => string | null;
+    /** Close a follow-up task with a staff-picked outcome. Applies the
+     *  Phase-5 outcome→followUpStatus mapping:
+     *    reached         → status advances from New to Contacted
+     *    follow_up       → status stays (a fresh delay-based task may
+     *                      re-materialise later via the engine)
+     *    not_interested  → status → Lost, suppressing future tasks
+     *  Returns false when the task id doesn't exist or is already closed. */
+    closeFollowUpTask: (taskId: string, outcome: FollowUpTaskOutcome) => boolean;
+
     // ── Gift card designs ───────────────────────────────────────────────────
     /** Append a new gift-card design. Auto-generates id + created_at when
      *  not supplied. Returns the resolved id so the caller can route to it. */
@@ -5694,6 +5715,16 @@ export const useAppStore = create<AppState>()(persist(
                 computeLifecycleTag(customerId, state),
             ),
         }));
+        // v83 Phase 4 — evaluate the trial_no_rebook_7d trigger on this
+        // customer. Cheap: the generator dedupes against existing open
+        // tasks, so hot-loops (multiple bookings same session) don't
+        // materialise duplicates. Other triggers are irrelevant here.
+        set(state => {
+            const fresh = generateFollowUpTasks(customerId, state, {
+                triggers: ["trial_no_rebook_7d"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
 
         return id;
     },
@@ -6079,6 +6110,18 @@ export const useAppStore = create<AppState>()(persist(
                     computeLifecycleTag(cid, state),
                 ),
             }));
+            // v83 Phase 4 — evaluate both cancel-adjacent triggers on the
+            // affected customer. `first_booking_cancelled` fires when the
+            // customer's very first booking just went to "cancelled";
+            // `trial_no_rebook_7d` may also fire if a trialist just
+            // cancelled their most recent booking so the 7-day silence
+            // window is entered.
+            set(state => {
+                const fresh = generateFollowUpTasks(cid, state, {
+                    triggers: ["first_booking_cancelled", "trial_no_rebook_7d"],
+                });
+                return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+            });
         }
     },
     cancelClassBookings: (ids, reason, refund, source) => {
@@ -6167,6 +6210,18 @@ export const useAppStore = create<AppState>()(persist(
                     );
                 }
                 return { customers: next };
+            });
+            // v83 Phase 4 — same cancel-adjacent triggers as the single-
+            // cancel path, folded into one set() call for the whole batch.
+            set(state => {
+                let next = state.followUpTasks;
+                for (const cid of affectedIds) {
+                    const fresh = generateFollowUpTasks(cid, { ...state, followUpTasks: next }, {
+                        triggers: ["first_booking_cancelled", "trial_no_rebook_7d"],
+                    });
+                    next = applyGeneratedTasks(next, fresh);
+                }
+                return { followUpTasks: next };
             });
         }
     },
@@ -6300,6 +6355,14 @@ export const useAppStore = create<AppState>()(persist(
                 computeLifecycleTag(customer.id, state),
             ),
         }));
+        // v83 Phase 4 — cancel-adjacent triggers on the customer-side
+        // cancel path, mirroring the admin cancel wiring.
+        set(state => {
+            const fresh = generateFollowUpTasks(customer.id, state, {
+                triggers: ["first_booking_cancelled", "trial_no_rebook_7d"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
         return {
             bookingCancelled: true,
             penaltyTransactionId: txnId,
@@ -7074,6 +7137,16 @@ export const useAppStore = create<AppState>()(persist(
                 computeLifecycleTag(input.customerId, state),
             ),
         }));
+        // v83 Phase 4 — the trial has just started. The trigger doesn't
+        // fire yet (no attended booking on record), but the generator's
+        // dedupe guard makes an early check idempotent — future writes on
+        // this customer will pick it up naturally.
+        set(state => {
+            const fresh = generateFollowUpTasks(input.customerId, state, {
+                triggers: ["trial_no_rebook_7d"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
         return id;
     },
     addCustomerPlan: (input) => {
@@ -7446,7 +7519,79 @@ export const useAppStore = create<AppState>()(persist(
                 ),
             }));
         }
+        // v83 Phase 4 — fire the lead_form_submitted trigger. Runs on the
+        // mirror customer's id so both the mirror path (new customer) AND
+        // the "existing customer got a fresh lead entry" path are covered.
+        const mirrorCid = existing?.id ?? `cu_from_${id}`;
+        set(state => {
+            const fresh = generateFollowUpTasks(mirrorCid, state, {
+                triggers: ["lead_form_submitted"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
         return id;
+    },
+    // v83 Phase 4 — manual "Log enquiry" from the Phase-5 UI button on the
+    // profile Follow-ups tab. Returns the new task's id, or null when the
+    // generator skipped (Lost / dup / post-conversion). Wired inline via
+    // generateFollowUpTasks so precedence rules apply identically to the
+    // automatic paths.
+    logCustomerEnquiry: (customerId, note) => {
+        let materialisedId: string | null = null;
+        set(state => {
+            const fresh = generateFollowUpTasks(customerId, state, {
+                triggers: ["enquiry_logged"],
+                enquiryReason: note && note.trim().length > 0 ? note.trim() : undefined,
+            });
+            if (fresh.length === 0) return state;
+            materialisedId = fresh[0].id;
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
+        if (materialisedId) {
+            const c = get().customers.find(cx => cx.id === customerId);
+            const who = c ? capitalizeName(`${c.firstName} ${c.lastName}`) : "customer";
+            get().recordAudit("Logged enquiry", "customer", customerId, who);
+        }
+        return materialisedId;
+    },
+    // v83 Phase 4 — close a task with a staff-picked outcome. The
+    // outcome→followUpStatus mapping mirrors the plan §Phase 5 table.
+    // Behavior override is preserved via applyLifecycleResult (Phase 3),
+    // so a "not_interested" that flips the customer to "Lost" is
+    // automatically cleared later if they book / pay.
+    closeFollowUpTask: (taskId, outcome) => {
+        const target = get().followUpTasks.find(t => t.id === taskId);
+        if (!target || target.status !== "open") return false;
+        const now = new Date().toISOString();
+        set(state => ({
+            followUpTasks: state.followUpTasks.map(t =>
+                t.id === taskId
+                    ? { ...t, status: "closed" as const, outcome, closedAt: now }
+                    : t,
+            ),
+        }));
+        // Apply the outcome→status side effect.
+        if (outcome === "reached") {
+            const c = get().customers.find(cx => cx.id === target.customerId);
+            if (c && c.followUpStatus === "New") {
+                set(state => ({
+                    customers: state.customers.map(cx =>
+                        cx.id === target.customerId
+                            ? { ...cx, followUpStatus: "Contacted" as const }
+                            : cx,
+                    ),
+                }));
+            }
+        } else if (outcome === "not_interested") {
+            set(state => ({
+                customers: state.customers.map(cx =>
+                    cx.id === target.customerId
+                        ? { ...cx, followUpStatus: "Lost" as const }
+                        : cx,
+                ),
+            }));
+        }
+        return true;
     },
     setPackageStatus: (ids, status) => {
         const targets = get().packages.filter(p => ids.includes(p.id));
