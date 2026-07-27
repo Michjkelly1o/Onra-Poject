@@ -4656,25 +4656,30 @@ export interface AppState {
 // system defaults — the Settings UI (Phase 6) can rename them but not
 // delete them. `isTerminal` on Won + Lost closes the funnel so the task
 // engine can rely on them existing.
+// v83 client 2026-07-27 — `locked` + `isTerminal` retired. All rows are
+// freely rename/delete-able; the compute + task engine key off stable
+// ids (stg_lost / stg_new / stg_contacted) so renames don't disturb the
+// wiring. Deletion is only gated by the in-use check on the customers
+// slice so we don't orphan `sourceId` / `followUpStatus` references.
 const INITIAL_LEAD_SOURCES: LeadSource[] = [
-    { id: "src_walkin",       label: "Walk-in",           locked: true },
-    { id: "src_referral",     label: "Referral",          locked: true },
-    { id: "src_instagram",    label: "Instagram / Social",locked: true },
-    { id: "src_website",      label: "Website / Online",  locked: true },
-    { id: "src_webform",      label: "Web form",          locked: true },
-    { id: "src_meta_lead",    label: "Meta lead form",    locked: true },
-    { id: "src_classpass",    label: "ClassPass",         locked: true },
-    { id: "src_gympass",      label: "Gympass",           locked: true },
-    { id: "src_expired",      label: "Expired customer",  locked: true },
-    { id: "src_other",        label: "Other",             locked: true },
+    { id: "src_walkin",       label: "Walk-in"           },
+    { id: "src_referral",     label: "Referral"          },
+    { id: "src_instagram",    label: "Instagram / Social"},
+    { id: "src_website",      label: "Website / Online"  },
+    { id: "src_webform",      label: "Web form"          },
+    { id: "src_meta_lead",    label: "Meta lead form"    },
+    { id: "src_classpass",    label: "ClassPass"         },
+    { id: "src_gympass",      label: "Gympass"           },
+    { id: "src_expired",      label: "Expired customer"  },
+    { id: "src_other",        label: "Other"             },
 ];
 const INITIAL_FOLLOW_UP_STAGES: FollowUpStage[] = [
-    { id: "stg_new",          label: "New",           locked: true                    },
-    { id: "stg_contacted",    label: "Contacted",     locked: true                    },
-    { id: "stg_trial_booked", label: "Trial booked",  locked: true                    },
-    { id: "stg_follow_up",    label: "Follow-up",     locked: true                    },
-    { id: "stg_won",          label: "Won",           locked: true, isTerminal: true  },
-    { id: "stg_lost",         label: "Lost",          locked: true, isTerminal: true  },
+    { id: "stg_new",          label: "New"           },
+    { id: "stg_contacted",    label: "Contacted"     },
+    { id: "stg_trial_booked", label: "Trial booked"  },
+    { id: "stg_follow_up",    label: "Follow-up"     },
+    { id: "stg_won",          label: "Won"           },
+    { id: "stg_lost",         label: "Lost"          },
 ];
 
 // ─── v83 lifecycle showcase personas (client 2026-07-27) ────────────────
@@ -4954,6 +4959,305 @@ const SHOWCASE_TRANSACTIONS: CustomerTransaction[] = [
     },
 ];
 
+// ─── Bulk-generated lifecycle-stage demo customers (client 2026-07-27) ──
+//
+// The 7 hand-authored personas above give each stage ONE showcase row.
+// This block generates ~4 more per stage (28 total) so the segment tabs
+// + Lifecycle filter chips have real volume to play with and the client
+// can slice/dice a populated list. Every generated persona carries the
+// minimum data its target stage needs (plan, transaction, bookings)
+// alongside varied source / branch / assigned-to values so the profile
+// details block reads different for each.
+//
+// Idempotency comes from deterministic ids (`cust_lcg_<stage>_<i>`); the
+// same rehydrate guard we use for the showcase personas skips these
+// too when a state already has them.
+
+type ShowcaseSeed = { firstName: string; lastName: string; sourceId: string; sourceLabel: string };
+const LC_BULK_NAMES: ShowcaseSeed[] = [
+    // 4 seeds each for the 7 stages, cycling deterministically below.
+    { firstName: "Fatima",   lastName: "Hassan",  sourceId: "src_instagram", sourceLabel: "Instagram / Social" },
+    { firstName: "Omar",     lastName: "Nasser",  sourceId: "src_referral",  sourceLabel: "Referral"          },
+    { firstName: "Layla",    lastName: "Ibrahim", sourceId: "src_website",   sourceLabel: "Website / Online"   },
+    { firstName: "Ryan",     lastName: "Novak",   sourceId: "src_walkin",    sourceLabel: "Walk-in"            },
+    { firstName: "Yara",     lastName: "Faris",   sourceId: "src_referral",  sourceLabel: "Referral"           },
+    { firstName: "Ethan",    lastName: "Marlow",  sourceId: "src_meta_lead", sourceLabel: "Meta lead form"     },
+    { firstName: "Zara",     lastName: "Khan",    sourceId: "src_instagram", sourceLabel: "Instagram / Social" },
+    { firstName: "Noah",     lastName: "Bennett", sourceId: "src_gympass",   sourceLabel: "Gympass"            },
+    { firstName: "Amira",    lastName: "Saleh",   sourceId: "src_walkin",    sourceLabel: "Walk-in"            },
+    { firstName: "Kai",      lastName: "Turner",  sourceId: "src_classpass", sourceLabel: "ClassPass"          },
+    { firstName: "Maya",     lastName: "Farid",   sourceId: "src_referral",  sourceLabel: "Referral"           },
+    { firstName: "Ali",      lastName: "Rahim",   sourceId: "src_website",   sourceLabel: "Website / Online"   },
+    { firstName: "Sara",     lastName: "Habib",   sourceId: "src_expired",   sourceLabel: "Expired customer"   },
+    { firstName: "Jonah",    lastName: "Petit",   sourceId: "src_webform",   sourceLabel: "Web form"           },
+    { firstName: "Rania",    lastName: "Kader",   sourceId: "src_meta_lead", sourceLabel: "Meta lead form"     },
+    { firstName: "Elias",    lastName: "Hamid",   sourceId: "src_walkin",    sourceLabel: "Walk-in"            },
+    { firstName: "Bianca",   lastName: "Reyes",   sourceId: "src_referral",  sourceLabel: "Referral"           },
+    { firstName: "Karim",    lastName: "Youssef", sourceId: "src_instagram", sourceLabel: "Instagram / Social" },
+    { firstName: "Talia",    lastName: "Mansour", sourceId: "src_website",   sourceLabel: "Website / Online"   },
+    { firstName: "Dev",      lastName: "Iyer",    sourceId: "src_classpass", sourceLabel: "ClassPass"          },
+    { firstName: "Nora",     lastName: "Amin",    sourceId: "src_webform",   sourceLabel: "Web form"           },
+    { firstName: "Faisal",   lastName: "Quadri",  sourceId: "src_walkin",    sourceLabel: "Walk-in"            },
+    { firstName: "Isabelle", lastName: "Vance",   sourceId: "src_referral",  sourceLabel: "Referral"           },
+    { firstName: "Miguel",   lastName: "Costa",   sourceId: "src_instagram", sourceLabel: "Instagram / Social" },
+    { firstName: "Lena",     lastName: "Brandt",  sourceId: "src_gympass",   sourceLabel: "Gympass"            },
+    { firstName: "Nikhil",   lastName: "Rao",     sourceId: "src_website",   sourceLabel: "Website / Online"   },
+    { firstName: "Sanaa",    lastName: "El-Din",  sourceId: "src_meta_lead", sourceLabel: "Meta lead form"     },
+    { firstName: "Tom",      lastName: "Gallo",   sourceId: "src_expired",   sourceLabel: "Expired customer"   },
+];
+
+/** Stage-specific data blueprint used by the bulk generator. Small
+ *  functions return the deltas the compute needs for each stage. */
+type LifecycleStage = "lead" | "trialist" | "new_active" | "loyal" | "at_risk" | "churned" | "wonback";
+const BULK_STAGES: LifecycleStage[] = ["lead", "trialist", "new_active", "loyal", "at_risk", "churned", "wonback"];
+const BULK_PER_STAGE = 4;
+
+/** Build the bulk customer + plan + booking + transaction rows so all
+ *  four sinks stay in sync. Purely deterministic — same inputs, same
+ *  ids every render. */
+function buildBulkShowcase(): {
+    customers: Customer[];
+    plans: CustomerPlan[];
+    bookings: ClassBooking[];
+    transactions: CustomerTransaction[];
+} {
+    const customers: Customer[] = [];
+    const plans: CustomerPlan[] = [];
+    const bookings: ClassBooking[] = [];
+    const transactions: CustomerTransaction[] = [];
+    let seedIdx = 0;
+    for (const stage of BULK_STAGES) {
+        for (let i = 0; i < BULK_PER_STAGE; i++) {
+            const seed = LC_BULK_NAMES[seedIdx++ % LC_BULK_NAMES.length];
+            const cid = `cust_lcg_${stage}_${i + 1}`;
+            const initials = `${seed.firstName[0]}${seed.lastName[0]}`.toUpperCase();
+            // Base customer row — stage-specific patches append below.
+            const base: Customer = {
+                id: cid, firstName: seed.firstName, lastName: seed.lastName, initials,
+                email: `${seed.firstName.toLowerCase()}.${seed.lastName.toLowerCase().replace(/[^a-z]/g, "")}${i}@onradmo.test`,
+                phone: `+971 50 ${(700 + seedIdx).toString().padStart(3, "0")} ${(1000 + seedIdx).toString().padStart(4, "0")}`,
+                branchId: LC_BRANCH, planKind: null,
+                createdAt: daysAgoISO(20 + seedIdx),
+                status: "active",
+                gender: seedIdx % 2 === 0 ? "Female" : "Male",
+                sourceId: seed.sourceId, marketingSource: seed.sourceLabel,
+            };
+            switch (stage) {
+                case "lead":
+                    customers.push(base);
+                    break;
+                case "trialist": {
+                    const purchasedAt = 5 + i;
+                    const attendedAt = 3 + i;
+                    customers.push({
+                        ...base,
+                        firstVisitISO: daysAgoISODate(attendedAt),
+                        lastVisitISO: daysAgoISODate(attendedAt),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "package", name: "Intro 3-pack",
+                        planTypeLabel: "Package", creditsLabel: "3 credits",
+                        status: "active",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(-25 - i),
+                        totalCredits: 3, creditsUsed: 1,
+                    });
+                    bookings.push({
+                        id: `bk_lcg_${stage}_${i + 1}_1`, classScheduleId: "sc_lc_showcase",
+                        customerId: cid, branchId: LC_BRANCH,
+                        status: "booked", attendanceStatus: "present",
+                        bookingTime: daysAgoISO(attendedAt), spot: "1",
+                        planId: "", planName: "",
+                    });
+                    break;
+                }
+                case "new_active": {
+                    const purchasedAt = 8 + i * 3; // stays <30 for New Active
+                    customers.push({
+                        ...base, planKind: "membership",
+                        firstVisitISO: daysAgoISODate(purchasedAt),
+                        lastVisitISO: daysAgoISODate(2 + i),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "membership", name: "Unlimited Monthly",
+                        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                        status: "active",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(-30 + purchasedAt),
+                        priceAed: 1200,
+                    });
+                    transactions.push({
+                        id: `txn_lcg_${stage}_${i + 1}`, customerId: cid, branchId: LC_BRANCH,
+                        kind: "membership", productId: `cp_lcg_${stage}_${i + 1}`,
+                        name: "Unlimited Monthly", amountAed: 1200,
+                        status: "complete", paymentMethod: "card",
+                        createdAtISO: daysAgoISO(purchasedAt),
+                        transactionType: "sale", isRefundable: true,
+                    });
+                    bookings.push(
+                        { id: `bk_lcg_${stage}_${i + 1}_1`, classScheduleId: "sc_lc_showcase", customerId: cid, branchId: LC_BRANCH, status: "booked", attendanceStatus: "present", bookingTime: daysAgoISO(2 + i), spot: "1", planId: "", planName: "" },
+                        { id: `bk_lcg_${stage}_${i + 1}_2`, classScheduleId: "sc_lc_showcase", customerId: cid, branchId: LC_BRANCH, status: "booked", attendanceStatus: "present", bookingTime: daysAgoISO(5 + i), spot: "1", planId: "", planName: "" },
+                    );
+                    break;
+                }
+                case "loyal": {
+                    const purchasedAt = 60 + i * 15;
+                    customers.push({
+                        ...base, planKind: "membership",
+                        firstVisitISO: daysAgoISODate(purchasedAt - 2),
+                        lastVisitISO: daysAgoISODate(1 + i),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "membership", name: "Unlimited Monthly",
+                        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                        status: "active",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(-30),
+                        priceAed: 1200,
+                    });
+                    transactions.push({
+                        id: `txn_lcg_${stage}_${i + 1}`, customerId: cid, branchId: LC_BRANCH,
+                        kind: "membership", productId: `cp_lcg_${stage}_${i + 1}`,
+                        name: "Unlimited Monthly", amountAed: 1200,
+                        status: "complete", paymentMethod: "card",
+                        createdAtISO: daysAgoISO(purchasedAt),
+                        transactionType: "sale", isRefundable: true,
+                    });
+                    // 6 attended bookings in last 30 days → Loyal Active branch.
+                    for (const d of [1, 5, 9, 15, 22, 28]) {
+                        bookings.push({
+                            id: `bk_lcg_${stage}_${i + 1}_${d}`, classScheduleId: "sc_lc_showcase",
+                            customerId: cid, branchId: LC_BRANCH,
+                            status: "booked", attendanceStatus: "present",
+                            bookingTime: daysAgoISO(d + i), spot: "1",
+                            planId: "", planName: "",
+                        });
+                    }
+                    break;
+                }
+                case "at_risk": {
+                    const purchasedAt = 45 + i * 5;
+                    const lastVisit = 18 + i;
+                    customers.push({
+                        ...base, planKind: "membership",
+                        firstVisitISO: daysAgoISODate(purchasedAt - 2),
+                        lastVisitISO: daysAgoISODate(lastVisit),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "membership", name: "Unlimited Monthly",
+                        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                        status: "active",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(-15),
+                        priceAed: 1200,
+                    });
+                    transactions.push({
+                        id: `txn_lcg_${stage}_${i + 1}`, customerId: cid, branchId: LC_BRANCH,
+                        kind: "membership", productId: `cp_lcg_${stage}_${i + 1}`,
+                        name: "Unlimited Monthly", amountAed: 1200,
+                        status: "complete", paymentMethod: "card",
+                        createdAtISO: daysAgoISO(purchasedAt),
+                        transactionType: "sale", isRefundable: true,
+                    });
+                    bookings.push({
+                        id: `bk_lcg_${stage}_${i + 1}_last`, classScheduleId: "sc_lc_showcase",
+                        customerId: cid, branchId: LC_BRANCH,
+                        status: "booked", attendanceStatus: "present",
+                        bookingTime: daysAgoISO(lastVisit), spot: "1",
+                        planId: "", planName: "",
+                    });
+                    break;
+                }
+                case "churned": {
+                    const purchasedAt = 150 + i * 10;
+                    const lastVisit = 70 + i * 5;
+                    customers.push({
+                        ...base,
+                        firstVisitISO: daysAgoISODate(purchasedAt - 3),
+                        lastVisitISO: daysAgoISODate(lastVisit),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "package", name: "10-class package",
+                        planTypeLabel: "Package", creditsLabel: "10 credits",
+                        status: "expired",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(lastVisit + 20),
+                        totalCredits: 10, creditsUsed: 10, priceAed: 800,
+                    });
+                    transactions.push({
+                        id: `txn_lcg_${stage}_${i + 1}`, customerId: cid, branchId: LC_BRANCH,
+                        kind: "package", productId: `cp_lcg_${stage}_${i + 1}`,
+                        name: "10-class package", amountAed: 800,
+                        status: "complete", paymentMethod: "card",
+                        createdAtISO: daysAgoISO(purchasedAt),
+                        transactionType: "sale", isRefundable: true,
+                    });
+                    break;
+                }
+                case "wonback": {
+                    const oldPurchase = 180 + i * 10;
+                    const newPurchase = 12 + i * 3;
+                    customers.push({
+                        ...base, planKind: "membership",
+                        firstVisitISO: daysAgoISODate(oldPurchase - 2),
+                        lastVisitISO: daysAgoISODate(3 + i),
+                    });
+                    plans.push(
+                        {
+                            id: `cp_lcg_${stage}_${i + 1}_new`, customerId: cid,
+                            kind: "membership", name: "Unlimited Monthly",
+                            planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                            status: "active",
+                            purchasedAtISO: daysAgoISODate(newPurchase),
+                            expiryISO: daysAgoISODate(-15),
+                            priceAed: 1200,
+                        },
+                        {
+                            id: `cp_lcg_${stage}_${i + 1}_old`, customerId: cid,
+                            kind: "membership", name: "Unlimited Monthly",
+                            planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                            status: "expired",
+                            purchasedAtISO: daysAgoISODate(oldPurchase),
+                            expiryISO: daysAgoISODate(oldPurchase - 30),
+                            priceAed: 1200,
+                        },
+                    );
+                    transactions.push(
+                        {
+                            id: `txn_lcg_${stage}_${i + 1}_new`, customerId: cid, branchId: LC_BRANCH,
+                            kind: "membership", productId: `cp_lcg_${stage}_${i + 1}_new`,
+                            name: "Unlimited Monthly", amountAed: 1200,
+                            status: "complete", paymentMethod: "card",
+                            createdAtISO: daysAgoISO(newPurchase),
+                            transactionType: "sale", isRefundable: true,
+                        },
+                        {
+                            id: `txn_lcg_${stage}_${i + 1}_old`, customerId: cid, branchId: LC_BRANCH,
+                            kind: "membership", productId: `cp_lcg_${stage}_${i + 1}_old`,
+                            name: "Unlimited Monthly", amountAed: 1200,
+                            status: "complete", paymentMethod: "card",
+                            createdAtISO: daysAgoISO(oldPurchase),
+                            transactionType: "sale", isRefundable: true,
+                        },
+                    );
+                    bookings.push(
+                        { id: `bk_lcg_${stage}_${i + 1}_1`, classScheduleId: "sc_lc_showcase", customerId: cid, branchId: LC_BRANCH, status: "booked", attendanceStatus: "present", bookingTime: daysAgoISO(3 + i), spot: "1", planId: "", planName: "" },
+                        { id: `bk_lcg_${stage}_${i + 1}_2`, classScheduleId: "sc_lc_showcase", customerId: cid, branchId: LC_BRANCH, status: "booked", attendanceStatus: "present", bookingTime: daysAgoISO(9 + i), spot: "1", planId: "", planName: "" },
+                    );
+                    break;
+                }
+            }
+        }
+    }
+    return { customers, plans, bookings, transactions };
+}
+const BULK_SHOWCASE = buildBulkShowcase();
+
 const PERSIST_KEY = "onra-demo-state";
 
 export const useAppStore = create<AppState>()(persist(
@@ -5003,11 +5307,11 @@ export const useAppStore = create<AppState>()(persist(
     appointmentBookings: INITIAL_APPOINTMENT_BOOKINGS,
     appointmentRatings: INITIAL_APPOINTMENT_RATINGS,
     classSchedules: INITIAL_SCHEDULES,
-    classBookings: [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS],
+    classBookings: [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS, ...BULK_SHOWCASE.bookings],
     classRatings: INITIAL_RATINGS,
-    customers: [...SHOWCASE_CUSTOMERS, ...INITIAL_CUSTOMERS],
-    customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS],
-    customerTransactions: [...INITIAL_CUSTOMER_TRANSACTIONS, ...SHOWCASE_TRANSACTIONS],
+    customers: [...SHOWCASE_CUSTOMERS, ...BULK_SHOWCASE.customers, ...INITIAL_CUSTOMERS],
+    customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...BULK_SHOWCASE.plans],
+    customerTransactions: [...INITIAL_CUSTOMER_TRANSACTIONS, ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions],
     customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
     customerReferrals: INITIAL_CUSTOMER_REFERRALS,
     walletTransactions: INITIAL_WALLET_TRANSACTIONS,
@@ -7989,7 +8293,8 @@ export const useAppStore = create<AppState>()(persist(
     deleteLeadSource: (id) => {
         const target = get().leadSources.find(s => s.id === id);
         if (!target) return { deleted: false, reason: "in_use", usageCount: 0 };
-        if (target.locked) return { deleted: false, reason: "locked" };
+        // v83 client 2026-07-27 — lock removed; the only remaining guard
+        // is the in-use check so we don't orphan customer.sourceId refs.
         const usageCount = get().customers.filter(c => c.sourceId === id).length;
         if (usageCount > 0) return { deleted: false, reason: "in_use", usageCount };
         set(state => ({ leadSources: state.leadSources.filter(s => s.id !== id) }));
@@ -8016,14 +8321,11 @@ export const useAppStore = create<AppState>()(persist(
         const list = get().followUpStages;
         const target = list.find(s => s.id === id);
         if (!target) return false;
-        // v83 audit fix — Won + Lost carry `isTerminal: true` and drive
-        // load-bearing precedence + outcome mappings (task-engine skip,
-        // closeFollowUpTask outcome→status). Even though we resolve
-        // their labels via id-based lookups elsewhere, blocking terminal
-        // rename is second-line defense so the pill palette + Details
-        // dropdown stay legible ("Won" / "Lost" are the words staff
-        // expect). Non-terminal locked stages CAN still be renamed.
-        if (target.isTerminal) return false;
+        // v83 client 2026-07-27 — no more terminal-rename block. Defaults
+        // stay editable so a studio can rename "Won" → "Converted" or
+        // "Lost" → "Not converted". Precedence checks still resolve via
+        // stable stg_lost / stg_new / stg_contacted ids, so renames don't
+        // break the underlying wiring.
         const dup = list.find(
             s => s.id !== id && s.label.toLowerCase() === clean.toLowerCase(),
         );
@@ -8047,7 +8349,9 @@ export const useAppStore = create<AppState>()(persist(
     deleteFollowUpStage: (id) => {
         const target = get().followUpStages.find(s => s.id === id);
         if (!target) return { deleted: false, reason: "in_use", usageCount: 0 };
-        if (target.locked) return { deleted: false, reason: "locked" };
+        // v83 client 2026-07-27 — lock removed. In-use check still blocks
+        // deletion of a stage that customers sit on, to avoid orphaning
+        // their followUpStatus values.
         const usageCount = get().customers.filter(c => c.followUpStatus === target.label).length;
         if (usageCount > 0) return { deleted: false, reason: "in_use", usageCount };
         set(state => ({ followUpStages: state.followUpStages.filter(s => s.id !== id) }));
@@ -10633,7 +10937,12 @@ export const useAppStore = create<AppState>()(persist(
         //   through every pill / segment / task-engine surface
         //   without hand-building state. Bumped so pre-v84 caches
         //   reseed and pick up the personas via the rehydrate hook.
-        version: 84,
+        // v85 (2026-07-27): Bulk lifecycle personas — +28 more (~4
+        //   per stage) so the segment tabs and Lifecycle filter
+        //   have real volume to play with. Also removes `locked`
+        //   / `isTerminal` on the seeded sources + stages. Bump
+        //   forces a rehydrate so the bulk injection runs.
+        version: 85,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -10841,24 +11150,19 @@ export const useAppStore = create<AppState>()(persist(
             // pass.
             if (Array.isArray(state.customers)) {
                 const knownCustomerIds = new Set(state.customers.map(c => c.id));
-                const freshCustomers = SHOWCASE_CUSTOMERS.filter(c => !knownCustomerIds.has(c.id));
+                const knownPlanIds = new Set(state.customerPlans.map(p => p.id));
+                const knownBookingIds = new Set(state.classBookings.map(b => b.id));
+                const knownTxnIds = new Set(state.customerTransactions.map(t => t.id));
+                const combinedCustomers = [...SHOWCASE_CUSTOMERS, ...BULK_SHOWCASE.customers];
+                const combinedPlans     = [...SHOWCASE_PLANS,     ...BULK_SHOWCASE.plans];
+                const combinedBookings  = [...SHOWCASE_BOOKINGS,  ...BULK_SHOWCASE.bookings];
+                const combinedTxns      = [...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions];
+                const freshCustomers = combinedCustomers.filter(c => !knownCustomerIds.has(c.id));
                 if (freshCustomers.length > 0) {
                     state.customers = [...freshCustomers, ...state.customers];
-                    const knownPlanIds = new Set(state.customerPlans.map(p => p.id));
-                    state.customerPlans = [
-                        ...state.customerPlans,
-                        ...SHOWCASE_PLANS.filter(p => !knownPlanIds.has(p.id)),
-                    ];
-                    const knownBookingIds = new Set(state.classBookings.map(b => b.id));
-                    state.classBookings = [
-                        ...state.classBookings,
-                        ...SHOWCASE_BOOKINGS.filter(b => !knownBookingIds.has(b.id)),
-                    ];
-                    const knownTxnIds = new Set(state.customerTransactions.map(t => t.id));
-                    state.customerTransactions = [
-                        ...state.customerTransactions,
-                        ...SHOWCASE_TRANSACTIONS.filter(t => !knownTxnIds.has(t.id)),
-                    ];
+                    state.customerPlans = [...state.customerPlans, ...combinedPlans.filter(p => !knownPlanIds.has(p.id))];
+                    state.classBookings = [...state.classBookings, ...combinedBookings.filter(b => !knownBookingIds.has(b.id))];
+                    state.customerTransactions = [...state.customerTransactions, ...combinedTxns.filter(t => !knownTxnIds.has(t.id))];
                 }
             }
             // v83 audit fix (2026-07-27) — recompute lifecycleTag for

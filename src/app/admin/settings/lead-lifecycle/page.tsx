@@ -20,7 +20,7 @@
 // go through a shared centred confirmation modal.
 
 import { useState } from "react";
-import { Plus, Lock01, Trash01, Edit02, Check, XClose } from "@untitledui/icons";
+import { Plus, Trash01, Edit02, Check, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
@@ -149,14 +149,6 @@ function LeadSourcesCard() {
                             ) : (
                                 <>
                                     <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
-                                    {s.locked && (
-                                        <Lock01
-                                            className="w-3.5 h-3.5 text-[#667085]"
-                                            aria-label="Default source — cannot be deleted"
-                                        >
-                                            <title>Default source — cannot be deleted</title>
-                                        </Lock01>
-                                    )}
                                     <IconButton
                                         label="Rename source"
                                         onClick={() => {
@@ -166,10 +158,9 @@ function LeadSourcesCard() {
                                         icon={<Edit02 className="w-4 h-4" />}
                                     />
                                     <IconButton
-                                        label={s.locked ? "Default sources can't be deleted" : "Delete source"}
+                                        label="Delete source"
                                         onClick={() => setConfirmDelete({ id: s.id, label: s.label })}
                                         icon={<Trash01 className="w-4 h-4" />}
-                                        disabled={s.locked}
                                         variant="danger"
                                     />
                                 </>
@@ -322,36 +313,18 @@ function FollowUpStagesCard() {
                             ) : (
                                 <>
                                     <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
-                                    {s.locked && (
-                                        <Lock01
-                                            className="w-3.5 h-3.5 text-[#667085]"
-                                            aria-label={
-                                                s.isTerminal
-                                                    ? "Won and Lost close the funnel — cannot be renamed or deleted"
-                                                    : "Default stage — cannot be deleted"
-                                            }
-                                        >
-                                            <title>
-                                                {s.isTerminal
-                                                    ? "Won and Lost close the funnel — cannot be renamed or deleted"
-                                                    : "Default stage — cannot be deleted"}
-                                            </title>
-                                        </Lock01>
-                                    )}
                                     <IconButton
-                                        label={s.isTerminal ? "Won and Lost close the funnel — cannot be renamed" : "Rename stage"}
+                                        label="Rename stage"
                                         onClick={() => {
                                             setEditLabel(s.label);
                                             setEditing(s.id);
                                         }}
                                         icon={<Edit02 className="w-4 h-4" />}
-                                        disabled={s.isTerminal}
                                     />
                                     <IconButton
-                                        label={s.locked ? (s.isTerminal ? "Won and Lost can't be deleted" : "Default stages can't be deleted") : "Delete stage"}
+                                        label="Delete stage"
                                         onClick={() => setConfirmDelete({ id: s.id, label: s.label })}
                                         icon={<Trash01 className="w-4 h-4" />}
-                                        disabled={s.locked}
                                         variant="danger"
                                     />
                                 </>

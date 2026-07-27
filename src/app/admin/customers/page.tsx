@@ -45,6 +45,8 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -80,9 +82,17 @@ interface FilterState {
     branchId: string;          // "" = any branch
     planExpiryStart: string;   // "" = no lower bound
     planExpiryEnd: string;     // "" = no upper bound
+    /** v83 client 2026-07-27 — multi-select over the 7 lifecycle stages.
+     *  Empty = no filter. Stacks on top of the segment tabs (Members /
+     *  Leads / Inactive) so a user can further scope inside a segment. */
+    lifecycleTags: import("@/lib/store").LifecycleTag[];
 }
+const ALL_LIFECYCLE_TAGS: import("@/lib/store").LifecycleTag[] = [
+    "Lead", "Trialist", "New Active", "Loyal Active", "At Risk", "Churned", "Won-back",
+];
 const EMPTY_FILTER: FilterState = {
     statuses: [], planTypes: [], lastVisit: [], branchId: "", planExpiryStart: "", planExpiryEnd: "",
+    lifecycleTags: [],
 };
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
@@ -219,6 +229,21 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {/* v83 client 2026-07-27 — Lifecycle filter chip group.
+                        Stacks on top of the segment tabs so "Members ∧ Loyal
+                        Active" is a valid pinned scope. */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[14px] font-medium text-[#344054]">Lifecycle</p>
+                        <div className="flex flex-wrap gap-2">
+                            {ALL_LIFECYCLE_TAGS.map(t => (
+                                <FilterPill key={t} label={t} selected={pending.lifecycleTags.includes(t)}
+                                    onClick={() => setPending(p => ({ ...p, lifecycleTags: toggle(p.lifecycleTags, t) }))} />
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+
                     {/* Status */}
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
@@ -470,6 +495,15 @@ export default function CustomersPage() {
     const currentUser = useAppStore(s => s.currentUser);
     // v83 audit fix — CSV export needs staff for the "Assigned to" column.
     const staff = useAppStore(s => s.staff);
+    // Client 2026-07-27 (audit #4 follow-up) — the profile computes
+    // lifecycle live via `computeLifecycleTag`; the list used to read
+    // the STORED `lifecycleTag` field, which could drift stale if the
+    // recompute hook missed a write path. That produced the "table says
+    // Lead but details say Churned" mismatch the client flagged. Fix:
+    // list also computes on the fly, so both surfaces use the same
+    // function and stay in agreement by construction.
+    const customerPlans = useAppStore(s => s.customerPlans);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
 
     // ─── Local UI state ─────────────────────────────────────────────────────
     // Branch filter defaults to "" ("All locations") — Owner + Branch Admin
@@ -509,28 +543,36 @@ export default function CustomersPage() {
     // ─── Build rows (history flag derived live from bookings) ───────────────
     const allRows = useMemo<CustomerRow[]>(() => {
         const bookedCustomerIds = new Set(classBookings.map(b => b.customerId));
+        const liveState = { customers, classBookings, customerPlans, customerTransactions };
         // Newest customers first so a just-created customer lands at the top.
         return [...customers]
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-            .map(c => ({
-                id: c.id,
-                name: `${c.firstName} ${c.lastName}`.trim(),
-                initials: c.initials,
-                imageUrl: c.imageUrl,
-                email: c.email,
-                phone: c.phone ?? "",
-                joinedISO: c.createdAt,
-                planType: planTypeOf(c.planKind),
-                status: c.status,
-                lastVisitISO: c.lastVisitISO,
-                planExpiryISO: c.planExpiryISO,
-                branchId: c.branchId,
-                hasHistory: bookedCustomerIds.has(c.id),
-                lifecycleTag: c.lifecycleTag,
-                isVip: c.isVip,
-                assignedTo: c.assignedTo,
-            }));
-    }, [customers, classBookings]);
+            .map(c => {
+                // Client 2026-07-27 — LIVE compute so this list agrees with
+                // the profile's drawer / pill (which also computes live).
+                // Falls back to the stored tag only if compute returns
+                // nothing usable (defensive; shouldn't happen).
+                const lc = computeLifecycleTag(c.id, liveState);
+                return {
+                    id: c.id,
+                    name: `${c.firstName} ${c.lastName}`.trim(),
+                    initials: c.initials,
+                    imageUrl: c.imageUrl,
+                    email: c.email,
+                    phone: c.phone ?? "",
+                    joinedISO: c.createdAt,
+                    planType: planTypeOf(c.planKind),
+                    status: c.status,
+                    lastVisitISO: c.lastVisitISO,
+                    planExpiryISO: c.planExpiryISO,
+                    branchId: c.branchId,
+                    hasHistory: bookedCustomerIds.has(c.id),
+                    lifecycleTag: lc?.tag ?? c.lifecycleTag ?? "Lead",
+                    isVip: c.isVip,
+                    assignedTo: c.assignedTo,
+                };
+            });
+    }, [customers, classBookings, customerPlans, customerTransactions]);
 
     // ─── Apply branch + search + filter ─────────────────────────────────────
     const today = todayISO();
@@ -562,6 +604,7 @@ export default function CustomersPage() {
             )) return false;
             if (applied.statuses.length > 0 && !applied.statuses.includes(r.status)) return false;
             if (applied.planTypes.length > 0 && !applied.planTypes.includes(r.planType)) return false;
+            if (applied.lifecycleTags.length > 0 && !applied.lifecycleTags.includes(r.lifecycleTag ?? "Lead")) return false;
             if (applied.branchId && r.branchId !== applied.branchId) return false;
             if (!matchesLastVisit(r)) return false;
             if (applied.planExpiryStart || applied.planExpiryEnd) {
@@ -654,7 +697,8 @@ export default function CustomersPage() {
     const hasActiveFilter =
         applied.statuses.length > 0 || applied.planTypes.length > 0 ||
         applied.lastVisit.length > 0 || applied.branchId !== "" ||
-        applied.planExpiryStart !== "" || applied.planExpiryEnd !== "";
+        applied.planExpiryStart !== "" || applied.planExpiryEnd !== "" ||
+        applied.lifecycleTags.length > 0;
 
     // ─── Action plumbing ────────────────────────────────────────────────────
     function openRowConfirm(row: CustomerRow, kind: RowActionKind) {
@@ -746,41 +790,22 @@ export default function CustomersPage() {
 
     const isTrulyEmpty = allRows.length === 0;
 
-    return (
-        <div className="flex flex-col gap-6">
-            {/* ── v83 lifecycle segment tabs ── reuses the same tab-strip chrome
-                as /admin/insights (see plan §Component reuse).
-                Client 2026-07-27 — sticky so the tabs + toolbar stay pinned
-                while the table scrolls; negative-y shadow extends the white
-                background up 24px to cover main's p-6 top padding as the
-                strip freezes. Same trick as /admin/kpi. */}
-            <div className="sticky top-0 z-30 bg-white shadow-[0_-24px_0_0_#ffffff] flex flex-col gap-6 pb-2">
-            <div className="border-b border-[#e4e7ec]">
-                <div className="flex gap-3 items-start">
-                    {[
-                        { key: "all"      as const, label: "All"      },
-                        { key: "leads"    as const, label: "Leads"    },
-                        { key: "members"  as const, label: "Members"  },
-                        { key: "inactive" as const, label: "Inactive" },
-                    ].map(t => (
-                        <button
-                            key={t.key}
-                            type="button"
-                            onClick={() => setSegment(t.key)}
-                            className={cn(
-                                "flex gap-2 h-8 items-center justify-center pb-3 px-1 transition-colors",
-                                segment === t.key
-                                    ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
-                                    : "text-[#667085] font-semibold hover:text-[#344054]",
-                            )}
-                        >
-                            <span className="text-sm">{t.label}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
+    // v83 client 2026-07-27 — segment tabs restated as SegmentedTabs for
+    // the Staff/Shifts-style layout: toolbar row on top → rounded
+    // container box wrapping the pill-tab strip + table. Same tab keys
+    // (all / leads / members / inactive) so downstream filter code
+    // doesn't need to change.
+    const segmentTabDefs = [
+        { key: "all",      label: "All"      },
+        { key: "leads",    label: "Leads"    },
+        { key: "members",  label: "Members"  },
+        { key: "inactive", label: "Inactive" },
+    ];
 
-            {/* ── Toolbar ── */}
+    return (
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
+            {/* ── Toolbar ── matches /admin/staff (Total · Location · Search
+                · Export · Filter · Assigned-to-me chip). */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={filteredRows.length} entitySingular="customer" />
                 <SelectInput
@@ -806,10 +831,6 @@ export default function CustomersPage() {
                     }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
-                {/* v83 Phase 3 — "Assigned to me" chip. Reuses the DS FilterPill
-                    component (same as the filter side panel's status/plan chips).
-                    Hidden entirely when the signed-in user has no id — nothing
-                    to match against. */}
                 {currentUser?.id && (
                     <FilterPill
                         label="Assigned to me"
@@ -817,16 +838,19 @@ export default function CustomersPage() {
                         onClick={() => setMineOnly(v => !v)}
                     />
                 )}
-                {/* Import Data entry hidden pending a proper migration flow
-                    build (client Jul 2026). The CustomerImportModal file stays
-                    on disk as reference for the rebuild — this page just no
-                    longer surfaces the entry point. */}
-            </div>
             </div>
 
-            {/* ── Table area — sits flush on the admin chrome, no outer
-                   border / card wrapper (same as the gift-cards list). ── */}
-            <div className="h-[760px] flex flex-col overflow-hidden">
+            {/* ── View card — rounded container hosting the SegmentedTabs
+                   strip + the table. Fills the remaining viewport so only
+                   the table body scrolls (matches /admin/staff's chrome). */}
+            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                <div className="shrink-0 px-6 py-4 flex items-center gap-3">
+                    <SegmentedTabs
+                        tabs={segmentTabDefs}
+                        activeKey={segment}
+                        onChange={(k) => setSegment(k as typeof segment)}
+                    />
+                </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                     {pagedRows.length === 0 ? (
                         <EmptyState

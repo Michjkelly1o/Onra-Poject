@@ -56,6 +56,7 @@ import { derivePlanBalances } from "@/lib/plan-credits";
 // the header pill row + reasoning drawer. IconTooltip powers the hover.
 // Compute is imported for the drawer's live "why this tag" body.
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1260,24 +1261,27 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                     <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{customerName}</h2>
                                     <p className="text-[14px] text-[#667085] mt-0.5">{customer.email}</p>
                                     {/* v83 lifecycle — pill row under the email.
-                                        Click the lifecycle pill to open the reasoning
-                                        drawer. VIP + follow-up pills stack alongside.
-                                        Client 2026-07-27 — hover tooltip removed: on
-                                        the customer profile it was rendering off the
-                                        left frame edge (cut off / unreadable). The
-                                        drawer already carries the full reasoning so
-                                        the tooltip was redundant chrome. */}
+                                        Click opens the reasoning drawer. Hover shows
+                                        the primary reason via IconTooltip anchored
+                                        BELOW the pill so it can't clip off the top
+                                        edge of the profile card. */}
                                     {lifecycleResult && (
                                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setLifecycleDrawerOpen(true)}
-                                                className="focus:outline-none focus:ring-2 focus:ring-[#658774] focus:ring-offset-1 rounded-full hover:opacity-80 transition-opacity"
-                                                aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
-                                                title="Click to see why"
+                                            <IconTooltip
+                                                label={`Tagged ${lifecycleResult.tag} on ${customer.lifecycleTaggedOn ?? lifecycleResult.computedOn}${
+                                                    lifecycleResult.reasons[0] ? ` · ${lifecycleResult.reasons[0]}` : ""
+                                                }`}
+                                                side="below"
                                             >
-                                                <StatusBadge type="lifecycle" status={lifecycleResult.tag} />
-                                            </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLifecycleDrawerOpen(true)}
+                                                    className="focus:outline-none focus:ring-2 focus:ring-[#658774] focus:ring-offset-1 rounded-full hover:opacity-80 transition-opacity"
+                                                    aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
+                                                >
+                                                    <StatusBadge type="lifecycle" status={lifecycleResult.tag} />
+                                                </button>
+                                            </IconTooltip>
                                             {lifecycleResult.isVip && (
                                                 <StatusBadge type="vip" status="vip" />
                                             )}
@@ -1575,19 +1579,27 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
             <PlanFilterPanel open={filterOpen} onClose={() => setFilterOpen(false)}
                 applied={applied} onApply={f => { setApplied(f); setPage(1); }} />
 
-            {/* v83 lifecycle reasoning drawer — reuses the existing SlidePanel
-                pattern (same one PlanFilterPanel, CustomerReferralsTab side
-                panel, etc. use). Body is a read-only summary of the current
-                tag + every reason clause the compute matched. */}
+            {/* v83 lifecycle reasoning drawer — same SlidePanel chrome as
+                the POS "Add new customer" panel (header · scrollable body
+                · footer with a single Close action). Client 2026-07-27 —
+                switched from a body-with-inline-note layout to the DS
+                header+body+footer split so it reads consistent with the
+                rest of the app. */}
             {lifecycleResult && (
-                <SlidePanel open={lifecycleDrawerOpen} onClose={() => setLifecycleDrawerOpen(false)} width={400}>
-                    <div className="flex flex-col gap-6 h-full">
-                        <div className="flex flex-col gap-1">
-                            <p className="text-[16px] font-semibold text-[#101828]">Lifecycle stage</p>
-                            <p className="text-[13px] text-[#667085]">
-                                Auto-detected by the customer engine. Recomputes after every booking, payment, and rating.
-                            </p>
-                        </div>
+                <SlidePanel open={lifecycleDrawerOpen} onClose={() => setLifecycleDrawerOpen(false)} width={440}>
+                    <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                        <p className="flex-1 font-semibold text-[18px] text-[#101828]">Lifecycle stage</p>
+                        <button
+                            type="button"
+                            onClick={() => setLifecycleDrawerOpen(false)}
+                            className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                            aria-label="Close"
+                        >
+                            <XClose className="w-5 h-5 text-[#667085]" />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
+                        {/* Current stage summary */}
                         <div className="flex flex-col gap-3">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <StatusBadge type="lifecycle" status={lifecycleResult.tag} size="lg" />
@@ -1598,9 +1610,11 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 <span className="text-[#344054] font-medium">{customer.lifecycleTaggedOn ?? lifecycleResult.computedOn}</span>.
                             </p>
                         </div>
-                        <div className="flex flex-col gap-2">
+
+                        {/* Why this stage */}
+                        <div className="flex flex-col gap-3">
                             <p className="text-[14px] font-semibold text-[#344054]">Why this stage</p>
-                            <ul className="flex flex-col gap-2">
+                            <ul className="flex flex-col gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
                                 {lifecycleResult.reasons.map((r, i) => (
                                     <li key={i} className="flex gap-2 text-[13px] leading-[18px] text-[#475467]">
                                         <span className="text-[#658774] mt-0.5">•</span>
@@ -1609,12 +1623,22 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 ))}
                             </ul>
                         </div>
-                        <div className="mt-auto pt-4 border-t border-[#e4e7ec]">
-                            <p className="text-[12px] text-[#98a2b3] leading-[16px]">
-                                Layer 1 tag — AI-detected. Staff-owned follow-up status (Layer 2) is edited on the
-                                Details tab when the customer is a Lead or Trialist.
+
+                        {/* Info footer — Layer 1 vs Layer 2 explainer */}
+                        <div className="rounded-[12px] bg-[#f1f2ed] px-4 py-3 flex gap-3 items-start">
+                            <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center shrink-0 mt-0.5">
+                                <span className="text-[12px] font-bold text-[#475467]">i</span>
+                            </div>
+                            <p className="text-[12px] leading-[16px] text-[#475467]">
+                                This is the AI-detected lifecycle tag (Layer 1). The staff-owned follow-up status
+                                (Layer 2) lives on the Details tab and only shows for Leads and Trialists.
                             </p>
                         </div>
+                    </div>
+                    <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end">
+                        <Button variant="secondary-gray" size="md" onClick={() => setLifecycleDrawerOpen(false)}>
+                            Close
+                        </Button>
                     </div>
                 </SlidePanel>
             )}
