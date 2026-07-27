@@ -56,7 +56,6 @@ import { derivePlanBalances } from "@/lib/plan-credits";
 // the header pill row + reasoning drawer. IconTooltip powers the hover.
 // Compute is imported for the drawer's live "why this tag" body.
 import { StatusBadge } from "@/components/patterns/StatusBadge";
-import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1261,26 +1260,24 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                     <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{customerName}</h2>
                                     <p className="text-[14px] text-[#667085] mt-0.5">{customer.email}</p>
                                     {/* v83 lifecycle — pill row under the email.
-                                        Hover shows the primary reason (from the
-                                        compute); click opens the reasoning drawer.
-                                        VIP + follow-up pills stack alongside. */}
+                                        Click the lifecycle pill to open the reasoning
+                                        drawer. VIP + follow-up pills stack alongside.
+                                        Client 2026-07-27 — hover tooltip removed: on
+                                        the customer profile it was rendering off the
+                                        left frame edge (cut off / unreadable). The
+                                        drawer already carries the full reasoning so
+                                        the tooltip was redundant chrome. */}
                                     {lifecycleResult && (
                                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                                            <IconTooltip
-                                                label={`Tagged ${lifecycleResult.tag} on ${customer.lifecycleTaggedOn ?? lifecycleResult.computedOn}${
-                                                    lifecycleResult.reasons[0] ? ` · ${lifecycleResult.reasons[0]}` : ""
-                                                }`}
-                                                side="below"
+                                            <button
+                                                type="button"
+                                                onClick={() => setLifecycleDrawerOpen(true)}
+                                                className="focus:outline-none focus:ring-2 focus:ring-[#658774] focus:ring-offset-1 rounded-full hover:opacity-80 transition-opacity"
+                                                aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
+                                                title="Click to see why"
                                             >
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setLifecycleDrawerOpen(true)}
-                                                    className="focus:outline-none focus:ring-2 focus:ring-[#658774] focus:ring-offset-1 rounded-full"
-                                                    aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
-                                                >
-                                                    <StatusBadge type="lifecycle" status={lifecycleResult.tag} />
-                                                </button>
-                                            </IconTooltip>
+                                                <StatusBadge type="lifecycle" status={lifecycleResult.tag} />
+                                            </button>
                                             {lifecycleResult.isVip && (
                                                 <StatusBadge type="vip" status="vip" />
                                             )}

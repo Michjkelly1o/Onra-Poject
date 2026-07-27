@@ -152,64 +152,65 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
-            {/* v83 Phase 3 — Follow-up section. Rendered only for Lead /
-                Trialist customers so a Loyal Active member's profile never
-                shows an irrelevant follow-up dropdown. The compute drives
-                the gate — behavior wins per plan §2.3 (a "Lost" customer
-                who books gets re-tagged, and the section reappears). */}
-            {isPreConversion && (
-                <>
-                    <div className="flex flex-col gap-3">
-                        <SectionHeader>Follow-up</SectionHeader>
-                        <div className={GRID}>
-                            <div className="flex flex-col gap-1.5">
-                                <p className="text-[14px] text-[#667085]">Follow-up status</p>
-                                <SelectInput
-                                    value={customer.followUpStatus ?? "New"}
-                                    onChange={(next) => {
-                                        const val = (next || "New") as FollowUpStatus;
-                                        updateCustomer(customerId, { followUpStatus: val });
-                                        showToast(
-                                            "Follow-up status updated",
-                                            `${fullName} moved to "${val}".`,
-                                            "success",
-                                            "check",
-                                        );
-                                    }}
-                                    options={followUpStages.map(s => ({
-                                        value: s.label,
-                                        label: s.label,
-                                    }))}
-                                />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <p className="text-[14px] text-[#667085]">Assigned to</p>
-                                <SelectInput
-                                    value={customer.assignedTo ?? ""}
-                                    onChange={(next) => {
-                                        updateCustomer(customerId, { assignedTo: next || undefined });
-                                        const label = next
-                                            ? staffOptions.find(o => o.value === next)?.label ?? "staff"
-                                            : "Unassigned";
-                                        showToast(
-                                            "Assignment updated",
-                                            `${fullName} → ${label}.`,
-                                            "success",
-                                            "check",
-                                        );
-                                    }}
-                                    options={staffOptions}
-                                />
-                            </div>
-                            <DetailField
-                                label="Source"
-                                value={<span className="text-[14px] font-normal text-[#101828]">{sourceLabel}</span>}
+            {/* v83 Phase 3 — Follow-up section. Client 2026-07-27 revision:
+                • "Assigned to" is shown for EVERY customer (Loyal Active,
+                  Churned, etc. can all be assigned to a staff member for
+                  CS follow-up), matching the plan §Phase 3 "all customers
+                  get an assignment field" phrasing.
+                • "Follow-up status" stays scoped to Lead / Trialist only —
+                  that funnel doesn't apply after conversion.
+                • "Source" shows for every customer for auditability. */}
+            <div className="flex flex-col gap-3">
+                <SectionHeader>Follow-up</SectionHeader>
+                <div className={GRID}>
+                    <div className="flex flex-col gap-1.5">
+                        <p className="text-[14px] text-[#667085]">Assigned to</p>
+                        <SelectInput
+                            value={customer.assignedTo ?? ""}
+                            onChange={(next) => {
+                                updateCustomer(customerId, { assignedTo: next || undefined });
+                                const label = next
+                                    ? staffOptions.find(o => o.value === next)?.label ?? "staff"
+                                    : "Unassigned";
+                                showToast(
+                                    "Assignment updated",
+                                    `${fullName} → ${label}.`,
+                                    "success",
+                                    "check",
+                                );
+                            }}
+                            options={staffOptions}
+                        />
+                    </div>
+                    {isPreConversion && (
+                        <div className="flex flex-col gap-1.5">
+                            <p className="text-[14px] text-[#667085]">Follow-up status</p>
+                            <SelectInput
+                                value={customer.followUpStatus ?? "New"}
+                                onChange={(next) => {
+                                    const val = (next || "New") as FollowUpStatus;
+                                    updateCustomer(customerId, { followUpStatus: val });
+                                    showToast(
+                                        "Follow-up status updated",
+                                        `${fullName} moved to "${val}".`,
+                                        "success",
+                                        "check",
+                                    );
+                                }}
+                                options={followUpStages.map(s => ({
+                                    value: s.label,
+                                    label: s.label,
+                                }))}
                             />
                         </div>
-                    </div>
-                    <Divider />
-                </>
-            )}
+                    )}
+                    <DetailField
+                        label="Source"
+                        value={<span className="text-[14px] font-normal text-[#101828]">{sourceLabel}</span>}
+                    />
+                </div>
+            </div>
+            <Divider />
 
             {/* Personal information */}
             <div className="flex flex-col gap-3">

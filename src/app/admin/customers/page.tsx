@@ -749,7 +749,12 @@ export default function CustomersPage() {
     return (
         <div className="flex flex-col gap-6">
             {/* ── v83 lifecycle segment tabs ── reuses the same tab-strip chrome
-                as /admin/insights (see plan §Component reuse). */}
+                as /admin/insights (see plan §Component reuse).
+                Client 2026-07-27 — sticky so the tabs + toolbar stay pinned
+                while the table scrolls; negative-y shadow extends the white
+                background up 24px to cover main's p-6 top padding as the
+                strip freezes. Same trick as /admin/kpi. */}
+            <div className="sticky top-0 z-30 bg-white shadow-[0_-24px_0_0_#ffffff] flex flex-col gap-6 pb-2">
             <div className="border-b border-[#e4e7ec]">
                 <div className="flex gap-3 items-start">
                     {[
@@ -816,6 +821,7 @@ export default function CustomersPage() {
                     build (client Jul 2026). The CustomerImportModal file stays
                     on disk as reference for the rebuild — this page just no
                     longer surfaces the entry point. */}
+            </div>
             </div>
 
             {/* ── Table area — sits flush on the admin chrome, no outer

@@ -33,17 +33,8 @@ const MAX_STAGES = 8;
 export default function LeadLifecycleSettingsPage() {
     return (
         <div className="flex flex-col gap-6 pb-10">
-            <header className="flex flex-col gap-1">
-                <h1 className="text-[20px] font-semibold text-[#101828] leading-[30px]">Lead lifecycle</h1>
-                <p className="text-[14px] text-[#667085] max-w-[720px]">
-                    Studio-editable lists that power the customer profile Follow-up section, the
-                    lead pill on customer cards, and the AI-Agent lead migration flow.
-                </p>
-            </header>
-
             <LeadSourcesCard />
             <FollowUpStagesCard />
-
             <Toast />
         </div>
     );
@@ -159,10 +150,12 @@ function LeadSourcesCard() {
                                 <>
                                     <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
                                     {s.locked && (
-                                        <span className="flex items-center gap-1 text-[12px] text-[#667085]">
-                                            <Lock01 className="w-3.5 h-3.5" />
-                                            System
-                                        </span>
+                                        <Lock01
+                                            className="w-3.5 h-3.5 text-[#667085]"
+                                            aria-label="Default source — cannot be deleted"
+                                        >
+                                            <title>Default source — cannot be deleted</title>
+                                        </Lock01>
                                     )}
                                     <IconButton
                                         label="Rename source"
@@ -173,7 +166,7 @@ function LeadSourcesCard() {
                                         icon={<Edit02 className="w-4 h-4" />}
                                     />
                                     <IconButton
-                                        label="Delete source"
+                                        label={s.locked ? "Default sources can't be deleted" : "Delete source"}
                                         onClick={() => setConfirmDelete({ id: s.id, label: s.label })}
                                         icon={<Trash01 className="w-4 h-4" />}
                                         disabled={s.locked}
@@ -329,19 +322,24 @@ function FollowUpStagesCard() {
                             ) : (
                                 <>
                                     <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
-                                    {s.isTerminal && (
-                                        <span className="flex items-center gap-1 text-[12px] text-[#667085]">
-                                            Terminal
-                                        </span>
-                                    )}
                                     {s.locked && (
-                                        <span className="flex items-center gap-1 text-[12px] text-[#667085]">
-                                            <Lock01 className="w-3.5 h-3.5" />
-                                            System
-                                        </span>
+                                        <Lock01
+                                            className="w-3.5 h-3.5 text-[#667085]"
+                                            aria-label={
+                                                s.isTerminal
+                                                    ? "Won and Lost close the funnel — cannot be renamed or deleted"
+                                                    : "Default stage — cannot be deleted"
+                                            }
+                                        >
+                                            <title>
+                                                {s.isTerminal
+                                                    ? "Won and Lost close the funnel — cannot be renamed or deleted"
+                                                    : "Default stage — cannot be deleted"}
+                                            </title>
+                                        </Lock01>
                                     )}
                                     <IconButton
-                                        label={s.isTerminal ? "Terminal stages can't be renamed" : "Rename stage"}
+                                        label={s.isTerminal ? "Won and Lost close the funnel — cannot be renamed" : "Rename stage"}
                                         onClick={() => {
                                             setEditLabel(s.label);
                                             setEditing(s.id);
@@ -350,7 +348,7 @@ function FollowUpStagesCard() {
                                         disabled={s.isTerminal}
                                     />
                                     <IconButton
-                                        label="Delete stage"
+                                        label={s.locked ? (s.isTerminal ? "Won and Lost can't be deleted" : "Default stages can't be deleted") : "Delete stage"}
                                         onClick={() => setConfirmDelete({ id: s.id, label: s.label })}
                                         icon={<Trash01 className="w-4 h-4" />}
                                         disabled={s.locked}

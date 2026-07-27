@@ -4677,6 +4677,283 @@ const INITIAL_FOLLOW_UP_STAGES: FollowUpStage[] = [
     { id: "stg_lost",         label: "Lost",          locked: true, isTerminal: true  },
 ];
 
+// ─── v83 lifecycle showcase personas (client 2026-07-27) ────────────────
+//
+// Seven demo customers, one per lifecycle stage, so the client can walk
+// through every pill / segment / task-engine surface without hand-
+// building state. Injected alongside the main seed at boot; a matching
+// idempotency guard in `onRehydrateStorage` prevents duplicates on
+// version bumps. IDs are deterministic + prefixed with `cust_lc_` so
+// they're easy to grep out later if we ship a real demo-reset flow.
+//
+// Compute reads (see src/lib/customer/lifecycle.ts):
+//   • Churned   — no usable plan AND >30d since last visit
+//   • At Risk   — usable plan AND (≥14d idle OR cancel-rate >50%/14d)
+//   • Won-back  — usable plan AND ever-expired plan AND paid <30d ago
+//   • New Active — paid plan <30 days old
+//   • Loyal     — paid plan >30 days old + ≥4 attended in 30d
+//   • Trialist  — only intro plan, no paid
+//   • Lead      — no plan, no attendance (fallback)
+
+const LC_BRANCH = "branch_forma_south";
+
+/** ISO string for `d` days ago (positive = past). Kept as a helper so
+ *  the persona builders read like a story instead of a timestamp arith
+ *  soup. */
+function daysAgoISO(d: number): string {
+    return new Date(Date.now() - d * 86_400_000).toISOString();
+}
+function daysAgoISODate(d: number): string {
+    return daysAgoISO(d).slice(0, 10);
+}
+
+const SHOWCASE_CUSTOMERS: Customer[] = [
+    // 1. LEAD — no plan, no bookings, no visits.
+    {
+        id: "cust_lc_lead", firstName: "Sofia", lastName: "Reyes", initials: "SR",
+        email: "sofia.reyes@onradmo.test", phone: "+971 50 999 0001",
+        branchId: LC_BRANCH, planKind: null,
+        createdAt: daysAgoISO(3), status: "active",
+        gender: "Female", sourceId: "src_instagram", marketingSource: "Instagram / Social",
+    },
+    // 2. TRIALIST — complimentary plan + one recent attended booking.
+    {
+        id: "cust_lc_trialist", firstName: "Marco", lastName: "Silva", initials: "MS",
+        email: "marco.silva@onradmo.test", phone: "+971 50 999 0002",
+        branchId: LC_BRANCH, planKind: null,
+        createdAt: daysAgoISO(10), status: "active",
+        gender: "Male", sourceId: "src_referral", marketingSource: "Referral",
+        firstVisitISO: daysAgoISODate(4), lastVisitISO: daysAgoISODate(4),
+    },
+    // 3. NEW ACTIVE — paid membership 10 days ago + 2 attended.
+    {
+        id: "cust_lc_new_active", firstName: "Aisha", lastName: "Kumar", initials: "AK",
+        email: "aisha.kumar@onradmo.test", phone: "+971 50 999 0003",
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(12), status: "active",
+        gender: "Female", sourceId: "src_website", marketingSource: "Website / Online",
+        firstVisitISO: daysAgoISODate(8), lastVisitISO: daysAgoISODate(2),
+    },
+    // 4. LOYAL ACTIVE — membership 60 days ago + 6 attended in last 30d.
+    {
+        id: "cust_lc_loyal", firstName: "David", lastName: "Chen", initials: "DC",
+        email: "david.chen@onradmo.test", phone: "+971 50 999 0004",
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(90), status: "active",
+        gender: "Male", sourceId: "src_walkin", marketingSource: "Walk-in",
+        firstVisitISO: daysAgoISODate(88), lastVisitISO: daysAgoISODate(1),
+    },
+    // 5. AT RISK — active plan but 20 days since last visit.
+    {
+        id: "cust_lc_at_risk", firstName: "Priya", lastName: "Patel", initials: "PP",
+        email: "priya.patel@onradmo.test", phone: "+971 50 999 0005",
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(120), status: "active",
+        gender: "Female", sourceId: "src_referral", marketingSource: "Referral",
+        firstVisitISO: daysAgoISODate(115), lastVisitISO: daysAgoISODate(22),
+    },
+    // 6. CHURNED — no active plan + no visit 60+ days.
+    {
+        id: "cust_lc_churned", firstName: "Lucas", lastName: "Grant", initials: "LG",
+        email: "lucas.grant@onradmo.test", phone: "+971 50 999 0006",
+        branchId: LC_BRANCH, planKind: null,
+        createdAt: daysAgoISO(200), status: "active",
+        gender: "Male", sourceId: "src_classpass", marketingSource: "ClassPass",
+        firstVisitISO: daysAgoISODate(195), lastVisitISO: daysAgoISODate(75),
+    },
+    // 7. WON-BACK — active plan 15d ago + a previously-expired plan on record.
+    {
+        id: "cust_lc_wonback", firstName: "Emily", lastName: "Zhang", initials: "EZ",
+        email: "emily.zhang@onradmo.test", phone: "+971 50 999 0007",
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(240), status: "active",
+        gender: "Female", sourceId: "src_expired", marketingSource: "Expired customer",
+        firstVisitISO: daysAgoISODate(235), lastVisitISO: daysAgoISODate(6),
+    },
+    // BONUS — VIP flag on Loyal Active persona so the VIP pill has a live
+    // subject even though the auto-promote logic (LTV top-10%) isn't
+    // built yet (Phase 2b, documented).
+    {
+        id: "cust_lc_vip", firstName: "Nadia", lastName: "Al-Rashid", initials: "NA",
+        email: "nadia.alrashid@onradmo.test", phone: "+971 50 999 0008",
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(180), status: "active",
+        gender: "Female", isVip: true,
+        sourceId: "src_referral", marketingSource: "Referral",
+        firstVisitISO: daysAgoISODate(175), lastVisitISO: daysAgoISODate(1),
+    },
+];
+
+const SHOWCASE_PLANS: CustomerPlan[] = [
+    // Trialist — 3-credit intro package.
+    {
+        id: "cp_lc_trialist", customerId: "cust_lc_trialist",
+        kind: "package", name: "Intro 3-pack",
+        planTypeLabel: "Package", creditsLabel: "3 credits",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(5), expiryISO: daysAgoISODate(-25),
+        totalCredits: 3, creditsUsed: 1,
+    },
+    // New Active — package purchased 10 days ago.
+    {
+        id: "cp_lc_new_active", customerId: "cust_lc_new_active",
+        kind: "package", name: "10-class package",
+        planTypeLabel: "Package", creditsLabel: "10 credits",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(10), expiryISO: daysAgoISODate(-80),
+        totalCredits: 10, creditsUsed: 2, priceAed: 800,
+    },
+    // Loyal — membership purchased 60 days ago.
+    {
+        id: "cp_lc_loyal", customerId: "cust_lc_loyal",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(60), expiryISO: daysAgoISODate(-30),
+        priceAed: 1200,
+    },
+    // At Risk — active membership purchased 40 days ago.
+    {
+        id: "cp_lc_at_risk", customerId: "cust_lc_at_risk",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(40), expiryISO: daysAgoISODate(-10),
+        priceAed: 1200,
+    },
+    // Churned — an OLD expired package (needed to distinguish Churned
+    // from Lead — Churned requires a paid history).
+    {
+        id: "cp_lc_churned", customerId: "cust_lc_churned",
+        kind: "package", name: "10-class package",
+        planTypeLabel: "Package", creditsLabel: "10 credits",
+        status: "expired",
+        purchasedAtISO: daysAgoISODate(150), expiryISO: daysAgoISODate(60),
+        totalCredits: 10, creditsUsed: 10, priceAed: 800,
+    },
+    // Won-back — fresh membership + expired one on record.
+    {
+        id: "cp_lc_wonback_new", customerId: "cust_lc_wonback",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(15), expiryISO: daysAgoISODate(-15),
+        priceAed: 1200,
+    },
+    {
+        id: "cp_lc_wonback_old", customerId: "cust_lc_wonback",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "expired",
+        purchasedAtISO: daysAgoISODate(180), expiryISO: daysAgoISODate(150),
+        priceAed: 1200,
+    },
+    // VIP — same membership pattern as Loyal.
+    {
+        id: "cp_lc_vip", customerId: "cust_lc_vip",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(90), expiryISO: daysAgoISODate(-60),
+        priceAed: 1200,
+    },
+];
+
+/** Build 6 attended bookings for the loyal + VIP personas spread over
+ *  the last 30 days so the compute's "≥4 attended in last 30d" branch
+ *  matches. */
+function buildShowcaseBookings(): ClassBooking[] {
+    const rows: ClassBooking[] = [];
+    const push = (
+        cid: string,
+        daysAgo: number,
+        status: ClassBooking["status"],
+        attendance: ClassBooking["attendanceStatus"],
+    ) => {
+        rows.push({
+            id: `bk_lc_${cid}_${daysAgo}`,
+            classScheduleId: "sc_lc_showcase",
+            customerId: cid,
+            branchId: LC_BRANCH,
+            status,
+            attendanceStatus: attendance,
+            bookingTime: daysAgoISO(daysAgo),
+            spot: "1",
+            planId: "",
+            planName: "",
+        });
+    };
+    // Trialist — 1 attended booking 4 days ago.
+    push("cust_lc_trialist", 4, "booked", "present");
+    // New Active — 2 attended bookings recent.
+    push("cust_lc_new_active", 2, "booked", "present");
+    push("cust_lc_new_active", 8, "booked", "present");
+    // Loyal — 6 attended in last 30 days.
+    for (const d of [1, 5, 10, 15, 22, 28]) {
+        push("cust_lc_loyal", d, "booked", "present");
+    }
+    // At Risk — attended once ages ago, then radio silence.
+    push("cust_lc_at_risk", 22, "booked", "present");
+    // Churned — old attended history.
+    push("cust_lc_churned", 75, "booked", "present");
+    push("cust_lc_churned", 90, "booked", "present");
+    // Won-back — 3 attended in last 15 days since fresh plan.
+    push("cust_lc_wonback", 6, "booked", "present");
+    push("cust_lc_wonback", 11, "booked", "present");
+    push("cust_lc_wonback", 14, "booked", "present");
+    // VIP — 6 attended in last 30 days (Loyal-Active-with-VIP-flag).
+    for (const d of [1, 4, 9, 14, 20, 27]) {
+        push("cust_lc_vip", d, "booked", "present");
+    }
+    return rows;
+}
+const SHOWCASE_BOOKINGS: ClassBooking[] = buildShowcaseBookings();
+
+const SHOWCASE_TRANSACTIONS: CustomerTransaction[] = [
+    {
+        id: "txn_lc_new_active", customerId: "cust_lc_new_active", branchId: LC_BRANCH,
+        kind: "package", productId: "cp_lc_new_active", name: "10-class package",
+        amountAed: 800, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(10), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_loyal", customerId: "cust_lc_loyal", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_loyal", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(60), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_at_risk", customerId: "cust_lc_at_risk", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_at_risk", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(40), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_churned_old", customerId: "cust_lc_churned", branchId: LC_BRANCH,
+        kind: "package", productId: "cp_lc_churned", name: "10-class package",
+        amountAed: 800, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(150), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_wonback_new", customerId: "cust_lc_wonback", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_wonback_new", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(15), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_wonback_old", customerId: "cust_lc_wonback", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_wonback_old", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(180), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_vip", customerId: "cust_lc_vip", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_vip", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(90), transactionType: "sale", isRefundable: true,
+    },
+];
+
 const PERSIST_KEY = "onra-demo-state";
 
 export const useAppStore = create<AppState>()(persist(
@@ -4726,11 +5003,11 @@ export const useAppStore = create<AppState>()(persist(
     appointmentBookings: INITIAL_APPOINTMENT_BOOKINGS,
     appointmentRatings: INITIAL_APPOINTMENT_RATINGS,
     classSchedules: INITIAL_SCHEDULES,
-    classBookings: INITIAL_BOOKINGS,
+    classBookings: [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS],
     classRatings: INITIAL_RATINGS,
-    customers: INITIAL_CUSTOMERS,
-    customerPlans: INITIAL_CUSTOMER_PLANS,
-    customerTransactions: INITIAL_CUSTOMER_TRANSACTIONS,
+    customers: [...SHOWCASE_CUSTOMERS, ...INITIAL_CUSTOMERS],
+    customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS],
+    customerTransactions: [...INITIAL_CUSTOMER_TRANSACTIONS, ...SHOWCASE_TRANSACTIONS],
     customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
     customerReferrals: INITIAL_CUSTOMER_REFERRALS,
     walletTransactions: INITIAL_WALLET_TRANSACTIONS,
@@ -10350,7 +10627,13 @@ export const useAppStore = create<AppState>()(persist(
         //   with `lifecycleTag: "Lead"` (dedup by email OR phone).
         //   The `leads` slice is INTENTIONALLY retained — the AI
         //   Agent's migrate / analyze / reports flows still read it.
-        version: 83,
+        // v84 (2026-07-27): Lifecycle showcase personas seeded — 7
+        //   demo customers (one per lifecycle stage) + supporting
+        //   plans / bookings / transactions so the client can walk
+        //   through every pill / segment / task-engine surface
+        //   without hand-building state. Bumped so pre-v84 caches
+        //   reseed and pick up the personas via the rehydrate hook.
+        version: 84,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -10546,6 +10829,36 @@ export const useAppStore = create<AppState>()(persist(
                 }
                 if (newMirrors.length > 0) {
                     state.customers = [...newMirrors, ...state.customers];
+                }
+            }
+            // v83 lifecycle showcase personas (client 2026-07-27) — for
+            // testers who already have a persisted v83 state without the
+            // 7 showcase personas + their supporting data, backfill on
+            // hydrate. Idempotent — only injects a persona (and its
+            // plans / bookings / transactions) if the customer id isn't
+            // already in the state. Runs before the recompute sweep so
+            // the fresh personas get their lifecycle tags on the same
+            // pass.
+            if (Array.isArray(state.customers)) {
+                const knownCustomerIds = new Set(state.customers.map(c => c.id));
+                const freshCustomers = SHOWCASE_CUSTOMERS.filter(c => !knownCustomerIds.has(c.id));
+                if (freshCustomers.length > 0) {
+                    state.customers = [...freshCustomers, ...state.customers];
+                    const knownPlanIds = new Set(state.customerPlans.map(p => p.id));
+                    state.customerPlans = [
+                        ...state.customerPlans,
+                        ...SHOWCASE_PLANS.filter(p => !knownPlanIds.has(p.id)),
+                    ];
+                    const knownBookingIds = new Set(state.classBookings.map(b => b.id));
+                    state.classBookings = [
+                        ...state.classBookings,
+                        ...SHOWCASE_BOOKINGS.filter(b => !knownBookingIds.has(b.id)),
+                    ];
+                    const knownTxnIds = new Set(state.customerTransactions.map(t => t.id));
+                    state.customerTransactions = [
+                        ...state.customerTransactions,
+                        ...SHOWCASE_TRANSACTIONS.filter(t => !knownTxnIds.has(t.id)),
+                    ];
                 }
             }
             // v83 audit fix (2026-07-27) — recompute lifecycleTag for

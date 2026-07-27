@@ -7,28 +7,24 @@
 // The customer-scoped view of the Phase-4 task engine. Every open task
 // for this customer, plus an activity log of closed ones.
 //
-// Composition:
-//   • Header — "Log enquiry" button (existing DS <Button>) that opens
-//     a small inline note prompt then calls store.logCustomerEnquiry.
-//   • Open tasks — list of cards; each has the reason, the trigger
-//     source, the assignee name, "created X ago", and 3 outcome
-//     buttons (Reached / Follow-up / Not interested). Reached uses
-//     the primary button variant; Not interested uses destructive.
-//   • Activity log — chronological closed tasks + outcomes, muted
-//     style so the eye lands on the open list first.
-//
-// Every action fires a toast so staff see the write landed, and every
-// state change comes through `closeFollowUpTask` on the store so the
-// dashboard widget updates on the next render.
+// Client 2026-07-27 revision:
+//   • Open tasks + Activity log are TABLES (matches other tabs on the
+//     profile — Bookings, Payments — for visual consistency).
+//   • "Log enquiry" now opens a SlidePanel (right side), same chrome as
+//     the POS "Add new customer" panel: 480px, header + scrollable body
+//     + footer with Cancel / Log enquiry actions. Removes the inline
+//     composer that lived above the task list.
 
 import { useState } from "react";
 import { useAppStore, type FollowUpTask, type FollowUpTaskOutcome } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { SlidePanel } from "@/components/ui/SlidePanel";
 import { cn } from "@/lib/utils";
 import { Check, ClockRefresh, XClose, MessageChatSquare } from "@untitledui/icons";
+import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 
 /** Human copy per trigger — matches the plan §Phase 4 table's task lines
- *  and reads well as a "source" label under the reason. */
+ *  and reads well as a "source" cell in the table. */
 const TRIGGER_LABEL: Record<FollowUpTask["triggerKind"], string> = {
     enquiry_logged:          "Logged by staff",
     lead_form_submitted:     "New lead",
@@ -67,15 +63,17 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     const closeFollowUpTask = useAppStore(s => s.closeFollowUpTask);
     const showToast = useAppStore(s => s.showToast);
 
-    const [note, setNote] = useState("");
     const [enquiryOpen, setEnquiryOpen] = useState(false);
+    const [note, setNote] = useState("");
 
     const customer = customers.find(c => c.id === customerId);
     if (!customer) return null;
 
     const name = `${customer.firstName} ${customer.lastName}`.trim() || customer.email;
     const mine = tasks.filter(t => t.customerId === customerId);
-    const open = mine.filter(t => t.status === "open");
+    const open = mine
+        .filter(t => t.status === "open")
+        .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
     const closed = mine
         .filter(t => t.status === "closed")
         .sort((a, b) => (b.closedAt ?? "").localeCompare(a.closedAt ?? ""));
@@ -95,9 +93,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
             setEnquiryOpen(false);
             return;
         }
-        // v83 audit fix — accurate skip copy per the reason. "Lost" is
-        // rare and needs different guidance than "already a member" or
-        // "already an open enquiry".
+        // v83 audit fix — accurate skip copy per the reason.
         const copy =
             result.reason === "lost"
                 ? "This lead is marked as lost in your funnel. Change their follow-up status first to log a new enquiry."
@@ -121,8 +117,8 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
-            {/* Header row — "Log enquiry" toggle. Same Button variant as
-                every other primary action on the customer profile. */}
+            {/* Header row — "Log enquiry" opens the SlidePanel. Same Button
+                variant + icon as every other primary tab action. */}
             <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex flex-col gap-1">
                     <p className="text-[16px] font-semibold text-[#101828]">Follow-ups</p>
@@ -134,41 +130,13 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                     variant="secondary-gray"
                     size="md"
                     leftIcon={<MessageChatSquare className="w-4 h-4" />}
-                    onClick={() => setEnquiryOpen(v => !v)}
+                    onClick={() => setEnquiryOpen(true)}
                 >
                     Log enquiry
                 </Button>
             </div>
 
-            {/* Inline enquiry composer — a light textarea + Save/Cancel row.
-                Kept inline (not modal) because a single-field prompt doesn't
-                need a modal, and the tab has plenty of vertical space. */}
-            {enquiryOpen && (
-                <div className="flex flex-col gap-3 p-4 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb]">
-                    <p className="text-[13px] font-medium text-[#344054]">What did they ask about?</p>
-                    <textarea
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                        placeholder="Optional note — e.g. asked about the pilates class Wednesday evenings."
-                        rows={2}
-                        className={cn(
-                            "w-full resize-none rounded-md border border-[#d0d5dd] px-3 py-2",
-                            "text-[14px] text-[#101828] placeholder:text-[#667085] bg-white",
-                            "focus:outline-none focus:ring-2 focus:ring-[#658774]/40 focus:border-[#658774]",
-                        )}
-                    />
-                    <div className="flex items-center gap-2 justify-end">
-                        <Button variant="tertiary-gray" size="sm" onClick={() => { setNote(""); setEnquiryOpen(false); }}>
-                            Cancel
-                        </Button>
-                        <Button variant="primary" size="sm" onClick={handleLogEnquiry}>
-                            Log enquiry
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Open tasks */}
+            {/* Open tasks table */}
             <div className="flex flex-col gap-3">
                 <p className="text-[14px] font-semibold text-[#344054]">
                     Open {open.length > 0 && <span className="text-[#667085] font-normal">({open.length})</span>}
@@ -181,95 +149,176 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                         </p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-3">
-                        {open.map(task => (
-                            <div
-                                key={task.id}
-                                className="flex flex-col gap-3 p-4 rounded-[12px] border border-[#e4e7ec] bg-white"
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-[14px] font-medium text-[#101828] leading-[20px]">
-                                            {task.reason}
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-1 text-[12px] text-[#667085] flex-wrap">
-                                            <span>{TRIGGER_LABEL[task.triggerKind]}</span>
-                                            <span className="text-[#d0d5dd]">·</span>
-                                            <span>{formatAge(task.createdAt)}</span>
-                                            <span className="text-[#d0d5dd]">·</span>
-                                            <span>{assigneeLabel(task.assigneeId)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <Button
-                                        variant="primary"
-                                        size="sm"
-                                        leftIcon={<Check className="w-4 h-4" />}
-                                        onClick={() => handleClose(task, "reached")}
-                                    >
-                                        Reached
-                                    </Button>
-                                    <Button
-                                        variant="secondary-gray"
-                                        size="sm"
-                                        leftIcon={<ClockRefresh className="w-4 h-4" />}
-                                        onClick={() => handleClose(task, "follow_up")}
-                                    >
-                                        Follow-up
-                                    </Button>
-                                    <Button
-                                        variant="secondary-gray"
-                                        size="sm"
-                                        leftIcon={<XClose className="w-4 h-4" />}
-                                        onClick={() => handleClose(task, "not_interested")}
-                                        className="text-[#b42318]"
-                                    >
-                                        Not interested
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="rounded-[12px] border border-[#e4e7ec] overflow-hidden bg-white">
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead className="bg-[#f9fafb]">
+                                    <tr>
+                                        <th className={cn(TH, "min-w-[280px]")}>Reason</th>
+                                        <th className={cn(TH, "w-[180px]")}>Trigger</th>
+                                        <th className={cn(TH, "w-[160px]")}>Assigned to</th>
+                                        <th className={cn(TH, "w-[140px]")}>Created</th>
+                                        <th className={cn(TH, "w-[280px]")}>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {open.map(task => (
+                                        <tr key={task.id} className="align-middle">
+                                            <td className={cn(TD, "text-[14px] font-medium text-[#101828]")}>
+                                                {task.reason}
+                                            </td>
+                                            <td className={cn(TD, "whitespace-nowrap")}>
+                                                {TRIGGER_LABEL[task.triggerKind]}
+                                            </td>
+                                            <td className={cn(TD, "whitespace-nowrap")}>
+                                                {assigneeLabel(task.assigneeId)}
+                                            </td>
+                                            <td className={cn(TD, "whitespace-nowrap text-[#667085]")}>
+                                                {formatAge(task.createdAt)}
+                                            </td>
+                                            <td className={cn(TD)}>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <Button
+                                                        variant="primary"
+                                                        size="sm"
+                                                        leftIcon={<Check className="w-4 h-4" />}
+                                                        onClick={() => handleClose(task, "reached")}
+                                                    >
+                                                        Reached
+                                                    </Button>
+                                                    <Button
+                                                        variant="secondary-gray"
+                                                        size="sm"
+                                                        leftIcon={<ClockRefresh className="w-4 h-4" />}
+                                                        onClick={() => handleClose(task, "follow_up")}
+                                                    >
+                                                        Follow-up
+                                                    </Button>
+                                                    <Button
+                                                        variant="secondary-gray"
+                                                        size="sm"
+                                                        leftIcon={<XClose className="w-4 h-4" />}
+                                                        onClick={() => handleClose(task, "not_interested")}
+                                                        className="text-[#b42318]"
+                                                    >
+                                                        Not interested
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 )}
             </div>
 
-            {/* Activity log — closed tasks, most-recent-first. */}
-            {closed.length > 0 && (
-                <div className="flex flex-col gap-3">
-                    <p className="text-[14px] font-semibold text-[#344054]">Activity</p>
-                    <div className="flex flex-col gap-2">
-                        {closed.map(task => (
-                            <div
-                                key={task.id}
-                                className="flex items-start gap-3 py-2 px-3 rounded-md bg-[#f9fafb]"
-                            >
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[13px] text-[#344054] leading-[18px]">{task.reason}</p>
-                                    <div className="flex items-center gap-2 mt-0.5 text-[12px] text-[#667085] flex-wrap">
-                                        <span>{TRIGGER_LABEL[task.triggerKind]}</span>
-                                        <span className="text-[#d0d5dd]">·</span>
-                                        <span>
-                                            Closed {task.closedAt ? formatAge(task.closedAt) : ""}
-                                        </span>
-                                        <span className="text-[#d0d5dd]">·</span>
-                                        <span
-                                            className={cn(
-                                                "font-medium",
-                                                task.outcome === "reached" && "text-[#067647]",
-                                                task.outcome === "follow_up" && "text-[#b54708]",
-                                                task.outcome === "not_interested" && "text-[#b42318]",
-                                            )}
-                                        >
-                                            {task.outcome ? OUTCOME_LABEL[task.outcome] : "Closed"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+            {/* Activity log table — closed tasks, most-recent-first. */}
+            <div className="flex flex-col gap-3">
+                <p className="text-[14px] font-semibold text-[#344054]">
+                    Activity {closed.length > 0 && <span className="text-[#667085] font-normal">({closed.length})</span>}
+                </p>
+                {closed.length === 0 ? (
+                    <div className="rounded-[12px] border border-dashed border-[#e4e7ec] p-6 text-center">
+                        <p className="text-[13px] text-[#667085]">No closed tasks yet — outcomes will appear here.</p>
+                    </div>
+                ) : (
+                    <div className="rounded-[12px] border border-[#e4e7ec] overflow-hidden bg-white">
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead className="bg-[#f9fafb]">
+                                    <tr>
+                                        <th className={cn(TH, "min-w-[280px]")}>Reason</th>
+                                        <th className={cn(TH, "w-[180px]")}>Trigger</th>
+                                        <th className={cn(TH, "w-[160px]")}>Outcome</th>
+                                        <th className={cn(TH, "w-[140px]")}>Closed</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {closed.map(task => (
+                                        <tr key={task.id} className="align-middle">
+                                            <td className={cn(TD, "text-[14px] text-[#344054]")}>
+                                                {task.reason}
+                                            </td>
+                                            <td className={cn(TD, "whitespace-nowrap")}>
+                                                {TRIGGER_LABEL[task.triggerKind]}
+                                            </td>
+                                            <td className={cn(TD, "whitespace-nowrap")}>
+                                                <span
+                                                    className={cn(
+                                                        "font-medium",
+                                                        task.outcome === "reached" && "text-[#067647]",
+                                                        task.outcome === "follow_up" && "text-[#b54708]",
+                                                        task.outcome === "not_interested" && "text-[#b42318]",
+                                                    )}
+                                                >
+                                                    {task.outcome ? OUTCOME_LABEL[task.outcome] : "Closed"}
+                                                </span>
+                                            </td>
+                                            <td className={cn(TD, "whitespace-nowrap text-[#667085]")}>
+                                                {task.closedAt ? formatAge(task.closedAt) : "—"}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Log-enquiry side panel — same 480px right-slide chrome as
+                the POS "Add new customer" panel + every other filter side
+                panel on the app. Backdrop click / Cancel / Log enquiry all
+                dismiss; only "Log enquiry" writes. */}
+            <SlidePanel open={enquiryOpen} onClose={() => setEnquiryOpen(false)} width={480}>
+                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Log enquiry</p>
+                    <button
+                        type="button"
+                        onClick={() => setEnquiryOpen(false)}
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        aria-label="Close"
+                    >
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+                    <div className="flex flex-col gap-1">
+                        <p className="text-[14px] text-[#667085]">Customer</p>
+                        <p className="text-[16px] font-medium text-[#101828]">{name}</p>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[14px] font-medium text-[#344054]">
+                            What did they ask about?
+                        </label>
+                        <textarea
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Optional note — e.g. asked about the pilates class Wednesday evenings."
+                            rows={5}
+                            className={cn(
+                                "w-full resize-none rounded-[8px] border-1 border-[#d0d5dd] px-[14px] py-2.5",
+                                "text-[16px] text-[#101828] placeholder:text-[#667085] bg-white",
+                                "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all",
+                                "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                            )}
+                        />
+                        <p className="text-[13px] text-[#667085]">
+                            The note becomes the task&apos;s reason line. Leave blank to log a generic enquiry.
+                        </p>
                     </div>
                 </div>
-            )}
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                    <Button variant="secondary-gray" size="md" onClick={() => setEnquiryOpen(false)}>
+                        Cancel
+                    </Button>
+                    <Button variant="primary" size="md" onClick={handleLogEnquiry}>
+                        Log enquiry
+                    </Button>
+                </div>
+            </SlidePanel>
         </div>
     );
 }
