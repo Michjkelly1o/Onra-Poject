@@ -8,13 +8,13 @@
 // via ask_questions BEFORE the model calls `export_report`) drives:
 //   • the filename extension shown in the label
 //   • the badge colour + text
-//   • the Content-Type + file bytes on the server side
+//   • the download path — CSV / XLSX stream from /api/ai-agent/export as
+//     attachments; PDF renders client-side via jspdf + jspdf-autotable so
+//     the same card body works for every format the user picked.
 //
-// PDF is not yet available; the tool description tells the model to
-// steer the user to CSV or XLSX. The renderer still handles a
-// `format="pdf"` server response defensively (falls back to the
-// legacy jspdf client-side path) so nothing hard-crashes if the
-// model ships a PDF before the API supports one.
+// Client 2026-07-24 — PDF is a first-class export format alongside CSV
+// and XLSX. The earlier "PDF isn't available yet" restriction has been
+// lifted now that jspdf ships in the same file bubble.
 
 "use client";
 

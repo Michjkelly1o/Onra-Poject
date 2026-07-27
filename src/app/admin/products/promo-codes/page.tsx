@@ -22,6 +22,7 @@ import {
     Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Check, Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -433,11 +434,11 @@ export default function PromoListPage() {
     const promoCodes = useAppStore(s => s.promoCodes);
     const branches = useAppStore(s => s.branches);
 
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = usePersistedListState("promoCodes:search", "");
     // "" = "All locations" — promo codes default to the aggregate view
     // across every active branch.
-    const [locationId, setLocationId] = useState<string>("");
-    const [filter, setFilter] = useState<PromoFilter>(EMPTY_FILTER);
+    const [locationId, setLocationId] = usePersistedListState<string>("promoCodes:locationId", "");
+    const [filter, setFilter] = usePersistedListState<PromoFilter>("promoCodes:filter", EMPTY_FILTER);
     const [filterOpen, setFilterOpen] = useState(false);
 
     const hasActiveFilter = filter.statuses.length > 0 || !!filter.startDate || !!filter.endDate;

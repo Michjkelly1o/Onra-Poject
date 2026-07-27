@@ -45,7 +45,7 @@ import {
     useAppStore,
     permissionSectionsFor,
     type Staff, type StaffStatus, type Role, type RoleType,
-    type PermissionCell, type PermissionSectionSpec, type Branch,
+    type PermissionCell, type PermissionSectionSpec, type Branch, type PayRate, type BusinessHours,
 } from "@/lib/store";
 
 // ─── Status badges ─────────────────────────────────────────────────────────
@@ -492,6 +492,19 @@ function fmtShift12(t: string): string {
     return `${String(hh).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${ampm}`;
 }
 
+/** Working-hours fallback for staff with no assigned shift (client 2026-07-24):
+ *  the branch's operating window — earliest open → latest close across the
+ *  branch's open days — so the Working hours field is never empty. Returns null
+ *  when the branch has no hours on file. */
+function branchOperatingHoursLabel(businessHours: BusinessHours[], branchId: string | null): string | null {
+    if (!branchId) return null;
+    const openRows = businessHours.filter(h => h.branch_id === branchId && !h.is_closed);
+    if (openRows.length === 0) return null;
+    const open  = openRows.reduce((a, r) => (r.open_time  < a ? r.open_time  : a), openRows[0].open_time);
+    const close = openRows.reduce((a, r) => (r.close_time > a ? r.close_time : a), openRows[0].close_time);
+    return `Branch hours (${fmtShift12(open)} – ${fmtShift12(close)})`;
+}
+
 function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
@@ -536,6 +549,7 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
     const shifts        = useAppStore(s => s.shifts);
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
     const classCategories = useAppStore(s => s.classCategories);
+    const businessHours = useAppStore(s => s.businessHours);
 
     // Resolve shift + categories for the Personal information section.
     // Audit fix 2026-07-22 — blend M2M assignments with the legacy
@@ -642,12 +656,12 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
                         value={assignedCategoryNames.length > 0 ? assignedCategoryNames.join(", ") : "—"} />
                     <InfoField label="Working days"
                         value={combinedWorkingDays ? <WorkingDaysStrip workingDays={combinedWorkingDays} /> : "—"} />
-                    <InfoField label="Shift hours"
+                    <InfoField label="Working hours"
                         value={assignedShifts.length > 0
                             ? assignedShifts
                                   .map(sh => `${sh.name} (${fmtShiftTime(sh.start_time)} – ${fmtShiftTime(sh.end_time)})`)
                                   .join(", ")
-                            : "—"} />
+                            : (branchOperatingHoursLabel(businessHours, staff.branchId) ?? "—")} />
                 </div>
             </div>
 
@@ -784,12 +798,12 @@ function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
                     <InfoField label="Phone"       value={staff.phone} />
                     <InfoField label="Working days"
                         value={showWorkingDays ? <WorkingDaysStrip workingDays={workingDays} /> : "—"} />
-                    <InfoField label="Shift hours"
+                    <InfoField label="Working hours"
                         value={assignedShifts.length > 0
                             ? assignedShifts
                                   .map(sh => `${sh.name} (${fmtShift12(sh.start_time)} – ${fmtShift12(sh.end_time)})`)
                                   .join(", ")
-                            : "—"} />
+                            : (branchOperatingHoursLabel(businessHours, staff.branchId) ?? "—")} />
                 </div>
             </div>
         </div>
@@ -803,7 +817,41 @@ export interface StaffDetailPageProps {
     returnTo?: string;
 }
 
-type TabId = "overview" | "permissions";
+// ─── Pay rate tab (instructor-only) — client 2026-07-24 ─────────────────────
+// Shows the instructor's multi-track pay configuration. Only enabled tracks
+// render, resolved to pay-rate names. Mirrors the sidebar Metadata styling.
+function PayRateTab({ staff, payRates }: { staff: Staff; payRates: PayRate[] }) {
+    const cfg = staff.payConfig;
+    const nameOf = (id?: string) => (id ? payRates.find(p => p.id === id)?.name : undefined) ?? "—";
+    const rows: { label: string; value: string }[] = [];
+    if (cfg) {
+        if (cfg.default.enabled) rows.push({ label: "Default pay rate", value: nameOf(cfg.default.payRateId) });
+        if (cfg.perClass.enabled) {
+            rows.push({ label: "Pay per class", value: nameOf(cfg.perClass.payRateId) });
+            rows.push({ label: "Substitute pay rate", value: nameOf(cfg.perClass.substitutePayRateId) });
+            rows.push({ label: "Substitutions amount", value: cfg.perClass.substitutionAmountAed != null ? `AED ${cfg.perClass.substitutionAmountAed}` : "—" });
+        }
+        if (cfg.perAppointment.enabled) rows.push({ label: "Pay per appointment", value: nameOf(cfg.perAppointment.payRateId) });
+    } else {
+        // Legacy row with no payConfig — fall back to the single default rate.
+        rows.push({ label: "Default pay rate", value: nameOf(staff.payRateId) });
+    }
+    return (
+        <div className="px-6 pb-6">
+            <p className="text-[16px] font-semibold text-[#101828] leading-[24px] mb-5">Pay rate</p>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6 max-w-[640px]">
+                {rows.map(r => (
+                    <div key={r.label} className="flex flex-col gap-1">
+                        <p className="text-[14px] text-[#667085] leading-[20px]">{r.label}</p>
+                        <p className="text-[16px] font-medium text-[#101828] leading-[24px]">{r.value}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+type TabId = "overview" | "permissions" | "payrate";
 
 export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: StaffDetailPageProps) {
     const router = useRouter();
@@ -943,6 +991,8 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                                     tabs={[
                                         { key: "overview", label: "Overview" },
                                         { key: "permissions", label: "Permissions" },
+                                        // Pay rate tab — instructor-only (client 2026-07-24).
+                                        ...(isInstructor ? [{ key: "payrate", label: "Pay rate" }] : []),
                                     ]}
                                     activeKey={tab}
                                     onChange={(k) => setTab(k as typeof tab)}
@@ -953,6 +1003,8 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                                     <div className="px-6 pb-6 relative" style={{ minHeight: 320 }}>
                                         <EmptyState title="Role missing" subtitle="The role assigned to this staff member is no longer available." />
                                     </div>
+                                ) : tab === "payrate" && isInstructor ? (
+                                    <PayRateTab staff={staff} payRates={payRates} />
                                 ) : tab === "overview" && isInstructor ? (
                                     <InstructorOverviewTab staff={staff} />
                                 ) : tab === "overview" ? (

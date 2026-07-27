@@ -31,7 +31,7 @@
 //   • Date range          — imported_at bounds
 // Toolbar search matches file_name.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     MarkerPin01, Plus, XClose, Database02,
@@ -46,6 +46,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
@@ -269,16 +270,21 @@ export default function MigrationsImportsPage() {
     const importHistory = useAppStore(s => s.importHistory);
     const branches = useAppStore(s => s.branches);
 
-    const [location, setLocation] = useState<string>("");
-    const [search, setSearch] = useState<string>("");
-    const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);
+    const [location, setLocation] = usePersistedListState<string>("migrationsImports:location", "");
+    const [search, setSearch] = usePersistedListState<string>("migrationsImports:search", "");
+    const [applied, setApplied] = usePersistedListState<FilterState>("migrationsImports:applied", EMPTY_FILTER);
     const [filterOpen, setFilterOpen] = useState(false);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [page, setPage] = usePersistedListState("migrationsImports:page", 1);
+    const [pageSize, setPageSize] = usePersistedListState("migrationsImports:pageSize", 10);
 
     // Reset paging when filters/search change so the admin isn't stranded
-    // on an out-of-range page after narrowing the list.
-    useEffect(() => { setPage(1); }, [location, search, applied]);
+    // on an out-of-range page after narrowing the list — but NOT on the
+    // initial mount, so a page restored from the cross-nav cache survives.
+    const didMountRef = useRef(false);
+    useEffect(() => {
+        if (!didMountRef.current) { didMountRef.current = true; return; }
+        setPage(1);
+    }, [location, search, applied]);
 
     // Location dropdown options — active branches only, matches the
     // dashboard convention so the two pickers feel identical.

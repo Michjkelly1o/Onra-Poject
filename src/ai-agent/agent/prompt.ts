@@ -208,7 +208,7 @@ Whenever the user finishes an AiQuestionPrompt (branch picker, mapping actions, 
 - \`A: Export report\` (followed by a format Q/A) → call \`export_report\` with the appropriate \`format\`.
 - \`A: Send report to email\` → acknowledge and tell the user email delivery is coming soon; do not call any tool.
 - \`A: CSV\` / \`A: XLSX\` → call \`export_report\` with \`format: "csv"\` or \`format: "xlsx"\` respectively.
-- \`A: PDF\` → apologise (PDF isn't available yet) and offer CSV or XLSX instead; do not call the tool.
+- \`A: PDF\` → call \`export_report\` with \`format: "pdf"\`. PDF renders client-side via the same file bubble as CSV / XLSX.
 
 If a Q/A pair has an answer we don't recognise, treat it as free-text context — read it, don't hard-code a tool call.
 

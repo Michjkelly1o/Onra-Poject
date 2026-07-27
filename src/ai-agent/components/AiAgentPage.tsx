@@ -153,6 +153,14 @@ export function AiAgentPage() {
         if (raw.length < 1 || raw[0] !== "/" || raw.startsWith("//")) {
             return "/admin/dashboard";
         }
+        // Client 2026-07-24 audit fix — also reject self-referential
+        // `/ai-agent` (or `/ai-agent?…`, `/ai-agent/…`). A hand-crafted
+        // URL with returnTo=/ai-agent would send the close button to
+        // itself, wasting a navigation and never actually leaving.
+        const path = raw.split(/[?#]/)[0];
+        if (path === "/ai-agent" || path.startsWith("/ai-agent/")) {
+            return "/admin/dashboard";
+        }
         return raw;
     }, [searchParams]);
 

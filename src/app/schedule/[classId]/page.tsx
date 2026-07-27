@@ -2682,7 +2682,10 @@ export default function ClassDetailPage() {
                                                                                         ? <NoShowBadge />
                                                                                         : isOngoing
                                                                                             ? <PresentButton onClick={() => handleMarkPresent(b)} />
-                                                                                            : null)
+                                                                                            // Completed + never marked → the session is over,
+                                                                                            // so an unmarked customer reads as a No-show. Every
+                                                                                            // past booking always carries a status (client 2026-07-27).
+                                                                                            : <NoShowBadge />)
                                                                                 : <BookingStatusBadge kind={cancellationBadgeKind({
                                                                                     cancelledAt: b.cancelledAt,
                                                                                     classDateISO: ci.dateISO,

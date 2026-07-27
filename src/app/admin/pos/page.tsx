@@ -35,6 +35,7 @@ import {
     CreditCard02, Package, Gift01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { SelectInput } from "@/components/ui/select-input";
@@ -226,17 +227,17 @@ function POSInner() {
     const roundingMode = useAppStore(s => s.taxSettings.roundingMode);
 
     // UI state
-    const [activeTab, setActiveTab] = useState<TabId>("all");
-    const [search, setSearch] = useState("");
+    const [activeTab, setActiveTab] = usePersistedListState<TabId>("posCatalog:activeTab", "all");
+    const [search, setSearch] = usePersistedListState("posCatalog:search", "");
     // "" = "All locations" — POS catalog opens on the union view; a
     // specific branch can be picked when the sale is branch-scoped.
-    const [branchId, setBranchId] = useState<string>("");
+    const [branchId, setBranchId] = usePersistedListState<string>("posCatalog:branchId", "");
     // Cart starts VISIBLE by default. Operators can still collapse it via
     // the `CartToggleButton` (the chevron rail to the left of the cart)
     // when they want a wider catalog view.
     const [cartOpen, setCartOpen] = useState(true);
     const [filterOpen, setFilterOpen] = useState(false);
-    const [filter, setFilter] = useState<FilterState>(EMPTY_FILTER);
+    const [filter, setFilter] = usePersistedListState<FilterState>("posCatalog:filter", EMPTY_FILTER);
     const hasActiveFilter = filter.creditsMin != null || filter.creditsMax != null
         || filter.priceMin != null || filter.priceMax != null;
 

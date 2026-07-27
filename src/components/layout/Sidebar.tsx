@@ -624,15 +624,21 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
 // any `/ai-agent*` route so opening the panel highlights the chip.
 function SidebarAiAgentChip({ slim }: { slim: boolean }) {
     const pathname = usePathname() ?? "";
-    const isActive = pathname === "/ai-agent" || pathname.startsWith("/ai-agent/");
+    // Client 2026-07-24 audit fix — hide the chip while the user is
+    // already on /ai-agent. Mirrors FloatingAiButton's own hide-on-
+    // /ai-agent rule; without this the chip renders active but its
+    // href falls back to a self-referential /ai-agent (no returnTo)
+    // and a click mid-conversation reads as a no-op.
+    if (pathname === "/ai-agent" || pathname.startsWith("/ai-agent/")) {
+        return null;
+    }
     // Same returnTo pattern FloatingAiButton uses — the AI Agent's X
     // button closes back to where the admin was. usePathname() gives a
     // clean same-origin `/…` string, so the returnTo travelling through
     // the URL is trusted; AiAgentPage.handleClose still validates it
     // defensively before pushing.
-    const href = pathname && pathname !== "/ai-agent"
-        ? `/ai-agent?returnTo=${encodeURIComponent(pathname)}`
-        : "/ai-agent";
+    const href = `/ai-agent?returnTo=${encodeURIComponent(pathname)}`;
+    const isActive = false;
     return (
         <SlimNavItem label="AI Agent" enabled={slim}>
             <Link

@@ -52,6 +52,7 @@ import {
     Pencil01, Trash04, Check, XClose, SlashCircle01, RefreshCcw01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Button } from "@/components/ui/button";
 import { Sliders } from "@/components/icons/Sliders";
 import { useAppStore } from "@/lib/store";
@@ -100,11 +101,11 @@ export default function BusinessLocationsPage() {
     // / timezone changes propagate to this landing card on the same render.
     const businessProfile = useAppStore(s => s.businessProfile);
 
-    const [searchQuery, setSearchQuery]   = useState("");
+    const [searchQuery, setSearchQuery]   = usePersistedListState("businessLocations:searchQuery", "");
     // Single-select status filter — same UX as the Gift Cards module. `null`
     // means "no filter applied" (show every status). Clicking the same
     // option twice clears the filter.
-    const [statusFilter, setStatusFilter] = useState<StatusFilter | null>(null);
+    const [statusFilter, setStatusFilter] = usePersistedListState<StatusFilter | null>("businessLocations:statusFilter", null);
     const [expandedBranches, setExpandedBranches] = useState<Set<string>>(
         new Set(branches.filter(b => b.is_main).map(b => b.id)),
     );

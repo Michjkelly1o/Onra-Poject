@@ -31,7 +31,7 @@ import { Toast } from "@/components/ui/Toast";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import {
     useAppStore,
-    type Staff, type StaffStatus, type Shift,
+    type Staff, type StaffStatus, type Shift, type StaffPayConfig,
 } from "@/lib/store";
 import { isValidEmail } from "@/lib/validation";
 import { FieldLabel } from "@/components/patterns/FieldLabel";
@@ -52,7 +52,12 @@ interface FormValue {
      *  branch-agnostic, so branch lives on the person, not the role. Empty
      *  string = not yet picked (or "All locations" for an Owner-type role). */
     branchId: string;
+    /** Canonical default-pay-rate id — kept mirrored to
+     *  `payConfig.default.payRateId` so the preview + save path stay in step. */
     payRateId: string;
+    /** Multi-track pay configuration (step 2). Instructors get all three
+     *  tracks; other roles use Default only (always enabled). */
+    payConfig: StaffPayConfig;
     // ── Instructor-only (Figma 7471:170327) ─────────────────────────────────
     /** Short introduction paragraph — drives the customer-facing instructor
      *  card + the Personal information section on the staff detail page. */
@@ -76,6 +81,11 @@ function emptyForm(): FormValue {
         phone: "", phoneCountry: PHONE_COUNTRIES[0],
         imageUrl: undefined,
         roleId: "", branchId: "", payRateId: "",
+        payConfig: {
+            default: { enabled: true, payRateId: "" },
+            perClass: { enabled: false },
+            perAppointment: { enabled: false },
+        },
         shortIntro: "", workingExperienceYears: "",
         shiftIds: [], categoryIds: [],
     };
@@ -94,6 +104,11 @@ function formFromStaff(s: Staff, assignedShiftIds: string[]): FormValue {
         roleId: s.roleId,
         branchId: s.branchId ?? "",
         payRateId: s.payRateId ?? "",
+        payConfig: s.payConfig ?? {
+            default: { enabled: true, payRateId: s.payRateId ?? "" },
+            perClass: { enabled: false },
+            perAppointment: { enabled: false },
+        },
         shortIntro: s.shortIntro ?? "",
         workingExperienceYears: s.workingExperienceYears != null ? String(s.workingExperienceYears) : "",
         shiftIds: assignedShiftIds,
@@ -570,17 +585,66 @@ function StaffPreview({ form, roleName, payRateName, branchLabel, joinedLabel }:
 
 // ─── Validation ────────────────────────────────────────────────────────────
 
-function isFormValid(form: FormValue): boolean {
+function isFormValid(form: FormValue, requireTempPassword = true): boolean {
     return !!form.firstName.trim()
         && !!form.lastName.trim()
         // Centralized email rule — same `isValidEmail` the admin Change
         // Email modal + Customer form + Instructor Edit profile all use.
         && isValidEmail(form.email)
-        && !!form.tempPassword.trim()
+        // Temp password is set at creation and never re-entered on edit (the
+        // edit save doesn't overwrite it), so it's only required in create mode.
+        && (!requireTempPassword || !!form.tempPassword.trim())
         && !!form.phone.trim()
         && !!form.roleId;
     // payRateId is required only when role.type === "instructor" — handled
     // dynamically at submit time below.
+}
+
+// ─── Pay-rate step primitives (client 2026-07-24) ───────────────────────────
+// Mirror the PayRateFormPage Toggle / ToggleCard styling so the new Pay rate
+// step reads identically to the rest of the pay-rate module.
+function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n: boolean) => void; disabled?: boolean }) {
+    return (
+        <button type="button" role="switch" aria-checked={value} disabled={disabled}
+            onClick={() => !disabled && onChange(!value)}
+            className={cn(
+                "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
+                value ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                disabled && "opacity-60 cursor-not-allowed",
+            )}>
+            <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
+        </button>
+    );
+}
+
+function PayConfigCard({ title, subtitle, enabled, onToggle, toggleDisabled, children }: {
+    title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; toggleDisabled?: boolean; children?: React.ReactNode;
+}) {
+    return (
+        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]")}>
+            <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
+                    <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                </div>
+                <PayToggle value={enabled} onChange={onToggle} disabled={toggleDisabled} />
+            </div>
+            {enabled && children && <div className="flex flex-col gap-4">{children}</div>}
+        </div>
+    );
+}
+
+/** AED-prefixed amount input (matches PayRateFormPage's AedInput chrome). */
+function PayAedInput({ value, onChange, placeholder = "Enter amount" }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+    return (
+        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all overflow-hidden">
+            <span className="flex items-center px-[14px] text-[16px] text-[#475467] leading-[24px] border-r border-[#d0d5dd] shrink-0 select-none">AED</span>
+            <input type="text" inputMode="numeric" value={value}
+                onChange={e => onChange(e.target.value.replace(/[^\d.]/g, ""))}
+                placeholder={placeholder}
+                className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent" />
+        </div>
+    );
 }
 
 // ─── Top-level component ───────────────────────────────────────────────────
@@ -648,6 +712,26 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
 
     function set(patch: Partial<FormValue>) { setForm(prev => ({ ...prev, ...patch })); }
 
+    // Two-step wizard: step 1 = User details, step 2 = Pay rate (client
+    // 2026-07-24). `step` resets to 1 whenever the form re-seeds (edit load).
+    const [step, setStep] = useState<1 | 2>(1);
+
+    /** Patch one pay-config track. The Default track also mirrors its rate onto
+     *  the canonical `payRateId` so the preview + save path stay in sync. */
+    function setPayTrack<K extends keyof StaffPayConfig>(key: K, patch: Partial<StaffPayConfig[K]>) {
+        setForm(prev => {
+            const nextTrack = { ...prev.payConfig[key], ...patch } as StaffPayConfig[K];
+            const nextConfig = { ...prev.payConfig, [key]: nextTrack };
+            return {
+                ...prev,
+                payConfig: nextConfig,
+                payRateId: key === "default"
+                    ? ((nextTrack as StaffPayConfig["default"]).payRateId ?? "")
+                    : prev.payRateId,
+            };
+        });
+    }
+
     // Options: only active roles for assignment.
     const roleOptions = useMemo(
         () => allRoles
@@ -702,12 +786,30 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             : "Branch location";
 
     function handleSave() {
-        if (!isFormValid(form)) return;
-        if (isInstructor && !form.payRateId) {
-            showToast("Pay rate required", "Instructors must be assigned a default pay rate.", "error");
+        if (!isFormValid(form, mode === "create")) return;
+        if (!selectedRole) return;
+        const isInstr = selectedRole.type === "instructor";
+        // Non-instructor roles only ever carry the Default track (always on).
+        const effectivePayConfig: StaffPayConfig = isInstr
+            ? form.payConfig
+            : {
+                default: { enabled: true, payRateId: form.payConfig.default.payRateId },
+                perClass: { enabled: false },
+                perAppointment: { enabled: false },
+            };
+        const defaultRateId = effectivePayConfig.default.payRateId || undefined;
+        // Every enabled track needs a rate; ≥1 track must be enabled.
+        const enabled = [
+            effectivePayConfig.default,
+            ...(isInstr ? [effectivePayConfig.perClass, effectivePayConfig.perAppointment] : []),
+        ].filter(t => t.enabled);
+        // ≥1 track enabled always; instructors additionally need a rate on each
+        // enabled track (non-instructor Default rate stays optional).
+        if (enabled.length === 0 || (isInstr && enabled.some(t => !t.payRateId))) {
+            showToast("Pay rate required", "Enable at least one pay rate configuration and pick a rate for each.", "error");
+            setStep(2);
             return;
         }
-        if (!selectedRole) return;
 
         const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
         const initials = initialsOf(form.firstName, form.lastName);
@@ -730,7 +832,8 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                 branchId: isOwnerRole ? null : form.branchId,
                 status: "pending" as StaffStatus,
                 tempPassword: form.tempPassword,
-                payRateId: form.payRateId || undefined,
+                payRateId: defaultRateId,
+                payConfig: effectivePayConfig,
                 joinedDate,
                 // Assign shift — ALL roles now. The first selected shift is
                 // the legacy primary (mirrored into the M2M table by addStaff);
@@ -769,7 +872,8 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             // Branch is editable here — roles are branch-agnostic, so moving a
             // person between branches is a staff-record edit (Owner = null).
             branchId: isOwnerRole ? null : form.branchId,
-            payRateId: form.payRateId || undefined,
+            payRateId: defaultRateId,
+            payConfig: effectivePayConfig,
             // Assign shift — ALL roles. Primary = first selected; the M2M
             // reconcile below adds the rest and drops any deselected shift.
             shiftId: form.shiftIds[0] || undefined,
@@ -798,7 +902,34 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
 
     // A branch must be picked unless the role is Owner (all-locations).
     const branchValid = isOwnerRole || !!form.branchId;
-    const formValid = isFormValid(form) && (!isInstructor || !!form.payRateId) && branchValid;
+    // Step 1 (User details) validity — everything except pay rate. Temp
+    // password is only required in create mode (never overwritten on edit).
+    const step1Valid = isFormValid(form, mode === "create") && branchValid;
+
+    // Step 2 (Pay rate) validity. The enabled tracks depend on role: an
+    // instructor may use all three, every other role only Default. At least
+    // one track must stay enabled, and every enabled track needs a rate.
+    const pc = form.payConfig;
+    const enabledTracks = [
+        pc.default.enabled ? pc.default : null,
+        isInstructor && pc.perClass.enabled ? pc.perClass : null,
+        isInstructor && pc.perAppointment.enabled ? pc.perAppointment : null,
+    ].filter(Boolean) as { enabled: boolean; payRateId?: string }[];
+    const enabledCount = enabledTracks.length;
+    // Every enabled track needs a rate — but only for instructors. A
+    // non-instructor's Default rate stays optional (pre-existing contract), so
+    // an Operator / Front Desk can be saved without picking a rate.
+    const step2Valid = enabledCount >= 1 && (!isInstructor || enabledTracks.every(t => !!t.payRateId));
+    const formValid = step1Valid && step2Valid;
+
+    /** Toggle a track on/off, enforcing "at least one enabled". */
+    function toggleTrack(key: keyof StaffPayConfig, next: boolean) {
+        if (!next && enabledCount <= 1 && pc[key].enabled) {
+            showToast("At least one required", "Keep at least one pay rate configuration enabled.", "error");
+            return;
+        }
+        setPayTrack(key, { enabled: next } as never);
+    }
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -817,20 +948,58 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             </div>
 
             <div className="flex-1 min-h-0 px-6 pb-8 flex gap-8 items-start overflow-hidden">
-                {/* Left progress (single step) */}
-                <div className="w-[260px] shrink-0">
-                    <div className="flex items-center gap-4 h-[52px] p-4 rounded-[12px] bg-[#f5fffa]">
-                        <div className="w-6 h-6 rounded-full bg-[#658774] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c] flex items-center justify-center text-[14px] font-medium">1</div>
-                        <p className="flex-1 text-[14px] font-semibold text-[#3b5446] leading-[20px]">Staff details</p>
-                    </div>
+                {/* Left progress — two steps (client 2026-07-24). Step 1 stays
+                    clickable so the admin can jump back; step 2 only after
+                    step-1 fields are valid. */}
+                <div className="w-[260px] shrink-0 flex flex-col gap-1">
+                    {([
+                        { n: 1, label: "User details" },
+                        { n: 2, label: "Pay rate" },
+                    ] as const).map((s, idx, arr) => {
+                        const active = step === s.n;
+                        const complete = step > s.n;
+                        const isLast = idx === arr.length - 1;
+                        const clickable = s.n === 1 || step1Valid;
+                        return (
+                            <button key={s.n} type="button"
+                                onClick={() => { if (clickable) setStep(s.n as 1 | 2); }}
+                                disabled={!clickable}
+                                className={cn(
+                                    "flex items-center gap-4 h-[52px] p-4 rounded-[12px] transition-colors text-left w-full",
+                                    active ? "bg-[#f5fffa]" : "bg-transparent hover:bg-[#f9fafb]",
+                                    !clickable && "opacity-60 cursor-not-allowed",
+                                )}>
+                                {/* Circle + connector line — canonical StepItem pattern
+                                    (matches Product/Role/Service create flows). */}
+                                <div className="relative flex flex-col items-center shrink-0">
+                                    <div className={cn(
+                                        "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
+                                        active
+                                            ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                                            : complete
+                                                ? "bg-[#658774] text-white"
+                                                : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3]",
+                                    )}>{complete ? <Check className="w-3 h-3" /> : s.n}</div>
+                                    {!isLast && (
+                                        <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                                    )}
+                                </div>
+                                <p className={cn(
+                                    "flex-1 text-[14px] leading-[20px]",
+                                    active ? "font-semibold text-[#3b5446]" : complete ? "font-medium text-[#344054]" : "font-medium text-[#667085]",
+                                )}>{s.label}</p>
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Center card */}
                 <div className="flex-1 min-w-0 max-w-[680px] h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
                         <div className="flex flex-col gap-5 w-full">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Staff details</p>
+                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{step === 1 ? "Staff details" : "Pay rate"}</p>
 
+                            {step === 1 && (<>
                             <ImageUpload
                                 value={form.imageUrl}
                                 initials={initialsOf(form.firstName, form.lastName)}
@@ -893,7 +1062,22 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                             placeholder="Select role"
                                             options={roleOptions}
                                             value={form.roleId}
-                                            onChange={v => set({ roleId: v })}
+                                            onChange={v => {
+                                                // Switching to a non-instructor role collapses the pay
+                                                // config to Default-only (always enabled) so the locked
+                                                // Default card can never be left disabled + unrecoverable.
+                                                const nextIsInstructor = allRoles.find(r => r.id === v)?.type === "instructor";
+                                                set(nextIsInstructor
+                                                    ? { roleId: v }
+                                                    : {
+                                                        roleId: v,
+                                                        payConfig: {
+                                                            default: { enabled: true, payRateId: form.payConfig.default.payRateId },
+                                                            perClass: { enabled: false },
+                                                            perAppointment: { enabled: false },
+                                                        },
+                                                    });
+                                            }}
                                             width="w-full"
                                         />
                                     </div>
@@ -981,21 +1165,6 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 <p className="text-[14px] text-[#475467]">A staff member can hold multiple shifts from their own branch. Overlapping shifts can't be selected.</p>
                             </div>
 
-                            {/* Default pay rate — always visible per Figma 6236-395249.
-                                For non-instructor roles it stays optional (the
-                                field can be left empty); instructors get a
-                                validation gate at submit time. */}
-                            <div className="flex flex-col gap-[6px]">
-                                <FieldLabel label="Default pay rate" />
-                                <SelectInput
-                                    placeholder="Select default pay rate"
-                                    options={payRateOptions}
-                                    value={form.payRateId}
-                                    onChange={v => set({ payRateId: v })}
-                                    width="w-full"
-                                />
-                            </div>
-
                             {/* Categories — instructor-only multi-select
                                 dropdown. Drives the cross-module instructor
                                 gating (templates / schedules / services /
@@ -1011,13 +1180,112 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                     <p className="text-[14px] text-[#475467]">Instructors can only be assigned to classes whose category they hold.</p>
                                 </div>
                             )}
+                            </>)}
+
+                            {/* ── Step 2 — Pay rate ─────────────────────────────
+                                Instructors configure up to three tracks; every
+                                other role only the Default track (always on).
+                                At least one track must stay enabled. */}
+                            {step === 2 && (
+                                <div className="flex flex-col gap-4">
+                                    <PayConfigCard
+                                        title="Default pay rate"
+                                        subtitle="Provide a base salary for this staff."
+                                        enabled={form.payConfig.default.enabled}
+                                        onToggle={n => toggleTrack("default", n)}
+                                        toggleDisabled={!isInstructor}
+                                    >
+                                        <div className="flex flex-col gap-[6px]">
+                                            <FieldLabel label="Pay rate" />
+                                            <SelectInput
+                                                placeholder="Select pay rate"
+                                                options={payRateOptions}
+                                                value={form.payConfig.default.payRateId ?? ""}
+                                                onChange={v => setPayTrack("default", { payRateId: v })}
+                                                width="w-full"
+                                            />
+                                        </div>
+                                    </PayConfigCard>
+
+                                    {isInstructor && (
+                                        <PayConfigCard
+                                            title="Pay per class"
+                                            subtitle="Add compensation for every class taught."
+                                            enabled={form.payConfig.perClass.enabled}
+                                            onToggle={n => toggleTrack("perClass", n)}
+                                        >
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="flex flex-col gap-[6px]">
+                                                    <FieldLabel label="Pay rate" />
+                                                    <SelectInput
+                                                        placeholder="Select pay rate"
+                                                        options={payRateOptions}
+                                                        value={form.payConfig.perClass.payRateId ?? ""}
+                                                        onChange={v => setPayTrack("perClass", { payRateId: v })}
+                                                        width="w-full"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col gap-[6px]">
+                                                    <FieldLabel label="Substitute pay rate (optional)" />
+                                                    <SelectInput
+                                                        placeholder="Select pay rate"
+                                                        options={payRateOptions}
+                                                        value={form.payConfig.perClass.substitutePayRateId ?? ""}
+                                                        onChange={v => setPayTrack("perClass", { substitutePayRateId: v })}
+                                                        width="w-full"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-[6px]">
+                                                <FieldLabel label="Substitutions" />
+                                                <PayAedInput
+                                                    value={form.payConfig.perClass.substitutionAmountAed != null ? String(form.payConfig.perClass.substitutionAmountAed) : ""}
+                                                    onChange={v => setPayTrack("perClass", { substitutionAmountAed: v === "" ? undefined : Number(v) })}
+                                                />
+                                                <p className="text-[14px] text-[#475467]">Per class for which the instructor is added as a substitute.</p>
+                                            </div>
+                                        </PayConfigCard>
+                                    )}
+
+                                    {isInstructor && (
+                                        <PayConfigCard
+                                            title="Pay per appointment"
+                                            subtitle="Add compensation for every appointment completed."
+                                            enabled={form.payConfig.perAppointment.enabled}
+                                            onToggle={n => toggleTrack("perAppointment", n)}
+                                        >
+                                            <div className="flex flex-col gap-[6px]">
+                                                <FieldLabel label="Pay rate" />
+                                                <SelectInput
+                                                    placeholder="Select pay rate"
+                                                    options={payRateOptions}
+                                                    value={form.payConfig.perAppointment.payRateId ?? ""}
+                                                    onChange={v => setPayTrack("perAppointment", { payRateId: v })}
+                                                    width="w-full"
+                                                />
+                                            </div>
+                                        </PayConfigCard>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     <div className="shrink-0 px-6 py-4 flex items-center justify-end gap-3">
-                        <Button variant="primary" size="md" disabled={!formValid} onClick={handleSave}>
-                            {mode === "create" ? "Add staff" : "Save changes"}
-                        </Button>
+                        {step === 2 && (
+                            <Button variant="secondary-gray" size="md" onClick={() => setStep(1)}>
+                                Back
+                            </Button>
+                        )}
+                        {step === 1 ? (
+                            <Button variant="primary" size="md" disabled={!step1Valid} onClick={() => setStep(2)}>
+                                Continue
+                            </Button>
+                        ) : (
+                            <Button variant="primary" size="md" disabled={!formValid} onClick={handleSave}>
+                                {mode === "create" ? "Add staff" : "Save changes"}
+                            </Button>
+                        )}
                     </div>
                 </div>
 

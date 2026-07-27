@@ -8,6 +8,7 @@ import {
     Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Check, Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Button } from "@/components/ui/button";
 import { useAppStore, resolveTemplateCoverImage } from "@/lib/store";
 import type { ClassTemplate, TemplateStatus } from "@/lib/store";
@@ -380,9 +381,9 @@ function EmptyStateIllustration() {
 export default function ClassTypesPage() {
     const router = useRouter();
     const { classTemplates } = useAppStore();
-    const [search, setSearch]           = useState("");
+    const [search, setSearch]           = usePersistedListState("classTypes:search", "");
     const [filterOpen, setFilterOpen]   = useState(false);
-    const [applied, setApplied]         = useState<FilterState>({ statuses: [], categories: [] });
+    const [applied, setApplied]         = usePersistedListState<FilterState>("classTypes:applied", { statuses: [], categories: [] });
 
     const hasActiveFilters = applied.statuses.length > 0 || applied.categories.length > 0;
     const isDataEmpty = classTemplates.length === 0;

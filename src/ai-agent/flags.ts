@@ -40,6 +40,12 @@ export const AI_AGENT_MAX_STEPS = 3;
 /** Model id. Pinned so an SDK upgrade doesn't silently swap models. */
 export const AI_AGENT_MODEL_ID = "claude-sonnet-5";
 
+/** Max upload size, single source of truth for /api/ai-agent/upload and the
+ *  ChatThread client-side pre-flight. Client 2026-07-24 audit — the two
+ *  used to disagree (client 5 MB, server 2 MB) so a 3 MB CSV passed the
+ *  client and 413'd on POST. */
+export const AI_AGENT_MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
 // ─── UI visibility gate ──────────────────────────────────────────────────────
 //
 // Independent of `isAiAgentEnabled(role)`. The role gate says "is this user
