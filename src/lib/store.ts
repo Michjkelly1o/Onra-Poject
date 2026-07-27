@@ -4179,6 +4179,41 @@ export interface AppState {
      *  Returns false when the task id doesn't exist or is already closed. */
     closeFollowUpTask: (taskId: string, outcome: FollowUpTaskOutcome) => boolean;
 
+    // ── Customer & Lead Management v83 — Settings config (client 2026-07-24) ─
+    /** Append a new lead source. Returns the new id; unique across labels
+     *  (case-insensitive) — a duplicate label is treated as no-op and the
+     *  existing row's id comes back. */
+    addLeadSource: (label: string) => string;
+    /** Rename an existing lead source. System-seeded rows (locked) can
+     *  still be renamed — only delete is blocked. Returns false when the
+     *  id isn't found or the label collides with another source. */
+    renameLeadSource: (id: string, label: string) => boolean;
+    /** Delete a lead source. Blocked when the source is locked OR any
+     *  customer references it via `sourceId`. Returns:
+     *    { deleted: true }                       — happy path
+     *    { deleted: false, reason: "locked" }    — system row
+     *    { deleted: false, reason: "in_use"; usageCount: N } — refs exist */
+    deleteLeadSource: (id: string) =>
+        | { deleted: true }
+        | { deleted: false; reason: "locked" }
+        | { deleted: false; reason: "in_use"; usageCount: number };
+
+    /** Append a new follow-up stage. Blocked when total stages reached
+     *  the plan's max (8 per PDF §4.2 "keep it tight"). Returns the id
+     *  on success, null when blocked. */
+    addFollowUpStage: (label: string) => string | null;
+    /** Rename a follow-up stage. Cascades into every customer's
+     *  `followUpStatus` field so a rename doesn't leave stale strings
+     *  in the wild. System-mandatory rows (Won + Lost) can be renamed
+     *  the same way, but the terminal semantics stay wired to the id. */
+    renameFollowUpStage: (id: string, label: string) => boolean;
+    /** Delete a follow-up stage. Blocked when the stage is locked OR
+     *  any customer references it via `followUpStatus`. */
+    deleteFollowUpStage: (id: string) =>
+        | { deleted: true }
+        | { deleted: false; reason: "locked" }
+        | { deleted: false; reason: "in_use"; usageCount: number };
+
     // ── Gift card designs ───────────────────────────────────────────────────
     /** Append a new gift-card design. Auto-generates id + created_at when
      *  not supplied. Returns the resolved id so the caller can route to it. */
@@ -7592,6 +7627,98 @@ export const useAppStore = create<AppState>()(persist(
             }));
         }
         return true;
+    },
+    // v83 Phase 6 — studio-editable lead sources (PDF §4.1).
+    addLeadSource: (label) => {
+        const clean = label.trim();
+        if (!clean) return "";
+        const existing = get().leadSources.find(
+            s => s.label.toLowerCase() === clean.toLowerCase(),
+        );
+        if (existing) return existing.id;
+        const id = `src_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        set(state => ({ leadSources: [...state.leadSources, { id, label: clean }] }));
+        get().recordAudit("Added lead source", "settings", id, clean);
+        return id;
+    },
+    renameLeadSource: (id, label) => {
+        const clean = label.trim();
+        if (!clean) return false;
+        const list = get().leadSources;
+        const target = list.find(s => s.id === id);
+        if (!target) return false;
+        // Collision check — reject when another (id ≠ target) row has
+        // the same label. Case-insensitive.
+        const dup = list.find(
+            s => s.id !== id && s.label.toLowerCase() === clean.toLowerCase(),
+        );
+        if (dup) return false;
+        const oldLabel = target.label;
+        set(state => ({
+            leadSources: state.leadSources.map(s => (s.id === id ? { ...s, label: clean } : s)),
+        }));
+        get().recordAudit(`Renamed lead source "${oldLabel}" → "${clean}"`, "settings", id, clean);
+        return true;
+    },
+    deleteLeadSource: (id) => {
+        const target = get().leadSources.find(s => s.id === id);
+        if (!target) return { deleted: false, reason: "in_use", usageCount: 0 };
+        if (target.locked) return { deleted: false, reason: "locked" };
+        const usageCount = get().customers.filter(c => c.sourceId === id).length;
+        if (usageCount > 0) return { deleted: false, reason: "in_use", usageCount };
+        set(state => ({ leadSources: state.leadSources.filter(s => s.id !== id) }));
+        get().recordAudit("Deleted lead source", "settings", id, target.label);
+        return { deleted: true };
+    },
+    // v83 Phase 6 — studio-editable follow-up stages (PDF §4.2). Max 8
+    // stages so the funnel stays scannable.
+    addFollowUpStage: (label) => {
+        const clean = label.trim();
+        if (!clean) return null;
+        const list = get().followUpStages;
+        if (list.length >= 8) return null;
+        const existing = list.find(s => s.label.toLowerCase() === clean.toLowerCase());
+        if (existing) return existing.id;
+        const id = `stg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        set(state => ({ followUpStages: [...state.followUpStages, { id, label: clean }] }));
+        get().recordAudit("Added follow-up stage", "settings", id, clean);
+        return id;
+    },
+    renameFollowUpStage: (id, label) => {
+        const clean = label.trim();
+        if (!clean) return false;
+        const list = get().followUpStages;
+        const target = list.find(s => s.id === id);
+        if (!target) return false;
+        const dup = list.find(
+            s => s.id !== id && s.label.toLowerCase() === clean.toLowerCase(),
+        );
+        if (dup) return false;
+        const oldLabel = target.label;
+        // Cascade the label change into every customer's followUpStatus so
+        // no stale strings survive. The stage's terminal semantics
+        // (isTerminal on Won + Lost) stay wired to the id so precedence
+        // rules keep working after a rename.
+        set(state => ({
+            followUpStages: state.followUpStages.map(s => (s.id === id ? { ...s, label: clean } : s)),
+            customers: state.customers.map(c =>
+                c.followUpStatus === oldLabel
+                    ? { ...c, followUpStatus: clean as typeof c.followUpStatus }
+                    : c,
+            ),
+        }));
+        get().recordAudit(`Renamed follow-up stage "${oldLabel}" → "${clean}"`, "settings", id, clean);
+        return true;
+    },
+    deleteFollowUpStage: (id) => {
+        const target = get().followUpStages.find(s => s.id === id);
+        if (!target) return { deleted: false, reason: "in_use", usageCount: 0 };
+        if (target.locked) return { deleted: false, reason: "locked" };
+        const usageCount = get().customers.filter(c => c.followUpStatus === target.label).length;
+        if (usageCount > 0) return { deleted: false, reason: "in_use", usageCount };
+        set(state => ({ followUpStages: state.followUpStages.filter(s => s.id !== id) }));
+        get().recordAudit("Deleted follow-up stage", "settings", id, target.label);
+        return { deleted: true };
     },
     setPackageStatus: (ids, status) => {
         const targets = get().packages.filter(p => ids.includes(p.id));
