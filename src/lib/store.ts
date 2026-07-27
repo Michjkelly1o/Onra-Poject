@@ -82,6 +82,10 @@ import { account_profile as adminUser } from "@/data/mock/account_profile";
 import { capitalizeName } from "./format-name";
 import { commissionForPeriod } from "./payroll-calc";
 import { getFrozenActiveMembership } from "./customer/freeze-eligibility";
+import {
+    computeLifecycleTag,
+    applyLifecycleResult,
+} from "./customer/lifecycle";
 
 // ─── Seed imports (snake_case, DB-ready) ─────────────────────────────────────
 //
@@ -1199,6 +1203,109 @@ export interface Customer {
     firstVisitISO?: string;
     marketingSource?: string;
     convertedFrom?: "first-visit" | "intro-offer" | "trial-class" | "referral";
+    // ── Customer & Lead Management v83 — hybrid lifecycle model (client 2026-07-24) ─
+    // Two-layer model: AI-owned `lifecycleTag` + human-owned `followUpStatus`
+    // (see new-prd/customer-lead-management-implementation-plan.md §Lifecycle
+    // rules). Every field is OPTIONAL so pre-v83 rows keep hydrating cleanly;
+    // the recompute hook fills them in on the next customer-touching action.
+    /** AI-detected lifecycle stage. Computed by `computeLifecycleTag` and
+     *  recomputed after every write that touches a customer's behaviour
+     *  (booking / cancel / attendance / plan / transaction / rating). */
+    lifecycleTag?: LifecycleTag;
+    /** Orthogonal VIP flag — stacks on top of `lifecycleTag`. Auto-computed
+     *  (top-10% LTV) or manually flagged; the compute treats it as sticky
+     *  once set to true unless a manual override clears it. */
+    isVip?: boolean;
+    /** Human-owned follow-up state for pre-conversion customers (Lead /
+     *  Trialist only). Staff advance this through the funnel; `"Lost"`
+     *  suppresses the task engine until the customer books again. */
+    followUpStatus?: FollowUpStatus;
+    /** Staff member (id) responsible for follow-up. Any role — the plan
+     *  is deliberately loose about which roles get assigned. */
+    assignedTo?: string;
+    /** Lead source (id → `leadSources[].id`). Read-only after intake; the
+     *  Settings module manages the list. */
+    sourceId?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Customer & Lead Management v83 — lifecycle types (client 2026-07-24)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Companion types for the new fields on `Customer`. Kept adjacent so future
+// reads don't have to hunt for the union definitions. See the plan doc's
+// "Lifecycle rules" table for the source-of-truth definitions.
+
+/** AI-owned lifecycle stage — Layer 1. Precedence within Layer 1 is
+ *  Churned > At Risk > Won-back (30d sticky) > New Active > Loyal Active >
+ *  Trialist > Lead. The compute picks ONE tag per customer. */
+export type LifecycleTag =
+    | "Lead"
+    | "Trialist"
+    | "New Active"
+    | "Loyal Active"
+    | "At Risk"
+    | "Churned"
+    | "Won-back";
+
+/** Human-owned pre-conversion follow-up state — Layer 2. Only rendered
+ *  when `lifecycleTag ∈ { "Lead", "Trialist" }`; hidden downstream. */
+export type FollowUpStatus =
+    | "New"
+    | "Contacted"
+    | "Trial booked"
+    | "Follow-up"
+    | "Won"
+    | "Lost";
+
+/** Trigger source for `FollowUpTask` — the "why this exists" reason. Every
+ *  task carries one so the profile activity log can show the origin. */
+export type FollowUpTaskTrigger =
+    | "enquiry_logged"
+    | "lead_form_submitted"
+    | "trial_no_rebook_7d"
+    | "first_booking_cancelled";
+
+/** Terminal outcome recorded by staff when they close a task. Feeds the
+ *  precedence rule: `not_interested` → follow-up status → Lost. */
+export type FollowUpTaskOutcome = "reached" | "follow_up" | "not_interested";
+
+/** Signal → task engine row. Materialised by the Phase 4 generator when a
+ *  trigger fires; closed by staff on the Dashboard widget or the profile
+ *  Follow-ups tab (Phase 5). */
+export interface FollowUpTask {
+    id: string;
+    customerId: string;
+    triggerKind: FollowUpTaskTrigger;
+    /** Human-readable one-liner rendered on the widget + tab. */
+    reason: string;
+    assigneeId?: string;
+    status: "open" | "closed";
+    outcome?: FollowUpTaskOutcome;
+    createdAt: string;
+    closedAt?: string;
+}
+
+/** Studio-editable lead source — surfaced in Settings → Customer →
+ *  Customer sources (Phase 6). System-seeded rows are `locked` so they
+ *  can be renamed but not deleted. */
+export interface LeadSource {
+    id: string;
+    label: string;
+    /** True for the 10 defaults — the row can be renamed but not deleted. */
+    locked?: boolean;
+}
+
+/** Studio-editable follow-up stage — surfaced in Settings → Customer →
+ *  Follow-up stages (Phase 6). `Won` + `Lost` are system-mandatory so the
+ *  precedence rules can rely on them existing. Max 8 stages (guardrail). */
+export interface FollowUpStage {
+    id: string;
+    label: string;
+    /** True for the 6 defaults — the row can be renamed but not deleted. */
+    locked?: boolean;
+    /** `Won` + `Lost` — closes the funnel. */
+    isTerminal?: boolean;
 }
 
 /** Customer agreement record — store shape (camelCase) of a
@@ -3559,8 +3666,26 @@ export interface AppState {
     // ── Reports v33 slices ─────────────────────────────────────────────
     /** Leads captured by the funnel — feeds Lead Data + Lead Conversion +
      *  Acquisition Efficiency reports. Read-only for the demo; add-lead
-     *  actions land when the leads module ships. */
+     *  actions land when the leads module ships.
+     *
+     *  Client 2026-07-24 — this slice is retained through Phase 1a as the
+     *  snake_case source-of-truth for the AI Agent's `leads` dataset
+     *  (analyze / migrate / show). Phase 1b will absorb it into
+     *  `customers` via `lifecycleTag: "Lead"` and drop this field. */
     leads: Lead[];
+    // ── Customer & Lead Management v83 slices (client 2026-07-24) ──
+    /** Signal → task engine rows. Materialised by the Phase 4 generator
+     *  (attached to existing customer-touching actions); closed by staff
+     *  on the Dashboard "Leads to follow up" widget or the profile
+     *  Follow-ups tab. Empty at boot; grows as the demo runs. */
+    followUpTasks: FollowUpTask[];
+    /** Studio-editable lead sources — surfaced in Settings → Customer →
+     *  Customer sources (Phase 6). Seeded with the PDF §4.1 default 10. */
+    leadSources: LeadSource[];
+    /** Studio-editable follow-up stages — surfaced in Settings →
+     *  Customer → Follow-up stages (Phase 6). Seeded with the 6 defaults
+     *  from PDF §4.2 (Won + Lost are terminal + locked). */
+    followUpStages: FollowUpStage[];
     /** Marketing campaign engagement rollups — one row per (campaign ×
      *  channel × send). Feeds Campaign Performance. */
     marketingCampaignStats: MarketingCampaignStat[];
@@ -4458,6 +4583,34 @@ export interface AppState {
 // admin in Tab A and instructor in Tab B — admin creates a class →
 // instructor tab sees the new row instantly without a manual refresh.
 
+// ─── Customer & Lead Management v83 — inline seeds (client 2026-07-24) ───
+// Kept adjacent to the store constructor so a future Phase 6 editor can
+// spot them in one place. The 10 lead sources come from PDF §4.1's list;
+// the 6 follow-up stages come from PDF §4.2. `locked: true` marks the
+// system defaults — the Settings UI (Phase 6) can rename them but not
+// delete them. `isTerminal` on Won + Lost closes the funnel so the task
+// engine can rely on them existing.
+const INITIAL_LEAD_SOURCES: LeadSource[] = [
+    { id: "src_walkin",       label: "Walk-in",           locked: true },
+    { id: "src_referral",     label: "Referral",          locked: true },
+    { id: "src_instagram",    label: "Instagram / Social",locked: true },
+    { id: "src_website",      label: "Website / Online",  locked: true },
+    { id: "src_webform",      label: "Web form",          locked: true },
+    { id: "src_meta_lead",    label: "Meta lead form",    locked: true },
+    { id: "src_classpass",    label: "ClassPass",         locked: true },
+    { id: "src_gympass",      label: "Gympass",           locked: true },
+    { id: "src_expired",      label: "Expired customer",  locked: true },
+    { id: "src_other",        label: "Other",             locked: true },
+];
+const INITIAL_FOLLOW_UP_STAGES: FollowUpStage[] = [
+    { id: "stg_new",          label: "New",           locked: true                    },
+    { id: "stg_contacted",    label: "Contacted",     locked: true                    },
+    { id: "stg_trial_booked", label: "Trial booked",  locked: true                    },
+    { id: "stg_follow_up",    label: "Follow-up",     locked: true                    },
+    { id: "stg_won",          label: "Won",           locked: true, isTerminal: true  },
+    { id: "stg_lost",         label: "Lost",          locked: true, isTerminal: true  },
+];
+
 const PERSIST_KEY = "onra-demo-state";
 
 export const useAppStore = create<AppState>()(persist(
@@ -4523,6 +4676,10 @@ export const useAppStore = create<AppState>()(persist(
     marketingItems: [...SEED_MARKETING_ITEMS],
     // Reports v33 slices
     leads: [...SEED_LEADS],
+    // Customer & Lead Management v83 slices (client 2026-07-24)
+    followUpTasks: [],
+    leadSources: [...INITIAL_LEAD_SOURCES],
+    followUpStages: [...INITIAL_FOLLOW_UP_STAGES],
     marketingCampaignStats: [...SEED_MARKETING_CAMPAIGN_STATS],
     marketingSpend: [...SEED_MARKETING_SPEND],
     staffAttendanceLog: deriveStaffAttendanceLog(INITIAL_SCHEDULES),
@@ -5527,6 +5684,17 @@ export const useAppStore = create<AppState>()(persist(
             });
         }
 
+        // v83 lifecycle recompute — a fresh booking can bump a Lead → Trialist
+        // or a Trialist → Loyal Active. Runs on the booker's customer id;
+        // guest-seat rows skip (guests have no lifecycle to recompute).
+        set(state => ({
+            customers: applyLifecycleResult(
+                state.customers,
+                customerId,
+                computeLifecycleTag(customerId, state),
+            ),
+        }));
+
         return id;
     },
     signWaiver: (customerId, guardianConsent = false) => set((state) => {
@@ -5899,6 +6067,19 @@ export const useAppStore = create<AppState>()(persist(
         if (booking?.status === "booked" && schedule) {
             get().offerFreedWaitlistSpot(schedule.id);
         }
+        // v83 lifecycle recompute — cancels feed the At Risk branch (cancel-
+        // rate > 50% in 14d) + the first-booking-cancelled task trigger
+        // (Phase 4). Only fires when the booking mapped to a real customer.
+        if (booking?.customerId) {
+            const cid = booking.customerId;
+            set(state => ({
+                customers: applyLifecycleResult(
+                    state.customers,
+                    cid,
+                    computeLifecycleTag(cid, state),
+                ),
+            }));
+        }
     },
     cancelClassBookings: (ids, reason, refund, source) => {
         const stateBefore = get();
@@ -5970,6 +6151,24 @@ export const useAppStore = create<AppState>()(persist(
         Array.from(new Set(targets.filter(t => t.status === "booked").map(t => t.classScheduleId))).forEach(scheduleId =>
             get().offerFreedWaitlistSpot(scheduleId)
         );
+        // v83 lifecycle recompute — bulk cancel touches N distinct customers;
+        // recompute each once inside a single set() call so the write is
+        // batched. Same signal as single-cancel (feeds At Risk + task-engine
+        // triggers).
+        const affectedIds = Array.from(new Set(targets.map(t => t.customerId).filter(Boolean)));
+        if (affectedIds.length > 0) {
+            set(state => {
+                let next = state.customers;
+                for (const cid of affectedIds) {
+                    next = applyLifecycleResult(
+                        next,
+                        cid,
+                        computeLifecycleTag(cid, { ...state, customers: next }),
+                    );
+                }
+                return { customers: next };
+            });
+        }
     },
     // ── Customer-portal cancel-with-penalty flow (Jul 2026) ────────────────
     // Kept as a SEPARATE action from `cancelClassBooking` so the existing
@@ -6091,6 +6290,16 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             customerTransactions: [...state.customerTransactions, penaltyTxn],
         }));
+        // v83 lifecycle recompute — the customer just cancelled + got
+        // charged; both actions feed the same At Risk / task-engine
+        // branches as an admin-side cancel.
+        set(state => ({
+            customers: applyLifecycleResult(
+                state.customers,
+                customer.id,
+                computeLifecycleTag(customer.id, state),
+            ),
+        }));
         return {
             bookingCancelled: true,
             penaltyTransactionId: txnId,
@@ -6188,6 +6397,19 @@ export const useAppStore = create<AppState>()(persist(
                 });
             }
         }
+        // v83 lifecycle recompute — attendance is a load-bearing behavioural
+        // signal (Loyal Active + At Risk both key off recent attendance).
+        // Only fires when the booking resolved to a real customer id.
+        if (booking?.customerId) {
+            const cid = booking.customerId;
+            set(state => ({
+                customers: applyLifecycleResult(
+                    state.customers,
+                    cid,
+                    computeLifecycleTag(cid, state),
+                ),
+            }));
+        }
     },
 
     deleteClassRating: (id, deletedBy) => {
@@ -6203,7 +6425,7 @@ export const useAppStore = create<AppState>()(persist(
         }
     },
 
-    submitClassRating: (input) =>
+    submitClassRating: (input) => {
         set((state) => {
             const rating: ClassRating = {
                 id: `rat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -6227,7 +6449,19 @@ export const useAppStore = create<AppState>()(persist(
                 return { ...s, rating: avg, ratingCount: rows.length };
             });
             return { classRatings, classSchedules };
-        }),
+        });
+        // v83 lifecycle recompute — the plan feeds ratings into the At Risk
+        // branch (avg rating dropped ≥ 1 star). Runs on the rater only.
+        // Wired onto the LIVE `submitClassRating` path; the importer
+        // `addClassRating` deliberately skips (see plan comment).
+        set(state => ({
+            customers: applyLifecycleResult(
+                state.customers,
+                input.customerId,
+                computeLifecycleTag(input.customerId, state),
+            ),
+        }));
+    },
 
     addCustomer: (input) => {
         const id = `cu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -6831,6 +7065,15 @@ export const useAppStore = create<AppState>()(persist(
         const targetCustomer = get().customers.find(c => c.id === input.customerId);
         const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
         get().recordAudit(`Added complimentary credit to ${customerName}`, "customer_plan", id, input.name, { credits: input.freeCredits ?? 0 });
+        // v83 lifecycle recompute — a complimentary plan flips a Lead to
+        // Trialist (only intro plan, no paid plan yet).
+        set(state => ({
+            customers: applyLifecycleResult(
+                state.customers,
+                input.customerId,
+                computeLifecycleTag(input.customerId, state),
+            ),
+        }));
         return id;
     },
     addCustomerPlan: (input) => {
@@ -6840,6 +7083,17 @@ export const useAppStore = create<AppState>()(persist(
         const target = get().customers.find(c => c.id === input.customerId);
         const customerName = target ? capitalizeName(`${target.firstName} ${target.lastName}`) : "a customer";
         get().recordAudit(`Imported plan for ${customerName}`, "customer_plan", id, input.name);
+        // v83 lifecycle recompute — a fresh plan is the main New Active
+        // trigger. The importer path fires it too so a bulk seed hydrates
+        // customer tags in the same pass (idempotent — no lifecycle change
+        // means no write).
+        set(state => ({
+            customers: applyLifecycleResult(
+                state.customers,
+                input.customerId,
+                computeLifecycleTag(input.customerId, state),
+            ),
+        }));
         return id;
     },
 
@@ -6856,6 +7110,15 @@ export const useAppStore = create<AppState>()(persist(
         const target = get().customers.find(c => c.id === input.customerId);
         const who = target ? capitalizeName(`${target.firstName} ${target.lastName}`) : "a customer";
         get().recordAudit(`Imported transaction for ${who}`, "customer", input.customerId, next.name);
+        // v83 lifecycle recompute — feeds the New Active + Won-back
+        // branches (both key off "paid within last 30 days").
+        set(state => ({
+            customers: applyLifecycleResult(
+                state.customers,
+                input.customerId,
+                computeLifecycleTag(input.customerId, state),
+            ),
+        }));
         return id;
     },
     addWalletTransaction: (input) => {
