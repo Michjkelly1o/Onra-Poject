@@ -19,7 +19,9 @@ import { useState } from "react";
 import { useAppStore, type FollowUpTask, type FollowUpTaskOutcome } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { SelectInput } from "@/components/ui/select-input";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 import { Check, ClockRefresh, XClose, MessageChatSquare } from "@untitledui/icons";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -96,6 +98,12 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
 
     const [enquiryOpen, setEnquiryOpen] = useState(false);
     const [note, setNote] = useState("");
+    // v83 client 2026-07-27 — Log-enquiry panel now includes an Assign-to
+    // picker so admins can create + route a task in one step. Defaults to
+    // the customer's already-set assignedTo (from the Details tab) so the
+    // common case (task follows the existing owner) is a no-op click.
+    const [assignTo, setAssignTo] = useState<string>("");
+    const updateCustomer = useAppStore(s => s.updateCustomer);
 
     const customer = customers.find(c => c.id === customerId);
     if (!customer) return null;
@@ -117,7 +125,32 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
         return s.fullName || `${s.firstName} ${s.lastName}`.trim() || s.email;
     }
 
+    // Options for the Assign-to dropdown in the Log-enquiry panel + the
+    // Details tab. Excludes archived staff so a leftover row from a past
+    // hire isn't a valid pick.
+    const staffOptions = [
+        { value: "", label: "Unassigned" },
+        ...staff
+            .filter(s => s.status !== "archive")
+            .map(s => ({
+                value: s.id,
+                label: (s.fullName || `${s.firstName} ${s.lastName}`).trim() || s.email,
+            })),
+    ];
+
+    function openEnquiryPanel() {
+        setAssignTo(customer?.assignedTo ?? "");
+        setEnquiryOpen(true);
+    }
+
     function handleLogEnquiry() {
+        // If the admin picked a different assignee in the side panel, patch
+        // the customer's assignedTo FIRST so the task the generator creates
+        // inherits the right assignee (generateFollowUpTasks reads from
+        // customer.assignedTo). Empty string = "unassigned".
+        if (assignTo !== (customer?.assignedTo ?? "")) {
+            updateCustomer(customerId, { assignedTo: assignTo || undefined });
+        }
         const result = logCustomerEnquiry(customerId, note.trim() || undefined);
         if (result.logged) {
             showToast("Enquiry logged", `Task added for ${name}.`, "success", "check");
@@ -149,47 +182,43 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
             {/* Header row — "Log enquiry" opens the SlidePanel. */}
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[16px] font-semibold text-[#101828]">Follow-ups</p>
-                    <p className="text-[13px] text-[#667085] max-w-[520px]">
-                        Auto-detected tasks for {name}, plus a log of every outcome. Close a task once you&apos;ve reached out.
-                    </p>
-                </div>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+                <p className="text-[16px] font-semibold text-[#101828]">Follow-ups</p>
                 <Button
                     variant="secondary-gray"
                     size="md"
                     leftIcon={<MessageChatSquare className="w-4 h-4" />}
-                    onClick={() => setEnquiryOpen(true)}
+                    onClick={openEnquiryPanel}
                 >
                     Log enquiry
                 </Button>
             </div>
 
-            {/* Merged table — Open + Activity in one place. Status column
-                lets an admin scan "what's still to do vs. what's done"
-                without hopping between two tables. */}
+            {/* Merged table — Open + Activity in one place. Style matches
+                the other profile tabs (Bookings, Payments): no card
+                wrapper, no header background, no rounded corners — just a
+                border-collapse table with the TH border-b from
+                TABLE_TH. */}
             {rows.length === 0 ? (
-                <div className="rounded-[12px] border border-dashed border-[#e4e7ec] p-6 text-center">
-                    <p className="text-[14px] text-[#475467]">No tasks for this customer yet.</p>
-                    <p className="text-[13px] text-[#667085] mt-1">
-                        Tasks appear here automatically as this lead moves through the funnel — or you can log an enquiry manually.
-                    </p>
+                <div className="relative min-h-[240px]">
+                    <EmptyState
+                        title="No tasks yet"
+                        subtitle="Tasks appear here automatically as this lead moves through the funnel, or log an enquiry to add one now."
+                    />
                 </div>
             ) : (
-                <div className="rounded-[12px] border border-[#e4e7ec] overflow-hidden bg-white">
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead className="bg-[#f9fafb]">
-                                <tr>
-                                    <th className={cn(TH, "min-w-[280px]")}>Reason</th>
-                                    <th className={cn(TH, "w-[160px]")}>Trigger</th>
-                                    <th className={cn(TH, "w-[160px]")}>Status</th>
-                                    <th className={cn(TH, "w-[160px]")}>Assigned to</th>
-                                    <th className={cn(TH, "w-[140px]")}>Age</th>
-                                    <th className={cn(TH, "w-[140px]")}>Actions</th>
-                                </tr>
-                            </thead>
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr>
+                                <th className={cn(TH, "min-w-[280px]")}>Reason</th>
+                                <th className={cn(TH, "w-[160px]")}>Trigger</th>
+                                <th className={cn(TH, "w-[160px]")}>Status</th>
+                                <th className={cn(TH, "w-[160px]")}>Assigned to</th>
+                                <th className={cn(TH, "w-[140px]")}>Age</th>
+                                <th className={cn(TH, "w-[140px]")}>Actions</th>
+                            </tr>
+                        </thead>
                             <tbody>
                                 {rows.map(task => {
                                     const isOpen = task.status === "open";
@@ -257,7 +286,6 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                 })}
                             </tbody>
                         </table>
-                    </div>
                 </div>
             )}
 
@@ -275,10 +303,26 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                         <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
-                <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+                <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
                     <div className="flex flex-col gap-1">
                         <p className="text-[14px] text-[#667085]">Customer</p>
                         <p className="text-[16px] font-medium text-[#101828]">{name}</p>
+                    </div>
+                    {/* v83 client 2026-07-27 — Assign-to picker embedded in
+                        the panel so log + route lands in one step. Defaults
+                        to whoever the customer is already assigned to. */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[14px] font-medium text-[#344054]">
+                            Assign to
+                        </label>
+                        <SelectInput
+                            value={assignTo}
+                            onChange={setAssignTo}
+                            options={staffOptions}
+                        />
+                        <p className="text-[13px] text-[#667085]">
+                            Task appears on this person&apos;s dashboard follow-up widget.
+                        </p>
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[14px] font-medium text-[#344054]">

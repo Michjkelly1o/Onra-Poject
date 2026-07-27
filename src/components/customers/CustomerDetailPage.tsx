@@ -19,9 +19,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
-    XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft,
+    XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft, Lightbulb02,
     Edit02, HeartHand, Archive, SlashCircle01, RefreshCcw01, Check, AlignLeft,
-    CreditCard02, Package, Gift01, PauseCircle, PlayCircle, XCircle, Lightbulb02,
+    CreditCard02, Package, Gift01, PauseCircle, PlayCircle, XCircle,
     Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -1624,14 +1624,12 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                             </ul>
                         </div>
 
-                        {/* Info footer — Layer 1 vs Layer 2 explainer */}
-                        <div className="rounded-[12px] bg-[#f1f2ed] px-4 py-3 flex gap-3 items-start">
-                            <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center shrink-0 mt-0.5">
-                                <span className="text-[12px] font-bold text-[#475467]">i</span>
-                            </div>
-                            <p className="text-[12px] leading-[16px] text-[#475467]">
-                                This is the AI-detected lifecycle tag (Layer 1). The staff-owned follow-up status
-                                (Layer 2) lives on the Details tab and only shows for Leads and Trialists.
+                        {/* Info footer — canonical DS info alert
+                            (bg #f1f2ed + Lightbulb02 + #475467 text). */}
+                        <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] flex items-center gap-4 p-4">
+                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
+                            <p className="text-[14px] text-[#475467]">
+                                This is the AI-detected lifecycle tag (Layer 1). The staff-owned follow-up status (Layer 2) lives on the Details tab and only shows for Leads and Trialists.
                             </p>
                         </div>
                     </div>

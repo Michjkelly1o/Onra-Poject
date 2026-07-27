@@ -50,19 +50,30 @@ export function IconTooltip({ label, children, side = "above", disabled = false,
     // Recompute position when the tooltip opens. Reads the trigger's
     // bounding rect + tooltip's own size so `above` sits directly on top
     // of the button no matter what container it's in.
+    //
+    // Client 2026-07-27 — added viewport-edge clamping so a long tooltip
+    // anchored near the left / right frame edge doesn't clip off-screen.
+    // Estimates the tooltip's width via its rendered text length (rough
+    // but stable) so the initial `-translate-x-1/2` transform doesn't
+    // yank the tooltip off the viewport before the first paint.
     useLayoutEffect(() => {
         if (!open || disabled) return;
         const trigger = triggerRef.current;
         if (!trigger) return;
         const rect = trigger.getBoundingClientRect();
-        // Center horizontally on the trigger; vertical depends on side.
-        // We don't know the tooltip's own size until it renders, so we
-        // set an initial anchor and let the tooltip's translate handle
-        // the final centering.
-        const cx = rect.left + rect.width / 2;
-        const y  = side === "above" ? rect.top - GAP_PX : rect.bottom + GAP_PX;
+        const y = side === "above" ? rect.top - GAP_PX : rect.bottom + GAP_PX;
+        // Estimated tooltip half-width — 6.5px per char is a fair average
+        // for the DS's 12px medium weight; capped by max-width below.
+        const estimatedWidth = Math.min(320, Math.max(80, label.length * 6.5 + 24));
+        const half = estimatedWidth / 2;
+        const margin = 8;
+        const raw = rect.left + rect.width / 2;
+        const cx = Math.min(
+            window.innerWidth - half - margin,
+            Math.max(half + margin, raw),
+        );
         setPos({ x: cx, y });
-    }, [open, side, disabled]);
+    }, [open, side, disabled, label]);
 
     return (
         <span
@@ -78,10 +89,15 @@ export function IconTooltip({ label, children, side = "above", disabled = false,
                 <span
                     role="tooltip"
                     className={cn(
-                        "fixed z-[100] whitespace-nowrap",
+                        "fixed z-[100]",
                         "bg-[#0c111d] text-white text-[12px] leading-[16px] font-medium",
                         "rounded-[8px] px-2.5 py-1.5 shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)]",
                         "pointer-events-none",
+                        // Client 2026-07-27 — allow long tooltip strings
+                        // (compute reasoning etc.) to wrap onto multiple
+                        // lines within a bounded max-width instead of
+                        // spilling off the viewport.
+                        "max-w-[320px] break-words",
                         // Horizontal centering via translate on the tooltip
                         // itself; vertical flip depending on side.
                         side === "above"

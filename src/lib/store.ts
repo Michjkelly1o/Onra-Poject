@@ -4712,11 +4712,23 @@ function daysAgoISODate(d: number): string {
     return daysAgoISO(d).slice(0, 10);
 }
 
+// Client 2026-07-27 — showcase personas reuse the 5 existing customer
+// portraits (rotated) so the profile header + list avatar aren't a plain
+// gray "SN" tile on demo day. Non-matching (7th, 8th) fall back to the
+// hand-authored Bosa image so all 8 personas render with a face.
+const LC_PORTRAITS = [
+    "/images/customers/ahmed-zayn.webp",
+    "/images/customers/ava-wright.webp",
+    "/images/customers/bosa-ahmed.webp",
+    "/images/customers/rosale-martin.webp",
+    "/images/customers/zahra-mahen.webp",
+];
 const SHOWCASE_CUSTOMERS: Customer[] = [
     // 1. LEAD — no plan, no bookings, no visits.
     {
         id: "cust_lc_lead", firstName: "Sofia", lastName: "Reyes", initials: "SR",
         email: "sofia.reyes@onradmo.test", phone: "+971 50 999 0001",
+        imageUrl: LC_PORTRAITS[1],
         branchId: LC_BRANCH, planKind: null,
         createdAt: daysAgoISO(3), status: "active",
         gender: "Female", sourceId: "src_instagram", marketingSource: "Instagram / Social",
@@ -4725,6 +4737,7 @@ const SHOWCASE_CUSTOMERS: Customer[] = [
     {
         id: "cust_lc_trialist", firstName: "Marco", lastName: "Silva", initials: "MS",
         email: "marco.silva@onradmo.test", phone: "+971 50 999 0002",
+        imageUrl: LC_PORTRAITS[0],
         branchId: LC_BRANCH, planKind: null,
         createdAt: daysAgoISO(10), status: "active",
         gender: "Male", sourceId: "src_referral", marketingSource: "Referral",
@@ -4734,6 +4747,7 @@ const SHOWCASE_CUSTOMERS: Customer[] = [
     {
         id: "cust_lc_new_active", firstName: "Aisha", lastName: "Kumar", initials: "AK",
         email: "aisha.kumar@onradmo.test", phone: "+971 50 999 0003",
+        imageUrl: LC_PORTRAITS[4],
         branchId: LC_BRANCH, planKind: "membership",
         createdAt: daysAgoISO(12), status: "active",
         gender: "Female", sourceId: "src_website", marketingSource: "Website / Online",
@@ -4743,6 +4757,7 @@ const SHOWCASE_CUSTOMERS: Customer[] = [
     {
         id: "cust_lc_loyal", firstName: "David", lastName: "Chen", initials: "DC",
         email: "david.chen@onradmo.test", phone: "+971 50 999 0004",
+        imageUrl: LC_PORTRAITS[2],
         branchId: LC_BRANCH, planKind: "membership",
         createdAt: daysAgoISO(90), status: "active",
         gender: "Male", sourceId: "src_walkin", marketingSource: "Walk-in",
@@ -4752,6 +4767,7 @@ const SHOWCASE_CUSTOMERS: Customer[] = [
     {
         id: "cust_lc_at_risk", firstName: "Priya", lastName: "Patel", initials: "PP",
         email: "priya.patel@onradmo.test", phone: "+971 50 999 0005",
+        imageUrl: LC_PORTRAITS[3],
         branchId: LC_BRANCH, planKind: "membership",
         createdAt: daysAgoISO(120), status: "active",
         gender: "Female", sourceId: "src_referral", marketingSource: "Referral",
@@ -4761,6 +4777,7 @@ const SHOWCASE_CUSTOMERS: Customer[] = [
     {
         id: "cust_lc_churned", firstName: "Lucas", lastName: "Grant", initials: "LG",
         email: "lucas.grant@onradmo.test", phone: "+971 50 999 0006",
+        imageUrl: LC_PORTRAITS[0],
         branchId: LC_BRANCH, planKind: null,
         createdAt: daysAgoISO(200), status: "active",
         gender: "Male", sourceId: "src_classpass", marketingSource: "ClassPass",
@@ -4770,17 +4787,17 @@ const SHOWCASE_CUSTOMERS: Customer[] = [
     {
         id: "cust_lc_wonback", firstName: "Emily", lastName: "Zhang", initials: "EZ",
         email: "emily.zhang@onradmo.test", phone: "+971 50 999 0007",
+        imageUrl: LC_PORTRAITS[4],
         branchId: LC_BRANCH, planKind: "membership",
         createdAt: daysAgoISO(240), status: "active",
         gender: "Female", sourceId: "src_expired", marketingSource: "Expired customer",
         firstVisitISO: daysAgoISODate(235), lastVisitISO: daysAgoISODate(6),
     },
-    // BONUS — VIP flag on Loyal Active persona so the VIP pill has a live
-    // subject even though the auto-promote logic (LTV top-10%) isn't
-    // built yet (Phase 2b, documented).
+    // BONUS — VIP flag on Loyal Active persona.
     {
         id: "cust_lc_vip", firstName: "Nadia", lastName: "Al-Rashid", initials: "NA",
         email: "nadia.alrashid@onradmo.test", phone: "+971 50 999 0008",
+        imageUrl: LC_PORTRAITS[1],
         branchId: LC_BRANCH, planKind: "membership",
         createdAt: daysAgoISO(180), status: "active",
         gender: "Female", isVip: true,
@@ -5032,10 +5049,14 @@ function buildBulkShowcase(): {
             const cid = `cust_lcg_${stage}_${i + 1}`;
             const initials = `${seed.firstName[0]}${seed.lastName[0]}`.toUpperCase();
             // Base customer row — stage-specific patches append below.
+            // Client 2026-07-27 — cycle through the 5 existing portraits
+            // so bulk rows in the customer table render with real faces,
+            // not a wall of "AB" gray tiles.
             const base: Customer = {
                 id: cid, firstName: seed.firstName, lastName: seed.lastName, initials,
                 email: `${seed.firstName.toLowerCase()}.${seed.lastName.toLowerCase().replace(/[^a-z]/g, "")}${i}@onradmo.test`,
                 phone: `+971 50 ${(700 + seedIdx).toString().padStart(3, "0")} ${(1000 + seedIdx).toString().padStart(4, "0")}`,
+                imageUrl: LC_PORTRAITS[seedIdx % LC_PORTRAITS.length],
                 branchId: LC_BRANCH, planKind: null,
                 createdAt: daysAgoISO(20 + seedIdx),
                 status: "active",
@@ -10942,7 +10963,11 @@ export const useAppStore = create<AppState>()(persist(
         //   have real volume to play with. Also removes `locked`
         //   / `isTerminal` on the seeded sources + stages. Bump
         //   forces a rehydrate so the bulk injection runs.
-        version: 85,
+        // v86 (2026-07-27): Lifecycle personas get portraits so
+        //   the customer table + profile header render real
+        //   faces instead of gray "SN" initials tiles. Bump so
+        //   pre-v86 caches pick up the imageUrl fields.
+        version: 86,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
