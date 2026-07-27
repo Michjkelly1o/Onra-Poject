@@ -306,14 +306,34 @@ export function computeLifecycleTag(
 /** Apply a recompute result to a customer array, replacing only the
  *  target row. Returns the same array reference when the compute yielded
  *  no change so React consumers using shallow equality don't re-render.
- *  Kept next to the compute so callers only touch one import. */
+ *  Kept next to the compute so callers only touch one import.
+ *
+ *  Phase 3 precedence rule ("behavior wins", plan §2.3):
+ *    When the compute advances the customer PAST the pre-conversion
+ *    funnel (tag no longer Lead / Trialist), the Layer 2 followUpStatus
+ *    is CLEARED. This means a customer who was manually marked "Lost"
+ *    but has since booked / paid gets a clean slate — if they later
+ *    slip back to Lead, the Phase 4 task engine can resurface them
+ *    instead of being permanently suppressed. Staff's "Lost" verdict
+ *    only holds while the customer is still pre-conversion. */
 export function applyLifecycleResult(
     customers: Customer[],
     customerId: string,
     result: LifecycleRecomputeResult,
 ): Customer[] {
-    if (!result.changed) return customers;
-    return customers.map(c =>
-        c.id === customerId ? { ...c, lifecycleTag: result.tag, isVip: result.isVip } : c,
-    );
+    // Consider the follow-up status when deciding if anything changed —
+    // otherwise a customer graduating past pre-conversion with a "Lost"
+    // status would skip the write and keep the stale flag.
+    const target = customers.find(c => c.id === customerId);
+    const postFunnel = result.tag !== "Lead" && result.tag !== "Trialist";
+    const shouldClearFollowUp = postFunnel && target?.followUpStatus !== undefined;
+    if (!result.changed && !shouldClearFollowUp) return customers;
+    return customers.map(c => {
+        if (c.id !== customerId) return c;
+        const next: Customer = { ...c, lifecycleTag: result.tag, isVip: result.isVip };
+        if (postFunnel && next.followUpStatus !== undefined) {
+            next.followUpStatus = undefined;
+        }
+        return next;
+    });
 }

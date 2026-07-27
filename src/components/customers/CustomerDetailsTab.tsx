@@ -22,10 +22,15 @@
 // customer-facing prefs UI and the admin dispatch layer lands in a later
 // phase; the fields exist now so the display is real.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle, XCircle, Eye, EyeOff } from "@untitledui/icons";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, type FollowUpStatus } from "@/lib/store";
 import { getCustomerPassword, useHasCustomerPassword } from "@/lib/customer/customer-password";
+// v83 Phase 3 — Follow-up section reuses SelectInput (same as every other
+// dropdown on the profile). computeLifecycleTag gates whether the section
+// renders (pre-conversion only per plan §Phase 3).
+import { SelectInput } from "@/components/ui/select-input";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -98,12 +103,114 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
     const hasPassword = useHasCustomerPassword(customerId);
     const password = hasPassword ? getCustomerPassword(customerId) : "";
     const [revealPassword, setRevealPassword] = useState(false);
+    // v83 Phase 3 — Follow-up section deps. Reads the store slices the
+    // compute + option lists need. Reactive so the dropdowns show fresh
+    // labels after a Settings (Phase 6) rename.
+    const classBookings = useAppStore(s => s.classBookings);
+    const customerPlans = useAppStore(s => s.customerPlans);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const leadSources = useAppStore(s => s.leadSources);
+    const followUpStages = useAppStore(s => s.followUpStages);
+    const staff = useAppStore(s => s.staff);
+    const updateCustomer = useAppStore(s => s.updateCustomer);
+    const showToast = useAppStore(s => s.showToast);
+
+    const lifecycle = useMemo(() => {
+        if (!customer) return null;
+        return computeLifecycleTag(customerId, {
+            customers,
+            classBookings,
+            customerPlans,
+            customerTransactions,
+        });
+    }, [customer, customerId, customers, classBookings, customerPlans, customerTransactions]);
+
     if (!customer) return null;
 
     const fullName = `${customer.firstName} ${customer.lastName}`.trim();
 
+    // Follow-up scoping — pre-conversion only, per plan §Phase 3.
+    const isPreConversion = lifecycle?.tag === "Lead" || lifecycle?.tag === "Trialist";
+
+    // Staff options — every active/pending staff member with a display name.
+    // Same list the Assignments column will use in Phase 5's widget so we
+    // stay consistent about who a lead can be assigned to.
+    const staffOptions = [
+        { value: "", label: "Unassigned" },
+        ...staff
+            .filter(s => s.status !== "archive")
+            .map(s => ({
+                value: s.id,
+                label: (s.fullName || `${s.firstName} ${s.lastName}`).trim() || s.email,
+            })),
+    ];
+
+    const sourceLabel =
+        leadSources.find(s => s.id === customer.sourceId)?.label ??
+        customer.marketingSource ??
+        "—";
+
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
+            {/* v83 Phase 3 — Follow-up section. Rendered only for Lead /
+                Trialist customers so a Loyal Active member's profile never
+                shows an irrelevant follow-up dropdown. The compute drives
+                the gate — behavior wins per plan §2.3 (a "Lost" customer
+                who books gets re-tagged, and the section reappears). */}
+            {isPreConversion && (
+                <>
+                    <div className="flex flex-col gap-3">
+                        <SectionHeader>Follow-up</SectionHeader>
+                        <div className={GRID}>
+                            <div className="flex flex-col gap-1.5">
+                                <p className="text-[14px] text-[#667085]">Follow-up status</p>
+                                <SelectInput
+                                    value={customer.followUpStatus ?? "New"}
+                                    onChange={(next) => {
+                                        const val = (next || "New") as FollowUpStatus;
+                                        updateCustomer(customerId, { followUpStatus: val });
+                                        showToast(
+                                            "Follow-up status updated",
+                                            `${fullName} moved to "${val}".`,
+                                            "success",
+                                            "check",
+                                        );
+                                    }}
+                                    options={followUpStages.map(s => ({
+                                        value: s.label,
+                                        label: s.label,
+                                    }))}
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <p className="text-[14px] text-[#667085]">Assigned to</p>
+                                <SelectInput
+                                    value={customer.assignedTo ?? ""}
+                                    onChange={(next) => {
+                                        updateCustomer(customerId, { assignedTo: next || undefined });
+                                        const label = next
+                                            ? staffOptions.find(o => o.value === next)?.label ?? "staff"
+                                            : "Unassigned";
+                                        showToast(
+                                            "Assignment updated",
+                                            `${fullName} → ${label}.`,
+                                            "success",
+                                            "check",
+                                        );
+                                    }}
+                                    options={staffOptions}
+                                />
+                            </div>
+                            <DetailField
+                                label="Source"
+                                value={<span className="text-[14px] font-normal text-[#101828]">{sourceLabel}</span>}
+                            />
+                        </div>
+                    </div>
+                    <Divider />
+                </>
+            )}
+
             {/* Personal information */}
             <div className="flex flex-col gap-3">
                 <SectionHeader>Personal information</SectionHeader>

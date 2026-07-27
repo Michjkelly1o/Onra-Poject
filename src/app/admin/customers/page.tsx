@@ -411,6 +411,8 @@ type CustomerRow = {
     // tab treats "missing" as the fallback "Lead" bucket per plan §1.
     lifecycleTag?: import("@/lib/store").LifecycleTag;
     isVip?: boolean;
+    /** v83 Phase 3 — used by the "Assigned to me" chip filter. */
+    assignedTo?: string;
 };
 
 // ─── CSV export ──────────────────────────────────────────────────────────────
@@ -451,6 +453,10 @@ export default function CustomersPage() {
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
     const deleteCustomers = useAppStore(s => s.deleteCustomers);
     const showToast = useAppStore(s => s.showToast);
+    // v83 Phase 3 — "Assigned to me" filter chip needs the current staff id
+    // to compare against customer.assignedTo. Falls back to the auth user id
+    // when the role has no staff row (owner etc.).
+    const currentUser = useAppStore(s => s.currentUser);
 
     // ─── Local UI state ─────────────────────────────────────────────────────
     // Branch filter defaults to "" ("All locations") — Owner + Branch Admin
@@ -473,9 +479,12 @@ export default function CustomersPage() {
     // The tab strip reuses the exact same chrome as /admin/insights so
     // customers list feels like a sibling surface without any new component.
     const [segment, setSegment] = useState<"all" | "leads" | "members" | "inactive">("all");
+    // v83 Phase 3 — "Assigned to me" chip. Off by default; when on, filters
+    // to rows whose customer.assignedTo matches the current staff id.
+    const [mineOnly, setMineOnly] = useState(false);
 
     // Reset to page 1 whenever the result set changes shape.
-    useEffect(() => { setPage(1); }, [search, applied, branchId, pageSize, segment]);
+    useEffect(() => { setPage(1); }, [search, applied, branchId, pageSize, segment, mineOnly]);
 
     // Branch dropdown — active branches from the live `branches` slice so
     // adds/archives in Business & Locations propagate immediately.
@@ -506,6 +515,7 @@ export default function CustomersPage() {
                 hasHistory: bookedCustomerIds.has(c.id),
                 lifecycleTag: c.lifecycleTag,
                 isVip: c.isVip,
+                assignedTo: c.assignedTo,
             }));
     }, [customers, classBookings]);
 
@@ -555,9 +565,12 @@ export default function CustomersPage() {
                 if (segment === "members"  && !["Trialist", "New Active", "Loyal Active", "Won-back"].includes(tag)) return false;
                 if (segment === "inactive" && !(["At Risk", "Churned"].includes(tag) || r.status !== "active")) return false;
             }
+            // v83 Phase 3 — "Assigned to me" chip. When on, keep only rows
+            // whose customer.assignedTo matches the current staff id.
+            if (mineOnly && currentUser?.id && r.assignedTo !== currentUser.id) return false;
             return true;
         });
-    }, [allRows, branchId, search, applied, today, segment]);
+    }, [allRows, branchId, search, applied, today, segment, mineOnly, currentUser?.id]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
     // ── Sortable columns — Name / Contact / Plan / Lifecycle / Status / Last visit. ──
@@ -769,6 +782,17 @@ export default function CustomersPage() {
                     }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                {/* v83 Phase 3 — "Assigned to me" chip. Reuses the DS FilterPill
+                    component (same as the filter side panel's status/plan chips).
+                    Hidden entirely when the signed-in user has no id — nothing
+                    to match against. */}
+                {currentUser?.id && (
+                    <FilterPill
+                        label="Assigned to me"
+                        selected={mineOnly}
+                        onClick={() => setMineOnly(v => !v)}
+                    />
+                )}
                 {/* Import Data entry hidden pending a proper migration flow
                     build (client Jul 2026). The CustomerImportModal file stays
                     on disk as reference for the rebuild — this page just no

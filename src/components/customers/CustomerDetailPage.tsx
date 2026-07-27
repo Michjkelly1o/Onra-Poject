@@ -1257,7 +1257,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                     {/* v83 lifecycle — pill row under the email.
                                         Hover shows the primary reason (from the
                                         compute); click opens the reasoning drawer.
-                                        VIP pill stacks alongside when flagged. */}
+                                        VIP + follow-up pills stack alongside. */}
                                     {lifecycleResult && (
                                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                             <IconTooltip
@@ -1277,6 +1277,17 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                             </IconTooltip>
                                             {lifecycleResult.isVip && (
                                                 <StatusBadge type="vip" status="vip" />
+                                            )}
+                                            {/* v83 Phase 3 — Layer 2 follow-up pill.
+                                                Pre-conversion scoping: only rendered when
+                                                lifecycleTag ∈ { "Lead", "Trialist" }, per
+                                                plan §Phase 3. Loyal Actives / Churned / etc.
+                                                have no follow-up funnel. */}
+                                            {(lifecycleResult.tag === "Lead" || lifecycleResult.tag === "Trialist") && (
+                                                <StatusBadge
+                                                    type="follow-up"
+                                                    status={customer.followUpStatus ?? "New"}
+                                                />
                                             )}
                                         </div>
                                     )}
