@@ -448,8 +448,8 @@ export function insightTools(
                 limit: z.number().optional(),
                 title: z.string().describe("report title, e.g. 'Active customers' or 'Revenue by branch'"),
                 format: z
-                    .enum(["csv", "xlsx"])
-                    .describe("File format the user picked in the preceding ask_questions step. PDF is not yet available — if the user asked for PDF, apologise and offer csv or xlsx instead."),
+                    .enum(["csv", "xlsx", "pdf"])
+                    .describe("File format the user picked in the preceding ask_questions step. Send csv or xlsx — PDF is accepted here as a safety net (renders via a legacy jspdf fallback client-side) but the prompt tells you to apologise and offer CSV or XLSX first. Only send pdf if the user has already rejected both alternatives."),
             }),
             execute: async (spec) =>
                 guard(() => {

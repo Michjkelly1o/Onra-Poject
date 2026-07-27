@@ -59,6 +59,7 @@ import type {
 } from "@/ai-agent/migration/migration-cards";
 import type { EntityKey } from "@/ai-agent/migration/entities";
 import { applyImportToStore } from "@/ai-agent/migration/apply-import";
+import { AI_AGENT_MAX_STEPS, AI_AGENT_MAX_UPLOAD_BYTES } from "@/ai-agent/flags";
 import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
@@ -180,7 +181,13 @@ export function ChatThread({
     // localStorage; not worth it for a session-scoped upload.
     const [parsedFile, setParsedFile] = useState<ParsedFile | null>(null);
     const parsedFileRef = useRef<ParsedFile | null>(null);
-    parsedFileRef.current = parsedFile;
+    // Client 2026-07-24 audit fix — was assigned in render body, which
+    // strict-mode double-render + Suspense could leave stale for effects
+    // that fire before the next render commits. useEffect syncs it after
+    // every committed state change, matching React's data-flow rules.
+    useEffect(() => {
+        parsedFileRef.current = parsedFile;
+    }, [parsedFile]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
     // Client 2026-07-23 — while /api/ai-agent/upload is round-tripping
@@ -241,7 +248,10 @@ export function ChatThread({
         id: chatId,
         api: "/api/ai-agent",
         initialMessages: initialMessages.current,
-        maxSteps: 3, // matches AI_AGENT_MAX_STEPS in flags.ts (Hobby 10s cap)
+        // Client 2026-07-24 audit fix — was a literal `3`; imported so a
+        // future bump in flags.ts (Hobby → Pro) doesn't leave the client
+        // silently capped while the server allows more.
+        maxSteps: AI_AGENT_MAX_STEPS,
         // Per-request body: grab a fresh Zustand snapshot every time so the
         // model sees whatever the admin just created/edited seconds ago.
         // Also carries `mode` + (for migration) the current `parsedFile`.
@@ -382,92 +392,15 @@ export function ChatThread({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [messages]);
 
-    // Migration audit-row hook: when the model's `commit_import` tool
-    // returns a non-trivial result (any of created/skipped/failed > 0),
-    // append a row to the Zustand `importHistory` slice so the row
-    // appears at the top of /admin/settings/migrations-imports the next
-    // time the admin visits. The set of recorded toolCallIds is
-    // initialised from `initialMessages` — so a hydrated message from a
-    // previous session (already recorded then) can't double-post.
-    const recordedImportsRef = useRef<Set<string>>(new Set());
-    // Seed the set on mount with every commit_import tool-call id that
-    // already came in from localStorage — those were audit-logged in
-    // their original session.
-    useEffect(() => {
-        if (mode !== "migration") return;
-        for (const m of initialMessages.current) {
-            if (m.role !== "assistant" || !m.toolInvocations) continue;
-            for (const ti of m.toolInvocations) {
-                if (
-                    ti.state === "result" &&
-                    ti.toolName === "commit_import"
-                ) {
-                    recordedImportsRef.current.add(ti.toolCallId);
-                }
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mode]);
-
-    useEffect(() => {
-        if (mode !== "migration") return;
-        const last = messages[messages.length - 1];
-        if (!last || last.role !== "assistant" || !last.toolInvocations)
-            return;
-        for (const ti of last.toolInvocations) {
-            if (
-                ti.state !== "result" ||
-                ti.toolName !== "commit_import" ||
-                recordedImportsRef.current.has(ti.toolCallId)
-            ) {
-                continue;
-            }
-            const result = ti.result as {
-                card?: string;
-                entity?: string;
-                created?: number;
-                skipped?: number;
-                failed?: number;
-            };
-            if (result?.card !== "import_result") continue;
-            const created = result.created ?? 0;
-            const skipped = result.skipped ?? 0;
-            const failed = result.failed ?? 0;
-            const totalRows = created + skipped + failed;
-            if (totalRows === 0) {
-                // Nothing meaningful happened — still mark as recorded
-                // so we don't rescan the same invocation next render.
-                recordedImportsRef.current.add(ti.toolCallId);
-                continue;
-            }
-            const file = parsedFileRef.current;
-            const state = useAppStore.getState();
-            const branchId =
-                (state.currentUser?.branch_id as string | undefined) ||
-                state.branches[0]?.id ||
-                "";
-            const dataType = (result.entity ??
-                "customers") as import("@/data/mock/_types").ImportHistorySeed["data_type"];
-            const status: "imported" | "partial" | "failed" =
-                failed === 0
-                    ? "imported"
-                    : created === 0
-                      ? "failed"
-                      : "partial";
-            state.addImportHistory({
-                data_type: dataType,
-                file_name: file?.filename ?? "upload.csv",
-                file_type: "csv",
-                total_rows: totalRows,
-                imported_rows: created,
-                invalid_rows: failed,
-                status,
-                branch_id: branchId,
-            });
-            recordedImportsRef.current.add(ti.toolCallId);
-        }
-    }, [messages, mode]);
-
+    // Client 2026-07-24 audit fix — the duplicate audit-row hook that used
+    // to sit here was writing the SAME history row already emitted by
+    // apply-import.ts → writeHistory. Every successful import showed up
+    // twice in /admin/settings/migrations-imports. HISTORY_TYPE in
+    // apply-import.ts already covers every wired entity, so this side
+    // is fully redundant — dropped. If we ever add an entity that DOESN'T
+    // get an apply-import path (unlikely), the fallback to add here
+    // instead would go alongside the applyImportToStore hook above, not
+    // as a parallel hook.
 
     const send = (text: string) => {
         if (!text.trim() || isBusy) return;
@@ -540,6 +473,14 @@ export function ChatThread({
     // Once the user answers (a new user message lands), this clears itself.
     const pendingQuestions = (() => {
         if (isBusy) return null;
+        // Client 2026-07-24 audit fix — migration mode has its OWN
+        // branch/mapping/summary question surface, and its Q/A dispatch
+        // table in the prompt only knows those labels. If the migration
+        // model ever called ask_questions the insight entry would land
+        // alongside the migration entries in the same panel and confuse
+        // the dispatch (labels like "Yes, start import" collide). Gate
+        // it out; migration flows should always use the dedicated tools.
+        if (mode === "migration") return null;
         const last = messages[messages.length - 1];
         if (!last || last.role !== "assistant") return null;
         const ti = last.toolInvocations?.find(
@@ -565,15 +506,30 @@ export function ChatThread({
         // The migration flow keeps its full CSV path (server-parsed rows so
         // inspect_source has real data).
         const isCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
-        const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-        if (file.size > MAX_BYTES) {
+        // Client 2026-07-24 audit fix — shared with the server via
+        // AI_AGENT_MAX_UPLOAD_BYTES so the two can't drift.
+        if (file.size > AI_AGENT_MAX_UPLOAD_BYTES) {
             setUploadError(
-                `File is too large — max ${MAX_BYTES / 1024 / 1024}MB.`,
+                `File is too large — max ${AI_AGENT_MAX_UPLOAD_BYTES / 1024 / 1024}MB.`,
             );
             setIsUploading(false);
             return;
         }
         if (!isCsv) {
+            // Client 2026-07-24 audit fix — in migration mode, a non-CSV
+            // upload used to be stashed as a fake ParsedFile with empty
+            // rows/columns. That value then travelled to buildMigrationPrompt
+            // as `rowCount: 0`, so the model saw an empty file, kept asking
+            // for a re-upload, or called inspect_source only to get
+            // emptyResult back. Reject up-front in migration mode with a
+            // clear message; non-migration modes keep the attach-only path.
+            if (mode === "migration") {
+                setUploadError(
+                    "Migration only accepts CSV files. Export your data as .csv and try again.",
+                );
+                setIsUploading(false);
+                return;
+            }
             // Attach-only path: no server call, just a chip. Empty `rows` and
             // `columns` mean the migration inspect flow won't try to parse it.
             const attached: ParsedFile = {

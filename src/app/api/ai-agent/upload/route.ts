@@ -21,13 +21,16 @@
 // server-side keys off it. Kept in the response so the AI's cards can
 // reference the upload by id if we ever need a stable handle.
 
-import { isAiAgentEnabled } from "@/ai-agent/flags";
+import { isAiAgentEnabled, AI_AGENT_MAX_UPLOAD_BYTES } from "@/ai-agent/flags";
 import { parseCsv } from "@/ai-agent/migration/parser";
 import type { UserRole } from "@/types";
 
 export const runtime = "nodejs";
 
-const MAX_BYTES = 2 * 1024 * 1024; // 2MB
+// Client 2026-07-24 audit fix — was 2 MB, client pre-flight was 5 MB; a
+// 3 MB CSV passed the client and 413'd here. Both surfaces now import
+// AI_AGENT_MAX_UPLOAD_BYTES from flags so they can't drift.
+const MAX_BYTES = AI_AGENT_MAX_UPLOAD_BYTES;
 
 export async function POST(req: Request) {
     // Role gate — same as the main chat route. The role comes as a form
