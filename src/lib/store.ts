@@ -815,6 +815,28 @@ export type { Shift, ShiftAssignment } from "@/data/mock/_types";
  *  is already re-exported via the bulk barrel above; see top of file.) */
 export type { BlockedTime } from "@/data/mock/_types";
 
+/** One pay-rate configuration slot on a staff member. `enabled` gates whether
+ *  it applies; `payRateId` is the chosen rate (FK → payRates.id). */
+export interface PayConfigEntry {
+    enabled: boolean;
+    payRateId?: string;
+}
+/** Pay-per-class adds a substitute rate + a flat substitution amount (AED paid
+ *  per class the instructor covers as a substitute). */
+export interface PayConfigClassEntry extends PayConfigEntry {
+    substitutePayRateId?: string;
+    substitutionAmountAed?: number;
+}
+/** Multi-configuration pay setup (client 2026-07-24). Instructors can earn on
+ *  up to three tracks — a base Default rate, a per-class rate, and a
+ *  per-appointment rate. Non-instructor roles only ever use `default` (always
+ *  enabled). At least one entry must stay enabled at all times. */
+export interface StaffPayConfig {
+    default: PayConfigEntry;
+    perClass: PayConfigClassEntry;
+    perAppointment: PayConfigEntry;
+}
+
 export interface Staff {
     id: string;
     firstName: string;
@@ -834,7 +856,13 @@ export interface Staff {
     joinedDate: string;
     bio?: string;
     specialties?: string[];
+    /** Canonical "default pay rate" FK (FK → payRates.id). Kept in sync with
+     *  `payConfig.default.payRateId` — existing sidebar / preview / payroll
+     *  reads still use this single field. */
     payRateId?: string;
+    /** Multi-track pay configuration. Instructors get Default + Pay per class +
+     *  Pay per appointment; other roles get Default only. */
+    payConfig?: StaffPayConfig;
     /** Short introduction (instructor-only). Surfaces on the instructor
      *  detail page + (later) the customer-facing instructor portal. */
     shortIntro?: string;
@@ -956,6 +984,11 @@ export interface ClassSchedule {
     /** Per-schedule override for applicable packages. Same cascade as
      *  `applicableMembershipIds`. */
     applicablePackageIds?: string[];
+    /** True only when this row is a projected Appointment booked with
+     *  "Preference: Flexible" (studio auto-assigned instructor). Drives the
+     *  schedule List view's Flexible badge. Undefined for real classes.
+     *  Client 2026-07-24. */
+    flexible?: boolean;
 }
 
 /** @deprecated use `ClassSchedule`. */
@@ -1015,6 +1048,9 @@ export function appointmentToClassInstance(a: Appointment): ClassInstance {
         cancelledBy: a.cancelledBy,
         coverColor: a.coverColor,
         coverImage: a.coverImage,
+        // Carry the Flexible flag so the schedule List view can badge
+        // appointments booked with "Preference: Flexible".
+        flexible: a.flexible,
     };
 }
 
@@ -3341,12 +3377,55 @@ const INITIAL_SHIFTS:              Shift[]           = SEED_SHIFTS;
 // renders a cross-branch shift. Owner (null branch) spans every location and
 // is exempt. Mirrored on rehydrate (onRehydrateStorage) for persisted state.
 const _SHIFT_BRANCH = new Map(INITIAL_SHIFTS.map(sh => [sh.id, sh.branch_id] as const));
-const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed).map(s => {
-    if (s.shiftId && s.branchId != null) {
-        const shb = _SHIFT_BRANCH.get(s.shiftId);
-        if (shb !== undefined && shb !== s.branchId) return { ...s, shiftId: undefined };
+const _INSTRUCTOR_ROLE_IDS = new Set(INITIAL_ROLES.filter(r => r.type === "instructor").map(r => r.id));
+
+/** Seed a staff member's multi-track pay configuration (client 2026-07-24).
+ *  Instructors get all three tracks enabled with distinct rates so the Pay
+ *  rate tab + payroll flows have testable data (a class rate that differs from
+ *  the appointment rate); every other role gets Default only, always enabled.
+ *  Reuses existing seeded pay-rate ids — no seed-file edits. */
+function deriveStaffPayConfig(s: Staff): StaffPayConfig {
+    const base = s.payRateId ?? "pr_standard";
+    if (!_INSTRUCTOR_ROLE_IDS.has(s.roleId)) {
+        return {
+            default: { enabled: true, payRateId: base },
+            perClass: { enabled: false },
+            perAppointment: { enabled: false },
+        };
     }
-    return s;
+    // Instructors: Default = a MONTHLY base salary (client 2026-07-24), so the
+    // three tracks don't overlap — the base salary is paid once, Pay-per-class
+    // adds the per-class rate on top, Pay-per-appointment adds the per-appointment
+    // rate. (Previously Default mirrored the instructor's per-class rate, which
+    // double-counted class pay.) Reuses the seeded monthly rate `pr_monthly`.
+    return {
+        default:        { enabled: true, payRateId: "pr_monthly" },
+        perClass:       { enabled: true, payRateId: "pr_class_tiers", substitutePayRateId: "pr_standard", substitutionAmountAed: 40 },
+        perAppointment: { enabled: true, payRateId: "pr_private_sess" },
+    };
+}
+
+const INITIAL_STAFF:            Staff[]          = SEED_STAFF.map(staffFromSeed).map(s => {
+    let row = s;
+    if (row.shiftId && row.branchId != null) {
+        const shb = _SHIFT_BRANCH.get(row.shiftId);
+        if (shb !== undefined && shb !== row.branchId) row = { ...row, shiftId: undefined };
+    }
+    const payConfig = deriveStaffPayConfig(row);
+    // Keep the canonical `payRateId` in sync with the Default track so the
+    // sidebar / payroll (which read payRateId) agree with the Pay rate tab.
+    return { ...row, payConfig, payRateId: payConfig.default.payRateId ?? row.payRateId };
+});
+// Mirror each staff instructor's synced Default-track rate onto the legacy
+// `instructors` slice so both slices agree (payroll reads instructor.payRateId
+// for the rate name + commission; the multi-track base reads staff.payConfig).
+// Instructors without a staff row keep their seed rate (single-rate, legacy).
+const _STAFF_DEFAULT_RATE = new Map(
+    INITIAL_STAFF.map(s => [s.id, s.payConfig?.default.payRateId ?? s.payRateId] as const),
+);
+const INITIAL_INSTRUCTORS_SYNCED: Instructor[] = INITIAL_INSTRUCTORS.map(i => {
+    const r = _STAFF_DEFAULT_RATE.get(i.id);
+    return r ? { ...i, payRateId: r } : i;
 });
 const _STAFF_BRANCH = new Map(INITIAL_STAFF.map(s => [s.id, s.branchId] as const));
 const INITIAL_SHIFT_ASSIGNMENTS:   ShiftAssignment[] = SEED_SHIFT_ASSIGNMENTS.filter(a => {
@@ -4578,7 +4657,7 @@ export const useAppStore = create<AppState>()(persist(
     staffAttendanceLog: deriveStaffAttendanceLog(INITIAL_SCHEDULES),
     importHistory: [...SEED_IMPORT_HISTORY],
     payRates: [...INITIAL_PAY_RATES],
-    instructors: [...INITIAL_INSTRUCTORS],
+    instructors: [...INITIAL_INSTRUCTORS_SYNCED],
     payrollEntries: [...INITIAL_PAYROLL_ENTRIES],
     roles: [...INITIAL_ROLES],
     staff: [...INITIAL_STAFF],
@@ -9905,6 +9984,29 @@ export const useAppStore = create<AppState>()(persist(
                 const flexibleByRule = !a.openSession && !!a.instructorId && i % 2 === 0;
                 return { ...a, flexible: flexibleByRule };
             });
+            // Pay config backfill (client 2026-07-24) — pre-existing snapshots have
+            // no `payConfig` on staff rows, so the Pay rate step + Instructor
+            // detail Pay rate tab would render empty. Derive it with the same rule
+            // as the seed (instructors → 3 tracks, others → Default only) for rows
+            // still missing it. Idempotent; no version bump / state wipe.
+            if (Array.isArray(state.staff)) {
+                let synced = false;
+                state.staff = state.staff.map(s => {
+                    if (s.payConfig) return s;
+                    synced = true;
+                    const payConfig = deriveStaffPayConfig(s);
+                    return { ...s, payConfig, payRateId: payConfig.default.payRateId ?? s.payRateId };
+                });
+                // Keep the legacy instructors slice's rate in step with the
+                // staff Default track (payroll reads it for name + commission).
+                if (synced && Array.isArray(state.instructors)) {
+                    const rateById = new Map(state.staff.map(s => [s.id, s.payConfig?.default.payRateId ?? s.payRateId] as const));
+                    state.instructors = state.instructors.map(i => {
+                        const r = rateById.get(i.id);
+                        return r ? { ...i, payRateId: r } : i;
+                    });
+                }
+            }
             // v77 (2026-07-20) — FreezePolicy v2 migration.
             // Any pre-v77 snapshot has `allow_exceptions` but not
             // `require_reason`; missing v2 fields need sensible

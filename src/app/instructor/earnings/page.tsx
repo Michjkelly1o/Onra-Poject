@@ -41,7 +41,7 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
-import { earningsForClass, fmtAed, defaultRateLabel, payRateTypeLabel, commissionForPeriod } from "@/lib/payroll-calc";
+import { earningsForClass, earningsForAppointment, fmtAed, defaultRateLabel, payRateTypeLabel, commissionForPeriod } from "@/lib/payroll-calc";
 import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { cn } from "@/lib/utils";
@@ -130,6 +130,7 @@ export default function InstructorEarningsPage() {
     const currentUser    = useAppStore(s => s.currentUser);
     const classSchedules = useAppStore(s => s.classSchedules);
     const instructors    = useAppStore(s => s.instructors);
+    const staff          = useAppStore(s => s.staff);
     const payRates       = useAppStore(s => s.payRates);
     // Commission sources (commission refactor Phase 3 — instructors earn it).
     const customerTransactions = useAppStore(s => s.customerTransactions);
@@ -204,14 +205,27 @@ export default function InstructorEarningsPage() {
         const currClasses = myClasses.filter(c => isoInRange(c.dateISO, currentRange));
         const prevClasses = myClasses.filter(c => isoInRange(c.dateISO, prevRange));
 
-        // A monthly-rate instructor earns a FIXED salary (not a per-class
-        // sum). Per-class rate types sum earningsForClass across the period.
-        const currEarnings = payRate?.type === "monthly"
-            ? payRate.fixedSalary
-            : currClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
-        const prevEarnings = payRate?.type === "monthly"
-            ? payRate.fixedSalary
-            : prevClasses.reduce((sum, c) => sum + earningsForClass(c, payRate, 1), 0);
+        const myStaff = staff.find(s => s.id === staffId);
+        const pc = myStaff?.payConfig;
+        const rateOf = (id?: string) => (id ? payRates.find(p => p.id === id) : undefined);
+        const myAppts = (range: { from: Date; to: Date }) =>
+            appointments.filter(a => a.instructorId === staffId && a.status === "Completed" && isoInRange(a.dateISO, range));
+        const sumClasses = (classes: typeof currClasses, rate: PayRate | undefined) =>
+            rate?.type === "monthly" ? rate.fixedSalary : classes.reduce((sum, c) => sum + earningsForClass(c, rate, 1), 0);
+
+        // Earnings across the enabled pay-config tracks (Default + Pay-per-class
+        // + Pay-per-appointment). Falls back to the single default rate when the
+        // instructor has no multi-track config.
+        const periodEarnings = (classes: typeof currClasses, range: { from: Date; to: Date }) => {
+            if (!pc) return sumClasses(classes, payRate);
+            let total = 0;
+            if (pc.default.enabled)        total += sumClasses(classes, rateOf(pc.default.payRateId));
+            if (pc.perClass.enabled)       total += sumClasses(classes, rateOf(pc.perClass.payRateId));
+            if (pc.perAppointment.enabled) total += myAppts(range).reduce((s, a) => s + earningsForAppointment(a, rateOf(pc.perAppointment.payRateId)), 0);
+            return total;
+        };
+        const currEarnings = periodEarnings(currClasses, currentRange);
+        const prevEarnings = periodEarnings(prevClasses, prevRange);
 
         const currCompleted = currClasses.filter(c => c.status === "Completed").length;
         const prevCompleted = prevClasses.filter(c => c.status === "Completed").length;
@@ -228,7 +242,7 @@ export default function InstructorEarningsPage() {
             classesTaught: currCompleted,
             classesDelta:  delta(currCompleted, prevCompleted),
         };
-    }, [myClasses, currentRange, prevRange, payRate, commission]);
+    }, [myClasses, currentRange, prevRange, payRate, commission, staff, staffId, payRates, appointments]);
 
     // ── Row pipeline: filter → search → sort → paginate ───────────────────
     const filteredRows = useMemo(() => {

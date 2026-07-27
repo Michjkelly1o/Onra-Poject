@@ -22,6 +22,7 @@ import {
     Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Check, Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -417,10 +418,10 @@ export default function MarketingListPage() {
     const marketingItems = useAppStore(s => s.marketingItems);
     const branches = useAppStore(s => s.branches);
 
-    const [search, setSearch] = useState("");
+    const [search, setSearch] = usePersistedListState("marketing:search", "");
     // "" = "All locations" — marketing items default to the aggregate view.
-    const [locationId, setLocationId] = useState<string>("");
-    const [filter, setFilter] = useState<MarketingFilter>(EMPTY_FILTER);
+    const [locationId, setLocationId] = usePersistedListState<string>("marketing:locationId", "");
+    const [filter, setFilter] = usePersistedListState<MarketingFilter>("marketing:filter", EMPTY_FILTER);
     const [filterOpen, setFilterOpen] = useState(false);
 
     const hasActiveFilter = filter.statuses.length > 0 || !!filter.startDate || !!filter.endDate;

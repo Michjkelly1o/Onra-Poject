@@ -36,11 +36,12 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
-import { totalEarningsForStaff } from "@/lib/payroll-calc";
+import { totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { RowActions } from "@/components/patterns/RowActions";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Pagination } from "@/components/ui/Pagination";
 import {
     useAppStore, type Branch,
@@ -181,13 +182,19 @@ export default function CompensationPage() {
     const appointmentBookings  = useAppStore(s => s.appointmentBookings);
     const appointments         = useAppStore(s => s.appointments);
 
-    const [branchId, setBranchId] = useState<string>("");
-    const [search, setSearch]     = useState("");
-    const [period, setPeriod]     = useState<DateFilter>(DEFAULT_PERIOD);
-    const [page, setPage]         = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [branchId, setBranchId] = usePersistedListState<string>("compensation:branchId", "");
+    const [search, setSearch]     = usePersistedListState("compensation:search", "");
+    const [period, setPeriod]     = usePersistedListState<DateFilter>("compensation:period", DEFAULT_PERIOD);
+    const [page, setPage]         = usePersistedListState("compensation:page", 1);
+    const [pageSize, setPageSize] = usePersistedListState("compensation:pageSize", 10);
 
-    useEffect(() => { setPage(1); }, [branchId, search, period]);
+    // Reset to page 1 when filters change — skip initial mount so a page
+    // restored from the cross-nav cache survives the remount.
+    const didMountRef = useRef(false);
+    useEffect(() => {
+        if (!didMountRef.current) { didMountRef.current = true; return; }
+        setPage(1);
+    }, [branchId, search, period]);
 
     const range = useMemo(() => dateFilterToRange(period), [period]);
 
@@ -207,6 +214,9 @@ export default function CompensationPage() {
         // Shared inputs for the canonical earnings formula (base + commission).
         const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        // Multi-track pay config lives on the staff row — map by shared id so
+        // instructor rows (whose mirror lacks payConfig) can find it.
+        const staffById = new Map(staff.map(s => [s.id, s] as const));
         const fromISO = iso(range.from);
         const toISO   = iso(range.to);
 
@@ -250,8 +260,12 @@ export default function CompensationPage() {
                 // the live name over the entry's historical snapshot.
                 const payRateName = livePayRate?.name ?? entry?.payRateName ?? "—";
 
+                const tracks = buildPayConfigTracks(
+                    staffById.get(instructor.id) ?? { id: instructor.id },
+                    payRates, classSchedules, appointments, fromISO, toISO,
+                );
                 const { total } = totalEarningsForStaff(
-                    instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO,
+                    instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO, tracks,
                 );
 
                 const identity: CompRowIdentity = {
@@ -287,7 +301,8 @@ export default function CompensationPage() {
             .filter(st => roles.find(r => r.id === st.roleId)?.type !== "instructor")
             .map(st => {
                 const payRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
-                const { total } = totalEarningsForStaff(st.id, payRate, undefined, sources, fromISO, toISO);
+                const tracks = buildPayConfigTracks(st, payRates, classSchedules, appointments, fromISO, toISO);
+                const { total } = totalEarningsForStaff(st.id, payRate, undefined, sources, fromISO, toISO, tracks);
                 // Look up the materialised payroll entry for this staff member
                 // (created at Run Payroll confirm time) so the row's Status +
                 // period columns reflect the actual paid/pending state

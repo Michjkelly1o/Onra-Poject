@@ -41,7 +41,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange, spanInRange, type DateRange } from "@/lib/period-filter";
-import { earningsForClass, aed, commissionForPeriod, baseEarningsFor, totalEarningsForStaff } from "@/lib/payroll-calc";
+import { earningsForClass, aed, commissionForPeriod, baseEarningsFor, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
 import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
 import { Toast } from "@/components/ui/Toast";
 import {
@@ -564,12 +564,15 @@ export default function PayrollInstructorDetailPage({
     // commission card only when the pay rate carries commission / bonus rows.
     const periodTotals = useMemo(() => {
         const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const fromISO = iso(range.from), toISO = iso(range.to);
+        const staffRow = staff.find(s => s.id === instructorId);
+        const tracks = buildPayConfigTracks(staffRow ?? { id: instructorId }, payRates, classSchedules, appointments, fromISO, toISO);
         return totalEarningsForStaff(
             instructorId, payRate, isRealInstructor ? periodEntryEarnings : undefined,
             { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments },
-            iso(range.from), iso(range.to),
+            fromISO, toISO, tracks,
         );
-    }, [instructorId, payRate, isRealInstructor, periodEntryEarnings, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, range]);
+    }, [instructorId, payRate, payRates, staff, isRealInstructor, periodEntryEarnings, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, range]);
     const commission = periodTotals.commission;
     const hasCommission = commission.lines.length > 0 || commission.bonusLines.length > 0;
 

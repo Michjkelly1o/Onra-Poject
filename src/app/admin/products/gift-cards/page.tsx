@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { Button } from "@/components/ui/button";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -501,14 +502,20 @@ export default function GiftCardsPage() {
     const showToast              = useAppStore(s => s.showToast);
 
     // ─── Local UI state ────────────────────────────────────────────────────
-    const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState<StatusFilter>(null);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [search, setSearch] = usePersistedListState("giftCards:search", "");
+    const [filter, setFilter] = usePersistedListState<StatusFilter>("giftCards:filter", null);
+    const [page, setPage] = usePersistedListState("giftCards:page", 1);
+    const [pageSize, setPageSize] = usePersistedListState("giftCards:pageSize", 10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
-    useEffect(() => { setPage(1); }, [search, filter]);
+    // Reset to page 1 when filters change — skip the initial mount so a page
+    // restored from the cross-nav cache survives the remount.
+    const didMountRef = useRef(false);
+    useEffect(() => {
+        if (!didMountRef.current) { didMountRef.current = true; return; }
+        setPage(1);
+    }, [search, filter]);
 
     // ─── Build + filter rows ───────────────────────────────────────────────
     const allRows = useMemo(() => rowsFromDesigns(giftCardDesigns, issuedGiftCards), [giftCardDesigns, issuedGiftCards]);

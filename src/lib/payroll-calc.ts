@@ -50,7 +50,7 @@
 
 import type {
     ClassSchedule, CustomerTransaction, PayRate, CommissionCategory, CommissionValueType,
-    ClassBooking, AppointmentBooking, Appointment,
+    ClassBooking, AppointmentBooking, Appointment, StaffPayConfig,
 } from "@/lib/store";
 
 /** Earnings for a single class.
@@ -94,6 +94,39 @@ export function earningsForClass(
         }
         case "monthly":
             return classesInMonth > 0 ? payRate.fixedSalary / classesInMonth : 0;
+    }
+}
+
+/** Earnings for a single completed appointment (client 2026-07-24 — the
+ *  Pay-per-appointment track). Mirrors `earningsForClass` but sizes the
+ *  attendee count from the appointment: open sessions use `booked`, private
+ *  sessions are 1-on-1. A `monthly` rate isn't a per-appointment rate → 0
+ *  (monthly pay flows through the Default track's salary instead). */
+export function earningsForAppointment(a: Appointment, payRate: PayRate | undefined): number {
+    if (!payRate || a.status !== "Completed") return 0;
+    const attendees = a.openSession ? a.booked : 1;
+    switch (payRate.type) {
+        case "flat":    return payRate.flatAmount;
+        case "tiered": {
+            const tier = payRate.tiers.find(t => attendees >= t.from && attendees <= t.to);
+            return tier?.aed ?? 0;
+        }
+        case "revenue": {
+            const revenue = attendees * 150;
+            return revenue * (payRate.splitPercent / 100) + attendees * (payRate.payPerCustomer ?? 0);
+        }
+        case "hybrid": {
+            const base = payRate.baseRate;
+            if (payRate.condition.kind === "bonus_attendance") {
+                const bonus = attendees >= payRate.condition.bonusThreshold
+                    ? attendees * payRate.condition.bonusPerCustomer : 0;
+                return base + bonus;
+            }
+            const revenue = attendees * 150;
+            return base + revenue * (payRate.condition.splitPercent / 100);
+        }
+        case "monthly":
+            return 0;
     }
 }
 
@@ -757,6 +790,82 @@ export function baseEarningsFor(
     return entryTotalEarnings ?? 0;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Multi-track pay config (client 2026-07-24) — Default + Pay-per-class +
+// Pay-per-appointment. An instructor can earn on up to three tracks; the total
+// is the SUM of the enabled ones. When only Default is enabled (every
+// non-instructor, and single-track instructors) the result equals the legacy
+// single-rate base, so existing payroll numbers never move.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PayConfigTracks {
+    payConfig?: StaffPayConfig;
+    payRateById: (id?: string) => PayRate | undefined;
+    /** This staff's COMPLETED classes in the period (per-class track input). */
+    completedClasses: ClassSchedule[];
+    /** This staff's COMPLETED appointments in the period (per-appointment track). */
+    completedAppointments: Appointment[];
+    /** Class count for monthly proration inside `earningsForClass`. */
+    classesInMonth: number;
+}
+
+/** Assemble a staff member's per-track inputs for the period. */
+export function buildPayConfigTracks(
+    staff: { id: string; payConfig?: StaffPayConfig },
+    payRates: PayRate[],
+    schedules: ClassSchedule[],
+    appointments: Appointment[],
+    periodStartISO: string,
+    periodEndISO: string,
+): PayConfigTracks {
+    const inPeriod = (iso: string) => iso >= periodStartISO && iso <= periodEndISO;
+    const completedClasses = schedules.filter(
+        c => c.instructorId === staff.id && c.status === "Completed" && inPeriod(c.dateISO));
+    const completedAppointments = appointments.filter(
+        a => a.instructorId === staff.id && a.status === "Completed" && inPeriod(a.dateISO));
+    return {
+        payConfig: staff.payConfig,
+        payRateById: (id) => (id ? payRates.find(p => p.id === id) : undefined),
+        completedClasses,
+        completedAppointments,
+        classesInMonth: Math.max(1, completedClasses.length),
+    };
+}
+
+export interface PayConfigBaseBreakdown {
+    defaultBase: number;
+    perClass: number;
+    perAppointment: number;
+    /** Sum of the enabled tracks — the base pay before commission/adjustment. */
+    base: number;
+}
+
+/** Base pay across the enabled pay-config tracks. Falls back to the legacy
+ *  single-rate base when the staff has no `payConfig` (older snapshots). */
+export function payConfigBase(
+    tracks: PayConfigTracks | undefined,
+    fallbackRate: PayRate | undefined,
+    entryTotalEarnings: number | undefined,
+): PayConfigBaseBreakdown {
+    const pc = tracks?.payConfig;
+    if (!tracks || !pc) {
+        const base = baseEarningsFor(fallbackRate, entryTotalEarnings);
+        return { defaultBase: base, perClass: 0, perAppointment: 0, base };
+    }
+    const defaultBase = pc.default.enabled
+        ? baseEarningsFor(tracks.payRateById(pc.default.payRateId), entryTotalEarnings)
+        : 0;
+    const perClassRate = pc.perClass.enabled ? tracks.payRateById(pc.perClass.payRateId) : undefined;
+    const perClass = pc.perClass.enabled
+        ? tracks.completedClasses.reduce((s, c) => s + earningsForClass(c, perClassRate, tracks.classesInMonth), 0)
+        : 0;
+    const perApptRate = pc.perAppointment.enabled ? tracks.payRateById(pc.perAppointment.payRateId) : undefined;
+    const perAppointment = pc.perAppointment.enabled
+        ? tracks.completedAppointments.reduce((s, a) => s + earningsForAppointment(a, perApptRate), 0)
+        : 0;
+    return { defaultBase, perClass, perAppointment, base: defaultBase + perClass + perAppointment };
+}
+
 /** Total staff earnings = base pay + sales commission, plus the pieces the
  *  callers need (base, the commission breakdown). ONE call every payroll
  *  surface makes so the number always agrees. */
@@ -767,9 +876,13 @@ export function totalEarningsForStaff(
     sources: CommissionSources,
     periodStartISO: string,
     periodEndISO: string,
-): { base: number; commission: CommissionBreakdown; total: number } {
-    const base = baseEarningsFor(payRate, entryTotalEarnings);
+    /** Multi-track inputs (client 2026-07-24). When omitted, the base is the
+     *  legacy single-rate base — so callers that don't pass it are unchanged. */
+    tracks?: PayConfigTracks,
+): { base: number; commission: CommissionBreakdown; total: number; trackBreakdown: PayConfigBaseBreakdown } {
+    const trackBreakdown = payConfigBase(tracks, payRate, entryTotalEarnings);
+    const base = trackBreakdown.base;
     const commission = commissionForPeriod(staffId, payRate, sources, periodStartISO, periodEndISO);
-    return { base, commission, total: base + commission.totalCommission };
+    return { base, commission, total: base + commission.totalCommission, trackBreakdown };
 }
 

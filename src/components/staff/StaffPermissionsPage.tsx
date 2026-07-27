@@ -640,6 +640,41 @@ type PendingConfirm =
 // empty-state for now so the navigation is in place.
 type StaffSubTab = "staff" | "shift-management" | "blocked-time";
 
+// ── Cross-navigation UI cache ────────────────────────────────────────────────
+// Persists the Staff & permissions toolbar/view state (tab, sub-tab, branch,
+// search, role/staff filters, page, view modes) across a round-trip into a
+// staff/role/shift detail and back — the page component remounts on return, so
+// without this every filter would reset. Mirrors the Schedule module's
+// `scheduleUi`. `?subtab` deep-links still win on arrival; the FilterPanel's
+// "Clear" is the only thing that empties the filters. Client 2026-07-24.
+//
+// KEYED PER ROUTE — the Roles page (`forceTab="roles"`) and the Staff page
+// (`forceTab="staff"`) both render this component, so a single shared cache
+// would leak one route's search/filters into the other. Each route gets its own
+// slot.
+interface StaffUiState {
+    tab: TabId;
+    staffSubTab: StaffSubTab;
+    branchId: string;
+    search: string;
+    roleFilter: RoleFilter;
+    staffFilter: StaffFilter;
+    page: number;
+    shiftsViewMode: "list" | "week";
+    timeOffViewMode: "list" | "month";
+}
+function defaultStaffUi(): StaffUiState {
+    return {
+        tab: "roles", staffSubTab: "staff", branchId: "", search: "",
+        roleFilter: EMPTY_ROLE_FILTER, staffFilter: EMPTY_STAFF_FILTER,
+        page: 1, shiftsViewMode: "list", timeOffViewMode: "list",
+    };
+}
+const staffUiByRoute: Record<string, StaffUiState> = {};
+function getStaffUi(key: string): StaffUiState {
+    return (staffUiByRoute[key] ??= defaultStaffUi());
+}
+
 export interface StaffPermissionsPageProps {
     /** When set, the page renders ONLY the matching tab + adjusts the toolbar:
      *   • "roles" → roles list, "Add role" plain button (Role & permissions menu)
@@ -665,27 +700,33 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const resendStaffInvite = useAppStore(s => s.resendStaffInvite);
     const showToast        = useAppStore(s => s.showToast);
 
-    const [tab, setTab] = useState<TabId>(forceTab ?? "roles");
+    // Per-route cache slot — Roles and Staff pages never share state.
+    const staffUi = getStaffUi(forceTab ?? "combined");
+    // Initial values resolve forceTab / deep-link first, then the cross-nav
+    // cache, then the default — so returning from a detail restores the exact
+    // view the admin left, while a fresh deep-link still wins.
+    const [tab, setTab] = useState<TabId>(forceTab ?? staffUi.tab);
     const searchParams = useSearchParams();
     // Deep-link back to a specific sub-tab (e.g. edit-time-off Back → Time off).
     const initialSubTab = ((): StaffSubTab => {
         const v = searchParams?.get("subtab");
-        return v === "shift-management" || v === "blocked-time" || v === "staff" ? v : "staff";
+        if (v === "shift-management" || v === "blocked-time" || v === "staff") return v;
+        return staffUi.staffSubTab;
     })();
     const [staffSubTab, setStaffSubTab] = useState<StaffSubTab>(initialSubTab);
     /** Shift management's filter applies the green dot to the toolbar
      *  Filter button. Lifted up so the existing toolbar code path can
      *  read it without re-subscribing inside the table component. */
     const [shiftFilterActive, setShiftFilterActive] = useState(false);
-    const [branchId, setBranchId] = useState<string>("");
-    const [search, setSearch] = useState("");
+    const [branchId, setBranchId] = useState<string>(staffUi.branchId);
+    const [search, setSearch] = useState(staffUi.search);
     const [filterOpen, setFilterOpen] = useState(false);
     // Client 2026-07-22 audit fix — inner List/Week + List/Month toggle
     // lifted UP to the sub-tab row (was inside the child tab body). One
     // state per sub-tab so switching Shifts→Time off→Shifts remembers the
     // previously picked view.
-    const [shiftsViewMode,  setShiftsViewMode]  = useState<"list" | "week">("list");
-    const [timeOffViewMode, setTimeOffViewMode] = useState<"list" | "month">("list");
+    const [shiftsViewMode,  setShiftsViewMode]  = useState<"list" | "week">(staffUi.shiftsViewMode);
+    const [timeOffViewMode, setTimeOffViewMode] = useState<"list" | "month">(staffUi.timeOffViewMode);
     // Date pointers ALSO lifted up so their prev/next/label buttons can
     // render on the sub-tab row next to the view toggle (client
     // 2026-07-22). Week points at the Monday of the current week; Month
@@ -700,9 +741,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         const d = new Date();
         return { year: d.getFullYear(), month: d.getMonth() };
     });
-    const [roleFilter,  setRoleFilter]  = useState<RoleFilter>(EMPTY_ROLE_FILTER);
-    const [staffFilter, setStaffFilter] = useState<StaffFilter>(EMPTY_STAFF_FILTER);
-    const [page, setPage] = useState(1);
+    const [roleFilter,  setRoleFilter]  = useState<RoleFilter>(staffUi.roleFilter);
+    const [staffFilter, setStaffFilter] = useState<StaffFilter>(staffUi.staffFilter);
+    const [page, setPage] = useState(staffUi.page);
     const [pageSize, setPageSize] = useState(10);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
     // The Change role modal lives outside the confirm-modal flow because it
@@ -714,7 +755,27 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     // Bulk confirmation — fires after the floating-bar action is clicked.
     const [pendingBulk, setPendingBulk] = useState<{ entity: "role" | "staff"; kind: ConfirmKind } | null>(null);
 
-    useEffect(() => { setPage(1); }, [tab, branchId, search, roleFilter, staffFilter]);
+    // Reset to page 1 when the filter/tab set changes — but NOT on the initial
+    // mount, so a page restored from the cross-nav cache survives the remount.
+    const didMountRef = useRef(false);
+    useEffect(() => {
+        if (!didMountRef.current) { didMountRef.current = true; return; }
+        setPage(1);
+    }, [tab, branchId, search, roleFilter, staffFilter]);
+
+    // Persist the toolbar/view state to the module cache on every change so a
+    // detail round-trip returns the admin to the same filtered view.
+    useEffect(() => {
+        staffUi.tab = tab;
+        staffUi.staffSubTab = staffSubTab;
+        staffUi.branchId = branchId;
+        staffUi.search = search;
+        staffUi.roleFilter = roleFilter;
+        staffUi.staffFilter = staffFilter;
+        staffUi.page = page;
+        staffUi.shiftsViewMode = shiftsViewMode;
+        staffUi.timeOffViewMode = timeOffViewMode;
+    }, [tab, staffSubTab, branchId, search, roleFilter, staffFilter, page, shiftsViewMode, timeOffViewMode]);
     // Clear the OTHER tab's selection when switching — keeps the bulk bar
     // scoped to the tab the user is looking at.
     useEffect(() => {

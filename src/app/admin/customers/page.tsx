@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { useAppStore, type Customer } from "@/lib/store";
@@ -451,17 +452,22 @@ export default function CustomersPage() {
     // Branch filter defaults to "" ("All locations") — Owner + Branch Admin
     // both start on the aggregate view so the module reads like the full
     // studio on first paint, not a branch slice.
-    const [branchId, setBranchId] = useState<string>("");
-    const [search, setSearch] = useState("");
+    const [branchId, setBranchId] = usePersistedListState<string>("customers:branchId", "");
+    const [search, setSearch] = usePersistedListState("customers:search", "");
     const [filterOpen, setFilterOpen] = useState(false);
-    const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [applied, setApplied] = usePersistedListState<FilterState>("customers:applied", EMPTY_FILTER);
+    const [page, setPage] = usePersistedListState("customers:page", 1);
+    const [pageSize, setPageSize] = usePersistedListState("customers:pageSize", 10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
-    // Reset to page 1 whenever the result set changes shape.
-    useEffect(() => { setPage(1); }, [search, applied, branchId, pageSize]);
+    // Reset to page 1 whenever the result set changes shape — but NOT on the
+    // initial mount, so a page restored from the cross-nav cache survives.
+    const didMountRef = useRef(false);
+    useEffect(() => {
+        if (!didMountRef.current) { didMountRef.current = true; return; }
+        setPage(1);
+    }, [search, applied, branchId, pageSize]);
 
     // Branch dropdown — active branches from the live `branches` slice so
     // adds/archives in Business & Locations propagate immediately.

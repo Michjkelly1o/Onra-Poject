@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { RangeSlider } from "@/components/ui/RangeSlider";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -703,14 +704,14 @@ export default function ProductsPage() {
     const showToast = useAppStore(s => s.showToast);
 
     // ─── Local UI state ─────────────────────────────────────────────────────
-    const [tab, setTab] = useState<TabId>("memberships");
+    const [tab, setTab] = usePersistedListState<TabId>("products:tab", "memberships");
     // "" = "All locations" — products default to the aggregate view.
-    const [branchId, setBranchId] = useState<string>("");
-    const [search, setSearch] = useState("");
+    const [branchId, setBranchId] = usePersistedListState<string>("products:branchId", "");
+    const [search, setSearch] = usePersistedListState("products:search", "");
     const [filterOpen, setFilterOpen] = useState(false);
-    const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [applied, setApplied] = usePersistedListState<FilterState>("products:applied", EMPTY_FILTER);
+    const [page, setPage] = usePersistedListState("products:page", 1);
+    const [pageSize, setPageSize] = usePersistedListState("products:pageSize", 10);
     const [selectedMemberships, setSelectedMemberships] = useState<Set<string>>(new Set());
     const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
@@ -721,8 +722,13 @@ export default function ProductsPage() {
         else setSelectedPackages(next);
     };
 
-    // Reset page when tab/filters change
-    useEffect(() => { setPage(1); }, [tab, search, applied, branchId]);
+    // Reset page when tab/filters change — but NOT on the initial mount, so a
+    // page restored from the cross-nav cache survives the remount.
+    const didMountRef = useRef(false);
+    useEffect(() => {
+        if (!didMountRef.current) { didMountRef.current = true; return; }
+        setPage(1);
+    }, [tab, search, applied, branchId]);
 
     // Branch dropdown — single source: live `branches` slice
     const branchOptions = useMemo(

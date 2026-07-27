@@ -437,6 +437,88 @@ function RatingSummary({ rating, count }: { rating: number; count: number }) {
     );
 }
 
+// ─── Reassign instructor modal ──────────────────────────────────────────────
+// Reuses the class-detail "Add customer" modal shell (centered card, header +
+// close, search, scrollable list, per-row action button) so the reassign
+// experience matches the rest of the admin. Only the branch's active
+// instructors are offered — the same pool the customer flexible flow uses.
+
+function ReassignInstructorModal({ open, instructors, currentInstructorId, serviceName, onClose, onReassign }: {
+    open: boolean;
+    instructors: { id: string; name: string; initials: string; color: string; imageUrl?: string }[];
+    currentInstructorId: string;
+    serviceName: string;
+    onClose: () => void;
+    onReassign: (instructorId: string) => void;
+}) {
+    const [search, setSearch] = useState("");
+    useEffect(() => { if (open) setSearch(""); }, [open]);
+    if (!open) return null;
+
+    const q = search.toLowerCase();
+    const available = instructors.filter(i => !q || i.name.toLowerCase().includes(q));
+
+    return (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
+            <div className="relative bg-white rounded-[16px] w-full max-w-[720px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[80vh] overflow-hidden">
+                {/* Header */}
+                <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[#e4e7ec]">
+                    <div className="flex flex-col gap-1 min-w-0">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Reassign instructor</p>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">Pick an available instructor for {serviceName}.</p>
+                    </div>
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+                        <XClose className="w-6 h-6 text-[#667085]" />
+                    </button>
+                </div>
+                {/* Search */}
+                <div className="px-6 pt-5 pb-4">
+                    <div className="relative flex-1">
+                        <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085] pointer-events-none" />
+                        <input
+                            type="text" value={search} onChange={e => setSearch(e.target.value)}
+                            placeholder="Search instructor"
+                            className="w-full h-10 pl-10 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                        />
+                    </div>
+                </div>
+                {/* Instructor list */}
+                <div className="flex-1 overflow-y-auto px-6 pb-6">
+                    {available.length === 0 ? (
+                        <p className="text-[14px] text-[#667085] text-center py-8">No instructors available at this branch.</p>
+                    ) : (
+                        <div className="flex flex-col">
+                            {available.map((i, idx) => {
+                                const current = i.id === currentInstructorId;
+                                return (
+                                    <div key={i.id} className={cn("grid grid-cols-[1fr_150px] items-center gap-4 py-3", idx > 0 && "border-t border-[#e4e7ec]")}>
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <TableAvatar initials={i.initials} imageUrl={i.imageUrl} size={40} />
+                                            <p className="text-[14px] font-medium text-[#101828] truncate">{i.name}</p>
+                                        </div>
+                                        <div className="flex justify-end">
+                                            {current ? (
+                                                <span className="inline-flex items-center gap-1 text-[14px] font-medium text-[#658774]">
+                                                    <Check className="w-4 h-4" /> Current
+                                                </span>
+                                            ) : (
+                                                <Button variant="secondary-gray" size="md" leftIcon={<Shuffle01 className="w-4 h-4" />} onClick={() => onReassign(i.id)}>
+                                                    Reassign
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Left panel — info card ─────────────────────────────────────────────────
 
 function LeftPanel({ appointment, onCancelAppointment }: {
@@ -557,46 +639,8 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                         </div>
                         {!appointment.openSession && appointment.instructorName && (
                             <div className="flex flex-col gap-1">
-                                <div className="flex items-center justify-between gap-2">
-                                    <p className="text-[14px] text-[#667085]">Instructor</p>
-                                    {/* Reassign — only on a Flexible appointment that's still
-                                        upcoming/ongoing (a completed/cancelled one is locked). */}
-                                    {canReassign && (
-                                        <button type="button" onClick={() => setReassignOpen(o => !o)}
-                                            className="text-[13px] font-medium text-[#658774] hover:text-[#3b5446] transition-colors">
-                                            {reassignOpen ? "Cancel" : "Reassign"}
-                                        </button>
-                                    )}
-                                </div>
+                                <p className="text-[14px] text-[#667085]">Instructor</p>
                                 <p className="text-[16px] font-medium text-[#101828]">{appointment.instructorName}</p>
-                                {reassignOpen && canReassign && (
-                                    <div className="mt-1 flex flex-col gap-1 rounded-[10px] border-1 border-[#e4e7ec] p-1.5 max-h-[240px] overflow-y-auto">
-                                        {branchInstructors.length === 0 ? (
-                                            <p className="px-2 py-2 text-[13px] text-[#98a2b3]">No instructors at this branch.</p>
-                                        ) : branchInstructors.map(i => {
-                                            const current = i.id === appointment.instructorId;
-                                            return (
-                                                <button key={i.id} type="button"
-                                                    onClick={() => {
-                                                        if (!current) {
-                                                            reassignInstructor(appointment.id, i.id);
-                                                            showToast("Instructor reassigned", `${appointment.serviceName} reassigned to ${i.name}.`, "success", "check");
-                                                        }
-                                                        setReassignOpen(false);
-                                                    }}
-                                                    className={cn("flex items-center gap-2.5 rounded-[8px] px-2 py-2 text-left transition-colors", current ? "bg-[#f5fffa]" : "hover:bg-[#f9fafb]")}>
-                                                    <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-[11px] font-semibold text-white" style={{ backgroundColor: i.color }}>
-                                                        {i.imageUrl
-                                                            ? <img src={i.imageUrl} alt="" className="size-full object-cover" />
-                                                            : i.initials}
-                                                    </span>
-                                                    <span className="flex-1 min-w-0 truncate text-[14px] font-medium text-[#344054]">{i.name}</span>
-                                                    {current && <Check className="w-4 h-4 shrink-0 text-[#658774]" />}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
                             </div>
                         )}
                         <div className="flex flex-col gap-1">
@@ -616,10 +660,21 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                         <div className="h-px w-full bg-[#e4e7ec] mb-5" />
                         <p className="text-[14px] text-[#667085] mb-4">Appointment actions</p>
                         <div className="flex flex-col gap-4">
-                            {/* Cancel only — appointments are created by the
-                                customer (self-booking) and can't be edited
-                                by the admin. Trash icon + red hover mirrors
-                                the class schedule's Cancel pattern. */}
+                            {/* Reassign instructor — only on a Flexible appointment
+                                that's still upcoming/ongoing (studio-assigned, so
+                                the admin can swap the instructor). Opens the same
+                                modal shell as class "Add customer". */}
+                            {canReassign && (
+                                <button type="button" onClick={() => setReassignOpen(true)}
+                                    className="flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] text-[#344054] hover:text-[#101828] transition-colors">
+                                    <span className="w-5 h-5 shrink-0"><Shuffle01 className="w-5 h-5" /></span>
+                                    Reassign instructor
+                                </button>
+                            )}
+                            {/* Cancel — appointments are created by the customer
+                                (self-booking) and can't be edited by the admin.
+                                Trash icon + red hover mirrors the class schedule's
+                                Cancel pattern. */}
                             <button type="button" onClick={onCancelAppointment}
                                 className="flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] text-[#b42318] hover:text-[#912018] transition-colors">
                                 <span className="w-5 h-5 shrink-0"><Trash04 className="w-5 h-5" /></span>
@@ -629,6 +684,20 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                     </div>
                 )}
             </div>
+
+            <ReassignInstructorModal
+                open={reassignOpen}
+                instructors={branchInstructors}
+                currentInstructorId={appointment.instructorId ?? ""}
+                serviceName={appointment.serviceName}
+                onClose={() => setReassignOpen(false)}
+                onReassign={(instructorId) => {
+                    const inst = branchInstructors.find(i => i.id === instructorId);
+                    reassignInstructor(appointment.id, instructorId);
+                    showToast("Instructor reassigned", `${appointment.serviceName} reassigned to ${inst?.name ?? "the selected instructor"}.`, "success", "check");
+                    setReassignOpen(false);
+                }}
+            />
         </div>
     );
 }
@@ -1191,7 +1260,10 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                                                 ? <NoShowBadge />
                                                                 : appointment.status === "Ongoing"
                                                                     ? <PresentButton onClick={() => actions.onMarkOne(r.id)} />
-                                                                    : null)
+                                                                    // Completed + never marked → the session is over, so an
+                                                                    // unmarked customer reads as a No-show (applies to both
+                                                                    // Private + Recovery appointments). Client 2026-07-27.
+                                                                    : <NoShowBadge />)
                                                         : <StatusBadge type="appointment-booking" status={r.status} />}
                                                 </td>
                                             )}

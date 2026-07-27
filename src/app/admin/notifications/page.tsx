@@ -27,6 +27,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bell01, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore, type Notification } from "@/lib/store";
+import { usePersistedListState } from "@/lib/list-ui-cache";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { Button } from "@/components/ui/button";
@@ -197,7 +198,7 @@ function NotificationsPage() {
     // Branch scope — "" = "All locations". Opens on the aggregate view
     // to match every other admin list; a specific branch can still be
     // picked from the toolbar.
-    const [branchId, setBranchId] = useState<string>("");
+    const [branchId, setBranchId] = usePersistedListState<string>("notifications:branchId", "");
 
     // Active branches drive the picker — matches the toolbar pattern on
     // `/admin/customers` and `/admin/staff` (MarkerPin trigger icon).

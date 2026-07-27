@@ -46,7 +46,7 @@ import {
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { findActiveTaxRuleFor } from "@/lib/tax-calc";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
-import { payrollBreakdownFor, totalEarningsForStaff, type CommissionBreakdown } from "@/lib/payroll-calc";
+import { payrollBreakdownFor, totalEarningsForStaff, buildPayConfigTracks, type CommissionBreakdown } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -530,6 +530,9 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
         const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
         const fromISO = iso(range.from);
         const toISO   = iso(range.to);
+        // Multi-track pay config lives on the STAFF row (the instructors mirror
+        // doesn't carry it) — look it up by shared id.
+        const staffById = new Map(staff.map(s => [s.id, s] as const));
 
         const instructorRows: RunRow[] = instructors
             .filter(i => i.status === "active")
@@ -538,8 +541,12 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                 const livePayRate = instructor.payRateId
                     ? payRates.find(p => p.id === instructor.payRateId)
                     : undefined;
+                const tracks = buildPayConfigTracks(
+                    staffById.get(instructor.id) ?? { id: instructor.id },
+                    payRates, classSchedules, appointments, fromISO, toISO,
+                );
                 const { base, commission, total } = totalEarningsForStaff(
-                    instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO,
+                    instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO, tracks,
                 );
                 return {
                     entryId: entry?.id ?? `noentry_${instructor.id}`,
@@ -571,8 +578,9 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             .map(st => {
                 const livePayRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
                 const entry = byInstructor.get(st.id);
+                const tracks = buildPayConfigTracks(st, payRates, classSchedules, appointments, fromISO, toISO);
                 const { base, commission, total } = totalEarningsForStaff(
-                    st.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO,
+                    st.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO, tracks,
                 );
                 const synthetic: Instructor = {
                     id: st.id, name: st.fullName, initials: st.initials, color: st.color,
