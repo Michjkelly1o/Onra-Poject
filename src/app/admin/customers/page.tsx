@@ -417,12 +417,23 @@ type CustomerRow = {
 
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
-function exportCustomersCsv(rows: CustomerRow[]) {
-    const header = ["Name", "Email", "Phone", "Plan", "Status", "Joined", "Last visit"];
+function exportCustomersCsv(rows: CustomerRow[], staffLookup: Map<string, string>) {
+    // v83 audit fix — Lifecycle + VIP + Assigned to added to the export
+    // per the plan's Phase 2 verify pass. Staff name resolved via a
+    // caller-supplied lookup so the row's `assignedTo` id becomes a
+    // human name in the CSV (a bare staff id isn't useful downstream).
+    const header = [
+        "Name", "Email", "Phone", "Plan", "Lifecycle", "VIP",
+        "Assigned to", "Status", "Joined", "Last visit",
+    ];
     const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
     const body = rows.map(r => [
         r.name, r.email, r.phone,
-        PLAN_LABEL[r.planType], STATUS_LABEL[r.status],
+        PLAN_LABEL[r.planType],
+        r.lifecycleTag ?? "Lead",
+        r.isVip ? "Yes" : "No",
+        r.assignedTo ? (staffLookup.get(r.assignedTo) ?? "—") : "Unassigned",
+        STATUS_LABEL[r.status],
         fmtDate(r.joinedISO), r.lastVisitISO ? fmtDate(r.lastVisitISO) : "Never visited",
     ]);
     const csv = [header, ...body].map(line => line.map(esc).join(",")).join("\r\n");
@@ -457,6 +468,8 @@ export default function CustomersPage() {
     // to compare against customer.assignedTo. Falls back to the auth user id
     // when the role has no staff row (owner etc.).
     const currentUser = useAppStore(s => s.currentUser);
+    // v83 audit fix — CSV export needs staff for the "Assigned to" column.
+    const staff = useAppStore(s => s.staff);
 
     // ─── Local UI state ─────────────────────────────────────────────────────
     // Branch filter defaults to "" ("All locations") — Owner + Branch Admin
@@ -777,7 +790,13 @@ export default function CustomersPage() {
                 <ToolbarExport
                     disabled={filteredRows.length === 0}
                     onExportCsv={() => {
-                        exportCustomersCsv(filteredRows);
+                        exportCustomersCsv(
+                            filteredRows,
+                            new Map(staff.map(s => [
+                                s.id,
+                                (s.fullName || `${s.firstName} ${s.lastName}`).trim() || s.email,
+                            ])),
+                        );
                         showToast("Customer list exported", `${filteredRows.length} customer${filteredRows.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
                     }}
                 />

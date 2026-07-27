@@ -1267,7 +1267,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                     {lifecycleResult && (
                                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                             <IconTooltip
-                                                label={`Tagged ${lifecycleResult.tag} on ${lifecycleResult.computedOn}${
+                                                label={`Tagged ${lifecycleResult.tag} on ${customer.lifecycleTaggedOn ?? lifecycleResult.computedOn}${
                                                     lifecycleResult.reasons[0] ? ` · ${lifecycleResult.reasons[0]}` : ""
                                                 }`}
                                                 side="below"
@@ -1598,7 +1598,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                             </div>
                             <p className="text-[13px] text-[#667085]">
                                 Tagged <span className="text-[#344054] font-medium">{lifecycleResult.tag}</span> on{" "}
-                                <span className="text-[#344054] font-medium">{lifecycleResult.computedOn}</span>.
+                                <span className="text-[#344054] font-medium">{customer.lifecycleTaggedOn ?? lifecycleResult.computedOn}</span>.
                             </p>
                         </div>
                         <div className="flex flex-col gap-2">

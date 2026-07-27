@@ -327,10 +327,20 @@ export function applyLifecycleResult(
     const target = customers.find(c => c.id === customerId);
     const postFunnel = result.tag !== "Lead" && result.tag !== "Trialist";
     const shouldClearFollowUp = postFunnel && target?.followUpStatus !== undefined;
+    // v83 audit fix — record when the tag CHANGED so the header pill's
+    // "Tagged X on YYYY-MM-DD" tooltip reflects a real transition date,
+    // not "today" every render. `changed` here is true when the tag or
+    // vip flag actually differs from what's on the record.
+    const tagJustChanged = target?.lifecycleTag !== result.tag;
     if (!result.changed && !shouldClearFollowUp) return customers;
     return customers.map(c => {
         if (c.id !== customerId) return c;
-        const next: Customer = { ...c, lifecycleTag: result.tag, isVip: result.isVip };
+        const next: Customer = {
+            ...c,
+            lifecycleTag: result.tag,
+            isVip: result.isVip,
+            lifecycleTaggedOn: tagJustChanged ? result.computedOn : (c.lifecycleTaggedOn ?? result.computedOn),
+        };
         if (postFunnel && next.followUpStatus !== undefined) {
             next.followUpStatus = undefined;
         }

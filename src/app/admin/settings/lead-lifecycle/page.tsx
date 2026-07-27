@@ -341,12 +341,13 @@ function FollowUpStagesCard() {
                                         </span>
                                     )}
                                     <IconButton
-                                        label="Rename stage"
+                                        label={s.isTerminal ? "Terminal stages can't be renamed" : "Rename stage"}
                                         onClick={() => {
                                             setEditLabel(s.label);
                                             setEditing(s.id);
                                         }}
                                         icon={<Edit02 className="w-4 h-4" />}
+                                        disabled={s.isTerminal}
                                     />
                                     <IconButton
                                         label="Delete stage"

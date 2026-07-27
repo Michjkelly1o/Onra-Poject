@@ -89,6 +89,7 @@ import {
 import {
     generateFollowUpTasks,
     applyGeneratedTasks,
+    lookupStageLabel,
 } from "./customer/follow-up-tasks";
 
 // ─── Seed imports (snake_case, DB-ready) ─────────────────────────────────────
@@ -1216,6 +1217,12 @@ export interface Customer {
      *  recomputed after every write that touches a customer's behaviour
      *  (booking / cancel / attendance / plan / transaction / rating). */
     lifecycleTag?: LifecycleTag;
+    /** ISO date (YYYY-MM-DD) the lifecycleTag was last CHANGED — used by
+     *  the profile header pill's hover tooltip ("Tagged Loyal Active on
+     *  YYYY-MM-DD"). Stamped only when the recompute produces a NEW tag;
+     *  a same-tag recompute leaves this alone so the date reflects the
+     *  actual transition, not the last render. */
+    lifecycleTaggedOn?: string;
     /** Orthogonal VIP flag — stacks on top of `lifecycleTag`. Auto-computed
      *  (top-10% LTV) or manually flagged; the compute treats it as sticky
      *  once set to true unless a manual override clears it. */
@@ -4165,11 +4172,14 @@ export interface AppState {
     // ── Customer & Lead Management v83 — task engine (client 2026-07-24) ───
     /** Manually log an enquiry for a customer — creates a follow-up task
      *  with the `enquiry_logged` trigger. Wired to the Phase-5 "Log
-     *  enquiry" button on the profile Follow-ups tab. Returns the new
-     *  task's id, or null when the customer isn't eligible (status
-     *  "Lost", already has an open enquiry task, or already past
-     *  pre-conversion). */
-    logCustomerEnquiry: (customerId: string, note?: string) => string | null;
+     *  enquiry" button on the profile Follow-ups tab. Returns:
+     *    { logged: true; id }                       — task materialised
+     *    { logged: false; reason: "lost" }          — customer marked Lost
+     *    { logged: false; reason: "post_conversion" } — already a member
+     *    { logged: false; reason: "dup" }           — open enquiry exists */
+    logCustomerEnquiry: (customerId: string, note?: string) =>
+        | { logged: true; id: string }
+        | { logged: false; reason: "lost" | "post_conversion" | "dup" };
     /** Close a follow-up task with a staff-picked outcome. Applies the
      *  Phase-5 outcome→followUpStatus mapping:
      *    reached         → status advances from New to Contacted
@@ -7520,7 +7530,7 @@ export const useAppStore = create<AppState>()(persist(
                 status: "active",
                 gender: next.gender,
                 lifecycleTag: "Lead",
-                followUpStatus: "New",
+                followUpStatus: lookupStageLabel(get().followUpStages, "stg_new", "New") as FollowUpStatus,
                 assignedTo: next.assigned_to_staff_id,
                 // Map lead.source (label) to a lead source id when the label
                 // matches a seeded source; else store the raw label in the
@@ -7535,13 +7545,14 @@ export const useAppStore = create<AppState>()(persist(
             // Existing customer — patch the lifecycle fields only. Preserve
             // whatever `lifecycleTag` the recompute already assigned (a paid
             // member returning as a "lead" should NOT be downgraded to Lead).
+            const newStageLabel = lookupStageLabel(get().followUpStages, "stg_new", "New") as FollowUpStatus;
             set(state => ({
                 customers: state.customers.map(c =>
                     c.id === existing.id
                         ? {
                             ...c,
                             lifecycleTag: c.lifecycleTag ?? "Lead",
-                            followUpStatus: c.followUpStatus ?? "New",
+                            followUpStatus: c.followUpStatus ?? newStageLabel,
                             assignedTo: c.assignedTo ?? next.assigned_to_staff_id,
                             sourceId:
                                 c.sourceId ??
@@ -7572,6 +7583,33 @@ export const useAppStore = create<AppState>()(persist(
     // generateFollowUpTasks so precedence rules apply identically to the
     // automatic paths.
     logCustomerEnquiry: (customerId, note) => {
+        // v83 audit fix — return the SKIP REASON so the profile Follow-
+        // ups tab can render an accurate toast ("Lead marked Lost" vs
+        // "Already a member" vs "Open enquiry exists"). Precedence
+        // mirrors the generator's — check Lost first, then post-
+        // conversion, then dup.
+        const before = get();
+        const customer = before.customers.find(c => c.id === customerId);
+        if (!customer) {
+            return { logged: false, reason: "dup" as const };
+        }
+        const lostLabel = lookupStageLabel(before.followUpStages, "stg_lost", "Lost");
+        if (customer.followUpStatus === lostLabel) {
+            return { logged: false, reason: "lost" as const };
+        }
+        if (
+            customer.lifecycleTag !== undefined &&
+            customer.lifecycleTag !== "Lead" &&
+            customer.lifecycleTag !== "Trialist"
+        ) {
+            return { logged: false, reason: "post_conversion" as const };
+        }
+        const dup = before.followUpTasks.some(
+            t => t.customerId === customerId && t.triggerKind === "enquiry_logged" && t.status === "open",
+        );
+        if (dup) {
+            return { logged: false, reason: "dup" as const };
+        }
         let materialisedId: string | null = null;
         set(state => {
             const fresh = generateFollowUpTasks(customerId, state, {
@@ -7583,17 +7621,23 @@ export const useAppStore = create<AppState>()(persist(
             return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
         });
         if (materialisedId) {
-            const c = get().customers.find(cx => cx.id === customerId);
-            const who = c ? capitalizeName(`${c.firstName} ${c.lastName}`) : "customer";
+            const who = capitalizeName(`${customer.firstName} ${customer.lastName}`);
             get().recordAudit("Logged enquiry", "customer", customerId, who);
+            return { logged: true, id: materialisedId };
         }
-        return materialisedId;
+        // The generator's own dedup dropped it — treat as dup for the UI.
+        return { logged: false, reason: "dup" as const };
     },
     // v83 Phase 4 — close a task with a staff-picked outcome. The
     // outcome→followUpStatus mapping mirrors the plan §Phase 5 table.
     // Behavior override is preserved via applyLifecycleResult (Phase 3),
     // so a "not_interested" that flips the customer to "Lost" is
     // automatically cleared later if they book / pay.
+    //
+    // v83 audit fix — stage labels ("New" → "Contacted" for `reached`,
+    // → "Lost" for `not_interested`) are resolved from the state's
+    // followUpStages by id (`stg_new` / `stg_contacted` / `stg_lost`)
+    // so a studio rename doesn't disable the mapping.
     closeFollowUpTask: (taskId, outcome) => {
         const target = get().followUpTasks.find(t => t.id === taskId);
         if (!target || target.status !== "open") return false;
@@ -7605,23 +7649,28 @@ export const useAppStore = create<AppState>()(persist(
                     : t,
             ),
         }));
-        // Apply the outcome→status side effect.
+        // Apply the outcome→status side effect. Look up the CURRENT
+        // labels so a rename can't silently break the mapping.
         if (outcome === "reached") {
+            const stages = get().followUpStages;
+            const newLabel = lookupStageLabel(stages, "stg_new", "New");
+            const contactedLabel = lookupStageLabel(stages, "stg_contacted", "Contacted");
             const c = get().customers.find(cx => cx.id === target.customerId);
-            if (c && c.followUpStatus === "New") {
+            if (c && c.followUpStatus === newLabel) {
                 set(state => ({
                     customers: state.customers.map(cx =>
                         cx.id === target.customerId
-                            ? { ...cx, followUpStatus: "Contacted" as const }
+                            ? { ...cx, followUpStatus: contactedLabel as typeof cx.followUpStatus }
                             : cx,
                     ),
                 }));
             }
         } else if (outcome === "not_interested") {
+            const lostLabel = lookupStageLabel(get().followUpStages, "stg_lost", "Lost");
             set(state => ({
                 customers: state.customers.map(cx =>
                     cx.id === target.customerId
-                        ? { ...cx, followUpStatus: "Lost" as const }
+                        ? { ...cx, followUpStatus: lostLabel as typeof cx.followUpStatus }
                         : cx,
                 ),
             }));
@@ -7690,6 +7739,14 @@ export const useAppStore = create<AppState>()(persist(
         const list = get().followUpStages;
         const target = list.find(s => s.id === id);
         if (!target) return false;
+        // v83 audit fix — Won + Lost carry `isTerminal: true` and drive
+        // load-bearing precedence + outcome mappings (task-engine skip,
+        // closeFollowUpTask outcome→status). Even though we resolve
+        // their labels via id-based lookups elsewhere, blocking terminal
+        // rename is second-line defense so the pill palette + Details
+        // dropdown stay legible ("Won" / "Lost" are the words staff
+        // expect). Non-terminal locked stages CAN still be renamed.
+        if (target.isTerminal) return false;
         const dup = list.find(
             s => s.id !== id && s.label.toLowerCase() === clean.toLowerCase(),
         );
@@ -10441,6 +10498,11 @@ export const useAppStore = create<AppState>()(persist(
             if (!Array.isArray(state.followUpTasks)) {
                 state.followUpTasks = [];
             }
+            // v83 audit fix — resolve the current label of the seeded
+            // "New" stage once so a hypothetical pre-existing rename in
+            // the persisted state cascades into fresh mirrors too.
+            const rehydrateNewStageLabel =
+                state.followUpStages.find(s => s.id === "stg_new")?.label ?? "New";
             if (Array.isArray(state.leads) && Array.isArray(state.customers)) {
                 const emailToCustomer = new Map<string, Customer>();
                 const phoneToCustomer = new Map<string, Customer>();
@@ -10474,7 +10536,7 @@ export const useAppStore = create<AppState>()(persist(
                         status: "active",
                         gender: lead.gender,
                         lifecycleTag: "Lead",
-                        followUpStatus: "New",
+                        followUpStatus: rehydrateNewStageLabel as FollowUpStatus,
                         assignedTo: lead.assigned_to_staff_id,
                         sourceId: state.leadSources.find(
                             s => s.label.toLowerCase() === (lead.source ?? "").toLowerCase(),
@@ -10484,6 +10546,47 @@ export const useAppStore = create<AppState>()(persist(
                 }
                 if (newMirrors.length > 0) {
                     state.customers = [...newMirrors, ...state.customers];
+                }
+            }
+            // v83 audit fix (2026-07-27) — recompute lifecycleTag for
+            // every customer that lacks one. Without this pass, pre-v83
+            // seeded customers (Alice with 100 attended classes, etc.)
+            // keep `lifecycleTag: undefined`, and the segment tabs on
+            // /admin/customers default them to "Lead" (via
+            // `r.lifecycleTag ?? "Lead"`), so "Members" renders empty
+            // until the customer's next write. This sweep runs ONCE at
+            // hydrate — customers whose tag already exists are skipped
+            // so a manual override or later recompute isn't clobbered.
+            //
+            // Kept inline (rather than iterating through the Zustand
+            // action) so we don't build up N action history entries at
+            // boot. Uses the same compute the actions use to guarantee
+            // parity between "just booted" and "just wrote" state.
+            if (Array.isArray(state.customers) && Array.isArray(state.classBookings) &&
+                Array.isArray(state.customerPlans) && Array.isArray(state.customerTransactions)) {
+                const needsCompute = state.customers.filter(c => c.lifecycleTag === undefined);
+                if (needsCompute.length > 0) {
+                    const computeState = {
+                        customers: state.customers,
+                        classBookings: state.classBookings,
+                        customerPlans: state.customerPlans,
+                        customerTransactions: state.customerTransactions,
+                    };
+                    const patches = new Map<string, { tag: LifecycleTag; isVip: boolean; computedOn: string }>();
+                    for (const c of needsCompute) {
+                        const r = computeLifecycleTag(c.id, computeState);
+                        patches.set(c.id, { tag: r.tag, isVip: r.isVip, computedOn: r.computedOn });
+                    }
+                    state.customers = state.customers.map(c => {
+                        const p = patches.get(c.id);
+                        if (!p) return c;
+                        return {
+                            ...c,
+                            lifecycleTag: p.tag,
+                            isVip: p.isVip,
+                            lifecycleTaggedOn: c.lifecycleTaggedOn ?? p.computedOn,
+                        };
+                    });
                 }
             }
             // v78 (2026-07-21) — Freeze policy v2 Phase 4.

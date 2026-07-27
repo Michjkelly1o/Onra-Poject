@@ -48,8 +48,25 @@ import type {
  *  test fixtures don't have to construct the entire AppState. */
 type TaskState = Pick<
     AppState,
-    "customers" | "classBookings" | "customerPlans" | "followUpTasks" | "leadSources"
+    "customers" | "classBookings" | "customerPlans" | "followUpTasks" | "leadSources" | "followUpStages"
 >;
+
+/** v83 audit fix (2026-07-27) — the plan lets studios RENAME system-
+ *  seeded stages (locked but not fixed-label). Precedence rules that
+ *  compare `customer.followUpStatus === "Lost"` therefore break after
+ *  a rename, because `renameFollowUpStage` cascades the new label into
+ *  every customer record. This helper looks up the current label of a
+ *  stage BY id — the id never changes on rename, so `stg_lost` still
+ *  resolves correctly no matter what the studio called it. Fallback to
+ *  the seed's default label so pre-rename fixtures still compare
+ *  correctly if the state array is somehow missing the stage row. */
+export function lookupStageLabel(
+    stages: { id: string; label: string }[],
+    id: string,
+    fallback: string,
+): string {
+    return stages.find(s => s.id === id)?.label ?? fallback;
+}
 
 /** Deterministic "today". Same rationale as the lifecycle compute — the
  *  demo data ships with dates around late-2026 and this is called
@@ -182,7 +199,13 @@ export function generateFollowUpTasks(
     // entirely. Phase 3's "behavior wins" clears this flag when the
     // customer graduates past pre-conversion, so this only holds while
     // the lead is still legitimately dead.
-    if (customer.followUpStatus === "Lost") return [];
+    //
+    // v83 audit fix — resolve the Lost stage's CURRENT label from the
+    // state so a studio rename ("Lost" → "Not converted") doesn't
+    // disable this precedence. `stg_lost` is the stable id assigned at
+    // seed time; rename cascades the label but leaves the id alone.
+    const lostLabel = lookupStageLabel(state.followUpStages, "stg_lost", "Lost");
+    if (customer.followUpStatus === lostLabel) return [];
 
     // Only pre-conversion customers get automated follow-ups. Loyal
     // Active / Churned / At Risk have their own signal paths (analytics,

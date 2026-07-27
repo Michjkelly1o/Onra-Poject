@@ -88,21 +88,23 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     }
 
     function handleLogEnquiry() {
-        const id = logCustomerEnquiry(customerId, note.trim() || undefined);
-        if (id) {
+        const result = logCustomerEnquiry(customerId, note.trim() || undefined);
+        if (result.logged) {
             showToast("Enquiry logged", `Task added for ${name}.`, "success", "check");
             setNote("");
             setEnquiryOpen(false);
-        } else {
-            showToast(
-                "Nothing to log",
-                customer?.followUpStatus === "Lost"
-                    ? "This lead is marked Lost. Change the follow-up status to log a new enquiry."
-                    : "An open enquiry task already exists for this customer.",
-                "warning",
-                "alert",
-            );
+            return;
         }
+        // v83 audit fix — accurate skip copy per the reason. "Lost" is
+        // rare and needs different guidance than "already a member" or
+        // "already an open enquiry".
+        const copy =
+            result.reason === "lost"
+                ? "This lead is marked as lost in your funnel. Change their follow-up status first to log a new enquiry."
+                : result.reason === "post_conversion"
+                    ? `${name} is already a member — the follow-up funnel doesn't apply after conversion.`
+                    : "An open enquiry task already exists for this customer.";
+        showToast("Nothing to log", copy, "warning", "alert");
     }
 
     function handleClose(task: FollowUpTask, outcome: FollowUpTaskOutcome) {
