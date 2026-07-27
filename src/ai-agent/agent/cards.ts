@@ -82,9 +82,11 @@ export type InsightCard =
           columns: string[];
           /** Client 2026-07-24 — the file format the user picked earlier
            *  in the flow. The card renders a single Download button
-           *  labelled with this format (Figma 528:108156). `"csv"` when
-           *  the model omits it — legacy path from before the format
-           *  question landed. */
+           *  labelled with this format (Figma 528:108156). All three
+           *  formats are first-class exports — csv + xlsx stream from
+           *  the API, pdf renders client-side via jspdf. Defaults to
+           *  `"csv"` when the model omits it (backwards compat with
+           *  pre-format tool results). */
           format?: "csv" | "xlsx" | "pdf";
       }
     // Clarifying-question popup. The assistant BUBBLE shows a compact step

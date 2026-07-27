@@ -59,6 +59,16 @@ import type {
 } from "@/ai-agent/migration/migration-cards";
 import type { EntityKey } from "@/ai-agent/migration/entities";
 import { applyImportToStore } from "@/ai-agent/migration/apply-import";
+import { AI_AGENT_MAX_STEPS, AI_AGENT_MAX_UPLOAD_BYTES } from "@/ai-agent/flags";
+import {
+    getFileType,
+    fileTypeIconUrl,
+    fileTypeLabel,
+    isMigrationParsable,
+    MIGRATION_ACCEPT_TYPES,
+    GENERAL_ACCEPT_TYPES,
+    type FileTypeCategory,
+} from "@/ai-agent/lib/file-type";
 import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
@@ -180,7 +190,13 @@ export function ChatThread({
     // localStorage; not worth it for a session-scoped upload.
     const [parsedFile, setParsedFile] = useState<ParsedFile | null>(null);
     const parsedFileRef = useRef<ParsedFile | null>(null);
-    parsedFileRef.current = parsedFile;
+    // Client 2026-07-24 audit fix — was assigned in render body, which
+    // strict-mode double-render + Suspense could leave stale for effects
+    // that fire before the next render commits. useEffect syncs it after
+    // every committed state change, matching React's data-flow rules.
+    useEffect(() => {
+        parsedFileRef.current = parsedFile;
+    }, [parsedFile]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadError, setUploadError] = useState<string | null>(null);
     // Client 2026-07-23 — while /api/ai-agent/upload is round-tripping
@@ -241,7 +257,10 @@ export function ChatThread({
         id: chatId,
         api: "/api/ai-agent",
         initialMessages: initialMessages.current,
-        maxSteps: 3, // matches AI_AGENT_MAX_STEPS in flags.ts (Hobby 10s cap)
+        // Client 2026-07-24 audit fix — was a literal `3`; imported so a
+        // future bump in flags.ts (Hobby → Pro) doesn't leave the client
+        // silently capped while the server allows more.
+        maxSteps: AI_AGENT_MAX_STEPS,
         // Per-request body: grab a fresh Zustand snapshot every time so the
         // model sees whatever the admin just created/edited seconds ago.
         // Also carries `mode` + (for migration) the current `parsedFile`.
@@ -382,92 +401,15 @@ export function ChatThread({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [messages]);
 
-    // Migration audit-row hook: when the model's `commit_import` tool
-    // returns a non-trivial result (any of created/skipped/failed > 0),
-    // append a row to the Zustand `importHistory` slice so the row
-    // appears at the top of /admin/settings/migrations-imports the next
-    // time the admin visits. The set of recorded toolCallIds is
-    // initialised from `initialMessages` — so a hydrated message from a
-    // previous session (already recorded then) can't double-post.
-    const recordedImportsRef = useRef<Set<string>>(new Set());
-    // Seed the set on mount with every commit_import tool-call id that
-    // already came in from localStorage — those were audit-logged in
-    // their original session.
-    useEffect(() => {
-        if (mode !== "migration") return;
-        for (const m of initialMessages.current) {
-            if (m.role !== "assistant" || !m.toolInvocations) continue;
-            for (const ti of m.toolInvocations) {
-                if (
-                    ti.state === "result" &&
-                    ti.toolName === "commit_import"
-                ) {
-                    recordedImportsRef.current.add(ti.toolCallId);
-                }
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mode]);
-
-    useEffect(() => {
-        if (mode !== "migration") return;
-        const last = messages[messages.length - 1];
-        if (!last || last.role !== "assistant" || !last.toolInvocations)
-            return;
-        for (const ti of last.toolInvocations) {
-            if (
-                ti.state !== "result" ||
-                ti.toolName !== "commit_import" ||
-                recordedImportsRef.current.has(ti.toolCallId)
-            ) {
-                continue;
-            }
-            const result = ti.result as {
-                card?: string;
-                entity?: string;
-                created?: number;
-                skipped?: number;
-                failed?: number;
-            };
-            if (result?.card !== "import_result") continue;
-            const created = result.created ?? 0;
-            const skipped = result.skipped ?? 0;
-            const failed = result.failed ?? 0;
-            const totalRows = created + skipped + failed;
-            if (totalRows === 0) {
-                // Nothing meaningful happened — still mark as recorded
-                // so we don't rescan the same invocation next render.
-                recordedImportsRef.current.add(ti.toolCallId);
-                continue;
-            }
-            const file = parsedFileRef.current;
-            const state = useAppStore.getState();
-            const branchId =
-                (state.currentUser?.branch_id as string | undefined) ||
-                state.branches[0]?.id ||
-                "";
-            const dataType = (result.entity ??
-                "customers") as import("@/data/mock/_types").ImportHistorySeed["data_type"];
-            const status: "imported" | "partial" | "failed" =
-                failed === 0
-                    ? "imported"
-                    : created === 0
-                      ? "failed"
-                      : "partial";
-            state.addImportHistory({
-                data_type: dataType,
-                file_name: file?.filename ?? "upload.csv",
-                file_type: "csv",
-                total_rows: totalRows,
-                imported_rows: created,
-                invalid_rows: failed,
-                status,
-                branch_id: branchId,
-            });
-            recordedImportsRef.current.add(ti.toolCallId);
-        }
-    }, [messages, mode]);
-
+    // Client 2026-07-24 audit fix — the duplicate audit-row hook that used
+    // to sit here was writing the SAME history row already emitted by
+    // apply-import.ts → writeHistory. Every successful import showed up
+    // twice in /admin/settings/migrations-imports. HISTORY_TYPE in
+    // apply-import.ts already covers every wired entity, so this side
+    // is fully redundant — dropped. If we ever add an entity that DOESN'T
+    // get an apply-import path (unlikely), the fallback to add here
+    // instead would go alongside the applyImportToStore hook above, not
+    // as a parallel hook.
 
     const send = (text: string) => {
         if (!text.trim() || isBusy) return;
@@ -540,6 +482,14 @@ export function ChatThread({
     // Once the user answers (a new user message lands), this clears itself.
     const pendingQuestions = (() => {
         if (isBusy) return null;
+        // Client 2026-07-24 audit fix — migration mode has its OWN
+        // branch/mapping/summary question surface, and its Q/A dispatch
+        // table in the prompt only knows those labels. If the migration
+        // model ever called ask_questions the insight entry would land
+        // alongside the migration entries in the same panel and confuse
+        // the dispatch (labels like "Yes, start import" collide). Gate
+        // it out; migration flows should always use the dedicated tools.
+        if (mode === "migration") return null;
         const last = messages[messages.length - 1];
         if (!last || last.role !== "assistant") return null;
         const ti = last.toolInvocations?.find(
@@ -559,23 +509,44 @@ export function ChatThread({
     async function uploadFile(file: File) {
         setUploadError(null);
         setIsUploading(true);
-        // Client 2026-07-23 — widen upload beyond CSV to images / PDFs / docs.
-        // Non-CSV files skip the server parser (which only handles CSV) and
-        // just attach as a chip with filename + size so the model has context.
-        // The migration flow keeps its full CSV path (server-parsed rows so
-        // inspect_source has real data).
-        const isCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
-        const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-        if (file.size > MAX_BYTES) {
+        // Client 2026-07-24 — file gating widened from CSV-only to CSV /
+        // XLSX / XLS in migration mode (parsed server-side via SheetJS)
+        // and to CSV in non-migration mode. Everything else attaches
+        // as a chip only in general chat, and is REJECTED outright in
+        // migration mode so the model never receives an empty ParsedFile.
+        const fileType = getFileType(file.name);
+        // Client 2026-07-24 audit fix — shared with the server via
+        // AI_AGENT_MAX_UPLOAD_BYTES so the two can't drift.
+        if (file.size > AI_AGENT_MAX_UPLOAD_BYTES) {
             setUploadError(
-                `File is too large — max ${MAX_BYTES / 1024 / 1024}MB.`,
+                `File is too large — max ${AI_AGENT_MAX_UPLOAD_BYTES / 1024 / 1024}MB.`,
             );
             setIsUploading(false);
             return;
         }
-        if (!isCsv) {
-            // Attach-only path: no server call, just a chip. Empty `rows` and
-            // `columns` mean the migration inspect flow won't try to parse it.
+        // Server-parseable = CSV, XLSX, XLS. Everything else takes the
+        // attach-only path (non-migration) or is rejected (migration).
+        const isParseable = isMigrationParsable(fileType);
+        if (!isParseable) {
+            if (mode === "migration") {
+                // Migration mode: no fake empty ParsedFile ever. PDF gets
+                // its own message since the picker offers it but the
+                // extractor isn't shipped yet.
+                if (fileType === "pdf") {
+                    setUploadError(
+                        "PDF import isn't ready yet — please export your data to CSV, XLSX, or XLS and try again.",
+                    );
+                } else {
+                    setUploadError(
+                        "Migration only accepts CSV, XLSX, or XLS files. Export your data in one of those formats and try again.",
+                    );
+                }
+                setIsUploading(false);
+                return;
+            }
+            // Non-migration modes: attach-only chip so the model at least
+            // knows a file is on the turn. Empty rows/columns keep any
+            // migration-adjacent inspect calls from trying to parse it.
             const attached: ParsedFile = {
                 fileId: `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
                 filename: file.name,
@@ -982,12 +953,16 @@ export function ChatThread({
                 display: visible ? "flex" : "none",
             }}
         >
-            {/* Hidden file input — only used in migration mode. Kept
-                mounted in both modes so the DOM shape is consistent. */}
+            {/* Hidden file input. Client 2026-07-24 — accept is mode-
+                dependent: migration only offers CSV / XLSX / XLS / PDF
+                in the OS picker so an admin can't pick an image and
+                get confused. Non-migration modes keep the wider set
+                (images, docs, txt) so the paperclip works as a general
+                chat attachment. */}
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,text/csv,image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx"
+                accept={mode === "migration" ? MIGRATION_ACCEPT_TYPES : GENERAL_ACCEPT_TYPES}
                 className="hidden"
                 onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -1517,10 +1492,14 @@ function UserMessageBubble({
                             "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                         )}
                     >
-                        <div className="size-8 rounded-md bg-[#ecfdf3] border border-[#abefc6] flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-semibold text-[#067647] tracking-wide">
-                                CSV
-                            </span>
+                        {/* Client 2026-07-24 — icon is now derived from the
+                            actual filename extension via the shared helper
+                            so an image never renders as a CSV badge. */}
+                        <div className="size-8 shrink-0">
+                            <FileTypeIcon
+                                type={getFileType(attachment.filename)}
+                                className="w-full h-full"
+                            />
                         </div>
                         <span className="text-[13px] font-medium text-[#344054] truncate">
                             {attachment.filename}
@@ -1911,14 +1890,14 @@ function Composer({
 /** Uploaded-file chip — Figma 18716:6902. A page icon with a green "CSV"
  *  badge, the filename, and a removable X in the top-right corner. */
 function FileChip({ name, onRemove }: { name: string; onRemove?: () => void }) {
+    // Client 2026-07-24 — icon derived from the actual extension via the
+    // shared file-type helper. Unknown extensions fall back to a neutral
+    // "FILE" pill so we never mislabel an image as a CSV.
+    const type = getFileType(name);
     return (
         <div className="relative flex items-center gap-3 pl-4 pr-6 py-3 bg-white border border-[#e4e7ec] rounded-[12px] max-w-[240px]">
-            {/* File-type icon — a document sheet with a CSV badge. */}
-            <div className="relative size-6 shrink-0">
-                <div className="absolute inset-0 rounded-[3px] border border-[#e4e7ec] bg-[#f9fafb]" />
-                <span className="absolute left-[2px] bottom-[3px] px-[3px] py-[1px] rounded-[2px] bg-[#079455] text-white text-[6px] font-bold leading-none tracking-wide">
-                    CSV
-                </span>
+            <div className="relative size-8 shrink-0">
+                <FileTypeIcon type={type} className="w-full h-full" />
             </div>
             <p className="min-w-0 truncate text-[14px] font-medium leading-5 text-[#344054]">{name}</p>
             {onRemove && (
@@ -1931,6 +1910,43 @@ function FileChip({ name, onRemove }: { name: string; onRemove?: () => void }) {
                     <XClose className="size-3 text-[#667085]" />
                 </button>
             )}
+        </div>
+    );
+}
+
+/** Shared icon renderer — reads the /public/filetypeicon/*.webp asset
+ *  for known types, or a neutral document-sheet + short label pill for
+ *  "unknown". Both the composer FileChip and the user-message bubble
+ *  attachment render through this so they never disagree. */
+function FileTypeIcon({
+    type,
+    className,
+}: {
+    type: FileTypeCategory;
+    className?: string;
+}) {
+    const url = fileTypeIconUrl(type);
+    if (url) {
+        return (
+            <Image
+                src={url}
+                alt={fileTypeLabel(type)}
+                width={40}
+                height={40}
+                className={cn("object-contain", className)}
+                unoptimized
+            />
+        );
+    }
+    // Neutral fallback for anything the picker still let through
+    // without a matching icon asset — a soft grey sheet with a small
+    // uppercase pill so the reader knows it's a file of some kind.
+    return (
+        <div className={cn("relative", className)}>
+            <div className="absolute inset-0 rounded-[3px] border border-[#e4e7ec] bg-[#f9fafb]" />
+            <span className="absolute left-[2px] bottom-[3px] px-[3px] py-[1px] rounded-[2px] bg-[#667085] text-white text-[6px] font-bold leading-none tracking-wide">
+                {fileTypeLabel(type)}
+            </span>
         </div>
     );
 }

@@ -36,24 +36,75 @@ import {
     type EntityKey,
 } from "@/ai-agent/migration/entities";
 
-/** Minimal CSV parser — same one the POC ships. Handles `\r` and blank
- *  lines. Doesn't do quoted-comma or escaped-quote parsing (fine for the
- *  demo prototype; production would want papaparse or csv-parse). */
+/** CSV parser with proper quoted-field handling. Client 2026-07-24 audit
+ *  fix — the previous naive `.split(",")` broke on any real export that
+ *  quoted a comma (e.g. `"Doe, Jane"`), silently shifting every column
+ *  after the quoted field by one and making every row fail validation.
+ *
+ *  RFC 4180 subset we handle:
+ *    • Fields comma-separated, rows LF or CRLF separated.
+ *    • Fields optionally wrapped in double quotes.
+ *    • Quoted fields may contain commas AND newlines.
+ *    • Escaped double-quote inside a quoted field is a doubled `""`.
+ *  Not handled (out of scope for the demo): custom delimiters,
+ *  Windows-1252 encoding weirdness, BOM stripping is best-effort. */
 export function parseCsv(text: string): {
     columns: string[];
     rows: Record<string, string>[];
 } {
-    const lines = text
-        .replace(/\r/g, "")
-        .split("\n")
-        .filter((l) => l.trim().length);
-    if (lines.length === 0) return { columns: [], rows: [] };
-    const columns = lines[0].split(",").map((c) => c.trim());
-    const rows = lines.slice(1).map((line) => {
-        const cells = line.split(",");
-        const row: Record<string, string> = {};
-        columns.forEach((c, i) => (row[c] = (cells[i] ?? "").trim()));
-        return row;
+    // Strip UTF-8 BOM if present so the first header cell doesn't carry
+    // an invisible U+FEFF prefix.
+    const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+    const grid: string[][] = [];
+    let row: string[] = [];
+    let field = "";
+    let inQuotes = false;
+    for (let i = 0; i < src.length; i++) {
+        const c = src[i];
+        if (inQuotes) {
+            if (c === '"') {
+                // Doubled quote → literal quote inside the field.
+                if (src[i + 1] === '"') {
+                    field += '"';
+                    i++;
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                field += c;
+            }
+            continue;
+        }
+        if (c === '"') {
+            inQuotes = true;
+        } else if (c === ",") {
+            row.push(field);
+            field = "";
+        } else if (c === "\r") {
+            // Swallow — the \n on the next iteration will finish the row.
+        } else if (c === "\n") {
+            row.push(field);
+            field = "";
+            // Skip fully-empty lines (e.g. trailing blank line at EOF).
+            if (row.some((f) => f.length > 0)) grid.push(row);
+            row = [];
+        } else {
+            field += c;
+        }
+    }
+    // Handle the last field / row if the file didn't end with a newline.
+    if (field.length > 0 || row.length > 0) {
+        row.push(field);
+        if (row.some((f) => f.length > 0)) grid.push(row);
+    }
+    if (grid.length === 0) return { columns: [], rows: [] };
+    const columns = grid[0].map((c) => c.trim());
+    const rows = grid.slice(1).map((cells) => {
+        const rec: Record<string, string> = {};
+        columns.forEach((c, i) => {
+            rec[c] = (cells[i] ?? "").trim();
+        });
+        return rec;
     });
     return { columns, rows };
 }
