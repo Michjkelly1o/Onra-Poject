@@ -51,6 +51,12 @@ import { CustomerReferralsTab } from "./CustomerReferralsTab";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { derivePlanBalances } from "@/lib/plan-credits";
+// v83 lifecycle — the pill (StatusBadge type="lifecycle" / "vip") drives
+// the header pill row + reasoning drawer. IconTooltip powers the hover.
+// Compute is imported for the drawer's live "why this tag" body.
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -944,6 +950,12 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const pathname = usePathname();
     const customers = useAppStore(s => s.customers);
     const customerPlans = useAppStore(s => s.customerPlans);
+    // v83 lifecycle — the compute needs bookings + transactions in addition
+    // to plans; the profile already reads customers + plans, so this is
+    // just two extra slice subscriptions. Both are read anyway by other
+    // tabs on this page (Bookings tab, Payments tab).
+    const classBookings = useAppStore(s => s.classBookings);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
     const freezeCustomerPlan = useAppStore(s => s.freezeCustomerPlan);
     const unfreezeCustomerPlan = useAppStore(s => s.unfreezeCustomerPlan);
@@ -971,6 +983,11 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const [pageSize, setPageSize] = useState(10);
     const [planModal, setPlanModal] = useState<PlanModalState>(null);
     const [customerModal, setCustomerModal] = useState<CustomerAction | null>(null);
+    // v83 lifecycle — reasoning drawer opens from the header pill click.
+    // The compute runs live on every open so the drawer's "why this tag"
+    // body always matches the current data (a booking marked present
+    // between two clicks flips the reasoning).
+    const [lifecycleDrawerOpen, setLifecycleDrawerOpen] = useState(false);
 
     useEffect(() => { setPage(1); }, [search, applied, tab]);
 
@@ -989,6 +1006,21 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
         () => derivePlanBalances(plans, customer?.creditsRemaining),
         [plans, customer?.creditsRemaining],
     );
+
+    // v83 lifecycle result — the header pill uses `tag` for the palette,
+    // the hover tooltip shows the first reason ("Tagged Loyal Active on
+    // YYYY-MM-DD · attended 6 classes in the last 30 days"), the reasoning
+    // drawer lists every reason clause. Recomputed live so the drawer
+    // reflects the latest booking/payment/rating without a stale snapshot.
+    const lifecycleResult = useMemo(() => {
+        if (!customer) return null;
+        return computeLifecycleTag(customerId, {
+            customers,
+            classBookings,
+            customerPlans,
+            customerTransactions,
+        });
+    }, [customer, customerId, customers, classBookings, customerPlans, customerTransactions]);
 
     const filteredPlans = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -1222,6 +1254,32 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 <div>
                                     <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{customerName}</h2>
                                     <p className="text-[14px] text-[#667085] mt-0.5">{customer.email}</p>
+                                    {/* v83 lifecycle — pill row under the email.
+                                        Hover shows the primary reason (from the
+                                        compute); click opens the reasoning drawer.
+                                        VIP pill stacks alongside when flagged. */}
+                                    {lifecycleResult && (
+                                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                            <IconTooltip
+                                                label={`Tagged ${lifecycleResult.tag} on ${lifecycleResult.computedOn}${
+                                                    lifecycleResult.reasons[0] ? ` · ${lifecycleResult.reasons[0]}` : ""
+                                                }`}
+                                                side="below"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLifecycleDrawerOpen(true)}
+                                                    className="focus:outline-none focus:ring-2 focus:ring-[#658774] focus:ring-offset-1 rounded-full"
+                                                    aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
+                                                >
+                                                    <StatusBadge type="lifecycle" status={lifecycleResult.tag} />
+                                                </button>
+                                            </IconTooltip>
+                                            {lifecycleResult.isVip && (
+                                                <StatusBadge type="vip" status="vip" />
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Credit balance */}
@@ -1500,6 +1558,50 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
 
             <PlanFilterPanel open={filterOpen} onClose={() => setFilterOpen(false)}
                 applied={applied} onApply={f => { setApplied(f); setPage(1); }} />
+
+            {/* v83 lifecycle reasoning drawer — reuses the existing SlidePanel
+                pattern (same one PlanFilterPanel, CustomerReferralsTab side
+                panel, etc. use). Body is a read-only summary of the current
+                tag + every reason clause the compute matched. */}
+            {lifecycleResult && (
+                <SlidePanel open={lifecycleDrawerOpen} onClose={() => setLifecycleDrawerOpen(false)} width={400}>
+                    <div className="flex flex-col gap-6 h-full">
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[16px] font-semibold text-[#101828]">Lifecycle stage</p>
+                            <p className="text-[13px] text-[#667085]">
+                                Auto-detected by the customer engine. Recomputes after every booking, payment, and rating.
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <StatusBadge type="lifecycle" status={lifecycleResult.tag} size="lg" />
+                                {lifecycleResult.isVip && <StatusBadge type="vip" status="vip" size="lg" />}
+                            </div>
+                            <p className="text-[13px] text-[#667085]">
+                                Tagged <span className="text-[#344054] font-medium">{lifecycleResult.tag}</span> on{" "}
+                                <span className="text-[#344054] font-medium">{lifecycleResult.computedOn}</span>.
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <p className="text-[14px] font-semibold text-[#344054]">Why this stage</p>
+                            <ul className="flex flex-col gap-2">
+                                {lifecycleResult.reasons.map((r, i) => (
+                                    <li key={i} className="flex gap-2 text-[13px] leading-[18px] text-[#475467]">
+                                        <span className="text-[#658774] mt-0.5">•</span>
+                                        <span>{r}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div className="mt-auto pt-4 border-t border-[#e4e7ec]">
+                            <p className="text-[12px] text-[#98a2b3] leading-[16px]">
+                                Layer 1 tag — AI-detected. Staff-owned follow-up status (Layer 2) is edited on the
+                                Details tab when the customer is a Lead or Trialist.
+                            </p>
+                        </div>
+                    </div>
+                </SlidePanel>
+            )}
 
             <Toast />
         </div>

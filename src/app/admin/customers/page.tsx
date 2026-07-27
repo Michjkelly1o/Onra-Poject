@@ -406,6 +406,11 @@ type CustomerRow = {
     branchId: string;
     /** True when the customer has booking history — Delete is gated on this. */
     hasHistory: boolean;
+    // v83 lifecycle — read from customer.lifecycleTag (stamped by the store's
+    // recompute hook). Missing means the customer predates v83; the segment
+    // tab treats "missing" as the fallback "Lead" bucket per plan §1.
+    lifecycleTag?: import("@/lib/store").LifecycleTag;
+    isVip?: boolean;
 };
 
 // ─── CSV export ──────────────────────────────────────────────────────────────
@@ -459,9 +464,18 @@ export default function CustomersPage() {
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+    // v83 lifecycle — segment tabs. Buckets match PDF §5.1 "leads inside
+    // Customers list + segment tabs":
+    //   All        → no filter
+    //   Leads      → lifecycleTag === "Lead" (pre-plan prospects)
+    //   Members    → tag ∈ { Trialist, New Active, Loyal Active, Won-back }
+    //   Inactive   → tag ∈ { At Risk, Churned } OR customer.status !== "active"
+    // The tab strip reuses the exact same chrome as /admin/insights so
+    // customers list feels like a sibling surface without any new component.
+    const [segment, setSegment] = useState<"all" | "leads" | "members" | "inactive">("all");
 
     // Reset to page 1 whenever the result set changes shape.
-    useEffect(() => { setPage(1); }, [search, applied, branchId, pageSize]);
+    useEffect(() => { setPage(1); }, [search, applied, branchId, pageSize, segment]);
 
     // Branch dropdown — active branches from the live `branches` slice so
     // adds/archives in Business & Locations propagate immediately.
@@ -490,6 +504,8 @@ export default function CustomersPage() {
                 planExpiryISO: c.planExpiryISO,
                 branchId: c.branchId,
                 hasHistory: bookedCustomerIds.has(c.id),
+                lifecycleTag: c.lifecycleTag,
+                isVip: c.isVip,
             }));
     }, [customers, classBookings]);
 
@@ -531,17 +547,32 @@ export default function CustomersPage() {
                 if (applied.planExpiryStart && r.planExpiryISO < applied.planExpiryStart) return false;
                 if (applied.planExpiryEnd && r.planExpiryISO > applied.planExpiryEnd) return false;
             }
+            // v83 lifecycle segment filter — applied last so it stacks on
+            // top of every existing filter cleanly.
+            if (segment !== "all") {
+                const tag = r.lifecycleTag ?? "Lead";
+                if (segment === "leads"    && tag !== "Lead") return false;
+                if (segment === "members"  && !["Trialist", "New Active", "Loyal Active", "Won-back"].includes(tag)) return false;
+                if (segment === "inactive" && !(["At Risk", "Churned"].includes(tag) || r.status !== "active")) return false;
+            }
             return true;
         });
-    }, [allRows, branchId, search, applied, today]);
+    }, [allRows, branchId, search, applied, today, segment]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
-    // ── Sortable columns — Name / Contact / Plan / Status / Last visit. ──
+    // ── Sortable columns — Name / Contact / Plan / Lifecycle / Status / Last visit. ──
     const STATUS_ORDER: Record<CustomerStatus, number> = { active: 0, inactive: 1, archived: 2 };
+    // Order lifecycle tags by "funnel depth" so ascending puts leads at the top
+    // and loyal members at the bottom — mirrors the mental model in PDF §2.1.
+    const LIFECYCLE_ORDER: Record<string, number> = {
+        "Lead": 0, "Trialist": 1, "New Active": 2, "Loyal Active": 3,
+        "Won-back": 4, "At Risk": 5, "Churned": 6,
+    };
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<CustomerRow>(filteredRows, {
         name:      (a, b) => a.name.localeCompare(b.name),
         contact:   (a, b) => a.email.localeCompare(b.email),
         plan:      (a, b) => a.planType.localeCompare(b.planType),
+        lifecycle: (a, b) => (LIFECYCLE_ORDER[a.lifecycleTag ?? "Lead"] ?? 99) - (LIFECYCLE_ORDER[b.lifecycleTag ?? "Lead"] ?? 99),
         status:    (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
         lastVisit: (a, b) => {
             // No-visit rows sort to the end regardless of direction by
@@ -691,6 +722,33 @@ export default function CustomersPage() {
 
     return (
         <div className="flex flex-col gap-6">
+            {/* ── v83 lifecycle segment tabs ── reuses the same tab-strip chrome
+                as /admin/insights (see plan §Component reuse). */}
+            <div className="border-b border-[#e4e7ec]">
+                <div className="flex gap-3 items-start">
+                    {[
+                        { key: "all"      as const, label: "All"      },
+                        { key: "leads"    as const, label: "Leads"    },
+                        { key: "members"  as const, label: "Members"  },
+                        { key: "inactive" as const, label: "Inactive" },
+                    ].map(t => (
+                        <button
+                            key={t.key}
+                            type="button"
+                            onClick={() => setSegment(t.key)}
+                            className={cn(
+                                "flex gap-2 h-8 items-center justify-center pb-3 px-1 transition-colors",
+                                segment === t.key
+                                    ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
+                                    : "text-[#667085] font-semibold hover:text-[#344054]",
+                            )}
+                        >
+                            <span className="text-sm">{t.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={filteredRows.length} entitySingular="customer" />
@@ -750,6 +808,9 @@ export default function CustomersPage() {
                                         <th className={cn(TH, "w-[150px]")}>
                                             <SortableHeader sortKey="plan"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Plan</SortableHeader>
                                         </th>
+                                        <th className={cn(TH, "w-[160px]")}>
+                                            <SortableHeader sortKey="lifecycle" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Lifecycle</SortableHeader>
+                                        </th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
                                         </th>
@@ -792,6 +853,12 @@ export default function CustomersPage() {
                                                     </div>
                                                 </td>
                                                 <td className={TD}><StatusBadge type="plan" status={r.planType} /></td>
+                                                <td className={TD}>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <StatusBadge type="lifecycle" status={r.lifecycleTag ?? "Lead"} />
+                                                        {r.isVip && <StatusBadge type="vip" status="vip" />}
+                                                    </div>
+                                                </td>
                                                 <td className={TD}><StatusBadge type="customer" status={r.status} /></td>
                                                 <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
                                                     {r.lastVisitISO ? fmtDate(r.lastVisitISO) : "—"}

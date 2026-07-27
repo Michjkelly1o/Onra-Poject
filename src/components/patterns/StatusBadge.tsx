@@ -259,6 +259,44 @@ const REGISTRY: StatusRegistry = {
         failed:   { palette: "red",    label: "Failed"   },
         pending:  { palette: "gray",   label: "Pending"  },
     },
+
+    // ── Customer & Lead Management v83 (client 2026-07-24) ───────────────
+    //
+    // Layer 1 — AI-owned lifecycle stage. One of 7 tags per the plan's
+    // "Lifecycle rules" table (Churned > At Risk > Won-back > New Active >
+    // Loyal Active > Trialist > Lead). Palette chosen so severity reads
+    // at a glance without a legend:
+    //   Lead        → blue        (fresh prospect, neutral-positive)
+    //   Trialist    → purple      (in a trial, not yet converted)
+    //   New Active  → greenLight  (fresh paid, less bold than Loyal)
+    //   Loyal Active→ green       (fully active paying member)
+    //   At Risk     → orange      (warning — recover before churn)
+    //   Churned     → gray        (lost, muted)
+    //   Won-back    → teal        (returning after lapse, distinct hue)
+    lifecycle: {
+        "Lead":         { palette: "blue",       label: "Lead"         },
+        "Trialist":     { palette: "purple",     label: "Trialist"     },
+        "New Active":   { palette: "greenLight", label: "New Active"   },
+        "Loyal Active": { palette: "green",      label: "Loyal Active" },
+        "At Risk":      { palette: "orange",     label: "At Risk"      },
+        "Churned":      { palette: "gray",       label: "Churned"      },
+        "Won-back":     { palette: "teal",       label: "Won-back"     },
+    },
+    // Orthogonal VIP flag — stacks on top of `lifecycle`. Single status,
+    // rendered whenever `customer.isVip === true`.
+    vip: {
+        vip: { palette: "indigo", label: "VIP" },
+    },
+    // Layer 2 — human-owned pre-conversion follow-up state. Only rendered
+    // for Lead / Trialist customers; the profile hides it downstream.
+    "follow-up": {
+        "New":           { palette: "gray",   label: "New"          },
+        "Contacted":     { palette: "blue",   label: "Contacted"    },
+        "Trial booked":  { palette: "purple", label: "Trial booked" },
+        "Follow-up":     { palette: "orange", label: "Follow-up"    },
+        "Won":           { palette: "green",  label: "Won"          },
+        "Lost":          { palette: "red",    label: "Lost"         },
+    },
 };
 
 export type StatusBadgeType = keyof typeof REGISTRY;
