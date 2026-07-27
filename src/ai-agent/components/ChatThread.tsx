@@ -60,6 +60,15 @@ import type {
 import type { EntityKey } from "@/ai-agent/migration/entities";
 import { applyImportToStore } from "@/ai-agent/migration/apply-import";
 import { AI_AGENT_MAX_STEPS, AI_AGENT_MAX_UPLOAD_BYTES } from "@/ai-agent/flags";
+import {
+    getFileType,
+    fileTypeIconUrl,
+    fileTypeLabel,
+    isMigrationParsable,
+    MIGRATION_ACCEPT_TYPES,
+    GENERAL_ACCEPT_TYPES,
+    type FileTypeCategory,
+} from "@/ai-agent/lib/file-type";
 import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
@@ -500,12 +509,12 @@ export function ChatThread({
     async function uploadFile(file: File) {
         setUploadError(null);
         setIsUploading(true);
-        // Client 2026-07-23 — widen upload beyond CSV to images / PDFs / docs.
-        // Non-CSV files skip the server parser (which only handles CSV) and
-        // just attach as a chip with filename + size so the model has context.
-        // The migration flow keeps its full CSV path (server-parsed rows so
-        // inspect_source has real data).
-        const isCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
+        // Client 2026-07-24 — file gating widened from CSV-only to CSV /
+        // XLSX / XLS in migration mode (parsed server-side via SheetJS)
+        // and to CSV in non-migration mode. Everything else attaches
+        // as a chip only in general chat, and is REJECTED outright in
+        // migration mode so the model never receives an empty ParsedFile.
+        const fileType = getFileType(file.name);
         // Client 2026-07-24 audit fix — shared with the server via
         // AI_AGENT_MAX_UPLOAD_BYTES so the two can't drift.
         if (file.size > AI_AGENT_MAX_UPLOAD_BYTES) {
@@ -515,23 +524,29 @@ export function ChatThread({
             setIsUploading(false);
             return;
         }
-        if (!isCsv) {
-            // Client 2026-07-24 audit fix — in migration mode, a non-CSV
-            // upload used to be stashed as a fake ParsedFile with empty
-            // rows/columns. That value then travelled to buildMigrationPrompt
-            // as `rowCount: 0`, so the model saw an empty file, kept asking
-            // for a re-upload, or called inspect_source only to get
-            // emptyResult back. Reject up-front in migration mode with a
-            // clear message; non-migration modes keep the attach-only path.
+        // Server-parseable = CSV, XLSX, XLS. Everything else takes the
+        // attach-only path (non-migration) or is rejected (migration).
+        const isParseable = isMigrationParsable(fileType);
+        if (!isParseable) {
             if (mode === "migration") {
-                setUploadError(
-                    "Migration only accepts CSV files. Export your data as .csv and try again.",
-                );
+                // Migration mode: no fake empty ParsedFile ever. PDF gets
+                // its own message since the picker offers it but the
+                // extractor isn't shipped yet.
+                if (fileType === "pdf") {
+                    setUploadError(
+                        "PDF import isn't ready yet — please export your data to CSV, XLSX, or XLS and try again.",
+                    );
+                } else {
+                    setUploadError(
+                        "Migration only accepts CSV, XLSX, or XLS files. Export your data in one of those formats and try again.",
+                    );
+                }
                 setIsUploading(false);
                 return;
             }
-            // Attach-only path: no server call, just a chip. Empty `rows` and
-            // `columns` mean the migration inspect flow won't try to parse it.
+            // Non-migration modes: attach-only chip so the model at least
+            // knows a file is on the turn. Empty rows/columns keep any
+            // migration-adjacent inspect calls from trying to parse it.
             const attached: ParsedFile = {
                 fileId: `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
                 filename: file.name,
@@ -938,12 +953,16 @@ export function ChatThread({
                 display: visible ? "flex" : "none",
             }}
         >
-            {/* Hidden file input — only used in migration mode. Kept
-                mounted in both modes so the DOM shape is consistent. */}
+            {/* Hidden file input. Client 2026-07-24 — accept is mode-
+                dependent: migration only offers CSV / XLSX / XLS / PDF
+                in the OS picker so an admin can't pick an image and
+                get confused. Non-migration modes keep the wider set
+                (images, docs, txt) so the paperclip works as a general
+                chat attachment. */}
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,text/csv,image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx"
+                accept={mode === "migration" ? MIGRATION_ACCEPT_TYPES : GENERAL_ACCEPT_TYPES}
                 className="hidden"
                 onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -1473,10 +1492,14 @@ function UserMessageBubble({
                             "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                         )}
                     >
-                        <div className="size-8 rounded-md bg-[#ecfdf3] border border-[#abefc6] flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-semibold text-[#067647] tracking-wide">
-                                CSV
-                            </span>
+                        {/* Client 2026-07-24 — icon is now derived from the
+                            actual filename extension via the shared helper
+                            so an image never renders as a CSV badge. */}
+                        <div className="size-8 shrink-0">
+                            <FileTypeIcon
+                                type={getFileType(attachment.filename)}
+                                className="w-full h-full"
+                            />
                         </div>
                         <span className="text-[13px] font-medium text-[#344054] truncate">
                             {attachment.filename}
@@ -1867,14 +1890,14 @@ function Composer({
 /** Uploaded-file chip — Figma 18716:6902. A page icon with a green "CSV"
  *  badge, the filename, and a removable X in the top-right corner. */
 function FileChip({ name, onRemove }: { name: string; onRemove?: () => void }) {
+    // Client 2026-07-24 — icon derived from the actual extension via the
+    // shared file-type helper. Unknown extensions fall back to a neutral
+    // "FILE" pill so we never mislabel an image as a CSV.
+    const type = getFileType(name);
     return (
         <div className="relative flex items-center gap-3 pl-4 pr-6 py-3 bg-white border border-[#e4e7ec] rounded-[12px] max-w-[240px]">
-            {/* File-type icon — a document sheet with a CSV badge. */}
-            <div className="relative size-6 shrink-0">
-                <div className="absolute inset-0 rounded-[3px] border border-[#e4e7ec] bg-[#f9fafb]" />
-                <span className="absolute left-[2px] bottom-[3px] px-[3px] py-[1px] rounded-[2px] bg-[#079455] text-white text-[6px] font-bold leading-none tracking-wide">
-                    CSV
-                </span>
+            <div className="relative size-8 shrink-0">
+                <FileTypeIcon type={type} className="w-full h-full" />
             </div>
             <p className="min-w-0 truncate text-[14px] font-medium leading-5 text-[#344054]">{name}</p>
             {onRemove && (
@@ -1887,6 +1910,43 @@ function FileChip({ name, onRemove }: { name: string; onRemove?: () => void }) {
                     <XClose className="size-3 text-[#667085]" />
                 </button>
             )}
+        </div>
+    );
+}
+
+/** Shared icon renderer — reads the /public/filetypeicon/*.webp asset
+ *  for known types, or a neutral document-sheet + short label pill for
+ *  "unknown". Both the composer FileChip and the user-message bubble
+ *  attachment render through this so they never disagree. */
+function FileTypeIcon({
+    type,
+    className,
+}: {
+    type: FileTypeCategory;
+    className?: string;
+}) {
+    const url = fileTypeIconUrl(type);
+    if (url) {
+        return (
+            <Image
+                src={url}
+                alt={fileTypeLabel(type)}
+                width={40}
+                height={40}
+                className={cn("object-contain", className)}
+                unoptimized
+            />
+        );
+    }
+    // Neutral fallback for anything the picker still let through
+    // without a matching icon asset — a soft grey sheet with a small
+    // uppercase pill so the reader knows it's a file of some kind.
+    return (
+        <div className={cn("relative", className)}>
+            <div className="absolute inset-0 rounded-[3px] border border-[#e4e7ec] bg-[#f9fafb]" />
+            <span className="absolute left-[2px] bottom-[3px] px-[3px] py-[1px] rounded-[2px] bg-[#667085] text-white text-[6px] font-bold leading-none tracking-wide">
+                {fileTypeLabel(type)}
+            </span>
         </div>
     );
 }
