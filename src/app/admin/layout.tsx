@@ -64,7 +64,11 @@ export default function AdminLayout({
                             (client Jul 2026). Sides + bottom stay 24px. The
                             sticky tab box-shadows are -24px so they still
                             over-cover this smaller gap. */}
-                        <main className="flex-1 min-h-0 overflow-y-auto p-6 pt-4 flex flex-col">{children}</main>
+                        {/* Bottom padding leaves ~100px of clearance so
+                            the fixed FloatingAiButton (~72px tall) doesn't
+                            cover pagination / footer content on scroll.
+                            Client 2026-07-27. */}
+                        <main className="flex-1 min-h-0 overflow-y-auto p-6 pt-4 pb-28 flex flex-col">{children}</main>
                     </div>
                 </div>
             </div>

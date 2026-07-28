@@ -832,13 +832,6 @@ export default function CustomersPage() {
                     }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
-                {currentUser?.id && (
-                    <FilterPill
-                        label="Assigned to me"
-                        selected={mineOnly}
-                        onClick={() => setMineOnly(v => !v)}
-                    />
-                )}
             </div>
 
             {/* ── View card — rounded container hosting the SegmentedTabs
@@ -851,6 +844,21 @@ export default function CustomersPage() {
                         activeKey={segment}
                         onChange={(k) => setSegment(k as typeof segment)}
                     />
+                    {/* Client 2026-07-27 — "Assigned to me" moved from
+                        the toolbar to the tab row and restyled as a DS
+                        secondary-gray Button so it reads as a scope
+                        toggle for the visible tab, not a general filter. */}
+                    <div className="flex-1" />
+                    {currentUser?.id && (
+                        <Button
+                            variant="secondary-gray"
+                            size="sm"
+                            onClick={() => setMineOnly(v => !v)}
+                            className={mineOnly ? "bg-[#f2f4f7] text-[#101828]" : undefined}
+                        >
+                            {mineOnly ? "Showing yours only" : "Assigned to me"}
+                        </Button>
+                    )}
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                     {pagedRows.length === 0 ? (

@@ -24,7 +24,6 @@
 "use client";
 
 import Image from "next/image";
-import { Stars02 } from "@untitledui/icons";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import {
@@ -47,38 +46,13 @@ export function FloatingAiButton() {
     };
 
     return (
-        // 32px frame padding to the viewport edges, per Figma spacing-4xl.
-        // Wrapper is `fixed` so the pair floats above every page.
+        // Client 2026-07-27 — the "How can I help today?" bubble was
+        // hidden per client feedback ("hide this like the bubble chat")
+        // to keep the entry point compact + non-blocking on scroll. Only
+        // the logomark tile remains as the fixed trigger. The wrapper's
+        // bottom-8 right-8 gives 32px viewport padding per Figma
+        // spacing-4xl.
         <div className="fixed bottom-8 right-8 z-[60] flex items-center gap-4 pointer-events-none">
-            {/* Prompt bubble — the wide "How can I help today?" card.
-                Rounded 2xl on three corners + 4px on the bottom-right so
-                it visually points toward the logomark tile. */}
-            <button
-                type="button"
-                aria-label="Open Onra AI Agent"
-                onClick={handleClick}
-                className={[
-                    "pointer-events-auto",
-                    "bg-white border-1 border-[#e4e7ec]",
-                    "flex items-center gap-2 px-4 py-3",
-                    "rounded-tl-[16px] rounded-tr-[16px] rounded-bl-[16px] rounded-br-[4px]",
-                    "shadow-[0px_0.8px_0.8px_0px_rgba(0,0,0,0.04),0px_2.4px_2.4px_0px_rgba(0,0,0,0.04),0px_6.4px_6.4px_0px_rgba(0,0,0,0.03),0px_20px_20px_0px_rgba(0,0,0,0.01),0px_4px_24px_0px_#e9fff3]",
-                    "hover:bg-[#f9fafb] transition-colors",
-                    "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
-                    // Bounded width so a long prompt doesn't stretch the
-                    // whole page — matches the Figma 319px overall pair
-                    // width (bubble ≈ 247px + 16px gap + 56px logo).
-                    "max-w-[247px]",
-                ].join(" ")}
-            >
-                <Stars02 className="w-6 h-6 text-[#658774] shrink-0" />
-                <span className="text-[14px] font-medium leading-[20px] text-[#101828] text-left">
-                    How can I help today?
-                </span>
-            </button>
-            {/* Logomark tile — the square Onra brand mark. Uses the
-                existing /Logomark.webp asset the sidebar + login page
-                already ship with, so the brand stays consistent. */}
             <button
                 type="button"
                 aria-label="Open Onra AI Agent"
@@ -88,7 +62,7 @@ export function FloatingAiButton() {
                     "shrink-0 w-14 h-14 rounded-[14px] bg-white",
                     "border-[0.35px] border-[#d0d5dd] overflow-hidden",
                     "flex items-center justify-center",
-                    "shadow-[0px_1.75px_2.625px_rgba(16,24,40,0.1),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
+                    "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
                     "hover:bg-[#f9fafb] transition-colors",
                     "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
                 ].join(" ")}
