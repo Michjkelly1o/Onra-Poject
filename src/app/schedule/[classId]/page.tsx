@@ -52,7 +52,8 @@ function fmtBookingTime(iso: string): string {
     return `${y}-${m}-${day}, ${String(h12).padStart(2, "0")}:${min} ${ap}`;
 }
 
-/** Spot label derived from a fixed 4-column grid (A1..D8). Used when spotSelectionEnabled. */
+/** Spot label derived from a fixed 4-column grid (A1..D8). System-assigned by
+ *  booking order when a class has no explicit spot (incl. spot-selection-off). */
 function spotForIndex(i: number): string {
     const row = String.fromCharCode(65 + Math.floor(i / 4));
     const col = (i % 4) + 1;
@@ -2544,9 +2545,10 @@ export default function ClassDetailPage() {
                                         //  - Ongoing   → Status (Present badge if marked) + Actions (Present)
                                         //  - Cancelled → Status (Cancelled badge), no actions
                                         const showCheckbox = tab === "booked" && (isUpcoming || isOngoing);
-                                        const showSpot = tab === "booked"
-                                            ? isUpcoming
-                                            : tab === "waitlisted"; // waitlist also shows Spot per the design
+                                        // Spot always shows on the Booked roster (Upcoming +
+                                        // Ongoing + Completed) and on Waitlisted — never hidden
+                                        // by class state (client 2026-07-28).
+                                        const showSpot = tab === "booked" || tab === "waitlisted";
                                         const showWaitlistPos = tab === "waitlisted";
                                         const showStatus = (tab === "booked" && (isOngoing || isCancelled || isCompleted)) || tab === "cancelled";
                                         // Ongoing rows now expose "Present" as an INLINE button inside
@@ -2620,9 +2622,11 @@ export default function ClassDetailPage() {
                                                         // backfills from the configured grid. The positional
                                                         // fallback only covers a row that has no spot yet
                                                         // (e.g. a grid smaller than its booking count).
-                                                        const spotLabel = !ci.spotSelectionEnabled
-                                                            ? "—"
-                                                            : (b.spot ?? spotForIndex(bookedIndexById.get(b.id) ?? 0));
+                                                        // Always show a spot — the stored pick when the
+                                                        // class has spot selection, otherwise a
+                                                        // system-assigned spot from booking order
+                                                        // (A1, A2… B1…). Never empty (client 2026-07-28).
+                                                        const spotLabel = b.spot ?? spotForIndex(bookedIndexById.get(b.id) ?? 0);
                                                         const isSelected = selectedIds.has(b.id);
                                                         return (
                                                             <tr key={b.id} className="hover:bg-[#f9fafb] transition-colors">

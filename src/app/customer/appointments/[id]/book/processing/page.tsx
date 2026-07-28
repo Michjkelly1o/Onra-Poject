@@ -6,7 +6,8 @@
 //
 // Figma 4212-39540. Writes the (UI-only) appointment booking once, then plays the
 // same transient 3-step loader as the class flow and routes to Success carrying
-// the new booking id (so Success → "View bookings" opens its detail).
+// the new booking id (kept for reference; Success → "View bookings" now
+// always opens the Upcoming bookings list, not this booking's detail).
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";

@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
+import { AttendeeTopBar } from "@/components/attendee/AttendeeTopBar";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { TableAvatar } from "@/components/ui/avatar";
 import { NoShowBadge } from "@/components/ui/badge";
@@ -178,7 +179,10 @@ function LeftPanel({ ci, instructorLabel }: { ci: ClassInstance; instructorLabel
 
                         <InfoField label="Duration">{diffMinutes(ci.startTime, ci.endTime)} minutes</InfoField>
                         <InfoField label="Class capacity">{ci.capacity} participants</InfoField>
-                        <InfoField label="Location">{ci.room}</InfoField>
+                        {/* Room when one is configured; otherwise fall back to the
+                            branch location (e.g. appointments booked without a
+                            specific room) — client 2026-07-28. */}
+                        <InfoField label="Location">{ci.room || ci.location}</InfoField>
                         <InfoField label="Instructor">
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
@@ -548,15 +552,18 @@ function AttendeeDetailPage() {
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
-            {/* Header — "Class details" with an X close top-left */}
-            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0 border-b border-[#e4e7ec]">
-                <button type="button" onClick={() => router.push(returnTo)}
-                    aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
-                </button>
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{isAppt ? "Appointment details" : "Class details"}</h1>
-            </div>
+            {/* Header — the SAME shared AttendeeTopBar as the main Attendee page
+                (flush, no bottom border). X close + title on the left. */}
+            <AttendeeTopBar>
+                <div className="flex items-center gap-3 min-w-0">
+                    <button type="button" onClick={() => router.push(returnTo)}
+                        aria-label="Close"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{isAppt ? "Appointment details" : "Class details"}</h1>
+                </div>
+            </AttendeeTopBar>
 
             <DetailPageShell
                 sidebar={<LeftPanel ci={ci} instructorLabel={instructorLabel} />}

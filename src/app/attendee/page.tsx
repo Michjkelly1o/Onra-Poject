@@ -28,6 +28,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { AttendeeTopBar } from "@/components/attendee/AttendeeTopBar";
 import {
     INSTRUCTORS, isoAddDays, isoToDisplay, isoToMonday, formatWeekRange, TODAY_ISO, DAY_VIEW_DATE,
 } from "@/components/schedule/ScheduleGridViews";
@@ -173,7 +174,9 @@ function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => vo
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
                         <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span className="text-[14px] text-[#475467] truncate">{ci.room}</span>
+                        {/* Room when set; otherwise the branch location so the pin
+                            never renders label-less (room-less appointments). */}
+                        <span className="text-[14px] text-[#475467] truncate">{ci.room || ci.location}</span>
                     </div>
                 </div>
 
@@ -409,23 +412,21 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 }
 
 // ── Cross-navigation UI cache ────────────────────────────────────────────────
-// Persists the toolbar/view state (filter, location, view tab, day/week cursors)
-// across a detail round-trip so returning from `/attendee/[classId]` restores
-// the exact same view. Reset only on an explicit filter Clear.
+// Persists the toolbar/view state (filter, location, view tab, search) across a
+// detail round-trip. The day/week date cursors are DELIBERATELY excluded — the
+// Attendee module always reopens on the current week + today (client
+// 2026-07-28), so the date resets on every mount instead of restoring the
+// previous scroll position. Reset the rest only on an explicit filter Clear.
 type AttendeeView = "day" | "week";
 const attendeeUi: {
     applied: FilterState;
     location: string;
     activeView: AttendeeView;
-    dayDateISO: string;
-    weekSelectedISO: string;
     search: string;
 } = {
     applied: EMPTY_FILTER,
     location: "",
     activeView: "day",
-    dayDateISO: "",
-    weekSelectedISO: "",
     search: "",
 };
 
@@ -457,8 +458,11 @@ function AttendeePage() {
     const [location, setLocation] = useState<string>(attendeeUi.location || activeBranches[0]?.id || "");
     const [filterOpen, setFilterOpen] = useState(false);
     const [search, setSearch] = useState(attendeeUi.search);
-    const [dayDateISO, setDayDateISO] = useState(attendeeUi.dayDateISO || DAY_VIEW_DATE);
-    const [weekSelectedISO, setWeekSelectedISO] = useState(attendeeUi.weekSelectedISO || TODAY_ISO);
+    // Always open on today / the current week — never restored from the cache
+    // (client 2026-07-28). Each remount (incl. navigating back from a detail)
+    // re-runs these initializers, so the date + week strip reset every time.
+    const [dayDateISO, setDayDateISO] = useState(DAY_VIEW_DATE);
+    const [weekSelectedISO, setWeekSelectedISO] = useState(TODAY_ISO);
     const weekStart = isoToMonday(weekSelectedISO);
 
     // ── Week strip horizontal paging — reuses the customer DateStrip interaction ──
@@ -468,11 +472,19 @@ function AttendeePage() {
     // matching week. Both states always move together.
     const weekStripRef = useRef<HTMLDivElement>(null);
     const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
-    // Anchor 4 weeks back so the strip can page backwards from today.
-    const weekAnchorMonday = useMemo(() => isoAddDays(isoToMonday(TODAY_ISO), -28), []);
+    // Anchor at the CURRENT week's Monday — the strip only pages FORWARD from
+    // today, exactly like the customer class-search DateStrip. Past weeks are
+    // unreachable and past days are disabled; Attendee only surfaces schedules
+    // from the current week onward (client 2026-07-28).
+    const todayMonday = isoToMonday(TODAY_ISO);
+    const weekAnchorMonday = todayMonday;
     const selectedWeekIdx = Math.max(0, Math.floor(daysBetween(weekAnchorMonday, weekStart) / 7));
-    const weekPageCount = Math.max(8, selectedWeekIdx + 3);
+    const weekPageCount = Math.max(5, selectedWeekIdx + 2);
     const weekdayOffset = Math.max(0, Math.min(6, daysBetween(weekStart, weekSelectedISO)));
+    // Backward nav is clamped at the boundary — ‹ is disabled at today / the
+    // current week so you can't page into the past.
+    const atFirstDay = dayDateISO <= TODAY_ISO;
+    const atFirstWeek = weekStart <= todayMonday;
 
     // Scroll the selected week into view when it changes via the ‹ › nav / range
     // button (mirrors DateStrip's selected-week scroll effect).
@@ -503,10 +515,8 @@ function AttendeePage() {
         attendeeUi.applied = applied;
         attendeeUi.location = location;
         attendeeUi.activeView = activeView;
-        attendeeUi.dayDateISO = dayDateISO;
-        attendeeUi.weekSelectedISO = weekSelectedISO;
         attendeeUi.search = search;
-    }, [applied, location, activeView, dayDateISO, weekSelectedISO, search]);
+    }, [applied, location, activeView, search]);
 
     // ── Class feed — identical merge to Schedule, then live-only filter. ──────
     const appointmentInstances = useMemo(
@@ -576,9 +586,10 @@ function AttendeePage() {
         router.push(`/attendee/${cls.id}?returnTo=${rt}`);
     }
 
-    function prevDay() { setDayDateISO(d => isoAddDays(d, -1)); }
+    // Backward nav is clamped to today / the current week.
+    function prevDay() { setDayDateISO(d => { const n = isoAddDays(d, -1); return n < TODAY_ISO ? d : n; }); }
     function nextDay() { setDayDateISO(d => isoAddDays(d, 1)); }
-    function prevWeek() { setWeekSelectedISO(d => isoAddDays(d, -7)); }
+    function prevWeek() { setWeekSelectedISO(d => { const n = isoAddDays(d, -7); return isoToMonday(n) < todayMonday ? d : n; }); }
     function nextWeek() { setWeekSelectedISO(d => isoAddDays(d, 7)); }
 
     // Centred date navigator — reuses the Schedule module's `DateNav`/`NavBtn`
@@ -590,9 +601,9 @@ function AttendeePage() {
             {children}
         </div>
     );
-    const NavBtn = ({ onClick, children, label }: { onClick?: () => void; children: React.ReactNode; label?: string }) => (
-        <button type="button" onClick={onClick} aria-label={label}
-            className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors">
+    const NavBtn = ({ onClick, children, label, disabled }: { onClick?: () => void; children: React.ReactNode; label?: string; disabled?: boolean }) => (
+        <button type="button" onClick={onClick} aria-label={label} disabled={disabled}
+            className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] transition-colors enabled:hover:bg-[#e4e7ec] disabled:opacity-40 disabled:cursor-not-allowed">
             {children}
         </button>
     );
@@ -608,7 +619,7 @@ function AttendeePage() {
                 pinned at the top of the panel; only the calendar content below
                 scrolls. No nested inner card (client 2026-07-27). */}
             <div className="bg-white border border-[#dcded5] rounded-[20px] h-full flex flex-col overflow-hidden">
-                <div className="shrink-0 flex items-center justify-between gap-6 px-6 py-5 w-full">
+                <AttendeeTopBar>
                         <div className="flex items-center gap-4 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
                                 <span className="w-6 h-7 flex items-center justify-center shrink-0">
@@ -631,7 +642,7 @@ function AttendeePage() {
                             </span>
                         </div>
                         <BranchDropdown value={location} options={locationOptions} onChange={setLocation} />
-                    </div>
+                    </AttendeeTopBar>
 
                     {/* Calendar content — fills remaining panel height; the card
                         grid scrolls inside. No bordered inner card. */}
@@ -651,13 +662,13 @@ function AttendeePage() {
                                         view the day strip + range label both re-render. */}
                                     {activeView === "day" ? (
                                         <DateNav>
-                                            <NavBtn onClick={prevDay} label="Previous day"><ChevronLeft className="w-4 h-4" /></NavBtn>
+                                            <NavBtn onClick={prevDay} label="Previous day" disabled={atFirstDay}><ChevronLeft className="w-4 h-4" /></NavBtn>
                                             <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[152px] text-center">{isoToDisplay(dayDateISO)}</span>
                                             <NavBtn onClick={nextDay} label="Next day"><ChevronRight className="w-4 h-4" /></NavBtn>
                                         </DateNav>
                                     ) : (
                                         <DateNav>
-                                            <NavBtn onClick={prevWeek} label="Previous week"><ChevronLeft className="w-4 h-4" /></NavBtn>
+                                            <NavBtn onClick={prevWeek} label="Previous week" disabled={atFirstWeek}><ChevronLeft className="w-4 h-4" /></NavBtn>
                                             <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[168px] text-center">{formatWeekRange(weekStart)}</span>
                                             <NavBtn onClick={nextWeek} label="Next week"><ChevronRight className="w-4 h-4" /></NavBtn>
                                         </DateNav>
@@ -703,23 +714,28 @@ function AttendeePage() {
                                                         const iso = isoAddDays(pageMonday, d);
                                                         const p = isoParts(iso);
                                                         const selected = iso === weekSelectedISO;
+                                                        // Past days are disabled — same as the customer DateStrip.
+                                                        const disabled = iso < TODAY_ISO;
                                                         return (
                                                             <button
                                                                 key={iso}
                                                                 type="button"
+                                                                disabled={disabled}
                                                                 onClick={() => setWeekSelectedISO(iso)}
                                                                 aria-pressed={selected}
                                                                 className={cn(
                                                                     "flex-1 flex flex-col items-center gap-1 p-3 rounded-[16px] border transition-colors",
                                                                     selected
                                                                         ? "bg-[#e9fff3] border-2 border-[#658774]"
-                                                                        : "bg-white border border-[#e4e7ec] hover:bg-[#f9fafb]",
+                                                                        : disabled
+                                                                            ? "bg-white border border-[#e4e7ec] opacity-40 cursor-not-allowed"
+                                                                            : "bg-white border border-[#e4e7ec] hover:bg-[#f9fafb]",
                                                                 )}
                                                             >
-                                                                <span className={cn("text-[12px] leading-[18px]", selected ? "text-[#658774]" : "text-[#667085]")}>
+                                                                <span className={cn("text-[12px] leading-[18px]", selected ? "text-[#658774]" : disabled ? "text-[#98a2b3]" : "text-[#667085]")}>
                                                                     {p.weekday}
                                                                 </span>
-                                                                <span className={cn("text-[20px] font-medium leading-[28px]", selected ? "text-[#658774]" : "text-[#344054]")}>
+                                                                <span className={cn("text-[20px] font-medium leading-[28px]", selected ? "text-[#658774]" : disabled ? "text-[#98a2b3]" : "text-[#344054]")}>
                                                                     {p.day}
                                                                 </span>
                                                             </button>

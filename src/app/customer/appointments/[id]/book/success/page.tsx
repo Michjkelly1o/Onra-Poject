@@ -7,9 +7,9 @@
 // Reuses the class success overview, worded for appointments: ringed filled
 // check + "Your booking is confirmed!" + a summary card (Booked badge, cover,
 // name, chosen slot, duration · — Private — instructor, branch). X → Search,
-// "View bookings" → Bookings. Appointments are UI-only (no store write).
+// "View bookings" → the Upcoming bookings list. Appointments are UI-only (no store write).
 
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Check, CheckCircle, Clock, MarkerPin01, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { to12h } from "@/lib/customer/dates";
@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 export default function AppointmentSuccessPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
-    const bookingId = useSearchParams().get("booking");
     const appointment = useAppointment(id);
     const instructors = useAppStore((s) => s.instructors);
     const scrollable = useMainScrollable();
@@ -154,7 +153,11 @@ export default function AppointmentSuccessPage() {
                     variant="primary"
                     size="xl"
                     className="w-full rounded-full"
-                    onClick={() => router.push(bookingId ? `/customer/bookings/appointment/${bookingId}` : "/customer/bookings")}
+                    onClick={() =>
+                        // Always land on the Upcoming bookings list — not the
+                        // just-created appointment's detail (client 2026-07-28).
+                        router.push("/customer/bookings/upcoming")
+                    }
                 >
                     View bookings
                 </Button>

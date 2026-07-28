@@ -75,7 +75,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { create } from "zustand";
-import { defaultSpotLayout, firstFreeSpot } from "@/lib/spot-layout";
+import { firstFreeSpot } from "@/lib/spot-layout";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { account_profile as adminUser } from "@/data/mock/account_profile";
@@ -2423,6 +2423,11 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
         SEED_INSTRUCTORS.find(p => p.id === s.instructor_id);
     const branch = SEED_BRANCHES.find(b => b.id === s.branch_id);
     const room = SEED_ROOMS.find(r => r.id === s.room_id);
+    // Demo: enable spot selection for MOST scheduled classes so the pick-a-spot
+    // flow is fully testable on both admin + customer (client 2026-07-28). Any
+    // Group class gets it; 1-on-1 Private classes don't use spots. An explicit
+    // seed value (`spot_selection_enabled`) always wins.
+    const wantsSpots = s.spot_selection_enabled ?? (s.class_type ?? "Group") !== "Private";
     return {
         id: s.id,
         templateId: s.template_id,
@@ -2448,17 +2453,15 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
         capacity: s.capacity,
         classType: s.class_type ?? "Group",
         equipment: s.equipment ?? "",
-        // Demo: Reformer Pilates classes get spot selection so the flow is testable
-        // (adapter default — the mock seed rows are untouched).
-        spotSelectionEnabled: s.spot_selection_enabled ?? s.template_id === "tpl_reformer_pilates",
-        // Admin config wins. Otherwise fall back to the SAME best-fit grid the
-        // admin's "Customize area" editor defaults to for this capacity — a
-        // hardcoded grid here made the customer show a different room (and a
-        // blocked spot the studio never set).
+        spotSelectionEnabled: wantsSpots,
+        // Admin config wins. Otherwise fall back to a capacity-fit grid (4 cols,
+        // enough rows to seat the whole class) — the SAME grid both admin and
+        // customer read from the store, so the two sides can never show a
+        // different room. Blocked spots stay empty until the studio customises.
         spotLayout: s.spot_layout
             ? { cols: s.spot_layout.cols, rows: s.spot_layout.rows, blockedSpots: s.spot_layout.blocked_spots }
-            : s.template_id === "tpl_reformer_pilates"
-              ? { ...defaultSpotLayout(), blockedSpots: [] }
+            : wantsSpots
+              ? { cols: 4, rows: Math.max(2, Math.ceil(s.capacity / 4)), blockedSpots: [] }
               : undefined,
         waitlistEnabled: s.waitlist_enabled ?? true,
         rating: s.rating,
@@ -9933,7 +9936,12 @@ export const useAppStore = create<AppState>()(persist(
         //   `shiftAssignments` array from every staff row's `shift_id`
         //   when the persisted slice is missing / empty. Bump forces
         //   pre-v82 snapshots to reseed cleanly.
-        version: 82,
+        // v83 (2026-07-28): spot selection enabled for most scheduled classes
+        //   (all Group classes get a capacity-fit spot grid; consumed
+        //   identically by admin + customer). Bump discards pre-v83
+        //   snapshots so the fresh seed re-anchors the DEMO_NOW schedules to
+        //   the current day AND applies the new spot layout everywhere.
+        version: 83,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
