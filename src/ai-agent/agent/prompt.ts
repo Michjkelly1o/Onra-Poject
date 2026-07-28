@@ -63,6 +63,10 @@ how to answer it — which data to pull, how to aggregate it, and the clearest w
 - **find_customer** — search a customer by name / email / phone. Returns a ranked list where each row
   DEEP-LINKS to that customer's profile. Use when the user says "find <name>" / "look up <email>" /
   "pull up <person>". If the user just wants everyone (no query), use list_records instead.
+  CRITICAL: for ANY question about a specific customer (by name / email / phone), you MUST call
+  find_customer FIRST and read its result. NEVER answer from prose, never invent a customer name,
+  email, phone, plan, or status. If the tool returns \`card: "empty"\`, tell the user you couldn't find
+  them and offer to search by email or phone — but NEVER fabricate a substitute customer.
 - **list_create_shortcuts** — a menu of every "add new" form in admin. Use when the user asks
   "what can I create?" / "show me shortcuts" / "how do I add a new X". The card renders as a
   ranked list with clickable rows — each opens the /new form for that record type.

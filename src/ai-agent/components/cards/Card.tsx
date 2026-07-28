@@ -105,19 +105,28 @@ function RankedListRow({
                     </div>
                 )}
             </div>
-            <div className="text-right shrink-0">
-                {r.right1 && (
-                    <div className="text-[14px] font-medium text-[#101828] leading-5 tabular-nums">
-                        {r.right1}
-                    </div>
-                )}
+            {/* Client 2026-07-28 — right column laid out inline so the
+                arrow sits ON THE SAME LINE as `right1` (usually a status
+                like "active"). The previous stacked-div layout pushed
+                the arrow onto its own line, which read as a rendering
+                bug on customer suggestion cards. `right2` still stacks
+                below when present (e.g. "89% occupancy" under
+                "142 bookings"). */}
+            <div className="text-right shrink-0 flex flex-col items-end">
+                <div className="flex items-center gap-1.5">
+                    {r.right1 && (
+                        <span className="text-[14px] font-medium text-[#101828] leading-5 tabular-nums">
+                            {r.right1}
+                        </span>
+                    )}
+                    {clickable && (
+                        <ArrowUpRight className="size-3.5 text-[#4b8c9a] shrink-0" />
+                    )}
+                </div>
                 {r.right2 && (
                     <div className="text-[13px] text-[#667085] leading-5 tabular-nums">
                         {r.right2}
                     </div>
-                )}
-                {clickable && (
-                    <ArrowUpRight className="inline-block size-3.5 text-[#4b8c9a]" />
                 )}
             </div>
         </>
