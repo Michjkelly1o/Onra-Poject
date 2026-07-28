@@ -1628,17 +1628,11 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                         </div>
 
                         {/* Info footer — canonical DS info alert
-                            (bg #f1f2ed + Lightbulb02 + #475467 text).
-                            Q3 (2026-07-27) — copy rewritten in plain
-                            English so a non-technical admin gets it in
-                            one read. */}
-                        <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] flex items-start gap-4 p-4">
-                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-0.5" />
-                            <p className="text-[14px] text-[#475467] leading-[20px]">
-                                This stage is set automatically from what the customer does — bookings,
-                                attendance, plan purchases, refunds. It updates on its own; you don&apos;t
-                                edit it here. The follow-up dropdown you CAN edit lives on the
-                                Details tab, and only shows while the customer is still a Lead or Trialist.
+                            (bg #f1f2ed + Lightbulb02 + #475467 text). */}
+                        <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] flex items-center gap-4 p-4">
+                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
+                            <p className="text-[14px] text-[#475467]">
+                                Set automatically from the customer&apos;s activity. To edit follow-up status manually, use the Details tab (Leads and Trialists only).
                             </p>
                         </div>
                     </div>

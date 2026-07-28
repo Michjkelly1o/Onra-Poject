@@ -225,12 +225,14 @@ export function LeadLifecycleItemModal({
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" onClick={onClose}>
+                {/* Footer — full-width buttons (client 2026-07-27) so
+                    the two actions balance the modal edge-to-edge, same
+                    weight as the ConfirmModal footer layout. */}
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center gap-3">
+                    <Button variant="secondary-gray" size="md" onClick={onClose} className="flex-1">
                         Cancel
                     </Button>
-                    <Button variant="primary" size="md" disabled={!canSave} onClick={handleSubmit}>
+                    <Button variant="primary" size="md" disabled={!canSave} onClick={handleSubmit} className="flex-1">
                         {copy.submit}
                     </Button>
                 </div>
