@@ -93,11 +93,16 @@ export function IconTooltip({ label, children, side = "above", disabled = false,
                         "bg-[#0c111d] text-white text-[12px] leading-[16px] font-medium",
                         "rounded-[8px] px-2.5 py-1.5 shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)]",
                         "pointer-events-none",
-                        // Client 2026-07-27 — allow long tooltip strings
-                        // (compute reasoning etc.) to wrap onto multiple
-                        // lines within a bounded max-width instead of
-                        // spilling off the viewport.
-                        "max-w-[320px] break-words",
+                        // Client 2026-07-27 (round 2) — short labels stay
+                        // on ONE line via `whitespace-nowrap`. Long labels
+                        // (>= 30 chars, e.g. the lifecycle reasoning
+                        // string) wrap within a bounded max-width so they
+                        // don't clip off the viewport. Threshold picked
+                        // empirically — one line of 30ch at 12px medium
+                        // fits well under 320px cap.
+                        label.length < 30
+                            ? "whitespace-nowrap"
+                            : "max-w-[320px] break-words",
                         // Horizontal centering via translate on the tooltip
                         // itself; vertical flip depending on side.
                         side === "above"
