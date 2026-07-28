@@ -664,6 +664,9 @@ export default function PayrollInstructorDetailPage({
     const ins: Instructor = instructor;
 
     const branch = branches.find(b => b.id === ins.branchId);
+    // Staff role — resolved once, reused for the "Role" sidebar row (client
+    // 2026-07-28). Reuses the shared RoleBadge; no bespoke pill.
+    const roleRow = roles.find(r => r.id === staff.find(s => s.id === ins.id)?.roleId);
     const range = useMemo(() => dateFilterToRange(period), [period]);
 
     // Non-instructor staff (Phase 3B synthetic rows) teach no classes — hide
@@ -937,12 +940,6 @@ export default function PayrollInstructorDetailPage({
                             <div className="flex flex-col gap-1.5 items-start">
                                 <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">{instructor.name}</p>
                                 <p className="text-[14px] text-[#667085]">{instructor.email}</p>
-                                {/* Staff role — so the role is visible without inferring it
-                                    (client 2026-07-28). Reuses the shared RoleBadge. */}
-                                {(() => {
-                                    const roleRow = roles.find(r => r.id === staff.find(s => s.id === instructor.id)?.roleId);
-                                    return roleRow ? <RoleBadge label={roleRow.name} type={roleRow.type} className="mt-0.5" /> : null;
-                                })()}
                             </div>
                         </div>
 
@@ -962,8 +959,15 @@ export default function PayrollInstructorDetailPage({
 
                                 <div className="flex flex-col gap-4">
                                     <SidebarRow label="Joined" value={instructor.joinedDate} />
-                                    <SidebarRow label="Email" value={instructor.email} />
                                     <SidebarRow label="Phone" value={instructor.phone} />
+                                    {/* Role — the badge lives here now (moved out of the
+                                        header). Reuses the shared RoleBadge. */}
+                                    {roleRow && (
+                                        <div className="flex flex-col gap-1">
+                                            <p className="text-[13px] text-[#667085] leading-[18px]">Role</p>
+                                            <div className="flex"><RoleBadge label={roleRow.name} type={roleRow.type} /></div>
+                                        </div>
+                                    )}
                                     <SidebarRow label="Branch location" value={branch?.name ?? "—"} />
                                     <SidebarRow label="Default pay rate" value={payRate?.name ?? "—"} />
                                 </div>
