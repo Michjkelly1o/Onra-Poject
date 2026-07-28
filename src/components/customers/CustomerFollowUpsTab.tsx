@@ -24,7 +24,7 @@ import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
-import { Check, ClockRefresh, XClose, MessageChatSquare, AlertCircle, User01 } from "@untitledui/icons";
+import { Check, ClockRefresh, XClose, MessageChatSquare, AlertCircle, Settings01 } from "@untitledui/icons";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 import { lookupStageLabel } from "@/lib/customer/follow-up-tasks";
@@ -276,7 +276,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                             aria-label="Follow-up settings"
                             onClick={() => setSettingsOpen(true)}
                         >
-                            <User01 className="w-5 h-5" />
+                            <Settings01 className="w-5 h-5" />
                         </Button>
                     </IconTooltip>
                 </div>
@@ -513,9 +513,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                             options={staffOptions}
                             width="w-full"
                         />
-                        <p className="text-[13px] text-[#667085]">
-                            The staff member this customer&apos;s follow-up work belongs to. Shows on their dashboard widget.
-                        </p>
+                        <p className="text-[13px] text-[#667085]">Owner of this customer&apos;s follow-up work.</p>
                     </div>
                     {isPreConversion && (
                         <div className="flex flex-col gap-1.5">
@@ -540,9 +538,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                 }))}
                                 width="w-full"
                             />
-                            <p className="text-[13px] text-[#667085]">
-                                Where this customer sits in the funnel. Auto-updates as they book / convert; edit manually to override.
-                            </p>
+                            <p className="text-[13px] text-[#667085]">Auto-updates on activity; edit to override.</p>
                         </div>
                     )}
                     <div className="flex flex-col gap-1.5">
@@ -550,9 +546,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                             Source
                         </label>
                         <p className="text-[16px] font-medium text-[#101828]">{sourceLabelForPanel}</p>
-                        <p className="text-[13px] text-[#667085]">
-                            Where this lead came from. Set once at customer creation; view-only here.
-                        </p>
+                        <p className="text-[13px] text-[#667085]">Set at customer creation; view-only here.</p>
                     </div>
                 </div>
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end">
