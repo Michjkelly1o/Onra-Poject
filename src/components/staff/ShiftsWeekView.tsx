@@ -62,6 +62,15 @@ function addDays(d: Date, n: number): Date {
 
 const WEEKDAY_HEAD = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
+// Time-off reason → label (mirrors TimeOffMonthView). Shown as the Time Off
+// card subtext so the reason is always visible (client 2026-07-28).
+const TIME_OFF_REASON_LABEL: Record<"sick" | "vacation" | "training" | "other", string> = {
+    sick:     "Sick",
+    vacation: "Vacation",
+    training: "Training",
+    other:    "Other",
+};
+
 /** "07:00" → "07:00 AM"; "12:00" → "12:00 PM". */
 function to12h(hhmm: string): string {
     const [h, m] = hhmm.split(":").map(Number);
@@ -809,10 +818,10 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                         style={{ backgroundImage: "repeating-linear-gradient(45deg, #fafafb, #fafafb 5px, #f2f4f7 5px, #f2f4f7 10px)" }}
                                                         title="Staff on time off — shifts can't be assigned this day"
                                                     >
-                                                        <p className="text-[13px] font-semibold text-[#475467] leading-[18px]">Time off</p>
-                                                        {timeOff.note && (
-                                                            <p className="text-[12px] text-[#98a2b3] leading-[16px] truncate">{timeOff.note}</p>
-                                                        )}
+                                                        <p className="text-[13px] font-semibold text-[#475467] leading-[18px]">Time Off</p>
+                                                        {/* Reason always shown (Sick / Vacation / Training /
+                                                            Other) — client 2026-07-28. */}
+                                                        <p className="text-[12px] text-[#98a2b3] leading-[16px] truncate">{TIME_OFF_REASON_LABEL[timeOff.reason ?? "other"]}</p>
                                                     </div>
                                                 ) : (
                                                     <>

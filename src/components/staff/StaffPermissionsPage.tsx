@@ -426,7 +426,7 @@ const CONFIRM_CFG: Record<ConfirmKind, {
 
 // ─── Role row actions ──────────────────────────────────────────────────────
 
-type RoleRowActionKind = "view" | "add_staff" | "edit_details" | "edit_permissions" | "archive" | "recover" | "delete";
+type RoleRowActionKind = "view" | "add_staff" | "edit_details" | "edit_permissions" | "archive" | "recover" | "delete" | "deactivate" | "reactivate";
 
 // Thin wrapper around the canonical `<RowActions>` — keeps the role-specific
 // items-array logic colocated with the rest of this module, but the kebab
@@ -444,6 +444,8 @@ function RoleRowActions({ role, staffCount, onAction }: {
             { label: "Add staff", icon: UserPlus01, onClick: () => onAction("add_staff"), hidden: !(isActive && !role.locked) },
             { label: "Edit details", icon: Edit02, onClick: () => onAction("edit_details"), hidden: !(isActive && !role.locked) },
             { label: "Edit permissions", icon: UserSquare, onClick: () => onAction("edit_permissions"), hidden: !(isActive && !role.locked) },
+            { label: "Deactivate", icon: SlashCircle01, onClick: () => onAction("deactivate"), danger: true, hidden: !(isActive && !role.locked && staffCount > 0) },
+            { label: "Reactivate", icon: RefreshCcw01, onClick: () => onAction("reactivate"), hidden: role.status !== "inactive" },
             { label: "Archive", icon: Archive, onClick: () => onAction("archive"), hidden: !(!isArchived && !role.locked) },
             { label: "Recover", icon: RefreshCcw01, onClick: () => onAction("recover"), hidden: !(isArchived && !role.locked) },
             { label: "Delete", icon: Trash01, onClick: () => onAction("delete"), danger: true, hidden: !canDelete },
