@@ -93,6 +93,7 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Memberships & packages", href: "/admin/products"                },
             { label: "Gift cards",             href: "/admin/products/gift-cards"     },
+            { label: "Retail",                 href: "/admin/products/retail"         },
             { label: "Private sessions",       href: "/admin/services?type=private"   },
             { label: "Recovery & wellness",    href: "/admin/services?type=recovery"  },
         ],
