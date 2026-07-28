@@ -13,8 +13,9 @@
 // lands in Phase A of the inventory-retail plan.
 
 import { useState } from "react";
+import Image from "next/image";
 import {
-    Plus, Eye, Edit02, Archive, Trash01, ShoppingBag01,
+    Plus, Eye, Edit02, Archive, Trash01, Image01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,8 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
-import { IconAvatar } from "@/components/patterns/IconAvatar";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
+import { Sliders } from "@/components/icons/Sliders";
 
 // ─── Demo rows (preview-only) ────────────────────────────────────────────────
 
@@ -41,6 +43,10 @@ type PreviewRow = {
     stock: number;
     reorderThreshold: number;
     status: RetailStatus;
+    /** Real product image URL. Optional in the preview — rows without an
+     *  image render a neutral placeholder tile that will get swapped for
+     *  the uploaded image in Phase B (see inventory-retail plan). */
+    imageUrl?: string;
 };
 
 const PREVIEW_ROWS: PreviewRow[] = [
@@ -51,6 +57,37 @@ const PREVIEW_ROWS: PreviewRow[] = [
     { id: "r_005", name: "Stainless Bottle",   sku: "ACC-BTL-050", category: "Accessories", priceAed:   85, stock:  0, reorderThreshold:  5, status: "inactive" },
     { id: "r_006", name: "Sleep Formula",      sku: "REC-SLP-201", category: "Recovery",    priceAed:  140, stock: 33, reorderThreshold:  8, status: "archived" },
 ];
+
+/** 40×40 product thumbnail. Renders the uploaded image when provided;
+ *  otherwise a neutral placeholder tile (soft gray square + Image01 glyph)
+ *  that clearly reads as "image slot" while no real product photo exists.
+ *  Same footprint as the previous IconAvatar circle so table row height
+ *  stays unchanged. Swap to `<Image>` fully once Phase B ships real
+ *  imageUrl on every product. */
+function ProductThumb({ imageUrl, alt }: { imageUrl?: string; alt: string }) {
+    if (imageUrl) {
+        return (
+            <div className="relative w-10 h-10 rounded-md overflow-hidden bg-[#f2f4f7] shrink-0">
+                <Image
+                    src={imageUrl}
+                    alt={alt}
+                    fill
+                    sizes="40px"
+                    className="object-cover"
+                    unoptimized
+                />
+            </div>
+        );
+    }
+    return (
+        <div
+            className="w-10 h-10 rounded-md bg-[#f2f4f7] border-1 border-[#eaecf0] flex items-center justify-center shrink-0"
+            aria-hidden
+        >
+            <Image01 className="w-4 h-4 text-[#98a2b3]" />
+        </div>
+    );
+}
 
 function formatAed(n: number): string {
     return `AED ${n.toLocaleString("en-US")}`;
@@ -76,10 +113,24 @@ export default function RetailPage() {
     return (
         <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
+            {/* Client 2026-07-28 — preview only. Filter, Search, Add new and
+                every row action are wired UI-first but non-functional for
+                this demo pass; behaviour lands in Phase A (data) + Phase B
+                (UI wire-up) of the inventory-retail plan. */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={PREVIEW_ROWS.length} entitySingular="product" />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search product..." />
                 <ToolbarExport onExportCsv={() => { /* preview only */ }} />
+                <IconTooltip label="Filter">
+                    <Button
+                        variant="secondary-gray"
+                        size="icon"
+                        aria-label="Filter"
+                        onClick={() => { /* preview only */ }}
+                    >
+                        <Sliders className="w-5 h-5" />
+                    </Button>
+                </IconTooltip>
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}>
                     Add new
                 </Button>
@@ -119,7 +170,7 @@ export default function RetailPage() {
                                     <tr key={r.id} className="transition-colors cursor-pointer hover:bg-[#f9fafb]">
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
-                                                <IconAvatar icon={ShoppingBag01} />
+                                                <ProductThumb imageUrl={r.imageUrl} alt={r.name} />
                                                 <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                             </div>
                                         </td>
