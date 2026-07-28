@@ -13,6 +13,7 @@ import { Clock, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useBookingDetail } from "@/lib/customer/bookings-data";
+import { useCustomerBack } from "@/lib/customer/use-customer-back";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { CheckBox } from "@/components/customer/shell/SelectIndicators";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,10 @@ export default function RateBookingPage() {
     const [comment, setComment] = useState("");
     const [anonymous, setAnonymous] = useState(false);
 
-    const back = () => router.push(`/customer/bookings/${bookingId}`);
+    // X-close (cancel) — pop the rate page cleanly (returns to the booking
+    // detail it was opened from; falls back to the detail on a cold open) so
+    // it never leaves a stale rate entry in history to loop back into.
+    const back = useCustomerBack(`/customer/bookings/${bookingId}`);
 
     if (!vm || vm.viewStatus !== "attended") {
         return (
@@ -73,7 +77,11 @@ export default function RateBookingPage() {
             tags,
         });
         showToast("Thanks for rating", `Your review of ${detail.name} was submitted.`, "success");
-        back();
+        // Terminal step — REPLACE the rate page in history with the booking
+        // detail (now in its rated state) and hand it an explicit Back target
+        // so Back returns to Past Bookings, never back into the rating page
+        // (no navigation loop). Client 2026-07-28.
+        router.replace(`/customer/bookings/${bookingId}?back=/customer/bookings/past`);
     }
 
     return (
