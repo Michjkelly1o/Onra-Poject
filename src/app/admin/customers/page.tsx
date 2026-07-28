@@ -861,7 +861,7 @@ export default function CustomersPage() {
                                 : "Try adjusting your search or filters."}
                         />
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto px-6">
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>
@@ -1009,7 +1009,7 @@ export default function CustomersPage() {
                     />
                 </div>
 
-                <div className="shrink-0">
+                <div className="shrink-0 px-6">
                     <Pagination
                         page={clampedPage} total={sortedRows.length} pageSize={pageSize}
                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}

@@ -200,7 +200,9 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                 border-collapse table with the TH border-b from
                 TABLE_TH. */}
             {rows.length === 0 ? (
-                <div className="relative min-h-[240px]">
+                // Fill the remaining tab height so the empty-state tile
+                // lands centered, not glued to the top of the tab body.
+                <div className="relative flex-1 min-h-[420px]">
                     <EmptyState
                         title="No tasks yet"
                         subtitle="Tasks appear here automatically as this lead moves through the funnel, or log an enquiry to add one now."
@@ -215,7 +217,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                 <th className={cn(TH, "w-[160px]")}>Trigger</th>
                                 <th className={cn(TH, "w-[160px]")}>Status</th>
                                 <th className={cn(TH, "w-[160px]")}>Assigned to</th>
-                                <th className={cn(TH, "w-[140px]")}>Age</th>
+                                <th className={cn(TH, "w-[140px]")}>Last update</th>
                                 <th className={cn(TH, "w-[140px]")}>Actions</th>
                             </tr>
                         </thead>
@@ -319,6 +321,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                             value={assignTo}
                             onChange={setAssignTo}
                             options={staffOptions}
+                            width="w-full"
                         />
                         <p className="text-[13px] text-[#667085]">
                             Task appears on this person&apos;s dashboard follow-up widget.

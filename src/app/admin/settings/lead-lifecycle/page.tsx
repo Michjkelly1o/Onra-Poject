@@ -26,6 +26,7 @@ import { Plus, Trash01, Edit02, Check, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { cn } from "@/lib/utils";
 
 /** Max stages guardrail — the plan's PDF §4.2 "keep it tight" ceiling.
@@ -189,14 +190,18 @@ function LeadSourcesCard() {
                 </ul>
             </section>
 
-            {confirmDelete && (
-                <ConfirmDeleteModal
-                    title="Delete source?"
-                    body={<>Remove <span className="font-medium text-[#101828]">&ldquo;{confirmDelete.label}&rdquo;</span> from the lead intake list. Customers already tagged with this source keep their history but the value stops appearing in the picker.</>}
-                    onCancel={() => setConfirmDelete(null)}
-                    onConfirm={() => handleDelete(confirmDelete.id, confirmDelete.label)}
-                />
-            )}
+            <ConfirmModal
+                open={!!confirmDelete}
+                onClose={() => setConfirmDelete(null)}
+                icon={Trash01}
+                tone="danger"
+                title="Delete source?"
+                description={confirmDelete ? (
+                    <>Remove <span className="font-medium text-[#101828]">&ldquo;{confirmDelete.label}&rdquo;</span> from the lead intake list. Customers already tagged with this source keep their history but the value stops appearing in the picker.</>
+                ) : ""}
+                confirmLabel="Delete"
+                onConfirm={() => confirmDelete && handleDelete(confirmDelete.id, confirmDelete.label)}
+            />
         </>
     );
 }
@@ -357,14 +362,18 @@ function FollowUpStagesCard() {
                 </ul>
             </section>
 
-            {confirmDelete && (
-                <ConfirmDeleteModal
-                    title="Delete stage?"
-                    body={<>Remove <span className="font-medium text-[#101828]">&ldquo;{confirmDelete.label}&rdquo;</span> from the funnel. Customers currently on this stage are checked first — if any are, the delete is blocked and you&apos;ll be asked to move them off.</>}
-                    onCancel={() => setConfirmDelete(null)}
-                    onConfirm={() => handleDelete(confirmDelete.id, confirmDelete.label)}
-                />
-            )}
+            <ConfirmModal
+                open={!!confirmDelete}
+                onClose={() => setConfirmDelete(null)}
+                icon={Trash01}
+                tone="danger"
+                title="Delete stage?"
+                description={confirmDelete ? (
+                    <>Remove <span className="font-medium text-[#101828]">&ldquo;{confirmDelete.label}&rdquo;</span> from the funnel. Customers currently on this stage are checked first — if any are, the delete is blocked and you&apos;ll be asked to move them off.</>
+                ) : ""}
+                confirmLabel="Delete"
+                onConfirm={() => confirmDelete && handleDelete(confirmDelete.id, confirmDelete.label)}
+            />
         </>
     );
 }
@@ -403,29 +412,3 @@ function IconButton({
     );
 }
 
-/** Centred confirmation modal. Same visual shape as every other
- *  destructive-confirm modal (Delete customer, Delete class category
- *  etc.); kept inline so this file doesn't need a shared modal harness. */
-function ConfirmDeleteModal({
-    title, body, onCancel, onConfirm,
-}: {
-    title: string;
-    body: React.ReactNode;
-    onCancel: () => void;
-    onConfirm: () => void;
-}) {
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c111d]/40 px-4">
-            <div className="bg-white rounded-[16px] w-full max-w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] overflow-hidden">
-                <div className="flex flex-col gap-2 px-6 pt-6">
-                    <p className="text-[18px] font-semibold text-[#101828]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{body}</p>
-                </div>
-                <div className="flex items-center justify-end gap-2 px-6 pb-6 pt-6">
-                    <Button variant="secondary-gray" size="md" onClick={onCancel}>Cancel</Button>
-                    <Button variant="destructive" size="md" onClick={onConfirm}>Delete</Button>
-                </div>
-            </div>
-        </div>
-    );
-}

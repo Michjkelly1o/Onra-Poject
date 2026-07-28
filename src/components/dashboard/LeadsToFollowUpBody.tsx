@@ -116,8 +116,10 @@ export function LeadsToFollowUpBody() {
     }, [tasks, customers, transactions, classBookings, customerPlans]);
 
     if (ranked.length === 0) {
+        // Fill the widget body's full available height so the copy
+        // reads centered inside the card, not stuck to the top edge.
         return (
-            <div className="flex flex-col items-center justify-center gap-2 py-10 px-4 text-center">
+            <div className="flex-1 min-h-[220px] flex flex-col items-center justify-center gap-2 px-4 text-center">
                 <p className="text-[14px] font-medium text-[#101828]">You&apos;re all caught up.</p>
                 <p className="text-[13px] text-[#667085] max-w-[260px]">
                     Tasks show up here automatically when a lead needs a follow-up.
