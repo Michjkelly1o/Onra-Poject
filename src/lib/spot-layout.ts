@@ -30,6 +30,31 @@ export function defaultSpotLayout(): { cols: number; rows: number } {
     return { cols: 4, rows: 2 };
 }
 
+/** Auto-generate the most BALANCED rows × cols grid for a class of `capacity`
+ *  seats, used when spot selection is on but the admin never customised the
+ *  layout. Prefers an exact factorisation when the sides aren't too skewed
+ *  (10 → 5×2, 15 → 5×3, 8 → 4×2, 12 → 4×3); when `capacity` doesn't factor
+ *  cleanly it rounds UP to the nearest balanced grid, leaving a few unused
+ *  positions (11 → 4×3 = 12, one unused). Never a skinny 1×N strip. Returns
+ *  `cols ≥ rows` (wider than tall) for a room-like layout. Client 2026-07-28. */
+export function balancedSpotGrid(capacity: number): { cols: number; rows: number } {
+    const n = Math.max(1, Math.floor(capacity));
+    let best: { cols: number; rows: number; score: number; waste: number } | null = null;
+    for (let rows = 1; rows <= n; rows++) {
+        const cols = Math.ceil(n / rows);
+        if (rows > cols) break; // past the square point — mirrors already seen
+        const waste = rows * cols - n;
+        // Weight wasted positions heavily so an exact fit (e.g. 2×5 for 10)
+        // beats a squarer-but-wasteful grid (3×4 = 12), while still rejecting
+        // skinny strips via the |cols − rows| balance term.
+        const score = waste * 3 + Math.abs(cols - rows);
+        if (!best || score < best.score || (score === best.score && waste < best.waste)) {
+            best = { cols, rows, score, waste };
+        }
+    }
+    return { cols: best!.cols, rows: best!.rows };
+}
+
 /** Every spot id in the configured grid, in reading order.
  *
  *  The FULL grid is rendered — never truncated to class capacity. A studio can

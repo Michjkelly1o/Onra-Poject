@@ -2637,11 +2637,14 @@ export default function ClassDetailPage() {
                                                         // backfills from the configured grid. The positional
                                                         // fallback only covers a row that has no spot yet
                                                         // (e.g. a grid smaller than its booking count).
-                                                        // Always show a spot — the stored pick when the
-                                                        // class has spot selection, otherwise a
-                                                        // system-assigned spot from booking order
-                                                        // (A1, A2… B1…). Never empty (client 2026-07-28).
-                                                        const spotLabel = b.spot ?? spotForIndex(bookedIndexById.get(b.id) ?? 0);
+                                                        // Booked rows always show a spot — the stored pick
+                                                        // when the class has spot selection, otherwise a
+                                                        // system-assigned spot from booking order (A1, A2…
+                                                        // B1…). Waitlisted rows hold NO spot until they're
+                                                        // promoted, so they show a dash (client 2026-07-28).
+                                                        const spotLabel = b.status === "waitlisted"
+                                                            ? "—"
+                                                            : (b.spot ?? spotForIndex(bookedIndexById.get(b.id) ?? 0));
                                                         const isSelected = selectedIds.has(b.id);
                                                         return (
                                                             <tr key={b.id} className="hover:bg-[#f9fafb] transition-colors">

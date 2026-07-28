@@ -75,7 +75,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { create } from "zustand";
-import { firstFreeSpot } from "@/lib/spot-layout";
+import { firstFreeSpot, balancedSpotGrid } from "@/lib/spot-layout";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { account_profile as adminUser } from "@/data/mock/account_profile";
@@ -2454,14 +2454,15 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
         classType: s.class_type ?? "Group",
         equipment: s.equipment ?? "",
         spotSelectionEnabled: wantsSpots,
-        // Admin config wins. Otherwise fall back to a capacity-fit grid (4 cols,
-        // enough rows to seat the whole class) — the SAME grid both admin and
-        // customer read from the store, so the two sides can never show a
-        // different room. Blocked spots stay empty until the studio customises.
+        // Admin config wins. Otherwise auto-generate the most BALANCED grid for
+        // this capacity (10 → 5×2, 15 → 5×3, 11 → 4×3) — the SAME grid both
+        // admin and customer read from the store, so the two sides can never
+        // show a different room. Blocked spots stay empty until the studio
+        // customises.
         spotLayout: s.spot_layout
             ? { cols: s.spot_layout.cols, rows: s.spot_layout.rows, blockedSpots: s.spot_layout.blocked_spots }
             : wantsSpots
-              ? { cols: 4, rows: Math.max(2, Math.ceil(s.capacity / 4)), blockedSpots: [] }
+              ? { ...balancedSpotGrid(s.capacity), blockedSpots: [] }
               : undefined,
         waitlistEnabled: s.waitlist_enabled ?? true,
         rating: s.rating,
@@ -3939,6 +3940,13 @@ export interface AppState {
      *  about which spots were occupied. Assigns in the CONFIGURED grid's reading
      *  order, skipping blocked spots and any already held. Idempotent. */
     reconcileBookingSpots: () => void;
+    /** Re-derive every class's denormalized `booked` count from the ACTUAL
+     *  booking rows (status === "booked"). The single source of truth is
+     *  `classBookings`; this guarantees the attendance count, the booked
+     *  roster, the occupied-spot count and the remaining capacity can never
+     *  disagree (a seed / persisted drift used to show e.g. 9/10 with an empty
+     *  roster). Idempotent — only rewrites rows whose count changed. */
+    reconcileBookedCounts: () => void;
     /** Sweep every upcoming class that has room AND a waitlist, and run the
      *  Booking Rules offer on it. Cancellation is not the only way a spot can be
      *  free — seeded demo data, an admin capacity increase, or a cancellation
@@ -6007,6 +6015,23 @@ export const useAppStore = create<AppState>()(persist(
         }));
         // Pass it straight down the queue.
         get().offerFreedWaitlistSpot(booking.classScheduleId);
+    },
+
+    reconcileBookedCounts: () => {
+        const state = get();
+        // Count active (status "booked") rows per class in one pass.
+        const counts = new Map<string, number>();
+        for (const b of state.classBookings) {
+            if (b.status === "booked") counts.set(b.classScheduleId, (counts.get(b.classScheduleId) ?? 0) + 1);
+        }
+        let changed = false;
+        const next = state.classSchedules.map(sc => {
+            const actual = counts.get(sc.id) ?? 0;
+            if (sc.booked === actual) return sc;
+            changed = true;
+            return { ...sc, booked: actual };
+        });
+        if (changed) set({ classSchedules: next });
     },
 
     reconcileBookingSpots: () => {
@@ -9957,7 +9982,12 @@ export const useAppStore = create<AppState>()(persist(
         //   identically by admin + customer). Bump discards pre-v83
         //   snapshots so the fresh seed re-anchors the DEMO_NOW schedules to
         //   the current day AND applies the new spot layout everywhere.
-        version: 83,
+        // v84 (2026-07-28): waitlist demo classes now seed their `booked`
+        //   booked rows (were missing → 9/10 with an empty roster), `booked`
+        //   is re-derived from booking rows on boot (reconcileBookedCounts),
+        //   and default spot grids are balanced (10→5×2). Bump so every
+        //   snapshot reseeds with the consistent booking data.
+        version: 84,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -10191,6 +10221,8 @@ export const useAppStore = create<AppState>()(persist(
             // fully rehydrated store.
             setTimeout(() => {
                 try {
+                    // Counts first (source of truth = booking rows), then spots.
+                    useAppStore.getState().reconcileBookedCounts();
                     useAppStore.getState().reconcileBookingSpots();
                     useAppStore.getState().expireWaitlistClaims();
                     useAppStore.getState().reconcileWaitlistOffers();
