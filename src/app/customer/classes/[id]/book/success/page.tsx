@@ -7,7 +7,7 @@
 // Figma 2134-23763. Full-screen end of the booking flow: a ringed check-circle,
 // a confirmation headline, and a class summary card (Booked / Waitlisted #N
 // badge + cover + name + date·time + duration·instructor + room·branch). The X
-// (top-right) returns to Search; "View bookings" routes into the Bookings module.
+// (top-right) returns to Search; "View bookings" opens the Upcoming bookings list.
 
 import { Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -170,11 +170,9 @@ function BookingSuccess() {
                     size="xl"
                     className="w-full rounded-full"
                     onClick={() =>
-                        router.replace(
-                            myBooking
-                                ? `/customer/bookings/${myBooking.id}?back=/customer/bookings/upcoming`
-                                : "/customer/bookings/upcoming",
-                        )
+                        // Always land on the Upcoming bookings list — not the
+                        // just-created booking's detail (client 2026-07-28).
+                        router.replace("/customer/bookings/upcoming")
                     }
                 >
                     View bookings
