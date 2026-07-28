@@ -41,6 +41,9 @@ export interface IconTooltipProps {
 
 /** How far off the trigger to sit — matches the mockup spacing. */
 const GAP_PX = 6;
+/** Max tooltip width — long labels wrap into 2–3 lines instead of overflowing
+ *  off the page (client 2026-07-28). */
+const MAX_W = 280;
 
 export function IconTooltip({ label, children, side = "above", disabled = false, className }: IconTooltipProps) {
     const [open, setOpen] = useState(false);
@@ -61,7 +64,12 @@ export function IconTooltip({ label, children, side = "above", disabled = false,
         // the final centering.
         const cx = rect.left + rect.width / 2;
         const y  = side === "above" ? rect.top - GAP_PX : rect.bottom + GAP_PX;
-        setPos({ x: cx, y });
+        // Keep the tooltip on-screen — it's centered on `x` via translate-x-1/2,
+        // so clamp `x` to at least half the max width from either viewport edge.
+        // Long labels wrap (max-w below) instead of running off the page.
+        const half = MAX_W / 2;
+        const clampedX = Math.max(half + 8, Math.min(window.innerWidth - half - 8, cx));
+        setPos({ x: clampedX, y });
     }, [open, side, disabled]);
 
     return (
@@ -78,7 +86,7 @@ export function IconTooltip({ label, children, side = "above", disabled = false,
                 <span
                     role="tooltip"
                     className={cn(
-                        "fixed z-[100] whitespace-nowrap",
+                        "fixed z-[100] max-w-[280px] w-max whitespace-normal break-words text-center",
                         "bg-[#0c111d] text-white text-[12px] leading-[16px] font-medium",
                         "rounded-[8px] px-2.5 py-1.5 shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)]",
                         "pointer-events-none",

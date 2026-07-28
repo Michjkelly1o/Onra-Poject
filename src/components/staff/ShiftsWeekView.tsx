@@ -62,6 +62,15 @@ function addDays(d: Date, n: number): Date {
 
 const WEEKDAY_HEAD = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
+// Time-off reason → label (mirrors TimeOffMonthView). Shown as the Time Off
+// card subtext so the reason is always visible (client 2026-07-28).
+const TIME_OFF_REASON_LABEL: Record<"sick" | "vacation" | "training" | "other", string> = {
+    sick:     "Sick",
+    vacation: "Vacation",
+    training: "Training",
+    other:    "Other",
+};
+
 /** "07:00" → "07:00 AM"; "12:00" → "12:00 PM". */
 function to12h(hhmm: string): string {
     const [h, m] = hhmm.split(":").map(Number);
@@ -478,6 +487,9 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     const roles            = useAppStore(s => s.roles);
     const shifts           = useAppStore(s => s.shifts);
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
+    // Time off blocks shift assignment — a staff member on time off for a day
+    // can't be given a shift that day (client 2026-07-28).
+    const blockedTimes     = useAppStore(s => s.blockedTimes);
 
     // Falls back to this Monday when the parent doesn't provide one.
     const weekStart = externalWeekStart ?? mondayOfWeek(new Date());
@@ -542,6 +554,19 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
         }
         return m;
     }, [shiftAssignments]);
+
+    /** The staff member's Time Off entry covering `day`, if any — used to block
+     *  shift assignment on that day (range-inclusive, mirrors the availability
+     *  engine's `date_from_iso..date_to_iso` check with the legacy `date`
+     *  fallback). */
+    function timeOffForStaffOnDay(staffId: string, day: Date) {
+        const iso = isoDayLocal(day);
+        return blockedTimes.find(b => {
+            const from = b.date_from_iso ?? b.date;
+            const to   = b.date_to_iso   ?? b.date;
+            return iso >= from && iso <= to && b.staff_ids.includes(staffId);
+        });
+    }
 
     /** Assignment rows this staff HAS ACTIVE on the given day. */
     function shiftsForStaffOnDay(staffId: string, day: Date): { assignment: ShiftAssignment; shift: Shift }[] {
@@ -776,29 +801,50 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                             .filter(({ shift }) => shiftIds.length === 0 || shiftIds.includes(shift.id));
                                         const dayIdx = jsDayIndex(day);
                                         const dayLabel = day.toLocaleDateString("en-US", { weekday: "long" });
+                                        // Time off blocks the whole day — no shift may be assigned
+                                        // (client 2026-07-28). The cell shows a hatched "Time off"
+                                        // block and the "+" add-shift menu is suppressed.
+                                        const timeOff = timeOffForStaffOnDay(s.id, day);
                                         return (
                                             <div
                                                 key={isoDayLocal(day)}
                                                 className="group/cell relative px-2 py-3 border-l border-[#e4e7ec] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
-                                                {dayShifts.map(({ shift, assignment }, si) => (
-                                                    <ShiftCard key={assignment.id} shift={shift} index={si}
-                                                        onUnassign={() => setUnassignDay({
-                                                            assignmentId: assignment.id,
-                                                            shiftName: shift.name,
-                                                            staffName: s.fullName,
-                                                            dayIdx,
-                                                            dayLabel,
-                                                        })} />
-                                                ))}
-                                                <DayAddShiftMenu
-                                                    staffBranchId={s.branchId}
-                                                    dayIdx={dayIdx}
-                                                    shifts={shifts}
-                                                    staffDayShiftIds={new Set(allDayShifts.map(d => d.shift.id))}
-                                                    staffDayShifts={allDayShifts.map(d => d.shift)}
-                                                    onPick={(shiftId) => assignShiftDay(s, shiftId, dayIdx, dayLabel)}
-                                                />
+                                                {timeOff ? (
+                                                    // Time off takes precedence — no shift is shown or
+                                                    // assignable on this day.
+                                                    <div
+                                                        className="flex-1 min-h-[52px] rounded-[8px] border border-[#e4e7ec] px-3 py-2 flex flex-col justify-center overflow-hidden"
+                                                        style={{ backgroundImage: "repeating-linear-gradient(45deg, #fafafb, #fafafb 5px, #f2f4f7 5px, #f2f4f7 10px)" }}
+                                                        title="Staff on time off — shifts can't be assigned this day"
+                                                    >
+                                                        <p className="text-[13px] font-semibold text-[#475467] leading-[18px]">Time Off</p>
+                                                        {/* Reason always shown (Sick / Vacation / Training /
+                                                            Other) — client 2026-07-28. */}
+                                                        <p className="text-[12px] text-[#98a2b3] leading-[16px] truncate">{TIME_OFF_REASON_LABEL[timeOff.reason ?? "other"]}</p>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {dayShifts.map(({ shift, assignment }, si) => (
+                                                            <ShiftCard key={assignment.id} shift={shift} index={si}
+                                                                onUnassign={() => setUnassignDay({
+                                                                    assignmentId: assignment.id,
+                                                                    shiftName: shift.name,
+                                                                    staffName: s.fullName,
+                                                                    dayIdx,
+                                                                    dayLabel,
+                                                                })} />
+                                                        ))}
+                                                        <DayAddShiftMenu
+                                                            staffBranchId={s.branchId}
+                                                            dayIdx={dayIdx}
+                                                            shifts={shifts}
+                                                            staffDayShiftIds={new Set(allDayShifts.map(d => d.shift.id))}
+                                                            staffDayShifts={allDayShifts.map(d => d.shift)}
+                                                            onPick={(shiftId) => assignShiftDay(s, shiftId, dayIdx, dayLabel)}
+                                                        />
+                                                    </>
+                                                )}
                                             </div>
                                         );
                                     })}

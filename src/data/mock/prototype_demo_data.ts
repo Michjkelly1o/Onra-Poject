@@ -667,15 +667,16 @@ const LIAM_SPECS: LiamClassSpec[] = [
         ],
     },
     {
-        // (5) Midday Reformer, TODAY — Ongoing (currently in progress)
-        //     Demos the "class actively happening, mark present"
-        //     workflow — instructor can hit Present + bulk Mark all
-        //     present from here. Cancelled tab shows 1 early cancel.
+        // (5) Afternoon Reformer, TODAY — 2:00–3:00 PM (client 2026-07-28, so
+        //     it can be tested live as it flips Upcoming → Ongoing at 2 PM).
+        //     Demos the "class actively happening, mark present" workflow —
+        //     the live status is derived from the clock (Upcoming before 2 PM,
+        //     Ongoing 2–3 PM). Cancelled tab shows 1 early cancel.
         n: "005",
         daysAgo: 0,
-        startTime: "13:00", endTime: "13:45", displayTime: "01:00 - 01:45 PM",
+        startTime: "14:00", endTime: "15:00", displayTime: "02:00 - 03:00 PM",
         capacity: 8,
-        status: "Ongoing",
+        status: "Upcoming",
         bookedCustomerIds: [
             "cust_ahmed_zayn", "cust_zahra_mahen", "cust_james_taylor",
             "cust_lucas_brown", "cust_sophia_lee", "cust_fatima_al_sayed",
@@ -1603,11 +1604,28 @@ export const DEMO_NOW_WAITLIST_SCHEDULES: ClassSchedule[] = WAITLIST_SPECS.map((
     };
 });
 
-export const DEMO_NOW_WAITLIST_BOOKINGS: ClassBooking[] = WAITLIST_SPECS.map((w, idx) => {
+export const DEMO_NOW_WAITLIST_BOOKINGS: ClassBooking[] = WAITLIST_SPECS.flatMap((w, idx) => {
+    const schedId = `class_sched_wl_demo_${String(idx + 1).padStart(3, "0")}`;
     const requestedAt = new Date(NOW.getTime() - w.waitHoursAgo * 60 * 60 * 1000);
-    return {
+    // The `booked` BOOKED customers — real customers so the roster, attendance
+    // count and occupied spots all agree with the schedule's booked total (was
+    // previously missing, so the class read 9/10 with an empty roster). A spot
+    // is auto-assigned per row at store boot. Client 2026-07-28.
+    const bookedRows: ClassBooking[] = pickCustomers(w.booked, 200 + idx).map((custId, i) => ({
+        id: `${schedId}_b${String(i + 1).padStart(2, "0")}`,
+        class_schedule_id: schedId,
+        customer_id: custId,
+        branch_id: SOUTH,
+        status: "booked" as const,
+        attendance_status: "pending" as const,
+        booked_at: isoStamp(new Date(NOW.getTime() - (w.waitHoursAgo + 24) * 60 * 60 * 1000)),
+        plan_kind_used: (i % 2 === 0 ? "membership" : "package") as "membership" | "package",
+        booking_source: "customer_portal" as const,
+    }));
+    // The waitlisted customer awaiting a freed spot.
+    const waitRow: ClassBooking = {
         id: `bk_wl_demo_${String(idx + 1).padStart(3, "0")}`,
-        class_schedule_id: `class_sched_wl_demo_${String(idx + 1).padStart(3, "0")}`,
+        class_schedule_id: schedId,
         customer_id: synthCustomerId(w.waitCustomerIdx),
         branch_id: SOUTH,
         status: "waitlisted",
@@ -1617,6 +1635,7 @@ export const DEMO_NOW_WAITLIST_BOOKINGS: ClassBooking[] = WAITLIST_SPECS.map((w,
         plan_kind_used: idx % 2 === 0 ? "package" : "membership",
         booking_source: "customer_portal",
     };
+    return [...bookedRows, waitRow];
 });
 
 // ── 6. New sign-ups today with no first booking (Jul 2026) ─────────────

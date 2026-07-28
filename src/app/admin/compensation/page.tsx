@@ -27,7 +27,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, Download01, Eye,
+    SearchMd, Download01, Eye, Edit02,
     MarkerPin01, CoinsHand, CoinsStacked01, CheckCircle, Users01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,7 @@ import { totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc"
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { RowActions } from "@/components/patterns/RowActions";
+import { RoleBadge } from "@/components/staff/RoleBadge";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Pagination } from "@/components/ui/Pagination";
@@ -491,6 +492,7 @@ export default function CompensationPage() {
                                         <th className={cn(TH, "w-[220px]")}>
                                             <SortableHeader sortKey="branch"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
                                         </th>
+                                        <th className={cn(TH, "w-[150px]")}>Role</th>
                                         <th className={cn(TH, "w-[200px]")}>
                                             <SortableHeader sortKey="payRate"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Default pay rate</SortableHeader>
                                         </th>
@@ -506,6 +508,8 @@ export default function CompensationPage() {
                                 <tbody>
                                     {pageRows.map(r => {
                                         const branch = branches.find(b => b.id === r.branchId);
+                                        const staffRow = staff.find(s => s.id === r.instructor.id);
+                                        const role = staffRow ? roles.find(ro => ro.id === staffRow.roleId) : undefined;
                                         return (
                                             <tr key={r.entryId}
                                                 onClick={() => handleViewDetails(r)}
@@ -520,17 +524,21 @@ export default function CompensationPage() {
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{branch?.name ?? "—"}</td>
+                                                <td className={TD}>{role ? <RoleBadge label={role.name} type={role.type} /> : "—"}</td>
                                                 <td className={TD}>{r.payRateName}</td>
                                                 <td className={TD}>{r.classesCount}</td>
                                                 <td className={TD}>{aed(r.earnings)}</td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions
-                                                        minWidth={180}
-                                                        items={[{
-                                                            label: "View details",
-                                                            icon: Eye,
-                                                            onClick: () => handleViewDetails(r),
-                                                        }]}
+                                                        minWidth={200}
+                                                        items={[
+                                                            { label: "View details", icon: Eye, onClick: () => handleViewDetails(r) },
+                                                            // Deep-link to the detail with the modal / export
+                                                            // pre-triggered, so the row menu offers the same
+                                                            // actions as the detail side panel.
+                                                            { label: "Change pay rate", icon: Edit02, onClick: () => router.push(`/compensation/${r.instructor.id}?returnTo=/admin/compensation&changeRate=1`) },
+                                                            { label: "Export payout report", icon: Download01, onClick: () => router.push(`/compensation/${r.instructor.id}?returnTo=/admin/compensation&export=1`) },
+                                                        ]}
                                                     />
                                                 </td>
                                             </tr>

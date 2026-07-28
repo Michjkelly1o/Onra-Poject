@@ -774,6 +774,7 @@ export default function AgreementsPage() {
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions items={[
                                                         { label: "View", icon: Eye, onClick: () => handleView(r) },
+                                                        { label: "Add new version", icon: Plus, onClick: () => router.push(`/settings/agreements/${r.id}/new-version?returnTo=${encodeURIComponent("/admin/settings/agreements")}`), hidden: r.status !== "active" },
                                                         { label: "Edit", icon: Edit02, onClick: () => handleEdit(r), hidden: r.status !== "active" },
                                                         { label: "Archive", icon: Archive, onClick: () => openRowConfirm(r, "archive"), hidden: r.status !== "active" },
                                                         { label: "Recover", icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"), hidden: r.status !== "archived" },

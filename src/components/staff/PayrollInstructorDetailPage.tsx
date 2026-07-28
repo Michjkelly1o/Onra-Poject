@@ -33,7 +33,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     XClose, Edit02, Download01, Eye,
-    SearchMd, Calendar, CheckCircle, Users01, Star01, Lightbulb02, Check,
+    SearchMd, Calendar, CheckCircle, Users01, Star01, Lightbulb02, Check, ChevronDown,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,12 +41,13 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange, spanInRange, type DateRange } from "@/lib/period-filter";
-import { earningsForClass, aed, commissionForPeriod, baseEarningsFor, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
+import { earningsForClass, earningsForAppointment, aed, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
 import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
+import { RoleBadge } from "@/components/staff/RoleBadge";
 import { Toast } from "@/components/ui/Toast";
 import {
     useAppStore, computePayRateDisplay,
-    type Instructor, type ClassSchedule, type PayRate,
+    type Instructor, type ClassSchedule, type PayRate, type StaffPayConfig,
 } from "@/lib/store";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
@@ -255,61 +256,117 @@ function MetricCard({ label, value, hint, Icon }: {
 }
 
 // ─── Change pay rate modal (Figma 7093-347694) ─────────────────────────────
+// Full multi-track editor — mirrors the instructor create/edit form so the
+// Change pay rate flow reflects the SAME Default / Pay per class / Pay per
+// Private configuration. At least one track must stay enabled (client
+// 2026-07-28).
 
-function ChangePayRateModal({ instructor, allRates, onCancel, onConfirm }: {
+/** Small on/off switch (mirrors StaffFormPage's PayToggle). */
+function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n: boolean) => void; disabled?: boolean }) {
+    return (
+        <button type="button" role="switch" aria-checked={value} disabled={disabled}
+            onClick={() => !disabled && onChange(!value)}
+            title={disabled ? "At least one pay rate must stay enabled" : undefined}
+            className={cn(
+                "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
+                value ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                disabled && "opacity-60 cursor-not-allowed",
+            )}>
+            <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
+        </button>
+    );
+}
+
+function PayTrackCard({ title, subtitle, enabled, onToggle, toggleDisabled, rateValue, rateOptions, onRateChange }: {
+    title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; toggleDisabled?: boolean;
+    rateValue: string; rateOptions: { value: string; label: string }[]; onRateChange: (v: string) => void;
+}) {
+    return (
+        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]")}>
+            <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
+                    <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                </div>
+                <PayToggle value={enabled} onChange={onToggle} disabled={toggleDisabled} />
+            </div>
+            {enabled && (
+                <div className="flex flex-col gap-[6px]">
+                    <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
+                    <SelectInput placeholder="Select pay rate" options={rateOptions} value={rateValue} onChange={onRateChange} width="w-full" />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ChangePayRateModal({ instructor, initialConfig, allRates, onCancel, onConfirm }: {
     instructor: Instructor;
+    initialConfig: StaffPayConfig;
     allRates: PayRate[];
     onCancel: () => void;
-    onConfirm: (payRateId: string) => void;
+    onConfirm: (config: StaffPayConfig) => void;
 }) {
     // Active rates only — archived ones don't appear in selectors (PRD 10 §6.6).
     const options = allRates
         .filter(p => p.status === "active")
         .map(p => ({ value: p.id, label: p.name }));
-    const [selected, setSelected] = useState<string>(instructor.payRateId ?? "");
+    const [cfg, setCfg] = useState<StaffPayConfig>(initialConfig);
+
+    const enabledCount = [cfg.default.enabled, cfg.perClass.enabled, cfg.perAppointment.enabled].filter(Boolean).length;
+    function setTrack<K extends keyof StaffPayConfig>(key: K, patch: Partial<StaffPayConfig[K]>) {
+        setCfg(c => ({ ...c, [key]: { ...c[key], ...patch } }));
+    }
+    // At least one track must stay enabled — block turning off the last one.
+    function toggleTrack(key: keyof StaffPayConfig, next: boolean) {
+        if (!next && enabledCount <= 1) return;
+        setTrack(key, { enabled: next } as never);
+    }
+    const canSave = enabledCount >= 1
+        && (!cfg.default.enabled || !!cfg.default.payRateId)
+        && (!cfg.perClass.enabled || !!cfg.perClass.payRateId)
+        && (!cfg.perAppointment.enabled || !!cfg.perAppointment.payRateId);
 
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[12px] w-[520px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+            <div className="relative bg-white rounded-[12px] w-[560px] max-h-[88vh] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
                     className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
                     <XClose className="w-6 h-6 text-[#667085]" />
                 </button>
-                <div className="flex flex-col gap-1 pt-6 px-6">
+                <div className="flex flex-col gap-1 pt-6 px-6 shrink-0">
                     <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
                         Change pay rate for &quot;{instructor.name}&quot;
                     </h3>
                     <p className="text-[14px] text-[#475467] leading-[20px]">
-                        Select a new default pay rate to update {instructor.name} compensation.
+                        Update the pay configuration. At least one pay rate must stay enabled.
                     </p>
                 </div>
 
-                <div className="px-6 pt-6 flex flex-col gap-4">
-                    <div className="flex flex-col gap-[6px] w-full">
-                        <p className="text-[14px] font-medium text-[#344054]">Default pay rate</p>
-                        <SelectInput
-                            placeholder="Select pay rate"
-                            options={options}
-                            value={selected}
-                            onChange={setSelected}
-                            width="w-full"
-                        />
-                    </div>
+                <div className="px-6 pt-6 pb-2 flex flex-col gap-4 overflow-y-auto scrollbar-hide">
+                    <PayTrackCard title="Default pay rate" subtitle="Provide a base salary for this staff."
+                        enabled={cfg.default.enabled} onToggle={n => toggleTrack("default", n)} toggleDisabled={cfg.default.enabled && enabledCount <= 1}
+                        rateValue={cfg.default.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("default", { payRateId: v })} />
+                    <PayTrackCard title="Pay per class" subtitle="Add compensation for every class taught."
+                        enabled={cfg.perClass.enabled} onToggle={n => toggleTrack("perClass", n)} toggleDisabled={cfg.perClass.enabled && enabledCount <= 1}
+                        rateValue={cfg.perClass.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("perClass", { payRateId: v })} />
+                    <PayTrackCard title="Pay per Private" subtitle="Add compensation for every private session completed."
+                        enabled={cfg.perAppointment.enabled} onToggle={n => toggleTrack("perAppointment", n)} toggleDisabled={cfg.perAppointment.enabled && enabledCount <= 1}
+                        rateValue={cfg.perAppointment.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("perAppointment", { payRateId: v })} />
+
                     {/* Info banner — bg #f1f2ed warm-cream per Figma 7093-347698 */}
                     <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                         <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
                         <p className="text-[14px] text-[#475467] leading-[20px]">
-                            This new pay rate will automatically apply to all future classes and bookings.
+                            The updated pay configuration applies to all future classes and bookings.
                         </p>
                     </div>
                 </div>
 
-                <div className="flex gap-3 px-6 pt-6 pb-6">
+                <div className="flex gap-3 px-6 pt-4 pb-6 border-t border-[#e4e7ec] shrink-0">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant="primary" size="lg" className="flex-1"
-                        disabled={!selected || selected === instructor.payRateId}
-                        onClick={() => onConfirm(selected)}>
+                    <Button variant="primary" size="lg" className="flex-1" disabled={!canSave} onClick={() => onConfirm(cfg)}>
                         Update pay rate
                     </Button>
                 </div>
@@ -347,8 +404,16 @@ function scheduleInRange(s: ClassSchedule, r: DateRange): boolean {
 
 // ─── Row view-model ────────────────────────────────────────────────────────
 
-interface ClassRow {
-    schedule: ClassSchedule;
+// Unified booking-history row — a class OR a private appointment. Both feed
+// the Total bookings table so the instructor's Class + Private history render
+// side by side, each priced on its own configured pay rate (client 2026-07-28).
+interface BookingRow {
+    kind: "class" | "private";
+    id: string;
+    name: string;
+    dateISO: string;
+    displayTime: string;
+    status: ClassStatus;
     attendees: number;     // booked count (proxy for attendance until real)
     capacity: number;
     rating: number;
@@ -359,18 +424,19 @@ interface ClassRow {
 
 // ─── CSV export ────────────────────────────────────────────────────────────
 
-function exportPayoutReport(rows: ClassRow[], instructor: Instructor, periodLabel: string) {
-    const header = ["Date", "Class", "Attendance", "Rating", "Status", "Pay rate", "Earnings (AED)"];
+function exportPayoutReport(rows: BookingRow[], instructor: Instructor, periodLabel: string) {
+    const header = ["Date", "Booking", "Type", "Attendance", "Rating", "Status", "Pay rate", "Earnings (AED)"];
     const escape = (v: string | number) => {
         const s = String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
     const lines = rows.map(r => [
-        r.schedule.dateISO + " " + r.schedule.displayTime,
-        r.schedule.name,
+        r.dateISO + " " + r.displayTime,
+        r.name,
+        r.kind === "class" ? "Class" : "Private",
         `${r.attendees}/${r.capacity}`,
         r.ratingCount > 0 ? `${r.rating.toFixed(1)} (${r.ratingCount})` : "—",
-        r.schedule.status,
+        r.status,
         r.payRateName,
         Math.round(r.earnings),
     ].map(escape).join(","));
@@ -382,6 +448,60 @@ function exportPayoutReport(rows: ClassRow[], instructor: Instructor, periodLabe
     a.download = `payout-${slug}-${periodLabel.replace(/\s+/g, "_")}-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
+}
+
+// ─── Collapsible section (accordion) ──────────────────────────────────────
+// A clickable header (title + subtitle + right-aligned total + chevron) that
+// reveals its body. Default collapsed to keep the payroll detail compact —
+// used by the Total earnings breakdown + Sales commission sections (client
+// 2026-07-28, Figma 8015-219885).
+
+function PayrollAccordion({ title, subtitle, value, defaultOpen = false, children }: {
+    title: string;
+    subtitle?: string;
+    value?: string;
+    defaultOpen?: boolean;
+    children: React.ReactNode;
+}) {
+    const [open, setOpen] = useState(defaultOpen);
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                aria-expanded={open}
+                className="w-full flex items-center justify-between gap-4 text-left"
+            >
+                {/* Title + subtext block — the value + chevron are vertically
+                    centered against its combined height (Figma 8015-219885). */}
+                <div className="flex-1 min-w-0 flex flex-col">
+                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
+                    {subtitle && <p className="text-[14px] font-normal text-[#667085] leading-[20px]">{subtitle}</p>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    {value && <span className="text-[16px] font-semibold text-[#101828] leading-[24px] whitespace-nowrap">{value}</span>}
+                    <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
+                </div>
+            </button>
+            {open && (
+                <>
+                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    {children}
+                </>
+            )}
+        </div>
+    );
+}
+
+/** One label ↔ value row inside the Total earnings breakdown (Figma
+ *  8015-219885 — 14px, quaternary label, primary medium value). */
+function BreakdownRow({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex items-center justify-between w-full">
+            <span className="text-[14px] font-normal text-[#667085] leading-[20px]">{label}</span>
+            <span className="text-[14px] font-medium text-[#101828] leading-[20px]">{value}</span>
+        </div>
+    );
 }
 
 // ─── Sidebar earnings summary (Figma — Total earnings this month card) ────
@@ -484,7 +604,8 @@ export default function PayrollInstructorDetailPage({
     // Payroll reopened to all staff (Phase 3B) — non-instructor rows resolve
     // to a synthetic Instructor built from their staff record.
     const staff                  = useAppStore(s => s.staff);
-    const assignInstructorPayRate = useAppStore(s => s.assignInstructorPayRate);
+    const roles                  = useAppStore(s => s.roles);
+    const updateStaff             = useAppStore(s => s.updateStaff);
     const showToast              = useAppStore(s => s.showToast);
     // Country-gated payroll tax UI (see `payrollTaxAppliesForCountry`).
     // False for GCC studios (UAE default) — hides the TaxSuffix line
@@ -543,6 +664,9 @@ export default function PayrollInstructorDetailPage({
     const ins: Instructor = instructor;
 
     const branch = branches.find(b => b.id === ins.branchId);
+    // Staff role — resolved once, reused for the "Role" sidebar row (client
+    // 2026-07-28). Reuses the shared RoleBadge; no bespoke pill.
+    const roleRow = roles.find(r => r.id === staff.find(s => s.id === ins.id)?.roleId);
     const range = useMemo(() => dateFilterToRange(period), [period]);
 
     // Non-instructor staff (Phase 3B synthetic rows) teach no classes — hide
@@ -592,26 +716,72 @@ export default function PayrollInstructorDetailPage({
         ).length;
     }, [instructorSchedules]);
 
-    const allRows = useMemo<ClassRow[]>(() => {
-        return instructorSchedules
-            .filter(s => scheduleInRange(s, range))
-            .sort((a, b) => b.dateISO.localeCompare(a.dateISO))
-            .map(schedule => ({
-                schedule,
-                attendees: schedule.booked,
-                capacity: schedule.capacity,
-                rating: schedule.rating,
-                ratingCount: schedule.ratingCount,
-                payRateName: payRate?.name ?? "—",
-                earnings: earningsForClass(schedule, payRate, completedThisMonth || 1),
+    // Effective per-track pay rates from the staff's pay config. Class bookings
+    // are priced on the Pay-per-class rate (when enabled), private bookings on
+    // the Pay-per-private rate — each falling back to the Default rate when its
+    // track is off (legacy single-rate behaviour). This makes the table's "Pay
+    // rate" column + per-row earnings reflect the SAME configuration the Total
+    // earnings breakdown sums (client 2026-07-28).
+    const { classRate, privateRate } = useMemo(() => {
+        const cfg = staff.find(s => s.id === instructorId)?.payConfig;
+        const rateById = (id?: string) => (id ? payRates.find(p => p.id === id) : undefined);
+        return {
+            classRate:   cfg?.perClass.enabled       ? (rateById(cfg.perClass.payRateId)       ?? payRate) : payRate,
+            privateRate: cfg?.perAppointment.enabled  ? (rateById(cfg.perAppointment.payRateId) ?? payRate) : payRate,
+        };
+    }, [staff, instructorId, payRates, payRate]);
+
+    // This instructor's PRIVATE appointments — Pay-per-private counts private
+    // sessions only (recovery / open sessions are a different track — see
+    // buildPayConfigTracks).
+    const instructorAppointments = useMemo(
+        () => appointments.filter(a => a.instructorId === instructorId && a.type === "private"),
+        [appointments, instructorId],
+    );
+
+    // Booking history = Completed / Ongoing / Cancelled class + private bookings.
+    // Upcoming bookings are excluded from Staff Earnings (client 2026-07-28).
+    const allRows = useMemo<BookingRow[]>(() => {
+        const classRows: BookingRow[] = instructorSchedules
+            .filter(s => scheduleInRange(s, range) && s.status !== "Upcoming")
+            .map(s => ({
+                kind: "class",
+                id: s.id,
+                name: s.name,
+                dateISO: s.dateISO,
+                displayTime: s.displayTime,
+                status: s.status,
+                attendees: s.booked,
+                capacity: s.capacity,
+                rating: s.rating,
+                ratingCount: s.ratingCount,
+                payRateName: classRate?.name ?? "—",
+                earnings: s.status === "Cancelled" ? 0 : earningsForClass(s, classRate, completedThisMonth || 1),
             }));
-    }, [instructorSchedules, range, payRate, completedThisMonth]);
+        const privateRows: BookingRow[] = instructorAppointments
+            .filter(a => isoInRange(a.dateISO, range) && a.status !== "Upcoming")
+            .map(a => ({
+                kind: "private",
+                id: a.id,
+                name: a.serviceName,
+                dateISO: a.dateISO,
+                displayTime: a.displayTime,
+                status: a.status,
+                attendees: a.booked,
+                capacity: a.capacity,
+                rating: a.rating,
+                ratingCount: a.ratingCount,
+                payRateName: privateRate?.name ?? "—",
+                earnings: a.status === "Cancelled" ? 0 : earningsForAppointment(a, privateRate),
+            }));
+        return [...classRows, ...privateRows].sort((a, b) => b.dateISO.localeCompare(a.dateISO));
+    }, [instructorSchedules, instructorAppointments, range, classRate, privateRate, completedThisMonth]);
 
     const filteredRows = useMemo(() => {
         const q = search.trim().toLowerCase();
         return allRows.filter(r => {
-            if (statusFilter && r.schedule.status !== statusFilter) return false;
-            if (q && !r.schedule.name.toLowerCase().includes(q)) return false;
+            if (statusFilter && r.status !== statusFilter) return false;
+            if (q && !r.name.toLowerCase().includes(q)) return false;
             return true;
         });
     }, [allRows, search, statusFilter]);
@@ -620,7 +790,7 @@ export default function PayrollInstructorDetailPage({
     // ("Total earnings" comes from `periodTotals` — the shared base+commission
     // helper — so it matches the compensation list + run payroll exactly.)
     const classesTaught = useMemo(
-        () => filteredRows.filter(r => r.schedule.status === "Completed").length,
+        () => filteredRows.filter(r => r.kind === "class" && r.status === "Completed").length,
         [filteredRows],
     );
 
@@ -642,31 +812,33 @@ export default function PayrollInstructorDetailPage({
                 return t >= mFrom.getTime() && t <= mTo.getTime();
             });
         return {
-            earnings: inMonth.reduce((s, e) => s + e.totalEarnings, 0),
-            classes:  inMonth.reduce((s, e) => s + e.classesCount,  0),
+            entryEarnings: inMonth.reduce((s, e) => s + e.totalEarnings, 0),
+            classes:       inMonth.reduce((s, e) => s + e.classesCount,  0),
         };
     }, [payrollEntries, instructorId]);
-    const sidebarEntryEarnings = sidebarThisMonth.earnings;
-    const sidebarClassesCount  = sidebarThisMonth.classes;
+    const sidebarClassesCount = sidebarThisMonth.classes;
 
-    // Current-month commission for the sidebar's "this month" total. The
-    // sidebar is always the calendar month, independent of the period filter
-    // that drives the table below. Monthly-rate staff earn commission; every
-    // other rate type returns 0.
-    const sidebarMonthCommission = useMemo(() => {
+    // "Total earnings this month" — the SAME base(all tracks)+commission calc
+    // as the metric card + Total earnings breakdown, scoped to the current
+    // calendar month. Previously the sidebar summed only the Default base +
+    // commission and dropped the Pay-per-class + Pay-per-private tracks, so it
+    // disagreed with the "Total earnings" shown everywhere else. Routing it
+    // through `totalEarningsForStaff` (with the month's pay-config tracks) makes
+    // the figure consistent (client 2026-07-28).
+    const sidebarMonthly = useMemo(() => {
         const now = new Date();
         const mFrom = new Date(now.getFullYear(), now.getMonth(), 1);
-        const mTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const mTo   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        return commissionForPeriod(instructorId, payRate, {
-            transactions: customerTransactions, classBookings, classSchedules,
-            appointmentBookings, appointments,
-        }, iso(mFrom), iso(mTo)).totalCommission;
-    }, [instructorId, payRate, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments]);
-
-    // "Total earnings this month" — base pay (monthly salary or the entry's
-    // class rollup, via the shared helper) plus this month's commission.
-    const sidebarMonthly = baseEarningsFor(payRate, sidebarEntryEarnings) + sidebarMonthCommission;
+        const fromISO = iso(mFrom), toISO = iso(mTo);
+        const staffRow = staff.find(s => s.id === instructorId);
+        const tracks = buildPayConfigTracks(staffRow ?? { id: instructorId }, payRates, classSchedules, appointments, fromISO, toISO);
+        return totalEarningsForStaff(
+            instructorId, payRate, isRealInstructor ? sidebarThisMonth.entryEarnings : undefined,
+            { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments },
+            fromISO, toISO, tracks,
+        ).total;
+    }, [instructorId, payRate, payRates, staff, isRealInstructor, sidebarThisMonth.entryEarnings, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments]);
 
     // ─── Pagination ───────────────────────────────────────────────────────
     // ── Bookings sort — Class name / Attendance / Rating / Status /
@@ -674,11 +846,11 @@ export default function PayrollInstructorDetailPage({
     //    for header consistency) / Earnings. ──
     const CLASS_STATUS_ORDER: Record<ClassStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, {
-        name:       (a, b) => a.schedule.name.localeCompare(b.schedule.name),
+        name:       (a, b) => a.name.localeCompare(b.name),
         attendance: (a, b) => a.attendees - b.attendees,
         rating:     (a, b) => (a.rating ?? 0) - (b.rating ?? 0),
-        status:     (a, b) => CLASS_STATUS_ORDER[a.schedule.status] - CLASS_STATUS_ORDER[b.schedule.status],
-        payRate:    () => 0,
+        status:     (a, b) => CLASS_STATUS_ORDER[a.status] - CLASS_STATUS_ORDER[b.status],
+        payRate:    (a, b) => a.payRateName.localeCompare(b.payRateName),
         earnings:   (a, b) => a.earnings - b.earnings,
     });
 
@@ -695,16 +867,19 @@ export default function PayrollInstructorDetailPage({
 
 
     // ─── Actions ──────────────────────────────────────────────────────────
-    function handleChangePayRate(newPayRateId: string) {
-        const oldName = payRate?.name ?? "—";
-        const newRate = payRates.find(p => p.id === newPayRateId);
-        assignInstructorPayRate(instructorId, newPayRateId);
+    function handleChangePayRate(config: StaffPayConfig) {
+        // Persist the full multi-track config, and keep the canonical
+        // `payRateId` in sync with the enabled Default track (falling back to
+        // the first enabled track) so the sidebar, payroll list + calc all
+        // read the same default rate.
+        const newDefaultRateId = config.default.enabled
+            ? config.default.payRateId
+            : config.perClass.enabled
+                ? config.perClass.payRateId
+                : config.perAppointment.payRateId;
+        updateStaff(instructorId, { payConfig: config, payRateId: newDefaultRateId ?? undefined });
         setChangeRateOpen(false);
-        showToast(
-            "Pay rate updated",
-            `${ins.name}: ${oldName} → ${newRate?.name ?? "—"}.`,
-            "success", "check",
-        );
+        showToast("Pay rate updated", `${ins.name}'s pay configuration was updated.`, "success", "check");
     }
 
     function handleExportPayout() {
@@ -720,9 +895,22 @@ export default function PayrollInstructorDetailPage({
         );
     }
 
-    function handleViewClass(scheduleId: string) {
-        router.push(`/schedule/${scheduleId}?returnTo=/compensation/${instructorId}`);
+    function handleViewBooking(row: BookingRow) {
+        const rt = `?returnTo=/compensation/${instructorId}`;
+        router.push(row.kind === "class" ? `/schedule/${row.id}${rt}` : `/appointments/${row.id}${rt}`);
     }
+
+    // Deep-links from the Payroll list 3-dots — open the change-pay-rate modal
+    // (?changeRate=1) or run the export (?export=1) once on load, so the list
+    // offers the same actions as this detail's side panel.
+    const deepLinkRan = useRef(false);
+    useEffect(() => {
+        if (deepLinkRan.current || typeof window === "undefined") return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("changeRate") === "1") { deepLinkRan.current = true; setChangeRateOpen(true); }
+        else if (params.get("export") === "1") { deepLinkRan.current = true; handleExportPayout(); }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
@@ -749,7 +937,7 @@ export default function PayrollInstructorDetailPage({
                                 <InstructorAvatar instructor={instructor} size={64} />
                                 <InstructorStatusBadge status={instructor.status} />
                             </div>
-                            <div className="flex flex-col">
+                            <div className="flex flex-col gap-1.5 items-start">
                                 <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">{instructor.name}</p>
                                 <p className="text-[14px] text-[#667085]">{instructor.email}</p>
                             </div>
@@ -771,8 +959,15 @@ export default function PayrollInstructorDetailPage({
 
                                 <div className="flex flex-col gap-4">
                                     <SidebarRow label="Joined" value={instructor.joinedDate} />
-                                    <SidebarRow label="Email" value={instructor.email} />
                                     <SidebarRow label="Phone" value={instructor.phone} />
+                                    {/* Role — the badge lives here now (moved out of the
+                                        header). Reuses the shared RoleBadge. */}
+                                    {roleRow && (
+                                        <div className="flex flex-col gap-1">
+                                            <p className="text-[13px] text-[#667085] leading-[18px]">Role</p>
+                                            <div className="flex"><RoleBadge label={roleRow.name} type={roleRow.type} /></div>
+                                        </div>
+                                    )}
                                     <SidebarRow label="Branch location" value={branch?.name ?? "—"} />
                                     <SidebarRow label="Default pay rate" value={payRate?.name ?? "—"} />
                                 </div>
@@ -821,11 +1016,53 @@ export default function PayrollInstructorDetailPage({
                                 )}
                             </div>
 
-                            {/* Sales commission — categorised (commission refactor
-                                Phase 3). Moved here from the Staff detail page. */}
+                            {/* Total earnings breakdown — collapsible (default collapsed).
+                                Splits the payout across every earning source: Default
+                                salary + Pay per class + Pay per private + Sales commission
+                                → Total earnings. Reads the SAME `periodTotals` that drives
+                                the headline figure, so the parts always sum to the total.
+                                Client 2026-07-28. */}
+                            {(periodTotals.trackBreakdown.perClass > 0 || periodTotals.trackBreakdown.perAppointment > 0 || commission.totalCommission > 0) && (
+                                <div className="px-6 pt-6">
+                                    <PayrollAccordion
+                                        title="Total earnings breakdown"
+                                        subtitle="All earnings earned so far this month."
+                                        value={aed(periodTotals.total)}
+                                    >
+                                        <div className="flex flex-col gap-2 w-full">
+                                            <div className="flex flex-col gap-1 w-full">
+                                                <BreakdownRow label="Default pay rate" value={aed(periodTotals.trackBreakdown.defaultBase)} />
+                                                {periodTotals.trackBreakdown.perClass > 0 && (
+                                                    <BreakdownRow label="Pay per class" value={aed(periodTotals.trackBreakdown.perClass)} />
+                                                )}
+                                                {periodTotals.trackBreakdown.perAppointment > 0 && (
+                                                    <BreakdownRow label="Pay per private" value={aed(periodTotals.trackBreakdown.perAppointment)} />
+                                                )}
+                                                {commission.totalCommission > 0 && (
+                                                    <BreakdownRow label="Sales commission" value={aed(commission.totalCommission)} />
+                                                )}
+                                            </div>
+                                            <div className="flex items-center justify-between w-full">
+                                                <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">Total earnings</span>
+                                                <span className="text-[16px] font-semibold text-[#101828] leading-[24px]">{aed(periodTotals.total)}</span>
+                                            </div>
+                                        </div>
+                                    </PayrollAccordion>
+                                </div>
+                            )}
+
+                            {/* Sales commission — same accordion interaction, default
+                                collapsed; body reuses the existing commission breakdown
+                                layout (embedded, headerless). */}
                             {hasCommission && (
                                 <div className="px-6 pt-6">
-                                    <SalesCommissionCard commission={commission} />
+                                    <PayrollAccordion
+                                        title="Sales commission"
+                                        subtitle="Earned on sales & bookings credited to this staff in the selected period."
+                                        value={aed(commission.totalCommission)}
+                                    >
+                                        <SalesCommissionCard commission={commission} embedded />
+                                    </PayrollAccordion>
                                 </div>
                             )}
 
@@ -855,8 +1092,8 @@ export default function PayrollInstructorDetailPage({
                                     <div className="relative" style={{ minHeight: 360 }}>
                                         <EmptyState
                                             title="No bookings found"
-                                            subtitle={instructorSchedules.length === 0
-                                                ? "This instructor has no classes assigned yet."
+                                            subtitle={instructorSchedules.length === 0 && instructorAppointments.length === 0
+                                                ? "This instructor has no bookings assigned yet."
                                                 : "Try adjusting your search, period, or status filter."}
                                         />
                                     </div>
@@ -888,14 +1125,14 @@ export default function PayrollInstructorDetailPage({
                                             </thead>
                                             <tbody>
                                                 {pageRows.map(r => (
-                                                    <tr key={r.schedule.id}
-                                                        onClick={() => handleViewClass(r.schedule.id)}
+                                                    <tr key={`${r.kind}-${r.id}`}
+                                                        onClick={() => handleViewBooking(r)}
                                                         className="transition-colors hover:bg-[#f9fafb] cursor-pointer">
                                                         <td className={TD}>
                                                             <div className="flex flex-col">
-                                                                <span className="text-[14px] font-medium text-[#101828]">{r.schedule.name}</span>
+                                                                <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                                                 <span className="text-[13px] text-[#667085]">
-                                                                    {r.schedule.dateISO}, {r.schedule.displayTime}
+                                                                    {r.dateISO}, {r.displayTime}
                                                                 </span>
                                                             </div>
                                                         </td>
@@ -917,16 +1154,20 @@ export default function PayrollInstructorDetailPage({
                                                                 <span className="text-[13px] text-[#667085]">No ratings</span>
                                                             )}
                                                         </td>
-                                                        <td className={TD}><ClassStatusBadge status={r.schedule.status} /></td>
+                                                        <td className={TD}><ClassStatusBadge status={r.status} /></td>
                                                         <td className={TD}>{r.payRateName}</td>
-                                                        <td className={TD}>{r.earnings > 0 ? aed(r.earnings) : "—"}</td>
+                                                        <td className={TD}>
+                                                            {r.status === "Cancelled"
+                                                                ? aed(0)
+                                                                : r.earnings > 0 ? aed(r.earnings) : "—"}
+                                                        </td>
                                                         <td onClick={e => e.stopPropagation()} className={TD}>
                                                             <RowActions
                                                                 minWidth={180}
                                                                 items={[{
                                                                     label: "View details",
                                                                     icon: Eye,
-                                                                    onClick: () => handleViewClass(r.schedule.id),
+                                                                    onClick: () => handleViewBooking(r),
                                                                 }]}
                                                             />
                                                         </td>
@@ -953,6 +1194,11 @@ export default function PayrollInstructorDetailPage({
             {changeRateOpen && (
                 <ChangePayRateModal
                     instructor={instructor}
+                    initialConfig={staff.find(s => s.id === instructorId)?.payConfig ?? {
+                        default: { enabled: true, payRateId: instructor.payRateId },
+                        perClass: { enabled: false },
+                        perAppointment: { enabled: false },
+                    }}
                     allRates={payRates}
                     onCancel={() => setChangeRateOpen(false)}
                     onConfirm={handleChangePayRate}

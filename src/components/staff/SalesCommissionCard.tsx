@@ -15,24 +15,30 @@
 import { aed, type CommissionBreakdown, type CommissionLine, type BonusLine } from "@/lib/payroll-calc";
 import { COMMISSION_CATEGORY_LABEL } from "@/lib/commission";
 
-export function SalesCommissionCard({ commission }: { commission: CommissionBreakdown }) {
+/** `embedded` — render only the commission BODY (no header, no outer card),
+ *  so a parent accordion can supply its own clickable header. Keeps the
+ *  breakdown layout unchanged (client 2026-07-28). */
+export function SalesCommissionCard({ commission, embedded = false }: { commission: CommissionBreakdown; embedded?: boolean }) {
     const lines = commission.lines;
     const firedBonuses = commission.bonusLines.filter(b => b.fired);
     const pendingBonuses = commission.bonusLines.filter(b => !b.fired);
 
     return (
-        <div className="border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-4 bg-white">
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[14px] font-semibold text-[#101828]">Sales commission</p>
-                    <p className="text-[13px] text-[#667085] leading-[18px]">
-                        Earned on sales &amp; bookings credited to this staff in the selected period.
-                    </p>
-                </div>
-                <p className="text-[20px] font-semibold text-[#101828] leading-[28px]">{aed(commission.totalCommission)}</p>
-            </div>
-
-            {(lines.length > 0 || commission.bonusLines.length > 0) && <div className="h-px w-full bg-[#e4e7ec]" />}
+        <div className={embedded ? "flex flex-col gap-4" : "border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-4 bg-white"}>
+            {!embedded && (
+                <>
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[14px] font-semibold text-[#101828]">Sales commission</p>
+                            <p className="text-[13px] text-[#667085] leading-[18px]">
+                                Earned on sales &amp; bookings credited to this staff in the selected period.
+                            </p>
+                        </div>
+                        <p className="text-[20px] font-semibold text-[#101828] leading-[28px]">{aed(commission.totalCommission)}</p>
+                    </div>
+                    {(lines.length > 0 || commission.bonusLines.length > 0) && <div className="h-px w-full bg-[#e4e7ec]" />}
+                </>
+            )}
 
             {/* Commission rows */}
             {lines.length > 0 && (

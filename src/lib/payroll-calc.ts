@@ -821,8 +821,11 @@ export function buildPayConfigTracks(
     const inPeriod = (iso: string) => iso >= periodStartISO && iso <= periodEndISO;
     const completedClasses = schedules.filter(
         c => c.instructorId === staff.id && c.status === "Completed" && inPeriod(c.dateISO));
+    // "Pay per Private" pays for PRIVATE sessions only — recovery / open-session
+    // appointments are a different service type and don't count on this track
+    // (client 2026-07-28, matches the renamed "Pay per Private" label).
     const completedAppointments = appointments.filter(
-        a => a.instructorId === staff.id && a.status === "Completed" && inPeriod(a.dateISO));
+        a => a.instructorId === staff.id && a.status === "Completed" && a.type === "private" && inPeriod(a.dateISO));
     return {
         payConfig: staff.payConfig,
         payRateById: (id) => (id ? payRates.find(p => p.id === id) : undefined),
@@ -852,9 +855,18 @@ export function payConfigBase(
         const base = baseEarningsFor(fallbackRate, entryTotalEarnings);
         return { defaultBase: base, perClass: 0, perAppointment: 0, base };
     }
-    const defaultBase = pc.default.enabled
-        ? baseEarningsFor(tracks.payRateById(pc.default.payRateId), entryTotalEarnings)
-        : 0;
+    const defaultRate = tracks.payRateById(pc.default.payRateId);
+    const defaultBase = !pc.default.enabled
+        ? 0
+        : defaultRate?.type === "monthly"
+            // Monthly = a fixed base salary — always the intended Default value.
+            ? defaultRate.fixedSalary
+            // A non-monthly Default would return the class-teaching snapshot
+            // (entryTotalEarnings); when Pay-per-class is ALSO enabled that
+            // double-counts class pay, so drop it (Default is meant to be a base
+            // salary — see the form's "Provide a base salary" copy). Kept for the
+            // legacy single-track case where Pay-per-class is off.
+            : pc.perClass.enabled ? 0 : baseEarningsFor(defaultRate, entryTotalEarnings);
     const perClassRate = pc.perClass.enabled ? tracks.payRateById(pc.perClass.payRateId) : undefined;
     const perClass = pc.perClass.enabled
         ? tracks.completedClasses.reduce((s, c) => s + earningsForClass(c, perClassRate, tracks.classesInMonth), 0)
