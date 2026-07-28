@@ -80,6 +80,9 @@ export const SETTINGS_GROUPS: SettingsGroupDef[] = [
             // Freeze policy tab retired Jul 2026 — the settings card moved
             // under Booking rules (alongside Cancellation policy).
             { label: "Agreements",             href: "/admin/settings/agreements"      },
+            // v83 Phase 6 (client 2026-07-24) — studio-editable Customer
+            // sources + Follow-up stages, per PDF §4.
+            { label: "Lead lifecycle",         href: "/admin/settings/lead-lifecycle"  },
         ],
     },
 ];

@@ -14,6 +14,7 @@ import {
     ResponsiveContainer,
 } from "recharts";
 import { ArrowRight } from "@untitledui/icons";
+import { LeadsToFollowUpBody } from "./LeadsToFollowUpBody";
 
 // ─── Shared chart data ────────────────────────────────────────────────────────
 //
@@ -1516,6 +1517,14 @@ function renderChart(
             );
 
         // ── Customer ─────────────────────────────────────────────────────
+        // v83 Phase 5 (client 2026-07-24) — Leads to follow up. Body is a
+        // standalone component (LeadsToFollowUpBody) that reads the
+        // followUpTasks slice + ranks per the plan's formula and renders
+        // a click-through list. Kept separate so the ranking + row layout
+        // don't inflate this switch.
+        case "leads-to-follow-up":
+            return <LeadsToFollowUpBody />;
+
         // Returning vs new — two-series line. "Returning" = repeat visitors
         // this period; "New" = customers whose first visit is this period.
         case "returning-vs-new":

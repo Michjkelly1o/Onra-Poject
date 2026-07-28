@@ -903,5 +903,18 @@ export function MigCard({
         );
     }
 
+    // v83 audit-5 (2026-07-28) — actionable placeholder. `migrationTools`
+    // returns `card: "empty"` when the flow can't proceed (no file yet,
+    // awaiting explicit confirmation, or the tester's role lacks write
+    // access). Without this branch the bubble rendered blank in migration
+    // mode because Card.tsx isn't in the migration render path.
+    if (data.card === "empty") {
+        return (
+            <CardShell className="text-center text-[13px] text-[#475467] py-5">
+                {data.message}
+            </CardShell>
+        );
+    }
+
     return null;
 }

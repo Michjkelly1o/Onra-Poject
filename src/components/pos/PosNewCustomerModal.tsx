@@ -71,12 +71,20 @@ export function PosNewCustomerModal({
     const router = useRouter();
     const customers = useAppStore(s => s.customers);
     const branches = useAppStore(s => s.branches);
+    const leadSources = useAppStore(s => s.leadSources);
     const addCustomer = useAppStore(s => s.addCustomer);
     const showToast = useAppStore(s => s.showToast);
 
     const branchOptions = useMemo(
         () => branches.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
         [branches],
+    );
+    // v83 client 2026-07-27 — Source picker options. Reads live from
+    // the studio-editable leadSources slice so a rename / add in
+    // Settings → Customer → Lead lifecycle shows up here on next open.
+    const leadSourceOptions = useMemo(
+        () => leadSources.map(s => ({ value: s.id, label: s.label })),
+        [leadSources],
     );
 
     // Field state.
@@ -88,6 +96,7 @@ export function PosNewCustomerModal({
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>(PHONE_COUNTRIES[0]);
+    const [sourceId, setSourceId] = useState("");
 
     // Address state.
     const [country, setCountry] = useState("");
@@ -109,6 +118,7 @@ export function PosNewCustomerModal({
         setCountry(""); setStateRegion("");
         setCity(""); setPostalCode("");
         setStreetAddress("");
+        setSourceId("");
     }, [open, defaultBranchId]);
 
     // ESC closes the modal.
@@ -222,6 +232,7 @@ export function PosNewCustomerModal({
             city: city || undefined,
             postalCode: postalCode || undefined,
             streetAddress: streetAddress || undefined,
+            sourceId: sourceId || undefined,
             planKind: null,
         });
         showToast(
@@ -317,6 +328,23 @@ export function PosNewCustomerModal({
                                     placeholder="Phone number..."
                                     className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent rounded-r-[8px]" />
                             </div>
+                        </Field>
+
+                        {/* v83 client 2026-07-27 — Source picker. Pulls
+                            the studio-editable list from Settings →
+                            Customer → Lead lifecycle. Optional so POS
+                            walk-ins can skip it. */}
+                        <Field label="Source">
+                            <SelectInput
+                                value={sourceId}
+                                onChange={setSourceId}
+                                placeholder="Where did they come from?"
+                                options={[
+                                    { value: "", label: "No source" },
+                                    ...leadSourceOptions,
+                                ]}
+                                width="w-full"
+                            />
                         </Field>
 
                     </div>

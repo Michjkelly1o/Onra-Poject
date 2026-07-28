@@ -108,4 +108,12 @@ export type MigrationCard =
           created: number;
           skipped: number;
           failed: number;
+      }
+    // v83 audit-5 (2026-07-28) — actionable placeholder shown when the
+    // migration flow can't proceed (no file uploaded, awaiting confirmation,
+    // insufficient role). Rendered by MigCard as a plain neutral card so the
+    // admin sees the next step instead of a blank bubble.
+    | {
+          card: "empty";
+          message: string;
       };

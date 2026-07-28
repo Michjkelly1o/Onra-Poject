@@ -48,6 +48,14 @@ export type AiAgentStateSnapshot = Pick<
     | "classCategories"
     | "memberships"
     | "packages"
+    // v83 audit-4 (2026-07-28) — real "is configured" signals for
+    // studio-setup. Without these slices the setup advisor falsely
+    // reported "12/12 done" whenever any branch existed.
+    | "taxRates"
+    | "agreements"
+    | "referralSettings"
+    | "notificationSettings"
+    | "cancellationPolicy"
 >;
 
 /** Thread mode. Insight = analytics chat; migration = 4-step CSV wizard;

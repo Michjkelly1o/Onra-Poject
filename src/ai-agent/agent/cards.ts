@@ -21,6 +21,12 @@ export type RankedRow = {
      *  via Next.js's client router. Used by find_customer (row → profile)
      *  and list_create_shortcuts (row → new-record form). */
     href?: string;
+    /** v83 audit-4 (2026-07-28) — optional avatar for customer/lead
+     *  rows. When set, the row renders a 32px circular avatar to the
+     *  left of the title (`imageUrl` when the customer has a portrait,
+     *  fallback initials tile otherwise). Used by find_customer. */
+    avatarImageUrl?: string;
+    avatarInitials?: string;
 };
 
 /** Phase 10 — every card can carry an optional deep link. Clicking the

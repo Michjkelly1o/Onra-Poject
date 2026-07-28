@@ -2,8 +2,12 @@
 // Onra AI Agent · Floating trigger button (fixed bottom-right)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The bottom-right entry point that navigates to the AI Agent page. Three
-// gates stack — every one MUST pass, or the button renders null:
+// Client 2026-07-27 (Figma 667:650314) — the trigger is now the "How can I
+// help today?" prompt bubble + Onra logomark tile pair rather than a plain
+// circle. Both halves click through to /ai-agent. Positioned bottom-right
+// with 32px page padding per the Figma frame.
+//
+// Three gates stack — every one MUST pass, or the button renders null:
 //
 //   1. `AI_AGENT_UI_VISIBLE` (flags.ts) — a master switch. Currently `false`
 //      because today's push ships every other update but keeps the AI Agent
@@ -19,9 +23,10 @@
 
 "use client";
 
-import { Stars02 } from "@untitledui/icons";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import {
     AI_AGENT_UI_VISIBLE,
     isAiAgentEnabled,
@@ -42,20 +47,42 @@ export function FloatingAiButton() {
     };
 
     return (
-        <button
-            type="button"
-            aria-label="Open Onra Agent"
-            onClick={handleClick}
-            className={[
-                "fixed bottom-6 right-6 z-[60]",
-                "h-14 w-14 rounded-full flex items-center justify-center",
-                "bg-[var(--brand-tertiary)] text-[#0c2d34] border-1 border-white/[0.12]",
-                "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.18),inset_0px_0px_0px_1px_rgba(16,24,40,0.10),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                "hover:bg-[#aad4bd] active:bg-[#92baa4] transition-colors",
-                "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
-            ].join(" ")}
-        >
-            <Stars02 className="h-6 w-6" />
-        </button>
+        // Client 2026-07-27 — the "How can I help today?" bubble was
+        // hidden per client feedback ("hide this like the bubble chat")
+        // to keep the entry point compact + non-blocking on scroll. Only
+        // the logomark tile remains as the fixed trigger. The wrapper's
+        // bottom-8 right-8 gives 32px viewport padding per Figma
+        // spacing-4xl.
+        //
+        // Tooltip added (2026-07-27) — IconTooltip anchored `above` the
+        // tile so hovering surfaces the "AI Agent" label without needing
+        // to click first.
+        <div className="fixed bottom-8 right-8 z-[60] flex items-center gap-4 pointer-events-none">
+            <IconTooltip label="AI Agent" side="above">
+                <button
+                    type="button"
+                    aria-label="Open Onra AI Agent"
+                    onClick={handleClick}
+                    className={[
+                        "pointer-events-auto",
+                        "shrink-0 w-14 h-14 rounded-[14px] bg-white",
+                        "border-[0.35px] border-[#d0d5dd] overflow-hidden",
+                        "flex items-center justify-center",
+                        "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
+                        "hover:bg-[#f9fafb] transition-colors",
+                        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
+                    ].join(" ")}
+                >
+                    <Image
+                        src="/Logomark.webp"
+                        alt=""
+                        width={42}
+                        height={42}
+                        className="w-[42px] h-[42px] object-contain"
+                        unoptimized
+                    />
+                </button>
+            </IconTooltip>
+        </div>
     );
 }
