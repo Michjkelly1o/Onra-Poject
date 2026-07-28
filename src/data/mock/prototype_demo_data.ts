@@ -667,15 +667,16 @@ const LIAM_SPECS: LiamClassSpec[] = [
         ],
     },
     {
-        // (5) Midday Reformer, TODAY — Ongoing (currently in progress)
-        //     Demos the "class actively happening, mark present"
-        //     workflow — instructor can hit Present + bulk Mark all
-        //     present from here. Cancelled tab shows 1 early cancel.
+        // (5) Afternoon Reformer, TODAY — 2:00–3:00 PM (client 2026-07-28, so
+        //     it can be tested live as it flips Upcoming → Ongoing at 2 PM).
+        //     Demos the "class actively happening, mark present" workflow —
+        //     the live status is derived from the clock (Upcoming before 2 PM,
+        //     Ongoing 2–3 PM). Cancelled tab shows 1 early cancel.
         n: "005",
         daysAgo: 0,
-        startTime: "13:00", endTime: "13:45", displayTime: "01:00 - 01:45 PM",
+        startTime: "14:00", endTime: "15:00", displayTime: "02:00 - 03:00 PM",
         capacity: 8,
-        status: "Ongoing",
+        status: "Upcoming",
         bookedCustomerIds: [
             "cust_ahmed_zayn", "cust_zahra_mahen", "cust_james_taylor",
             "cust_lucas_brown", "cust_sophia_lee", "cust_fatima_al_sayed",

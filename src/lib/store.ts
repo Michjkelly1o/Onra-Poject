@@ -9987,7 +9987,10 @@ export const useAppStore = create<AppState>()(persist(
         //   is re-derived from booking rows on boot (reconcileBookedCounts),
         //   and default spot grids are balanced (10→5×2). Bump so every
         //   snapshot reseeds with the consistent booking data.
-        version: 84,
+        // v85 (2026-07-28): moved today's Liam "Reformer Pilates" demo class
+        //   from 1:00 PM to 2:00–3:00 PM (live testing). Bump so persisted
+        //   snapshots reseed with the new time on both admin + customer.
+        version: 85,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
