@@ -534,7 +534,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                                     onChange={setSourceId}
                                     placeholder="Where did they come from?"
                                     options={[
-                                        { value: "", label: "— No source" },
+                                        { value: "", label: "No source" },
                                         ...leadSourceOptions,
                                     ]}
                                     width="w-full"

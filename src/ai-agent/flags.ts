@@ -58,6 +58,7 @@ export const AI_AGENT_MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 // `/admin/ai-agent` (mounts + auto-opens the modal), and the API route is
 // live — the button is the only surface that's hidden.
 //
-// Flip to `true` on the day the client is ready to see the button, and
-// the entry point appears everywhere admin without any other change.
-export const AI_AGENT_UI_VISIBLE = false;
+// Client 2026-07-27: flag flipped to `true` — the Figma-driven floating
+// bubble ("How can I help today?" + Onra logomark, node 667:650314) is
+// the intended entry point across every admin surface.
+export const AI_AGENT_UI_VISIBLE = true;
