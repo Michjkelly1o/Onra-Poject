@@ -43,12 +43,18 @@ import type {
     FollowUpTask,
     FollowUpTaskTrigger,
 } from "@/lib/store";
+import { computeLifecycleTag } from "./lifecycle";
 
 /** Cheap subset of AppState the generator reads. Kept as its own type so
- *  test fixtures don't have to construct the entire AppState. */
+ *  test fixtures don't have to construct the entire AppState.
+ *
+ *  Client 2026-07-27 (audit-2 fix) — `customerTransactions` added because
+ *  the generator now resolves the customer's lifecycle tag LIVE (via
+ *  computeLifecycleTag) instead of trusting the stored field, and the
+ *  compute reads transactions for the paid/won-back branches. */
 type TaskState = Pick<
     AppState,
-    "customers" | "classBookings" | "customerPlans" | "followUpTasks" | "leadSources" | "followUpStages"
+    "customers" | "classBookings" | "customerPlans" | "customerTransactions" | "followUpTasks" | "leadSources" | "followUpStages"
 >;
 
 /** v83 audit fix (2026-07-27) — the plan lets studios RENAME system-
@@ -210,13 +216,13 @@ export function generateFollowUpTasks(
     // Only pre-conversion customers get automated follow-ups. Loyal
     // Active / Churned / At Risk have their own signal paths (analytics,
     // churn campaigns) — not this engine.
-    if (
-        customer.lifecycleTag !== undefined &&
-        customer.lifecycleTag !== "Lead" &&
-        customer.lifecycleTag !== "Trialist"
-    ) {
-        return [];
-    }
+    //
+    // v83 audit-2 fix (2026-07-27) — resolve tag LIVE (not from the
+    // possibly-stale stored field). A POS-purchase Lead who never
+    // triggered the recompute would otherwise still qualify here and
+    // materialise an enquiry task after graduation.
+    const liveTag = computeLifecycleTag(customerId, state).tag;
+    if (liveTag !== "Lead" && liveTag !== "Trialist") return [];
 
     const wants = (t: FollowUpTaskTrigger): boolean =>
         !opts.triggers || opts.triggers.includes(t);

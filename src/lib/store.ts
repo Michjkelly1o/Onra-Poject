@@ -85,6 +85,8 @@ import { getFrozenActiveMembership } from "./customer/freeze-eligibility";
 import {
     computeLifecycleTag,
     applyLifecycleResult,
+    autoCloseTasksOnGraduation,
+    recomputePatch,
 } from "./customer/lifecycle";
 import {
     generateFollowUpTasks,
@@ -6355,13 +6357,7 @@ export const useAppStore = create<AppState>()(persist(
         // v83 lifecycle recompute — a fresh booking can bump a Lead → Trialist
         // or a Trialist → Loyal Active. Runs on the booker's customer id;
         // guest-seat rows skip (guests have no lifecycle to recompute).
-        set(state => ({
-            customers: applyLifecycleResult(
-                state.customers,
-                customerId,
-                computeLifecycleTag(customerId, state),
-            ),
-        }));
+        set(state => recomputePatch(state, customerId));
         // v83 Phase 4 — evaluate the trial_no_rebook_7d trigger on this
         // customer. Cheap: the generator dedupes against existing open
         // tasks, so hot-loops (multiple bookings same session) don't
@@ -6750,13 +6746,7 @@ export const useAppStore = create<AppState>()(persist(
         // (Phase 4). Only fires when the booking mapped to a real customer.
         if (booking?.customerId) {
             const cid = booking.customerId;
-            set(state => ({
-                customers: applyLifecycleResult(
-                    state.customers,
-                    cid,
-                    computeLifecycleTag(cid, state),
-                ),
-            }));
+            set(state => recomputePatch(state, cid));
             // v83 Phase 4 — evaluate both cancel-adjacent triggers on the
             // affected customer. `first_booking_cancelled` fires when the
             // customer's very first booking just went to "cancelled";
@@ -6847,19 +6837,19 @@ export const useAppStore = create<AppState>()(persist(
         // triggers).
         const affectedIds = Array.from(new Set(targets.map(t => t.customerId).filter(Boolean)));
         if (affectedIds.length > 0) {
+            // v83 audit-2 — bulk-cancel routes each customer through the
+            // single-shot recomputePatch (lifecycle + task auto-close),
+            // then a second pass generates cancel-adjacent triggers.
             set(state => {
-                let next = state.customers;
+                let customers = state.customers;
+                let followUpTasks = state.followUpTasks;
                 for (const cid of affectedIds) {
-                    next = applyLifecycleResult(
-                        next,
-                        cid,
-                        computeLifecycleTag(cid, { ...state, customers: next }),
-                    );
+                    const patch = recomputePatch({ ...state, customers, followUpTasks }, cid);
+                    customers = patch.customers;
+                    followUpTasks = patch.followUpTasks;
                 }
-                return { customers: next };
+                return { customers, followUpTasks };
             });
-            // v83 Phase 4 — same cancel-adjacent triggers as the single-
-            // cancel path, folded into one set() call for the whole batch.
             set(state => {
                 let next = state.followUpTasks;
                 for (const cid of affectedIds) {
@@ -6995,13 +6985,7 @@ export const useAppStore = create<AppState>()(persist(
         // v83 lifecycle recompute — the customer just cancelled + got
         // charged; both actions feed the same At Risk / task-engine
         // branches as an admin-side cancel.
-        set(state => ({
-            customers: applyLifecycleResult(
-                state.customers,
-                customer.id,
-                computeLifecycleTag(customer.id, state),
-            ),
-        }));
+        set(state => recomputePatch(state, customer.id));
         // v83 Phase 4 — cancel-adjacent triggers on the customer-side
         // cancel path, mirroring the admin cancel wiring.
         set(state => {
@@ -7112,13 +7096,7 @@ export const useAppStore = create<AppState>()(persist(
         // Only fires when the booking resolved to a real customer id.
         if (booking?.customerId) {
             const cid = booking.customerId;
-            set(state => ({
-                customers: applyLifecycleResult(
-                    state.customers,
-                    cid,
-                    computeLifecycleTag(cid, state),
-                ),
-            }));
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7164,13 +7142,7 @@ export const useAppStore = create<AppState>()(persist(
         // branch (avg rating dropped ≥ 1 star). Runs on the rater only.
         // Wired onto the LIVE `submitClassRating` path; the importer
         // `addClassRating` deliberately skips (see plan comment).
-        set(state => ({
-            customers: applyLifecycleResult(
-                state.customers,
-                input.customerId,
-                computeLifecycleTag(input.customerId, state),
-            ),
-        }));
+        set(state => recomputePatch(state, input.customerId));
     },
 
     addCustomer: (input) => {
@@ -7582,6 +7554,10 @@ export const useAppStore = create<AppState>()(persist(
                 },
             });
         }
+        // v83 audit-2 fix — freeze changes usable-plan status, which
+        // gates At Risk vs Loyal Active. Recompute so the tag stays
+        // fresh across every read surface (list, widget, CSV, profile).
+        set(state => recomputePatch(state, target.customerId));
     },
 
     unfreezeCustomerPlan: (planId) => {
@@ -7611,6 +7587,10 @@ export const useAppStore = create<AppState>()(persist(
             const customer = get().customers.find(c => c.id === target.customerId);
             const customerName = customer ? capitalizeName(`${customer.firstName} ${customer.lastName}`) : "a customer";
             get().recordAudit(`Unfroze ${customerName}'s plan`, "customer_plan", planId, target.name);
+        }
+        if (target) {
+            const cid = target.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7683,6 +7663,8 @@ export const useAppStore = create<AppState>()(persist(
         });
         if (targetPlan) {
             get().recordAudit(`Cancelled ${customerName}'s plan`, "customer_plan", planId, targetPlan.name, { mode });
+            const cid = targetPlan.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7726,6 +7708,8 @@ export const useAppStore = create<AppState>()(persist(
             const customer = get().customers.find(c => c.id === target.customerId);
             const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
             get().recordAudit(`Reactivated ${customerName}'s plan`, "customer_plan", planId, target.name);
+            const cid = target.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7777,13 +7761,7 @@ export const useAppStore = create<AppState>()(persist(
         get().recordAudit(`Added complimentary credit to ${customerName}`, "customer_plan", id, input.name, { credits: input.freeCredits ?? 0 });
         // v83 lifecycle recompute — a complimentary plan flips a Lead to
         // Trialist (only intro plan, no paid plan yet).
-        set(state => ({
-            customers: applyLifecycleResult(
-                state.customers,
-                input.customerId,
-                computeLifecycleTag(input.customerId, state),
-            ),
-        }));
+        set(state => recomputePatch(state, input.customerId));
         // v83 Phase 4 — the trial has just started. The trigger doesn't
         // fire yet (no attended booking on record), but the generator's
         // dedupe guard makes an early check idempotent — future writes on
@@ -7807,13 +7785,7 @@ export const useAppStore = create<AppState>()(persist(
         // trigger. The importer path fires it too so a bulk seed hydrates
         // customer tags in the same pass (idempotent — no lifecycle change
         // means no write).
-        set(state => ({
-            customers: applyLifecycleResult(
-                state.customers,
-                input.customerId,
-                computeLifecycleTag(input.customerId, state),
-            ),
-        }));
+        set(state => recomputePatch(state, input.customerId));
         return id;
     },
 
@@ -7832,13 +7804,7 @@ export const useAppStore = create<AppState>()(persist(
         get().recordAudit(`Imported transaction for ${who}`, "customer", input.customerId, next.name);
         // v83 lifecycle recompute — feeds the New Active + Won-back
         // branches (both key off "paid within last 30 days").
-        set(state => ({
-            customers: applyLifecycleResult(
-                state.customers,
-                input.customerId,
-                computeLifecycleTag(input.customerId, state),
-            ),
-        }));
+        set(state => recomputePatch(state, input.customerId));
         return id;
     },
     addWalletTransaction: (input) => {
@@ -7922,6 +7888,14 @@ export const useAppStore = create<AppState>()(persist(
                     silent: true,
                 });
             }
+        }
+        // v83 audit-2 fix — a refund reverses paid history, which
+        // determines New Active / Won-back / Churned via
+        // `hasEverPaid` + `latestPaidISO`. Recompute so a fully-
+        // refunded customer doesn't stay pinned to "New Active".
+        if (target?.customerId) {
+            const cid = target.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -8199,11 +8173,10 @@ export const useAppStore = create<AppState>()(persist(
         if (customer.followUpStatus === lostLabel) {
             return { logged: false, reason: "lost" as const };
         }
-        if (
-            customer.lifecycleTag !== undefined &&
-            customer.lifecycleTag !== "Lead" &&
-            customer.lifecycleTag !== "Trialist"
-        ) {
+        // v83 audit-2 fix — compute live so a stale stored tag can't
+        // gate this incorrectly (e.g. post-POS-sale Lead).
+        const liveTag = computeLifecycleTag(customerId, before).tag;
+        if (liveTag !== "Lead" && liveTag !== "Trialist") {
             return { logged: false, reason: "post_conversion" as const };
         }
         const dup = before.followUpTasks.some(
@@ -10377,6 +10350,20 @@ export const useAppStore = create<AppState>()(persist(
                 });
             }
         }
+        // v83 audit-2 fix (2026-07-27) — POS applyPurchase writes plans +
+        // transactions inline without routing through addCustomerPlan /
+        // addCustomerTransaction, so the recompute hook never fires and
+        // the customer's stored lifecycleTag drifts stale (Lead in list
+        // but New Active on the profile). Trigger the standard recompute
+        // + task-gen block here so POS sales flow through the same
+        // pipeline as importer paths.
+        set(state => recomputePatch(state, customerId));
+        set(state => {
+            const fresh = generateFollowUpTasks(customerId, state, {
+                triggers: ["trial_no_rebook_7d"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
     },
 
     showToast: (title, message, type = "success", icon) =>

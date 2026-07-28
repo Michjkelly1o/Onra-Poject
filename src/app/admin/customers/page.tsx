@@ -217,7 +217,8 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
         pending.lastVisit.length > 0 ||
         pending.branchId !== "" ||
         pending.planExpiryStart !== "" ||
-        pending.planExpiryEnd !== "";
+        pending.planExpiryEnd !== "" ||
+        pending.lifecycleTags.length > 0;
 
     return (
         <SlidePanel open={open} onClose={onClose} width={420}>

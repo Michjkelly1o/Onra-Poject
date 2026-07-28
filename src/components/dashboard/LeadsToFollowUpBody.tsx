@@ -19,6 +19,7 @@ import { useMemo } from "react";
 import { useAppStore, type FollowUpTask, type Customer } from "@/lib/store";
 import { TableAvatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 import { cn } from "@/lib/utils";
 
 /** Trigger weights per the plan §Phase 5 rank formula. Enquiry_logged
@@ -78,15 +79,24 @@ export function LeadsToFollowUpBody() {
     const tasks = useAppStore(s => s.followUpTasks);
     const customers = useAppStore(s => s.customers);
     const transactions = useAppStore(s => s.customerTransactions);
+    const classBookings = useAppStore(s => s.classBookings);
+    const customerPlans = useAppStore(s => s.customerPlans);
     const staff = useAppStore(s => s.staff);
 
     // Rank open tasks — freshness × LTV × trigger weight. Top 6 render
     // in the widget body; the rest live in the profile's Follow-ups tab
     // (Phase 5 second surface). No pagination here — this is a
     // "quick-glance ranked list", not a full inbox.
+    //
+    // v83 audit-2 fix (2026-07-27) — resolves each row's lifecycle tag
+    // via a LIVE compute (same as the customer list + profile) so a
+    // stale stored tag from a POS purchase / freeze / etc. can't cause
+    // the widget to render a different pill than the profile it links
+    // to.
     const ranked = useMemo(() => {
         const open = tasks.filter(t => t.status === "open");
         const customerById = new Map(customers.map(c => [c.id, c]));
+        const liveState = { customers, classBookings, customerPlans, customerTransactions: transactions };
         return open
             .map(t => {
                 const customer = customerById.get(t.customerId);
@@ -97,12 +107,13 @@ export function LeadsToFollowUpBody() {
                 // +1 on the LTV factor so a customer with zero paid history
                 // still ranks — freshness × weight alone would land at 0.
                 const score = weight * freshness * (1 + Math.log10(1 + ltv));
-                return { task: t, customer, score };
+                const liveTag = computeLifecycleTag(t.customerId, liveState).tag;
+                return { task: t, customer, score, liveTag };
             })
-            .filter((r): r is { task: FollowUpTask; customer: Customer; score: number } => r !== null)
+            .filter((r): r is { task: FollowUpTask; customer: Customer; score: number; liveTag: import("@/lib/store").LifecycleTag } => r !== null)
             .sort((a, b) => b.score - a.score)
             .slice(0, 6);
-    }, [tasks, customers, transactions]);
+    }, [tasks, customers, transactions, classBookings, customerPlans]);
 
     if (ranked.length === 0) {
         return (
@@ -117,7 +128,7 @@ export function LeadsToFollowUpBody() {
 
     return (
         <div className="flex flex-col divide-y divide-[#f2f4f7]">
-            {ranked.map(({ task, customer }) => {
+            {ranked.map(({ task, customer, liveTag }) => {
                 const assignee = task.assigneeId
                     ? staff.find(s => s.id === task.assigneeId)
                     : undefined;
@@ -141,7 +152,7 @@ export function LeadsToFollowUpBody() {
                                 <span className="text-[14px] font-medium text-[#101828] truncate">
                                     {`${customer.firstName} ${customer.lastName}`.trim() || customer.email}
                                 </span>
-                                <StatusBadge type="lifecycle" status={customer.lifecycleTag ?? "Lead"} size="sm" />
+                                <StatusBadge type="lifecycle" status={liveTag} size="sm" />
                                 {customer.isVip && <StatusBadge type="vip" status="vip" size="sm" />}
                             </div>
                             <p className="text-[13px] text-[#475467] line-clamp-2">{task.reason}</p>

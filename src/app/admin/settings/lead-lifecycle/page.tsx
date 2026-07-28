@@ -10,10 +10,12 @@
 //
 //   • Customer sources (top card) — the pool of drop-downs that feeds
 //     Customer.sourceId + AddLead intake + the Details tab Source
-//     field. System-seeded rows are locked (rename-only).
+//     field.
 //   • Follow-up stages (bottom card) — the list of values behind the
-//     Details tab Follow-up status dropdown + the header pill. Won
-//     and Lost are locked (rename-only). Max 8 stages.
+//     Details tab Follow-up status dropdown + the header pill. Max
+//     8 stages. `Won` + `Lost` labels can be renamed but the funnel
+//     precedence rules resolve by stable id (stg_won / stg_lost) so
+//     a rename doesn't disturb behaviour.
 //
 // Zero new UI primitives — reuses Button + DS list rows, Toast, and the
 // existing inline-add-row pattern from tax / class-categories. Deletes
@@ -95,9 +97,9 @@ function LeadSourcesCard() {
             setConfirmDelete(null);
             return;
         }
-        if (result.reason === "locked") {
-            showToast("Can't delete", "System sources can be renamed but not removed.", "warning", "alert");
-        } else {
+        // v83 audit-2 — `reason: "locked"` no longer returned by the
+        // store (locks retired). Only the in-use branch remains.
+        if (result.reason === "in_use") {
             showToast(
                 "Source in use",
                 `${result.usageCount} customer${result.usageCount === 1 ? "" : "s"} still reference "${label}".`,
@@ -226,11 +228,18 @@ function FollowUpStagesCard() {
             showToast("Max stages reached", `Keep the funnel tight — the maximum is ${MAX_STAGES} stages.`, "warning", "alert");
             return;
         }
+        // v83 audit-2 — length-diff check so a case-insensitive dup
+        // (store returns the existing id, not a fresh one) surfaces as
+        // "Already exists" instead of a false-positive "Stage added".
+        const beforeCount = followUpStages.length;
         const id = addFollowUpStage(clean);
-        if (id) {
+        const after = useAppStore.getState().followUpStages.length;
+        if (id && after > beforeCount) {
             showToast("Stage added", `"${clean}" is now available on the Follow-up status dropdown.`, "success", "check");
+        } else if (id) {
+            showToast("Already exists", `"${clean}" is already in the list.`, "warning", "alert");
         } else {
-            showToast("Add failed", `Couldn't add "${clean}". You may already have this stage or hit the ${MAX_STAGES}-stage cap.`, "warning", "alert");
+            showToast("Add failed", `Couldn't add "${clean}". You may have hit the ${MAX_STAGES}-stage cap.`, "warning", "alert");
         }
         setNewLabel("");
         setAdding(false);
@@ -258,9 +267,7 @@ function FollowUpStagesCard() {
             setConfirmDelete(null);
             return;
         }
-        if (result.reason === "locked") {
-            showToast("Can't delete", "Won and Lost close the funnel and can't be removed.", "warning", "alert");
-        } else {
+        if (result.reason === "in_use") {
             showToast(
                 "Stage in use",
                 `${result.usageCount} customer${result.usageCount === 1 ? "" : "s"} still sit on "${label}". Move them off first, then try again.`,
@@ -278,8 +285,7 @@ function FollowUpStagesCard() {
                     <div className="flex flex-col gap-0.5">
                         <p className="text-[16px] font-semibold text-[#101828]">Follow-up stages</p>
                         <p className="text-[13px] text-[#667085]">
-                            The funnel your staff moves each lead through. Won and Lost close the funnel
-                            and can&apos;t be removed. Keep it tight — max {MAX_STAGES} stages.
+                            The funnel your staff moves each lead through. Keep it tight — max {MAX_STAGES} stages.
                         </p>
                     </div>
                     <Button

@@ -32,6 +32,7 @@ import type {
     CustomerPlan,
     ClassBooking,
     CustomerTransaction,
+    FollowUpTask,
 } from "@/lib/store";
 
 /** Result of one recompute pass for a single customer. `reasons` is the
@@ -301,6 +302,54 @@ export function computeLifecycleTag(
     const changed = customer.lifecycleTag !== tag || customer.isVip !== isVip;
 
     return { tag, isVip, reasons, computedOn, changed };
+}
+
+/** One-shot patch builder for the store — combines the lifecycle
+ *  recompute + follow-up-task auto-close in one function so every
+ *  action's `set(state => recomputePatch(state, customerId))` call site
+ *  is a single line. Prevents drift where one action forgets to run one
+ *  half of the two-step update. */
+export function recomputePatch(
+    state: LifecycleState & { followUpTasks: FollowUpTask[] },
+    customerId: string,
+): { customers: Customer[]; followUpTasks: FollowUpTask[] } {
+    const result = computeLifecycleTag(customerId, state);
+    const postFunnel = result.tag !== "Lead" && result.tag !== "Trialist";
+    return {
+        customers: applyLifecycleResult(state.customers, customerId, result),
+        followUpTasks: autoCloseTasksOnGraduation(
+            state.followUpTasks,
+            customerId,
+            postFunnel,
+            new Date().toISOString(),
+        ),
+    };
+}
+
+/** Auto-close open FollowUpTasks for a customer who has just graduated
+ *  past the pre-conversion funnel. Client 2026-07-27 (audit-2 fix) —
+ *  without this, a Lead with an open "enquiry_logged" task who books +
+ *  attends 6 classes becomes Loyal Active, yet the dashboard widget
+ *  still surfaces that open task with the fresh (Loyal Active) pill —
+ *  contradictory to "post-conversion follow-ups don't apply".
+ *
+ *  Marks each open task closed with `outcome: "reached"` (the neutral
+ *  positive outcome — behavior overrode the funnel). Returns the same
+ *  array reference when nothing changed. */
+export function autoCloseTasksOnGraduation(
+    tasks: FollowUpTask[],
+    customerId: string,
+    postFunnel: boolean,
+    nowISO: string,
+): FollowUpTask[] {
+    if (!postFunnel) return tasks;
+    const open = tasks.filter(t => t.customerId === customerId && t.status === "open");
+    if (open.length === 0) return tasks;
+    return tasks.map(t =>
+        t.customerId === customerId && t.status === "open"
+            ? { ...t, status: "closed" as const, outcome: "reached" as const, closedAt: nowISO }
+            : t,
+    );
 }
 
 /** Apply a recompute result to a customer array, replacing only the
