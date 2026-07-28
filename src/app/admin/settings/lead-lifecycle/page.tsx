@@ -4,10 +4,7 @@
 // Onra Studio — Settings → Customer → Lead lifecycle (v83 Phase 6)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Companion to `new-prd/customer-lead-management-implementation-plan.md`
-// §Phase 6. Two studio-editable lists on one page, kept together so a
-// studio owner tuning their funnel doesn't page-hop between them.
-//
+// Two studio-editable lists on one page:
 //   • Customer sources (top card) — the pool of drop-downs that feeds
 //     Customer.sourceId + AddLead intake + the Details tab Source
 //     field.
@@ -17,16 +14,17 @@
 //     precedence rules resolve by stable id (stg_won / stg_lost) so
 //     a rename doesn't disturb behaviour.
 //
-// Zero new UI primitives — reuses Button + DS list rows, Toast, and the
-// existing inline-add-row pattern from tax / class-categories. Deletes
-// go through a shared centred confirmation modal.
+// Client 2026-07-27 — Create + rename now go through the DS
+// LeadLifecycleItemModal (matches TaxRateModal chrome). Delete goes
+// through the DS ConfirmModal.
 
 import { useState } from "react";
-import { Plus, Trash01, Edit02, Check, XClose } from "@untitledui/icons";
+import { Plus, Trash01, Edit02 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { LeadLifecycleItemModal, type LeadLifecycleMode } from "@/components/settings/LeadLifecycleItemModal";
 import { cn } from "@/lib/utils";
 
 /** Max stages guardrail — the plan's PDF §4.2 "keep it tight" ceiling.
@@ -47,49 +45,11 @@ export default function LeadLifecycleSettingsPage() {
 
 function LeadSourcesCard() {
     const leadSources = useAppStore(s => s.leadSources);
-    const addLeadSource = useAppStore(s => s.addLeadSource);
-    const renameLeadSource = useAppStore(s => s.renameLeadSource);
     const deleteLeadSource = useAppStore(s => s.deleteLeadSource);
     const showToast = useAppStore(s => s.showToast);
 
-    const [adding, setAdding] = useState(false);
-    const [newLabel, setNewLabel] = useState("");
-    const [editing, setEditing] = useState<string | null>(null);
-    const [editLabel, setEditLabel] = useState("");
+    const [editing, setEditing] = useState<{ mode: LeadLifecycleMode; id?: string; label?: string } | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<{ id: string; label: string } | null>(null);
-
-    function handleAdd() {
-        const clean = newLabel.trim();
-        if (!clean) {
-            setAdding(false);
-            return;
-        }
-        const beforeCount = leadSources.length;
-        addLeadSource(clean);
-        const after = useAppStore.getState().leadSources.length;
-        if (after > beforeCount) {
-            showToast("Source added", `"${clean}" is now available on lead intake.`, "success", "check");
-        } else {
-            showToast("Already exists", `"${clean}" is already in the list.`, "warning", "alert");
-        }
-        setNewLabel("");
-        setAdding(false);
-    }
-
-    function handleRename(id: string) {
-        const clean = editLabel.trim();
-        if (!clean) {
-            setEditing(null);
-            return;
-        }
-        const ok = renameLeadSource(id, clean);
-        if (ok) {
-            showToast("Source renamed", `Updated to "${clean}".`, "success", "check");
-            setEditing(null);
-        } else {
-            showToast("Rename failed", "Another source already uses that name.", "warning", "alert");
-        }
-    }
 
     function handleDelete(id: string, label: string) {
         const result = deleteLeadSource(id);
@@ -98,8 +58,6 @@ function LeadSourcesCard() {
             setConfirmDelete(null);
             return;
         }
-        // v83 audit-2 — `reason: "locked"` no longer returned by the
-        // store (locks retired). Only the in-use branch remains.
         if (result.reason === "in_use") {
             showToast(
                 "Source in use",
@@ -126,7 +84,7 @@ function LeadSourcesCard() {
                         variant="secondary-gray"
                         size="sm"
                         leftIcon={<Plus className="w-4 h-4" />}
-                        onClick={() => setAdding(true)}
+                        onClick={() => setEditing({ mode: "create" })}
                     >
                         Add source
                     </Button>
@@ -134,61 +92,32 @@ function LeadSourcesCard() {
                 <ul className="divide-y divide-[#f2f4f7]">
                     {leadSources.map(s => (
                         <li key={s.id} className="flex items-center gap-3 px-6 py-3">
-                            {editing === s.id ? (
-                                <>
-                                    <input
-                                        autoFocus
-                                        value={editLabel}
-                                        onChange={(e) => setEditLabel(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") handleRename(s.id);
-                                            if (e.key === "Escape") setEditing(null);
-                                        }}
-                                        className="flex-1 rounded-md border border-[#658774] px-3 py-1.5 text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#658774]/40"
-                                    />
-                                    <IconButton label="Save rename" onClick={() => handleRename(s.id)} icon={<Check className="w-4 h-4" />} />
-                                    <IconButton label="Cancel rename" onClick={() => setEditing(null)} icon={<XClose className="w-4 h-4" />} />
-                                </>
-                            ) : (
-                                <>
-                                    <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
-                                    <IconButton
-                                        label="Rename source"
-                                        onClick={() => {
-                                            setEditLabel(s.label);
-                                            setEditing(s.id);
-                                        }}
-                                        icon={<Edit02 className="w-4 h-4" />}
-                                    />
-                                    <IconButton
-                                        label="Delete source"
-                                        onClick={() => setConfirmDelete({ id: s.id, label: s.label })}
-                                        icon={<Trash01 className="w-4 h-4" />}
-                                        variant="danger"
-                                    />
-                                </>
-                            )}
+                            <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
+                            <IconButton
+                                label="Rename source"
+                                onClick={() => setEditing({ mode: "edit", id: s.id, label: s.label })}
+                                icon={<Edit02 className="w-4 h-4" />}
+                            />
+                            <IconButton
+                                label="Delete source"
+                                onClick={() => setConfirmDelete({ id: s.id, label: s.label })}
+                                icon={<Trash01 className="w-4 h-4" />}
+                                variant="danger"
+                            />
                         </li>
                     ))}
-                    {adding && (
-                        <li className="flex items-center gap-3 px-6 py-3 bg-[#f9fafb]">
-                            <input
-                                autoFocus
-                                value={newLabel}
-                                onChange={(e) => setNewLabel(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleAdd();
-                                    if (e.key === "Escape") { setNewLabel(""); setAdding(false); }
-                                }}
-                                placeholder="New source name…"
-                                className="flex-1 rounded-md border border-[#658774] px-3 py-1.5 text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#658774]/40"
-                            />
-                            <IconButton label="Save new source" onClick={handleAdd} icon={<Check className="w-4 h-4" />} />
-                            <IconButton label="Cancel new source" onClick={() => { setNewLabel(""); setAdding(false); }} icon={<XClose className="w-4 h-4" />} />
-                        </li>
-                    )}
                 </ul>
             </section>
+
+            {editing && (
+                <LeadLifecycleItemModal
+                    kind="source"
+                    mode={editing.mode}
+                    existingId={editing.id}
+                    existingLabel={editing.label}
+                    onClose={() => setEditing(null)}
+                />
+            )}
 
             <ConfirmModal
                 open={!!confirmDelete}
@@ -210,60 +139,13 @@ function LeadSourcesCard() {
 
 function FollowUpStagesCard() {
     const followUpStages = useAppStore(s => s.followUpStages);
-    const addFollowUpStage = useAppStore(s => s.addFollowUpStage);
-    const renameFollowUpStage = useAppStore(s => s.renameFollowUpStage);
     const deleteFollowUpStage = useAppStore(s => s.deleteFollowUpStage);
     const showToast = useAppStore(s => s.showToast);
 
-    const [adding, setAdding] = useState(false);
-    const [newLabel, setNewLabel] = useState("");
-    const [editing, setEditing] = useState<string | null>(null);
-    const [editLabel, setEditLabel] = useState("");
+    const [editing, setEditing] = useState<{ mode: LeadLifecycleMode; id?: string; label?: string } | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<{ id: string; label: string } | null>(null);
 
     const atMax = followUpStages.length >= MAX_STAGES;
-
-    function handleAdd() {
-        const clean = newLabel.trim();
-        if (!clean) {
-            setAdding(false);
-            return;
-        }
-        if (atMax) {
-            showToast("Max stages reached", `Keep the funnel tight — the maximum is ${MAX_STAGES} stages.`, "warning", "alert");
-            return;
-        }
-        // v83 audit-2 — length-diff check so a case-insensitive dup
-        // (store returns the existing id, not a fresh one) surfaces as
-        // "Already exists" instead of a false-positive "Stage added".
-        const beforeCount = followUpStages.length;
-        const id = addFollowUpStage(clean);
-        const after = useAppStore.getState().followUpStages.length;
-        if (id && after > beforeCount) {
-            showToast("Stage added", `"${clean}" is now available on the Follow-up status dropdown.`, "success", "check");
-        } else if (id) {
-            showToast("Already exists", `"${clean}" is already in the list.`, "warning", "alert");
-        } else {
-            showToast("Add failed", `Couldn't add "${clean}". You may have hit the ${MAX_STAGES}-stage cap.`, "warning", "alert");
-        }
-        setNewLabel("");
-        setAdding(false);
-    }
-
-    function handleRename(id: string) {
-        const clean = editLabel.trim();
-        if (!clean) {
-            setEditing(null);
-            return;
-        }
-        const ok = renameFollowUpStage(id, clean);
-        if (ok) {
-            showToast("Stage renamed", `Every customer on this stage now shows "${clean}".`, "success", "check");
-            setEditing(null);
-        } else {
-            showToast("Rename failed", "Another stage already uses that name.", "warning", "alert");
-        }
-    }
 
     function handleDelete(id: string, label: string) {
         const result = deleteFollowUpStage(id);
@@ -297,7 +179,7 @@ function FollowUpStagesCard() {
                         variant="secondary-gray"
                         size="sm"
                         leftIcon={<Plus className="w-4 h-4" />}
-                        onClick={() => setAdding(true)}
+                        onClick={() => setEditing({ mode: "create" })}
                         disabled={atMax}
                     >
                         Add stage
@@ -306,61 +188,32 @@ function FollowUpStagesCard() {
                 <ul className="divide-y divide-[#f2f4f7]">
                     {followUpStages.map(s => (
                         <li key={s.id} className="flex items-center gap-3 px-6 py-3">
-                            {editing === s.id ? (
-                                <>
-                                    <input
-                                        autoFocus
-                                        value={editLabel}
-                                        onChange={(e) => setEditLabel(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") handleRename(s.id);
-                                            if (e.key === "Escape") setEditing(null);
-                                        }}
-                                        className="flex-1 rounded-md border border-[#658774] px-3 py-1.5 text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#658774]/40"
-                                    />
-                                    <IconButton label="Save rename" onClick={() => handleRename(s.id)} icon={<Check className="w-4 h-4" />} />
-                                    <IconButton label="Cancel rename" onClick={() => setEditing(null)} icon={<XClose className="w-4 h-4" />} />
-                                </>
-                            ) : (
-                                <>
-                                    <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
-                                    <IconButton
-                                        label="Rename stage"
-                                        onClick={() => {
-                                            setEditLabel(s.label);
-                                            setEditing(s.id);
-                                        }}
-                                        icon={<Edit02 className="w-4 h-4" />}
-                                    />
-                                    <IconButton
-                                        label="Delete stage"
-                                        onClick={() => setConfirmDelete({ id: s.id, label: s.label })}
-                                        icon={<Trash01 className="w-4 h-4" />}
-                                        variant="danger"
-                                    />
-                                </>
-                            )}
+                            <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
+                            <IconButton
+                                label="Rename stage"
+                                onClick={() => setEditing({ mode: "edit", id: s.id, label: s.label })}
+                                icon={<Edit02 className="w-4 h-4" />}
+                            />
+                            <IconButton
+                                label="Delete stage"
+                                onClick={() => setConfirmDelete({ id: s.id, label: s.label })}
+                                icon={<Trash01 className="w-4 h-4" />}
+                                variant="danger"
+                            />
                         </li>
                     ))}
-                    {adding && (
-                        <li className="flex items-center gap-3 px-6 py-3 bg-[#f9fafb]">
-                            <input
-                                autoFocus
-                                value={newLabel}
-                                onChange={(e) => setNewLabel(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleAdd();
-                                    if (e.key === "Escape") { setNewLabel(""); setAdding(false); }
-                                }}
-                                placeholder="New stage name…"
-                                className="flex-1 rounded-md border border-[#658774] px-3 py-1.5 text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#658774]/40"
-                            />
-                            <IconButton label="Save new stage" onClick={handleAdd} icon={<Check className="w-4 h-4" />} />
-                            <IconButton label="Cancel new stage" onClick={() => { setNewLabel(""); setAdding(false); }} icon={<XClose className="w-4 h-4" />} />
-                        </li>
-                    )}
                 </ul>
             </section>
+
+            {editing && (
+                <LeadLifecycleItemModal
+                    kind="stage"
+                    mode={editing.mode}
+                    existingId={editing.id}
+                    existingLabel={editing.label}
+                    onClose={() => setEditing(null)}
+                />
+            )}
 
             <ConfirmModal
                 open={!!confirmDelete}
@@ -378,11 +231,8 @@ function FollowUpStagesCard() {
     );
 }
 
-// ─── Building blocks ─────────────────────────────────────────────────────────
+// ─── Row action button ──────────────────────────────────────────────────────
 
-/** Small icon-button — kept inline because it's used only on this page
- *  and every other DS icon-button has extra layout the row-actions don't
- *  need. Composes onClick / disabled / variant only. */
 function IconButton({
     label, onClick, icon, disabled = false, variant = "neutral",
 }: {
@@ -411,4 +261,3 @@ function IconButton({
         </button>
     );
 }
-

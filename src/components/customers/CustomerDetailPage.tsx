@@ -1601,19 +1601,22 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                     <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
                         {/* Current stage summary */}
                         <div className="flex flex-col gap-3">
+                            <p className="text-[13px] text-[#667085]">Current stage for {customerName}</p>
                             <div className="flex items-center gap-2 flex-wrap">
                                 <StatusBadge type="lifecycle" status={lifecycleResult.tag} size="lg" />
                                 {lifecycleResult.isVip && <StatusBadge type="vip" status="vip" size="lg" />}
                             </div>
                             <p className="text-[13px] text-[#667085]">
-                                Tagged <span className="text-[#344054] font-medium">{lifecycleResult.tag}</span> on{" "}
-                                <span className="text-[#344054] font-medium">{(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}</span>.
+                                Set to <span className="text-[#344054] font-medium">{lifecycleResult.tag}</span> on{" "}
+                                <span className="text-[#344054] font-medium">{(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}</span>. Updates automatically when this customer&apos;s activity changes.
                             </p>
                         </div>
 
                         {/* Why this stage */}
                         <div className="flex flex-col gap-3">
-                            <p className="text-[14px] font-semibold text-[#344054]">Why this stage</p>
+                            <p className="text-[14px] font-semibold text-[#344054]">
+                                Why they landed on {lifecycleResult.tag}
+                            </p>
                             <ul className="flex flex-col gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
                                 {lifecycleResult.reasons.map((r, i) => (
                                     <li key={i} className="flex gap-2 text-[13px] leading-[18px] text-[#475467]">
@@ -1625,11 +1628,17 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                         </div>
 
                         {/* Info footer — canonical DS info alert
-                            (bg #f1f2ed + Lightbulb02 + #475467 text). */}
-                        <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] flex items-center gap-4 p-4">
-                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
-                            <p className="text-[14px] text-[#475467]">
-                                This is the AI-detected lifecycle tag (Layer 1). The staff-owned follow-up status (Layer 2) lives on the Details tab and only shows for Leads and Trialists.
+                            (bg #f1f2ed + Lightbulb02 + #475467 text).
+                            Q3 (2026-07-27) — copy rewritten in plain
+                            English so a non-technical admin gets it in
+                            one read. */}
+                        <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] flex items-start gap-4 p-4">
+                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-0.5" />
+                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                                This stage is set automatically from what the customer does — bookings,
+                                attendance, plan purchases, refunds. It updates on its own; you don&apos;t
+                                edit it here. The follow-up dropdown you CAN edit lives on the
+                                Details tab, and only shows while the customer is still a Lead or Trialist.
                             </p>
                         </div>
                     </div>

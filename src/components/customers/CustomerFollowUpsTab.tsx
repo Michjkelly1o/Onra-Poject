@@ -21,9 +21,11 @@ import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { SelectInput } from "@/components/ui/select-input";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 import { cn } from "@/lib/utils";
-import { Check, ClockRefresh, XClose, MessageChatSquare } from "@untitledui/icons";
+import { Check, ClockRefresh, XClose, MessageChatSquare, AlertCircle } from "@untitledui/icons";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 
 /** Human copy per trigger — matches the plan §Phase 4 table's task lines
@@ -92,6 +94,16 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     const customers = useAppStore(s => s.customers);
     const tasks = useAppStore(s => s.followUpTasks);
     const staff = useAppStore(s => s.staff);
+    // Q2/Q3 (2026-07-27) — the log-enquiry side panel now runs a
+    // pre-flight eligibility check so the primary button can disable
+    // itself + an inline info alert can explain WHY the enquiry is
+    // blocked (Lost / already-converted / already-open). The eligibility
+    // logic mirrors `logCustomerEnquiry` in the store; the store still
+    // enforces the same rules server-side so nothing sneaks past the UI.
+    const classBookings = useAppStore(s => s.classBookings);
+    const customerPlans = useAppStore(s => s.customerPlans);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const followUpStages = useAppStore(s => s.followUpStages);
     const logCustomerEnquiry = useAppStore(s => s.logCustomerEnquiry);
     const closeFollowUpTask = useAppStore(s => s.closeFollowUpTask);
     const showToast = useAppStore(s => s.showToast);
@@ -143,11 +155,44 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
         setEnquiryOpen(true);
     }
 
+    // Q2 (2026-07-27) — pre-flight eligibility check for Log enquiry.
+    // Mirrors the store's rules so the side panel can disable the
+    // primary button + show an inline info alert BEFORE the user types
+    // a note, instead of failing silently after submission.
+    const lostStageLabel =
+        followUpStages.find(s => s.id === "stg_lost")?.label ?? "Lost";
+    const liveLifecycleTag = computeLifecycleTag(customerId, {
+        customers,
+        classBookings,
+        customerPlans,
+        customerTransactions,
+    }).tag;
+    const hasOpenEnquiry = tasks.some(
+        t => t.customerId === customerId && t.triggerKind === "enquiry_logged" && t.status === "open",
+    );
+    const enquiryBlockedReason: "lost" | "post_conversion" | "dup" | null =
+        customer.followUpStatus === lostStageLabel
+            ? "lost"
+            : liveLifecycleTag !== "Lead" && liveLifecycleTag !== "Trialist"
+                ? "post_conversion"
+                : hasOpenEnquiry
+                    ? "dup"
+                    : null;
+    const enquiryBlockedCopy: string | null =
+        enquiryBlockedReason === "lost"
+            ? `${name} is marked as ${lostStageLabel} in your funnel. Change their follow-up status on the Details tab first, then you can log a new enquiry.`
+            : enquiryBlockedReason === "post_conversion"
+                ? `${name} has already converted (${liveLifecycleTag}). The follow-up funnel is only for Leads and Trialists.`
+                : enquiryBlockedReason === "dup"
+                    ? "An open enquiry task already exists for this customer. Close it from the table above before logging a new one."
+                    : null;
+    const canSubmitEnquiry = !enquiryBlockedReason;
+
     function handleLogEnquiry() {
-        // If the admin picked a different assignee in the side panel, patch
-        // the customer's assignedTo FIRST so the task the generator creates
-        // inherits the right assignee (generateFollowUpTasks reads from
-        // customer.assignedTo). Empty string = "unassigned".
+        // Pre-flight guard — the store re-checks these rules, but a
+        // disabled button + inline alert means this handler ideally
+        // never runs against a blocked customer.
+        if (!canSubmitEnquiry) return;
         if (assignTo !== (customer?.assignedTo ?? "")) {
             updateCustomer(customerId, { assignedTo: assignTo || undefined });
         }
@@ -156,34 +201,30 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
             showToast("Enquiry logged", `Task added for ${name}.`, "success", "check");
             setNote("");
             setEnquiryOpen(false);
-            return;
         }
-        const copy =
-            result.reason === "lost"
-                ? "This lead is marked as lost in your funnel. Change their follow-up status first to log a new enquiry."
-                : result.reason === "post_conversion"
-                    ? `${name} is already a member — the follow-up funnel doesn't apply after conversion.`
-                    : "An open enquiry task already exists for this customer.";
-        showToast("Nothing to log", copy, "warning", "alert");
     }
 
     function handleClose(task: FollowUpTask, outcome: FollowUpTaskOutcome) {
         const ok = closeFollowUpTask(task.id, outcome);
         if (!ok) return;
-        const label =
+        // Q1 (2026-07-27) — the outcome-specific copy now spells out
+        // what happens next so the admin isn't left wondering, esp. for
+        // "Follow up later" which had zero after-action guidance.
+        const copy =
             outcome === "reached"
-                ? `${name} marked as reached.`
+                ? `${name} marked as reached — status advances to Contacted.`
                 : outcome === "follow_up"
-                    ? `Kept ${name} open for a later follow-up.`
-                    : `${name} marked as not interested.`;
-        showToast(`Task closed · ${OUTCOME_LABEL[outcome]}`, label, "success", "check");
+                    ? "Task moved to Activity. It'll come back automatically if the trigger fires again."
+                    : `${name} marked as not interested — no more auto tasks unless they book again.`;
+        showToast(`Task closed · ${OUTCOME_LABEL[outcome]}`, copy, "success", "check");
     }
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
-            {/* Header row — "Log enquiry" opens the SlidePanel. */}
+            {/* Header row — Total count on the left (matches Bookings +
+                Payments + Referrals tabs), "Log enquiry" on the right. */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
-                <p className="text-[16px] font-semibold text-[#101828]">Follow-ups</p>
+                <ToolbarTotal count={rows.length} entitySingular="task" size="sm" />
                 <Button
                     variant="secondary-gray"
                     size="md"
@@ -310,9 +351,9 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                         <p className="text-[14px] text-[#667085]">Customer</p>
                         <p className="text-[16px] font-medium text-[#101828]">{name}</p>
                     </div>
-                    {/* v83 client 2026-07-27 — Assign-to picker embedded in
-                        the panel so log + route lands in one step. Defaults
-                        to whoever the customer is already assigned to. */}
+                    {/* Q3 (2026-07-27) — clearer, more contextual helper
+                        copy under each field so the admin knows what
+                        they're routing to and what the note becomes. */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[14px] font-medium text-[#344054]">
                             Assign to
@@ -322,37 +363,61 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                             onChange={setAssignTo}
                             options={staffOptions}
                             width="w-full"
+                            disabled={!canSubmitEnquiry}
                         />
                         <p className="text-[13px] text-[#667085]">
-                            Task appears on this person&apos;s dashboard follow-up widget.
+                            The new task shows up on this staff member&apos;s dashboard follow-up widget.
+                            Leave as &ldquo;Unassigned&rdquo; if nobody owns this lead yet.
                         </p>
                     </div>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[14px] font-medium text-[#344054]">
-                            What did they ask about?
+                            Enquiry note
                         </label>
                         <textarea
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="Optional note — e.g. asked about the pilates class Wednesday evenings."
+                            placeholder="What did they ask about? e.g. asked about the pilates class Wednesday evenings."
                             rows={5}
+                            disabled={!canSubmitEnquiry}
                             className={cn(
                                 "w-full resize-none rounded-[8px] border-1 border-[#d0d5dd] px-[14px] py-2.5",
                                 "text-[16px] text-[#101828] placeholder:text-[#667085] bg-white",
                                 "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all",
                                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                                !canSubmitEnquiry && "opacity-60 cursor-not-allowed",
                             )}
                         />
                         <p className="text-[13px] text-[#667085]">
-                            The note becomes the task&apos;s reason line. Leave blank to log a generic enquiry.
+                            Becomes the task&apos;s reason line, visible to whoever picks it up. Leave blank
+                            for a generic &ldquo;New enquiry from {name} — follow up.&rdquo;
                         </p>
                     </div>
+                    {/* Q2 (2026-07-27) — inline info alert pinned to the
+                        bottom of the panel body so the admin sees exactly
+                        WHY the primary button below is disabled without
+                        having to submit-and-fail first. Uses the DS
+                        alert palette (amber warning to match the
+                        blocked-not-broken semantics). */}
+                    {enquiryBlockedCopy && (
+                        <div className="mt-auto bg-[#fffaeb] border-1 border-[#fedf89] rounded-[12px] flex items-start gap-3 p-4">
+                            <AlertCircle className="w-5 h-5 text-[#b54708] shrink-0 mt-0.5" />
+                            <p className="text-[13px] text-[#b54708] leading-[18px]">
+                                {enquiryBlockedCopy}
+                            </p>
+                        </div>
+                    )}
                 </div>
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" onClick={() => setEnquiryOpen(false)}>
                         Cancel
                     </Button>
-                    <Button variant="primary" size="md" onClick={handleLogEnquiry}>
+                    <Button
+                        variant="primary"
+                        size="md"
+                        onClick={handleLogEnquiry}
+                        disabled={!canSubmitEnquiry}
+                    >
                         Log enquiry
                     </Button>
                 </div>
