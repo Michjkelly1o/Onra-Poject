@@ -19,9 +19,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
-    XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft,
+    XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft, Lightbulb02,
     Edit02, HeartHand, Archive, SlashCircle01, RefreshCcw01, Check, AlignLeft,
-    CreditCard02, Package, Gift01, PauseCircle, PlayCircle, XCircle, Lightbulb02,
+    CreditCard02, Package, Gift01, PauseCircle, PlayCircle, XCircle,
     Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -48,16 +48,29 @@ import { CustomerPaymentsTab } from "./CustomerPaymentsTab";
 import { CustomerDetailsTab } from "./CustomerDetailsTab";
 import { CustomerAgreementsTab } from "./CustomerAgreementsTab";
 import { CustomerReferralsTab } from "./CustomerReferralsTab";
+import { CustomerFollowUpsTab } from "./CustomerFollowUpsTab";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { derivePlanBalances } from "@/lib/plan-credits";
+// v83 lifecycle — the pill (StatusBadge type="lifecycle" / "vip") drives
+// the header pill row + reasoning drawer. IconTooltip powers the hover.
+// Compute is imported for the drawer's live "why this tag" body.
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { lookupStageIdByLabel, lookupStageLabel, FOLLOW_UP_STAGE_PALETTE } from "@/lib/customer/follow-up-tasks";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 // "Wallet" tab removed (client Jul 2026 — the referral account credit is now
 // surfaced on the Referrals tab, and the wallet ceased to be a standalone
 // payment method in POS; the balance is applied via a toggle on checkout).
-const TABS = ["Plan", "Bookings", "Payments", "Details", "Agreements", "Referrals"] as const;
+// v83 Phase 5 (client 2026-07-24) — "Follow-ups" tab added between Payments
+// and Details. Renders only visually differently for Lead / Trialist rows
+// (where open tasks are expected); other lifecycle stages just see an
+// empty state + the closed history. Kept tab present for every customer
+// so the location is stable and staff can always audit the log.
+const TABS = ["Plan", "Bookings", "Payments", "Follow-ups", "Details", "Agreements", "Referrals"] as const;
 type TabId = typeof TABS[number];
 
 type PlanStatus = CustomerPlan["status"];
@@ -944,6 +957,15 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const pathname = usePathname();
     const customers = useAppStore(s => s.customers);
     const customerPlans = useAppStore(s => s.customerPlans);
+    // v83 lifecycle — the compute needs bookings + transactions in addition
+    // to plans; the profile already reads customers + plans, so this is
+    // just two extra slice subscriptions. Both are read anyway by other
+    // tabs on this page (Bookings tab, Payments tab).
+    const classBookings = useAppStore(s => s.classBookings);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    // v83 audit-3 — follow-up pill needs the stage list to resolve
+    // its palette by stable id (survives a Phase-6 rename).
+    const followUpStages = useAppStore(s => s.followUpStages);
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
     const freezeCustomerPlan = useAppStore(s => s.freezeCustomerPlan);
     const unfreezeCustomerPlan = useAppStore(s => s.unfreezeCustomerPlan);
@@ -971,6 +993,11 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const [pageSize, setPageSize] = useState(10);
     const [planModal, setPlanModal] = useState<PlanModalState>(null);
     const [customerModal, setCustomerModal] = useState<CustomerAction | null>(null);
+    // v83 lifecycle — reasoning drawer opens from the header pill click.
+    // The compute runs live on every open so the drawer's "why this tag"
+    // body always matches the current data (a booking marked present
+    // between two clicks flips the reasoning).
+    const [lifecycleDrawerOpen, setLifecycleDrawerOpen] = useState(false);
 
     useEffect(() => { setPage(1); }, [search, applied, tab]);
 
@@ -989,6 +1016,21 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
         () => derivePlanBalances(plans, customer?.creditsRemaining),
         [plans, customer?.creditsRemaining],
     );
+
+    // v83 lifecycle result — the header pill uses `tag` for the palette,
+    // the hover tooltip shows the first reason ("Tagged Loyal Active on
+    // YYYY-MM-DD · attended 6 classes in the last 30 days"), the reasoning
+    // drawer lists every reason clause. Recomputed live so the drawer
+    // reflects the latest booking/payment/rating without a stale snapshot.
+    const lifecycleResult = useMemo(() => {
+        if (!customer) return null;
+        return computeLifecycleTag(customerId, {
+            customers,
+            classBookings,
+            customerPlans,
+            customerTransactions,
+        });
+    }, [customer, customerId, customers, classBookings, customerPlans, customerTransactions]);
 
     const filteredPlans = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -1222,6 +1264,56 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 <div>
                                     <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{customerName}</h2>
                                     <p className="text-[14px] text-[#667085] mt-0.5">{customer.email}</p>
+                                    {/* v83 lifecycle — pill row under the email.
+                                        Click opens the reasoning drawer. Hover shows
+                                        the primary reason via IconTooltip anchored
+                                        BELOW the pill so it can't clip off the top
+                                        edge of the profile card. */}
+                                    {lifecycleResult && (
+                                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                            <IconTooltip
+                                                label={`Tagged ${lifecycleResult.tag} on ${(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}${
+                                                    lifecycleResult.reasons[0] ? ` · ${lifecycleResult.reasons[0]}` : ""
+                                                }`}
+                                                side="below"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLifecycleDrawerOpen(true)}
+                                                    className="focus:outline-none focus:ring-2 focus:ring-[#658774] focus:ring-offset-1 rounded-full hover:opacity-80 transition-opacity"
+                                                    aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
+                                                >
+                                                    <StatusBadge type="lifecycle" status={lifecycleResult.tag} />
+                                                </button>
+                                            </IconTooltip>
+                                            {lifecycleResult.isVip && (
+                                                <StatusBadge type="vip" status="vip" />
+                                            )}
+                                            {/* v83 Phase 3 — Layer 2 follow-up pill.
+                                                Pre-conversion scoping: only rendered when
+                                                lifecycleTag ∈ { "Lead", "Trialist" }, per
+                                                plan §Phase 3. Loyal Actives / Churned / etc.
+                                                have no follow-up funnel. */}
+                                            {(lifecycleResult.tag === "Lead" || lifecycleResult.tag === "Trialist") && (() => {
+                                                // v83 audit-3 fix — resolve palette
+                                                // via stable stage id so a Phase-6
+                                                // rename ("Won" → "Converted")
+                                                // preserves the green pill.
+                                                const stageLabel = customer.followUpStatus
+                                                    ?? lookupStageLabel(followUpStages, "stg_new", "New");
+                                                const stageId = lookupStageIdByLabel(followUpStages, stageLabel);
+                                                const palette = stageId ? FOLLOW_UP_STAGE_PALETTE[stageId] : undefined;
+                                                return (
+                                                    <StatusBadge
+                                                        type="follow-up"
+                                                        status={stageLabel}
+                                                        label={stageLabel}
+                                                        paletteOverride={palette}
+                                                    />
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Credit balance */}
@@ -1451,6 +1543,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                             <CustomerBookingsTab customerId={customerId} />
                         ) : tab === "Payments" ? (
                             <CustomerPaymentsTab customerId={customerId} />
+                        ) : tab === "Follow-ups" ? (
+                            <CustomerFollowUpsTab customerId={customerId} />
                         ) : tab === "Details" ? (
                             <CustomerDetailsTab customerId={customerId} />
                         ) : tab === "Agreements" ? (
@@ -1500,6 +1594,74 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
 
             <PlanFilterPanel open={filterOpen} onClose={() => setFilterOpen(false)}
                 applied={applied} onApply={f => { setApplied(f); setPage(1); }} />
+
+            {/* v83 lifecycle reasoning drawer — same SlidePanel chrome as
+                the POS "Add new customer" panel (header · scrollable body
+                · footer with a single Close action). Client 2026-07-27 —
+                switched from a body-with-inline-note layout to the DS
+                header+body+footer split so it reads consistent with the
+                rest of the app. */}
+            {lifecycleResult && (
+                <SlidePanel open={lifecycleDrawerOpen} onClose={() => setLifecycleDrawerOpen(false)} width={440}>
+                    <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                        <p className="flex-1 font-semibold text-[18px] text-[#101828]">Lifecycle stage</p>
+                        <button
+                            type="button"
+                            onClick={() => setLifecycleDrawerOpen(false)}
+                            className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                            aria-label="Close"
+                        >
+                            <XClose className="w-5 h-5 text-[#667085]" />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
+                        {/* Current stage summary */}
+                        <div className="flex flex-col gap-3">
+                            <p className="text-[13px] text-[#667085]">Current stage for {customerName}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <StatusBadge type="lifecycle" status={lifecycleResult.tag} size="lg" />
+                                {lifecycleResult.isVip && <StatusBadge type="vip" status="vip" size="lg" />}
+                            </div>
+                            <p className="text-[13px] text-[#667085]">
+                                Set to <span className="text-[#344054] font-medium">{lifecycleResult.tag}</span> on{" "}
+                                <span className="text-[#344054] font-medium">{(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}</span>. Updates automatically when this customer&apos;s activity changes.
+                            </p>
+                        </div>
+
+                        {/* Why this stage */}
+                        <div className="flex flex-col gap-3">
+                            <p className="text-[14px] font-semibold text-[#344054]">
+                                Why they landed on {lifecycleResult.tag}
+                            </p>
+                            {/* Client 2026-07-28 — bullets stripped. Reasons
+                                render as plain sentence lines; the group
+                                already reads as a list via the card + gap
+                                spacing, no •-glyph needed. */}
+                            <div className="flex flex-col gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
+                                {lifecycleResult.reasons.map((r, i) => (
+                                    <p key={i} className="text-[13px] leading-[18px] text-[#475467]">
+                                        {r}
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Info footer — canonical DS info alert
+                            (bg #f1f2ed + Lightbulb02 + #475467 text). */}
+                        <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] flex items-center gap-4 p-4">
+                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
+                            <p className="text-[14px] text-[#475467]">
+                                Set automatically from the customer&apos;s activity. To edit follow-up status manually, open the Follow-up settings panel from the Follow-ups tab (Leads and Trialists only).
+                            </p>
+                        </div>
+                    </div>
+                    <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end">
+                        <Button variant="secondary-gray" size="md" onClick={() => setLifecycleDrawerOpen(false)}>
+                            Close
+                        </Button>
+                    </div>
+                </SlidePanel>
+            )}
 
             <Toast />
         </div>

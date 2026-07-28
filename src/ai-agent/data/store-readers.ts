@@ -76,7 +76,13 @@ export function readTransactions(state: AppState): Row[] {
     }));
 }
 
-/** customers → snake_case (matches the POC's `customers` seed shape). */
+/** customers → snake_case (matches the POC's `customers` seed shape).
+ *  Client 2026-07-28 audit-4 — Customer & Lead Management fields
+ *  (lifecycle_tag, source_id, follow_up_status, assigned_to, is_vip,
+ *  first_visit_iso, converted_from, marketing_source) added so the AI
+ *  Agent can answer questions like "who's at churn risk?", "leads from
+ *  Instagram", "customers assigned to me", "top VIPs". image_url added
+ *  so `find_customer` cards can render avatars. */
 export function readCustomers(state: AppState): Row[] {
     return state.customers.map(c => ({
         id: c.id,
@@ -84,6 +90,7 @@ export function readCustomers(state: AppState): Row[] {
         last_name: c.lastName,
         email: c.email,
         phone: c.phone,
+        image_url: c.imageUrl,
         status: c.status,
         plan_kind: c.planKind,
         plan_name: c.planName,
@@ -94,6 +101,15 @@ export function readCustomers(state: AppState): Row[] {
         created_at: c.createdAt,
         last_visit_iso: c.lastVisitISO,
         plan_expiry_iso: c.planExpiryISO,
+        first_visit_iso: c.firstVisitISO,
+        // v83 Customer & Lead Management fields
+        lifecycle_tag: c.lifecycleTag,
+        source_id: c.sourceId,
+        follow_up_status: c.followUpStatus,
+        assigned_to: c.assignedTo,
+        is_vip: c.isVip,
+        converted_from: c.convertedFrom,
+        marketing_source: c.marketingSource,
     }));
 }
 

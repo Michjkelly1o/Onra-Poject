@@ -93,6 +93,7 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Memberships & packages", href: "/admin/products"                },
             { label: "Gift cards",             href: "/admin/products/gift-cards"     },
+            { label: "Retail",                 href: "/admin/products/retail"         },
             { label: "Private sessions",       href: "/admin/services?type=private"   },
             { label: "Recovery & wellness",    href: "/admin/services?type=recovery"  },
         ],
@@ -593,7 +594,10 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                  *  footer group above the divider. */}
                 {showSettings && (
                     <>
-                        <SidebarAiAgentChip slim={slim} />
+                        {/* AI Agent chip retired 2026-07-27 — the floating
+                            bubble (`FloatingAiButton`) is now the single
+                            entry point, so a sidebar chip AND a floating
+                            button was redundant. */}
                         <SidebarSettingsChip slim={slim} />
                         {/* Inset horizontal margin so the divider matches
                          *  the section-break rule in the middle of the

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { Toast } from "@/components/ui/Toast";
@@ -22,6 +23,39 @@ export default function AdminLayout({
     const { sidebarCollapsed } = useAppStore();
     const currentRole = useAppStore(s => s.currentRole);
     const setCurrentUser = useAppStore(s => s.setCurrentUser);
+    const pathname = usePathname() ?? "";
+
+    // Client 2026-07-27 (round 2) — bottom-padding is conditional.
+    //
+    // List routes (customer list, staff, schedule, POS, attendee,
+    // products, marketing, notifications) use a `flex-1 min-h-0`
+    // rounded-[20px] view card that fills the available viewport. Adding
+    // pb-24 to `main` on those pages shortens the card by ~96px and cuts
+    // off table rows — the customer list this week was down to 3 visible
+    // rows. Their pagination sits INSIDE the card, well above the
+    // floating button's ~90px overlap zone at the bottom-right corner.
+    //
+    // Every other route (dashboard, insights, KPI, reports, detail
+    // pages that scroll long profile tabs, settings sub-pages with long
+    // forms) gets `pb-24` so the last widget / row doesn't sit under the
+    // floating button when the user scrolls to the very bottom.
+    //
+    // Exact match on the list route path — a detail page like
+    // /admin/customers/[id] scrolls a long profile so it SHOULD get the
+    // padding.
+    const FIXED_CARD_LIST_ROUTES = [
+        "/admin/customers",
+        "/admin/staff",
+        "/admin/schedule",
+        "/admin/pos",
+        "/admin/attendee",
+        "/admin/products",
+        "/admin/marketing",
+        "/admin/notifications",
+    ];
+    const mainPaddingClass = FIXED_CARD_LIST_ROUTES.includes(pathname)
+        ? "p-6 pt-4"
+        : "p-6 pt-4 pb-24";
 
     // URL-driven role reset — if the user came in from a previous
     // `/instructor/*` visit, flip `currentUser` back to the admin demo
@@ -61,10 +95,10 @@ export default function AdminLayout({
                         </Suspense>
                         {/* pt-4 (16px) instead of the p-6's 24px top so the
                             page content sits a touch closer to the Header
-                            (client Jul 2026). Sides + bottom stay 24px. The
-                            sticky tab box-shadows are -24px so they still
-                            over-cover this smaller gap. */}
-                        <main className="flex-1 min-h-0 overflow-y-auto p-6 pt-4 flex flex-col">{children}</main>
+                            (client Jul 2026). Sides stay 24px. Bottom
+                            padding is conditional per route (see the
+                            FIXED_CARD_LIST_ROUTES logic above). */}
+                        <main className={cn("flex-1 min-h-0 overflow-y-auto flex flex-col", mainPaddingClass)}>{children}</main>
                     </div>
                 </div>
             </div>

@@ -104,6 +104,13 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
+            {/* Client 2026-07-28 — Follow-up section (Assigned to · Follow-up
+                status · Source) moved to a slide-in panel inside the
+                Follow-ups tab. Entry point is the user-icon button beside
+                "Log enquiry" there. Keeps this Details tab focused on
+                profile-level info; follow-up controls live where the
+                follow-up work happens. */}
+
             {/* Personal information */}
             <div className="flex flex-col gap-3">
                 <SectionHeader>Personal information</SectionHeader>

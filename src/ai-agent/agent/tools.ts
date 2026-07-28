@@ -211,55 +211,106 @@ function findCustomer(
                 "Give me a name, email, or phone snippet to search for.",
         };
     }
+    const normalizedQueryDigits = query.replace(/\D+/g, "");
     const rows = branchFilter(
         ctx,
         catalog.customers.rows as { branch_id?: string | null }[],
     ) as Row[];
 
-    const matches = rows
-        .filter((c) => {
-            const first = ((c.first_name as string) ?? "").toLowerCase();
-            const last = ((c.last_name as string) ?? "").toLowerCase();
-            const email = ((c.email as string) ?? "").toLowerCase();
-            const phone = ((c.phone as string) ?? "").toLowerCase();
-            return (
-                first.includes(query) ||
-                last.includes(query) ||
-                `${first} ${last}`.includes(query) ||
-                email.includes(query) ||
-                phone.replace(/\D+/g, "").includes(query.replace(/\D+/g, ""))
-            );
-        })
-        .slice(0, limit);
+    const customerMatches = rows.filter((c) => {
+        const first = ((c.first_name as string) ?? "").toLowerCase();
+        const last = ((c.last_name as string) ?? "").toLowerCase();
+        const email = ((c.email as string) ?? "").toLowerCase();
+        const phone = ((c.phone as string) ?? "").toLowerCase();
+        return (
+            first.includes(query) ||
+            last.includes(query) ||
+            `${first} ${last}`.includes(query) ||
+            email.includes(query) ||
+            (normalizedQueryDigits.length > 0 && phone.replace(/\D+/g, "").includes(normalizedQueryDigits))
+        );
+    });
 
-    if (matches.length === 0) {
+    // v83 audit-4 (2026-07-28) — leads are searchable too. The leads
+    // slice stays snake_case with `contact_name` + `contact_email`; a
+    // match returns a row deep-linked to `/leads/[id]` where the admin
+    // can convert them. Marked with `right2: "Lead"` so admins visually
+    // distinguish leads from customers in a mixed result list.
+    const leadRows = branchFilter(
+        ctx,
+        (catalog.leads?.rows as { branch_id?: string | null }[]) ?? [],
+    ) as Row[];
+    const leadMatches = leadRows.filter((l) => {
+        const name = ((l.contact_name as string) ?? "").toLowerCase();
+        const email = ((l.contact_email as string) ?? "").toLowerCase();
+        const phone = ((l.phone as string) ?? "").toLowerCase();
+        return (
+            name.includes(query) ||
+            email.includes(query) ||
+            (normalizedQueryDigits.length > 0 && phone.replace(/\D+/g, "").includes(normalizedQueryDigits))
+        );
+    });
+
+    const totalMatchCount = customerMatches.length + leadMatches.length;
+    if (totalMatchCount === 0) {
         return {
             card: "empty",
-            message: `No customers match "${q.query}".`,
+            message: `No customers or leads match "${q.query}".`,
         };
     }
 
+    // Interleave customers first (usually the more common query intent),
+    // then leads, capped at the limit.
+    const rankedCustomers = customerMatches.slice(0, limit).map((c) => {
+        const first = (c.first_name as string) ?? "";
+        const last = (c.last_name as string) ?? "";
+        const email = (c.email as string) ?? "";
+        const planName =
+            (c.plan_name as string) ?? (c.plan_kind as string) ?? "no plan";
+        const status = (c.status as string) ?? "";
+        const imageUrl = (c.image_url as string) ?? undefined;
+        const initials = `${first.charAt(0)}${last.charAt(0)}`.toUpperCase() || "?";
+        return {
+            title: `${first} ${last}`.trim() || email || "Unnamed customer",
+            subtitle: email ? `${email} · ${planName}` : planName,
+            right1: status,
+            href: `/customers/${c.id}`,
+            avatarImageUrl: imageUrl,
+            avatarInitials: initials,
+        };
+    });
+    const remaining = limit - rankedCustomers.length;
+    // v83 audit-5 (2026-07-28) — leads don't have a per-record detail
+    // route. The audit-4 pass added `href: /customers/${l.id}` which
+    // sent the admin to the "customer not found" screen. Leads render
+    // WITHOUT an href (non-clickable row, still labelled "lead") so the
+    // admin knows this is an enquiry, not a customer.
+    const rankedLeads = remaining > 0
+        ? leadMatches.slice(0, remaining).map((l) => {
+            const name = (l.contact_name as string) ?? "";
+            const email = (l.contact_email as string) ?? "";
+            const source = (l.source as string) ?? "";
+            const nameParts = name.trim().split(/\s+/);
+            const initials = `${nameParts[0]?.charAt(0) ?? ""}${nameParts[1]?.charAt(0) ?? ""}`.toUpperCase() || "?";
+            return {
+                title: name || email || "Unnamed lead",
+                subtitle: email
+                    ? (source ? `${email} · ${source}` : email)
+                    : source,
+                right1: "lead",
+                avatarInitials: initials,
+            };
+        })
+        : [];
+    const combined = [...rankedCustomers, ...rankedLeads];
+
     return {
         card: "ranked_list",
-        title: `${matches.length} customer${matches.length === 1 ? "" : "s"} matching "${q.query}"`,
-        rows: matches.map((c) => {
-            const first = (c.first_name as string) ?? "";
-            const last = (c.last_name as string) ?? "";
-            const email = (c.email as string) ?? "";
-            const planName =
-                (c.plan_name as string) ?? (c.plan_kind as string) ?? "no plan";
-            const status = (c.status as string) ?? "";
-            return {
-                title: `${first} ${last}`.trim() || email || "Unnamed customer",
-                subtitle: email ? `${email} · ${planName}` : planName,
-                right1: status,
-                // Per-row deep link → the customer's profile.
-                href: `/customers/${c.id}`,
-            };
-        }),
+        title: `${totalMatchCount} match${totalMatchCount === 1 ? "" : "es"} for "${q.query}"`,
+        rows: combined,
         note:
-            matches.length === limit
-                ? `Showing the first ${limit}. Narrow the search to see more.`
+            totalMatchCount > combined.length
+                ? `Showing the first ${combined.length}. Narrow the search to see more.`
                 : undefined,
     };
 }
@@ -514,7 +565,7 @@ export function insightTools(
 
         find_customer: tool({
             description:
-                "Search customers by name / email / phone (substring, case-insensitive). Returns a people list where each row deep-links to the customer's profile page. Use when the user asks 'find <name>' / 'look up <email>' / 'who is <substring>'. If the user just wants a broad list, use list_records({ dataset: 'customers' }) instead.",
+                "Search customers AND leads by name / email / phone (substring, case-insensitive). Returns a mixed people list — customer rows deep-link to the customer profile page; lead rows are non-clickable and tagged 'lead' in the right column (there's no per-lead detail page yet). Use when the user asks 'find <name>' / 'look up <email>' / 'who is <substring>'. If the user just wants a broad list, use list_records({ dataset: 'customers' }) or list_records({ dataset: 'leads' }) instead.",
             parameters: z.object({
                 query: z
                     .string()

@@ -82,6 +82,17 @@ import { account_profile as adminUser } from "@/data/mock/account_profile";
 import { capitalizeName } from "./format-name";
 import { commissionForPeriod } from "./payroll-calc";
 import { getFrozenActiveMembership } from "./customer/freeze-eligibility";
+import {
+    computeLifecycleTag,
+    applyLifecycleResult,
+    autoCloseTasksOnGraduation,
+    recomputePatch,
+} from "./customer/lifecycle";
+import {
+    generateFollowUpTasks,
+    applyGeneratedTasks,
+    lookupStageLabel,
+} from "./customer/follow-up-tasks";
 
 // ─── Seed imports (snake_case, DB-ready) ─────────────────────────────────────
 //
@@ -1240,6 +1251,126 @@ export interface Customer {
     firstVisitISO?: string;
     marketingSource?: string;
     convertedFrom?: "first-visit" | "intro-offer" | "trial-class" | "referral";
+    // ── Customer & Lead Management v83 — hybrid lifecycle model (client 2026-07-24) ─
+    // Two-layer model: AI-owned `lifecycleTag` + human-owned `followUpStatus`
+    // (see new-prd/customer-lead-management-implementation-plan.md §Lifecycle
+    // rules). Every field is OPTIONAL so pre-v83 rows keep hydrating cleanly;
+    // the recompute hook fills them in on the next customer-touching action.
+    /** AI-detected lifecycle stage. Computed by `computeLifecycleTag` and
+     *  recomputed after every write that touches a customer's behaviour
+     *  (booking / cancel / attendance / plan / transaction / rating). */
+    lifecycleTag?: LifecycleTag;
+    /** ISO date (YYYY-MM-DD) the lifecycleTag was last CHANGED — used by
+     *  the profile header pill's hover tooltip ("Tagged Loyal Active on
+     *  YYYY-MM-DD"). Stamped only when the recompute produces a NEW tag;
+     *  a same-tag recompute leaves this alone so the date reflects the
+     *  actual transition, not the last render. */
+    lifecycleTaggedOn?: string;
+    /** Orthogonal VIP flag — stacks on top of `lifecycleTag`. Auto-computed
+     *  (top-10% LTV) or manually flagged; the compute treats it as sticky
+     *  once set to true unless a manual override clears it. */
+    isVip?: boolean;
+    /** Human-owned follow-up state for pre-conversion customers (Lead /
+     *  Trialist only). Staff advance this through the funnel; `"Lost"`
+     *  suppresses the task engine until the customer books again. */
+    followUpStatus?: FollowUpStatus;
+    /** Staff member (id) responsible for follow-up. Any role — the plan
+     *  is deliberately loose about which roles get assigned. */
+    assignedTo?: string;
+    /** Lead source (id → `leadSources[].id`). Read-only after intake; the
+     *  Settings module manages the list. */
+    sourceId?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Customer & Lead Management v83 — lifecycle types (client 2026-07-24)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Companion types for the new fields on `Customer`. Kept adjacent so future
+// reads don't have to hunt for the union definitions. See the plan doc's
+// "Lifecycle rules" table for the source-of-truth definitions.
+
+/** AI-owned lifecycle stage — Layer 1. Precedence within Layer 1 is
+ *  Churned > At Risk > Won-back (30d sticky) > New Active > Loyal Active >
+ *  Trialist > Lead. The compute picks ONE tag per customer. */
+export type LifecycleTag =
+    | "Lead"
+    | "Trialist"
+    | "New Active"
+    | "Loyal Active"
+    | "At Risk"
+    | "Churned"
+    | "Won-back";
+
+/** Human-owned pre-conversion follow-up state — Layer 2. Only rendered
+ *  when `lifecycleTag ∈ { "Lead", "Trialist" }`; hidden downstream. */
+export type FollowUpStatus =
+    | "New"
+    | "Contacted"
+    | "Trial booked"
+    | "Follow-up"
+    | "Won"
+    | "Lost";
+
+/** Trigger source for `FollowUpTask` — the "why this exists" reason. Every
+ *  task carries one so the profile activity log can show the origin. */
+export type FollowUpTaskTrigger =
+    | "enquiry_logged"
+    | "lead_form_submitted"
+    | "trial_no_rebook_7d"
+    | "first_booking_cancelled";
+
+/** Terminal outcome recorded by staff when they close a task. Feeds the
+ *  precedence rule: `not_interested` → follow-up status → Lost. */
+/** Outcome a follow-up task closes with.
+ *   • reached / follow_up / not_interested — staff-picked outcomes.
+ *   • auto_closed — v83 audit-3 (2026-07-27): the compute detected the
+ *     customer graduated past pre-conversion, so the open task is closed
+ *     automatically. Distinguishing this from "reached" keeps the
+ *     Activity log honest — nobody actually reached them, the system
+ *     just cleaned up. */
+export type FollowUpTaskOutcome =
+    | "reached"
+    | "follow_up"
+    | "not_interested"
+    | "auto_closed";
+
+/** Signal → task engine row. Materialised by the Phase 4 generator when a
+ *  trigger fires; closed by staff on the Dashboard widget or the profile
+ *  Follow-ups tab (Phase 5). */
+export interface FollowUpTask {
+    id: string;
+    customerId: string;
+    triggerKind: FollowUpTaskTrigger;
+    /** Human-readable one-liner rendered on the widget + tab. */
+    reason: string;
+    assigneeId?: string;
+    status: "open" | "closed";
+    outcome?: FollowUpTaskOutcome;
+    createdAt: string;
+    closedAt?: string;
+}
+
+/** Studio-editable lead source — surfaced in Settings → Customer →
+ *  Customer sources (Phase 6). System-seeded rows are `locked` so they
+ *  can be renamed but not deleted. */
+export interface LeadSource {
+    id: string;
+    label: string;
+    /** True for the 10 defaults — the row can be renamed but not deleted. */
+    locked?: boolean;
+}
+
+/** Studio-editable follow-up stage — surfaced in Settings → Customer →
+ *  Follow-up stages (Phase 6). `Won` + `Lost` are system-mandatory so the
+ *  precedence rules can rely on them existing. Max 8 stages (guardrail). */
+export interface FollowUpStage {
+    id: string;
+    label: string;
+    /** True for the 6 defaults — the row can be renamed but not deleted. */
+    locked?: boolean;
+    /** `Won` + `Lost` — closes the funnel. */
+    isTerminal?: boolean;
 }
 
 /** Customer agreement record — store shape (camelCase) of a
@@ -3672,8 +3803,26 @@ export interface AppState {
     // ── Reports v33 slices ─────────────────────────────────────────────
     /** Leads captured by the funnel — feeds Lead Data + Lead Conversion +
      *  Acquisition Efficiency reports. Read-only for the demo; add-lead
-     *  actions land when the leads module ships. */
+     *  actions land when the leads module ships.
+     *
+     *  Client 2026-07-24 — this slice is retained through Phase 1a as the
+     *  snake_case source-of-truth for the AI Agent's `leads` dataset
+     *  (analyze / migrate / show). Phase 1b will absorb it into
+     *  `customers` via `lifecycleTag: "Lead"` and drop this field. */
     leads: Lead[];
+    // ── Customer & Lead Management v83 slices (client 2026-07-24) ──
+    /** Signal → task engine rows. Materialised by the Phase 4 generator
+     *  (attached to existing customer-touching actions); closed by staff
+     *  on the Dashboard "Leads to follow up" widget or the profile
+     *  Follow-ups tab. Empty at boot; grows as the demo runs. */
+    followUpTasks: FollowUpTask[];
+    /** Studio-editable lead sources — surfaced in Settings → Customer →
+     *  Customer sources (Phase 6). Seeded with the PDF §4.1 default 10. */
+    leadSources: LeadSource[];
+    /** Studio-editable follow-up stages — surfaced in Settings →
+     *  Customer → Follow-up stages (Phase 6). Seeded with the 6 defaults
+     *  from PDF §4.2 (Won + Lost are terminal + locked). */
+    followUpStages: FollowUpStage[];
     /** Marketing campaign engagement rollups — one row per (campaign ×
      *  channel × send). Feeds Campaign Performance. */
     marketingCampaignStats: MarketingCampaignStat[];
@@ -4173,6 +4322,69 @@ export interface AppState {
      *  supplied. Used by the AI Agent migration importer (leads entity). */
     addLead: (input: Omit<Lead, "id" | "added_at"> & { id?: string; added_at?: string }) => string;
 
+    // ── Customer & Lead Management v83 — task engine (client 2026-07-24) ───
+    /** Manually log an enquiry for a customer — creates a follow-up task
+     *  with the `enquiry_logged` trigger. Wired to the Phase-5 "Log
+     *  enquiry" button on the profile Follow-ups tab. Returns:
+     *    { logged: true; id }                       — task materialised
+     *    { logged: false; reason: "lost" }          — customer marked Lost
+     *    { logged: false; reason: "post_conversion" } — already a member
+     *    { logged: false; reason: "dup" }           — open enquiry exists */
+    logCustomerEnquiry: (customerId: string, note?: string) =>
+        | { logged: true; id: string }
+        | { logged: false; reason: "lost" | "post_conversion" | "dup" };
+    /** v83 audit-3 (2026-07-27) — read-only eligibility probe used by
+     *  the Follow-ups tab side panel to enable/disable its primary
+     *  button + show an inline reason. Mirrors logCustomerEnquiry's
+     *  ladder without mutating state so the UI can render the block
+     *  BEFORE the admin types anything. */
+    getEnquiryEligibility: (customerId: string) =>
+        | { canLog: true }
+        | { canLog: false; reason: "lost" | "post_conversion" | "dup" };
+    /** Close a follow-up task with a staff-picked outcome. Applies the
+     *  Phase-5 outcome→followUpStatus mapping:
+     *    reached         → status advances from New to Contacted
+     *    follow_up       → status stays (a fresh delay-based task may
+     *                      re-materialise later via the engine)
+     *    not_interested  → status → Lost, suppressing future tasks
+     *  Returns false when the task id doesn't exist or is already closed. */
+    closeFollowUpTask: (taskId: string, outcome: FollowUpTaskOutcome) => boolean;
+
+    // ── Customer & Lead Management v83 — Settings config (client 2026-07-24) ─
+    /** Append a new lead source. Returns the new id; unique across labels
+     *  (case-insensitive) — a duplicate label is treated as no-op and the
+     *  existing row's id comes back. */
+    addLeadSource: (label: string) => string;
+    /** Rename an existing lead source. System-seeded rows (locked) can
+     *  still be renamed — only delete is blocked. Returns false when the
+     *  id isn't found or the label collides with another source. */
+    renameLeadSource: (id: string, label: string) => boolean;
+    /** Delete a lead source. Blocked when the source is locked OR any
+     *  customer references it via `sourceId`. Returns:
+     *    { deleted: true }                       — happy path
+     *    { deleted: false, reason: "locked" }    — system row
+     *    { deleted: false, reason: "in_use"; usageCount: N } — refs exist */
+    deleteLeadSource: (id: string) =>
+        | { deleted: true }
+        | { deleted: false; reason: "locked" }
+        | { deleted: false; reason: "in_use"; usageCount: number };
+
+    /** Append a new follow-up stage. Blocked when total stages reached
+     *  the plan's max (8 per PDF §4.2 "keep it tight"). Returns the id
+     *  on success, null when blocked. */
+    addFollowUpStage: (label: string) => string | null;
+    /** Rename a follow-up stage. Cascades into every customer's
+     *  `followUpStatus` field so a rename doesn't leave stale strings
+     *  in the wild. System-mandatory rows (Won + Lost) can be renamed
+     *  the same way, but the terminal semantics stay wired to the id. */
+    renameFollowUpStage: (id: string, label: string) => boolean;
+    /** Delete a follow-up stage. Blocked when the stage is locked OR
+     *  any customer references it via `followUpStatus`. */
+    deleteFollowUpStage: (id: string) =>
+        | { deleted: true }
+        | { deleted: false; reason: "locked" }
+        | { deleted: false; reason: "in_use"; usageCount: number };
+
     // ── Gift card designs ───────────────────────────────────────────────────
     /** Append a new gift-card design. Auto-generates id + created_at when
      *  not supplied. Returns the resolved id so the caller can route to it. */
@@ -4598,6 +4810,636 @@ export interface AppState {
 // admin in Tab A and instructor in Tab B — admin creates a class →
 // instructor tab sees the new row instantly without a manual refresh.
 
+// ─── Customer & Lead Management v83 — inline seeds (client 2026-07-24) ───
+// Kept adjacent to the store constructor so a future Phase 6 editor can
+// spot them in one place. The 10 lead sources come from PDF §4.1's list;
+// the 6 follow-up stages come from PDF §4.2. `locked: true` marks the
+// system defaults — the Settings UI (Phase 6) can rename them but not
+// delete them. `isTerminal` on Won + Lost closes the funnel so the task
+// engine can rely on them existing.
+// v83 client 2026-07-27 — `locked` + `isTerminal` retired. All rows are
+// freely rename/delete-able; the compute + task engine key off stable
+// ids (stg_lost / stg_new / stg_contacted) so renames don't disturb the
+// wiring. Deletion is only gated by the in-use check on the customers
+// slice so we don't orphan `sourceId` / `followUpStatus` references.
+const INITIAL_LEAD_SOURCES: LeadSource[] = [
+    { id: "src_walkin",       label: "Walk-in"           },
+    { id: "src_referral",     label: "Referral"          },
+    { id: "src_instagram",    label: "Instagram / Social"},
+    { id: "src_website",      label: "Website / Online"  },
+    { id: "src_webform",      label: "Web form"          },
+    { id: "src_meta_lead",    label: "Meta lead form"    },
+    { id: "src_classpass",    label: "ClassPass"         },
+    { id: "src_gympass",      label: "Gympass"           },
+    { id: "src_expired",      label: "Expired customer"  },
+    { id: "src_other",        label: "Other"             },
+];
+const INITIAL_FOLLOW_UP_STAGES: FollowUpStage[] = [
+    { id: "stg_new",          label: "New"           },
+    { id: "stg_contacted",    label: "Contacted"     },
+    { id: "stg_trial_booked", label: "Trial booked"  },
+    { id: "stg_follow_up",    label: "Follow-up"     },
+    { id: "stg_won",          label: "Won"           },
+    { id: "stg_lost",         label: "Lost"          },
+];
+
+// ─── v83 lifecycle showcase personas (client 2026-07-27) ────────────────
+//
+// Seven demo customers, one per lifecycle stage, so the client can walk
+// through every pill / segment / task-engine surface without hand-
+// building state. Injected alongside the main seed at boot; a matching
+// idempotency guard in `onRehydrateStorage` prevents duplicates on
+// version bumps. IDs are deterministic + prefixed with `cust_lc_` so
+// they're easy to grep out later if we ship a real demo-reset flow.
+//
+// Compute reads (see src/lib/customer/lifecycle.ts):
+//   • Churned   — no usable plan AND >30d since last visit
+//   • At Risk   — usable plan AND (≥14d idle OR cancel-rate >50%/14d)
+//   • Won-back  — usable plan AND ever-expired plan AND paid <30d ago
+//   • New Active — paid plan <30 days old
+//   • Loyal     — paid plan >30 days old + ≥4 attended in 30d
+//   • Trialist  — only intro plan, no paid
+//   • Lead      — no plan, no attendance (fallback)
+
+const LC_BRANCH = "branch_forma_south";
+
+/** ISO string for `d` days ago (positive = past). Kept as a helper so
+ *  the persona builders read like a story instead of a timestamp arith
+ *  soup. */
+function daysAgoISO(d: number): string {
+    return new Date(Date.now() - d * 86_400_000).toISOString();
+}
+function daysAgoISODate(d: number): string {
+    return daysAgoISO(d).slice(0, 10);
+}
+
+// Client 2026-07-27 — showcase personas reuse the 5 existing customer
+// portraits (rotated) so the profile header + list avatar aren't a plain
+// gray "SN" tile on demo day. Non-matching (7th, 8th) fall back to the
+// hand-authored Bosa image so all 8 personas render with a face.
+const LC_PORTRAITS = [
+    "/images/customers/ahmed-zayn.webp",
+    "/images/customers/ava-wright.webp",
+    "/images/customers/bosa-ahmed.webp",
+    "/images/customers/rosale-martin.webp",
+    "/images/customers/zahra-mahen.webp",
+];
+const SHOWCASE_CUSTOMERS: Customer[] = [
+    // 1. LEAD — no plan, no bookings, no visits.
+    {
+        id: "cust_lc_lead", firstName: "Sofia", lastName: "Reyes", initials: "SR",
+        email: "sofia.reyes@onradmo.test", phone: "+971 50 999 0001",
+        imageUrl: LC_PORTRAITS[1],
+        branchId: LC_BRANCH, planKind: null,
+        createdAt: daysAgoISO(3), status: "active",
+        gender: "Female", sourceId: "src_instagram", marketingSource: "Instagram / Social",
+    },
+    // 2. TRIALIST — complimentary plan + one recent attended booking.
+    {
+        id: "cust_lc_trialist", firstName: "Marco", lastName: "Silva", initials: "MS",
+        email: "marco.silva@onradmo.test", phone: "+971 50 999 0002",
+        imageUrl: LC_PORTRAITS[0],
+        branchId: LC_BRANCH, planKind: null,
+        createdAt: daysAgoISO(10), status: "active",
+        gender: "Male", sourceId: "src_referral", marketingSource: "Referral",
+        firstVisitISO: daysAgoISODate(4), lastVisitISO: daysAgoISODate(4),
+    },
+    // 3. NEW ACTIVE — paid membership 10 days ago + 2 attended.
+    {
+        id: "cust_lc_new_active", firstName: "Aisha", lastName: "Kumar", initials: "AK",
+        email: "aisha.kumar@onradmo.test", phone: "+971 50 999 0003",
+        imageUrl: LC_PORTRAITS[4],
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(12), status: "active",
+        gender: "Female", sourceId: "src_website", marketingSource: "Website / Online",
+        firstVisitISO: daysAgoISODate(8), lastVisitISO: daysAgoISODate(2),
+    },
+    // 4. LOYAL ACTIVE — membership 60 days ago + 6 attended in last 30d.
+    {
+        id: "cust_lc_loyal", firstName: "David", lastName: "Chen", initials: "DC",
+        email: "david.chen@onradmo.test", phone: "+971 50 999 0004",
+        imageUrl: LC_PORTRAITS[2],
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(90), status: "active",
+        gender: "Male", sourceId: "src_walkin", marketingSource: "Walk-in",
+        firstVisitISO: daysAgoISODate(88), lastVisitISO: daysAgoISODate(1),
+    },
+    // 5. AT RISK — active plan but 20 days since last visit.
+    {
+        id: "cust_lc_at_risk", firstName: "Priya", lastName: "Patel", initials: "PP",
+        email: "priya.patel@onradmo.test", phone: "+971 50 999 0005",
+        imageUrl: LC_PORTRAITS[3],
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(120), status: "active",
+        gender: "Female", sourceId: "src_referral", marketingSource: "Referral",
+        firstVisitISO: daysAgoISODate(115), lastVisitISO: daysAgoISODate(22),
+    },
+    // 6. CHURNED — no active plan + no visit 60+ days.
+    {
+        id: "cust_lc_churned", firstName: "Lucas", lastName: "Grant", initials: "LG",
+        email: "lucas.grant@onradmo.test", phone: "+971 50 999 0006",
+        imageUrl: LC_PORTRAITS[0],
+        branchId: LC_BRANCH, planKind: null,
+        createdAt: daysAgoISO(200), status: "active",
+        gender: "Male", sourceId: "src_classpass", marketingSource: "ClassPass",
+        firstVisitISO: daysAgoISODate(195), lastVisitISO: daysAgoISODate(75),
+    },
+    // 7. WON-BACK — active plan 15d ago + a previously-expired plan on record.
+    {
+        id: "cust_lc_wonback", firstName: "Emily", lastName: "Zhang", initials: "EZ",
+        email: "emily.zhang@onradmo.test", phone: "+971 50 999 0007",
+        imageUrl: LC_PORTRAITS[4],
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(240), status: "active",
+        gender: "Female", sourceId: "src_expired", marketingSource: "Expired customer",
+        firstVisitISO: daysAgoISODate(235), lastVisitISO: daysAgoISODate(6),
+    },
+    // BONUS — VIP flag on Loyal Active persona.
+    {
+        id: "cust_lc_vip", firstName: "Nadia", lastName: "Al-Rashid", initials: "NA",
+        email: "nadia.alrashid@onradmo.test", phone: "+971 50 999 0008",
+        imageUrl: LC_PORTRAITS[1],
+        branchId: LC_BRANCH, planKind: "membership",
+        createdAt: daysAgoISO(180), status: "active",
+        gender: "Female", isVip: true,
+        sourceId: "src_referral", marketingSource: "Referral",
+        firstVisitISO: daysAgoISODate(175), lastVisitISO: daysAgoISODate(1),
+    },
+];
+
+const SHOWCASE_PLANS: CustomerPlan[] = [
+    // Trialist — 3-credit intro package.
+    {
+        id: "cp_lc_trialist", customerId: "cust_lc_trialist",
+        kind: "package", name: "Intro 3-pack",
+        planTypeLabel: "Package", creditsLabel: "3 credits",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(5), expiryISO: daysAgoISODate(-25),
+        totalCredits: 3, creditsUsed: 1,
+    },
+    // New Active — package purchased 10 days ago.
+    {
+        id: "cp_lc_new_active", customerId: "cust_lc_new_active",
+        kind: "package", name: "10-class package",
+        planTypeLabel: "Package", creditsLabel: "10 credits",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(10), expiryISO: daysAgoISODate(-80),
+        totalCredits: 10, creditsUsed: 2, priceAed: 800,
+    },
+    // Loyal — membership purchased 60 days ago.
+    {
+        id: "cp_lc_loyal", customerId: "cust_lc_loyal",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(60), expiryISO: daysAgoISODate(-30),
+        priceAed: 1200,
+    },
+    // At Risk — active membership purchased 40 days ago.
+    {
+        id: "cp_lc_at_risk", customerId: "cust_lc_at_risk",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(40), expiryISO: daysAgoISODate(-10),
+        priceAed: 1200,
+    },
+    // Churned — an OLD expired package (needed to distinguish Churned
+    // from Lead — Churned requires a paid history).
+    {
+        id: "cp_lc_churned", customerId: "cust_lc_churned",
+        kind: "package", name: "10-class package",
+        planTypeLabel: "Package", creditsLabel: "10 credits",
+        status: "expired",
+        purchasedAtISO: daysAgoISODate(150), expiryISO: daysAgoISODate(60),
+        totalCredits: 10, creditsUsed: 10, priceAed: 800,
+    },
+    // Won-back — fresh membership + expired one on record.
+    {
+        id: "cp_lc_wonback_new", customerId: "cust_lc_wonback",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(15), expiryISO: daysAgoISODate(-15),
+        priceAed: 1200,
+    },
+    {
+        id: "cp_lc_wonback_old", customerId: "cust_lc_wonback",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "expired",
+        purchasedAtISO: daysAgoISODate(180), expiryISO: daysAgoISODate(150),
+        priceAed: 1200,
+    },
+    // VIP — same membership pattern as Loyal.
+    {
+        id: "cp_lc_vip", customerId: "cust_lc_vip",
+        kind: "membership", name: "Unlimited Monthly",
+        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+        status: "active",
+        purchasedAtISO: daysAgoISODate(90), expiryISO: daysAgoISODate(-60),
+        priceAed: 1200,
+    },
+];
+
+/** Build 6 attended bookings for the loyal + VIP personas spread over
+ *  the last 30 days so the compute's "≥4 attended in last 30d" branch
+ *  matches. */
+function buildShowcaseBookings(): ClassBooking[] {
+    const rows: ClassBooking[] = [];
+    const push = (
+        cid: string,
+        daysAgo: number,
+        status: ClassBooking["status"],
+        attendance: ClassBooking["attendanceStatus"],
+    ) => {
+        rows.push({
+            id: `bk_lc_${cid}_${daysAgo}`,
+            classScheduleId: "sc_lc_showcase",
+            customerId: cid,
+            branchId: LC_BRANCH,
+            status,
+            attendanceStatus: attendance,
+            bookingTime: daysAgoISO(daysAgo),
+            spot: "1",
+            planId: "",
+            planName: "",
+        });
+    };
+    // Trialist — 1 attended booking 4 days ago.
+    push("cust_lc_trialist", 4, "booked", "present");
+    // New Active — 2 attended bookings recent.
+    push("cust_lc_new_active", 2, "booked", "present");
+    push("cust_lc_new_active", 8, "booked", "present");
+    // Loyal — 6 attended in last 30 days.
+    for (const d of [1, 5, 10, 15, 22, 28]) {
+        push("cust_lc_loyal", d, "booked", "present");
+    }
+    // At Risk — attended once ages ago, then radio silence.
+    push("cust_lc_at_risk", 22, "booked", "present");
+    // Churned — old attended history.
+    push("cust_lc_churned", 75, "booked", "present");
+    push("cust_lc_churned", 90, "booked", "present");
+    // Won-back — 3 attended in last 15 days since fresh plan.
+    push("cust_lc_wonback", 6, "booked", "present");
+    push("cust_lc_wonback", 11, "booked", "present");
+    push("cust_lc_wonback", 14, "booked", "present");
+    // VIP — 6 attended in last 30 days (Loyal-Active-with-VIP-flag).
+    for (const d of [1, 4, 9, 14, 20, 27]) {
+        push("cust_lc_vip", d, "booked", "present");
+    }
+    return rows;
+}
+const SHOWCASE_BOOKINGS: ClassBooking[] = buildShowcaseBookings();
+
+const SHOWCASE_TRANSACTIONS: CustomerTransaction[] = [
+    {
+        id: "txn_lc_new_active", customerId: "cust_lc_new_active", branchId: LC_BRANCH,
+        kind: "package", productId: "cp_lc_new_active", name: "10-class package",
+        amountAed: 800, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(10), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_loyal", customerId: "cust_lc_loyal", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_loyal", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(60), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_at_risk", customerId: "cust_lc_at_risk", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_at_risk", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(40), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_churned_old", customerId: "cust_lc_churned", branchId: LC_BRANCH,
+        kind: "package", productId: "cp_lc_churned", name: "10-class package",
+        amountAed: 800, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(150), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_wonback_new", customerId: "cust_lc_wonback", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_wonback_new", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(15), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_wonback_old", customerId: "cust_lc_wonback", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_wonback_old", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(180), transactionType: "sale", isRefundable: true,
+    },
+    {
+        id: "txn_lc_vip", customerId: "cust_lc_vip", branchId: LC_BRANCH,
+        kind: "membership", productId: "cp_lc_vip", name: "Unlimited Monthly",
+        amountAed: 1200, status: "complete", paymentMethod: "card",
+        createdAtISO: daysAgoISO(90), transactionType: "sale", isRefundable: true,
+    },
+];
+
+// ─── Bulk-generated lifecycle-stage demo customers (client 2026-07-27) ──
+//
+// The 7 hand-authored personas above give each stage ONE showcase row.
+// This block generates ~4 more per stage (28 total) so the segment tabs
+// + Lifecycle filter chips have real volume to play with and the client
+// can slice/dice a populated list. Every generated persona carries the
+// minimum data its target stage needs (plan, transaction, bookings)
+// alongside varied source / branch / assigned-to values so the profile
+// details block reads different for each.
+//
+// Idempotency comes from deterministic ids (`cust_lcg_<stage>_<i>`); the
+// same rehydrate guard we use for the showcase personas skips these
+// too when a state already has them.
+
+type ShowcaseSeed = { firstName: string; lastName: string; sourceId: string; sourceLabel: string };
+const LC_BULK_NAMES: ShowcaseSeed[] = [
+    // 4 seeds each for the 7 stages, cycling deterministically below.
+    { firstName: "Fatima",   lastName: "Hassan",  sourceId: "src_instagram", sourceLabel: "Instagram / Social" },
+    { firstName: "Omar",     lastName: "Nasser",  sourceId: "src_referral",  sourceLabel: "Referral"          },
+    { firstName: "Layla",    lastName: "Ibrahim", sourceId: "src_website",   sourceLabel: "Website / Online"   },
+    { firstName: "Ryan",     lastName: "Novak",   sourceId: "src_walkin",    sourceLabel: "Walk-in"            },
+    { firstName: "Yara",     lastName: "Faris",   sourceId: "src_referral",  sourceLabel: "Referral"           },
+    { firstName: "Ethan",    lastName: "Marlow",  sourceId: "src_meta_lead", sourceLabel: "Meta lead form"     },
+    { firstName: "Zara",     lastName: "Khan",    sourceId: "src_instagram", sourceLabel: "Instagram / Social" },
+    { firstName: "Noah",     lastName: "Bennett", sourceId: "src_gympass",   sourceLabel: "Gympass"            },
+    { firstName: "Amira",    lastName: "Saleh",   sourceId: "src_walkin",    sourceLabel: "Walk-in"            },
+    { firstName: "Kai",      lastName: "Turner",  sourceId: "src_classpass", sourceLabel: "ClassPass"          },
+    { firstName: "Maya",     lastName: "Farid",   sourceId: "src_referral",  sourceLabel: "Referral"           },
+    { firstName: "Ali",      lastName: "Rahim",   sourceId: "src_website",   sourceLabel: "Website / Online"   },
+    { firstName: "Sara",     lastName: "Habib",   sourceId: "src_expired",   sourceLabel: "Expired customer"   },
+    { firstName: "Jonah",    lastName: "Petit",   sourceId: "src_webform",   sourceLabel: "Web form"           },
+    { firstName: "Rania",    lastName: "Kader",   sourceId: "src_meta_lead", sourceLabel: "Meta lead form"     },
+    { firstName: "Elias",    lastName: "Hamid",   sourceId: "src_walkin",    sourceLabel: "Walk-in"            },
+    { firstName: "Bianca",   lastName: "Reyes",   sourceId: "src_referral",  sourceLabel: "Referral"           },
+    { firstName: "Karim",    lastName: "Youssef", sourceId: "src_instagram", sourceLabel: "Instagram / Social" },
+    { firstName: "Talia",    lastName: "Mansour", sourceId: "src_website",   sourceLabel: "Website / Online"   },
+    { firstName: "Dev",      lastName: "Iyer",    sourceId: "src_classpass", sourceLabel: "ClassPass"          },
+    { firstName: "Nora",     lastName: "Amin",    sourceId: "src_webform",   sourceLabel: "Web form"           },
+    { firstName: "Faisal",   lastName: "Quadri",  sourceId: "src_walkin",    sourceLabel: "Walk-in"            },
+    { firstName: "Isabelle", lastName: "Vance",   sourceId: "src_referral",  sourceLabel: "Referral"           },
+    { firstName: "Miguel",   lastName: "Costa",   sourceId: "src_instagram", sourceLabel: "Instagram / Social" },
+    { firstName: "Lena",     lastName: "Brandt",  sourceId: "src_gympass",   sourceLabel: "Gympass"            },
+    { firstName: "Nikhil",   lastName: "Rao",     sourceId: "src_website",   sourceLabel: "Website / Online"   },
+    { firstName: "Sanaa",    lastName: "El-Din",  sourceId: "src_meta_lead", sourceLabel: "Meta lead form"     },
+    { firstName: "Tom",      lastName: "Gallo",   sourceId: "src_expired",   sourceLabel: "Expired customer"   },
+];
+
+/** Stage-specific data blueprint used by the bulk generator. Small
+ *  functions return the deltas the compute needs for each stage. */
+type LifecycleStage = "lead" | "trialist" | "new_active" | "loyal" | "at_risk" | "churned" | "wonback";
+const BULK_STAGES: LifecycleStage[] = ["lead", "trialist", "new_active", "loyal", "at_risk", "churned", "wonback"];
+const BULK_PER_STAGE = 4;
+
+/** Build the bulk customer + plan + booking + transaction rows so all
+ *  four sinks stay in sync. Purely deterministic — same inputs, same
+ *  ids every render. */
+function buildBulkShowcase(): {
+    customers: Customer[];
+    plans: CustomerPlan[];
+    bookings: ClassBooking[];
+    transactions: CustomerTransaction[];
+} {
+    const customers: Customer[] = [];
+    const plans: CustomerPlan[] = [];
+    const bookings: ClassBooking[] = [];
+    const transactions: CustomerTransaction[] = [];
+    let seedIdx = 0;
+    for (const stage of BULK_STAGES) {
+        for (let i = 0; i < BULK_PER_STAGE; i++) {
+            const seed = LC_BULK_NAMES[seedIdx++ % LC_BULK_NAMES.length];
+            const cid = `cust_lcg_${stage}_${i + 1}`;
+            const initials = `${seed.firstName[0]}${seed.lastName[0]}`.toUpperCase();
+            // Base customer row — stage-specific patches append below.
+            // Client 2026-07-27 — cycle through the 5 existing portraits
+            // so bulk rows in the customer table render with real faces,
+            // not a wall of "AB" gray tiles.
+            const base: Customer = {
+                id: cid, firstName: seed.firstName, lastName: seed.lastName, initials,
+                email: `${seed.firstName.toLowerCase()}.${seed.lastName.toLowerCase().replace(/[^a-z]/g, "")}${i}@onradmo.test`,
+                phone: `+971 50 ${(700 + seedIdx).toString().padStart(3, "0")} ${(1000 + seedIdx).toString().padStart(4, "0")}`,
+                imageUrl: LC_PORTRAITS[seedIdx % LC_PORTRAITS.length],
+                branchId: LC_BRANCH, planKind: null,
+                createdAt: daysAgoISO(20 + seedIdx),
+                status: "active",
+                gender: seedIdx % 2 === 0 ? "Female" : "Male",
+                sourceId: seed.sourceId, marketingSource: seed.sourceLabel,
+            };
+            switch (stage) {
+                case "lead":
+                    customers.push(base);
+                    break;
+                case "trialist": {
+                    const purchasedAt = 5 + i;
+                    const attendedAt = 3 + i;
+                    customers.push({
+                        ...base,
+                        firstVisitISO: daysAgoISODate(attendedAt),
+                        lastVisitISO: daysAgoISODate(attendedAt),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "package", name: "Intro 3-pack",
+                        planTypeLabel: "Package", creditsLabel: "3 credits",
+                        status: "active",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(-25 - i),
+                        totalCredits: 3, creditsUsed: 1,
+                    });
+                    bookings.push({
+                        id: `bk_lcg_${stage}_${i + 1}_1`, classScheduleId: "sc_lc_showcase",
+                        customerId: cid, branchId: LC_BRANCH,
+                        status: "booked", attendanceStatus: "present",
+                        bookingTime: daysAgoISO(attendedAt), spot: "1",
+                        planId: "", planName: "",
+                    });
+                    break;
+                }
+                case "new_active": {
+                    const purchasedAt = 8 + i * 3; // stays <30 for New Active
+                    customers.push({
+                        ...base, planKind: "membership",
+                        firstVisitISO: daysAgoISODate(purchasedAt),
+                        lastVisitISO: daysAgoISODate(2 + i),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "membership", name: "Unlimited Monthly",
+                        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                        status: "active",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(-30 + purchasedAt),
+                        priceAed: 1200,
+                    });
+                    transactions.push({
+                        id: `txn_lcg_${stage}_${i + 1}`, customerId: cid, branchId: LC_BRANCH,
+                        kind: "membership", productId: `cp_lcg_${stage}_${i + 1}`,
+                        name: "Unlimited Monthly", amountAed: 1200,
+                        status: "complete", paymentMethod: "card",
+                        createdAtISO: daysAgoISO(purchasedAt),
+                        transactionType: "sale", isRefundable: true,
+                    });
+                    bookings.push(
+                        { id: `bk_lcg_${stage}_${i + 1}_1`, classScheduleId: "sc_lc_showcase", customerId: cid, branchId: LC_BRANCH, status: "booked", attendanceStatus: "present", bookingTime: daysAgoISO(2 + i), spot: "1", planId: "", planName: "" },
+                        { id: `bk_lcg_${stage}_${i + 1}_2`, classScheduleId: "sc_lc_showcase", customerId: cid, branchId: LC_BRANCH, status: "booked", attendanceStatus: "present", bookingTime: daysAgoISO(5 + i), spot: "1", planId: "", planName: "" },
+                    );
+                    break;
+                }
+                case "loyal": {
+                    const purchasedAt = 60 + i * 15;
+                    customers.push({
+                        ...base, planKind: "membership",
+                        firstVisitISO: daysAgoISODate(purchasedAt - 2),
+                        lastVisitISO: daysAgoISODate(1 + i),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "membership", name: "Unlimited Monthly",
+                        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                        status: "active",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(-30),
+                        priceAed: 1200,
+                    });
+                    transactions.push({
+                        id: `txn_lcg_${stage}_${i + 1}`, customerId: cid, branchId: LC_BRANCH,
+                        kind: "membership", productId: `cp_lcg_${stage}_${i + 1}`,
+                        name: "Unlimited Monthly", amountAed: 1200,
+                        status: "complete", paymentMethod: "card",
+                        createdAtISO: daysAgoISO(purchasedAt),
+                        transactionType: "sale", isRefundable: true,
+                    });
+                    // 6 attended bookings in last 30 days → Loyal Active branch.
+                    for (const d of [1, 5, 9, 15, 22, 28]) {
+                        bookings.push({
+                            id: `bk_lcg_${stage}_${i + 1}_${d}`, classScheduleId: "sc_lc_showcase",
+                            customerId: cid, branchId: LC_BRANCH,
+                            status: "booked", attendanceStatus: "present",
+                            bookingTime: daysAgoISO(d + i), spot: "1",
+                            planId: "", planName: "",
+                        });
+                    }
+                    break;
+                }
+                case "at_risk": {
+                    const purchasedAt = 45 + i * 5;
+                    const lastVisit = 18 + i;
+                    customers.push({
+                        ...base, planKind: "membership",
+                        firstVisitISO: daysAgoISODate(purchasedAt - 2),
+                        lastVisitISO: daysAgoISODate(lastVisit),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "membership", name: "Unlimited Monthly",
+                        planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                        status: "active",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(-15),
+                        priceAed: 1200,
+                    });
+                    transactions.push({
+                        id: `txn_lcg_${stage}_${i + 1}`, customerId: cid, branchId: LC_BRANCH,
+                        kind: "membership", productId: `cp_lcg_${stage}_${i + 1}`,
+                        name: "Unlimited Monthly", amountAed: 1200,
+                        status: "complete", paymentMethod: "card",
+                        createdAtISO: daysAgoISO(purchasedAt),
+                        transactionType: "sale", isRefundable: true,
+                    });
+                    bookings.push({
+                        id: `bk_lcg_${stage}_${i + 1}_last`, classScheduleId: "sc_lc_showcase",
+                        customerId: cid, branchId: LC_BRANCH,
+                        status: "booked", attendanceStatus: "present",
+                        bookingTime: daysAgoISO(lastVisit), spot: "1",
+                        planId: "", planName: "",
+                    });
+                    break;
+                }
+                case "churned": {
+                    const purchasedAt = 150 + i * 10;
+                    const lastVisit = 70 + i * 5;
+                    customers.push({
+                        ...base,
+                        firstVisitISO: daysAgoISODate(purchasedAt - 3),
+                        lastVisitISO: daysAgoISODate(lastVisit),
+                    });
+                    plans.push({
+                        id: `cp_lcg_${stage}_${i + 1}`, customerId: cid,
+                        kind: "package", name: "10-class package",
+                        planTypeLabel: "Package", creditsLabel: "10 credits",
+                        status: "expired",
+                        purchasedAtISO: daysAgoISODate(purchasedAt),
+                        expiryISO: daysAgoISODate(lastVisit + 20),
+                        totalCredits: 10, creditsUsed: 10, priceAed: 800,
+                    });
+                    transactions.push({
+                        id: `txn_lcg_${stage}_${i + 1}`, customerId: cid, branchId: LC_BRANCH,
+                        kind: "package", productId: `cp_lcg_${stage}_${i + 1}`,
+                        name: "10-class package", amountAed: 800,
+                        status: "complete", paymentMethod: "card",
+                        createdAtISO: daysAgoISO(purchasedAt),
+                        transactionType: "sale", isRefundable: true,
+                    });
+                    break;
+                }
+                case "wonback": {
+                    const oldPurchase = 180 + i * 10;
+                    const newPurchase = 12 + i * 3;
+                    customers.push({
+                        ...base, planKind: "membership",
+                        firstVisitISO: daysAgoISODate(oldPurchase - 2),
+                        lastVisitISO: daysAgoISODate(3 + i),
+                    });
+                    plans.push(
+                        {
+                            id: `cp_lcg_${stage}_${i + 1}_new`, customerId: cid,
+                            kind: "membership", name: "Unlimited Monthly",
+                            planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                            status: "active",
+                            purchasedAtISO: daysAgoISODate(newPurchase),
+                            expiryISO: daysAgoISODate(-15),
+                            priceAed: 1200,
+                        },
+                        {
+                            id: `cp_lcg_${stage}_${i + 1}_old`, customerId: cid,
+                            kind: "membership", name: "Unlimited Monthly",
+                            planTypeLabel: "Membership", creditsLabel: "Unlimited",
+                            status: "expired",
+                            purchasedAtISO: daysAgoISODate(oldPurchase),
+                            expiryISO: daysAgoISODate(oldPurchase - 30),
+                            priceAed: 1200,
+                        },
+                    );
+                    transactions.push(
+                        {
+                            id: `txn_lcg_${stage}_${i + 1}_new`, customerId: cid, branchId: LC_BRANCH,
+                            kind: "membership", productId: `cp_lcg_${stage}_${i + 1}_new`,
+                            name: "Unlimited Monthly", amountAed: 1200,
+                            status: "complete", paymentMethod: "card",
+                            createdAtISO: daysAgoISO(newPurchase),
+                            transactionType: "sale", isRefundable: true,
+                        },
+                        {
+                            id: `txn_lcg_${stage}_${i + 1}_old`, customerId: cid, branchId: LC_BRANCH,
+                            kind: "membership", productId: `cp_lcg_${stage}_${i + 1}_old`,
+                            name: "Unlimited Monthly", amountAed: 1200,
+                            status: "complete", paymentMethod: "card",
+                            createdAtISO: daysAgoISO(oldPurchase),
+                            transactionType: "sale", isRefundable: true,
+                        },
+                    );
+                    bookings.push(
+                        { id: `bk_lcg_${stage}_${i + 1}_1`, classScheduleId: "sc_lc_showcase", customerId: cid, branchId: LC_BRANCH, status: "booked", attendanceStatus: "present", bookingTime: daysAgoISO(3 + i), spot: "1", planId: "", planName: "" },
+                        { id: `bk_lcg_${stage}_${i + 1}_2`, classScheduleId: "sc_lc_showcase", customerId: cid, branchId: LC_BRANCH, status: "booked", attendanceStatus: "present", bookingTime: daysAgoISO(9 + i), spot: "1", planId: "", planName: "" },
+                    );
+                    break;
+                }
+            }
+        }
+    }
+    return { customers, plans, bookings, transactions };
+}
+const BULK_SHOWCASE = buildBulkShowcase();
+
 const PERSIST_KEY = "onra-demo-state";
 
 export const useAppStore = create<AppState>()(persist(
@@ -4647,11 +5489,11 @@ export const useAppStore = create<AppState>()(persist(
     appointmentBookings: INITIAL_APPOINTMENT_BOOKINGS,
     appointmentRatings: INITIAL_APPOINTMENT_RATINGS,
     classSchedules: INITIAL_SCHEDULES,
-    classBookings: INITIAL_BOOKINGS,
+    classBookings: [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS, ...BULK_SHOWCASE.bookings],
     classRatings: INITIAL_RATINGS,
-    customers: INITIAL_CUSTOMERS,
-    customerPlans: INITIAL_CUSTOMER_PLANS,
-    customerTransactions: INITIAL_CUSTOMER_TRANSACTIONS,
+    customers: [...SHOWCASE_CUSTOMERS, ...BULK_SHOWCASE.customers, ...INITIAL_CUSTOMERS],
+    customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...BULK_SHOWCASE.plans],
+    customerTransactions: [...INITIAL_CUSTOMER_TRANSACTIONS, ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions],
     customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
     customerReferrals: INITIAL_CUSTOMER_REFERRALS,
     walletTransactions: INITIAL_WALLET_TRANSACTIONS,
@@ -4663,6 +5505,10 @@ export const useAppStore = create<AppState>()(persist(
     marketingItems: [...SEED_MARKETING_ITEMS],
     // Reports v33 slices
     leads: [...SEED_LEADS],
+    // Customer & Lead Management v83 slices (client 2026-07-24)
+    followUpTasks: [],
+    leadSources: [...INITIAL_LEAD_SOURCES],
+    followUpStages: [...INITIAL_FOLLOW_UP_STAGES],
     marketingCampaignStats: [...SEED_MARKETING_CAMPAIGN_STATS],
     marketingSpend: [...SEED_MARKETING_SPEND],
     staffAttendanceLog: deriveStaffAttendanceLog(INITIAL_SCHEDULES),
@@ -5802,6 +6648,21 @@ export const useAppStore = create<AppState>()(persist(
             });
         }
 
+        // v83 lifecycle recompute — a fresh booking can bump a Lead → Trialist
+        // or a Trialist → Loyal Active. Runs on the booker's customer id;
+        // guest-seat rows skip (guests have no lifecycle to recompute).
+        set(state => recomputePatch(state, customerId));
+        // v83 Phase 4 — evaluate the trial_no_rebook_7d trigger on this
+        // customer. Cheap: the generator dedupes against existing open
+        // tasks, so hot-loops (multiple bookings same session) don't
+        // materialise duplicates. Other triggers are irrelevant here.
+        set(state => {
+            const fresh = generateFollowUpTasks(customerId, state, {
+                triggers: ["trial_no_rebook_7d"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
+
         return id;
     },
     signWaiver: (customerId, guardianConsent = false) => set((state) => {
@@ -6191,6 +7052,25 @@ export const useAppStore = create<AppState>()(persist(
         if (booking?.status === "booked" && schedule) {
             get().offerFreedWaitlistSpot(schedule.id);
         }
+        // v83 lifecycle recompute — cancels feed the At Risk branch (cancel-
+        // rate > 50% in 14d) + the first-booking-cancelled task trigger
+        // (Phase 4). Only fires when the booking mapped to a real customer.
+        if (booking?.customerId) {
+            const cid = booking.customerId;
+            set(state => recomputePatch(state, cid));
+            // v83 Phase 4 — evaluate both cancel-adjacent triggers on the
+            // affected customer. `first_booking_cancelled` fires when the
+            // customer's very first booking just went to "cancelled";
+            // `trial_no_rebook_7d` may also fire if a trialist just
+            // cancelled their most recent booking so the 7-day silence
+            // window is entered.
+            set(state => {
+                const fresh = generateFollowUpTasks(cid, state, {
+                    triggers: ["first_booking_cancelled", "trial_no_rebook_7d"],
+                });
+                return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+            });
+        }
     },
     cancelClassBookings: (ids, reason, refund, source) => {
         const stateBefore = get();
@@ -6262,6 +7142,36 @@ export const useAppStore = create<AppState>()(persist(
         Array.from(new Set(targets.filter(t => t.status === "booked").map(t => t.classScheduleId))).forEach(scheduleId =>
             get().offerFreedWaitlistSpot(scheduleId)
         );
+        // v83 lifecycle recompute — bulk cancel touches N distinct customers;
+        // recompute each once inside a single set() call so the write is
+        // batched. Same signal as single-cancel (feeds At Risk + task-engine
+        // triggers).
+        const affectedIds = Array.from(new Set(targets.map(t => t.customerId).filter(Boolean)));
+        if (affectedIds.length > 0) {
+            // v83 audit-2 — bulk-cancel routes each customer through the
+            // single-shot recomputePatch (lifecycle + task auto-close),
+            // then a second pass generates cancel-adjacent triggers.
+            set(state => {
+                let customers = state.customers;
+                let followUpTasks = state.followUpTasks;
+                for (const cid of affectedIds) {
+                    const patch = recomputePatch({ ...state, customers, followUpTasks }, cid);
+                    customers = patch.customers;
+                    followUpTasks = patch.followUpTasks;
+                }
+                return { customers, followUpTasks };
+            });
+            set(state => {
+                let next = state.followUpTasks;
+                for (const cid of affectedIds) {
+                    const fresh = generateFollowUpTasks(cid, { ...state, followUpTasks: next }, {
+                        triggers: ["first_booking_cancelled", "trial_no_rebook_7d"],
+                    });
+                    next = applyGeneratedTasks(next, fresh);
+                }
+                return { followUpTasks: next };
+            });
+        }
     },
     // ── Customer-portal cancel-with-penalty flow (Jul 2026) ────────────────
     // Kept as a SEPARATE action from `cancelClassBooking` so the existing
@@ -6383,6 +7293,18 @@ export const useAppStore = create<AppState>()(persist(
         set(state => ({
             customerTransactions: [...state.customerTransactions, penaltyTxn],
         }));
+        // v83 lifecycle recompute — the customer just cancelled + got
+        // charged; both actions feed the same At Risk / task-engine
+        // branches as an admin-side cancel.
+        set(state => recomputePatch(state, customer.id));
+        // v83 Phase 4 — cancel-adjacent triggers on the customer-side
+        // cancel path, mirroring the admin cancel wiring.
+        set(state => {
+            const fresh = generateFollowUpTasks(customer.id, state, {
+                triggers: ["first_booking_cancelled", "trial_no_rebook_7d"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
         return {
             bookingCancelled: true,
             penaltyTransactionId: txnId,
@@ -6480,6 +7402,13 @@ export const useAppStore = create<AppState>()(persist(
                 });
             }
         }
+        // v83 lifecycle recompute — attendance is a load-bearing behavioural
+        // signal (Loyal Active + At Risk both key off recent attendance).
+        // Only fires when the booking resolved to a real customer id.
+        if (booking?.customerId) {
+            const cid = booking.customerId;
+            set(state => recomputePatch(state, cid));
+        }
     },
 
     deleteClassRating: (id, deletedBy) => {
@@ -6495,7 +7424,7 @@ export const useAppStore = create<AppState>()(persist(
         }
     },
 
-    submitClassRating: (input) =>
+    submitClassRating: (input) => {
         set((state) => {
             const rating: ClassRating = {
                 id: `rat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -6519,7 +7448,13 @@ export const useAppStore = create<AppState>()(persist(
                 return { ...s, rating: avg, ratingCount: rows.length };
             });
             return { classRatings, classSchedules };
-        }),
+        });
+        // v83 lifecycle recompute — the plan feeds ratings into the At Risk
+        // branch (avg rating dropped ≥ 1 star). Runs on the rater only.
+        // Wired onto the LIVE `submitClassRating` path; the importer
+        // `addClassRating` deliberately skips (see plan comment).
+        set(state => recomputePatch(state, input.customerId));
+    },
 
     addCustomer: (input) => {
         const id = `cu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -6547,6 +7482,12 @@ export const useAppStore = create<AppState>()(persist(
             convertedFrom:   input.convertedFrom   ?? deriveConvertedFrom(id, input.planKind),
         };
         set((state) => ({ customers: [customer, ...state.customers] }));
+        // v83 audit-3 fix (2026-07-27) — stamp lifecycleTag on brand-new
+        // customer records so every stored-tag reader (widget, CSV,
+        // task engine) sees the correct default from the start instead
+        // of relying on the segment-tab `?? "Lead"` fallback until
+        // something else triggers a recompute.
+        set(state => recomputePatch(state, id));
         return id;
     },
     updateCustomer: (id, patch) => {
@@ -6724,6 +7665,14 @@ export const useAppStore = create<AppState>()(persist(
                 relatedId: planId,
             });
         }
+        // v83 audit-3 fix — freeze affects usable-plan status downstream
+        // (approveFreezeRequest + freezeMembershipByCustomer both funnel
+        // here). Recompute so the tag stays fresh.
+        const targetPlan = get().customerPlans.find(p => p.id === planId);
+        if (targetPlan) {
+            const cid = targetPlan.customerId;
+            set(state => recomputePatch(state, cid));
+        }
         return { fee };
     },
 
@@ -6831,6 +7780,9 @@ export const useAppStore = create<AppState>()(persist(
                 },
             });
         }
+        // v83 audit-3 fix — freeze_requested transitions the plan
+        // status; recompute so downstream reads stay fresh.
+        set(state => recomputePatch(state, target.customerId));
     },
 
     approveFreezeRequest: (planId) => {
@@ -6930,6 +7882,10 @@ export const useAppStore = create<AppState>()(persist(
                 },
             });
         }
+        // v83 audit-2 fix — freeze changes usable-plan status, which
+        // gates At Risk vs Loyal Active. Recompute so the tag stays
+        // fresh across every read surface (list, widget, CSV, profile).
+        set(state => recomputePatch(state, target.customerId));
     },
 
     unfreezeCustomerPlan: (planId) => {
@@ -6959,6 +7915,10 @@ export const useAppStore = create<AppState>()(persist(
             const customer = get().customers.find(c => c.id === target.customerId);
             const customerName = customer ? capitalizeName(`${customer.firstName} ${customer.lastName}`) : "a customer";
             get().recordAudit(`Unfroze ${customerName}'s plan`, "customer_plan", planId, target.name);
+        }
+        if (target) {
+            const cid = target.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7031,6 +7991,8 @@ export const useAppStore = create<AppState>()(persist(
         });
         if (targetPlan) {
             get().recordAudit(`Cancelled ${customerName}'s plan`, "customer_plan", planId, targetPlan.name, { mode });
+            const cid = targetPlan.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7074,6 +8036,8 @@ export const useAppStore = create<AppState>()(persist(
             const customer = get().customers.find(c => c.id === target.customerId);
             const customerName = customer ? `${customer.firstName} ${customer.lastName}`.trim() : "a customer";
             get().recordAudit(`Reactivated ${customerName}'s plan`, "customer_plan", planId, target.name);
+            const cid = target.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7107,6 +8071,10 @@ export const useAppStore = create<AppState>()(persist(
         });
         if (targetPlan) {
             get().recordAudit(`Removed ${customerName}'s complimentary credit`, "customer_plan", planId, targetPlan.name, { reason });
+            // v83 audit-3 fix — removing a Trialist's only plan
+            // means they should drop to Lead or Churned; recompute.
+            const cid = targetPlan.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7123,6 +8091,19 @@ export const useAppStore = create<AppState>()(persist(
         const targetCustomer = get().customers.find(c => c.id === input.customerId);
         const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
         get().recordAudit(`Added complimentary credit to ${customerName}`, "customer_plan", id, input.name, { credits: input.freeCredits ?? 0 });
+        // v83 lifecycle recompute — a complimentary plan flips a Lead to
+        // Trialist (only intro plan, no paid plan yet).
+        set(state => recomputePatch(state, input.customerId));
+        // v83 Phase 4 — the trial has just started. The trigger doesn't
+        // fire yet (no attended booking on record), but the generator's
+        // dedupe guard makes an early check idempotent — future writes on
+        // this customer will pick it up naturally.
+        set(state => {
+            const fresh = generateFollowUpTasks(input.customerId, state, {
+                triggers: ["trial_no_rebook_7d"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
         return id;
     },
     addCustomerPlan: (input) => {
@@ -7132,6 +8113,11 @@ export const useAppStore = create<AppState>()(persist(
         const target = get().customers.find(c => c.id === input.customerId);
         const customerName = target ? capitalizeName(`${target.firstName} ${target.lastName}`) : "a customer";
         get().recordAudit(`Imported plan for ${customerName}`, "customer_plan", id, input.name);
+        // v83 lifecycle recompute — a fresh plan is the main New Active
+        // trigger. The importer path fires it too so a bulk seed hydrates
+        // customer tags in the same pass (idempotent — no lifecycle change
+        // means no write).
+        set(state => recomputePatch(state, input.customerId));
         return id;
     },
 
@@ -7148,6 +8134,9 @@ export const useAppStore = create<AppState>()(persist(
         const target = get().customers.find(c => c.id === input.customerId);
         const who = target ? capitalizeName(`${target.firstName} ${target.lastName}`) : "a customer";
         get().recordAudit(`Imported transaction for ${who}`, "customer", input.customerId, next.name);
+        // v83 lifecycle recompute — feeds the New Active + Won-back
+        // branches (both key off "paid within last 30 days").
+        set(state => recomputePatch(state, input.customerId));
         return id;
     },
     addWalletTransaction: (input) => {
@@ -7231,6 +8220,14 @@ export const useAppStore = create<AppState>()(persist(
                     silent: true,
                 });
             }
+        }
+        // v83 audit-2 fix — a refund reverses paid history, which
+        // determines New Active / Won-back / Churned via
+        // `hasEverPaid` + `latestPaidISO`. Recompute so a fully-
+        // refunded customer doesn't stay pinned to "New Active".
+        if (target?.customerId) {
+            const cid = target.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -7412,7 +8409,302 @@ export const useAppStore = create<AppState>()(persist(
         };
         set(state => ({ leads: [next, ...state.leads] }));
         get().recordAudit("Imported lead", "customer", id, next.contact_name);
+        // v83 dual-write (client 2026-07-24) — every lead also lands as a
+        // Customer row with `lifecycleTag: "Lead"` so the admin surface can
+        // filter by lifecycle tag without a second read path. The legacy
+        // `leads` slice is retained for the AI Agent's analyze / migrate /
+        // reports flows (unchanged). Dedup by email OR phone so an
+        // AI-Agent-driven bulk import doesn't create duplicate mirrors.
+        const existing = get().customers.find(c => {
+            if (next.contact_email && c.email && c.email.toLowerCase() === next.contact_email.toLowerCase()) return true;
+            if (next.phone && c.phone && c.phone === next.phone) return true;
+            return false;
+        });
+        if (!existing) {
+            const [firstName, ...restName] = (next.contact_name ?? "").trim().split(/\s+/);
+            const lastName = restName.join(" ");
+            const initials = `${(firstName || "?").charAt(0)}${(lastName || "").charAt(0)}`.toUpperCase() || "?";
+            const mirrorId = `cu_from_${id}`;
+            const mirror: Customer = {
+                id: mirrorId,
+                firstName: firstName || next.contact_name || "Lead",
+                lastName: lastName || "",
+                initials,
+                email: next.contact_email ?? "",
+                phone: next.phone,
+                branchId: next.branch_id,
+                planKind: null,
+                createdAt: next.added_at ?? new Date().toISOString(),
+                status: "active",
+                gender: next.gender,
+                lifecycleTag: "Lead",
+                followUpStatus: lookupStageLabel(get().followUpStages, "stg_new", "New") as FollowUpStatus,
+                assignedTo: next.assigned_to_staff_id,
+                // Map lead.source (label) to a lead source id when the label
+                // matches a seeded source; else store the raw label in the
+                // legacy `marketingSource` field so reports still see it.
+                sourceId: get().leadSources.find(s =>
+                    s.label.toLowerCase() === (next.source ?? "").toLowerCase(),
+                )?.id,
+                marketingSource: next.source,
+            };
+            set(state => ({ customers: [mirror, ...state.customers] }));
+        } else {
+            // Existing customer — patch the lifecycle fields only. Preserve
+            // whatever `lifecycleTag` the recompute already assigned (a paid
+            // member returning as a "lead" should NOT be downgraded to Lead).
+            const newStageLabel = lookupStageLabel(get().followUpStages, "stg_new", "New") as FollowUpStatus;
+            set(state => ({
+                customers: state.customers.map(c =>
+                    c.id === existing.id
+                        ? {
+                            ...c,
+                            lifecycleTag: c.lifecycleTag ?? "Lead",
+                            followUpStatus: c.followUpStatus ?? newStageLabel,
+                            assignedTo: c.assignedTo ?? next.assigned_to_staff_id,
+                            sourceId:
+                                c.sourceId ??
+                                get().leadSources.find(s =>
+                                    s.label.toLowerCase() === (next.source ?? "").toLowerCase(),
+                                )?.id,
+                            marketingSource: c.marketingSource ?? next.source,
+                        }
+                        : c,
+                ),
+            }));
+        }
+        // v83 Phase 4 — fire the lead_form_submitted trigger. Runs on the
+        // mirror customer's id so both the mirror path (new customer) AND
+        // the "existing customer got a fresh lead entry" path are covered.
+        const mirrorCid = existing?.id ?? `cu_from_${id}`;
+        set(state => {
+            const fresh = generateFollowUpTasks(mirrorCid, state, {
+                triggers: ["lead_form_submitted"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
         return id;
+    },
+    // v83 audit-3 (2026-07-27) — read-only eligibility probe. Ladder
+    // matches logCustomerEnquiry exactly; keeping them in the same file
+    // means a store-side gate change only needs to land in one place
+    // (previously the UI duplicated this ladder).
+    getEnquiryEligibility: (customerId) => {
+        const state = get();
+        const customer = state.customers.find(c => c.id === customerId);
+        if (!customer) return { canLog: false, reason: "dup" as const };
+        const lostLabel = lookupStageLabel(state.followUpStages, "stg_lost", "Lost");
+        if (customer.followUpStatus === lostLabel) {
+            return { canLog: false, reason: "lost" as const };
+        }
+        const liveTag = computeLifecycleTag(customerId, state).tag;
+        if (liveTag !== "Lead" && liveTag !== "Trialist") {
+            return { canLog: false, reason: "post_conversion" as const };
+        }
+        const dup = state.followUpTasks.some(
+            t => t.customerId === customerId && t.triggerKind === "enquiry_logged" && t.status === "open",
+        );
+        if (dup) return { canLog: false, reason: "dup" as const };
+        return { canLog: true };
+    },
+    // v83 Phase 4 — manual "Log enquiry" from the Phase-5 UI button on the
+    // profile Follow-ups tab. Returns the new task's id, or null when the
+    // generator skipped (Lost / dup / post-conversion). Wired inline via
+    // generateFollowUpTasks so precedence rules apply identically to the
+    // automatic paths.
+    logCustomerEnquiry: (customerId, note) => {
+        // v83 audit fix — return the SKIP REASON so the profile Follow-
+        // ups tab can render an accurate toast ("Lead marked Lost" vs
+        // "Already a member" vs "Open enquiry exists"). Precedence
+        // mirrors the generator's — check Lost first, then post-
+        // conversion, then dup.
+        const before = get();
+        const customer = before.customers.find(c => c.id === customerId);
+        if (!customer) {
+            return { logged: false, reason: "dup" as const };
+        }
+        const lostLabel = lookupStageLabel(before.followUpStages, "stg_lost", "Lost");
+        if (customer.followUpStatus === lostLabel) {
+            return { logged: false, reason: "lost" as const };
+        }
+        // v83 audit-2 fix — compute live so a stale stored tag can't
+        // gate this incorrectly (e.g. post-POS-sale Lead).
+        const liveTag = computeLifecycleTag(customerId, before).tag;
+        if (liveTag !== "Lead" && liveTag !== "Trialist") {
+            return { logged: false, reason: "post_conversion" as const };
+        }
+        const dup = before.followUpTasks.some(
+            t => t.customerId === customerId && t.triggerKind === "enquiry_logged" && t.status === "open",
+        );
+        if (dup) {
+            return { logged: false, reason: "dup" as const };
+        }
+        let materialisedId: string | null = null;
+        set(state => {
+            const fresh = generateFollowUpTasks(customerId, state, {
+                triggers: ["enquiry_logged"],
+                enquiryReason: note && note.trim().length > 0 ? note.trim() : undefined,
+            });
+            if (fresh.length === 0) return state;
+            materialisedId = fresh[0].id;
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
+        if (materialisedId) {
+            const who = capitalizeName(`${customer.firstName} ${customer.lastName}`);
+            get().recordAudit("Logged enquiry", "customer", customerId, who);
+            return { logged: true, id: materialisedId };
+        }
+        // The generator's own dedup dropped it — treat as dup for the UI.
+        return { logged: false, reason: "dup" as const };
+    },
+    // v83 Phase 4 — close a task with a staff-picked outcome. The
+    // outcome→followUpStatus mapping mirrors the plan §Phase 5 table.
+    // Behavior override is preserved via applyLifecycleResult (Phase 3),
+    // so a "not_interested" that flips the customer to "Lost" is
+    // automatically cleared later if they book / pay.
+    //
+    // v83 audit fix — stage labels ("New" → "Contacted" for `reached`,
+    // → "Lost" for `not_interested`) are resolved from the state's
+    // followUpStages by id (`stg_new` / `stg_contacted` / `stg_lost`)
+    // so a studio rename doesn't disable the mapping.
+    closeFollowUpTask: (taskId, outcome) => {
+        const target = get().followUpTasks.find(t => t.id === taskId);
+        if (!target || target.status !== "open") return false;
+        const now = new Date().toISOString();
+        set(state => ({
+            followUpTasks: state.followUpTasks.map(t =>
+                t.id === taskId
+                    ? { ...t, status: "closed" as const, outcome, closedAt: now }
+                    : t,
+            ),
+        }));
+        // Apply the outcome→status side effect. Look up the CURRENT
+        // labels so a rename can't silently break the mapping.
+        if (outcome === "reached") {
+            const stages = get().followUpStages;
+            const newLabel = lookupStageLabel(stages, "stg_new", "New");
+            const contactedLabel = lookupStageLabel(stages, "stg_contacted", "Contacted");
+            const c = get().customers.find(cx => cx.id === target.customerId);
+            if (c && c.followUpStatus === newLabel) {
+                set(state => ({
+                    customers: state.customers.map(cx =>
+                        cx.id === target.customerId
+                            ? { ...cx, followUpStatus: contactedLabel as typeof cx.followUpStatus }
+                            : cx,
+                    ),
+                }));
+            }
+        } else if (outcome === "not_interested") {
+            const lostLabel = lookupStageLabel(get().followUpStages, "stg_lost", "Lost");
+            set(state => ({
+                customers: state.customers.map(cx =>
+                    cx.id === target.customerId
+                        ? { ...cx, followUpStatus: lostLabel as typeof cx.followUpStatus }
+                        : cx,
+                ),
+            }));
+        }
+        return true;
+    },
+    // v83 Phase 6 — studio-editable lead sources (PDF §4.1).
+    addLeadSource: (label) => {
+        const clean = label.trim();
+        if (!clean) return "";
+        const existing = get().leadSources.find(
+            s => s.label.toLowerCase() === clean.toLowerCase(),
+        );
+        if (existing) return existing.id;
+        const id = `src_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        set(state => ({ leadSources: [...state.leadSources, { id, label: clean }] }));
+        get().recordAudit("Added lead source", "settings", id, clean);
+        return id;
+    },
+    renameLeadSource: (id, label) => {
+        const clean = label.trim();
+        if (!clean) return false;
+        const list = get().leadSources;
+        const target = list.find(s => s.id === id);
+        if (!target) return false;
+        // Collision check — reject when another (id ≠ target) row has
+        // the same label. Case-insensitive.
+        const dup = list.find(
+            s => s.id !== id && s.label.toLowerCase() === clean.toLowerCase(),
+        );
+        if (dup) return false;
+        const oldLabel = target.label;
+        set(state => ({
+            leadSources: state.leadSources.map(s => (s.id === id ? { ...s, label: clean } : s)),
+        }));
+        get().recordAudit(`Renamed lead source "${oldLabel}" → "${clean}"`, "settings", id, clean);
+        return true;
+    },
+    deleteLeadSource: (id) => {
+        const target = get().leadSources.find(s => s.id === id);
+        if (!target) return { deleted: false, reason: "in_use", usageCount: 0 };
+        // v83 client 2026-07-27 — lock removed; the only remaining guard
+        // is the in-use check so we don't orphan customer.sourceId refs.
+        const usageCount = get().customers.filter(c => c.sourceId === id).length;
+        if (usageCount > 0) return { deleted: false, reason: "in_use", usageCount };
+        set(state => ({ leadSources: state.leadSources.filter(s => s.id !== id) }));
+        get().recordAudit("Deleted lead source", "settings", id, target.label);
+        return { deleted: true };
+    },
+    // v83 Phase 6 — studio-editable follow-up stages (PDF §4.2). Max 8
+    // stages so the funnel stays scannable.
+    addFollowUpStage: (label) => {
+        const clean = label.trim();
+        if (!clean) return null;
+        const list = get().followUpStages;
+        if (list.length >= 8) return null;
+        const existing = list.find(s => s.label.toLowerCase() === clean.toLowerCase());
+        if (existing) return existing.id;
+        const id = `stg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        set(state => ({ followUpStages: [...state.followUpStages, { id, label: clean }] }));
+        get().recordAudit("Added follow-up stage", "settings", id, clean);
+        return id;
+    },
+    renameFollowUpStage: (id, label) => {
+        const clean = label.trim();
+        if (!clean) return false;
+        const list = get().followUpStages;
+        const target = list.find(s => s.id === id);
+        if (!target) return false;
+        // v83 client 2026-07-27 — no more terminal-rename block. Defaults
+        // stay editable so a studio can rename "Won" → "Converted" or
+        // "Lost" → "Not converted". Precedence checks still resolve via
+        // stable stg_lost / stg_new / stg_contacted ids, so renames don't
+        // break the underlying wiring.
+        const dup = list.find(
+            s => s.id !== id && s.label.toLowerCase() === clean.toLowerCase(),
+        );
+        if (dup) return false;
+        const oldLabel = target.label;
+        // Cascade the label change into every customer's followUpStatus so
+        // no stale strings survive. The stage's terminal semantics
+        // (isTerminal on Won + Lost) stay wired to the id so precedence
+        // rules keep working after a rename.
+        set(state => ({
+            followUpStages: state.followUpStages.map(s => (s.id === id ? { ...s, label: clean } : s)),
+            customers: state.customers.map(c =>
+                c.followUpStatus === oldLabel
+                    ? { ...c, followUpStatus: clean as typeof c.followUpStatus }
+                    : c,
+            ),
+        }));
+        get().recordAudit(`Renamed follow-up stage "${oldLabel}" → "${clean}"`, "settings", id, clean);
+        return true;
+    },
+    deleteFollowUpStage: (id) => {
+        const target = get().followUpStages.find(s => s.id === id);
+        if (!target) return { deleted: false, reason: "in_use", usageCount: 0 };
+        // v83 client 2026-07-27 — lock removed. In-use check still blocks
+        // deletion of a stage that customers sit on, to avoid orphaning
+        // their followUpStatus values.
+        const usageCount = get().customers.filter(c => c.followUpStatus === target.label).length;
+        if (usageCount > 0) return { deleted: false, reason: "in_use", usageCount };
+        set(state => ({ followUpStages: state.followUpStages.filter(s => s.id !== id) }));
+        get().recordAudit("Deleted follow-up stage", "settings", id, target.label);
+        return { deleted: true };
     },
     setPackageStatus: (ids, status) => {
         const targets = get().packages.filter(p => ids.includes(p.id));
@@ -9412,6 +10704,20 @@ export const useAppStore = create<AppState>()(persist(
                 });
             }
         }
+        // v83 audit-2 fix (2026-07-27) — POS applyPurchase writes plans +
+        // transactions inline without routing through addCustomerPlan /
+        // addCustomerTransaction, so the recompute hook never fires and
+        // the customer's stored lifecycleTag drifts stale (Lead in list
+        // but New Active on the profile). Trigger the standard recompute
+        // + task-gen block here so POS sales flow through the same
+        // pipeline as importer paths.
+        set(state => recomputePatch(state, customerId));
+        set(state => {
+            const fresh = generateFollowUpTasks(customerId, state, {
+                triggers: ["trial_no_rebook_7d"],
+            });
+            return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
+        });
     },
 
     showToast: (title, message, type = "success", icon) =>
@@ -9977,6 +11283,7 @@ export const useAppStore = create<AppState>()(persist(
         //   `shiftAssignments` array from every staff row's `shift_id`
         //   when the persisted slice is missing / empty. Bump forces
         //   pre-v82 snapshots to reseed cleanly.
+        // ── Branch: feature/customer-experience (schedule · spots · shifts) ──
         // v83 (2026-07-28): spot selection enabled for most scheduled classes
         //   (all Group classes get a capacity-fit spot grid; consumed
         //   identically by admin + customer). Bump discards pre-v83
@@ -9993,7 +11300,43 @@ export const useAppStore = create<AppState>()(persist(
         // v86 (2026-07-28): seeded active shifts for branch_forma_west so West
         //   instructors (e.g. Amelia Park) are assignable — the shift picker
         //   was empty for them. Bump so the new shifts reseed.
-        version: 86,
+        // ── Branch: feature/insights-kpi-ai-agent-polish (customers · leads · AI) ──
+        // v83 (2026-07-24): Customer & Lead Management foundation.
+        //   Customer extended with 5 optional fields (lifecycleTag,
+        //   isVip, followUpStatus, assignedTo, sourceId). Three new
+        //   slices seeded: followUpTasks (empty), leadSources (10
+        //   defaults), followUpStages (6 defaults). Rehydrate hook
+        //   backfills the three slices for pre-v83 snapshots AND
+        //   mirrors every retained `leads[]` row into `customers`
+        //   with `lifecycleTag: "Lead"` (dedup by email OR phone).
+        //   The `leads` slice is INTENTIONALLY retained — the AI
+        //   Agent's migrate / analyze / reports flows still read it.
+        // v84 (2026-07-27): Lifecycle showcase personas seeded — 7
+        //   demo customers (one per lifecycle stage) + supporting
+        //   plans / bookings / transactions so the client can walk
+        //   through every pill / segment / task-engine surface
+        //   without hand-building state. Bumped so pre-v84 caches
+        //   reseed and pick up the personas via the rehydrate hook.
+        // v85 (2026-07-27): Bulk lifecycle personas — +28 more (~4
+        //   per stage) so the segment tabs and Lifecycle filter
+        //   have real volume to play with. Also removes `locked`
+        //   / `isTerminal` on the seeded sources + stages. Bump
+        //   forces a rehydrate so the bulk injection runs.
+        // v86 (2026-07-27): Lifecycle personas get portraits so
+        //   the customer table + profile header render real
+        //   faces instead of gray "SN" initials tiles. Bump so
+        //   pre-v86 caches pick up the imageUrl fields.
+        // v87 (2026-07-28): AI Agent audit-4 fix. INITIAL_CUSTOMERS
+        //   (the 10 hand-authored seed customers — Ava, Bosa,
+        //   Rosale, Zahra, Ahmed…) now restore on rehydrate if
+        //   they're missing from the persisted state. Symptom:
+        //   AI Agent couldn't find Ava Wright because she was
+        //   absent from the snapshot. Bump forces the sweep.
+        // v88 (2026-07-28): MERGE of the two feature branches above. Both
+        //   independently reached v86 / v87 with different schema + seed
+        //   changes; bump to 88 so every persisted snapshot reseeds cleanly
+        //   with the UNION of both branches' slices, seeds, and migrations.
+        version: 88,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -10168,6 +11511,161 @@ export const useAppStore = create<AppState>()(persist(
                     });
                 }
                 state.shiftAssignments = derived;
+            }
+            // v83 (2026-07-24) — Customer & Lead Management foundation.
+            //
+            // Two independent sub-migrations, both idempotent so a v83 tab
+            // re-hydrating doesn't duplicate work:
+            //
+            //  1. NEW-SLICE DEFAULTS — Pre-v83 snapshots don't carry the
+            //     three new slices at all (Zustand's persist middleware
+            //     silently drops fields the persisted payload doesn't have).
+            //     Backfill leadSources + followUpStages from the module-
+            //     scope seeds so Settings (Phase 6) has editable rows even
+            //     for testers who don't wipe localStorage. followUpTasks
+            //     stays empty by design — tasks materialise as triggers fire.
+            //
+            //  2. LEAD → CUSTOMER MIRROR — For each row in the retained
+            //     `leads` slice, upsert a Customer with `lifecycleTag: "Lead"`
+            //     if none matches by email OR phone. The `leads` slice is
+            //     kept AS-IS (still the AI Agent's sales-funnel dataset);
+            //     the mirror gives the admin's new lifecycle views a
+            //     Customer row to render. Dedup rule matches addLead's
+            //     runtime dedup so bulk import + this hydrate sweep can't
+            //     race and create two mirrors for the same person.
+            if (!Array.isArray(state.leadSources) || state.leadSources.length === 0) {
+                state.leadSources = [...INITIAL_LEAD_SOURCES];
+            }
+            if (!Array.isArray(state.followUpStages) || state.followUpStages.length === 0) {
+                state.followUpStages = [...INITIAL_FOLLOW_UP_STAGES];
+            }
+            if (!Array.isArray(state.followUpTasks)) {
+                state.followUpTasks = [];
+            }
+            // v83 audit fix — resolve the current label of the seeded
+            // "New" stage once so a hypothetical pre-existing rename in
+            // the persisted state cascades into fresh mirrors too.
+            const rehydrateNewStageLabel =
+                state.followUpStages.find(s => s.id === "stg_new")?.label ?? "New";
+            if (Array.isArray(state.leads) && Array.isArray(state.customers)) {
+                const emailToCustomer = new Map<string, Customer>();
+                const phoneToCustomer = new Map<string, Customer>();
+                for (const c of state.customers) {
+                    if (c.email) emailToCustomer.set(c.email.toLowerCase(), c);
+                    if (c.phone) phoneToCustomer.set(c.phone, c);
+                }
+                const newMirrors: Customer[] = [];
+                for (const lead of state.leads) {
+                    const matchByEmail = lead.contact_email
+                        ? emailToCustomer.get(lead.contact_email.toLowerCase())
+                        : undefined;
+                    const matchByPhone = lead.phone ? phoneToCustomer.get(lead.phone) : undefined;
+                    const existing = matchByEmail ?? matchByPhone;
+                    if (existing) continue; // dedup — same person already in customers[]
+                    const [firstName, ...restName] = (lead.contact_name ?? "").trim().split(/\s+/);
+                    const lastName = restName.join(" ");
+                    const initials = `${(firstName || "?").charAt(0)}${(lastName || "").charAt(0)}`.toUpperCase() || "?";
+                    const mirrorId = `cu_from_${lead.id}`;
+                    if (state.customers.some(c => c.id === mirrorId)) continue;
+                    newMirrors.push({
+                        id: mirrorId,
+                        firstName: firstName || lead.contact_name || "Lead",
+                        lastName: lastName || "",
+                        initials,
+                        email: lead.contact_email ?? "",
+                        phone: lead.phone,
+                        branchId: lead.branch_id,
+                        planKind: null,
+                        createdAt: lead.added_at ?? new Date().toISOString(),
+                        status: "active",
+                        gender: lead.gender,
+                        lifecycleTag: "Lead",
+                        followUpStatus: rehydrateNewStageLabel as FollowUpStatus,
+                        assignedTo: lead.assigned_to_staff_id,
+                        sourceId: state.leadSources.find(
+                            s => s.label.toLowerCase() === (lead.source ?? "").toLowerCase(),
+                        )?.id,
+                        marketingSource: lead.source,
+                    });
+                }
+                if (newMirrors.length > 0) {
+                    state.customers = [...newMirrors, ...state.customers];
+                }
+            }
+            // v83 lifecycle showcase personas (client 2026-07-27) — for
+            // testers who already have a persisted v83 state without the
+            // 7 showcase personas + their supporting data, backfill on
+            // hydrate. Idempotent — only injects a persona (and its
+            // plans / bookings / transactions) if the customer id isn't
+            // already in the state. Runs before the recompute sweep so
+            // the fresh personas get their lifecycle tags on the same
+            // pass.
+            if (Array.isArray(state.customers)) {
+                const knownCustomerIds = new Set(state.customers.map(c => c.id));
+                const knownPlanIds = new Set(state.customerPlans.map(p => p.id));
+                const knownBookingIds = new Set(state.classBookings.map(b => b.id));
+                const knownTxnIds = new Set(state.customerTransactions.map(t => t.id));
+                // v83 audit-4 fix (2026-07-28) — INITIAL_CUSTOMERS added
+                // to the rehydrate backfill. Symptom: user searched
+                // "Ava Wright" in AI Agent and got a hallucinated
+                // response because Ava was missing from the persisted
+                // snapshot (deleted / persist edge case). The showcase
+                // + bulk lists were the only ones ever restored on
+                // rehydrate; the 10 hand-authored seed customers
+                // (Ava, Bosa, Rosale, Zahra, Ahmed…) had no safety net.
+                // Now every seeded customer restores itself if missing.
+                const combinedCustomers = [...INITIAL_CUSTOMERS, ...SHOWCASE_CUSTOMERS, ...BULK_SHOWCASE.customers];
+                const combinedPlans     = [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...BULK_SHOWCASE.plans];
+                const combinedBookings  = [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS, ...BULK_SHOWCASE.bookings];
+                const combinedTxns      = [...INITIAL_CUSTOMER_TRANSACTIONS, ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions];
+                const freshCustomers = combinedCustomers.filter(c => !knownCustomerIds.has(c.id));
+                if (freshCustomers.length > 0) {
+                    state.customers = [...freshCustomers, ...state.customers];
+                    state.customerPlans = [...state.customerPlans, ...combinedPlans.filter(p => !knownPlanIds.has(p.id))];
+                    state.classBookings = [...state.classBookings, ...combinedBookings.filter(b => !knownBookingIds.has(b.id))];
+                    state.customerTransactions = [...state.customerTransactions, ...combinedTxns.filter(t => !knownTxnIds.has(t.id))];
+                }
+            }
+            // v83 audit fix (2026-07-27) — recompute lifecycleTag for
+            // every customer that lacks one. Without this pass, pre-v83
+            // seeded customers (Alice with 100 attended classes, etc.)
+            // keep `lifecycleTag: undefined`, and the segment tabs on
+            // /admin/customers default them to "Lead" (via
+            // `r.lifecycleTag ?? "Lead"`), so "Members" renders empty
+            // until the customer's next write. This sweep runs ONCE at
+            // hydrate — customers whose tag already exists are skipped
+            // so a manual override or later recompute isn't clobbered.
+            //
+            // Kept inline (rather than iterating through the Zustand
+            // action) so we don't build up N action history entries at
+            // boot. Uses the same compute the actions use to guarantee
+            // parity between "just booted" and "just wrote" state.
+            if (Array.isArray(state.customers) && Array.isArray(state.classBookings) &&
+                Array.isArray(state.customerPlans) && Array.isArray(state.customerTransactions)) {
+                const needsCompute = state.customers.filter(c => c.lifecycleTag === undefined);
+                if (needsCompute.length > 0) {
+                    const computeState = {
+                        customers: state.customers,
+                        classBookings: state.classBookings,
+                        customerPlans: state.customerPlans,
+                        customerTransactions: state.customerTransactions,
+                    };
+                    const patches = new Map<string, { tag: LifecycleTag; isVip: boolean; computedOn: string }>();
+                    for (const c of needsCompute) {
+                        const r = computeLifecycleTag(c.id, computeState);
+                        patches.set(c.id, { tag: r.tag, isVip: r.isVip, computedOn: r.computedOn });
+                    }
+                    state.customers = state.customers.map(c => {
+                        const p = patches.get(c.id);
+                        if (!p) return c;
+                        return {
+                            ...c,
+                            lifecycleTag: p.tag,
+                            isVip: p.isVip,
+                            lifecycleTaggedOn: c.lifecycleTaggedOn ?? p.computedOn,
+                        };
+                    });
+                }
             }
             // v78 (2026-07-21) — Freeze policy v2 Phase 4.
             // Auto-resume + reminder sweep. Runs at hydrate so an

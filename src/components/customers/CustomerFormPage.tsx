@@ -255,6 +255,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     const branchIdParam = searchParams.get("branchId");
     const customers     = useAppStore(s => s.customers);
     const branches      = useAppStore(s => s.branches);
+    const leadSources   = useAppStore(s => s.leadSources);
     const addCustomer    = useAppStore(s => s.addCustomer);
     const updateCustomer = useAppStore(s => s.updateCustomer);
     const showToast      = useAppStore(s => s.showToast);
@@ -268,6 +269,12 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     const branchOptions = useMemo(
         () => branches.filter(b => b.status === "active").map(b => ({ value: b.id, label: b.name })),
         [branches],
+    );
+    // v83 — Source picker options, memoized against the leadSources
+    // slice so a rename / add in Settings propagates here immediately.
+    const leadSourceOptions = useMemo(
+        () => leadSources.map(s => ({ value: s.id, label: s.label })),
+        [leadSources],
     );
 
     // Default branch — edit mode reuses the customer's branch; create mode
@@ -296,6 +303,12 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     const [city, setCity] = useState(editing?.city ?? "");
     const [postalCode, setPostalCode] = useState(editing?.postalCode ?? "");
     const [streetAddress, setStreetAddress] = useState(editing?.streetAddress ?? "");
+
+    // v83 client 2026-07-27 — Source picker. Persists as sourceId on the
+    // Customer row and drives the Details tab Source field + acquisition
+    // reports. Optional (defaults to "" = unset) so the form doesn't
+    // block on it, but any lead intake path should pick one.
+    const [sourceId, setSourceId] = useState<string>(editing?.sourceId ?? "");
 
     // Email must be syntactically valid — same `isValidEmail` rule the
     // admin Change-email modal + instructor Edit profile use, so the
@@ -409,6 +422,9 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
             city: city || undefined,
             postalCode: postalCode || undefined,
             streetAddress: streetAddress || undefined,
+            // v83 source picker — stored as sourceId (FK to leadSources)
+            // + `marketingSource` (denormalized label for legacy reports).
+            sourceId: sourceId || undefined,
         };
 
         if (isEditing && editing) {
@@ -505,6 +521,24 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                                         placeholder="Phone number..."
                                         className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent rounded-r-[8px]" />
                                 </div>
+                            </Field>
+
+                            {/* v83 client 2026-07-27 — Source picker.
+                                Pulls the studio-editable list from
+                                Settings → Customer → Lead lifecycle so
+                                a rename there propagates here on next
+                                render. Optional (empty = unset). */}
+                            <Field label="Source">
+                                <SelectInput
+                                    value={sourceId}
+                                    onChange={setSourceId}
+                                    placeholder="Where did they come from?"
+                                    options={[
+                                        { value: "", label: "No source" },
+                                        ...leadSourceOptions,
+                                    ]}
+                                    width="w-full"
+                                />
                             </Field>
 
                         </div>

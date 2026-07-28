@@ -46,6 +46,8 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -81,9 +83,17 @@ interface FilterState {
     branchId: string;          // "" = any branch
     planExpiryStart: string;   // "" = no lower bound
     planExpiryEnd: string;     // "" = no upper bound
+    /** v83 client 2026-07-27 — multi-select over the 7 lifecycle stages.
+     *  Empty = no filter. Stacks on top of the segment tabs (Members /
+     *  Leads / Inactive) so a user can further scope inside a segment. */
+    lifecycleTags: import("@/lib/store").LifecycleTag[];
 }
+const ALL_LIFECYCLE_TAGS: import("@/lib/store").LifecycleTag[] = [
+    "Lead", "Trialist", "New Active", "Loyal Active", "At Risk", "Churned", "Won-back",
+];
 const EMPTY_FILTER: FilterState = {
     statuses: [], planTypes: [], lastVisit: [], branchId: "", planExpiryStart: "", planExpiryEnd: "",
+    lifecycleTags: [],
 };
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
@@ -208,7 +218,8 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
         pending.lastVisit.length > 0 ||
         pending.branchId !== "" ||
         pending.planExpiryStart !== "" ||
-        pending.planExpiryEnd !== "";
+        pending.planExpiryEnd !== "" ||
+        pending.lifecycleTags.length > 0;
 
     return (
         <SlidePanel open={open} onClose={onClose} width={420}>
@@ -220,6 +231,21 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {/* v83 client 2026-07-27 — Lifecycle filter chip group.
+                        Stacks on top of the segment tabs so "Members ∧ Loyal
+                        Active" is a valid pinned scope. */}
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[14px] font-medium text-[#344054]">Lifecycle</p>
+                        <div className="flex flex-wrap gap-2">
+                            {ALL_LIFECYCLE_TAGS.map(t => (
+                                <FilterPill key={t} label={t} selected={pending.lifecycleTags.includes(t)}
+                                    onClick={() => setPending(p => ({ ...p, lifecycleTags: toggle(p.lifecycleTags, t) }))} />
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+
                     {/* Status */}
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
@@ -346,7 +372,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
                     className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
@@ -407,16 +433,34 @@ type CustomerRow = {
     branchId: string;
     /** True when the customer has booking history — Delete is gated on this. */
     hasHistory: boolean;
+    // v83 lifecycle — read from customer.lifecycleTag (stamped by the store's
+    // recompute hook). Missing means the customer predates v83; the segment
+    // tab treats "missing" as the fallback "Lead" bucket per plan §1.
+    lifecycleTag?: import("@/lib/store").LifecycleTag;
+    isVip?: boolean;
+    /** v83 Phase 3 — used by the "Assigned to me" chip filter. */
+    assignedTo?: string;
 };
 
 // ─── CSV export ──────────────────────────────────────────────────────────────
 
-function exportCustomersCsv(rows: CustomerRow[]) {
-    const header = ["Name", "Email", "Phone", "Plan", "Status", "Joined", "Last visit"];
+function exportCustomersCsv(rows: CustomerRow[], staffLookup: Map<string, string>) {
+    // v83 audit fix — Lifecycle + VIP + Assigned to added to the export
+    // per the plan's Phase 2 verify pass. Staff name resolved via a
+    // caller-supplied lookup so the row's `assignedTo` id becomes a
+    // human name in the CSV (a bare staff id isn't useful downstream).
+    const header = [
+        "Name", "Email", "Phone", "Plan", "Lifecycle", "VIP",
+        "Assigned to", "Status", "Joined", "Last visit",
+    ];
     const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
     const body = rows.map(r => [
         r.name, r.email, r.phone,
-        PLAN_LABEL[r.planType], STATUS_LABEL[r.status],
+        PLAN_LABEL[r.planType],
+        r.lifecycleTag ?? "Lead",
+        r.isVip ? "Yes" : "No",
+        r.assignedTo ? (staffLookup.get(r.assignedTo) ?? "—") : "Unassigned",
+        STATUS_LABEL[r.status],
         fmtDate(r.joinedISO), r.lastVisitISO ? fmtDate(r.lastVisitISO) : "Never visited",
     ]);
     const csv = [header, ...body].map(line => line.map(esc).join(",")).join("\r\n");
@@ -447,6 +491,21 @@ export default function CustomersPage() {
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
     const deleteCustomers = useAppStore(s => s.deleteCustomers);
     const showToast = useAppStore(s => s.showToast);
+    // v83 Phase 3 — "Assigned to me" filter chip needs the current staff id
+    // to compare against customer.assignedTo. Falls back to the auth user id
+    // when the role has no staff row (owner etc.).
+    const currentUser = useAppStore(s => s.currentUser);
+    // v83 audit fix — CSV export needs staff for the "Assigned to" column.
+    const staff = useAppStore(s => s.staff);
+    // Client 2026-07-27 (audit #4 follow-up) — the profile computes
+    // lifecycle live via `computeLifecycleTag`; the list used to read
+    // the STORED `lifecycleTag` field, which could drift stale if the
+    // recompute hook missed a write path. That produced the "table says
+    // Lead but details say Churned" mismatch the client flagged. Fix:
+    // list also computes on the fly, so both surfaces use the same
+    // function and stay in agreement by construction.
+    const customerPlans = useAppStore(s => s.customerPlans);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
 
     // ─── Local UI state ─────────────────────────────────────────────────────
     // Branch filter defaults to "" ("All locations") — Owner + Branch Admin
@@ -460,14 +519,28 @@ export default function CustomersPage() {
     const [pageSize, setPageSize] = usePersistedListState("customers:pageSize", 10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+    // v83 lifecycle — segment tabs. Buckets match PDF §5.1 "leads inside
+    // Customers list + segment tabs":
+    //   All        → no filter
+    //   Leads      → lifecycleTag === "Lead" (pre-plan prospects)
+    //   Members    → tag ∈ { Trialist, New Active, Loyal Active, Won-back }
+    //   Inactive   → tag ∈ { At Risk, Churned } OR customer.status !== "active"
+    // The tab strip reuses the exact same chrome as /admin/insights so
+    // customers list feels like a sibling surface without any new component.
+    const [segment, setSegment] = useState<"all" | "leads" | "members" | "inactive">("all");
+    // v83 Phase 3 — "Assigned to me" chip. Off by default; when on, filters
+    // to rows whose customer.assignedTo matches the current staff id.
+    const [mineOnly, setMineOnly] = useState(false);
 
     // Reset to page 1 whenever the result set changes shape — but NOT on the
     // initial mount, so a page restored from the cross-nav cache survives.
+    // Deps include the lifecycle segment + "assigned to me" chip so switching
+    // either also returns to page 1.
     const didMountRef = useRef(false);
     useEffect(() => {
         if (!didMountRef.current) { didMountRef.current = true; return; }
         setPage(1);
-    }, [search, applied, branchId, pageSize]);
+    }, [search, applied, branchId, pageSize, segment, mineOnly]);
 
     // Branch dropdown — active branches from the live `branches` slice so
     // adds/archives in Business & Locations propagate immediately.
@@ -479,25 +552,36 @@ export default function CustomersPage() {
     // ─── Build rows (history flag derived live from bookings) ───────────────
     const allRows = useMemo<CustomerRow[]>(() => {
         const bookedCustomerIds = new Set(classBookings.map(b => b.customerId));
+        const liveState = { customers, classBookings, customerPlans, customerTransactions };
         // Newest customers first so a just-created customer lands at the top.
         return [...customers]
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-            .map(c => ({
-                id: c.id,
-                name: `${c.firstName} ${c.lastName}`.trim(),
-                initials: c.initials,
-                imageUrl: c.imageUrl,
-                email: c.email,
-                phone: c.phone ?? "",
-                joinedISO: c.createdAt,
-                planType: planTypeOf(c.planKind),
-                status: c.status,
-                lastVisitISO: c.lastVisitISO,
-                planExpiryISO: c.planExpiryISO,
-                branchId: c.branchId,
-                hasHistory: bookedCustomerIds.has(c.id),
-            }));
-    }, [customers, classBookings]);
+            .map(c => {
+                // Client 2026-07-27 — LIVE compute so this list agrees with
+                // the profile's drawer / pill (which also computes live).
+                // Falls back to the stored tag only if compute returns
+                // nothing usable (defensive; shouldn't happen).
+                const lc = computeLifecycleTag(c.id, liveState);
+                return {
+                    id: c.id,
+                    name: `${c.firstName} ${c.lastName}`.trim(),
+                    initials: c.initials,
+                    imageUrl: c.imageUrl,
+                    email: c.email,
+                    phone: c.phone ?? "",
+                    joinedISO: c.createdAt,
+                    planType: planTypeOf(c.planKind),
+                    status: c.status,
+                    lastVisitISO: c.lastVisitISO,
+                    planExpiryISO: c.planExpiryISO,
+                    branchId: c.branchId,
+                    hasHistory: bookedCustomerIds.has(c.id),
+                    lifecycleTag: lc?.tag ?? c.lifecycleTag ?? "Lead",
+                    isVip: c.isVip,
+                    assignedTo: c.assignedTo,
+                };
+            });
+    }, [customers, classBookings, customerPlans, customerTransactions]);
 
     // ─── Apply branch + search + filter ─────────────────────────────────────
     const today = todayISO();
@@ -529,6 +613,7 @@ export default function CustomersPage() {
             )) return false;
             if (applied.statuses.length > 0 && !applied.statuses.includes(r.status)) return false;
             if (applied.planTypes.length > 0 && !applied.planTypes.includes(r.planType)) return false;
+            if (applied.lifecycleTags.length > 0 && !applied.lifecycleTags.includes(r.lifecycleTag ?? "Lead")) return false;
             if (applied.branchId && r.branchId !== applied.branchId) return false;
             if (!matchesLastVisit(r)) return false;
             if (applied.planExpiryStart || applied.planExpiryEnd) {
@@ -537,17 +622,35 @@ export default function CustomersPage() {
                 if (applied.planExpiryStart && r.planExpiryISO < applied.planExpiryStart) return false;
                 if (applied.planExpiryEnd && r.planExpiryISO > applied.planExpiryEnd) return false;
             }
+            // v83 lifecycle segment filter — applied last so it stacks on
+            // top of every existing filter cleanly.
+            if (segment !== "all") {
+                const tag = r.lifecycleTag ?? "Lead";
+                if (segment === "leads"    && tag !== "Lead") return false;
+                if (segment === "members"  && !["Trialist", "New Active", "Loyal Active", "Won-back"].includes(tag)) return false;
+                if (segment === "inactive" && !(["At Risk", "Churned"].includes(tag) || r.status !== "active")) return false;
+            }
+            // v83 Phase 3 — "Assigned to me" chip. When on, keep only rows
+            // whose customer.assignedTo matches the current staff id.
+            if (mineOnly && currentUser?.id && r.assignedTo !== currentUser.id) return false;
             return true;
         });
-    }, [allRows, branchId, search, applied, today]);
+    }, [allRows, branchId, search, applied, today, segment, mineOnly, currentUser?.id]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
-    // ── Sortable columns — Name / Contact / Plan / Status / Last visit. ──
+    // ── Sortable columns — Name / Contact / Plan / Lifecycle / Status / Last visit. ──
     const STATUS_ORDER: Record<CustomerStatus, number> = { active: 0, inactive: 1, archived: 2 };
+    // Order lifecycle tags by "funnel depth" so ascending puts leads at the top
+    // and loyal members at the bottom — mirrors the mental model in PDF §2.1.
+    const LIFECYCLE_ORDER: Record<string, number> = {
+        "Lead": 0, "Trialist": 1, "New Active": 2, "Loyal Active": 3,
+        "Won-back": 4, "At Risk": 5, "Churned": 6,
+    };
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<CustomerRow>(filteredRows, {
         name:      (a, b) => a.name.localeCompare(b.name),
         contact:   (a, b) => a.email.localeCompare(b.email),
         plan:      (a, b) => a.planType.localeCompare(b.planType),
+        lifecycle: (a, b) => (LIFECYCLE_ORDER[a.lifecycleTag ?? "Lead"] ?? 99) - (LIFECYCLE_ORDER[b.lifecycleTag ?? "Lead"] ?? 99),
         status:    (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
         lastVisit: (a, b) => {
             // No-visit rows sort to the end regardless of direction by
@@ -603,7 +706,8 @@ export default function CustomersPage() {
     const hasActiveFilter =
         applied.statuses.length > 0 || applied.planTypes.length > 0 ||
         applied.lastVisit.length > 0 || applied.branchId !== "" ||
-        applied.planExpiryStart !== "" || applied.planExpiryEnd !== "";
+        applied.planExpiryStart !== "" || applied.planExpiryEnd !== "" ||
+        applied.lifecycleTags.length > 0;
 
     // ─── Action plumbing ────────────────────────────────────────────────────
     function openRowConfirm(row: CustomerRow, kind: RowActionKind) {
@@ -695,9 +799,22 @@ export default function CustomersPage() {
 
     const isTrulyEmpty = allRows.length === 0;
 
+    // v83 client 2026-07-27 — segment tabs restated as SegmentedTabs for
+    // the Staff/Shifts-style layout: toolbar row on top → rounded
+    // container box wrapping the pill-tab strip + table. Same tab keys
+    // (all / leads / members / inactive) so downstream filter code
+    // doesn't need to change.
+    const segmentTabDefs = [
+        { key: "all",      label: "All"      },
+        { key: "leads",    label: "Leads"    },
+        { key: "members",  label: "Members"  },
+        { key: "inactive", label: "Inactive" },
+    ];
+
     return (
-        <div className="flex flex-col gap-6">
-            {/* ── Toolbar ── */}
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
+            {/* ── Toolbar ── matches /admin/staff (Total · Location · Search
+                · Export · Filter · Assigned-to-me chip). */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={filteredRows.length} entitySingular="customer" />
                 <SelectInput
@@ -712,20 +829,45 @@ export default function CustomersPage() {
                 <ToolbarExport
                     disabled={filteredRows.length === 0}
                     onExportCsv={() => {
-                        exportCustomersCsv(filteredRows);
+                        exportCustomersCsv(
+                            filteredRows,
+                            new Map(staff.map(s => [
+                                s.id,
+                                (s.fullName || `${s.firstName} ${s.lastName}`).trim() || s.email,
+                            ])),
+                        );
                         showToast("Customer list exported", `${filteredRows.length} customer${filteredRows.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
                     }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
-                {/* Import Data entry hidden pending a proper migration flow
-                    build (client Jul 2026). The CustomerImportModal file stays
-                    on disk as reference for the rebuild — this page just no
-                    longer surfaces the entry point. */}
             </div>
 
-            {/* ── Table area — sits flush on the admin chrome, no outer
-                   border / card wrapper (same as the gift-cards list). ── */}
-            <div className="h-[760px] flex flex-col overflow-hidden">
+            {/* ── View card — rounded container hosting the SegmentedTabs
+                   strip + the table. Fills the remaining viewport so only
+                   the table body scrolls (matches /admin/staff's chrome). */}
+            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                <div className="shrink-0 px-6 py-4 flex items-center gap-3">
+                    <SegmentedTabs
+                        tabs={segmentTabDefs}
+                        activeKey={segment}
+                        onChange={(k) => setSegment(k as typeof segment)}
+                    />
+                    {/* Client 2026-07-27 — "Assigned to me" moved from
+                        the toolbar to the tab row and restyled as a DS
+                        secondary-gray Button so it reads as a scope
+                        toggle for the visible tab, not a general filter. */}
+                    <div className="flex-1" />
+                    {currentUser?.id && (
+                        <Button
+                            variant="secondary-gray"
+                            size="sm"
+                            onClick={() => setMineOnly(v => !v)}
+                            className={mineOnly ? "bg-[#f2f4f7] text-[#101828]" : undefined}
+                        >
+                            {mineOnly ? "Showing yours only" : "Assigned to me"}
+                        </Button>
+                    )}
+                </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                     {pagedRows.length === 0 ? (
                         <EmptyState
@@ -735,7 +877,7 @@ export default function CustomersPage() {
                                 : "Try adjusting your search or filters."}
                         />
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto px-6">
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>
@@ -755,6 +897,9 @@ export default function CustomersPage() {
                                         </th>
                                         <th className={cn(TH, "w-[150px]")}>
                                             <SortableHeader sortKey="plan"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Plan</SortableHeader>
+                                        </th>
+                                        <th className={cn(TH, "w-[160px]")}>
+                                            <SortableHeader sortKey="lifecycle" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Lifecycle</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
@@ -798,6 +943,12 @@ export default function CustomersPage() {
                                                     </div>
                                                 </td>
                                                 <td className={TD}><StatusBadge type="plan" status={r.planType} /></td>
+                                                <td className={TD}>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <StatusBadge type="lifecycle" status={r.lifecycleTag ?? "Lead"} />
+                                                        {r.isVip && <StatusBadge type="vip" status="vip" />}
+                                                    </div>
+                                                </td>
                                                 <td className={TD}><StatusBadge type="customer" status={r.status} /></td>
                                                 <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
                                                     {r.lastVisitISO ? fmtDate(r.lastVisitISO) : "—"}
@@ -874,7 +1025,7 @@ export default function CustomersPage() {
                     />
                 </div>
 
-                <div className="shrink-0">
+                <div className="shrink-0 px-6">
                     <Pagination
                         page={clampedPage} total={sortedRows.length} pageSize={pageSize}
                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}

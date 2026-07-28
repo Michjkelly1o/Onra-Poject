@@ -137,6 +137,14 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
         classCategories:         state.classCategories,
         memberships:             state.memberships,
         packages:                state.packages,
+        // v83 audit-4 (2026-07-28) — real "is configured" signals for
+        // studio-setup's isConfigured checks (was reporting "12/12 done"
+        // as soon as any branch existed).
+        taxRates:                state.taxRates,
+        agreements:              state.agreements,
+        referralSettings:        state.referralSettings,
+        notificationSettings:    state.notificationSettings,
+        cancellationPolicy:      state.cancellationPolicy,
     };
 }
 

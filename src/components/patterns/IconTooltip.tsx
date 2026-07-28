@@ -41,9 +41,6 @@ export interface IconTooltipProps {
 
 /** How far off the trigger to sit — matches the mockup spacing. */
 const GAP_PX = 6;
-/** Max tooltip width — long labels wrap into 2–3 lines instead of overflowing
- *  off the page (client 2026-07-28). */
-const MAX_W = 280;
 
 export function IconTooltip({ label, children, side = "above", disabled = false, className }: IconTooltipProps) {
     const [open, setOpen] = useState(false);
@@ -53,24 +50,30 @@ export function IconTooltip({ label, children, side = "above", disabled = false,
     // Recompute position when the tooltip opens. Reads the trigger's
     // bounding rect + tooltip's own size so `above` sits directly on top
     // of the button no matter what container it's in.
+    //
+    // Client 2026-07-27 — added viewport-edge clamping so a long tooltip
+    // anchored near the left / right frame edge doesn't clip off-screen.
+    // Estimates the tooltip's width via its rendered text length (rough
+    // but stable) so the initial `-translate-x-1/2` transform doesn't
+    // yank the tooltip off the viewport before the first paint.
     useLayoutEffect(() => {
         if (!open || disabled) return;
         const trigger = triggerRef.current;
         if (!trigger) return;
         const rect = trigger.getBoundingClientRect();
-        // Center horizontally on the trigger; vertical depends on side.
-        // We don't know the tooltip's own size until it renders, so we
-        // set an initial anchor and let the tooltip's translate handle
-        // the final centering.
-        const cx = rect.left + rect.width / 2;
-        const y  = side === "above" ? rect.top - GAP_PX : rect.bottom + GAP_PX;
-        // Keep the tooltip on-screen — it's centered on `x` via translate-x-1/2,
-        // so clamp `x` to at least half the max width from either viewport edge.
-        // Long labels wrap (max-w below) instead of running off the page.
-        const half = MAX_W / 2;
-        const clampedX = Math.max(half + 8, Math.min(window.innerWidth - half - 8, cx));
-        setPos({ x: clampedX, y });
-    }, [open, side, disabled]);
+        const y = side === "above" ? rect.top - GAP_PX : rect.bottom + GAP_PX;
+        // Estimated tooltip half-width — 6.5px per char is a fair average
+        // for the DS's 12px medium weight; capped by max-width below.
+        const estimatedWidth = Math.min(320, Math.max(80, label.length * 6.5 + 24));
+        const half = estimatedWidth / 2;
+        const margin = 8;
+        const raw = rect.left + rect.width / 2;
+        const cx = Math.min(
+            window.innerWidth - half - margin,
+            Math.max(half + margin, raw),
+        );
+        setPos({ x: cx, y });
+    }, [open, side, disabled, label]);
 
     return (
         <span
@@ -86,10 +89,20 @@ export function IconTooltip({ label, children, side = "above", disabled = false,
                 <span
                     role="tooltip"
                     className={cn(
-                        "fixed z-[100] max-w-[280px] w-max whitespace-normal break-words text-center",
+                        "fixed z-[100]",
                         "bg-[#0c111d] text-white text-[12px] leading-[16px] font-medium",
                         "rounded-[8px] px-2.5 py-1.5 shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)]",
                         "pointer-events-none",
+                        // Client 2026-07-27 (round 2) — short labels stay
+                        // on ONE line via `whitespace-nowrap`. Long labels
+                        // (>= 30 chars, e.g. the lifecycle reasoning
+                        // string) wrap within a bounded max-width so they
+                        // don't clip off the viewport. Threshold picked
+                        // empirically — one line of 30ch at 12px medium
+                        // fits well under 320px cap.
+                        label.length < 30
+                            ? "whitespace-nowrap"
+                            : "max-w-[320px] break-words",
                         // Horizontal centering via translate on the tooltip
                         // itself; vertical flip depending on side.
                         side === "above"
