@@ -105,7 +105,14 @@ export function buildCatalog(state: AppState): Catalog {
                 branch:      branchField,
                 created_at:  { row: "created_at",      type: "date",   label: "joined date" },
                 last_visit:  { row: "last_visit_iso",  type: "date",   label: "last visit" },
+                first_visit: { row: "first_visit_iso", type: "date",   label: "first visit" },
                 plan_expiry: { row: "plan_expiry_iso", type: "date",   label: "plan expiry" },
+                // v83 Customer & Lead Management fields (client 2026-07-28 audit-4)
+                lifecycle_tag:    { row: "lifecycle_tag",    type: "enum",   label: "lifecycle stage", values: ["Lead", "Trialist", "New Active", "Loyal Active", "At Risk", "Churned", "Won-back"] },
+                follow_up_status: { row: "follow_up_status", type: "enum",   label: "follow-up status", values: ["New", "Contacted", "Trial booked", "Follow-up", "Won", "Lost"] },
+                is_vip:           { row: "is_vip",           type: "enum",   label: "VIP", values: ["true", "false"] },
+                marketing_source: { row: "marketing_source", type: "string", label: "source" },
+                converted_from:   { row: "converted_from",   type: "enum",   label: "converted from", values: ["first-visit", "intro-offer", "trial-class", "referral"] },
             },
         },
 

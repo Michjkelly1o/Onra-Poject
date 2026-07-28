@@ -11016,7 +11016,13 @@ export const useAppStore = create<AppState>()(persist(
         //   the customer table + profile header render real
         //   faces instead of gray "SN" initials tiles. Bump so
         //   pre-v86 caches pick up the imageUrl fields.
-        version: 86,
+        // v87 (2026-07-28): AI Agent audit-4 fix. INITIAL_CUSTOMERS
+        //   (the 10 hand-authored seed customers — Ava, Bosa,
+        //   Rosale, Zahra, Ahmed…) now restore on rehydrate if
+        //   they're missing from the persisted state. Symptom:
+        //   AI Agent couldn't find Ava Wright because she was
+        //   absent from the snapshot. Bump forces the sweep.
+        version: 87,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -11227,10 +11233,19 @@ export const useAppStore = create<AppState>()(persist(
                 const knownPlanIds = new Set(state.customerPlans.map(p => p.id));
                 const knownBookingIds = new Set(state.classBookings.map(b => b.id));
                 const knownTxnIds = new Set(state.customerTransactions.map(t => t.id));
-                const combinedCustomers = [...SHOWCASE_CUSTOMERS, ...BULK_SHOWCASE.customers];
-                const combinedPlans     = [...SHOWCASE_PLANS,     ...BULK_SHOWCASE.plans];
-                const combinedBookings  = [...SHOWCASE_BOOKINGS,  ...BULK_SHOWCASE.bookings];
-                const combinedTxns      = [...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions];
+                // v83 audit-4 fix (2026-07-28) — INITIAL_CUSTOMERS added
+                // to the rehydrate backfill. Symptom: user searched
+                // "Ava Wright" in AI Agent and got a hallucinated
+                // response because Ava was missing from the persisted
+                // snapshot (deleted / persist edge case). The showcase
+                // + bulk lists were the only ones ever restored on
+                // rehydrate; the 10 hand-authored seed customers
+                // (Ava, Bosa, Rosale, Zahra, Ahmed…) had no safety net.
+                // Now every seeded customer restores itself if missing.
+                const combinedCustomers = [...INITIAL_CUSTOMERS, ...SHOWCASE_CUSTOMERS, ...BULK_SHOWCASE.customers];
+                const combinedPlans     = [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...BULK_SHOWCASE.plans];
+                const combinedBookings  = [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS, ...BULK_SHOWCASE.bookings];
+                const combinedTxns      = [...INITIAL_CUSTOMER_TRANSACTIONS, ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions];
                 const freshCustomers = combinedCustomers.filter(c => !knownCustomerIds.has(c.id));
                 if (freshCustomers.length > 0) {
                     state.customers = [...freshCustomers, ...state.customers];

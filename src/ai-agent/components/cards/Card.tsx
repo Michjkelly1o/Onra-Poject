@@ -17,6 +17,7 @@
 
 import type { DeepLink as DeepLinkData, InsightCard } from "@/ai-agent/agent/cards";
 import { ArrowUpRight } from "@untitledui/icons";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { isRouteDisabled } from "@/config/feature-flags";
 
@@ -93,8 +94,30 @@ function RankedListRow({
     // instead of router.push so middle-click / Ctrl-click / Cmd-click
     // all work as expected too.
     const clickable = !!r.href;
+    // v83 audit-4 (2026-07-28) — small avatar column on customer/lead
+    // rows. Renders the customer's imageUrl when present; otherwise a
+    // #f2f4f7 initials tile matching TableAvatar's chrome.
+    const hasAvatar = !!(r.avatarImageUrl || r.avatarInitials);
     const body = (
         <>
+            {hasAvatar && (
+                <div className="w-8 h-8 rounded-full bg-[#f2f4f7] flex items-center justify-center overflow-hidden shrink-0">
+                    {r.avatarImageUrl ? (
+                        <Image
+                            src={r.avatarImageUrl}
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                        />
+                    ) : (
+                        <span className="text-[12px] font-medium text-[#667085]">
+                            {r.avatarInitials}
+                        </span>
+                    )}
+                </div>
+            )}
             <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-medium text-[#101828] leading-5 truncate">
                     {r.title}

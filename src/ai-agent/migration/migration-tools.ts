@@ -72,13 +72,27 @@ const ENTITY_ENUM = z.enum([
 ]);
 
 /** Empty result — used when no file is uploaded or the caller is not
- *  authorised to write. Entity carried through so the card matches. */
-const emptyResult = (entity: EntityKey) => ({
-    card: "import_result" as const,
-    entity,
-    created: 0,
-    skipped: 0,
-    failed: 0,
+ *  authorised to write. Entity carried through so the card matches.
+ *
+ *  Client 2026-07-28 audit-4 — split into three distinct returns so a
+ *  mid-flow "no file" doesn't render as `card: "import_result"` with
+ *  zero counts (which reads to admins as "we imported nothing"). The
+ *  new cards are all `card: "empty"` variants with actionable copy so
+ *  the admin knows exactly what to do next. */
+const noFileResult = () => ({
+    card: "empty" as const,
+    message:
+        "No file uploaded yet — click the paperclip in the composer and pick a CSV, XLSX, or XLS file to continue.",
+});
+const notConfirmedResult = () => ({
+    card: "empty" as const,
+    message:
+        "I need explicit approval before writing anything. Review the mapping summary above and reply \"Yes, start import\" when you're ready.",
+});
+const notAuthorisedResult = () => ({
+    card: "empty" as const,
+    message:
+        "Your role can't write imports. Ask an Owner or Branch Admin to run the commit step.",
 });
 
 export function migrationTools(
@@ -110,7 +124,7 @@ export function migrationTools(
                 ),
             }),
             execute: async ({ entity }) => {
-                if (!parsedFile) return emptyResult(entity);
+                if (!parsedFile) return noFileResult();
                 const def = ENTITIES[entity];
                 const ba = branchAssignment(
                     ctx,
@@ -148,7 +162,7 @@ export function migrationTools(
                 entity: ENTITY_ENUM,
             }),
             execute: async ({ entity }) => {
-                if (!parsedFile) return emptyResult(entity);
+                if (!parsedFile) return noFileResult();
                 const def = ENTITIES[entity];
                 const m = proposeMapping(entity, parsedFile);
                 return {
@@ -172,7 +186,7 @@ export function migrationTools(
                 entity: ENTITY_ENUM,
             }),
             execute: async ({ entity }) => {
-                if (!parsedFile) return emptyResult(entity);
+                if (!parsedFile) return noFileResult();
                 const p = preview(entity, parsedFile, parsedFile.mapping);
                 return {
                     card: "mapping_summary" as const,
@@ -197,9 +211,9 @@ export function migrationTools(
                     ),
             }),
             execute: async ({ entity, confirmed }) => {
-                if (!ctx.canWrite) return emptyResult(entity);
-                if (!confirmed) return emptyResult(entity);
-                if (!parsedFile) return emptyResult(entity);
+                if (!ctx.canWrite) return notAuthorisedResult();
+                if (!confirmed) return notConfirmedResult();
+                if (!parsedFile) return noFileResult();
                 const r = commit(entity, parsedFile, parsedFile.mapping);
                 return {
                     card: "import_result" as const,
