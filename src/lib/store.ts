@@ -9990,7 +9990,10 @@ export const useAppStore = create<AppState>()(persist(
         // v85 (2026-07-28): moved today's Liam "Reformer Pilates" demo class
         //   from 1:00 PM to 2:00–3:00 PM (live testing). Bump so persisted
         //   snapshots reseed with the new time on both admin + customer.
-        version: 85,
+        // v86 (2026-07-28): seeded active shifts for branch_forma_west so West
+        //   instructors (e.g. Amelia Park) are assignable — the shift picker
+        //   was empty for them. Bump so the new shifts reseed.
+        version: 86,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

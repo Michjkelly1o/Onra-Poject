@@ -831,7 +831,7 @@ function PayRateTab({ staff, payRates }: { staff: Staff; payRates: PayRate[] }) 
             rows.push({ label: "Substitute pay rate", value: nameOf(cfg.perClass.substitutePayRateId) });
             rows.push({ label: "Substitutions amount", value: cfg.perClass.substitutionAmountAed != null ? `AED ${cfg.perClass.substitutionAmountAed}` : "—" });
         }
-        if (cfg.perAppointment.enabled) rows.push({ label: "Pay per appointment", value: nameOf(cfg.perAppointment.payRateId) });
+        if (cfg.perAppointment.enabled) rows.push({ label: "Pay per Private", value: nameOf(cfg.perAppointment.payRateId) });
     } else {
         // Legacy row with no payConfig — fall back to the single default rate.
         rows.push({ label: "Default pay rate", value: nameOf(staff.payRateId) });

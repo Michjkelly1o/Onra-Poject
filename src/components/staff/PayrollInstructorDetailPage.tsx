@@ -821,6 +821,44 @@ export default function PayrollInstructorDetailPage({
                                 )}
                             </div>
 
+                            {/* Pay-config breakdown — how the base pay splits across the
+                                enabled tracks (Default salary + Pay per class + Pay per
+                                Private). Shown only when the instructor earns on more than
+                                the Default track, so single-track staff stay uncluttered.
+                                Reads the SAME `periodTotals.trackBreakdown` that drives the
+                                Total earnings figure, so the parts always sum to the total
+                                base. Client 2026-07-28. */}
+                            {(periodTotals.trackBreakdown.perClass > 0 || periodTotals.trackBreakdown.perAppointment > 0) && (
+                                <div className="px-6 pt-6">
+                                    <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
+                                        <p className="text-[14px] font-semibold text-[#101828]">Pay breakdown</p>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[13px] text-[#667085]">Default pay rate</span>
+                                                <span className="text-[13px] font-medium text-[#344054]">{aed(periodTotals.trackBreakdown.defaultBase)}</span>
+                                            </div>
+                                            {periodTotals.trackBreakdown.perClass > 0 && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[13px] text-[#667085]">Pay per class</span>
+                                                    <span className="text-[13px] font-medium text-[#344054]">{aed(periodTotals.trackBreakdown.perClass)}</span>
+                                                </div>
+                                            )}
+                                            {periodTotals.trackBreakdown.perAppointment > 0 && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[13px] text-[#667085]">Pay per Private</span>
+                                                    <span className="text-[13px] font-medium text-[#344054]">{aed(periodTotals.trackBreakdown.perAppointment)}</span>
+                                                </div>
+                                            )}
+                                            <div className="h-px w-full bg-[#e4e7ec]" />
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[13px] font-semibold text-[#101828]">Base pay</span>
+                                                <span className="text-[13px] font-semibold text-[#101828]">{aed(periodTotals.trackBreakdown.base)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Sales commission — categorised (commission refactor
                                 Phase 3). Moved here from the Staff detail page. */}
                             {hasCommission && (

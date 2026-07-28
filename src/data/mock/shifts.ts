@@ -2,7 +2,8 @@
 // Onra Studio — `shifts` seed (Shift management module)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Five demo shifts — every branch has at least one shift, the South branch
+// Seven demo shifts — every branch (South, East, West) has at least one shift,
+// the South branch
 // (the demo flagship) carries Morning + Afternoon + Evening to exercise
 // every variant of the Shift management table and the staff-form's Assign
 // shift dropdown.
@@ -78,5 +79,33 @@ export const shifts: Shift[] = [
         staffing_target: 2,
         status: "inactive",
         created_at: "2025-12-05T09:00:00Z",
+    },
+
+    // ── West branch (2 shifts) ────────────────────────────────────────────
+    // West carried NO shifts, so the branch-scoped "Assign shift" picker was
+    // empty for every West instructor (e.g. Amelia Park → "No active shifts at
+    // this branch"). Seed active West shifts so they're assignable. Client
+    // 2026-07-28.
+    {
+        id: "shift_west_morning",
+        name: "Morning shift",
+        branch_id: "branch_forma_west",
+        start_time: "07:00",
+        end_time:   "12:00",
+        working_days: [false, true, true, true, true, true, true],
+        staffing_target: 3,
+        status: "active",
+        created_at: "2025-12-04T08:00:00Z",
+    },
+    {
+        id: "shift_west_evening",
+        name: "Evening shift",
+        branch_id: "branch_forma_west",
+        start_time: "17:00",
+        end_time:   "22:00",
+        working_days: [false, true, true, true, true, true, true],
+        staffing_target: 2,
+        status: "active",
+        created_at: "2025-12-04T09:00:00Z",
     },
 ];

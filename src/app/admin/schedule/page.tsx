@@ -20,6 +20,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
@@ -107,9 +108,12 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
 // and delegates to the canonical RowActions. Computes appointment-vs-class
 // routing + per-status conditional visibility in one place so the call site
 // stays a single `<ScheduleRowActions ... />`.
-function ScheduleRowActions({ id, status, onCancel, onDuplicate, onAddCustomer }: {
+function ScheduleRowActions({ id, status, flexible, onCancel, onDuplicate, onAddCustomer }: {
     id: string;
     status: ClassStatus;
+    /** True for a Flexible private appointment — unlocks Reassign instructor
+     *  (mirrors the appointment detail side panel). */
+    flexible?: boolean;
     onCancel: (id: string) => void;
     /** Always present — Duplicate is available on every class state. */
     onDuplicate: (id: string) => void;
@@ -126,14 +130,19 @@ function ScheduleRowActions({ id, status, onCancel, onDuplicate, onAddCustomer }
     const rt = encodeURIComponent("/admin/schedule");
     const viewPath = isAppt ? `/appointments/${id}?returnTo=${rt}` : `/schedule/${id}?returnTo=${rt}`;
     const editPath = isAppt ? `/appointments/${id}?returnTo=${rt}` : `/schedule/${id}/edit?returnTo=${rt}`;
+    // Reassign opens the appointment detail with the reassign modal pre-opened,
+    // so the 3-dots menu offers the same action as the detail side panel.
+    const reassignPath = `/appointments/${id}?returnTo=${rt}&reassign=1`;
 
     return (
         <RowActions
-            minWidth={180}
+            minWidth={190}
             items={[
                 { label: "View details", icon: Eye, onClick: () => router.push(viewPath) },
                 { label: "Add customer", icon: UserPlus01, onClick: () => onAddCustomer(id), hidden: !(isEditable && !isAppt) },
                 { label: "Edit class", icon: Edit02, onClick: () => router.push(editPath), hidden: !(isEditable && !isAppt) },
+                // Reassign instructor — Flexible appointments only, Upcoming/Ongoing.
+                { label: "Reassign instructor", icon: Shuffle01, onClick: () => router.push(reassignPath), hidden: !(isAppt && !!flexible && isEditable) },
                 { label: "Duplicate", icon: Copy01, onClick: () => onDuplicate(id), hidden: isAppt },
                 { label: isAppt ? "Cancel appointment" : "Cancel class", icon: Trash01, onClick: () => onCancel(id), hidden: !isEditable, danger: true },
             ]}
@@ -573,9 +582,11 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                         "Preference: Flexible" instructor preference
                                         (studio auto-assigned). Client 2026-07-24. */}
                                     {c.flexible && (
-                                        <span className="inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full text-[12px] font-medium bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]">
-                                            <Shuffle01 className="w-3 h-3" aria-hidden /> Flexible
-                                        </span>
+                                        <IconTooltip label="Flexible booking — the customer let the studio choose the instructor, so this one was auto-assigned and can be reassigned." side="below">
+                                            <span className="inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full text-[12px] font-medium bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc] cursor-default">
+                                                <Shuffle01 className="w-3 h-3" aria-hidden /> Flexible
+                                            </span>
+                                        </IconTooltip>
                                     )}
                                 </div>
                             </td>
@@ -590,7 +601,7 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                 <StarRating rating={c.rating} count={c.ratingCount} />
                             </td>
                             <td className={TD}><StatusBadge type="class" status={c.status} /></td>
-                            <td className={TD} onClick={e => e.stopPropagation()}><ScheduleRowActions id={c.id} status={c.status} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
+                            <td className={TD} onClick={e => e.stopPropagation()}><ScheduleRowActions id={c.id} status={c.status} flexible={c.flexible} onCancel={onCancel} onDuplicate={onDuplicate} onAddCustomer={onAddCustomer} /></td>
                         </tr>
                     ))}
                 </tbody>

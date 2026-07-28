@@ -54,6 +54,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions } from "@/components/patterns/RowActions";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
@@ -563,6 +564,16 @@ function LeftPanel({ appointment, onCancelAppointment }: {
     const branchInstructors = allInstructors.filter(i => i.status === "active" && i.branchId === appointment.branchId);
     const canReassign = !!appointment.flexible && (isUpcoming || isOngoing);
 
+    // Deep-link — the Schedule 3-dots "Reassign instructor" navigates here with
+    // ?reassign=1 so the list offers the same action as this side panel. Open
+    // the modal once, only when the appointment is actually reassignable.
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (new URLSearchParams(window.location.search).get("reassign") === "1" && canReassign) {
+            setReassignOpen(true);
+        }
+    }, [canReassign]);
+
     return (
         <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
             {/* Banner */}
@@ -586,9 +597,11 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                             <p className="text-[14px] text-[#667085] leading-[20px]">{appointment.openSession ? "Open session" : "Private session"}</p>
                             {/* Flexible booking indicator — client 2026-07-24. */}
                             {appointment.flexible && (
-                                <span className="inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full text-[12px] font-medium bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]">
-                                    <Shuffle01 className="w-3 h-3" aria-hidden /> Flexible
-                                </span>
+                                <IconTooltip label="Flexible booking — the customer let the studio choose the instructor, so this one was auto-assigned and can be reassigned." side="below">
+                                    <span className="inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full text-[12px] font-medium bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc] cursor-default">
+                                        <Shuffle01 className="w-3 h-3" aria-hidden /> Flexible
+                                    </span>
+                                </IconTooltip>
                             )}
                         </div>
                     </div>

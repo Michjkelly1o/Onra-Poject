@@ -1249,8 +1249,8 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
 
                                     {isInstructor && (
                                         <PayConfigCard
-                                            title="Pay per appointment"
-                                            subtitle="Add compensation for every appointment completed."
+                                            title="Pay per Private"
+                                            subtitle="Add compensation for every private session completed."
                                             enabled={form.payConfig.perAppointment.enabled}
                                             onToggle={n => toggleTrack("perAppointment", n)}
                                         >
