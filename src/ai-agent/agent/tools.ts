@@ -565,7 +565,7 @@ export function insightTools(
 
         find_customer: tool({
             description:
-                "Search customers by name / email / phone (substring, case-insensitive). Returns a people list where each row deep-links to the customer's profile page. Use when the user asks 'find <name>' / 'look up <email>' / 'who is <substring>'. If the user just wants a broad list, use list_records({ dataset: 'customers' }) instead.",
+                "Search customers AND leads by name / email / phone (substring, case-insensitive). Returns a mixed people list — customer rows deep-link to the customer profile page; lead rows are non-clickable and tagged 'lead' in the right column (there's no per-lead detail page yet). Use when the user asks 'find <name>' / 'look up <email>' / 'who is <substring>'. If the user just wants a broad list, use list_records({ dataset: 'customers' }) or list_records({ dataset: 'leads' }) instead.",
             parameters: z.object({
                 query: z
                     .string()
