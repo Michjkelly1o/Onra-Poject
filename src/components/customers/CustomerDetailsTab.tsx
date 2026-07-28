@@ -31,6 +31,7 @@ import { getCustomerPassword, useHasCustomerPassword } from "@/lib/customer/cust
 // renders (pre-conversion only per plan §Phase 3).
 import { SelectInput } from "@/components/ui/select-input";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { lookupStageLabel } from "@/lib/customer/follow-up-tasks";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -186,9 +187,15 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
                         <div className="flex flex-col gap-1.5">
                             <p className="text-[14px] text-[#667085]">Follow-up status</p>
                             <SelectInput
-                                value={customer.followUpStatus ?? "New"}
+                                // v83 audit-3 fix (2026-07-27) — resolve
+                                // the "New" default via the current stage
+                                // list so a Phase-6 rename ("New" → "New
+                                // Lead") keeps the SelectInput's value
+                                // matching an option; hardcoding "New"
+                                // rendered blank after a rename.
+                                value={customer.followUpStatus ?? lookupStageLabel(followUpStages, "stg_new", "New")}
                                 onChange={(next) => {
-                                    const val = (next || "New") as FollowUpStatus;
+                                    const val = (next || lookupStageLabel(followUpStages, "stg_new", "New")) as FollowUpStatus;
                                     updateCustomer(customerId, { followUpStatus: val });
                                     showToast(
                                         "Follow-up status updated",

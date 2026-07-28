@@ -58,6 +58,7 @@ import { derivePlanBalances } from "@/lib/plan-credits";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { lookupStageIdByLabel, lookupStageLabel, FOLLOW_UP_STAGE_PALETTE } from "@/lib/customer/follow-up-tasks";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -962,6 +963,9 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     // tabs on this page (Bookings tab, Payments tab).
     const classBookings = useAppStore(s => s.classBookings);
     const customerTransactions = useAppStore(s => s.customerTransactions);
+    // v83 audit-3 — follow-up pill needs the stage list to resolve
+    // its palette by stable id (survives a Phase-6 rename).
+    const followUpStages = useAppStore(s => s.followUpStages);
     const setCustomerStatus = useAppStore(s => s.setCustomerStatus);
     const freezeCustomerPlan = useAppStore(s => s.freezeCustomerPlan);
     const unfreezeCustomerPlan = useAppStore(s => s.unfreezeCustomerPlan);
@@ -1290,12 +1294,24 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                 lifecycleTag ∈ { "Lead", "Trialist" }, per
                                                 plan §Phase 3. Loyal Actives / Churned / etc.
                                                 have no follow-up funnel. */}
-                                            {(lifecycleResult.tag === "Lead" || lifecycleResult.tag === "Trialist") && (
-                                                <StatusBadge
-                                                    type="follow-up"
-                                                    status={customer.followUpStatus ?? "New"}
-                                                />
-                                            )}
+                                            {(lifecycleResult.tag === "Lead" || lifecycleResult.tag === "Trialist") && (() => {
+                                                // v83 audit-3 fix — resolve palette
+                                                // via stable stage id so a Phase-6
+                                                // rename ("Won" → "Converted")
+                                                // preserves the green pill.
+                                                const stageLabel = customer.followUpStatus
+                                                    ?? lookupStageLabel(followUpStages, "stg_new", "New");
+                                                const stageId = lookupStageIdByLabel(followUpStages, stageLabel);
+                                                const palette = stageId ? FOLLOW_UP_STAGE_PALETTE[stageId] : undefined;
+                                                return (
+                                                    <StatusBadge
+                                                        type="follow-up"
+                                                        status={stageLabel}
+                                                        label={stageLabel}
+                                                        paletteOverride={palette}
+                                                    />
+                                                );
+                                            })()}
                                         </div>
                                     )}
                                 </div>

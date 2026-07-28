@@ -74,6 +74,32 @@ export function lookupStageLabel(
     return stages.find(s => s.id === id)?.label ?? fallback;
 }
 
+/** v83 audit-3 (2026-07-27) — reverse lookup: given a customer's stored
+ *  `followUpStatus` LABEL, resolve it to the stable stage id by matching
+ *  against the current stage list. Enables palette/precedence code to
+ *  key off the id (which never changes on rename) instead of the label. */
+export function lookupStageIdByLabel(
+    stages: { id: string; label: string }[],
+    label: string | undefined,
+): string | undefined {
+    if (!label) return undefined;
+    return stages.find(s => s.label === label)?.id;
+}
+
+/** Palette key for the follow-up stage pill, keyed by stable stage id.
+ *  Studios can rename "Won" → "Converted" without the pill losing its
+ *  green tone (the audit-2 renameFollowUpStage cascade shifts the label
+ *  everywhere but leaves ids alone). Falls back to gray for
+ *  studio-added stages that don't map to a seeded id. */
+export const FOLLOW_UP_STAGE_PALETTE: Record<string, "gray" | "blue" | "purple" | "orange" | "green" | "red"> = {
+    stg_new:          "gray",
+    stg_contacted:    "blue",
+    stg_trial_booked: "purple",
+    stg_follow_up:    "orange",
+    stg_won:          "green",
+    stg_lost:         "red",
+};
+
 /** Deterministic "today". Same rationale as the lifecycle compute — the
  *  demo data ships with dates around late-2026 and this is called
  *  through the recompute hook, so no explicit clock injection is

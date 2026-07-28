@@ -347,7 +347,7 @@ export function autoCloseTasksOnGraduation(
     if (open.length === 0) return tasks;
     return tasks.map(t =>
         t.customerId === customerId && t.status === "open"
-            ? { ...t, status: "closed" as const, outcome: "reached" as const, closedAt: nowISO }
+            ? { ...t, status: "closed" as const, outcome: "auto_closed" as const, closedAt: nowISO }
             : t,
     );
 }

@@ -1281,7 +1281,18 @@ export type FollowUpTaskTrigger =
 
 /** Terminal outcome recorded by staff when they close a task. Feeds the
  *  precedence rule: `not_interested` → follow-up status → Lost. */
-export type FollowUpTaskOutcome = "reached" | "follow_up" | "not_interested";
+/** Outcome a follow-up task closes with.
+ *   • reached / follow_up / not_interested — staff-picked outcomes.
+ *   • auto_closed — v83 audit-3 (2026-07-27): the compute detected the
+ *     customer graduated past pre-conversion, so the open task is closed
+ *     automatically. Distinguishing this from "reached" keeps the
+ *     Activity log honest — nobody actually reached them, the system
+ *     just cleaned up. */
+export type FollowUpTaskOutcome =
+    | "reached"
+    | "follow_up"
+    | "not_interested"
+    | "auto_closed";
 
 /** Signal → task engine row. Materialised by the Phase 4 generator when a
  *  trigger fires; closed by staff on the Dashboard widget or the profile
@@ -4182,6 +4193,14 @@ export interface AppState {
     logCustomerEnquiry: (customerId: string, note?: string) =>
         | { logged: true; id: string }
         | { logged: false; reason: "lost" | "post_conversion" | "dup" };
+    /** v83 audit-3 (2026-07-27) — read-only eligibility probe used by
+     *  the Follow-ups tab side panel to enable/disable its primary
+     *  button + show an inline reason. Mirrors logCustomerEnquiry's
+     *  ladder without mutating state so the UI can render the block
+     *  BEFORE the admin types anything. */
+    getEnquiryEligibility: (customerId: string) =>
+        | { canLog: true }
+        | { canLog: false; reason: "lost" | "post_conversion" | "dup" };
     /** Close a follow-up task with a staff-picked outcome. Applies the
      *  Phase-5 outcome→followUpStatus mapping:
      *    reached         → status advances from New to Contacted
@@ -7171,6 +7190,12 @@ export const useAppStore = create<AppState>()(persist(
             convertedFrom:   input.convertedFrom   ?? deriveConvertedFrom(id, input.planKind),
         };
         set((state) => ({ customers: [customer, ...state.customers] }));
+        // v83 audit-3 fix (2026-07-27) — stamp lifecycleTag on brand-new
+        // customer records so every stored-tag reader (widget, CSV,
+        // task engine) sees the correct default from the start instead
+        // of relying on the segment-tab `?? "Lead"` fallback until
+        // something else triggers a recompute.
+        set(state => recomputePatch(state, id));
         return id;
     },
     updateCustomer: (id, patch) => {
@@ -7348,6 +7373,14 @@ export const useAppStore = create<AppState>()(persist(
                 relatedId: planId,
             });
         }
+        // v83 audit-3 fix — freeze affects usable-plan status downstream
+        // (approveFreezeRequest + freezeMembershipByCustomer both funnel
+        // here). Recompute so the tag stays fresh.
+        const targetPlan = get().customerPlans.find(p => p.id === planId);
+        if (targetPlan) {
+            const cid = targetPlan.customerId;
+            set(state => recomputePatch(state, cid));
+        }
         return { fee };
     },
 
@@ -7455,6 +7488,9 @@ export const useAppStore = create<AppState>()(persist(
                 },
             });
         }
+        // v83 audit-3 fix — freeze_requested transitions the plan
+        // status; recompute so downstream reads stay fresh.
+        set(state => recomputePatch(state, target.customerId));
     },
 
     approveFreezeRequest: (planId) => {
@@ -7743,6 +7779,10 @@ export const useAppStore = create<AppState>()(persist(
         });
         if (targetPlan) {
             get().recordAudit(`Removed ${customerName}'s complimentary credit`, "customer_plan", planId, targetPlan.name, { reason });
+            // v83 audit-3 fix — removing a Trialist's only plan
+            // means they should drop to Lead or Churned; recompute.
+            const cid = targetPlan.customerId;
+            set(state => recomputePatch(state, cid));
         }
     },
 
@@ -8152,6 +8192,28 @@ export const useAppStore = create<AppState>()(persist(
             return { followUpTasks: applyGeneratedTasks(state.followUpTasks, fresh) };
         });
         return id;
+    },
+    // v83 audit-3 (2026-07-27) — read-only eligibility probe. Ladder
+    // matches logCustomerEnquiry exactly; keeping them in the same file
+    // means a store-side gate change only needs to land in one place
+    // (previously the UI duplicated this ladder).
+    getEnquiryEligibility: (customerId) => {
+        const state = get();
+        const customer = state.customers.find(c => c.id === customerId);
+        if (!customer) return { canLog: false, reason: "dup" as const };
+        const lostLabel = lookupStageLabel(state.followUpStages, "stg_lost", "Lost");
+        if (customer.followUpStatus === lostLabel) {
+            return { canLog: false, reason: "lost" as const };
+        }
+        const liveTag = computeLifecycleTag(customerId, state).tag;
+        if (liveTag !== "Lead" && liveTag !== "Trialist") {
+            return { canLog: false, reason: "post_conversion" as const };
+        }
+        const dup = state.followUpTasks.some(
+            t => t.customerId === customerId && t.triggerKind === "enquiry_logged" && t.status === "open",
+        );
+        if (dup) return { canLog: false, reason: "dup" as const };
+        return { canLog: true };
     },
     // v83 Phase 4 — manual "Log enquiry" from the Phase-5 UI button on the
     // profile Follow-ups tab. Returns the new task's id, or null when the

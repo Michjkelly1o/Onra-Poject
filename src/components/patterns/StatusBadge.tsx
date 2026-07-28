@@ -49,7 +49,7 @@ const PALETTE = {
     indigo:       "bg-[#eef4ff] border-1 border-[#c7d7fe] text-[#3538cd]",
     teal:         "bg-[#f5fffa] border-1 border-[#aad4bd] text-[#3b5446]",       // Monthly pay-rate
 } as const;
-type PaletteKey = keyof typeof PALETTE;
+export type PaletteKey = keyof typeof PALETTE;
 
 // ─── Wrapper size variants ──────────────────────────────────────────────────
 
@@ -314,6 +314,12 @@ export interface StatusBadgeProps {
      *  dynamic content like a queue position ("Waitlist #3") that the
      *  registry can't compute. */
     label?: string;
+    /** v83 audit-3 (2026-07-27) — explicit palette override. Used by the
+     *  follow-up pill where the customer's stored `followUpStatus` can
+     *  be renamed by the studio and no longer matches the REGISTRY key.
+     *  Caller resolves the palette from the stable stage id + passes it
+     *  here; the registry lookup is bypassed. */
+    paletteOverride?: PaletteKey;
     /** Wrapper size. Defaults to "md" (px-[10px] py-[2px] text-[13px]). */
     size?: Size;
     /** Extra Tailwind classes appended to the wrapper. Used for layout
@@ -323,14 +329,17 @@ export interface StatusBadgeProps {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export function StatusBadge({ type, status, label, size = "md", className }: StatusBadgeProps) {
+export function StatusBadge({ type, status, label, paletteOverride, size = "md", className }: StatusBadgeProps) {
     const entry = REGISTRY[type]?.[status];
-    // Defensive fallback — if the caller passes an unknown (type, status)
-    // pair we render a plain grey pill with the raw status string so the UI
-    // doesn't crash. In dev, log to flag the gap.
-    const palette = entry ? PALETTE[entry.palette] : PALETTE.gray;
+    // paletteOverride wins over the REGISTRY lookup — used by the
+    // follow-up pill so a Phase-6 rename doesn't lose the palette
+    // (renamed labels don't match REGISTRY keys). Otherwise defensive
+    // fallback: unknown (type, status) → gray + dev warning.
+    const palette = paletteOverride
+        ? PALETTE[paletteOverride]
+        : entry ? PALETTE[entry.palette] : PALETTE.gray;
     const text    = label ?? entry?.label ?? status;
-    if (!entry && process.env.NODE_ENV !== "production") {
+    if (!entry && !paletteOverride && process.env.NODE_ENV !== "production") {
         // eslint-disable-next-line no-console
         console.warn(`[StatusBadge] unknown (type, status) pair: ("${type}", "${status}"). Add it to REGISTRY in src/components/patterns/StatusBadge.tsx.`);
     }

@@ -15,7 +15,7 @@
 // chrome (480px right-slide, header + scrollable body + Cancel / Log
 // footer).
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore, type FollowUpTask, type FollowUpTaskOutcome } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -23,7 +23,6 @@ import { SelectInput } from "@/components/ui/select-input";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 import { cn } from "@/lib/utils";
 import { Check, ClockRefresh, XClose, MessageChatSquare, AlertCircle } from "@untitledui/icons";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -41,6 +40,7 @@ const OUTCOME_LABEL: Record<FollowUpTaskOutcome, string> = {
     reached:         "Reached",
     follow_up:       "Follow-up later",
     not_interested:  "Not interested",
+    auto_closed:     "Auto-closed on graduation",
 };
 
 /** "3 days ago" — relative-age helper. */
@@ -155,38 +155,28 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
         setEnquiryOpen(true);
     }
 
-    // Q2 (2026-07-27) — pre-flight eligibility check for Log enquiry.
-    // Mirrors the store's rules so the side panel can disable the
-    // primary button + show an inline info alert BEFORE the user types
-    // a note, instead of failing silently after submission.
+    // v83 audit-3 fix (2026-07-27) — eligibility now flows through the
+    // store's read-only probe `getEnquiryEligibility`, memoized on the
+    // state slices the compute reads. Removes:
+    //   • duplicate ladder that could drift from the store's rules
+    //   • unmemoized computeLifecycleTag on every render (expensive
+    //     on customers with hundreds of bookings)
+    const getEnquiryEligibility = useAppStore(s => s.getEnquiryEligibility);
     const lostStageLabel =
         followUpStages.find(s => s.id === "stg_lost")?.label ?? "Lost";
-    const liveLifecycleTag = computeLifecycleTag(customerId, {
-        customers,
-        classBookings,
-        customerPlans,
-        customerTransactions,
-    }).tag;
-    const hasOpenEnquiry = tasks.some(
-        t => t.customerId === customerId && t.triggerKind === "enquiry_logged" && t.status === "open",
+    const eligibility = useMemo(
+        () => getEnquiryEligibility(customerId),
+        // Every input the store's ladder reads:
+        [getEnquiryEligibility, customerId, customer.followUpStatus, customers, classBookings, customerPlans, customerTransactions, tasks, followUpStages],
     );
-    const enquiryBlockedReason: "lost" | "post_conversion" | "dup" | null =
-        customer.followUpStatus === lostStageLabel
-            ? "lost"
-            : liveLifecycleTag !== "Lead" && liveLifecycleTag !== "Trialist"
-                ? "post_conversion"
-                : hasOpenEnquiry
-                    ? "dup"
-                    : null;
-    const enquiryBlockedCopy: string | null =
-        enquiryBlockedReason === "lost"
+    const canSubmitEnquiry = eligibility.canLog;
+    const enquiryBlockedCopy: string | null = eligibility.canLog
+        ? null
+        : eligibility.reason === "lost"
             ? `${name} is marked as ${lostStageLabel} in your funnel. Change their follow-up status on the Details tab first, then you can log a new enquiry.`
-            : enquiryBlockedReason === "post_conversion"
-                ? `${name} has already converted (${liveLifecycleTag}). The follow-up funnel is only for Leads and Trialists.`
-                : enquiryBlockedReason === "dup"
-                    ? "An open enquiry task already exists for this customer. Close it from the table above before logging a new one."
-                    : null;
-    const canSubmitEnquiry = !enquiryBlockedReason;
+            : eligibility.reason === "post_conversion"
+                ? `${name} has already converted. The follow-up funnel is only for Leads and Trialists.`
+                : "An open enquiry task already exists for this customer. Close it from the table above before logging a new one.";
 
     function handleLogEnquiry() {
         // Pre-flight guard — the store re-checks these rules, but a
@@ -201,7 +191,20 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
             showToast("Enquiry logged", `Task added for ${name}.`, "success", "check");
             setNote("");
             setEnquiryOpen(false);
+            return;
         }
+        // v83 audit-3 fix — race guard. The pre-flight useMemo passed
+        // (canSubmitEnquiry=true), but the store's re-check saw fresh
+        // state (customer just booked → post-conversion; another admin
+        // just logged an enquiry). Surface the store's reason so the
+        // button click never silently no-ops.
+        const raceCopy =
+            result.reason === "lost"
+                ? `${name} was just marked as lost. Refresh to see the latest funnel state.`
+                : result.reason === "post_conversion"
+                    ? `${name} just converted between opening this panel and clicking Log. The funnel doesn't apply anymore.`
+                    : "Someone else logged an enquiry for this customer while this panel was open.";
+        showToast("Enquiry not logged", raceCopy, "warning", "alert");
     }
 
     function handleClose(task: FollowUpTask, outcome: FollowUpTaskOutcome) {
@@ -286,6 +289,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                                             task.outcome === "reached" && "bg-[#ecfdf3] border-[#abefc6] text-[#067647]",
                                                             task.outcome === "follow_up" && "bg-[#fffaeb] border-[#fedf89] text-[#b54708]",
                                                             task.outcome === "not_interested" && "bg-[#fef3f2] border-[#fecdca] text-[#b42318]",
+                                                            task.outcome === "auto_closed" && "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]",
                                                         )}
                                                     >
                                                         {task.outcome ? OUTCOME_LABEL[task.outcome] : "Closed"}
