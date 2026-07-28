@@ -16,7 +16,7 @@
 // footer).
 
 import { useMemo, useState } from "react";
-import { useAppStore, type FollowUpTask, type FollowUpTaskOutcome } from "@/lib/store";
+import { useAppStore, type FollowUpStatus, type FollowUpTask, type FollowUpTaskOutcome } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { SelectInput } from "@/components/ui/select-input";
@@ -24,8 +24,10 @@ import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
-import { Check, ClockRefresh, XClose, MessageChatSquare, AlertCircle } from "@untitledui/icons";
+import { Check, ClockRefresh, XClose, MessageChatSquare, AlertCircle, User01 } from "@untitledui/icons";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { lookupStageLabel } from "@/lib/customer/follow-up-tasks";
 
 /** Human copy per trigger — matches the plan §Phase 4 table's task lines
  *  and reads well as a "source" cell in the table. */
@@ -104,6 +106,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     const customerPlans = useAppStore(s => s.customerPlans);
     const customerTransactions = useAppStore(s => s.customerTransactions);
     const followUpStages = useAppStore(s => s.followUpStages);
+    const leadSources = useAppStore(s => s.leadSources);
     const logCustomerEnquiry = useAppStore(s => s.logCustomerEnquiry);
     const closeFollowUpTask = useAppStore(s => s.closeFollowUpTask);
     const showToast = useAppStore(s => s.showToast);
@@ -112,9 +115,16 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     const [note, setNote] = useState("");
     // v83 client 2026-07-27 — Log-enquiry panel now includes an Assign-to
     // picker so admins can create + route a task in one step. Defaults to
-    // the customer's already-set assignedTo (from the Details tab) so the
-    // common case (task follows the existing owner) is a no-op click.
+    // the customer's already-set assignedTo (from the Follow-up settings
+    // panel) so the common case (task follows the existing owner) is a
+    // no-op click.
     const [assignTo, setAssignTo] = useState<string>("");
+    // Client 2026-07-28 — Follow-up settings panel. Houses the 3 fields
+    // (Assigned to · Follow-up status · Source) that used to live on the
+    // Details tab. Entry point is the user-icon button beside "Log
+    // enquiry" below, so the controls sit exactly where the follow-up
+    // work happens.
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const updateCustomer = useAppStore(s => s.updateCustomer);
 
     const customer = customers.find(c => c.id === customerId);
@@ -155,6 +165,25 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
         setEnquiryOpen(true);
     }
 
+    // Client 2026-07-28 — the Follow-up settings panel shows "Follow-up
+    // status" only for pre-conversion customers (Leads + Trialists),
+    // mirroring the old Details-tab gating so we don't expose a funnel
+    // dropdown once the customer has converted.
+    const lifecycleForPanel = useMemo(
+        () => computeLifecycleTag(customerId, {
+            customers,
+            classBookings,
+            customerPlans,
+            customerTransactions,
+        }),
+        [customerId, customers, classBookings, customerPlans, customerTransactions],
+    );
+    const isPreConversion = lifecycleForPanel?.tag === "Lead" || lifecycleForPanel?.tag === "Trialist";
+    const sourceLabelForPanel =
+        leadSources.find(s => s.id === customer.sourceId)?.label ??
+        customer.marketingSource ??
+        "—";
+
     // v83 audit-3 fix (2026-07-27) — eligibility now flows through the
     // store's read-only probe `getEnquiryEligibility`, memoized on the
     // state slices the compute reads. Removes:
@@ -173,7 +202,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     const enquiryBlockedCopy: string | null = eligibility.canLog
         ? null
         : eligibility.reason === "lost"
-            ? `${name} is marked as ${lostStageLabel} in your funnel. Change their follow-up status on the Details tab first, then you can log a new enquiry.`
+            ? `${name} is marked as ${lostStageLabel} in your funnel. Change their follow-up status in the Follow-up settings panel first, then you can log a new enquiry.`
             : eligibility.reason === "post_conversion"
                 ? `${name} has already converted. The follow-up funnel is only for Leads and Trialists.`
                 : "An open enquiry task already exists for this customer. Close it from the table above before logging a new one.";
@@ -225,17 +254,32 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
             {/* Header row — Total count on the left (matches Bookings +
-                Payments + Referrals tabs), "Log enquiry" on the right. */}
+                Payments + Referrals tabs), "Log enquiry" + Follow-up
+                settings on the right. Client 2026-07-28 — Assigned to,
+                Follow-up status and Source moved from the Details tab
+                to a slide-in panel here; the user-icon button opens it. */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
                 <ToolbarTotal count={rows.length} entitySingular="task" size="sm" />
-                <Button
-                    variant="secondary-gray"
-                    size="md"
-                    leftIcon={<MessageChatSquare className="w-4 h-4" />}
-                    onClick={openEnquiryPanel}
-                >
-                    Log enquiry
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="secondary-gray"
+                        size="md"
+                        leftIcon={<MessageChatSquare className="w-4 h-4" />}
+                        onClick={openEnquiryPanel}
+                    >
+                        Log enquiry
+                    </Button>
+                    <IconTooltip label="Follow-up settings">
+                        <Button
+                            variant="secondary-gray"
+                            size="icon"
+                            aria-label="Follow-up settings"
+                            onClick={() => setSettingsOpen(true)}
+                        >
+                            <User01 className="w-5 h-5" />
+                        </Button>
+                    </IconTooltip>
+                </div>
             </div>
 
             {/* Merged table — Open + Activity in one place. Style matches
@@ -423,6 +467,97 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                         disabled={!canSubmitEnquiry}
                     >
                         Log enquiry
+                    </Button>
+                </div>
+            </SlidePanel>
+
+            {/* Follow-up settings side panel — Client 2026-07-28 move.
+                Assigned to · Follow-up status (Lead/Trialist only) ·
+                Source. Same 480px right-slide chrome as the Log-enquiry
+                panel above so the two feel like a set. */}
+            <SlidePanel open={settingsOpen} onClose={() => setSettingsOpen(false)} width={480}>
+                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Follow-up settings</p>
+                    <button
+                        type="button"
+                        onClick={() => setSettingsOpen(false)}
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        aria-label="Close"
+                    >
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+                    <div className="flex flex-col gap-1">
+                        <p className="text-[14px] text-[#667085]">Customer</p>
+                        <p className="text-[16px] font-medium text-[#101828]">{name}</p>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[14px] font-medium text-[#344054]">
+                            Assigned to
+                        </label>
+                        <SelectInput
+                            value={customer.assignedTo ?? ""}
+                            onChange={(next) => {
+                                updateCustomer(customerId, { assignedTo: next || undefined });
+                                const label = next
+                                    ? staffOptions.find(o => o.value === next)?.label ?? "staff"
+                                    : "Unassigned";
+                                showToast(
+                                    "Assignment updated",
+                                    `${name} → ${label}.`,
+                                    "success",
+                                    "check",
+                                );
+                            }}
+                            options={staffOptions}
+                            width="w-full"
+                        />
+                        <p className="text-[13px] text-[#667085]">
+                            The staff member this customer&apos;s follow-up work belongs to. Shows on their dashboard widget.
+                        </p>
+                    </div>
+                    {isPreConversion && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[#344054]">
+                                Follow-up status
+                            </label>
+                            <SelectInput
+                                value={customer.followUpStatus ?? lookupStageLabel(followUpStages, "stg_new", "New")}
+                                onChange={(next) => {
+                                    const val = (next || lookupStageLabel(followUpStages, "stg_new", "New")) as FollowUpStatus;
+                                    updateCustomer(customerId, { followUpStatus: val });
+                                    showToast(
+                                        "Follow-up status updated",
+                                        `${name} moved to "${val}".`,
+                                        "success",
+                                        "check",
+                                    );
+                                }}
+                                options={followUpStages.map(s => ({
+                                    value: s.label,
+                                    label: s.label,
+                                }))}
+                                width="w-full"
+                            />
+                            <p className="text-[13px] text-[#667085]">
+                                Where this customer sits in the funnel. Auto-updates as they book / convert; edit manually to override.
+                            </p>
+                        </div>
+                    )}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[14px] font-medium text-[#344054]">
+                            Source
+                        </label>
+                        <p className="text-[16px] font-medium text-[#101828]">{sourceLabelForPanel}</p>
+                        <p className="text-[13px] text-[#667085]">
+                            Where this lead came from. Set once at customer creation; view-only here.
+                        </p>
+                    </div>
+                </div>
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end">
+                    <Button variant="secondary-gray" size="md" onClick={() => setSettingsOpen(false)}>
+                        Close
                     </Button>
                 </div>
             </SlidePanel>

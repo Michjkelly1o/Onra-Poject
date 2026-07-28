@@ -12,10 +12,11 @@
 // see the shape end-to-end. No store wiring, no filters, no CRUD; that
 // lands in Phase A of the inventory-retail plan.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import {
-    Plus, Eye, Edit02, Archive, Trash01, Image01,
+    Plus, Eye, Edit02, Archive, Trash01, Trash02, Image01,
+    Check, RefreshCcw01, SlashCircle01, XClose,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ const PREVIEW_ROWS: PreviewRow[] = [
 function ProductThumb({ imageUrl, alt }: { imageUrl?: string; alt: string }) {
     if (imageUrl) {
         return (
-            <div className="relative w-10 h-10 rounded-md overflow-hidden bg-[#f2f4f7] shrink-0">
+            <div className="relative w-10 h-10 rounded-full overflow-hidden bg-[#f2f4f7] shrink-0">
                 <Image
                     src={imageUrl}
                     alt={alt}
@@ -81,7 +82,7 @@ function ProductThumb({ imageUrl, alt }: { imageUrl?: string; alt: string }) {
     }
     return (
         <div
-            className="w-10 h-10 rounded-md bg-[#f2f4f7] border-1 border-[#eaecf0] flex items-center justify-center shrink-0"
+            className="w-10 h-10 rounded-full bg-[#f2f4f7] border-1 border-[#eaecf0] flex items-center justify-center shrink-0"
             aria-hidden
         >
             <Image01 className="w-4 h-4 text-[#98a2b3]" />
@@ -91,6 +92,99 @@ function ProductThumb({ imageUrl, alt }: { imageUrl?: string; alt: string }) {
 
 function formatAed(n: number): string {
     return `AED ${n.toLocaleString("en-US")}`;
+}
+
+/** Sage checkbox — same visual as Gift cards / Memberships bulk-select cell. */
+function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
+    checked: boolean; indeterminate?: boolean; onChange: (next: boolean) => void; ariaLabel: string;
+}) {
+    return (
+        <button
+            type="button"
+            role="checkbox"
+            aria-label={ariaLabel}
+            aria-checked={indeterminate ? "mixed" : checked}
+            onClick={() => onChange(!checked)}
+            className={cn(
+                "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
+                (checked || indeterminate)
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
+            )}
+        >
+            {indeterminate ? (
+                <span className="block w-2 h-[1.5px] bg-white" />
+            ) : checked ? (
+                <Check className="w-3 h-3" />
+            ) : null}
+        </button>
+    );
+}
+
+/** Floating bulk-action pill — identical shape to Gift cards' BulkActionBar
+ *  (Archive · Reactivate · Recover · Delete / Deactivate). All actions are
+ *  no-op in the preview; wiring lands in Phase B of the plan. */
+function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable, hasDeletable, onClear }: {
+    count: number;
+    hasArchivable: boolean;
+    hasReactivatable: boolean;
+    hasRecoverable: boolean;
+    hasDeletable: boolean;
+    onClear: () => void;
+}) {
+    if (count === 0) return null;
+    return (
+        <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-[600px] max-w-full">
+                <button
+                    type="button"
+                    onClick={onClear}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0"
+                >
+                    {count} selected
+                    <XClose className="w-5 h-5 text-[#667085]" />
+                </button>
+                <div className="flex items-center gap-3">
+                    {hasArchivable && (
+                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />}>
+                            Archive
+                        </Button>
+                    )}
+                    {hasReactivatable && (
+                        <Button variant="secondary-gray" size="sm" leftIcon={<Check className="w-5 h-5 text-[#067647]" />}>
+                            Reactivate
+                        </Button>
+                    )}
+                    {hasRecoverable && (
+                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />}>
+                            Recover
+                        </Button>
+                    )}
+                    {hasArchivable && (
+                        hasDeletable ? (
+                            <Button
+                                variant="secondary-gray"
+                                size="sm"
+                                className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
+                                leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
+                            >
+                                Delete
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="secondary-gray"
+                                size="sm"
+                                className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
+                                leftIcon={<SlashCircle01 className="w-5 h-5 text-[#b42318]" />}
+                            >
+                                Deactivate
+                            </Button>
+                        )
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -109,6 +203,40 @@ export default function RetailPage() {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    // Selection is functional (users can check/uncheck rows so the bulk-
+    // action pill's shape reads correctly) — the buttons inside the pill
+    // are still no-op for the preview.
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    const toggleOne = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+    const toggleAllOnPage = (checked: boolean) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (checked) sorted.forEach(r => next.add(r.id));
+            else sorted.forEach(r => next.delete(r.id));
+            return next;
+        });
+    };
+    const clearSelection = () => setSelectedIds(new Set());
+
+    const selectedRows = useMemo(
+        () => sorted.filter(r => selectedIds.has(r.id)),
+        [sorted, selectedIds],
+    );
+    const hasArchivable    = selectedRows.some(r => r.status === "active" || r.status === "inactive");
+    const hasReactivatable = selectedRows.some(r => r.status === "inactive");
+    const hasRecoverable   = selectedRows.some(r => r.status === "archived");
+    const hasDeletable     = selectedRows.some(r => r.status === "archived");
+
+    const allOnPageChecked  = sorted.length > 0 && sorted.every(r => selectedIds.has(r.id));
+    const someOnPageChecked = !allOnPageChecked && sorted.some(r => selectedIds.has(r.id));
 
     return (
         <div className="flex flex-col gap-6">
@@ -142,6 +270,14 @@ export default function RetailPage() {
                     <table className="w-full border-collapse">
                         <thead>
                             <tr>
+                                <th className={cn(TH, "w-[44px]")}>
+                                    <CheckboxCell
+                                        checked={allOnPageChecked}
+                                        indeterminate={someOnPageChecked}
+                                        onChange={toggleAllOnPage}
+                                        ariaLabel="Select all products"
+                                    />
+                                </th>
                                 <th className={cn(TH, "w-[340px]")}>
                                     <SortableHeader sortKey="name" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Product name</SortableHeader>
                                 </th>
@@ -166,8 +302,22 @@ export default function RetailPage() {
                         <tbody>
                             {sorted.map(r => {
                                 const isLow = r.stock === 0 || r.stock <= r.reorderThreshold;
+                                const isSelected = selectedIds.has(r.id);
                                 return (
-                                    <tr key={r.id} className="transition-colors cursor-pointer hover:bg-[#f9fafb]">
+                                    <tr
+                                        key={r.id}
+                                        className={cn(
+                                            "transition-colors cursor-pointer",
+                                            isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                        )}
+                                    >
+                                        <td className={TD} onClick={e => e.stopPropagation()}>
+                                            <CheckboxCell
+                                                checked={isSelected}
+                                                onChange={() => toggleOne(r.id)}
+                                                ariaLabel={`Select ${r.name}`}
+                                            />
+                                        </td>
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
                                                 <ProductThumb imageUrl={r.imageUrl} alt={r.name} />
@@ -203,6 +353,15 @@ export default function RetailPage() {
                 <Pagination
                     page={page} total={PREVIEW_ROWS.length} pageSize={pageSize}
                     onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+                />
+
+                <BulkActionBar
+                    count={selectedIds.size}
+                    hasArchivable={hasArchivable}
+                    hasReactivatable={hasReactivatable}
+                    hasRecoverable={hasRecoverable}
+                    hasDeletable={hasDeletable}
+                    onClear={clearSelection}
                 />
             </div>
         </div>

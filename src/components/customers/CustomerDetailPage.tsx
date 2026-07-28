@@ -1633,14 +1633,17 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                             <p className="text-[14px] font-semibold text-[#344054]">
                                 Why they landed on {lifecycleResult.tag}
                             </p>
-                            <ul className="flex flex-col gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
+                            {/* Client 2026-07-28 — bullets stripped. Reasons
+                                render as plain sentence lines; the group
+                                already reads as a list via the card + gap
+                                spacing, no •-glyph needed. */}
+                            <div className="flex flex-col gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
                                 {lifecycleResult.reasons.map((r, i) => (
-                                    <li key={i} className="flex gap-2 text-[13px] leading-[18px] text-[#475467]">
-                                        <span className="text-[#658774] mt-0.5">•</span>
-                                        <span>{r}</span>
-                                    </li>
+                                    <p key={i} className="text-[13px] leading-[18px] text-[#475467]">
+                                        {r}
+                                    </p>
                                 ))}
-                            </ul>
+                            </div>
                         </div>
 
                         {/* Info footer — canonical DS info alert
@@ -1648,7 +1651,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                         <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] flex items-center gap-4 p-4">
                             <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
                             <p className="text-[14px] text-[#475467]">
-                                Set automatically from the customer&apos;s activity. To edit follow-up status manually, use the Details tab (Leads and Trialists only).
+                                Set automatically from the customer&apos;s activity. To edit follow-up status manually, open the Follow-up settings panel from the Follow-ups tab (Leads and Trialists only).
                             </p>
                         </div>
                     </div>
