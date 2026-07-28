@@ -33,6 +33,7 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { branchTzLabel } from "@/lib/branch-time";
+import { firstFreeSpot } from "@/lib/spot-layout";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -2146,6 +2147,19 @@ export default function ClassDetailPage() {
             const planName = c.planKind === "package" && pickedPlanId
                 ? state.packages.find(p => p.id === pickedPlanId)?.name ?? c.planName ?? "No plan"
                 : c.planName ?? "No plan";
+            // Spot sync — a booked seat on a spot-selection class must reserve a
+            // spot so it shows as taken on BOTH the admin roster AND the customer
+            // picker. Assign the first free spot from the configured grid,
+            // skipping blocked + already-taken spots. Waitlist joins hold none
+            // (the free spot isn't known until a cancellation). Client 2026-07-28.
+            const assignedSpot = status === "booked" && ci.spotSelectionEnabled
+                ? firstFreeSpot(
+                      ci.spotLayout,
+                      state.classBookings
+                          .filter(b => b.classScheduleId === ci.id && b.status === "booked" && b.spot)
+                          .map(b => b.spot as string),
+                  )
+                : undefined;
             const newBooking: ClassBooking = {
                 id: bookingId,
                 classScheduleId: ci.id,
@@ -2154,6 +2168,7 @@ export default function ClassDetailPage() {
                 planId,
                 planName,
                 planKindUsed: c.planKind ?? undefined,
+                spot: assignedSpot,
                 bookingTime: new Date().toISOString(),
                 status,
                 attendanceStatus: "pending",

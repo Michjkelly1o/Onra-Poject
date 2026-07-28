@@ -5708,6 +5708,22 @@ export const useAppStore = create<AppState>()(persist(
                 ? s0.classBookings.filter(b => b.classScheduleId === classScheduleId && b.status === "waitlisted").length + 1
                 : undefined;
 
+        // Spot sync — every BOOKED seat on a spot-selection class must hold a
+        // spot so the grid shows it as taken on BOTH admin + customer. When the
+        // caller didn't pick one (e.g. the admin "Add customer" quick-add), auto-
+        // assign the first free spot from the same configured grid, skipping
+        // blocked + already-taken spots. Waitlist joins never hold a spot (the
+        // free one isn't known until a cancellation). Client 2026-07-28.
+        const assignedSpot =
+            status === "booked" && schedule?.spotSelectionEnabled
+                ? (spot ?? firstFreeSpot(
+                      schedule.spotLayout,
+                      s0.classBookings
+                          .filter(b => b.classScheduleId === classScheduleId && b.status === "booked" && b.spot)
+                          .map(b => b.spot as string),
+                  ))
+                : spot;
+
         const booking: ClassBooking = {
             id,
             classScheduleId,
@@ -5717,7 +5733,7 @@ export const useAppStore = create<AppState>()(persist(
             planId,
             planName: usesBookerPlan ? (customer?.planName ?? "") : "",
             planKindUsed,
-            spot,
+            spot: assignedSpot,
             bookingTime: new Date().toISOString(),
             status,
             attendanceStatus: "pending",
