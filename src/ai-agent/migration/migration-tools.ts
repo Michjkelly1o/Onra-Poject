@@ -20,7 +20,11 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { AuthContext } from "@/ai-agent/agent/auth";
-import { askQuestionsTool } from "@/ai-agent/agent/tools";
+// v83 audit-5 (2026-07-28) — askQuestionsTool intentionally NOT imported.
+// Migration mode has a linear 4-step wizard (source → upload → mapping →
+// commit), and ChatThread nullifies pendingQuestions in migration mode so
+// the popup would never render anyway. Exposing the tool here just gave
+// the model a dead-end capability to reach for.
 import type { ParsedFile } from "@/ai-agent/migration/migration-cards";
 import {
     branchAssignment,
@@ -101,7 +105,6 @@ export function migrationTools(
     knownBranches: { id: string; name: string; status: string }[],
 ) {
     return {
-        ...askQuestionsTool(),
         start_migration: tool({
             description:
                 "STEP 1 of 4. Begin a data migration. Returns the source-of-import options (platform chips + Upload file). Call this first when the user wants to import / migrate / bring in data. This is BEFORE the user has told you which entity they're importing — that comes next.",

@@ -280,6 +280,11 @@ function findCustomer(
         };
     });
     const remaining = limit - rankedCustomers.length;
+    // v83 audit-5 (2026-07-28) — leads don't have a per-record detail
+    // route. The audit-4 pass added `href: /customers/${l.id}` which
+    // sent the admin to the "customer not found" screen. Leads render
+    // WITHOUT an href (non-clickable row, still labelled "lead") so the
+    // admin knows this is an enquiry, not a customer.
     const rankedLeads = remaining > 0
         ? leadMatches.slice(0, remaining).map((l) => {
             const name = (l.contact_name as string) ?? "";
@@ -293,7 +298,6 @@ function findCustomer(
                     ? (source ? `${email} · ${source}` : email)
                     : source,
                 right1: "lead",
-                href: `/customers/${l.id}`,
                 avatarInitials: initials,
             };
         })

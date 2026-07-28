@@ -123,6 +123,10 @@ export const SETUP_STEPS: SetupStep[] = [
         // v83 audit-4 (2026-07-28) — real signal: cancellation policy
         // has a non-zero credit-before window (admin actually set a
         // policy value, not just kept the default 0).
+        // Note (v83 audit-5): the prototype seed pre-fills this to 12h,
+        // so the tile always reports "configured" in the demo. In a fresh
+        // studio (no seed) the field is undefined / 0 and the check is
+        // meaningful. Accepted limitation for the demo.
         isConfigured: (s) => has(s.cancellationPolicy?.credit_before_window_value ?? 0),
     },
     {
@@ -142,11 +146,13 @@ export const SETUP_STEPS: SetupStep[] = [
             "Reward existing customers for bringing new ones — either class credits or account credit. Turn off if you don't run referrals.",
         href: "/admin/settings/referral",
         countFromSnapshot: () => null,
-        // v83 audit-4 — real signal: referral program is either
-        // explicitly enabled OR explicitly disabled (both count as
-        // "configured" — the admin made a choice). Undefined means
-        // untouched.
-        isConfigured: (s) => s.referralSettings?.programActive !== undefined,
+        // v83 audit-5 (2026-07-28) — real signal: referral program is
+        // actively RUNNING. Seed pre-fills `programActive: true` so the
+        // tile reports "configured" out of the box; in a fresh studio the
+        // slice starts undefined and the check is meaningful. Admins who
+        // explicitly turn the program OFF will see it flip to "unconfigured"
+        // (their choice, but they can also just skip the setup step).
+        isConfigured: (s) => s.referralSettings?.programActive === true,
     },
     {
         key: "notifications",
