@@ -26,6 +26,7 @@
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import {
     AI_AGENT_UI_VISIBLE,
     isAiAgentEnabled,
@@ -52,30 +53,36 @@ export function FloatingAiButton() {
         // the logomark tile remains as the fixed trigger. The wrapper's
         // bottom-8 right-8 gives 32px viewport padding per Figma
         // spacing-4xl.
+        //
+        // Tooltip added (2026-07-27) — IconTooltip anchored `above` the
+        // tile so hovering surfaces the "AI Agent" label without needing
+        // to click first.
         <div className="fixed bottom-8 right-8 z-[60] flex items-center gap-4 pointer-events-none">
-            <button
-                type="button"
-                aria-label="Open Onra AI Agent"
-                onClick={handleClick}
-                className={[
-                    "pointer-events-auto",
-                    "shrink-0 w-14 h-14 rounded-[14px] bg-white",
-                    "border-[0.35px] border-[#d0d5dd] overflow-hidden",
-                    "flex items-center justify-center",
-                    "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
-                    "hover:bg-[#f9fafb] transition-colors",
-                    "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
-                ].join(" ")}
-            >
-                <Image
-                    src="/Logomark.webp"
-                    alt=""
-                    width={42}
-                    height={42}
-                    className="w-[42px] h-[42px] object-contain"
-                    unoptimized
-                />
-            </button>
+            <IconTooltip label="AI Agent" side="above">
+                <button
+                    type="button"
+                    aria-label="Open Onra AI Agent"
+                    onClick={handleClick}
+                    className={[
+                        "pointer-events-auto",
+                        "shrink-0 w-14 h-14 rounded-[14px] bg-white",
+                        "border-[0.35px] border-[#d0d5dd] overflow-hidden",
+                        "flex items-center justify-center",
+                        "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
+                        "hover:bg-[#f9fafb] transition-colors",
+                        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
+                    ].join(" ")}
+                >
+                    <Image
+                        src="/Logomark.webp"
+                        alt=""
+                        width={42}
+                        height={42}
+                        className="w-[42px] h-[42px] object-contain"
+                        unoptimized
+                    />
+                </button>
+            </IconTooltip>
         </div>
     );
 }
