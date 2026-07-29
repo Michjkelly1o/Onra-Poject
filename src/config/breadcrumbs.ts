@@ -71,6 +71,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/settings/integrations":    "Integrations",
     "/admin/settings/notifications":   "Customer notifications",
     "/admin/settings/tax":             "Tax",
+    "/admin/settings/retail-categories": "Retail categories",
     "/admin/settings/agreements":      "Agreements",
     "/admin/settings/migrations-imports": "Migration & imports",
     "/admin/settings/referral":        "Referral program",
