@@ -2974,3 +2974,88 @@ export interface ImportHistorySeed {
     branch_id: string;
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inventory / Retail (2026-07-29) — see new-prd/inventory-retail-implementation-plan.md
+// Phase A — data foundation only, no UI wire-up. Snake_case fields match the
+// planned Supabase schema.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Retail category — broad grouping for retail products (Apparel, Supplements,
+ * Equipment, Accessories, Recovery). Editable by admins in Settings →
+ * Operations → Retail categories (matches the class-category CRUD UI).
+ */
+export interface RetailCategory {
+    id: string;
+    label: string;
+    image_url?: string;
+    status: "active" | "inactive";
+    created_at: string;
+}
+
+/**
+ * Retail product — studio-global catalog row. One record per SKU, sold at POS
+ * and on the customer portal. Stock is tracked per-branch via `RetailStock`,
+ * not on this record. `unit_cost_aed` powers the Gross margin % report column;
+ * `reorder_threshold` flags the row on the Stock on Hand report.
+ *
+ * Statuses: active (visible in POS/list), inactive (hidden from POS/customer
+ * portal but still on the admin list), archived (hidden from admin list default
+ * filter; only visible via "Show archived"). Follows the same lifecycle as
+ * memberships / packages / gift-card designs.
+ */
+export interface RetailProduct {
+    id: string;
+    name: string;
+    sku: string;
+    category_id: string;         // FK → retail_categories.id
+    description?: string;
+    price_aed: number;
+    unit_cost_aed: number;
+    reorder_threshold: number;
+    image_url?: string;
+    status: "active" | "inactive" | "archived";
+    created_at: string;
+    updated_at?: string;
+}
+
+/**
+ * Retail stock — one row per (product × branch). `units_on_hand` decrements
+ * on POS sale, increments on receive / refund. Every mutation writes a
+ * `RetailStockAdjustment` audit-log entry in the same set() call.
+ */
+export interface RetailStock {
+    id: string;
+    product_id: string;          // FK → retail_products.id
+    branch_id: string;           // FK → branches.id
+    units_on_hand: number;
+    last_adjusted_at?: string;
+    last_received_at?: string;
+}
+
+/**
+ * Retail stock adjustment — the audit trail. Every stock delta writes a row
+ * so the Stock on Hand report can compute Units received (period), Sell-
+ * through %, and Stock turnover ×.
+ *
+ * `kind`:
+ *  - "sale"    — POS sale decrement (delta negative, `source_transaction_id` set)
+ *  - "receive" — inbound shipment (delta positive)
+ *  - "adjust"  — manual admin edit (either sign)
+ *  - "loss"    — write-off (negative)
+ *  - "refund"  — POS refund restore (positive, `source_transaction_id` set)
+ */
+export interface RetailStockAdjustment {
+    id: string;
+    product_id: string;          // FK → retail_products.id
+    branch_id: string;           // FK → branches.id
+    delta: number;
+    kind: "sale" | "receive" | "adjust" | "loss" | "refund";
+    reason?: string;
+    /** Set when the adjustment is tied to a POS sale/refund; joins to
+     *  `customer_transactions.id`. Null for manual receive / adjust / loss. */
+    source_transaction_id?: string;
+    created_by: string;
+    created_at: string;
+}
