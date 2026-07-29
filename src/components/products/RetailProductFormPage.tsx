@@ -4,69 +4,121 @@
 // Onra Studio — Retail product create / edit form (full-page)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Phase B (2026-07-29). One component drives BOTH flows so the layout stays
-// identical whether an admin is creating a new SKU or editing an existing
-// one:
-//   • Create — /admin/products/retail/new             → mode="create"
-//   • Edit   — /admin/products/retail/[id]/edit       → mode="edit" + productId
+// 3-column full-viewport shell matching /products/new + /products/gift-cards/new:
+//   • Top header (72px, NO border) — X close + title + Breadcrumbs
+//   • Left column (300px)  — stepper (Basic info · Pricing & stock · Review)
+//   • Middle column        — FormCard with step content + footer Back/Continue
+//   • Right column (400px) — Template preview
 //
-// Single-page form (no wizard). Save writes through the store's
-// addRetailProduct / updateRetailProduct actions, which handle SKU
-// uniqueness + audit-log entries + updatedAt bumps. Cancel + successful
-// Save both route back to `returnTo` (defaults to /admin/products/retail).
+// Same primitives (FormCard / Section / FormField / TextInput / Textarea /
+// PriceInput / INPUT_CLS / StepItem) as ProductFormPage / GiftCardFormPage
+// so retail lives in the same design language as the rest of the products
+// namespace.
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { XClose } from "@untitledui/icons";
+import {
+    XClose, Check, ShoppingBag01, CoinsHand, Package,
+} from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
-import { FilterPill } from "@/components/ui/FilterPill";
+import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { useAppStore, type RetailProduct } from "@/lib/store";
 
-// ─── Form primitives (local to this page) ───────────────────────────────────
+// ─── Steps ─────────────────────────────────────────────────────────────────
+
+const STEPS = [
+    { n: 1, label: "Basic information" },
+    { n: 2, label: "Pricing & stock" },
+    { n: 3, label: "Review & submit" },
+];
+
+function StepItem({ step, current }: { step: typeof STEPS[0]; current: number }) {
+    const active   = step.n === current;
+    const complete = step.n < current;
+    const isLast   = step.n === STEPS.length;
+    return (
+        <div className={cn(
+            "flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full",
+            active && "bg-[#f5fffa]",
+        )}>
+            <div className="relative flex flex-col items-center shrink-0">
+                <div className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
+                    active
+                        ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        : complete
+                            ? "bg-[#658774] text-white"
+                            : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3]",
+                )}>
+                    {complete ? <Check className="w-3 h-3" /> : step.n}
+                </div>
+                {!isLast && (
+                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                )}
+            </div>
+            <span className={cn(
+                "text-[14px]",
+                active
+                    ? "font-semibold text-[#3b5446]"
+                    : complete
+                        ? "font-medium text-[#344054]"
+                        : "font-medium text-[#667085]",
+            )}>
+                {step.label}
+            </span>
+        </div>
+    );
+}
+
+// ─── Form primitives (mirror ProductFormPage) ──────────────────────────────
+
+function FormCard({ title, children, footer }: {
+    title?: string;
+    children: React.ReactNode;
+    footer: React.ReactNode;
+}) {
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
+            <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
+                {title && (
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h2>
+                )}
+                {children}
+            </div>
+            <div className="shrink-0 px-6 pb-6 pt-6 flex items-center">{footer}</div>
+        </div>
+    );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div className="flex flex-col gap-4">
-            <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
-            <div className="flex flex-col gap-4">{children}</div>
+        <div className="flex flex-col gap-5 w-full">
+            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+            <div className="flex flex-col gap-4 w-full">{children}</div>
         </div>
     );
 }
 
-function FormField({ label, hint, required, children, error }: {
-    label: string;
-    hint?: string;
-    required?: boolean;
-    error?: string;
-    children: React.ReactNode;
+function FormField({ label, hint, error, children }: {
+    label?: string; hint?: string; error?: string; children: React.ReactNode;
 }) {
     return (
-        <div className="flex flex-col gap-1.5">
-            <label className="text-[14px] font-medium text-[#344054]">
-                {label}
-                {required && <span className="text-[#b42318] ml-0.5">*</span>}
-            </label>
+        <div className="flex flex-col gap-1.5 w-full">
+            {label && <label className="text-[14px] font-medium text-[#344054]">{label}</label>}
             {children}
             {error
-                ? <p className="text-[13px] text-[#b42318]">{error}</p>
-                : hint
-                    ? <p className="text-[13px] text-[#667085]">{hint}</p>
-                    : null}
+                ? <p className="text-[14px] text-[#d92d20] leading-5">{error}</p>
+                : hint && <p className="text-[14px] text-[#475467] leading-5">{hint}</p>}
         </div>
     );
 }
 
-const INPUT_BASE = cn(
-    "w-full rounded-[8px] border-1 border-[#d0d5dd] px-[14px] py-2.5",
-    "text-[16px] text-[#101828] placeholder:text-[#667085] bg-white",
-    "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all",
-    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-);
+const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 function TextInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder?: string;
@@ -77,45 +129,47 @@ function TextInput({ value, onChange, placeholder }: {
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            className={INPUT_BASE}
+            className={INPUT_CLS}
         />
     );
 }
 
-function Textarea({ value, onChange, placeholder }: {
-    value: string; onChange: (v: string) => void; placeholder?: string;
+function Textarea({ value, onChange, placeholder, minHeight = 120 }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; minHeight?: number;
 }) {
     return (
         <textarea
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            rows={4}
-            className={cn(INPUT_BASE, "resize-none")}
+            style={{ minHeight }}
+            className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
         />
     );
 }
 
-/** AED-prefixed price input using the same NumericStringInput helper the
- *  other product forms use — strips leading zeros, blanks on 0, integer +
- *  2-decimal precision handled downstream. */
-function PriceInput({ value, onChange, placeholder }: {
-    value: string; onChange: (v: string) => void; placeholder?: string;
+/** AED-prefixed price input — matches the ProductFormPage PriceInput
+ *  exactly (h-10 shell + tight prefix + NumericStringInput inside). */
+function PriceInput({ value, onChange }: {
+    value: string; onChange: (v: string) => void;
 }) {
     return (
-        <div className="relative">
-            <span className="absolute left-[14px] top-1/2 -translate-y-1/2 text-[16px] text-[#667085] pointer-events-none">AED</span>
-            <NumericStringInput
-                value={value}
-                onChange={onChange}
-                placeholder={placeholder ?? "0"}
-                className={cn(INPUT_BASE, "pl-[54px]")}
-            />
+        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all h-10">
+            <div className="flex items-center pl-[14px] text-[16px] font-medium text-[#667085] shrink-0">AED</div>
+            <div className="flex-1 min-w-0">
+                <NumericStringInput
+                    value={value}
+                    onChange={onChange}
+                    min={0}
+                    step={1}
+                    className="!border-0 !shadow-none !rounded-none !ring-0 focus-within:!ring-0 focus-within:!border-0"
+                    inputClassName="!text-[16px]"
+                />
+            </div>
         </div>
     );
 }
 
-/** Bare numeric input for reorder threshold (integers, no currency). */
 function IntegerInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder?: string;
 }) {
@@ -123,42 +177,266 @@ function IntegerInput({ value, onChange, placeholder }: {
         <NumericStringInput
             value={value}
             onChange={onChange}
+            min={0}
+            step={1}
             placeholder={placeholder ?? "0"}
-            className={INPUT_BASE}
+            className={INPUT_CLS}
         />
     );
 }
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Step 1 — Basic information ────────────────────────────────────────────
 
-type Mode = "create" | "edit";
-type Status = RetailProduct["status"];
-
-interface FormState {
+interface BasicInfo {
+    imageUrl: string;
     name: string;
     sku: string;
     categoryId: string;
     description: string;
-    priceAed: string;         // string so empty input renders blank
-    unitCostAed: string;
-    reorderThreshold: string;
-    imageUrl: string;
-    status: Status;
 }
 
-const EMPTY_FORM: FormState = {
-    name: "",
-    sku: "",
-    categoryId: "",
-    description: "",
-    priceAed: "",
-    unitCostAed: "",
-    reorderThreshold: "",
-    imageUrl: "",
-    status: "active",
-};
+function BasicInformationStep({
+    data, onChange, categoryOptions, errors, onBack, onContinue,
+}: {
+    data: BasicInfo;
+    onChange: (patch: Partial<BasicInfo>) => void;
+    categoryOptions: { value: string; label: string }[];
+    errors: Partial<Record<keyof BasicInfo, string>>;
+    onBack: () => void;
+    onContinue: () => void;
+}) {
+    const canContinue = !!data.name.trim() && !!data.sku.trim() && !!data.categoryId;
+    return (
+        <FormCard
+            title="Basic information"
+            footer={
+                <div className="flex items-center justify-between gap-3 w-full">
+                    <Button variant="secondary-gray" size="md" onClick={onBack}>Back</Button>
+                    <Button variant="primary" size="md" disabled={!canContinue} onClick={onContinue}>Continue</Button>
+                </div>
+            }
+        >
+            <div className="flex flex-col gap-8">
+                <Section title="Information">
+                    {/* Image upload (label lives inside the shared uploader,
+                        matching class-types/new pattern). */}
+                    <ImageBannerUpload
+                        preview={data.imageUrl || null}
+                        onChange={(url) => onChange({ imageUrl: url ?? "" })}
+                    />
+                    <FormField label="Product name" error={errors.name}>
+                        <TextInput
+                            value={data.name}
+                            onChange={v => onChange({ name: v })}
+                            placeholder="e.g. Onra Studio Tank"
+                        />
+                    </FormField>
+                    <FormField label="SKU" error={errors.sku} hint="Unique alphanumeric code used on receipts and reports.">
+                        <TextInput
+                            value={data.sku}
+                            onChange={v => onChange({ sku: v.toUpperCase() })}
+                            placeholder="APP-TNK-001"
+                        />
+                    </FormField>
+                    <FormField label="Category" error={errors.categoryId}>
+                        <SelectInput
+                            value={data.categoryId}
+                            onChange={v => onChange({ categoryId: v })}
+                            options={categoryOptions}
+                            placeholder="Select a category"
+                            width="w-full"
+                        />
+                    </FormField>
+                    <FormField label="Description">
+                        <Textarea
+                            value={data.description}
+                            onChange={v => onChange({ description: v })}
+                            placeholder="Optional — brief description for the POS card and customer portal."
+                            minHeight={120}
+                        />
+                    </FormField>
+                </Section>
+            </div>
+        </FormCard>
+    );
+}
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+// ─── Step 2 — Pricing & stock ──────────────────────────────────────────────
+
+interface PricingInfo {
+    priceAed: string;
+    unitCostAed: string;
+    reorderThreshold: string;
+}
+
+function PricingStep({
+    data, onChange, errors, onBack, onContinue,
+}: {
+    data: PricingInfo;
+    onChange: (patch: Partial<PricingInfo>) => void;
+    errors: Partial<Record<keyof PricingInfo, string>>;
+    onBack: () => void;
+    onContinue: () => void;
+}) {
+    const priceOk = Number(data.priceAed) > 0;
+    const costOk  = data.unitCostAed !== "" && Number(data.unitCostAed) >= 0;
+    const thrOk   = data.reorderThreshold !== "" && Number(data.reorderThreshold) >= 0 && Number.isInteger(Number(data.reorderThreshold));
+    const canContinue = priceOk && costOk && thrOk;
+    return (
+        <FormCard
+            title="Pricing & stock"
+            footer={
+                <div className="flex items-center justify-between gap-3 w-full">
+                    <Button variant="secondary-gray" size="md" onClick={onBack}>Back</Button>
+                    <Button variant="primary" size="md" disabled={!canContinue} onClick={onContinue}>Continue</Button>
+                </div>
+            }
+        >
+            <div className="flex flex-col gap-8">
+                <Section title="Pricing">
+                    <FormField label="Price · AED" error={errors.priceAed} hint="The price customers pay at POS.">
+                        <PriceInput
+                            value={data.priceAed}
+                            onChange={v => onChange({ priceAed: v })}
+                        />
+                    </FormField>
+                    <FormField label="Unit cost · AED" error={errors.unitCostAed} hint="What you pay per unit. Powers the Gross margin % in the Retail Sales report.">
+                        <PriceInput
+                            value={data.unitCostAed}
+                            onChange={v => onChange({ unitCostAed: v })}
+                        />
+                    </FormField>
+                </Section>
+
+                <Section title="Stock alert">
+                    <FormField label="Reorder threshold" error={errors.reorderThreshold} hint="The Stock on Hand report flags any branch at or below this level.">
+                        <IntegerInput
+                            value={data.reorderThreshold}
+                            onChange={v => onChange({ reorderThreshold: v })}
+                        />
+                    </FormField>
+                </Section>
+            </div>
+        </FormCard>
+    );
+}
+
+// ─── Step 3 — Review & submit ──────────────────────────────────────────────
+
+function ReviewStep({
+    basic, pricing, categoryLabel, onBack, onSubmit, submitLabel, saving,
+}: {
+    basic: BasicInfo;
+    pricing: PricingInfo;
+    categoryLabel: string;
+    onBack: () => void;
+    onSubmit: () => void;
+    submitLabel: string;
+    saving: boolean;
+}) {
+    function Row({ label, value }: { label: string; value: React.ReactNode }) {
+        return (
+            <div className="flex items-start justify-between gap-4 py-3 border-b border-[#f2f4f7] last:border-b-0">
+                <span className="text-[14px] text-[#667085]">{label}</span>
+                <span className="text-[14px] font-medium text-[#101828] text-right max-w-[60%]">{value}</span>
+            </div>
+        );
+    }
+    return (
+        <FormCard
+            title="Review & submit"
+            footer={
+                <div className="flex items-center justify-between gap-3 w-full">
+                    <Button variant="secondary-gray" size="md" onClick={onBack}>Back</Button>
+                    <Button variant="primary" size="md" onClick={onSubmit} disabled={saving}>{submitLabel}</Button>
+                </div>
+            }
+        >
+            <div className="flex flex-col gap-6">
+                <p className="text-[14px] text-[#475467]">
+                    Confirm the details below. You can always come back and edit anything later from the product detail page.
+                </p>
+                <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] px-4">
+                    <Row label="Product name"      value={basic.name || "—"} />
+                    <Row label="SKU"               value={basic.sku || "—"} />
+                    <Row label="Category"          value={categoryLabel || "—"} />
+                    <Row label="Description"       value={basic.description ? basic.description : "—"} />
+                    <Row label="Price"             value={`AED ${Number(pricing.priceAed || 0).toLocaleString("en-US")}`} />
+                    <Row label="Unit cost"         value={`AED ${Number(pricing.unitCostAed || 0).toLocaleString("en-US")}`} />
+                    <Row label="Reorder threshold" value={`${pricing.reorderThreshold || 0} units`} />
+                </div>
+            </div>
+        </FormCard>
+    );
+}
+
+// ─── Preview card ──────────────────────────────────────────────────────────
+
+function TemplatePreviewCard({ basic, pricing, categoryLabel }: {
+    basic: BasicInfo;
+    pricing: PricingInfo;
+    categoryLabel: string;
+}) {
+    const hasName = !!basic.name.trim();
+    const priceNum = Number(pricing.priceAed);
+    const price = Number.isFinite(priceNum) ? priceNum : 0;
+    const threshold = Number(pricing.reorderThreshold);
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
+            <div className="flex flex-col">
+                <div className="pt-6 px-6 flex flex-col gap-1">
+                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Template preview</p>
+                    <p className="text-[14px] text-[#6e776f] leading-5">This is how your product will look like.</p>
+                </div>
+                <div className="h-5" />
+                <div className="h-px bg-[#e4e7ec]" />
+            </div>
+            <div className="bg-[#f6f6f3] px-6 py-10">
+                <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
+                    {/* Banner — real image when uploaded, sage placeholder otherwise. */}
+                    {basic.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={basic.imageUrl} alt="" className="h-[160px] w-full object-cover" />
+                    ) : (
+                        <div className="h-[160px] w-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa] flex items-center justify-center">
+                            <ShoppingBag01 className="w-10 h-10 text-[#7ba08c]" />
+                        </div>
+                    )}
+                    <div className="flex flex-col gap-4 px-5">
+                        <div className="flex flex-col gap-2">
+                            <p className="text-[18px] leading-[28px] font-medium text-[#101828] truncate">
+                                {hasName ? basic.name : "Product name"}
+                            </p>
+                            <div className="flex gap-2 items-start">
+                                <div className="flex-1 min-w-0 flex items-center gap-1">
+                                    <Package className="w-4 h-4 text-[#667085] shrink-0" />
+                                    <span className="text-[14px] font-medium text-[#667085] truncate">
+                                        {categoryLabel || "Category"}
+                                    </span>
+                                </div>
+                                <div className="flex-1 min-w-0 flex items-center gap-1">
+                                    <CoinsHand className="w-4 h-4 text-[#667085] shrink-0" />
+                                    <span className="text-[14px] font-medium text-[#667085] truncate">
+                                        Reorder at {threshold || 0}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <p className="font-semibold text-[20px] leading-[30px] text-[#658774]">
+                            AED {price.toLocaleString("en-US")}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+type Mode = "create" | "edit";
+
+// ─── Page component ────────────────────────────────────────────────────────
 
 export function RetailProductFormPage({ mode, productId, returnTo }: {
     mode: Mode;
@@ -176,35 +454,86 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         ? products.find(p => p.id === productId)
         : undefined;
 
-    const [form, setForm] = useState<FormState>(() => {
-        if (mode === "edit" && target) {
-            return {
-                name: target.name,
-                sku: target.sku,
-                categoryId: target.categoryId,
-                description: target.description ?? "",
-                priceAed: String(target.priceAed),
-                unitCostAed: String(target.unitCostAed),
-                reorderThreshold: String(target.reorderThreshold),
-                imageUrl: target.imageUrl ?? "",
-                status: target.status,
-            };
-        }
-        return EMPTY_FORM;
-    });
-    const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+    const [step, setStep] = useState(1);
+    const [basic, setBasic] = useState<BasicInfo>(() => ({
+        imageUrl:    target?.imageUrl ?? "",
+        name:        target?.name ?? "",
+        sku:         target?.sku ?? "",
+        categoryId:  target?.categoryId ?? "",
+        description: target?.description ?? "",
+    }));
+    const [pricing, setPricing] = useState<PricingInfo>(() => ({
+        priceAed:         target ? String(target.priceAed) : "",
+        unitCostAed:      target ? String(target.unitCostAed) : "",
+        reorderThreshold: target ? String(target.reorderThreshold) : "",
+    }));
+    const [errors, setErrors] = useState<{
+        basic: Partial<Record<keyof BasicInfo, string>>;
+        pricing: Partial<Record<keyof PricingInfo, string>>;
+    }>({ basic: {}, pricing: {} });
     const [saving, setSaving] = useState(false);
 
     const categoryOptions = useMemo(
-        () =>
-            categories
-                .filter(c => c.status === "active")
-                .map(c => ({ value: c.id, label: c.label })),
+        () => categories.filter(c => c.status === "active").map(c => ({ value: c.id, label: c.label })),
         [categories],
     );
+    const categoryLabel = categories.find(c => c.id === basic.categoryId)?.label ?? "";
 
-    // Missing-target guard — happens if someone navigates directly to
-    // /edit for a nonexistent id.
+    function updateBasic(patch: Partial<BasicInfo>) {
+        setBasic(prev => ({ ...prev, ...patch }));
+        const keys = Object.keys(patch) as (keyof BasicInfo)[];
+        setErrors(e => ({ ...e, basic: Object.fromEntries(Object.entries(e.basic).filter(([k]) => !keys.includes(k as keyof BasicInfo))) }));
+    }
+    function updatePricing(patch: Partial<PricingInfo>) {
+        setPricing(prev => ({ ...prev, ...patch }));
+        const keys = Object.keys(patch) as (keyof PricingInfo)[];
+        setErrors(e => ({ ...e, pricing: Object.fromEntries(Object.entries(e.pricing).filter(([k]) => !keys.includes(k as keyof PricingInfo))) }));
+    }
+
+    function handleClose() {
+        router.push(returnTo);
+    }
+
+    function handleSubmit() {
+        setSaving(true);
+        const payload = {
+            name: basic.name.trim(),
+            sku: basic.sku.trim(),
+            categoryId: basic.categoryId,
+            description: basic.description.trim() || undefined,
+            priceAed: Number(pricing.priceAed),
+            unitCostAed: Number(pricing.unitCostAed),
+            reorderThreshold: Number(pricing.reorderThreshold),
+            imageUrl: basic.imageUrl.trim() || undefined,
+            status: (target?.status ?? "active") as RetailProduct["status"],
+        };
+        if (mode === "create") {
+            const id = addRetailProduct(payload);
+            if (!id) {
+                setSaving(false);
+                setStep(1);
+                setErrors(e => ({ ...e, basic: { ...e.basic, sku: "SKU already in use by another product." } }));
+                return;
+            }
+            showToast("Product created", `${payload.name} is now in your retail catalog.`, "success", "check");
+            router.push(returnTo);
+            return;
+        }
+        // edit
+        if (!productId) return;
+        const ok = updateRetailProduct(productId, payload);
+        setSaving(false);
+        if (!ok) {
+            setStep(1);
+            setErrors(e => ({ ...e, basic: { ...e.basic, sku: "SKU already in use by another product." } }));
+            return;
+        }
+        showToast("Product updated", `${payload.name} was saved.`, "success", "check");
+        router.push(returnTo);
+    }
+
+    // Missing-target guard — happens if someone navigates directly to /edit
+    // for a nonexistent id.
     if (mode === "edit" && !target) {
         return (
             <div className="h-screen bg-white flex items-center justify-center px-6 py-10">
@@ -221,72 +550,13 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         );
     }
 
-    function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-        setForm(f => ({ ...f, [key]: value }));
-        if (errors[key]) setErrors(e => ({ ...e, [key]: undefined }));
-    }
-
-    function validate(): boolean {
-        const next: Partial<Record<keyof FormState, string>> = {};
-        if (!form.name.trim()) next.name = "Name is required.";
-        if (!form.sku.trim()) next.sku = "SKU is required.";
-        if (!form.categoryId) next.categoryId = "Select a category.";
-        const price = Number(form.priceAed);
-        if (!form.priceAed || Number.isNaN(price) || price <= 0) next.priceAed = "Price must be greater than 0.";
-        const cost = Number(form.unitCostAed);
-        if (form.unitCostAed === "" || Number.isNaN(cost) || cost < 0) next.unitCostAed = "Unit cost must be 0 or more.";
-        const threshold = Number(form.reorderThreshold);
-        if (form.reorderThreshold === "" || Number.isNaN(threshold) || threshold < 0 || !Number.isInteger(threshold)) next.reorderThreshold = "Threshold must be a whole number, 0 or more.";
-        setErrors(next);
-        return Object.keys(next).length === 0;
-    }
-
-    function handleSave() {
-        if (!validate()) return;
-        setSaving(true);
-        const payload = {
-            name: form.name.trim(),
-            sku: form.sku.trim(),
-            categoryId: form.categoryId,
-            description: form.description.trim() || undefined,
-            priceAed: Number(form.priceAed),
-            unitCostAed: Number(form.unitCostAed),
-            reorderThreshold: Number(form.reorderThreshold),
-            imageUrl: form.imageUrl.trim() || undefined,
-            status: form.status,
-        };
-        if (mode === "create") {
-            const id = addRetailProduct(payload);
-            if (!id) {
-                setSaving(false);
-                setErrors(e => ({ ...e, sku: "SKU already in use by another product." }));
-                return;
-            }
-            showToast("Product created", `${payload.name} is now in your retail catalog.`, "success", "check");
-            router.push(returnTo);
-            return;
-        }
-        // edit
-        if (!productId) return;
-        const ok = updateRetailProduct(productId, payload);
-        setSaving(false);
-        if (!ok) {
-            setErrors(e => ({ ...e, sku: "SKU already in use by another product." }));
-            return;
-        }
-        showToast("Product updated", `${payload.name} was saved.`, "success", "check");
-        router.push(returnTo);
-    }
-
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
-            {/* Top header (72px) — same chrome as Create gift card /
-                Create membership: X close + title + breadcrumbs. Full
-                viewport so this route stands outside the admin sidebar. */}
-            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0 border-b border-[#e4e7ec]">
+            {/* Top header (72px, NO border) */}
+            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button
                     type="button"
-                    onClick={() => router.push(returnTo)}
+                    onClick={handleClose}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
                 >
@@ -300,106 +570,49 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 </div>
             </div>
 
-            {/* Scrollable form region */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6">
-              <div className="max-w-[720px] w-full mx-auto">
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-8">
-                    <Section title="Information">
-                        <FormField label="Product name" required error={errors.name}>
-                            <TextInput
-                                value={form.name}
-                                onChange={v => update("name", v)}
-                                placeholder="e.g. Onra Studio Tank"
-                            />
-                        </FormField>
-                        <FormField label="SKU" required error={errors.sku} hint="Unique alphanumeric code used on receipts and reports.">
-                            <TextInput
-                                value={form.sku}
-                                onChange={v => update("sku", v.toUpperCase())}
-                                placeholder="APP-TNK-001"
-                            />
-                        </FormField>
-                        <FormField label="Category" required error={errors.categoryId}>
-                            <SelectInput
-                                value={form.categoryId}
-                                onChange={v => update("categoryId", v)}
-                                options={categoryOptions}
-                                placeholder="Select a category"
-                                width="w-full"
-                            />
-                        </FormField>
-                        <FormField label="Description">
-                            <Textarea
-                                value={form.description}
-                                onChange={v => update("description", v)}
-                                placeholder="Optional — brief description for the POS card and customer portal."
-                            />
-                        </FormField>
-                        <FormField label="Product image URL" hint="Optional. Paste a hosted image URL. Full upload UI coming in a later phase.">
-                            <TextInput
-                                value={form.imageUrl}
-                                onChange={v => update("imageUrl", v)}
-                                placeholder="https://…"
-                            />
-                        </FormField>
-                    </Section>
+            {/* 3-column shell */}
+            <div className="flex-1 overflow-hidden">
+                <div className="flex gap-8 px-6 pb-6 h-full items-stretch">
+                    {/* Left: progress steps */}
+                    <div className="w-[300px] shrink-0 flex flex-col">
+                        {STEPS.map(s => <StepItem key={s.n} step={s} current={step} />)}
+                    </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    {/* Middle: form step */}
+                    {step === 1 && (
+                        <BasicInformationStep
+                            data={basic}
+                            onChange={updateBasic}
+                            categoryOptions={categoryOptions}
+                            errors={errors.basic}
+                            onBack={handleClose}
+                            onContinue={() => setStep(2)}
+                        />
+                    )}
+                    {step === 2 && (
+                        <PricingStep
+                            data={pricing}
+                            onChange={updatePricing}
+                            errors={errors.pricing}
+                            onBack={() => setStep(1)}
+                            onContinue={() => setStep(3)}
+                        />
+                    )}
+                    {step === 3 && (
+                        <ReviewStep
+                            basic={basic}
+                            pricing={pricing}
+                            categoryLabel={categoryLabel}
+                            onBack={() => setStep(2)}
+                            onSubmit={handleSubmit}
+                            submitLabel={mode === "create" ? "Create product" : "Save changes"}
+                            saving={saving}
+                        />
+                    )}
 
-                    <Section title="Pricing">
-                        <FormField label="Price · AED" required error={errors.priceAed} hint="The price customers pay at POS.">
-                            <PriceInput
-                                value={form.priceAed}
-                                onChange={v => update("priceAed", v)}
-                            />
-                        </FormField>
-                        <FormField label="Unit cost · AED" required error={errors.unitCostAed} hint="What you pay per unit. Powers the Gross margin % in the Retail Sales report.">
-                            <PriceInput
-                                value={form.unitCostAed}
-                                onChange={v => update("unitCostAed", v)}
-                            />
-                        </FormField>
-                    </Section>
-
-                    <div className="h-px w-full bg-[#e4e7ec]" />
-
-                    <Section title="Stock alert">
-                        <FormField label="Reorder threshold" required error={errors.reorderThreshold} hint="The Stock on Hand report flags any branch at or below this level.">
-                            <IntegerInput
-                                value={form.reorderThreshold}
-                                onChange={v => update("reorderThreshold", v)}
-                            />
-                        </FormField>
-                    </Section>
-
-                    <div className="h-px w-full bg-[#e4e7ec]" />
-
-                    <Section title="Status">
-                        <FormField label="Availability" hint="Inactive hides the product from POS and the customer shop but keeps it on the admin list.">
-                            <div className="flex flex-wrap gap-2">
-                                {(["active", "inactive"] as Status[]).map(s => (
-                                    <FilterPill
-                                        key={s}
-                                        label={s.charAt(0).toUpperCase() + s.slice(1)}
-                                        selected={form.status === s}
-                                        onClick={() => update("status", s)}
-                                    />
-                                ))}
-                            </div>
-                        </FormField>
-                    </Section>
+                    {/* Right: template preview */}
+                    <TemplatePreviewCard basic={basic} pricing={pricing} categoryLabel={categoryLabel} />
                 </div>
-
-                {/* Footer buttons */}
-                <div className="flex items-center justify-end gap-3 mt-6 pb-8">
-                    <Button variant="secondary-gray" size="md" onClick={() => router.push(returnTo)}>
-                        Cancel
-                    </Button>
-                    <Button variant="primary" size="md" onClick={handleSave} disabled={saving}>
-                        {mode === "create" ? "Create product" : "Save changes"}
-                    </Button>
-                </div>
-              </div>
             </div>
 
             <Toast />
