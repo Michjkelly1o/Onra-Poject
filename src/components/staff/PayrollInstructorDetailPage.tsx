@@ -422,30 +422,81 @@ interface BookingRow {
     earnings: number;
 }
 
-// ─── CSV export ────────────────────────────────────────────────────────────
+// ─── Payroll document export ─────────────────────────────────────────────────
+//
+// The exported document mirrors Staff Details → Payroll EXACTLY (client
+// 2026-07-29): staff identity (name / role / email / branch / default rate) like
+// the Run Payroll summary, then the FULL Total earnings breakdown (every enabled
+// source — Default pay rate + Pay per class + Pay per private + Sales commission
+// → Total earnings), then the per-booking table. The document's Total earnings
+// equals the on-screen Total earnings because both read the same `periodTotals`.
 
-function exportPayoutReport(rows: BookingRow[], instructor: Instructor, periodLabel: string) {
-    const header = ["Date", "Booking", "Type", "Attendance", "Rating", "Status", "Pay rate", "Earnings (AED)"];
+interface PayoutExportPayload {
+    instructor: Instructor;
+    roleName: string;
+    branchName: string;
+    defaultRateName: string;
+    periodLabel: string;
+    /** Total earnings breakdown — same figures the on-screen accordion shows. */
+    breakdown: { defaultBase: number; perClass: number; perAppointment: number };
+    commissionAed: number;
+    totalAed: number;
+    rows: BookingRow[];
+}
+
+function exportPayoutReport(p: PayoutExportPayload) {
     const escape = (v: string | number) => {
         const s = String(v);
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const lines = rows.map(r => [
-        r.dateISO + " " + r.displayTime,
-        r.name,
-        r.kind === "class" ? "Class" : "Private",
-        `${r.attendees}/${r.capacity}`,
-        r.ratingCount > 0 ? `${r.rating.toFixed(1)} (${r.ratingCount})` : "—",
-        r.status,
-        r.payRateName,
-        Math.round(r.earnings),
-    ].map(escape).join(","));
-    const csv = [header.join(","), ...lines].join("\n");
+    const row = (cells: (string | number)[]) => cells.map(escape).join(",");
+    const round = (n: number) => Math.round(n);
+
+    const lines: string[] = [];
+
+    // ── Section 1 · Staff information (mirrors Run Payroll) ──────────────────
+    lines.push(row(["Staff payroll report"]));
+    lines.push(row(["Name", p.instructor.name]));
+    lines.push(row(["Role", p.roleName]));
+    lines.push(row(["Email", p.instructor.email]));
+    lines.push(row(["Phone", p.instructor.phone]));
+    lines.push(row(["Branch", p.branchName]));
+    lines.push(row(["Default pay rate", p.defaultRateName]));
+    lines.push(row(["Period", p.periodLabel]));
+    lines.push("");
+
+    // ── Section 2 · Total earnings breakdown (every enabled source) ─────────
+    lines.push(row(["Total earnings breakdown"]));
+    lines.push(row(["Earning source", "Amount (AED)"]));
+    if (p.breakdown.defaultBase > 0)    lines.push(row(["Default pay rate", round(p.breakdown.defaultBase)]));
+    if (p.breakdown.perClass > 0)       lines.push(row(["Pay per class", round(p.breakdown.perClass)]));
+    if (p.breakdown.perAppointment > 0) lines.push(row(["Pay per private", round(p.breakdown.perAppointment)]));
+    if (p.commissionAed > 0)            lines.push(row(["Sales commission", round(p.commissionAed)]));
+    lines.push(row(["Total earnings", round(p.totalAed)]));
+    lines.push("");
+
+    // ── Section 3 · Bookings ────────────────────────────────────────────────
+    lines.push(row(["Bookings"]));
+    lines.push(row(["Date", "Booking", "Type", "Attendance", "Rating", "Status", "Pay rate", "Earnings (AED)"]));
+    for (const r of p.rows) {
+        lines.push(row([
+            r.dateISO + " " + r.displayTime,
+            r.name,
+            r.kind === "class" ? "Class" : "Private",
+            `${r.attendees}/${r.capacity}`,
+            r.ratingCount > 0 ? `${r.rating.toFixed(1)} (${r.ratingCount})` : "—",
+            r.status,
+            r.payRateName,
+            r.status === "Cancelled" ? 0 : round(r.earnings),
+        ]));
+    }
+
+    const csv = lines.join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    const slug = instructor.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    a.download = `payout-${slug}-${periodLabel.replace(/\s+/g, "_")}-${new Date().toISOString().slice(0, 10)}.csv`;
+    const slug = p.instructor.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    a.download = `payout-${slug}-${p.periodLabel.replace(/\s+/g, "_")}-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
 }
@@ -725,9 +776,19 @@ export default function PayrollInstructorDetailPage({
     const { classRate, privateRate } = useMemo(() => {
         const cfg = staff.find(s => s.id === instructorId)?.payConfig;
         const rateById = (id?: string) => (id ? payRates.find(p => p.id === id) : undefined);
+        // Only ENABLED tracks contribute a rate. Class bookings prefer the
+        // Pay-per-class rate, then the Default rate, then the legacy single
+        // rate; private bookings prefer Pay-per-private, then Default, then
+        // legacy. So disabling the Default track (leaving Pay-per-class /
+        // Pay-per-private on) prices each booking on its own configured rate,
+        // and an instructor on Default only prices every booking on Default —
+        // exactly what the breakdown sums (client 2026-07-29).
+        const defaultRate  = cfg?.default.enabled        ? rateById(cfg.default.payRateId)        : undefined;
+        const perClassRate = cfg?.perClass.enabled       ? rateById(cfg.perClass.payRateId)       : undefined;
+        const perApptRate  = cfg?.perAppointment.enabled ? rateById(cfg.perAppointment.payRateId) : undefined;
         return {
-            classRate:   cfg?.perClass.enabled       ? (rateById(cfg.perClass.payRateId)       ?? payRate) : payRate,
-            privateRate: cfg?.perAppointment.enabled  ? (rateById(cfg.perAppointment.payRateId) ?? payRate) : payRate,
+            classRate:   perClassRate ?? defaultRate ?? payRate,
+            privateRate: perApptRate  ?? defaultRate ?? payRate,
         };
     }, [staff, instructorId, payRates, payRate]);
 
@@ -887,7 +948,27 @@ export default function PayrollInstructorDetailPage({
             showToast("Nothing to export", "No bookings in the current view.", "error");
             return;
         }
-        exportPayoutReport(filteredRows, ins, period.label);
+        // Default pay rate name = the Default TRACK's configured rate (what the
+        // breakdown treats as "Default pay rate"), so the document's identity
+        // block matches Run Payroll even if the Default base is toggled off.
+        const cfg = staff.find(s => s.id === instructorId)?.payConfig;
+        const defaultRateName =
+            (cfg ? payRates.find(p => p.id === cfg.default.payRateId)?.name : payRate?.name) ?? "—";
+        exportPayoutReport({
+            instructor: ins,
+            roleName: roleRow?.name ?? "—",
+            branchName: branch?.name ?? "—",
+            defaultRateName,
+            periodLabel: period.label,
+            breakdown: {
+                defaultBase:    periodTotals.trackBreakdown.defaultBase,
+                perClass:       periodTotals.trackBreakdown.perClass,
+                perAppointment: periodTotals.trackBreakdown.perAppointment,
+            },
+            commissionAed: commission.totalCommission,
+            totalAed: periodTotals.total,
+            rows: filteredRows,
+        });
         showToast(
             "Compensation data exported successfully",
             "The data has been exported successfully.",
@@ -998,7 +1079,7 @@ export default function PayrollInstructorDetailPage({
 
                         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
                             {/* Metric cards */}
-                            <div className="px-6 pt-6 flex items-stretch gap-4">
+                            <div className="px-6 pt-4 flex items-stretch gap-4">
                                 <PayRateSnapshotCard payRate={payRate} />
                                 <MetricCard
                                     label="Total earnings"
@@ -1017,13 +1098,16 @@ export default function PayrollInstructorDetailPage({
                             </div>
 
                             {/* Total earnings breakdown — collapsible (default collapsed).
-                                Splits the payout across every earning source: Default
-                                salary + Pay per class + Pay per private + Sales commission
-                                → Total earnings. Reads the SAME `periodTotals` that drives
-                                the headline figure, so the parts always sum to the total.
-                                Client 2026-07-28. */}
-                            {(periodTotals.trackBreakdown.perClass > 0 || periodTotals.trackBreakdown.perAppointment > 0 || commission.totalCommission > 0) && (
-                                <div className="px-6 pt-6">
+                                Splits the payout across every ENABLED earning source:
+                                Default salary + Pay per class + Pay per private + Sales
+                                commission → Total earnings. Each line shows only when its
+                                track contributes (> 0), so disabling a track in the pay
+                                config immediately drops its line and the total reflows.
+                                Reads the SAME `periodTotals` that drives the headline
+                                figure, so the parts always sum to the total. Shown whenever
+                                there are any earnings (client 2026-07-29). */}
+                            {periodTotals.total > 0 && (
+                                <div className="px-6 pt-4">
                                     <PayrollAccordion
                                         title="Total earnings breakdown"
                                         subtitle="All earnings earned so far this month."
@@ -1031,7 +1115,9 @@ export default function PayrollInstructorDetailPage({
                                     >
                                         <div className="flex flex-col gap-2 w-full">
                                             <div className="flex flex-col gap-1 w-full">
-                                                <BreakdownRow label="Default pay rate" value={aed(periodTotals.trackBreakdown.defaultBase)} />
+                                                {periodTotals.trackBreakdown.defaultBase > 0 && (
+                                                    <BreakdownRow label="Default pay rate" value={aed(periodTotals.trackBreakdown.defaultBase)} />
+                                                )}
                                                 {periodTotals.trackBreakdown.perClass > 0 && (
                                                     <BreakdownRow label="Pay per class" value={aed(periodTotals.trackBreakdown.perClass)} />
                                                 )}
@@ -1055,7 +1141,7 @@ export default function PayrollInstructorDetailPage({
                                 collapsed; body reuses the existing commission breakdown
                                 layout (embedded, headerless). */}
                             {hasCommission && (
-                                <div className="px-6 pt-6">
+                                <div className="px-6 pt-4">
                                     <PayrollAccordion
                                         title="Sales commission"
                                         subtitle="Earned on sales & bookings credited to this staff in the selected period."
@@ -1071,7 +1157,7 @@ export default function PayrollInstructorDetailPage({
                                 (incl. the period filter) is hidden; their
                                 commission card scopes to the current month. */}
                             {isRealInstructor && (
-                                <div className="px-6 pt-6 flex items-center gap-3">
+                                <div className="px-6 pt-4 flex items-center gap-3">
                                     <ToolbarTotal count={filteredRows.length} entitySingular="booking" />
                                     <ToolbarSearch
                                         value={search}
