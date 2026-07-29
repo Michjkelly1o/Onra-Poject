@@ -27,7 +27,6 @@ const K = {
     attachedTo:         "attachedTo",
     salesChannel:       "salesChannel",
     staffId:            "staffId",
-    branchId:           "branchId",
     location:           "location",
 } as const;
 

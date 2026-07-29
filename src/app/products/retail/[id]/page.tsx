@@ -525,13 +525,19 @@ function ActivityTab({ product, adjRows, branches }: {
 
 // ─── Configure-stock side panel (unchanged from prior detail impl) ─────────
 
-const ADJUST_REASON_TO_KIND: Record<RetailAdjustReason, RetailStockAdjustment["kind"]> = {
-    "Received shipment":  "receive",
-    "Manual adjustment":  "adjust",
-    "Lost":               "loss",
-    "Damaged":            "loss",
-    "Reconciliation":     "adjust",
-};
+/** v83 audit-1 (2026-07-29) — reason → kind resolver that honours the
+ *  delta sign. Previously a static Record; a "Received shipment" reason
+ *  with a NEGATIVE delta (admin lowering the count) would write a
+ *  `kind: "receive"` row, which reads as nonsense in the audit log.
+ *  Now: "Lost" / "Damaged" are always loss (negative deltas), and
+ *  positive/negative for the other reasons picks kind by sign. */
+function resolveAdjustKind(reason: RetailAdjustReason, delta: number): RetailStockAdjustment["kind"] {
+    if (reason === "Lost" || reason === "Damaged") return "loss";
+    if (reason === "Received shipment") return delta > 0 ? "receive" : "adjust";
+    // "Manual adjustment" + "Reconciliation" — either sign is honest as
+    // an admin edit; both map to `adjust` regardless of direction.
+    return "adjust";
+}
 
 function ConfigureStockPanel({ open, onClose, product }: {
     open: boolean;
@@ -569,7 +575,6 @@ function ConfigureStockPanel({ open, onClose, product }: {
     }, [open, activeBranches, currentByBranch]);
 
     function handleSave() {
-        const kind = ADJUST_REASON_TO_KIND[reason];
         let changed = 0;
         for (const b of activeBranches) {
             const raw = drafts[b.id] ?? "0";
@@ -578,6 +583,7 @@ function ConfigureStockPanel({ open, onClose, product }: {
             const current = currentByBranch.get(b.id) ?? 0;
             const delta = next - current;
             if (delta === 0) continue;
+            const kind = resolveAdjustKind(reason, delta);
             adjustRetailStock({
                 productId: product.id,
                 branchId: b.id,

@@ -84,9 +84,15 @@ interface PosProduct {
     /** Retail only (2026-07-29). Full-cover product image URL for the card
      *  banner. When missing, the card renders a sage gradient placeholder. */
     bannerImageUrl?: string;
-    /** Retail only. Aggregate units on hand across every active branch — 0
-     *  triggers the disabled "Out of stock" state on the card. */
+    /** Retail only. Aggregate units on hand across every active branch —
+     *  used when the POS branch picker is set to "All locations" (no
+     *  branch scope). */
     stockAggregate?: number;
+    /** Retail only. Per-branch units-on-hand map keyed by branch id. The
+     *  "Out of stock" gate reads THIS map when a specific branch is
+     *  picked, so retail can't be sold at a branch that has no stock
+     *  even if another branch is holding units. */
+    perBranchStock?: Record<string, number>;
 }
 
 /** ISO date → DD/MM/YYYY — gift-card "Valid until" cell on the POS card. */
@@ -173,9 +179,10 @@ function buildCatalog(
     // per-branch stock aggregate drives the "Out of stock" card state.
     for (const r of retailProducts) {
         if (r.status !== "active") continue;
-        const stockAggregate = retailStock
-            .filter(s => s.productId === r.id)
-            .reduce((sum, s) => sum + s.unitsOnHand, 0);
+        const rowsForProduct = retailStock.filter(s => s.productId === r.id);
+        const stockAggregate = rowsForProduct.reduce((sum, s) => sum + s.unitsOnHand, 0);
+        const perBranchStock: Record<string, number> = {};
+        for (const s of rowsForProduct) perBranchStock[s.branchId] = s.unitsOnHand;
         out.push({
             id: r.id,
             kind: "retail",
@@ -190,6 +197,7 @@ function buildCatalog(
             branchIds: [],
             bannerImageUrl: r.imageUrl,
             stockAggregate,
+            perBranchStock,
         });
     }
 
@@ -519,8 +527,13 @@ function POSInner() {
         // in the cart but doesn't stack with a promo code.
         const promoLines = cart.filter((l): l is CartLine & { kind: "membership" | "package" | "gift_card" } => l.kind !== "retail");
         const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
+        // v83 audit-1 (2026-07-29) — subtotal for promo eligibility must
+        // EXCLUDE retail lines. Otherwise a cart with a membership below
+        // the promo's min_purchase gets rescued by a retail top-up, even
+        // though retail is filtered out of the eligible lines above.
+        const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         return validatePromoCode(appliedPromoCode, {
-            subtotalAed: subtotal,
+            subtotalAed: promoSubtotal,
             productTypes: kinds,
             lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
@@ -538,8 +551,11 @@ function POSInner() {
         if (!promoInput.trim()) return;
         const promoLines = cart.filter((l): l is CartLine & { kind: "membership" | "package" | "gift_card" } => l.kind !== "retail");
         const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
+        // v83 audit-1 (2026-07-29) — same retail exclusion for the
+        // subtotal used against `min_purchase_aed`.
+        const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         const res = validatePromoCode(promoInput, {
-            subtotalAed: subtotal,
+            subtotalAed: promoSubtotal,
             productTypes: kinds,
             lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
@@ -666,6 +682,11 @@ function POSInner() {
             promoCode: appliedPromo?.code,
             promoDiscountAed: promoDiscount,
             returnTo: "/admin/pos",
+            // v83 audit-1 (2026-07-29) — thread the POS-selected branch to
+            // the checkout so retail lines decrement the SALE branch's
+            // stock, not the customer's home branch. Empty = "All locations"
+            // in the picker → applyPurchase falls back to buyer.branchId.
+            saleBranchId: branchId || undefined,
         });
         // Dedicated POS checkout route at /pos/checkout (top-level, outside
         // the /admin layout) so the screen renders FULL-SCREEN without the
@@ -764,7 +785,19 @@ function POSInner() {
                                                 secondaryMeta={p.secondaryMeta}
                                                 price={p.priceDisplay}
                                                 bannerImageUrl={p.bannerImageUrl}
-                                                outOfStock={p.kind === "retail" && p.stockAggregate === 0}
+                                                // v83 audit-1 (2026-07-29) — out-of-stock check
+                                                // uses SALE-branch units when the POS picker is
+                                                // set to a specific branch; falls back to the
+                                                // aggregate for "All locations". A walk-in at
+                                                // Branch A can't be sold inventory that only
+                                                // exists at Branch B.
+                                                outOfStock={
+                                                    p.kind === "retail" && (
+                                                        branchId
+                                                            ? (p.perBranchStock?.[branchId] ?? 0) === 0
+                                                            : p.stockAggregate === 0
+                                                    )
+                                                }
                                                 quantity={inCartQty}
                                                 quantityDisplay="badge"
                                                 disabled={isAddDisabled(p)}

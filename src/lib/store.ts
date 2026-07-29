@@ -2363,6 +2363,11 @@ export interface PendingPurchase {
     /** Where to redirect after the checkout flow completes. Defaults to the
      *  class detail page when classScheduleId is set; POS sets this to "/admin/pos". */
     returnTo?: string;
+    /** v83 audit-1 (2026-07-29) — POS-selected sale branch, threaded through
+     *  the checkout flow to applyPurchase. Falsy = no override (buyer's home
+     *  branch is used). Only retail line items honour this; membership /
+     *  package / gift-card flows are branch-agnostic in the current model. */
+    saleBranchId?: string;
 }
 
 // ─── SCHEDULE_INSTRUCTORS — built from staff_profiles seed ──────────────────
@@ -5010,6 +5015,13 @@ export interface AppState {
          *  Callers pass min(walletBalance, orderTotalPostDiscount) so the debit
          *  never exceeds the sale or the balance. */
         accountCreditAppliedAed?: number,
+        /** v83 audit-1 (2026-07-29) — POS-selected sale branch. Membership /
+         *  package flows default to the buyer's home branch (unchanged), but
+         *  RETAIL lines MUST decrement stock at the physical branch that
+         *  processed the sale, not the customer's home branch. Falsy →
+         *  falls back to `buyer.branchId ?? DEFAULT_BRANCH_ID`. Only the
+         *  retail-line stock loop reads this. */
+        saleBranchIdOverride?: string,
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -8476,6 +8488,12 @@ export const useAppStore = create<AppState>()(persist(
         // its own `isRefundable` check, the store rejects the refund
         // on non-refundable rows (e.g. cancellation-penalty fees).
         if (target && target.isRefundable === false) return;
+        // v83 audit-1 (2026-07-29) — capture whether the set() below will
+        // actually flip the row. The outer if(target) block runs side
+        // effects (wallet credit-back, retail stock restore); those must
+        // only fire ONCE. Double-clicking Refund on the same transaction
+        // otherwise re-credits the wallet and restores stock a second time.
+        const willFlip = !!target && target.status === "complete" && target.isRefundable !== false;
         set(state => ({
             customerTransactions: state.customerTransactions.map(t =>
                 t.id === id && t.status === "complete" && t.isRefundable !== false
@@ -8495,7 +8513,7 @@ export const useAppStore = create<AppState>()(persist(
                     : t,
             ),
         }));
-        if (target) {
+        if (target && willFlip) {
             const targetCustomer = get().customers.find(c => c.id === target.customerId);
             const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
             get().recordAudit(`Refunded ${customerName}'s payment`, "customer", target.customerId, target.name, { amount: target.amountAed, method });
@@ -10927,7 +10945,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -11215,6 +11233,11 @@ export const useAppStore = create<AppState>()(persist(
             const nextRetailStock = state.retailStock.map(s => ({ ...s }));
             const nextRetailAdjustments: RetailStockAdjustment[] = [];
             const currentUserId = state.currentUser?.staff_id ?? state.currentUser?.id ?? "unknown";
+            // v83 audit-1 (2026-07-29) — retail stock must decrement at the
+            // PHYSICAL sale branch, not the buyer's home branch. Falls back
+            // to the buyer's home branch when the caller doesn't pass an
+            // override (customer-portal + other non-POS surfaces).
+            const retailBranchId = saleBranchIdOverride || saleBranchId;
             items.forEach((it, idx) => {
                 if (it.productType !== "retail") return;
                 const product = state.retailProducts.find(p => p.id === it.productId);
@@ -11231,7 +11254,7 @@ export const useAppStore = create<AppState>()(persist(
                 newTransactions.push({
                     id: txnId,
                     customerId,
-                    branchId: saleBranchId,
+                    branchId: retailBranchId,
                     kind: "retail",
                     productId: it.productId,
                     name: it.name,
@@ -11250,12 +11273,12 @@ export const useAppStore = create<AppState>()(persist(
                     productSnapshotPriceAed: product.priceAed,
                     productSnapshotUnitCostAed: product.unitCostAed,
                     quantity: qty,
-                    branchIdAtSale: saleBranchId,
+                    branchIdAtSale: retailBranchId,
                 });
                 // Stock decrement — clamped at 0. Even if the cart lets the
                 // admin push past on-hand (shouldn't happen — the disabled
                 // "Out of stock" gate is on the card), we never write negative.
-                const stockRow = nextRetailStock.find(s => s.productId === product.id && s.branchId === saleBranchId);
+                const stockRow = nextRetailStock.find(s => s.productId === product.id && s.branchId === retailBranchId);
                 const currentUnits = stockRow?.unitsOnHand ?? 0;
                 const nextUnits = Math.max(0, currentUnits - qty);
                 const appliedDelta = nextUnits - currentUnits;
@@ -11264,23 +11287,29 @@ export const useAppStore = create<AppState>()(persist(
                     stockRow.lastAdjustedAt = nowISO;
                 } else if (appliedDelta !== 0) {
                     nextRetailStock.push({
-                        id: `retail_stock_${product.id}_${saleBranchId}_${Date.now()}`,
+                        id: `retail_stock_${product.id}_${retailBranchId}_${Date.now()}`,
                         productId: product.id,
-                        branchId: saleBranchId,
+                        branchId: retailBranchId,
                         unitsOnHand: nextUnits,
                         lastAdjustedAt: nowISO,
                     });
                 }
-                nextRetailAdjustments.push({
-                    id: `retail_adj_sale_${stamp}_${idx}`,
-                    productId: product.id,
-                    branchId: saleBranchId,
-                    delta: appliedDelta,
-                    kind: "sale",
-                    sourceTransactionId: txnId,
-                    createdBy: currentUserId,
-                    createdAt: nowISO,
-                });
+                // v83 audit-1 — skip zero-delta rows. When the clamp fires
+                // (stock was already 0 at the sale branch) we don't need a
+                // "sold 0 units" audit-log entry; the sale row on the
+                // transaction still tells the story.
+                if (appliedDelta !== 0) {
+                    nextRetailAdjustments.push({
+                        id: `retail_adj_sale_${stamp}_${idx}`,
+                        productId: product.id,
+                        branchId: retailBranchId,
+                        delta: appliedDelta,
+                        kind: "sale",
+                        sourceTransactionId: txnId,
+                        createdBy: currentUserId,
+                        createdAt: nowISO,
+                    });
+                }
             });
 
             return {

@@ -1115,7 +1115,6 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
         // retail lines aren't in the ledger resolver's target set today).
         if (t.transactionType === "void") continue;
 
-        const isRefund = t.status === "refunded" || t.transactionType === "refund";
         const qty = t.quantity ?? 1;
         const gross = t.amountAed;
         const discount = t.discountValue ?? 0;
@@ -1124,18 +1123,6 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
         const unitCost = t.productSnapshotUnitCostAed ?? 0;
         const totalCost = unitCost * qty;
         const grossMargin = net > 0 ? (net - totalCost) / net : 0;
-        // Refunds negate the signs — matches the Excel spec's
-        // "refunds are negative" convention on the Transaction type row.
-        const signedUnits = isRefund ? -qty : qty;
-        const signedNet   = isRefund ? -net : net;
-
-        const day = t.createdAtISO.slice(0, 10);
-        const attachKey = `${t.customerId}|${day}|${t.branchId}`;
-        // Attached when a non-retail line OR class booking exists on the
-        // same day + branch. The retail line itself isn't in the index
-        // (we only added non-retail transactions above) so no false
-        // positives from self-match.
-        const attached = attachmentIndex.has(attachKey);
 
         const buyer = cust(t.customerId);
         const product = productById.get(t.retailProductId ?? "");
@@ -1143,32 +1130,86 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
             ? categoryById.get(product.categoryId)?.label ?? "—"
             : "—";
         const productName = t.productSnapshotName ?? product?.name ?? t.name;
+        const customerName = buyer ? `${buyer.firstName} ${buyer.lastName}`.trim() : "—";
+        const customerEmail = buyer?.email ?? "—";
+        const salesChannel = t.paymentSource === "customer_portal" ? "online" as const : "in-person" as const;
 
+        // ── Refund model (v83 audit-1, 2026-07-29) ───────────────────────
+        // Client spec: past months NEVER restated. A refund shows up in
+        // the report as a NEGATIVE row in its OWN refund-date period,
+        // NOT by nulling the original sale row on the original date.
+        //   • Sale     — positive row on t.createdAtISO
+        //   • Refund   — negative row on t.refundedAtISO (only when the
+        //                transaction is refunded)
+        // Note: this treats every retail refund as a "later" refund per
+        // the plan's void-vs-refund model. Same-day voids would need the
+        // settlement timeline we haven't wired yet; refunds within the
+        // same day still surface as a second row, which is close enough
+        // for the demo and never restates the previous period.
+        const isRefunded = t.status === "refunded" || t.transactionType === "refund";
+
+        // Sale row — always emit on the original sale date (positive).
+        const saleDay = t.createdAtISO.slice(0, 10);
+        const saleAttachKey = `${t.customerId}|${saleDay}|${t.branchId}`;
+        const saleAttached = attachmentIndex.has(saleAttachKey);
         rows.push({
             id: t.id,
-            dateISO: day,
+            dateISO: saleDay,
             transactionNumber: t.id,
-            transactionType: isRefund ? "refund" : "sale",
+            transactionType: "sale",
             customerId: t.customerId,
-            customerName: buyer ? `${buyer.firstName} ${buyer.lastName}`.trim() : "—",
-            customerEmail: buyer?.email ?? "—",
+            customerName,
+            customerEmail,
             productName,
             productCategory: category,
-            unitsSold: signedUnits,
+            unitsSold: qty,
             unitPrice: qty > 0 ? gross / qty : 0,
-            grossSales: isRefund ? -gross : gross,
-            discount: isRefund ? -discount : discount,
-            tax: isRefund ? -tax : tax,
-            netSales: signedNet,
+            grossSales: gross,
+            discount,
+            tax,
+            netSales: net,
             unitCost,
             grossMarginPct: grossMargin,
-            attachedTo: attached ? "Yes" : "No",
-            salesChannel: t.paymentSource === "customer_portal" ? "online" : "in-person",
+            attachedTo: saleAttached ? "Yes" : "No",
+            salesChannel,
             staffId: t.staffId ?? "",
             branchId: t.branchId,
             location: loc(t.branchId),
-            signedAmount: signedNet,
+            signedAmount: net,
         });
+
+        // Refund row — only when refunded, and only on the refund date so
+        // the previous month never restates.
+        if (isRefunded && t.refundedAtISO) {
+            const refundDay = t.refundedAtISO.slice(0, 10);
+            const refundAttachKey = `${t.customerId}|${refundDay}|${t.branchId}`;
+            const refundAttached = attachmentIndex.has(refundAttachKey);
+            rows.push({
+                id: `${t.id}:refund`,
+                dateISO: refundDay,
+                transactionNumber: t.id,
+                transactionType: "refund",
+                customerId: t.customerId,
+                customerName,
+                customerEmail,
+                productName,
+                productCategory: category,
+                unitsSold: -qty,
+                unitPrice: qty > 0 ? gross / qty : 0,
+                grossSales: -gross,
+                discount: -discount,
+                tax: -tax,
+                netSales: -net,
+                unitCost,
+                grossMarginPct: grossMargin,
+                attachedTo: refundAttached ? "Yes" : "No",
+                salesChannel,
+                staffId: t.staffId ?? "",
+                branchId: t.branchId,
+                location: loc(t.branchId),
+                signedAmount: -net,
+            });
+        }
     }
 
     // Newest-first — matches every other Financial selector's default.

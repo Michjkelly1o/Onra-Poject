@@ -50,11 +50,14 @@ export const RETAIL_STOCK_ON_HAND_REPORT: ReportDefinition = {
         { key: K.lastSoldDateISO,     label: "Last sold date",       kind: "date",     minWidth: 140 },
     ],
 
-    // Plan default: by category.
+    // Plan default: by category. Location dimension intentionally
+    // omitted — the selector currently emits ONE row per product with
+    // `location: "All locations"`, so grouping by branch would yield a
+    // single bucket and mislead admins into thinking branch drilldown
+    // exists. Per-branch stock rows are a follow-up.
     dimensions: [
         { key: "category", label: "Category", extract: r => String(r[K.productCategory] ?? "—") },
         { key: "product",  label: "Product",  extract: r => String(r[K.productName]     ?? "—") },
-        { key: "location", label: "Location", extract: r => String(r[K.location]        ?? "—") },
     ],
 
     measures: [
