@@ -145,6 +145,11 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
         referralSettings:        state.referralSettings,
         notificationSettings:    state.notificationSettings,
         cancellationPolicy:      state.cancellationPolicy,
+        // v83 audit-2 (2026-07-29) — readCustomers computes lifecycle
+        // live per-customer and computeLifecycleTag reads customerPlans.
+        // Missing this slice crashed every AI Agent request with
+        // TypeError: undefined.filter.
+        customerPlans:           state.customerPlans,
     };
 }
 

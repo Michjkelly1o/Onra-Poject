@@ -2290,7 +2290,10 @@ function describeCustomerPatch(patch: Record<string, unknown>): string {
     if (keys.length === 0) return "Edited customer profile";
     if (keys.length === 1) {
         switch (keys[0]) {
-            case "assignedTo":      return "Reassigned customer";
+            // v83 audit-2 (2026-07-29) — distinguish "unassign" (patch
+            // value is undefined / empty string) from "reassign" so the
+            // audit trail reads honestly.
+            case "assignedTo":      return patch.assignedTo ? "Reassigned customer" : "Unassigned customer";
             case "followUpStatus":  return "Updated follow-up status";
             case "sourceId":
             case "marketingSource": return "Updated customer source";

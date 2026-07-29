@@ -198,11 +198,10 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 
 // ─── Filter side panel ───────────────────────────────────────────────────────
 
-function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
+function FilterPanel({ open, onClose, applied, onApply }: {
     open: boolean; onClose: () => void;
     applied: FilterState;
     onApply: (next: FilterState) => void;
-    branchOptions: { value: string; label: string }[];
 }) {
     const [pending, setPending] = useState<FilterState>(EMPTY_FILTER);
 
@@ -1039,7 +1038,6 @@ export default function CustomersPage() {
                 onClose={() => setFilterOpen(false)}
                 applied={applied}
                 onApply={f => { setApplied(f); setPage(1); }}
-                branchOptions={branchOptions}
             />
 
             {pendingConfirm && (() => {

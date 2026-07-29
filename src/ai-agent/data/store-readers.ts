@@ -91,13 +91,27 @@ export function readCustomers(state: AppState): Row[] {
     // all use live compute; a persisted stale tag (pre-rehydrate seed)
     // would make the AI Agent report a DIFFERENT stage than the admin
     // sees for the same person. Live compute keeps everyone in agreement.
+    //
+    // v83 audit-2 (2026-07-29) — defensive guard. computeLifecycleTag
+    // reads customers / classBookings / customerPlans / customerTransactions.
+    // In the AI Agent request path these come from `pickStoreSnapshot`;
+    // if any of those slices ever go missing from the snapshot again
+    // (audit-2 caught customerPlans missing), skip the live compute and
+    // fall back to the stored tag instead of throwing on undefined.filter.
+    const canComputeLive =
+        Array.isArray(state.customers) &&
+        Array.isArray(state.classBookings) &&
+        Array.isArray(state.customerPlans) &&
+        Array.isArray(state.customerTransactions);
     return state.customers.map(c => {
-        const live = computeLifecycleTag(c.id, {
-            customers: state.customers,
-            classBookings: state.classBookings,
-            customerPlans: state.customerPlans,
-            customerTransactions: state.customerTransactions,
-        });
+        const live = canComputeLive
+            ? computeLifecycleTag(c.id, {
+                customers: state.customers,
+                classBookings: state.classBookings,
+                customerPlans: state.customerPlans,
+                customerTransactions: state.customerTransactions,
+            })
+            : null;
         return {
             id: c.id,
             first_name: c.firstName,
