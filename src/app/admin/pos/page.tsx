@@ -782,7 +782,19 @@ function POSInner() {
                                                 type={KIND_TO_CARD_TYPE[p.kind]}
                                                 name={p.name}
                                                 primaryMeta={p.primaryMeta}
-                                                secondaryMeta={p.secondaryMeta}
+                                                // v83 audit-2 (2026-07-29) — retail cards show
+                                                // the SALE-branch stock in `secondaryMeta` when
+                                                // the POS picker is set to a specific branch,
+                                                // so the label matches the out-of-stock gate.
+                                                // Aggregate label is only honest when no branch
+                                                // scope is set.
+                                                secondaryMeta={
+                                                    p.kind === "retail"
+                                                        ? branchId
+                                                            ? `${p.perBranchStock?.[branchId] ?? 0} at this branch`
+                                                            : `${p.stockAggregate ?? 0} in stock`
+                                                        : p.secondaryMeta
+                                                }
                                                 price={p.priceDisplay}
                                                 bannerImageUrl={p.bannerImageUrl}
                                                 // v83 audit-1 (2026-07-29) — out-of-stock check

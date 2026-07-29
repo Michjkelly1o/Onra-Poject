@@ -75,7 +75,10 @@ export const RETAIL_SALES_REPORT: ReportDefinition = {
         { key: "netSales",   label: "Net sales",   kind: "currency", extract: r => Number(r[K.netSales]   ?? 0) },
         { key: "grossSales", label: "Gross sales", kind: "currency", extract: r => Number(r[K.grossSales] ?? 0) },
         { key: "unitsSold",  label: "Units sold",  kind: "number",   extract: r => Number(r[K.unitsSold]  ?? 0) },
-        { key: "transactions", label: "Transactions", kind: "number", extract: () => 1 },
+        // Renamed from "Transactions" (v83 audit-2, 2026-07-29). Refunded
+        // rows contribute TWO entries (sale + refund) so the count is line
+        // items, not distinct transactions.
+        { key: "lineItems", label: "Line items", kind: "number", extract: () => 1 },
     ],
 
     periods: ["none", "day", "week", "month", "quarter", "year"],

@@ -1082,16 +1082,25 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
     const productById = new Map(state.retailProducts.map(p => [p.id, p] as const));
     const categoryById = new Map(state.retailCategories.map(c => [c.id, c] as const));
 
-    // Group non-retail transactions by (customerId × YYYY-MM-DD × branchId)
-    // for the "Attached to" cross-sell signal — a retail line reads "Yes"
-    // when the SAME customer had a non-retail transaction on the SAME day
-    // at the SAME branch.
+    // Group non-retail transactions + class bookings by (customerId ×
+    // YYYY-MM-DD) for the "Attached to" cross-sell signal — a retail line
+    // reads "Yes" when the SAME customer had ANY non-retail activity on
+    // the SAME day.
+    //
+    // v83 audit-2 (2026-07-29) — key dropped from (customer, day, branch)
+    // to (customer, day). H2's applyPurchase fix writes retail lines'
+    // `branchId` as the PHYSICAL sale branch while membership/package
+    // lines still carry the buyer's home branch — so a walk-in at Branch
+    // A buying a membership + a retail item in the same cart would have
+    // mismatched keys and read "attached to = No" even though both items
+    // were on the same ticket. Same-day-same-customer is the honest
+    // signal here; branch was overly strict.
     const attachmentIndex = new Set<string>();
     for (const t of state.customerTransactions) {
         if (t.kind === "retail") continue;
         if (t.status !== "complete") continue;
         const day = t.createdAtISO.slice(0, 10);
-        attachmentIndex.add(`${t.customerId}|${day}|${t.branchId}`);
+        attachmentIndex.add(`${t.customerId}|${day}`);
     }
 
     // Class bookings also count as "attached to" — a customer buying a
@@ -1104,7 +1113,7 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
         const scheduleDate = scheduleDateById.get(b.classScheduleId);
         if (!scheduleDate) continue;
         const day = scheduleDate.slice(0, 10);
-        attachmentIndex.add(`${b.customerId}|${day}|${b.branchId}`);
+        attachmentIndex.add(`${b.customerId}|${day}`);
     }
 
     const rows: RetailSalesRow[] = [];
@@ -1150,7 +1159,7 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
 
         // Sale row — always emit on the original sale date (positive).
         const saleDay = t.createdAtISO.slice(0, 10);
-        const saleAttachKey = `${t.customerId}|${saleDay}|${t.branchId}`;
+        const saleAttachKey = `${t.customerId}|${saleDay}`;
         const saleAttached = attachmentIndex.has(saleAttachKey);
         rows.push({
             id: t.id,
@@ -1182,7 +1191,7 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
         // the previous month never restates.
         if (isRefunded && t.refundedAtISO) {
             const refundDay = t.refundedAtISO.slice(0, 10);
-            const refundAttachKey = `${t.customerId}|${refundDay}|${t.branchId}`;
+            const refundAttachKey = `${t.customerId}|${refundDay}`;
             const refundAttached = attachmentIndex.has(refundAttachKey);
             rows.push({
                 id: `${t.id}:refund`,

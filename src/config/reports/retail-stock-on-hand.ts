@@ -21,7 +21,6 @@ const K = {
     stockTurnover:       "stockTurnover",
     lastReceivedDateISO: "lastReceivedDateISO",
     lastSoldDateISO:     "lastSoldDateISO",
-    location:            "location",
 } as const;
 
 export const RETAIL_STOCK_ON_HAND_REPORT: ReportDefinition = {
