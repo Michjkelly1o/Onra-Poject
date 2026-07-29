@@ -325,11 +325,17 @@ export interface StatusBadgeProps {
     /** Extra Tailwind classes appended to the wrapper. Used for layout
      *  overrides like `absolute right-3 top-3 pointer-events-none`. */
     className?: string;
+    /** Optional element rendered inside the pill, right after the text.
+     *  Client 2026-07-29 — added so the lifecycle pill can carry a small
+     *  info-icon entry point INSIDE the badge (opens the Lifecycle-stage
+     *  side panel). Callers pass a button; the pill just provides the
+     *  slot with a small left margin. */
+    trailingIcon?: React.ReactNode;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export function StatusBadge({ type, status, label, paletteOverride, size = "md", className }: StatusBadgeProps) {
+export function StatusBadge({ type, status, label, paletteOverride, size = "md", className, trailingIcon }: StatusBadgeProps) {
     const entry = REGISTRY[type]?.[status];
     // paletteOverride wins over the REGISTRY lookup — used by the
     // follow-up pill so a Phase-6 rename doesn't lose the palette
@@ -344,8 +350,9 @@ export function StatusBadge({ type, status, label, paletteOverride, size = "md",
         console.warn(`[StatusBadge] unknown (type, status) pair: ("${type}", "${status}"). Add it to REGISTRY in src/components/patterns/StatusBadge.tsx.`);
     }
     return (
-        <span className={cn(SIZE[size], palette, className)}>
+        <span className={cn(SIZE[size], palette, className, trailingIcon && "inline-flex items-center gap-1.5")}>
             {text}
+            {trailingIcon}
         </span>
     );
 }

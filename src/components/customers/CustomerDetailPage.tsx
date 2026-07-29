@@ -1271,23 +1271,27 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                         edge of the profile card. */}
                                     {lifecycleResult && (
                                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                                            {/* Client 2026-07-29 — the pill is display-only
-                                                now; the info icon beside it is the entry
-                                                point to the Lifecycle stage side panel.
-                                                Reads more clearly than a whole clickable
-                                                pill (users didn't always realize the
-                                                badge itself was clickable). */}
-                                            <StatusBadge type="lifecycle" status={lifecycleResult.tag} />
-                                            <IconTooltip label="See stage rules" side="below">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setLifecycleDrawerOpen(true)}
-                                                    className="w-5 h-5 flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] hover:bg-[#f2f4f7] transition-colors focus:outline-none focus:ring-2 focus:ring-[#658774] focus:ring-offset-1"
-                                                    aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
-                                                >
-                                                    <InfoCircle className="w-4 h-4" />
-                                                </button>
-                                            </IconTooltip>
+                                            {/* Client 2026-07-29 — info icon sits INSIDE
+                                                the lifecycle pill via StatusBadge's
+                                                trailingIcon slot. Tooltip preserved
+                                                ("See stage rules"); clicking the icon
+                                                opens the Lifecycle stage side panel. */}
+                                            <StatusBadge
+                                                type="lifecycle"
+                                                status={lifecycleResult.tag}
+                                                trailingIcon={
+                                                    <IconTooltip label="See stage rules" side="below">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setLifecycleDrawerOpen(true)}
+                                                            className="inline-flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-current focus:ring-offset-0 rounded-full"
+                                                            aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
+                                                        >
+                                                            <InfoCircle className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </IconTooltip>
+                                                }
+                                            />
                                             {lifecycleResult.isVip && (
                                                 <StatusBadge type="vip" status="vip" />
                                             )}
