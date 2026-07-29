@@ -2101,7 +2101,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee";
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -2335,7 +2335,7 @@ export interface AuditLogEntry {
 
 export interface PurchaseLineItem {
     productId: string;
-    productType: "membership" | "package" | "gift_card";
+    productType: "membership" | "package" | "gift_card" | "retail";
     name: string;
     unitPrice: number;
     quantity: number;
@@ -8513,6 +8513,20 @@ export const useAppStore = create<AppState>()(persist(
                     silent: true,
                 });
             }
+            // Retail refund (Phase D.2, 2026-07-29) — restore units to the
+            // branch that sold them, and append a matching "refund" audit-log
+            // row keyed to the original transaction so the Stock on Hand
+            // report's Sell-through % nets correctly.
+            if (target.kind === "retail" && target.retailProductId && target.branchIdAtSale && target.quantity) {
+                get().adjustRetailStock({
+                    productId: target.retailProductId,
+                    branchId: target.branchIdAtSale,
+                    delta: target.quantity,
+                    kind: "refund",
+                    reason: `Refunded sale ${target.id}`,
+                    sourceTransactionId: target.id,
+                });
+            }
         }
         // v83 audit-2 fix — a refund reverses paid history, which
         // determines New Active / Won-back / Churned via
@@ -11190,6 +11204,85 @@ export const useAppStore = create<AppState>()(persist(
                 })
                 : state.customerPlans;
 
+            // ─── Retail line items (Phase D.2, 2026-07-29) ────────────────
+            // Retail sales generate a "retail"-kind CustomerTransaction with
+            // the snapshot fields populated (name / SKU / price / unit cost
+            // at sale time), and decrement per-branch stock in the same set()
+            // so a matching adjustment log row appears atomically. Snapshot
+            // fields ensure past receipts render exactly as sold even after
+            // product edits or archival.
+            const retailItems = items.filter(it => it.productType === "retail");
+            const nextRetailStock = state.retailStock.map(s => ({ ...s }));
+            const nextRetailAdjustments: RetailStockAdjustment[] = [];
+            const currentUserId = state.currentUser?.staff_id ?? state.currentUser?.id ?? "unknown";
+            items.forEach((it, idx) => {
+                if (it.productType !== "retail") return;
+                const product = state.retailProducts.find(p => p.id === it.productId);
+                if (!product) return;
+                const qty = Math.max(1, Math.floor(it.quantity));
+                const lineGross = it.unitPrice * qty;
+                const txnId = `txn_sale_${stamp}_${idx}`;
+                // Tax handling for retail lands as a follow-up — the TaxRule
+                // category union doesn't include "retail" yet. Retail sales
+                // currently write with no tax rule (subtotal = total).
+                const txnExtra: Partial<CustomerTransaction> = {};
+                const source = paymentSource ?? "pos";
+                const cashierStaffId = source === "customer_portal" ? undefined : sellerStaffId;
+                newTransactions.push({
+                    id: txnId,
+                    customerId,
+                    branchId: saleBranchId,
+                    kind: "retail",
+                    productId: it.productId,
+                    name: it.name,
+                    amountAed: lineGross,
+                    ...txnExtra,
+                    status: "complete",
+                    paymentMethod: "card",
+                    paymentSource: source,
+                    transactionType: "sale",
+                    staffId: cashierStaffId,
+                    createdAtISO: nowISO,
+                    // ── Retail snapshot ──
+                    retailProductId: product.id,
+                    productSnapshotName: product.name,
+                    productSnapshotSku: product.sku,
+                    productSnapshotPriceAed: product.priceAed,
+                    productSnapshotUnitCostAed: product.unitCostAed,
+                    quantity: qty,
+                    branchIdAtSale: saleBranchId,
+                });
+                // Stock decrement — clamped at 0. Even if the cart lets the
+                // admin push past on-hand (shouldn't happen — the disabled
+                // "Out of stock" gate is on the card), we never write negative.
+                const stockRow = nextRetailStock.find(s => s.productId === product.id && s.branchId === saleBranchId);
+                const currentUnits = stockRow?.unitsOnHand ?? 0;
+                const nextUnits = Math.max(0, currentUnits - qty);
+                const appliedDelta = nextUnits - currentUnits;
+                if (stockRow) {
+                    stockRow.unitsOnHand = nextUnits;
+                    stockRow.lastAdjustedAt = nowISO;
+                } else if (appliedDelta !== 0) {
+                    nextRetailStock.push({
+                        id: `retail_stock_${product.id}_${saleBranchId}_${Date.now()}`,
+                        productId: product.id,
+                        branchId: saleBranchId,
+                        unitsOnHand: nextUnits,
+                        lastAdjustedAt: nowISO,
+                    });
+                }
+                nextRetailAdjustments.push({
+                    id: `retail_adj_sale_${stamp}_${idx}`,
+                    productId: product.id,
+                    branchId: saleBranchId,
+                    delta: appliedDelta,
+                    kind: "sale",
+                    sourceTransactionId: txnId,
+                    createdBy: currentUserId,
+                    createdAt: nowISO,
+                });
+            });
+
             return {
                 customers,
                 ...(newIssued.length > 0
@@ -11202,6 +11295,12 @@ export const useAppStore = create<AppState>()(persist(
                         : {}),
                 ...(newTransactions.length > 0
                     ? { customerTransactions: [...newTransactions, ...state.customerTransactions] }
+                    : {}),
+                ...(retailItems.length > 0
+                    ? {
+                        retailStock: nextRetailStock,
+                        retailStockAdjustments: [...state.retailStockAdjustments, ...nextRetailAdjustments],
+                    }
                     : {}),
             };
         });

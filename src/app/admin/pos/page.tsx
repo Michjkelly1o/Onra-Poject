@@ -440,23 +440,20 @@ function POSInner() {
             setGiftCardModalDesignId(p.id);
             return;
         }
-        // Phase D.1 (2026-07-29) — retail add-to-cart is gated at the
-        // card level (disabled prop), but keep the type guard here so
-        // CartLine.kind narrowing to SellableKind is enforced by TS.
-        if (p.kind === "retail") return;
-        const sellableKind: SellableKind = p.kind;
+        // Phase D.2 (2026-07-29) — retail is fully sellable. Cart stacking
+        // matches packages (each qty+1 on repeat clicks); memberships still
+        // cap at 1.
         setCartOpen(true);
         setCart(prev => {
             const existing = prev.find(l => l.productId === p.id);
             if (existing) {
-                // Memberships cap at qty 1; packages can stack.
                 if (p.kind === "membership") return prev;
                 return prev.map(l => l.productId === p.id ? { ...l, quantity: l.quantity + 1 } : l);
             }
             return [...prev, {
                 lineId: `cl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                 productId: p.id,
-                kind: sellableKind,
+                kind: p.kind,
                 name: p.name,
                 unitPrice: p.priceAed,
                 primaryMeta: p.primaryMeta,
@@ -516,11 +513,16 @@ function POSInner() {
     // without the admin pressing Apply again.
     const promoEval = useMemo(() => {
         if (!appliedPromoCode) return null;
-        const kinds = Array.from(new Set(cart.map(l => l.kind)));
+        // Retail lines don't participate in promo eligibility today — filter
+        // them out of the eligibility payload. Promos target
+        // memberships / packages / gift cards; retail sits alongside these
+        // in the cart but doesn't stack with a promo code.
+        const promoLines = cart.filter((l): l is CartLine & { kind: "membership" | "package" | "gift_card" } => l.kind !== "retail");
+        const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
         return validatePromoCode(appliedPromoCode, {
             subtotalAed: subtotal,
             productTypes: kinds,
-            lines: cart.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
+            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
         }, promoCodes);
     }, [appliedPromoCode, cart, subtotal, promoCodes, branchId]);
@@ -534,11 +536,12 @@ function POSInner() {
     function handleApplyPromo() {
         setPromoError(null);
         if (!promoInput.trim()) return;
-        const kinds = Array.from(new Set(cart.map(l => l.kind)));
+        const promoLines = cart.filter((l): l is CartLine & { kind: "membership" | "package" | "gift_card" } => l.kind !== "retail");
+        const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
         const res = validatePromoCode(promoInput, {
             subtotalAed: subtotal,
             productTypes: kinds,
-            lines: cart.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
+            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
         }, promoCodes);
         if (res.ok) {
@@ -602,6 +605,9 @@ function POSInner() {
         let runningTax = 0;
         let firstRate = 0;
         for (const line of cart) {
+            // Retail sits outside the tax-category union — no tax rule wired
+            // yet (Phase D.2 scope). Skip retail lines in the tax sum.
+            if (line.kind === "retail") continue;
             const category = categoryForProductType(line.kind);
             if (!category) continue;
             const match = findActiveTaxRuleFor(
@@ -761,13 +767,8 @@ function POSInner() {
                                                 outOfStock={p.kind === "retail" && p.stockAggregate === 0}
                                                 quantity={inCartQty}
                                                 quantityDisplay="badge"
-                                                // Phase D.1 (2026-07-29) — retail add-to-cart is
-                                                // intentionally disabled until Phase D.2 wires the
-                                                // sale flow (snapshot fields + adjustRetailStock +
-                                                // refund restore). The card renders so admins can
-                                                // browse the catalog + confirm images / prices.
-                                                disabled={isAddDisabled(p) || p.kind === "retail"}
-                                                onAdd={() => { if (p.kind !== "retail") handleAdd(p); }}
+                                                disabled={isAddDisabled(p)}
+                                                onAdd={() => handleAdd(p)}
                                             />
                                         );
                                     })}
@@ -854,11 +855,11 @@ function CartToggleButton({ open, onClick }: { open: boolean; onClick: () => voi
 // ─── Cart line shape ─────────────────────────────────────────────────────────
 
 /** Product kinds that are actually sellable through applyPurchase today.
- *  Excludes "retail" — Phase D.1 makes the Retail tab visible but leaves
- *  add-to-cart disabled until Phase D.2 wires the sale flow (snapshot
- *  fields + adjustRetailStock + refund restore). Widening this union
- *  requires the corresponding applyPurchase branches too. */
-type SellableKind = "membership" | "package" | "gift_card";
+ *  Phase D.2 (2026-07-29) — retail is now sellable: applyPurchase writes
+ *  snapshot fields on the transaction and decrements per-branch stock in
+ *  one set(). refundTransaction restores stock when a retail sale
+ *  refunds. Cart lines can now hold retail products. */
+type SellableKind = "membership" | "package" | "gift_card" | "retail";
 
 interface CartLine {
     /** Local stable id so duplicate-named gift cards don't collide. */

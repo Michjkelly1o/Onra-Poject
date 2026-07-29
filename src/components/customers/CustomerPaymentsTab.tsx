@@ -66,9 +66,10 @@ const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", status
 // package-plan customer reads "Credit package". The row is identified
 // as a penalty via its icon + transaction name, NOT its plan-type text
 // (client feedback Jul 2026).
-const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package">, string> = {
+const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package" | "retail">, string> = {
     membership: "Membership",
     package: "Credit package",
+    retail: "Retail",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -160,6 +161,7 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
 function planTypeLabel(t: CustomerTransaction): string {
     // Penalty + freeze-fee rows are membership-scoped fees → always "Membership".
     if (t.kind === "cancellation_penalty" || t.kind === "freeze_fee") return "Membership";
+    if (t.kind === "retail") return "Retail";
     return KIND_LABEL[t.kind];
 }
 
