@@ -353,7 +353,7 @@ export default function RetailProductDetailPage() {
                             variant="secondary-gray"
                             size="md"
                             leftIcon={<Edit02 className="w-4 h-4" />}
-                            onClick={() => router.push(`/admin/products/retail/${product.id}/edit`)}
+                            onClick={() => router.push(`/products/retail/${product.id}/edit?returnTo=${encodeURIComponent(`/admin/products/retail/${product.id}`)}`)}
                         >
                             Edit
                         </Button>

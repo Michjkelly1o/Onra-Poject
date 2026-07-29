@@ -32,6 +32,7 @@ import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { Sliders } from "@/components/icons/Sliders";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { FilterPill } from "@/components/ui/FilterPill";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -128,24 +129,8 @@ function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
     );
 }
 
-function FilterPill({ label, selected, onClick }: {
-    label: string; selected: boolean; onClick: () => void;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "px-3 py-1.5 rounded-full text-[13px] font-medium border-1 transition-colors",
-                selected
-                    ? "bg-[#e9fff3] border-[#c4edd6] text-[#4f6e5d]"
-                    : "bg-white border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
-            )}
-        >
-            {label}
-        </button>
-    );
-}
+// FilterPill imported from @/components/ui/FilterPill — canonical shared
+// chip used by every filter side panel across admin / instructor / customer.
 
 // ─── Confirm modal config (same tone matrix as Gift cards) ───────────────────
 
@@ -579,7 +564,7 @@ export default function RetailPage() {
                     variant="primary"
                     size="md"
                     leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push("/admin/products/retail/new")}
+                    onClick={() => router.push(`/products/retail/new?returnTo=${encodeURIComponent("/admin/products/retail")}`)}
                 >
                     Add new
                 </Button>
@@ -674,7 +659,7 @@ export default function RetailPage() {
                                             <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <RowActions items={[
                                                     { label: "View details", icon: Eye,         onClick: () => router.push(`/admin/products/retail/${r.id}`) },
-                                                    { label: "Edit",         icon: Edit02,      onClick: () => router.push(`/admin/products/retail/${r.id}/edit`), hidden: r.status === "archived" },
+                                                    { label: "Edit",         icon: Edit02,      onClick: () => router.push(`/products/retail/${r.id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`), hidden: r.status === "archived" },
                                                     { label: "Archive",      icon: Archive,     onClick: () => openRowConfirm(r, "archive"),    hidden: r.status === "archived" },
                                                     { label: "Reactivate",   icon: Check,       onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
                                                     { label: "Recover",      icon: RefreshCcw01,onClick: () => openRowConfirm(r, "recover"),    hidden: r.status !== "archived" },

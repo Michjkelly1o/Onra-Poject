@@ -17,12 +17,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft } from "@untitledui/icons";
+import { XClose } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
+import { FilterPill } from "@/components/ui/FilterPill";
 import { useAppStore, type RetailProduct } from "@/lib/store";
 
 // ─── Form primitives (local to this page) ───────────────────────────────────
@@ -205,7 +207,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
     // /edit for a nonexistent id.
     if (mode === "edit" && !target) {
         return (
-            <div className="flex-1 flex items-center justify-center px-6 py-10">
+            <div className="h-screen bg-white flex items-center justify-center px-6 py-10">
                 <div className="max-w-md text-center flex flex-col gap-3">
                     <p className="text-[18px] font-semibold text-[#101828]">Product not found</p>
                     <p className="text-[14px] text-[#667085]">
@@ -277,31 +279,30 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
     }
 
     return (
-        <div className="flex flex-col gap-6">
-            {/* Header row — Back arrow + title */}
-            <div className="flex items-center gap-3">
+        <div className="h-screen bg-white flex flex-col overflow-hidden">
+            {/* Top header (72px) — same chrome as Create gift card /
+                Create membership: X close + title + breadcrumbs. Full
+                viewport so this route stands outside the admin sidebar. */}
+            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0 border-b border-[#e4e7ec]">
                 <button
                     type="button"
                     onClick={() => router.push(returnTo)}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
-                    aria-label="Back"
+                    aria-label="Close"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
                 >
-                    <ChevronLeft className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <div className="flex flex-col">
-                    <p className="text-[20px] font-semibold text-[#101828] leading-7">
-                        {mode === "create" ? "Add retail product" : `Edit ${target?.name ?? "product"}`}
-                    </p>
-                    <p className="text-[14px] text-[#667085] leading-5">
-                        {mode === "create"
-                            ? "Add a physical product to your studio catalog."
-                            : "Update this product's details. Past receipts keep the values that were sold."}
-                    </p>
+                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                        {mode === "create" ? "Create new retail product" : `Edit ${target?.name ?? "product"}`}
+                    </h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
 
-            {/* Form card */}
-            <div className="max-w-[720px] w-full">
+            {/* Scrollable form region */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6">
+              <div className="max-w-[720px] w-full mx-auto">
                 <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-8">
                     <Section title="Information">
                         <FormField label="Product name" required error={errors.name}>
@@ -377,19 +378,12 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                         <FormField label="Availability" hint="Inactive hides the product from POS and the customer shop but keeps it on the admin list.">
                             <div className="flex flex-wrap gap-2">
                                 {(["active", "inactive"] as Status[]).map(s => (
-                                    <button
+                                    <FilterPill
                                         key={s}
-                                        type="button"
+                                        label={s.charAt(0).toUpperCase() + s.slice(1)}
+                                        selected={form.status === s}
                                         onClick={() => update("status", s)}
-                                        className={cn(
-                                            "px-3 py-1.5 rounded-full text-[13px] font-medium border-1 transition-colors capitalize",
-                                            form.status === s
-                                                ? "bg-[#e9fff3] border-[#c4edd6] text-[#4f6e5d]"
-                                                : "bg-white border-[#d0d5dd] text-[#344054] hover:bg-[#f9fafb]",
-                                        )}
-                                    >
-                                        {s}
-                                    </button>
+                                    />
                                 ))}
                             </div>
                         </FormField>
@@ -397,7 +391,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 </div>
 
                 {/* Footer buttons */}
-                <div className="flex items-center justify-end gap-3 mt-6">
+                <div className="flex items-center justify-end gap-3 mt-6 pb-8">
                     <Button variant="secondary-gray" size="md" onClick={() => router.push(returnTo)}>
                         Cancel
                     </Button>
@@ -405,6 +399,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                         {mode === "create" ? "Create product" : "Save changes"}
                     </Button>
                 </div>
+              </div>
             </div>
 
             <Toast />

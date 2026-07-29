@@ -144,6 +144,7 @@ const MODULE_ROOT: ModuleRoot[] = [
     // /products has three list variants — MOST SPECIFIC prefixes come first
     // so `/products/gift-cards/[id]` doesn't accidentally match `/products`.
     { prefix: "/products/gift-cards", listPath: "/admin/products/gift-cards",  label: "Gift cards",         detailNoun: "Gift card details" },
+    { prefix: "/products/retail",     listPath: "/admin/products/retail",       label: "Retail",             detailNoun: "Retail product" },
     { prefix: "/products/promo-codes",listPath: "/admin/products/promo-codes", label: "Promotions",         detailNoun: "Promo details" },
     { prefix: "/products",            listPath: "/admin/products",          label: "Memberships & packages", detailNoun: "Product details" },
     { prefix: "/marketing",           listPath: "/admin/marketing",         label: "Campaigns",             detailNoun: "Campaign details" },
