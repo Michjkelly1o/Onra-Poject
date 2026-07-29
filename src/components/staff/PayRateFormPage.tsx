@@ -103,8 +103,12 @@ function emptyForm(): FormValue {
         onlyCheckedIn: false,
         includeLateCancelled: true,
         flatAmount: "",
+        // Stable id (NOT Date.now()) so the default form is deterministic across
+        // the SSR → hydration boundary and identical on every render — a
+        // `Date.now()` here produced a different id on server vs client. The
+        // add-tier handler keeps using a unique runtime id (client-only).
         tiers: [
-            { id: `t_${Date.now()}_1`, from: 1, to: 5, aed: 0 },
+            { id: "tier_default_1", from: 1, to: 5, aed: 0 },
         ],
         splitPercent: "",
         payPerCustomer: "",

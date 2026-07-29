@@ -894,7 +894,17 @@ export function totalEarningsForStaff(
 ): { base: number; commission: CommissionBreakdown; total: number; trackBreakdown: PayConfigBaseBreakdown } {
     const trackBreakdown = payConfigBase(tracks, payRate, entryTotalEarnings);
     const base = trackBreakdown.base;
-    const commission = commissionForPeriod(staffId, payRate, sources, periodStartISO, periodEndISO);
+    // Sales commission is tied to the instructor's commission-bearing rate — the
+    // Default track's configured rate (the employment rate that carries the
+    // `commissions[]` / `bonuses[]` config). Resolve it from the pay config so
+    // commission PERSISTS even when the Default *base salary* track is toggled
+    // off (client 2026-07-29 — "Pay per class + Pay per private + Commission
+    // (if any)"). Falls back to the passed payRate for legacy single-rate
+    // callers with no pay config.
+    const commissionRate = tracks?.payConfig
+        ? (tracks.payRateById(tracks.payConfig.default.payRateId) ?? payRate)
+        : payRate;
+    const commission = commissionForPeriod(staffId, commissionRate, sources, periodStartISO, periodEndISO);
     return { base, commission, total: base + commission.totalCommission, trackBreakdown };
 }
 
