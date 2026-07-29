@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CreditCard02, Package, Gift01, Plus, Minus, CalendarCheck01, ClockFastForward, BankNote01 } from "@untitledui/icons";
+import { CreditCard02, Package, Gift01, Plus, Minus, CalendarCheck01, ClockFastForward, BankNote01, ShoppingBag01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 
 // ─── Onra DS — Product POS Card ───────────────────────────────────────────────
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 // Callbacks
 //   onAdd / onIncrement / onDecrement — wire the cart actions
 
-export type ProductPosCardType = "membership" | "package" | "gift-card";
+export type ProductPosCardType = "membership" | "package" | "gift-card" | "retail";
 
 export interface ProductPosCardProps {
     type: ProductPosCardType;
@@ -37,6 +37,15 @@ export interface ProductPosCardProps {
     secondaryMeta?: string;
     /** Price string with currency, e.g. "AED 1200". For gift cards pass "Custom". */
     price: string;
+    /** Retail only (2026-07-29). When set, the banner renders as a full-cover
+     *  product image instead of the tinted-icon + concentric pattern used by
+     *  membership / package / gift-card cards. Optional — no image falls back
+     *  to a soft sage gradient placeholder (no glyph, matches the DS pattern
+     *  used elsewhere in the retail module). */
+    bannerImageUrl?: string;
+    /** Retail only. When true, the whole card renders as a disabled "Out of
+     *  stock" state — no add-to-cart, muted opacity, red pill overlay. */
+    outOfStock?: boolean;
     /** Cart quantity. 0 = not in cart, ≥ 1 = added. */
     quantity?: number;
     /** How quantity is surfaced when ≥ 1.
@@ -60,11 +69,15 @@ const TYPE_TOKENS: Record<ProductPosCardType, { iconBg: string; iconColor: strin
     // Gift cards use the cyan family — same tint as the gift-card create/edit
     // preview + detail sidebar so the card reads consistently everywhere.
     "gift-card":{ iconBg: "bg-[#ccf6ff]", iconColor: "text-[#0e7090]", patternBorder: "border-[#92d1de]" },
+    // Retail (2026-07-29) — banner is a real product image; tokens still
+    // needed for the tiny name-row bag icon when no bannerImageUrl is set.
+    retail:     { iconBg: "bg-[var(--brand-tertiary)]", iconColor: "text-[#658774]", patternBorder: "border-[#aad4bd]" },
 };
 
 function TypeIcon({ type, className }: { type: ProductPosCardType; className?: string }) {
     if (type === "membership") return <CreditCard02 className={className} />;
     if (type === "gift-card") return <Gift01 className={className} />;
+    if (type === "retail") return <ShoppingBag01 className={className} />;
     return <Package className={className} />;
 }
 
@@ -95,6 +108,8 @@ export function ProductPosCard({
     primaryMeta,
     secondaryMeta,
     price,
+    bannerImageUrl,
+    outOfStock = false,
     quantity = 0,
     quantityDisplay = "stepper",
     disabled = false,
@@ -107,6 +122,10 @@ export function ProductPosCard({
     const tokens = TYPE_TOKENS[type];
     const inCart = quantity > 0;
     const isSmall = size === "sm";
+    const isRetail = type === "retail";
+    // Out-of-stock retail cards lock every interactive path — the card
+    // reads visually muted with an "Out of stock" pill overlay.
+    const effectiveDisabled = disabled || outOfStock;
 
     return (
         <div
@@ -115,24 +134,44 @@ export function ProductPosCard({
                 // the row; long product names no longer leave neighbours short.
                 "bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col overflow-hidden h-full",
                 isSmall ? "w-[188px]" : "w-full",
+                outOfStock && "opacity-60",
                 className,
             )}
         >
-            {/* Banner — every product type shares the same banner treatment
+            {/* Banner — every non-retail type shares the same banner treatment
                 (`#f9fafb` fill + decorative pattern + tinted icon) so gift
-                cards sit consistently next to memberships + packages. */}
+                cards sit consistently next to memberships + packages. Retail
+                overrides this with a full-cover product image (or a sage
+                gradient placeholder when no image was uploaded). */}
             <div className={cn(
-                "relative bg-[#f9fafb] flex items-center justify-center shrink-0",
-                isSmall ? "h-[64px]" : "h-[80px]",
+                "relative flex items-center justify-center shrink-0 overflow-hidden",
+                !isRetail && "bg-[#f9fafb]",
+                isSmall ? "h-[64px]" : (isRetail ? "h-[120px]" : "h-[80px]"),
             )}>
-                <BannerPattern borderClass={tokens.patternBorder} />
-                <div className={cn(
-                    "relative z-10 rounded-[10px] border-1 border-white/10 flex items-center justify-center shadow-[0px_2px_4px_rgba(0,0,0,0.04)]",
-                    tokens.iconBg,
-                    isSmall ? "size-[36px]" : "size-[48px]",
-                )}>
-                    <TypeIcon type={type} className={cn(tokens.iconColor, isSmall ? "w-[20px] h-[20px]" : "w-[28px] h-[28px]")} />
-                </div>
+                {isRetail ? (
+                    bannerImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={bannerImageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
+                    )
+                ) : (
+                    <>
+                        <BannerPattern borderClass={tokens.patternBorder} />
+                        <div className={cn(
+                            "relative z-10 rounded-[10px] border-1 border-white/10 flex items-center justify-center shadow-[0px_2px_4px_rgba(0,0,0,0.04)]",
+                            tokens.iconBg,
+                            isSmall ? "size-[36px]" : "size-[48px]",
+                        )}>
+                            <TypeIcon type={type} className={cn(tokens.iconColor, isSmall ? "w-[20px] h-[20px]" : "w-[28px] h-[28px]")} />
+                        </div>
+                    </>
+                )}
+                {outOfStock && (
+                    <span className="absolute top-2 right-2 z-10 inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-white border-1 border-[#fecdca] text-[#b42318]">
+                        Out of stock
+                    </span>
+                )}
             </div>
 
             {/* Content — flex-1 so the price/CTA row anchors to the card bottom
@@ -182,7 +221,7 @@ export function ProductPosCard({
                                 <Minus className="w-[18px] h-[18px]" />
                             </button>
                             <span className="text-[12px] font-semibold text-[#101828] min-w-[16px] text-center">{quantity}</span>
-                            <button type="button" onClick={onIncrement} disabled={disabled} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                            <button type="button" onClick={onIncrement} disabled={effectiveDisabled} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                                 <Plus className="w-[18px] h-[18px]" />
                             </button>
                         </div>
@@ -197,7 +236,7 @@ export function ProductPosCard({
                         <button
                             type="button"
                             onClick={onAdd}
-                            disabled={disabled}
+                            disabled={effectiveDisabled}
                             aria-label={`Add ${name}`}
                             className="border-1 border-[#d0d5dd] bg-[#f9fafb] rounded-[8px] p-2 shrink-0 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f2f4f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >

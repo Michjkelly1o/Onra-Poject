@@ -62,7 +62,7 @@ import { findActiveTaxRuleFor, computeLineTax, categoryForProductType, effective
 // `creditsValue` lets the credits-range filter sort everything in one pass
 // (gift cards get undefined and are excluded from that filter).
 
-type PosProductKind = "membership" | "package" | "gift_card";
+type PosProductKind = "membership" | "package" | "gift_card" | "retail";
 
 interface PosProduct {
     id: string;
@@ -81,6 +81,12 @@ interface PosProduct {
      *  scoping in the data model — they're always treated as "all branches"
      *  here (empty array). Used by the branch filter in `filteredProducts`. */
     branchIds: string[];
+    /** Retail only (2026-07-29). Full-cover product image URL for the card
+     *  banner. When missing, the card renders a sage gradient placeholder. */
+    bannerImageUrl?: string;
+    /** Retail only. Aggregate units on hand across every active branch — 0
+     *  triggers the disabled "Out of stock" state on the card. */
+    stockAggregate?: number;
 }
 
 /** ISO date → DD/MM/YYYY — gift-card "Valid until" cell on the POS card. */
@@ -97,6 +103,8 @@ function buildCatalog(
     memberships: typeof MEMBERSHIPS,
     packages: typeof PACKAGES,
     giftCardDesigns: typeof GIFT_CARD_DESIGNS,
+    retailProducts: import("@/lib/store").RetailProduct[],
+    retailStock: import("@/lib/store").RetailStock[],
 ): PosProduct[] {
     const out: PosProduct[] = [];
 
@@ -160,6 +168,31 @@ function buildCatalog(
         });
     }
 
+    // Retail (2026-07-29, Phase D.1) — physical products stocked per branch.
+    // Only ACTIVE products surface at POS; inactive/archived stay hidden. The
+    // per-branch stock aggregate drives the "Out of stock" card state.
+    for (const r of retailProducts) {
+        if (r.status !== "active") continue;
+        const stockAggregate = retailStock
+            .filter(s => s.productId === r.id)
+            .reduce((sum, s) => sum + s.unitsOnHand, 0);
+        out.push({
+            id: r.id,
+            kind: "retail",
+            name: r.name,
+            primaryMeta: r.sku,
+            secondaryMeta: `${stockAggregate} in stock`,
+            priceAed: r.priceAed,
+            priceDisplay: `AED ${r.priceAed.toLocaleString()}`,
+            // Retail products are studio-global; per-branch scoping happens
+            // at stock level, not at product level. Empty branchIds = show
+            // on every branch picker selection.
+            branchIds: [],
+            bannerImageUrl: r.imageUrl,
+            stockAggregate,
+        });
+    }
+
     return out;
 }
 
@@ -168,17 +201,19 @@ const KIND_TO_CARD_TYPE: Record<PosProductKind, ProductPosCardType> = {
     membership: "membership",
     package:    "package",
     gift_card:  "gift-card",
+    retail:     "retail",
 };
 
 // ─── Tabs + filter state ─────────────────────────────────────────────────────
 
-type TabId = "all" | "memberships" | "packages" | "gift-cards";
+type TabId = "all" | "memberships" | "packages" | "gift-cards" | "retail";
 
 const TAB_FILTER: Record<TabId, PosProductKind[] | null> = {
     "all":          null,
     "memberships":  ["membership"],
     "packages":     ["package"],
     "gift-cards":   ["gift_card"],
+    "retail":       ["retail"],
 };
 
 const TAB_LABEL: Record<TabId, { label: string; unit: string }> = {
@@ -186,6 +221,9 @@ const TAB_LABEL: Record<TabId, { label: string; unit: string }> = {
     "memberships": { label: "Memberships", unit: "memberships" },
     "packages":    { label: "Packages",    unit: "packages"    },
     "gift-cards":  { label: "Gift cards",  unit: "gift cards"  },
+    // Retail (2026-07-29) — physical products (apparel, supplements,
+    // equipment, accessories, recovery). Sits AFTER Gift cards per client.
+    "retail":      { label: "Retail",      unit: "products"    },
 };
 
 interface FilterState {
@@ -214,6 +252,8 @@ function POSInner() {
     const memberships = useAppStore(s => s.memberships);
     const packages = useAppStore(s => s.packages);
     const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
+    const retailProducts = useAppStore(s => s.retailProducts);
+    const retailStock = useAppStore(s => s.retailStock);
     const promoCodes = useAppStore(s => s.promoCodes);
     const branches = useAppStore(s => s.branches);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
@@ -356,8 +396,8 @@ function POSInner() {
 
     // Catalog filtered against the active tab, search box, and filter panel.
     const catalog = useMemo(
-        () => buildCatalog(memberships, packages, giftCardDesigns),
-        [memberships, packages, giftCardDesigns],
+        () => buildCatalog(memberships, packages, giftCardDesigns, retailProducts, retailStock),
+        [memberships, packages, giftCardDesigns, retailProducts, retailStock],
     );
     const filteredProducts = useMemo(() => {
         const kinds = TAB_FILTER[activeTab];
@@ -400,6 +440,11 @@ function POSInner() {
             setGiftCardModalDesignId(p.id);
             return;
         }
+        // Phase D.1 (2026-07-29) — retail add-to-cart is gated at the
+        // card level (disabled prop), but keep the type guard here so
+        // CartLine.kind narrowing to SellableKind is enforced by TS.
+        if (p.kind === "retail") return;
+        const sellableKind: SellableKind = p.kind;
         setCartOpen(true);
         setCart(prev => {
             const existing = prev.find(l => l.productId === p.id);
@@ -411,7 +456,7 @@ function POSInner() {
             return [...prev, {
                 lineId: `cl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                 productId: p.id,
-                kind: p.kind,
+                kind: sellableKind,
                 name: p.name,
                 unitPrice: p.priceAed,
                 primaryMeta: p.primaryMeta,
@@ -712,10 +757,17 @@ function POSInner() {
                                                 primaryMeta={p.primaryMeta}
                                                 secondaryMeta={p.secondaryMeta}
                                                 price={p.priceDisplay}
+                                                bannerImageUrl={p.bannerImageUrl}
+                                                outOfStock={p.kind === "retail" && p.stockAggregate === 0}
                                                 quantity={inCartQty}
                                                 quantityDisplay="badge"
-                                                disabled={isAddDisabled(p)}
-                                                onAdd={() => handleAdd(p)}
+                                                // Phase D.1 (2026-07-29) — retail add-to-cart is
+                                                // intentionally disabled until Phase D.2 wires the
+                                                // sale flow (snapshot fields + adjustRetailStock +
+                                                // refund restore). The card renders so admins can
+                                                // browse the catalog + confirm images / prices.
+                                                disabled={isAddDisabled(p) || p.kind === "retail"}
+                                                onAdd={() => { if (p.kind !== "retail") handleAdd(p); }}
                                             />
                                         );
                                     })}
@@ -801,11 +853,18 @@ function CartToggleButton({ open, onClick }: { open: boolean; onClick: () => voi
 
 // ─── Cart line shape ─────────────────────────────────────────────────────────
 
+/** Product kinds that are actually sellable through applyPurchase today.
+ *  Excludes "retail" — Phase D.1 makes the Retail tab visible but leaves
+ *  add-to-cart disabled until Phase D.2 wires the sale flow (snapshot
+ *  fields + adjustRetailStock + refund restore). Widening this union
+ *  requires the corresponding applyPurchase branches too. */
+type SellableKind = "membership" | "package" | "gift_card";
+
 interface CartLine {
     /** Local stable id so duplicate-named gift cards don't collide. */
     lineId: string;
     productId: string;
-    kind: PosProductKind;
+    kind: SellableKind;
     name: string;
     unitPrice: number;
     primaryMeta?: string;
