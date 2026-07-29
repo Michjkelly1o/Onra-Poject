@@ -41,8 +41,8 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
-import { earningsForClass, earningsForAppointment, fmtAed, defaultRateLabel, payRateTypeLabel, commissionForPeriod } from "@/lib/payroll-calc";
-import { SalesCommissionCard } from "@/components/staff/SalesCommissionCard";
+import { earningsForClass, fmtAed, defaultRateLabel, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
+import { TotalEarningsBreakdown, SalesCommissionAccordion } from "@/components/staff/PayrollEarningsBreakdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -65,7 +65,10 @@ function aed(n: number): string {
 // ────────────────────────────────────────────────────────────────────────────
 // Default period + filter state
 // ────────────────────────────────────────────────────────────────────────────
-const DEFAULT_PERIOD: DateFilter = { type: "week", label: "This week" };
+// "This month" — matches the admin Staff Payroll Details default so the same
+// instructor's Total earnings + breakdown line up on both surfaces out of the
+// box (client 2026-07-29). The period filter can still switch to This week etc.
+const DEFAULT_PERIOD: DateFilter = { type: "month", label: "This month" };
 
 /** Delta caption for the KPI cards — matches the admin dashboard's
  *  `deltaSuffixFor` so a period-picker change re-labels the "vs …" line
@@ -168,18 +171,6 @@ export default function InstructorEarningsPage() {
     // ── Period window + previous-period baseline (for KPI delta) ──
     const currentRange = useMemo(() => dateFilterToRange(period), [period]);
 
-    // Categorised commission for the selected period (Phase 3).
-    const commission = useMemo(() => {
-        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        return commissionForPeriod(staffId, payRate, {
-            transactions: customerTransactions,
-            classBookings,
-            classSchedules,
-            appointmentBookings,
-            appointments,
-        }, iso(currentRange.from), iso(currentRange.to));
-    }, [staffId, payRate, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, currentRange]);
-    const hasCommission = commission.lines.length > 0 || commission.bonusLines.length > 0;
     const prevRange = useMemo(() => {
         const len = currentRange.to.getTime() - currentRange.from.getTime();
         return {
@@ -187,6 +178,39 @@ export default function InstructorEarningsPage() {
             to: new Date(currentRange.from.getTime() - 1),
         };
     }, [currentRange]);
+
+    // Canonical earnings for a period — the EXACT same helper the admin Staff
+    // Payroll Details uses (base across the enabled pay-config tracks + sales
+    // commission). This guarantees the instructor's Total earnings, breakdown
+    // and commission match what admin shows for the same instructor (client
+    // 2026-07-29). `entryTotalEarnings` is undefined here — a monthly Default
+    // resolves to the fixed salary, per-class / per-appointment come from the
+    // live schedule, so no payroll-entry snapshot is needed.
+    const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const commissionSources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+    const totalsFor = (range: { from: Date; to: Date }) => {
+        const myStaff = staff.find(s => s.id === staffId);
+        const fromISO = iso(range.from), toISO = iso(range.to);
+        const tracks = buildPayConfigTracks(myStaff ?? { id: staffId }, payRates, classSchedules, appointments, fromISO, toISO);
+        return totalEarningsForStaff(staffId, payRate, undefined, commissionSources, fromISO, toISO, tracks);
+    };
+    const periodTotals = useMemo(() => totalsFor(currentRange),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [staffId, payRate, staff, payRates, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, currentRange]);
+    const prevTotals = useMemo(() => totalsFor(prevRange),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [staffId, payRate, staff, payRates, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, prevRange]);
+    const commission = periodTotals.commission;
+    const hasCommission = commission.lines.length > 0 || commission.bonusLines.length > 0;
+
+    // Bookings table prices class rows on the Pay-per-class rate (when enabled),
+    // exactly like admin Staff Payroll Details — the Default salary is NOT a
+    // per-booking rate, so when Pay per class is off the class rows read "—" /
+    // AED 0 and the salary shows only in the breakdown (client 2026-07-29).
+    const classRate = useMemo(() => {
+        const pc = staff.find(s => s.id === staffId)?.payConfig;
+        return pc?.perClass.enabled ? payRates.find(p => p.id === pc.perClass.payRateId) : undefined;
+    }, [staff, staffId, payRates]);
 
     // Completed classes in the CURRENT calendar month — the divisor that
     // splits a monthly salary evenly across the month's classes (mirrors the
@@ -201,32 +225,11 @@ export default function InstructorEarningsPage() {
     }, [myClasses]);
 
     // ── KPI calculations ──────────────────────────────────────────────────
+    // Total earnings comes straight from the shared payroll helper (identical to
+    // admin). Class-count deltas stay local to this instructor's schedule.
     const kpis = useMemo(() => {
         const currClasses = myClasses.filter(c => isoInRange(c.dateISO, currentRange));
         const prevClasses = myClasses.filter(c => isoInRange(c.dateISO, prevRange));
-
-        const myStaff = staff.find(s => s.id === staffId);
-        const pc = myStaff?.payConfig;
-        const rateOf = (id?: string) => (id ? payRates.find(p => p.id === id) : undefined);
-        const myAppts = (range: { from: Date; to: Date }) =>
-            appointments.filter(a => a.instructorId === staffId && a.status === "Completed" && isoInRange(a.dateISO, range));
-        const sumClasses = (classes: typeof currClasses, rate: PayRate | undefined) =>
-            rate?.type === "monthly" ? rate.fixedSalary : classes.reduce((sum, c) => sum + earningsForClass(c, rate, 1), 0);
-
-        // Earnings across the enabled pay-config tracks (Default + Pay-per-class
-        // + Pay-per-appointment). Falls back to the single default rate when the
-        // instructor has no multi-track config.
-        const periodEarnings = (classes: typeof currClasses, range: { from: Date; to: Date }) => {
-            if (!pc) return sumClasses(classes, payRate);
-            let total = 0;
-            if (pc.default.enabled)        total += sumClasses(classes, rateOf(pc.default.payRateId));
-            if (pc.perClass.enabled)       total += sumClasses(classes, rateOf(pc.perClass.payRateId));
-            if (pc.perAppointment.enabled) total += myAppts(range).reduce((s, a) => s + earningsForAppointment(a, rateOf(pc.perAppointment.payRateId)), 0);
-            return total;
-        };
-        const currEarnings = periodEarnings(currClasses, currentRange);
-        const prevEarnings = periodEarnings(prevClasses, prevRange);
-
         const currCompleted = currClasses.filter(c => c.status === "Completed").length;
         const prevCompleted = prevClasses.filter(c => c.status === "Completed").length;
 
@@ -236,13 +239,12 @@ export default function InstructorEarningsPage() {
         }
 
         return {
-            // Salary/per-class base + any sales commission credited this period.
-            totalEarnings: currEarnings + commission.totalCommission,
-            earningsDelta: delta(currEarnings, prevEarnings),
+            totalEarnings: periodTotals.total,
+            earningsDelta: delta(periodTotals.total, prevTotals.total),
             classesTaught: currCompleted,
             classesDelta:  delta(currCompleted, prevCompleted),
         };
-    }, [myClasses, currentRange, prevRange, payRate, commission, staff, staffId, payRates, appointments]);
+    }, [myClasses, currentRange, prevRange, periodTotals, prevTotals]);
 
     // ── Row pipeline: filter → search → sort → paginate ───────────────────
     const filteredRows = useMemo(() => {
@@ -290,7 +292,7 @@ export default function InstructorEarningsPage() {
         // shares the same label, so sorting by it is a stable no-op (kept
         // here for header consistency).
         payRate:    () => 0,
-        earnings:   (a, b) => earningsForClass(a, payRate) - earningsForClass(b, payRate),
+        earnings:   (a, b) => earningsForClass(a, classRate) - earningsForClass(b, classRate),
     });
 
     const totalRows = sortedRows.length;
@@ -321,7 +323,9 @@ export default function InstructorEarningsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        // 16px between Payroll metrics · Total earnings · Sales commission ·
+        // Total bookings — matches admin Staff Payroll Details (client 2026-07-29).
+        <div className="flex flex-col gap-4">
             {/* ── KPI row ─────────────────────────────────────────────── */}
             <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-4 w-full">
                 <PayRateSnapshotCard payRate={payRate} />
@@ -341,10 +345,19 @@ export default function InstructorEarningsPage() {
                 />
             </div>
 
-            {/* Sales commission — categorised (commission refactor Phase 3;
-                instructors now earn commission on the classes/services credited
-                to them). */}
-            {hasCommission && <SalesCommissionCard commission={commission} />}
+            {/* Total earnings breakdown — the SAME shared component + calc as
+                admin Staff Payroll Details. Lists every enabled pay track. */}
+            {periodTotals.total > 0 && (
+                <TotalEarningsBreakdown
+                    trackBreakdown={periodTotals.trackBreakdown}
+                    commissionAed={commission.totalCommission}
+                    total={periodTotals.total}
+                    isInstructor
+                />
+            )}
+
+            {/* Sales commission — shared accordion (same as admin). */}
+            {hasCommission && <SalesCommissionAccordion commission={commission} />}
 
             {/* ── Toolbar + table — VERBATIM admin PayrollInstructorDetailPage
                 pattern. Real `<table>` + admin's TH/TD constants.
@@ -407,7 +420,7 @@ export default function InstructorEarningsPage() {
                                     <EarningsRow
                                         key={c.id}
                                         schedule={c}
-                                        payRate={payRate}
+                                        payRate={classRate}
                                         classesInMonth={completedThisMonth || 1}
                                         onViewDetails={() => handleViewDetails(c.id)}
                                     />
@@ -443,28 +456,30 @@ export default function InstructorEarningsPage() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Pay rate snapshot card — 2-cell layout (Default rate + Type)
+// Pay rate snapshot card — Figma 8035-34947. Header: "Pay rate" title + featured
+// calendar icon; below, two full-width cells split by a vertical divider —
+// "Default rate" (name) + "Rate" (amount). Both "-" when no default rate is
+// assigned. Identical design to admin Staff Payroll Details' card.
 // ────────────────────────────────────────────────────────────────────────────
 function PayRateSnapshotCard({ payRate }: { payRate: PayRate | undefined }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-5 flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0 flex flex-col gap-3">
-                <p className="text-[14px] font-semibold text-[#101828] leading-5">
-                    {payRate?.name ?? "Standard pay rate"}
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1">
-                        <p className="text-[14px] text-[#667085] leading-5">Default rate</p>
-                        <p className="text-[16px] font-semibold text-[#101828] leading-6">{defaultRateLabel(payRate)}</p>
-                    </div>
-                    <div className="flex flex-col gap-1 border-l-1 border-[#e4e7ec] pl-4">
-                        <p className="text-[14px] text-[#667085] leading-5">Type</p>
-                        <p className="text-[16px] font-semibold text-[#101828] leading-6">{payRateTypeLabel(payRate)}</p>
-                    </div>
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-5 flex flex-col justify-between gap-5">
+            <div className="flex items-start gap-4 w-full">
+                <p className="flex-1 min-w-0 text-[16px] font-medium text-[#667085] leading-6">Pay rate</p>
+                <div className="bg-[#f1f2ed] rounded-full size-10 shrink-0 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-[#101828]" />
                 </div>
             </div>
-            <div className="bg-[#f1f2ed] rounded-full size-10 shrink-0 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-[#101828]" />
+            <div className="flex items-center gap-[18px] w-full">
+                <div className="flex-1 min-w-0 flex flex-col">
+                    <p className="text-[14px] font-normal text-[#667085] leading-5">Default rate</p>
+                    <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{payRate?.name ?? "-"}</p>
+                </div>
+                <div className="self-stretch w-px bg-[#e4e7ec] shrink-0" aria-hidden />
+                <div className="flex-1 min-w-0 flex flex-col">
+                    <p className="text-[14px] font-normal text-[#667085] leading-5">Rate</p>
+                    <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{payRate ? defaultRateLabel(payRate) : "-"}</p>
+                </div>
             </div>
         </div>
     );
@@ -522,6 +537,9 @@ interface EarningsRowProps {
 }
 function EarningsRow({ schedule, payRate, classesInMonth, onViewDetails }: EarningsRowProps) {
     const earnings = earningsForClass(schedule, payRate, classesInMonth);
+    // No per-class rate (Pay per class off) → "—" rate, AED 0 earnings (the
+    // Default salary is not per-booking). Cancelled → AED 0. Matches admin.
+    const noRate = !payRate;
 
     return (
         <tr onClick={onViewDetails}
@@ -567,7 +585,11 @@ function EarningsRow({ schedule, payRate, classesInMonth, onViewDetails }: Earni
 
             <td className={TD}><StatusBadge type="class-payroll" status={schedule.status} /></td>
             <td className={TD}>{payRate?.name ?? "—"}</td>
-            <td className={TD}>{earnings > 0 ? aed(earnings) : "—"}</td>
+            <td className={TD}>
+                {noRate || schedule.status === "Cancelled"
+                    ? aed(0)
+                    : earnings > 0 ? aed(earnings) : "—"}
+            </td>
             <td className={TD} onClick={e => e.stopPropagation()}><RowKebab onView={onViewDetails} /></td>
         </tr>
     );

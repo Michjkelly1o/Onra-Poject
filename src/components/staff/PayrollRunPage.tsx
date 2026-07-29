@@ -46,7 +46,7 @@ import {
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { findActiveTaxRuleFor } from "@/lib/tax-calc";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
-import { payrollBreakdownFor, totalEarningsForStaff, buildPayConfigTracks, type CommissionBreakdown } from "@/lib/payroll-calc";
+import { totalEarningsForStaff, buildPayConfigTracks, type CommissionBreakdown, type PayConfigBaseBreakdown } from "@/lib/payroll-calc";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -331,15 +331,23 @@ interface RunRow {
     totalHours: number;
     grossRevenue: number;
     /** Real sum of attendees across the period's completed classes
-     *  (`payroll_entries.total_attendees`). Carried here so the CSV
-     *  exporter can hand the actual figure to `payrollBreakdownFor`
-     *  instead of reconstructing it from `grossRevenue / 150`, which
-     *  silently divides by an approximate per-customer price and
-     *  breaks reconciliation on Split-Rate + hybrid revenue rows. */
+     *  (`payroll_entries.total_attendees`). Surfaced in the run-payroll
+     *  table's context; not used by the CSV since the export switched to the
+     *  multi-track breakdown (Default + Pay per class + Pay per private). */
     totalAttendees: number;
-    /** Base pay BEFORE commission (monthly salary or the entry's class total)
-     *  — the figure the CSV pay-model breakdown expands. */
+    /** Base pay BEFORE commission — the sum of the enabled pay-config tracks. */
     baseEarnings: number;
+    /** Per-track base breakdown (Default salary + Pay per class + Pay per
+     *  private) — drives the multi-track CSV export so it reflects the exact
+     *  pay-rate configuration (client 2026-07-29). */
+    trackBreakdown: PayConfigBaseBreakdown;
+    /** True for instructor roles (three pay tracks); false for other staff
+     *  (Default rate only). */
+    isInstructor: boolean;
+    /** Configured per-booking rate names — for the CSV Rate column. Undefined
+     *  when that track is off. */
+    perClassRateName?: string;
+    perPrivateRateName?: string;
     /** Sales commission credited for the period — appended as its own CSV
      *  line so components reconcile to `payout`. */
     commission: CommissionBreakdown;
@@ -361,13 +369,12 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
     //
     //   Pay model · Component · Basis · Rate · Amount
     //
-    // Each instructor now expands to 1..N rows (one per pay-model
-    // component + an optional Subtotal row for multi-component
-    // models). Non-component context (Instructor / Email / Branch /
-    // Status / Period / Total payout) is emitted on the FIRST row of
-    // each instructor's block; blank on continuation rows so the
-    // grouping reads naturally in Excel. See `payrollBreakdownFor` for
-    // the per-model component shape.
+    // Each instructor now expands to 1..N rows — one per ENABLED pay-config
+    // track (Default pay rate · Pay per class · Pay per private) + a Sales
+    // commission row + an optional Subtotal row. Non-component context
+    // (Instructor / Email / Branch / Status / Period / Total payout) is emitted
+    // on the FIRST row of each instructor's block; blank on continuation rows so
+    // the grouping reads naturally in Excel.
     const header = [
         "Staff", "Email", "Branch",
         "Pay model", "Component", "Basis", "Rate", "Amount (AED)",
@@ -382,25 +389,21 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
     const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
     const lines: string[] = [];
     for (const r of rows) {
-        // Expand the BASE pay (salary / class earnings) into its pay-model
-        // components. `totalAttendees` + `grossRevenue` come from the payroll
-        // entry so basis × rate = amount reconciles on every pay model.
-        const breakdown = payrollBreakdownFor(r.payRate, {
-            totalEarningsAed: r.baseEarnings,
-            completedClasses: r.classesCount,
-            totalAttendees:   r.totalAttendees,
-            revenueBaseAed:   r.grossRevenue,
-        });
-        // Sales commission is paid ON TOP of the base — append it as its own
-        // component so the rows sum to the total payout (base + commission).
-        const components = [...breakdown.components];
+        // Multi-track breakdown — one component per ENABLED earning source, so
+        // the CSV reflects the exact pay-rate configuration (client 2026-07-29).
+        // Instructors list all three tracks (a disabled / empty track reads
+        // AED 0); other staff have the Default rate only. Sales commission is
+        // appended on top so the components sum to the total payout.
+        const components: { component: string; rate: string; amount: string }[] = [];
+        if (r.isInstructor) {
+            components.push({ component: "Default pay rate", rate: r.payRateName,               amount: fmt(r.trackBreakdown.defaultBase) });
+            components.push({ component: "Pay per class",    rate: r.perClassRateName   ?? "—", amount: fmt(r.trackBreakdown.perClass) });
+            components.push({ component: "Pay per private",  rate: r.perPrivateRateName ?? "—", amount: fmt(r.trackBreakdown.perAppointment) });
+        } else if (r.trackBreakdown.defaultBase > 0) {
+            components.push({ component: "Default pay rate", rate: r.payRateName, amount: fmt(r.trackBreakdown.defaultBase) });
+        }
         if (r.commission.totalCommission > 0) {
-            components.push({
-                component: "Sales commission",
-                basis:  "—",
-                rate:   "—",
-                amount: fmt(r.commission.totalCommission),
-            });
+            components.push({ component: "Sales commission", rate: "—", amount: fmt(r.commission.totalCommission) });
         }
         const statusLabel = r.status === "paid" ? "Paid" : "Pending";
         const totalPayout = Math.round(r.payout);
@@ -411,9 +414,9 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
                 isFirst ? r.instructor.name  : "",
                 isFirst ? r.instructor.email : "",
                 isFirst ? branchName(r.branchId) : "",
-                isFirst ? breakdown.payModel : "",
+                isFirst ? r.payRateName : "",
                 comp.component,
-                comp.basis,
+                "—",
                 comp.rate,
                 comp.amount,
                 isFirst ? totalPayout : "",
@@ -545,9 +548,10 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     staffById.get(instructor.id) ?? { id: instructor.id },
                     payRates, classSchedules, appointments, fromISO, toISO,
                 );
-                const { base, commission, total } = totalEarningsForStaff(
+                const { base, commission, total, trackBreakdown } = totalEarningsForStaff(
                     instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO, tracks,
                 );
+                const cfg = staffById.get(instructor.id)?.payConfig;
                 return {
                     entryId: entry?.id ?? `noentry_${instructor.id}`,
                     actualEntryId: entry?.id,
@@ -561,6 +565,10 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     grossRevenue:   entry?.grossRevenue   ?? 0,
                     totalAttendees: entry?.totalAttendees ?? 0,
                     baseEarnings:   base,
+                    trackBreakdown,
+                    isInstructor:   true,
+                    perClassRateName:   cfg?.perClass.enabled ? payRates.find(p => p.id === cfg.perClass.payRateId)?.name : undefined,
+                    perPrivateRateName: cfg?.perAppointment.enabled ? payRates.find(p => p.id === cfg.perAppointment.payRateId)?.name : undefined,
                     commission,
                     payout:         total,
                     status:         entry?.status         ?? "pending",
@@ -579,7 +587,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                 const livePayRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
                 const entry = byInstructor.get(st.id);
                 const tracks = buildPayConfigTracks(st, payRates, classSchedules, appointments, fromISO, toISO);
-                const { base, commission, total } = totalEarningsForStaff(
+                const { base, commission, total, trackBreakdown } = totalEarningsForStaff(
                     st.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO, tracks,
                 );
                 const synthetic: Instructor = {
@@ -604,6 +612,8 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     grossRevenue: 0,
                     totalAttendees: 0,
                     baseEarnings: base,
+                    trackBreakdown,
+                    isInstructor: false,
                     commission,
                     payout: displayPayout,
                     status: entry?.status ?? "pending",

@@ -8,7 +8,7 @@
 // a profile header card, a credit-balance card, two grouped menu lists, and Logout.
 // Bottom nav stays visible (the landing is NOT in the layout's isFullScreen set).
 
-import { useMemo, useState, type ComponentType, type SVGProps } from "react";
+import { Fragment, useMemo, useState, type ComponentType, type SVGProps } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
 import {
@@ -117,7 +117,7 @@ export default function ProfilePage() {
                             }`}
                         >
                             <Icon className="size-5 shrink-0 text-[#344054]" aria-hidden />
-                            <span className="flex-1 text-base font-semibold leading-6 text-[var(--brand-text)]">{row.label}</span>
+                            <span className="flex-1 text-sm font-semibold leading-5 text-[var(--brand-text)]">{row.label}</span>
                             <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
                         </button>
                     );
@@ -164,26 +164,51 @@ export default function ProfilePage() {
 
     return (
         <div className="flex min-h-full flex-col gap-4 px-4 pt-8">
-            {/* Profile header card → Profile information */}
+            {/* Profile information — centered avatar + name + email (Figma
+                4560-117263). Tapping opens the same Profile information page. */}
             <button
                 type="button"
                 onClick={() => router.push("/customer/profile/information")}
-                className={`flex items-center gap-4 p-4 text-left transition-colors active:bg-gray-50 ${CARD}`}
+                className="flex flex-col items-center gap-3 pt-1 text-center transition-opacity active:opacity-70"
             >
                 {member?.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={member.imageUrl} alt="" className="size-11 shrink-0 rounded-full object-cover" />
+                    <img src={member.imageUrl} alt="" className="size-[72px] shrink-0 rounded-full border-[3px] border-white object-cover shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.1),0px_2px_4px_-2px_rgba(16,24,40,0.06)]" />
                 ) : (
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-base font-semibold text-[#475467]">
+                    <div className="flex size-[72px] shrink-0 items-center justify-center rounded-full border-[3px] border-white bg-[#f2f4f7] text-lg font-semibold text-[#475467] shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.1),0px_2px_4px_-2px_rgba(16,24,40,0.06)]">
                         {member?.initials}
                     </div>
                 )}
-                <div className="min-w-0 flex-1">
-                    <p className="truncate text-lg font-semibold leading-7 text-[var(--brand-text)]">{name}</p>
-                    <p className="truncate text-base leading-6 text-[#667085]">{member?.email}</p>
+                <div className="flex flex-col items-center">
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
+                    <p className="text-sm leading-5 text-[#344054]">{member?.email}</p>
                 </div>
-                <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
             </button>
+
+            {/* Bookings — Upcoming / History with green featured icons (Figma
+                4560-117455). Same nav targets as before. */}
+            <div className={`p-4 ${CARD}`}>
+                <div className="flex items-start gap-4">
+                    {([
+                        { icon: Calendar, label: "Upcoming", tab: "upcoming" },
+                        { icon: CalendarCheck01, label: "History", tab: "past" },
+                    ] as { icon: typeof Calendar; label: string; tab: BookingTab }[]).map(({ icon: Icon, label, tab }, i) => (
+                        <Fragment key={label}>
+                            {i > 0 && <div className="w-px self-stretch bg-[#e4e7ec]" aria-hidden />}
+                            <button
+                                type="button"
+                                onClick={() => router.push(`/customer/bookings/${tab}`)}
+                                className="flex flex-1 items-center gap-3 text-left transition-opacity active:opacity-70"
+                            >
+                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#e9fff3] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]">
+                                    <Icon className="size-4 text-[var(--brand-primary)]" aria-hidden />
+                                </span>
+                                <span className="text-sm font-semibold leading-5 text-[#344054]">{label}</span>
+                            </button>
+                        </Fragment>
+                    ))}
+                </div>
+            </div>
 
             {/* Credit balance / plan */}
             {hasPlan ? (
@@ -251,29 +276,6 @@ export default function ProfilePage() {
                 </div>
             )}
 
-            {/* Bookings — a dedicated card with Upcoming / Past entries (Figma 4488). */}
-            <div className={`p-4 ${CARD}`}>
-                <p className="text-sm font-normal leading-5 text-[#475467]">Bookings</p>
-                <div className="mt-3 flex gap-3">
-                    {([
-                        { icon: Calendar, label: "Upcoming", tab: "upcoming" },
-                        { icon: CalendarCheck01, label: "Past", tab: "past" },
-                    ] as { icon: typeof Calendar; label: string; tab: BookingTab }[]).map(({ icon: Icon, label, tab }) => (
-                        <button
-                            key={label}
-                            type="button"
-                            onClick={() => router.push(`/customer/bookings/${tab}`)}
-                            className="flex flex-1 items-center gap-2 text-left transition-opacity active:opacity-70"
-                        >
-                            <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb]">
-                                <Icon className="size-4 text-[#344054]" aria-hidden />
-                            </span>
-                            <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">{label}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
             <MenuGroup rows={GROUP_A} />
             <MenuGroup rows={GROUP_B} />
 
@@ -285,7 +287,7 @@ export default function ProfilePage() {
                     className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-gray-50"
                 >
                     <InfoCircle className="size-5 shrink-0 text-[#344054]" aria-hidden />
-                    <span className="flex-1 text-base font-semibold leading-6 text-[var(--brand-text)]">About</span>
+                    <span className="flex-1 text-sm font-semibold leading-5 text-[var(--brand-text)]">About</span>
                     <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
                 </button>
                 <button
@@ -294,7 +296,7 @@ export default function ProfilePage() {
                     className="flex w-full items-center gap-3 border-t border-[#f2f4f7] px-4 py-3.5 text-left transition-colors active:bg-gray-50"
                 >
                     <LogOut01 className="size-5 shrink-0 text-[#d92d20]" aria-hidden />
-                    <span className="flex-1 text-base font-semibold leading-6 text-[#d92d20]">Logout</span>
+                    <span className="flex-1 text-sm font-semibold leading-5 text-[#d92d20]">Logout</span>
                     <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
                 </button>
             </div>
