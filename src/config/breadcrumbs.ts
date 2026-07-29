@@ -218,6 +218,10 @@ const DYNAMIC_LABELS: Record<string, (id: string, s: AppState) => string> = {
         const g = s.giftCardDesigns.find(x => x.id === id);
         return g?.name ?? "Gift card";
     },
+    "/products/retail": (id, s) => {
+        const r = s.retailProducts.find(x => x.id === id);
+        return r?.name ?? "Retail product";
+    },
     "/products/promo-codes": (id, s) => {
         const p = s.promoCodes.find(x => x.id === id);
         return p?.code ?? "Promo code";
