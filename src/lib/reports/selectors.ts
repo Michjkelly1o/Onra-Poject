@@ -405,8 +405,21 @@ export function selectTransactionLedger(state: AppState): LedgerRow[] {
     // revenue — exclude them from Total Sales so revenue totals + Excel
     // exports don't get polluted with penalty AED. Same rule applies in
     // `selectPayments` below (payments report also filters them out).
+    //
+    // v83 audit-3 (2026-07-29) — retail transactions ALSO excluded from
+    // the shared ledger. Retail sales flow through a dedicated report
+    // (`selectRetailSales`); if they leaked here every Financial report
+    // (Total Sales, Payments, ARPM, Acquisition Efficiency, Revenue
+    // per Class, Promo Redemptions) would double-count retail on top
+    // of the standalone Retail Sales report, AND the Sale Category
+    // pivot would sprout a stray "retail" bucket that the label maps
+    // don't know about.
     return resolveLedger(state.customerTransactions)
-        .filter(t => t.kind !== "cancellation_penalty" && t.kind !== "freeze_fee")
+        .filter(t =>
+            t.kind !== "cancellation_penalty"
+            && t.kind !== "freeze_fee"
+            && t.kind !== "retail"
+        )
         .map(t => {
             const c = cust(t.customerId);
             return {
@@ -430,8 +443,14 @@ export function selectPayments(state: AppState): PaymentRow[] {
     const loc = makeLocationLookup(state);
     const cust = makeCustomerLookup(state);
 
+    // v83 audit-3 (2026-07-29) — retail sales use their dedicated report
+    // (`selectRetailSales`); excluded here to avoid double-counting.
     return state.customerTransactions
-        .filter(t => t.kind !== "cancellation_penalty" && t.kind !== "freeze_fee")
+        .filter(t =>
+            t.kind !== "cancellation_penalty"
+            && t.kind !== "freeze_fee"
+            && t.kind !== "retail"
+        )
         .map(t => {
         const c = cust(t.customerId);
         const netPayout = t.processorFee != null ? t.amountAed - t.processorFee : undefined;
@@ -1029,7 +1048,7 @@ export interface RetailSalesRow {
     /** (netSales − qty × unitCost) ÷ netSales. 0-safe division. */
     grossMarginPct: number;
     /** "Yes" when the same customer had another non-retail line on the
-     *  same day at the same branch (cross-sell / attachment signal). */
+     *  same day (cross-sell / attachment signal). */
     attachedTo: "Yes" | "No";
     /** "in-person" | "online" — POS vs customer portal. */
     salesChannel: "in-person" | "online";

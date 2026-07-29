@@ -188,7 +188,10 @@ function buildCatalog(
             kind: "retail",
             name: r.name,
             primaryMeta: r.sku,
-            secondaryMeta: `${stockAggregate} in stock`,
+            // secondaryMeta intentionally omitted for retail — the render
+            // site (below) computes the branch-aware label from
+            // perBranchStock. Leaving a value here would be dead code
+            // since the ternary always overrides for retail.
             priceAed: r.priceAed,
             priceDisplay: `AED ${r.priceAed.toLocaleString()}`,
             // Retail products are studio-global; per-branch scoping happens
