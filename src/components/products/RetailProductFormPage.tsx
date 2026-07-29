@@ -18,7 +18,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check, ShoppingBag01, CoinsHand, Package,
+    XClose, Check, CoinsHand, Package,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,6 @@ import { useAppStore, type RetailProduct } from "@/lib/store";
 const STEPS = [
     { n: 1, label: "Basic information" },
     { n: 2, label: "Pricing & stock" },
-    { n: 3, label: "Review & submit" },
 ];
 
 function StepItem({ step, current }: { step: typeof STEPS[0]; current: number }) {
@@ -238,7 +237,7 @@ function BasicInformationStep({
                             placeholder="APP-TNK-001"
                         />
                     </FormField>
-                    <FormField label="Category" error={errors.categoryId}>
+                    <FormField label="Retail category" error={errors.categoryId}>
                         <SelectInput
                             value={data.categoryId}
                             onChange={v => onChange({ categoryId: v })}
@@ -270,25 +269,33 @@ interface PricingInfo {
 }
 
 function PricingStep({
-    data, onChange, errors, onBack, onContinue,
+    data, onChange, errors,
+    branches, stockByBranch, onStockChange,
+    mode, onBack, onSubmit, submitLabel, saving,
 }: {
     data: PricingInfo;
     onChange: (patch: Partial<PricingInfo>) => void;
     errors: Partial<Record<keyof PricingInfo, string>>;
+    branches: { id: string; name: string }[];
+    stockByBranch: Record<string, string>;
+    onStockChange: (branchId: string, value: string) => void;
+    mode: Mode;
     onBack: () => void;
-    onContinue: () => void;
+    onSubmit: () => void;
+    submitLabel: string;
+    saving: boolean;
 }) {
     const priceOk = Number(data.priceAed) > 0;
     const costOk  = data.unitCostAed !== "" && Number(data.unitCostAed) >= 0;
     const thrOk   = data.reorderThreshold !== "" && Number(data.reorderThreshold) >= 0 && Number.isInteger(Number(data.reorderThreshold));
-    const canContinue = priceOk && costOk && thrOk;
+    const canSubmit = priceOk && costOk && thrOk && !saving;
     return (
         <FormCard
             title="Pricing & stock"
             footer={
                 <div className="flex items-center justify-between gap-3 w-full">
                     <Button variant="secondary-gray" size="md" onClick={onBack}>Back</Button>
-                    <Button variant="primary" size="md" disabled={!canContinue} onClick={onContinue}>Continue</Button>
+                    <Button variant="primary" size="md" disabled={!canSubmit} onClick={onSubmit}>{submitLabel}</Button>
                 </div>
             }
         >
@@ -316,55 +323,32 @@ function PricingStep({
                         />
                     </FormField>
                 </Section>
-            </div>
-        </FormCard>
-    );
-}
 
-// ─── Step 3 — Review & submit ──────────────────────────────────────────────
-
-function ReviewStep({
-    basic, pricing, categoryLabel, onBack, onSubmit, submitLabel, saving,
-}: {
-    basic: BasicInfo;
-    pricing: PricingInfo;
-    categoryLabel: string;
-    onBack: () => void;
-    onSubmit: () => void;
-    submitLabel: string;
-    saving: boolean;
-}) {
-    function Row({ label, value }: { label: string; value: React.ReactNode }) {
-        return (
-            <div className="flex items-start justify-between gap-4 py-3 border-b border-[#f2f4f7] last:border-b-0">
-                <span className="text-[14px] text-[#667085]">{label}</span>
-                <span className="text-[14px] font-medium text-[#101828] text-right max-w-[60%]">{value}</span>
-            </div>
-        );
-    }
-    return (
-        <FormCard
-            title="Review & submit"
-            footer={
-                <div className="flex items-center justify-between gap-3 w-full">
-                    <Button variant="secondary-gray" size="md" onClick={onBack}>Back</Button>
-                    <Button variant="primary" size="md" onClick={onSubmit} disabled={saving}>{submitLabel}</Button>
-                </div>
-            }
-        >
-            <div className="flex flex-col gap-6">
-                <p className="text-[14px] text-[#475467]">
-                    Confirm the details below. You can always come back and edit anything later from the product detail page.
-                </p>
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] px-4">
-                    <Row label="Product name"      value={basic.name || "—"} />
-                    <Row label="SKU"               value={basic.sku || "—"} />
-                    <Row label="Category"          value={categoryLabel || "—"} />
-                    <Row label="Description"       value={basic.description ? basic.description : "—"} />
-                    <Row label="Price"             value={`AED ${Number(pricing.priceAed || 0).toLocaleString("en-US")}`} />
-                    <Row label="Unit cost"         value={`AED ${Number(pricing.unitCostAed || 0).toLocaleString("en-US")}`} />
-                    <Row label="Reorder threshold" value={`${pricing.reorderThreshold || 0} units`} />
-                </div>
+                {/* Initial stock (create) / Adjust stock (edit) — one input
+                    per active branch. Changes are applied via the store's
+                    adjustRetailStock action on save so the audit log stays
+                    in step with the running balance. */}
+                <Section title={mode === "create" ? "Initial stock" : "Stock on hand"}>
+                    <p className="text-[14px] text-[#475467] leading-5">
+                        {mode === "create"
+                            ? "Set how many units land at each branch when this product goes live. Every entry writes a matching audit-log row (kind: receive)."
+                            : "Adjust units on hand per branch. Only branches that change are re-written; every change logs a matching audit-log row."}
+                    </p>
+                    <div className="flex flex-col gap-3">
+                        {branches.map(b => (
+                            <div key={b.id} className="flex items-center justify-between gap-3">
+                                <p className="text-[14px] text-[#101828]">{b.name}</p>
+                                <div className="w-[140px]">
+                                    <IntegerInput
+                                        value={stockByBranch[b.id] ?? ""}
+                                        onChange={v => onStockChange(b.id, v)}
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Section>
             </div>
         </FormCard>
     );
@@ -398,9 +382,7 @@ function TemplatePreviewCard({ basic, pricing, categoryLabel }: {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={basic.imageUrl} alt="" className="h-[160px] w-full object-cover" />
                     ) : (
-                        <div className="h-[160px] w-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa] flex items-center justify-center">
-                            <ShoppingBag01 className="w-10 h-10 text-[#7ba08c]" />
-                        </div>
+                        <div className="h-[160px] w-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
                     )}
                     <div className="flex flex-col gap-4 px-5">
                         <div className="flex flex-col gap-2">
@@ -411,7 +393,7 @@ function TemplatePreviewCard({ basic, pricing, categoryLabel }: {
                                 <div className="flex-1 min-w-0 flex items-center gap-1">
                                     <Package className="w-4 h-4 text-[#667085] shrink-0" />
                                     <span className="text-[14px] font-medium text-[#667085] truncate">
-                                        {categoryLabel || "Category"}
+                                        {categoryLabel || "Retail category"}
                                     </span>
                                 </div>
                                 <div className="flex-1 min-w-0 flex items-center gap-1">
@@ -446,9 +428,18 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
     const router = useRouter();
     const products         = useAppStore(s => s.retailProducts);
     const categories       = useAppStore(s => s.retailCategories);
+    const branchesAll      = useAppStore(s => s.branches);
+    const stockRows        = useAppStore(s => s.retailStock);
     const addRetailProduct = useAppStore(s => s.addRetailProduct);
     const updateRetailProduct = useAppStore(s => s.updateRetailProduct);
+    const adjustRetailStock = useAppStore(s => s.adjustRetailStock);
     const showToast        = useAppStore(s => s.showToast);
+
+    // Active branches only — archived branches shouldn't get seeded stock.
+    const activeBranches = useMemo(
+        () => branchesAll.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
+        [branchesAll],
+    );
 
     const target = mode === "edit"
         ? products.find(p => p.id === productId)
@@ -467,6 +458,25 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         unitCostAed:      target ? String(target.unitCostAed) : "",
         reorderThreshold: target ? String(target.reorderThreshold) : "",
     }));
+    // Per-branch stock inputs. In create mode start at "" (renders as
+    // placeholder "0"). In edit mode seed from current unitsOnHand so the
+    // admin can see and adjust exactly what's on hand right now.
+    const initialStockByBranch = useMemo<Record<string, string>>(() => {
+        const map: Record<string, string> = {};
+        for (const b of activeBranches) {
+            if (target) {
+                const row = stockRows.find(s => s.productId === target.id && s.branchId === b.id);
+                map[b.id] = row ? String(row.unitsOnHand) : "0";
+            } else {
+                map[b.id] = "";
+            }
+        }
+        return map;
+    }, [activeBranches, target, stockRows]);
+    const [stockByBranch, setStockByBranch] = useState<Record<string, string>>(initialStockByBranch);
+    function updateStock(branchId: string, value: string) {
+        setStockByBranch(prev => ({ ...prev, [branchId]: value }));
+    }
     const [errors, setErrors] = useState<{
         basic: Partial<Record<keyof BasicInfo, string>>;
         pricing: Partial<Record<keyof PricingInfo, string>>;
@@ -515,6 +525,20 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 setErrors(e => ({ ...e, basic: { ...e.basic, sku: "SKU already in use by another product." } }));
                 return;
             }
+            // Seed stock — for each branch with a positive entry, write a
+            // "receive" adjustment so the running balance + audit log land
+            // on the new product atomically.
+            for (const b of activeBranches) {
+                const units = Number(stockByBranch[b.id]);
+                if (!Number.isFinite(units) || units <= 0) continue;
+                adjustRetailStock({
+                    productId: id,
+                    branchId: b.id,
+                    delta: Math.floor(units),
+                    kind: "receive",
+                    reason: "Initial stock from product creation",
+                });
+            }
             showToast("Product created", `${payload.name} is now in your retail catalog.`, "success", "check");
             router.push(returnTo);
             return;
@@ -522,12 +546,32 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         // edit
         if (!productId) return;
         const ok = updateRetailProduct(productId, payload);
-        setSaving(false);
         if (!ok) {
+            setSaving(false);
             setStep(1);
             setErrors(e => ({ ...e, basic: { ...e.basic, sku: "SKU already in use by another product." } }));
             return;
         }
+        // Per-branch stock deltas — every branch that changed gets one
+        // "adjust" entry. Branches with no change are skipped so the audit
+        // log stays quiet.
+        for (const b of activeBranches) {
+            const currentRow = stockRows.find(s => s.productId === productId && s.branchId === b.id);
+            const currentUnits = currentRow?.unitsOnHand ?? 0;
+            const nextUnits = Number(stockByBranch[b.id]);
+            if (!Number.isFinite(nextUnits) || nextUnits < 0) continue;
+            const rounded = Math.floor(nextUnits);
+            const delta = rounded - currentUnits;
+            if (delta === 0) continue;
+            adjustRetailStock({
+                productId,
+                branchId: b.id,
+                delta,
+                kind: delta > 0 ? "receive" : "adjust",
+                reason: "Manual adjustment from product edit",
+            });
+        }
+        setSaving(false);
         showToast("Product updated", `${payload.name} was saved.`, "success", "check");
         router.push(returnTo);
     }
@@ -594,16 +638,11 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                             data={pricing}
                             onChange={updatePricing}
                             errors={errors.pricing}
+                            branches={activeBranches}
+                            stockByBranch={stockByBranch}
+                            onStockChange={updateStock}
+                            mode={mode}
                             onBack={() => setStep(1)}
-                            onContinue={() => setStep(3)}
-                        />
-                    )}
-                    {step === 3 && (
-                        <ReviewStep
-                            basic={basic}
-                            pricing={pricing}
-                            categoryLabel={categoryLabel}
-                            onBack={() => setStep(2)}
                             onSubmit={handleSubmit}
                             submitLabel={mode === "create" ? "Create product" : "Save changes"}
                             saving={saving}

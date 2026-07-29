@@ -267,7 +267,7 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
             </div>
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                 <div className="flex flex-col gap-2">
-                    <p className="text-[14px] font-medium text-[#344054]">Category</p>
+                    <p className="text-[14px] font-medium text-[#344054]">Retail category</p>
                     <div className="flex flex-wrap gap-2">
                         {categories.map(c => (
                             <FilterPill key={c.id} label={c.label} selected={pending.categoryIds.includes(c.id)}
@@ -513,7 +513,7 @@ export default function RetailPage() {
 
     function exportCsv() {
         const csv = buildCsv(
-            ["Name", "SKU", "Category", "Price AED", "Stock", "Reorder threshold", "Status"],
+            ["Name", "SKU", "Retail category", "Price AED", "Stock", "Reorder threshold", "Status"],
             sorted.map(r => [
                 r.name,
                 r.sku,
@@ -599,7 +599,7 @@ export default function RetailPage() {
                                         <SortableHeader sortKey="sku" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>SKU</SortableHeader>
                                     </th>
                                     <th className={cn(TH, "w-[160px]")}>
-                                        <SortableHeader sortKey="category" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Category</SortableHeader>
+                                        <SortableHeader sortKey="category" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Retail category</SortableHeader>
                                     </th>
                                     <th className={cn(TH, "w-[140px]")}>
                                         <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Price</SortableHeader>
