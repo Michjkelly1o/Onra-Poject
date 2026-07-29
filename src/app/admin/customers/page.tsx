@@ -80,19 +80,25 @@ interface FilterState {
     statuses: CustomerStatus[];
     planTypes: PlanType[];
     lastVisit: LastVisitBucket[];
-    branchId: string;          // "" = any branch
     planExpiryStart: string;   // "" = no lower bound
     planExpiryEnd: string;     // "" = no upper bound
     /** v83 client 2026-07-27 — multi-select over the 7 lifecycle stages.
      *  Empty = no filter. Stacks on top of the segment tabs (Members /
      *  Leads / Inactive) so a user can further scope inside a segment. */
     lifecycleTags: import("@/lib/store").LifecycleTag[];
+    // v83 audit-1 (2026-07-29) — `branchId` intentionally removed from
+    // this panel. Branch scope is owned exclusively by the toolbar's
+    // branch dropdown so admins can't accidentally AND two branch filters
+    // together and get 0 rows with no visible reason (toolbar=South +
+    // panel=North silently returned empty). Toolbar branch stays; the
+    // panel now covers everything ELSE (status, plan type, dates,
+    // lifecycle).
 }
 const ALL_LIFECYCLE_TAGS: import("@/lib/store").LifecycleTag[] = [
     "Lead", "Trialist", "New Active", "Loyal Active", "At Risk", "Churned", "Won-back",
 ];
 const EMPTY_FILTER: FilterState = {
-    statuses: [], planTypes: [], lastVisit: [], branchId: "", planExpiryStart: "", planExpiryEnd: "",
+    statuses: [], planTypes: [], lastVisit: [], planExpiryStart: "", planExpiryEnd: "",
     lifecycleTags: [],
 };
 
@@ -216,7 +222,6 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
         pending.statuses.length > 0 ||
         pending.planTypes.length > 0 ||
         pending.lastVisit.length > 0 ||
-        pending.branchId !== "" ||
         pending.planExpiryStart !== "" ||
         pending.planExpiryEnd !== "" ||
         pending.lifecycleTags.length > 0;
@@ -297,20 +302,11 @@ function FilterPanel({ open, onClose, applied, onApply, branchOptions }: {
 
                     <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
-                    {/* Branch location */}
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
-                        <SelectInput
-                            triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                            placeholder="Select location"
-                            options={[{ value: "", label: "All locations" }, ...branchOptions]}
-                            value={pending.branchId}
-                            onChange={v => setPending(p => ({ ...p, branchId: v }))}
-                            width="w-full"
-                        />
-                    </div>
-
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    {/* v83 audit-1 (2026-07-29) — Branch location filter
+                        removed. Toolbar branch dropdown is now the single
+                        source of truth for branch scope; the panel field
+                        would AND with the toolbar and silently produce 0
+                        rows when they didn't match. */}
 
                     {/* Last visit date range */}
                     <div className="flex flex-col gap-2">
@@ -614,7 +610,6 @@ export default function CustomersPage() {
             if (applied.statuses.length > 0 && !applied.statuses.includes(r.status)) return false;
             if (applied.planTypes.length > 0 && !applied.planTypes.includes(r.planType)) return false;
             if (applied.lifecycleTags.length > 0 && !applied.lifecycleTags.includes(r.lifecycleTag ?? "Lead")) return false;
-            if (applied.branchId && r.branchId !== applied.branchId) return false;
             if (!matchesLastVisit(r)) return false;
             if (applied.planExpiryStart || applied.planExpiryEnd) {
                 // No-plan customers have no expiry — excluded once the range is set.
@@ -631,11 +626,17 @@ export default function CustomersPage() {
                 if (segment === "inactive" && !(["At Risk", "Churned"].includes(tag) || r.status !== "active")) return false;
             }
             // v83 Phase 3 — "Assigned to me" chip. When on, keep only rows
-            // whose customer.assignedTo matches the current staff id.
-            if (mineOnly && currentUser?.id && r.assignedTo !== currentUser.id) return false;
+            // whose customer.assignedTo matches the current signed-in staff.
+            // v83 audit-1 (2026-07-29) — match against `currentUser.staff_id`
+            // (the staff row this account maps to) NOT `currentUser.id` (the
+            // account id, e.g. "u-admin-1"). Every customer.assignedTo is a
+            // `staff_*` id sourced from the staff picker, so comparing to
+            // account id always returned 0 rows.
+            const meStaffId = currentUser?.staff_id;
+            if (mineOnly && meStaffId && r.assignedTo !== meStaffId) return false;
             return true;
         });
-    }, [allRows, branchId, search, applied, today, segment, mineOnly, currentUser?.id]);
+    }, [allRows, branchId, search, applied, today, segment, mineOnly, currentUser?.staff_id]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
     // ── Sortable columns — Name / Contact / Plan / Lifecycle / Status / Last visit. ──
@@ -705,7 +706,7 @@ export default function CustomersPage() {
     // ─── Active-filter dot ──────────────────────────────────────────────────
     const hasActiveFilter =
         applied.statuses.length > 0 || applied.planTypes.length > 0 ||
-        applied.lastVisit.length > 0 || applied.branchId !== "" ||
+        applied.lastVisit.length > 0 ||
         applied.planExpiryStart !== "" || applied.planExpiryEnd !== "" ||
         applied.lifecycleTags.length > 0;
 

@@ -94,6 +94,13 @@ export interface User {
      *  Optional so legacy seeds without a value still typecheck; the UI
      *  falls back to "—" when missing. */
     password_changed_at?: string;
+    /** v83 audit-1 (2026-07-29) — the staff row this signed-in account
+     *  maps to. Used by "Assigned to me" chips and any other UI that
+     *  needs to compare the current user against a `staff_*` id in
+     *  another slice (customers.assignedTo, followUpTasks.assigneeId).
+     *  Optional so legacy seeds without a value still typecheck; the
+     *  Owner demo account is seeded to `user_alex_owen`. */
+    staff_id?: string;
     created_at: string;
     // ── Instructor profile fields (only populated on instructor personas) ──
     // Optional so admin/member personas don't need them. The instructor

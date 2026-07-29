@@ -2281,6 +2281,30 @@ export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = SEED_STAFF_PROFILES.ma
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const WEEKDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
+/** v83 audit-1 (2026-07-29) — human-readable descriptor for the customer
+ *  patch shape `updateCustomer` receives, used by the audit-log entry.
+ *  Recognises the well-known fields the profile / Follow-up settings
+ *  panel edit; anything else collapses to the generic label. */
+function describeCustomerPatch(patch: Record<string, unknown>): string {
+    const keys = Object.keys(patch);
+    if (keys.length === 0) return "Edited customer profile";
+    if (keys.length === 1) {
+        switch (keys[0]) {
+            case "assignedTo":      return "Reassigned customer";
+            case "followUpStatus":  return "Updated follow-up status";
+            case "sourceId":
+            case "marketingSource": return "Updated customer source";
+            case "isVip":           return (patch.isVip ? "Marked customer VIP" : "Removed VIP");
+            case "notes":           return "Updated customer notes";
+            case "assignedBranchIds":
+            case "branchId":        return "Updated customer branch access";
+            case "planKind":
+            case "planName":        return "Updated customer plan";
+        }
+    }
+    return "Edited customer profile";
+}
+
 function dateLabelFromISO(iso: string): string {
     const d = new Date(iso + "T00:00:00Z");
     return `${WEEKDAYS[d.getUTCDay()]}, ${String(d.getUTCDate()).padStart(2, "0")} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
@@ -7492,11 +7516,32 @@ export const useAppStore = create<AppState>()(persist(
     },
     updateCustomer: (id, patch) => {
         const target = get().customers.find(c => c.id === id);
+        // v83 audit-1 (2026-07-29) — when `assignedTo` changes, cascade
+        // the new owner into every OPEN follow-up task for this customer
+        // in the same set() so the dashboard "Leads to follow up" widget
+        // routes existing open tasks to the new owner immediately.
+        // Closed tasks keep their historical assigneeId (audit trail).
+        const assignedToChanged =
+            Object.prototype.hasOwnProperty.call(patch, "assignedTo") &&
+            !!target &&
+            target.assignedTo !== patch.assignedTo;
         set((state) => ({
             customers: state.customers.map(c => c.id === id ? { ...c, ...patch } : c),
+            followUpTasks: assignedToChanged
+                ? state.followUpTasks.map(t =>
+                    t.customerId === id && t.status === "open"
+                        ? { ...t, assigneeId: patch.assignedTo }
+                        : t,
+                  )
+                : state.followUpTasks,
         }));
         if (target) {
-            get().recordAudit("Edited customer profile", "customer", id, `${target.firstName} ${target.lastName}`.trim());
+            // v83 audit-1 (2026-07-29) — describe WHAT changed, not just
+            // "Edited customer profile", so the audit trail is usable.
+            // Rely on well-known patch keys; unknown keys collapse into
+            // a generic "profile fields" descriptor.
+            const label = describeCustomerPatch(patch);
+            get().recordAudit(label, "customer", id, `${target.firstName} ${target.lastName}`.trim());
         }
     },
     setCustomerStatus: (ids, status) => {
@@ -8585,7 +8630,16 @@ export const useAppStore = create<AppState>()(persist(
             const newLabel = lookupStageLabel(stages, "stg_new", "New");
             const contactedLabel = lookupStageLabel(stages, "stg_contacted", "Contacted");
             const c = get().customers.find(cx => cx.id === target.customerId);
-            if (c && c.followUpStatus === newLabel) {
+            // v83 audit-1 fix (2026-07-29) — seeded Leads have
+            // `followUpStatus === undefined`; the UI renders "New" via a
+            // `?? "New"` fallback so the admin sees "New" and the
+            // "Reached out" outcome should advance them to Contacted.
+            // The prior guard only matched the LITERAL "New" string and
+            // silently no-op'd on undefined. Now treat undefined as "New"
+            // so the outcome actually moves the pill and the toast copy
+            // matches reality.
+            const currentEffective = c?.followUpStatus ?? newLabel;
+            if (c && currentEffective === newLabel) {
                 set(state => ({
                     customers: state.customers.map(cx =>
                         cx.id === target.customerId
@@ -8632,8 +8686,15 @@ export const useAppStore = create<AppState>()(persist(
         );
         if (dup) return false;
         const oldLabel = target.label;
+        // v83 audit-1 (2026-07-29) — also rewrite any `customer.marketingSource`
+        // free-text copy that matches the OLD label so the display fallback
+        // (used when `sourceId` isn't set, see CustomerFollowUpsTab
+        // `sourceLabelForPanel`) doesn't show the stale name after rename.
         set(state => ({
             leadSources: state.leadSources.map(s => (s.id === id ? { ...s, label: clean } : s)),
+            customers: state.customers.map(c =>
+                c.marketingSource === oldLabel ? { ...c, marketingSource: clean } : c,
+            ),
         }));
         get().recordAudit(`Renamed lead source "${oldLabel}" → "${clean}"`, "settings", id, clean);
         return true;

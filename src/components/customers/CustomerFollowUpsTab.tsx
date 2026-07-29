@@ -242,9 +242,19 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
         // Q1 (2026-07-27) — the outcome-specific copy now spells out
         // what happens next so the admin isn't left wondering, esp. for
         // "Follow up later" which had zero after-action guidance.
+        // v83 audit-1 (2026-07-29) — "Reached" copy only claims "advances
+        // to Contacted" when the customer is actually AT the New stage
+        // (undefined or literal New). Past-Contacted customers get a
+        // truthful "marked as reached" line instead of a false claim.
+        const newLabel = lookupStageLabel(followUpStages, "stg_new", "New");
+        const contactedLabel = lookupStageLabel(followUpStages, "stg_contacted", "Contacted");
+        const currentStage = customer?.followUpStatus ?? newLabel;
+        const willAdvance = outcome === "reached" && currentStage === newLabel;
         const copy =
             outcome === "reached"
-                ? `${name} marked as reached — status advances to Contacted.`
+                ? (willAdvance
+                    ? `${name} marked as reached — status advances to ${contactedLabel}.`
+                    : `${name} marked as reached.`)
                 : outcome === "follow_up"
                     ? "Task moved to Activity. It'll come back automatically if the trigger fires again."
                     : `${name} marked as not interested — no more auto tasks unless they book again.`;
