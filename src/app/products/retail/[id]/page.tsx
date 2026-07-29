@@ -1,22 +1,27 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Retail product detail (/admin/products/retail/[id])
+// Onra Studio — Retail product detail (/products/retail/[id])
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Phase B (2026-07-29). Full detail view — product info card + per-branch
-// stock table + adjustment history. Row actions on the header let admins
-// Edit, Archive/Reactivate/Recover, Delete, or open the Configure-stock
-// modal to adjust units for any branch (writes go through the store's
-// adjustRetailStock action so the audit log stays in lockstep).
+// Client 2026-07-29 — moved out of admin chrome to /products/retail/[id],
+// matching /products/[id] (membership) and /products/gift-cards/[id]. Full
+// h-screen shell with a 72px top header (X close + title + Breadcrumbs);
+// the body is a scrollable region with the product info card, per-branch
+// stock table, and adjustment history.
+//
+// Row actions in the header let admins Edit, Archive/Reactivate/Recover,
+// Delete, or open the Configure-stock modal to adjust units per branch
+// (writes go through adjustRetailStock so the audit log stays in step).
 
 import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
-    ChevronLeft, Edit02, Archive, RefreshCcw01, Trash01, Trash02, Check, XClose,
+    Edit02, Archive, RefreshCcw01, Trash01, Trash02, Check, XClose,
     Image01, Package,
 } from "@untitledui/icons";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
@@ -229,7 +234,7 @@ export default function RetailProductDetailPage() {
 
     if (!product) {
         return (
-            <div className="flex-1 flex items-center justify-center px-6 py-10">
+            <div className="h-screen bg-white flex items-center justify-center px-6 py-10">
                 <div className="max-w-md text-center flex flex-col gap-3">
                     <p className="text-[18px] font-semibold text-[#101828]">Product not found</p>
                     <p className="text-[14px] text-[#667085]">
@@ -322,24 +327,24 @@ export default function RetailProductDetailPage() {
     };
 
     return (
-        <div className="flex flex-col gap-6">
-            {/* Header */}
-            <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <button
-                        type="button"
-                        onClick={() => router.push("/admin/products/retail")}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
-                        aria-label="Back"
-                    >
-                        <ChevronLeft className="w-5 h-5 text-[#667085]" />
-                    </button>
-                    <div className="flex flex-col">
-                        <p className="text-[20px] font-semibold text-[#101828] leading-7">{product.name}</p>
-                        <p className="text-[13px] text-[#667085] leading-5">Retail product · {product.sku}</p>
-                    </div>
+        <div className="h-screen bg-white flex flex-col overflow-hidden">
+            {/* Top header (72px) — same chrome as membership / gift-card
+                detail pages: X close + title + Breadcrumbs on the left,
+                action buttons on the right. */}
+            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
+                <button
+                    type="button"
+                    onClick={() => router.push("/admin/products/retail")}
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                    aria-label="Close"
+                >
+                    <XClose className="w-5 h-5 text-[#667085]" />
+                </button>
+                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Retail product details</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     <Button
                         variant="secondary-gray"
                         size="md"
@@ -353,7 +358,7 @@ export default function RetailProductDetailPage() {
                             variant="secondary-gray"
                             size="md"
                             leftIcon={<Edit02 className="w-4 h-4" />}
-                            onClick={() => router.push(`/products/retail/${product.id}/edit?returnTo=${encodeURIComponent(`/admin/products/retail/${product.id}`)}`)}
+                            onClick={() => router.push(`/products/retail/${product.id}/edit?returnTo=${encodeURIComponent(`/products/retail/${product.id}`)}`)}
                         >
                             Edit
                         </Button>
@@ -369,13 +374,16 @@ export default function RetailProductDetailPage() {
                 </div>
             </div>
 
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
+
             {/* Summary card */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex gap-6">
                 <ProductThumb imageUrl={product.imageUrl} alt={product.name} />
                 <div className="flex-1 flex flex-col gap-3 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                         <StatusBadge type="product" status={product.status} />
-                        <span className="text-[13px] text-[#667085]">Category — {categoryLabel}</span>
+                        <span className="text-[13px] text-[#667085]">Retail category — {categoryLabel}</span>
                     </div>
                     {product.description && (
                         <p className="text-[14px] text-[#475467] leading-5">{product.description}</p>
@@ -482,6 +490,8 @@ export default function RetailProductDetailPage() {
                         </table>
                     </div>
                 )}
+            </div>
+
             </div>
 
             {pending && (() => {

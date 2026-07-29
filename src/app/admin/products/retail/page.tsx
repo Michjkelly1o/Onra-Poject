@@ -628,7 +628,7 @@ export default function RetailPage() {
                                     return (
                                         <tr
                                             key={r.id}
-                                            onClick={() => router.push(`/admin/products/retail/${r.id}`)}
+                                            onClick={() => router.push(`/products/retail/${r.id}`)}
                                             className={cn(
                                                 "transition-colors cursor-pointer",
                                                 isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
@@ -658,7 +658,7 @@ export default function RetailPage() {
                                             </td>
                                             <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <RowActions items={[
-                                                    { label: "View details", icon: Eye,         onClick: () => router.push(`/admin/products/retail/${r.id}`) },
+                                                    { label: "View details", icon: Eye,         onClick: () => router.push(`/products/retail/${r.id}`) },
                                                     { label: "Edit",         icon: Edit02,      onClick: () => router.push(`/products/retail/${r.id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`), hidden: r.status === "archived" },
                                                     { label: "Archive",      icon: Archive,     onClick: () => openRowConfirm(r, "archive"),    hidden: r.status === "archived" },
                                                     { label: "Reactivate",   icon: Check,       onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },

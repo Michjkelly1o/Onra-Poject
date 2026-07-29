@@ -10,7 +10,7 @@ function EditRetailProductRouteInner() {
     const params = useParams();
     const searchParams = useSearchParams();
     const productId = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
-    const returnTo = searchParams.get("returnTo") ?? `/admin/products/retail/${productId}`;
+    const returnTo = searchParams.get("returnTo") ?? `/products/retail/${productId}`;
     return <RetailProductFormPage mode="edit" productId={productId} returnTo={returnTo} />;
 }
 
