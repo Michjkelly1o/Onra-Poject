@@ -166,8 +166,27 @@ export function AiAgentPage() {
 
     // Saved Recents (persisted). The active VIEW is deliberately NOT persisted,
     // so a refresh always lands on a fresh, empty entry point.
-    const [conversations, setConversations] = useState<ConvMeta[]>(() => loadRecents());
+    //
+    // Hydration-safe pattern (client 2026-07-30 fix): the useState initializer
+    // used to call `loadRecents()` directly, but that reads localStorage —
+    // available on the client, not on the server. Server-rendered HTML had
+    // an empty Recents list, client-hydrated HTML had the saved list, and
+    // React fired a hydration-mismatch warning on the sidebar
+    // (<aside><div><div>). Fix: initialize empty (matching the server) then
+    // hydrate from localStorage in a client-only effect. One extra render on
+    // first paint, but React reconciles cleanly because the DOM matches
+    // during hydration.
+    const [conversations, setConversations] = useState<ConvMeta[]>([]);
+    const hydratedRef = useRef(false);
     useEffect(() => {
+        // First tick: pull the persisted list into state. Guarded so the
+        // save-back effect below doesn't overwrite the empty [] with the
+        // initial state before we've had a chance to load.
+        setConversations(loadRecents());
+        hydratedRef.current = true;
+    }, []);
+    useEffect(() => {
+        if (!hydratedRef.current) return;
         try {
             window.localStorage.setItem(RECENTS_KEY, JSON.stringify(conversations));
         } catch {
