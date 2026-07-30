@@ -22,7 +22,7 @@ import {
     XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft, Lightbulb02,
     Edit02, HeartHand, Archive, SlashCircle01, RefreshCcw01, Check, AlignLeft,
     CreditCard02, Package, Gift01, PauseCircle, PlayCircle, XCircle,
-    Trash02,
+    Trash02, InfoCircle,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -1271,21 +1271,27 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                         edge of the profile card. */}
                                     {lifecycleResult && (
                                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                                            <IconTooltip
-                                                label={`Tagged ${lifecycleResult.tag} on ${(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}${
-                                                    lifecycleResult.reasons[0] ? ` · ${lifecycleResult.reasons[0]}` : ""
-                                                }`}
-                                                side="below"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setLifecycleDrawerOpen(true)}
-                                                    className="focus:outline-none focus:ring-2 focus:ring-[#658774] focus:ring-offset-1 rounded-full hover:opacity-80 transition-opacity"
-                                                    aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
-                                                >
-                                                    <StatusBadge type="lifecycle" status={lifecycleResult.tag} />
-                                                </button>
-                                            </IconTooltip>
+                                            {/* Client 2026-07-29 — info icon sits INSIDE
+                                                the lifecycle pill via StatusBadge's
+                                                trailingIcon slot. Tooltip preserved
+                                                ("See stage rules"); clicking the icon
+                                                opens the Lifecycle stage side panel. */}
+                                            <StatusBadge
+                                                type="lifecycle"
+                                                status={lifecycleResult.tag}
+                                                trailingIcon={
+                                                    <IconTooltip label="See stage rules" side="below">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setLifecycleDrawerOpen(true)}
+                                                            className="inline-flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-current focus:ring-offset-0 rounded-full"
+                                                            aria-label={`Lifecycle stage: ${lifecycleResult.tag}. Click to see why.`}
+                                                        >
+                                                            <InfoCircle className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </IconTooltip>
+                                                }
+                                            />
                                             {lifecycleResult.isVip && (
                                                 <StatusBadge type="vip" status="vip" />
                                             )}
@@ -1615,17 +1621,27 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                         </button>
                     </div>
                     <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
-                        {/* Current stage summary */}
+                        {/* Current stage — Client 2026-07-29. Removed the
+                            "Current stage for {name}" subtitle (the panel
+                            title + customer context in the profile chrome
+                            already covers that). Stage pill + "Set to X
+                            on Y" copy now sit in the same labeled-card
+                            container shape as the "Why they landed on X"
+                            block below, so both sections read as a set. */}
                         <div className="flex flex-col gap-3">
-                            <p className="text-[13px] text-[#667085]">Current stage for {customerName}</p>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <StatusBadge type="lifecycle" status={lifecycleResult.tag} size="lg" />
-                                {lifecycleResult.isVip && <StatusBadge type="vip" status="vip" size="lg" />}
-                            </div>
-                            <p className="text-[13px] text-[#667085]">
-                                Set to <span className="text-[#344054] font-medium">{lifecycleResult.tag}</span> on{" "}
-                                <span className="text-[#344054] font-medium">{(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}</span>. Updates automatically when this customer&apos;s activity changes.
+                            <p className="text-[14px] font-semibold text-[#344054]">
+                                Current stage
                             </p>
+                            <div className="flex flex-col gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <StatusBadge type="lifecycle" status={lifecycleResult.tag} size="lg" />
+                                    {lifecycleResult.isVip && <StatusBadge type="vip" status="vip" size="lg" />}
+                                </div>
+                                <p className="text-[13px] leading-[18px] text-[#475467]">
+                                    Set to <span className="text-[#344054] font-medium">{lifecycleResult.tag}</span> on{" "}
+                                    <span className="text-[#344054] font-medium">{(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}</span>. Updates automatically when this customer&apos;s activity changes.
+                                </p>
+                            </div>
                         </div>
 
                         {/* Why this stage */}

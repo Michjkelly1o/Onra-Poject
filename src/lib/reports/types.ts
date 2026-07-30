@@ -25,7 +25,8 @@ export type ReportCategory =
     | "customer"           //  4 reports (Customer Data, Retention, Win-back, ...)
     | "class"              //  4 reports (Bookings, Class Performance, ...)
     | "staff"              //  2 reports (Instructor Performance, Staff Attendance)
-    | "marketing";         //  6 reports (Referral, Promo, Campaign, Lead, ...)
+    | "marketing"          //  6 reports (Referral, Promo, Campaign, Lead, ...)
+    | "inventory_retail";  //  2 reports (Retail Sales, Stock on Hand — Excel §7)
 
 /** Report kind:
  *  - "lookback" — pivotable by period (Total Sales, Refunds, Bookings, ...)
@@ -121,7 +122,9 @@ export type SelectorName =
     | "selectLeads"              // Reports v33 — shipped
     | "selectCampaigns"          // Reports v33 — shipped
     | "selectMarketingSpend"     // Reports v33 — shipped
-    | "selectStaffAttendanceLog";// Reports v33 — shipped
+    | "selectStaffAttendanceLog" // Reports v33 — shipped
+    | "selectRetailSales"        // Phase E — Retail Sales (Excel §7)
+    | "selectRetailStockOnHand"; // Phase E — Stock on Hand (Excel §7)
 
 // ─── Full report registry entry ───────────────────────────────────────────
 

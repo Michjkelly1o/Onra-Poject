@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import type { ComponentType, SVGProps } from "react";
 import {
-    BankNote01, CreditCard02, Activity, User01, Users01, Announcement01, Star01,
+    BankNote01, CreditCard02, Activity, User01, Users01, Announcement01, Star01, ShoppingBag01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { isReportCategoryDisabled, isReportSlugDisabled } from "@/config/feature-flags";
@@ -153,6 +153,17 @@ const CATEGORIES: ReportCategory[] = [
             { slug: "promo-redemptions",      label: "Promotion Redemptions"  },
             { slug: "referrals",              label: "Referral Report"        },
             { slug: "acquisition-efficiency", label: "Acquisition Efficiency" },
+        ],
+    },
+    {
+        id: "inventory_retail",
+        title: "Inventory / Retail",
+        description:
+            "Retail sales, gross margin, attachment rate, and current stock on hand.",
+        icon: ShoppingBag01,
+        items: [
+            { slug: "retail-sales",         label: "Retail Sales"  },
+            { slug: "retail-stock-on-hand", label: "Stock on Hand" },
         ],
     },
 ];

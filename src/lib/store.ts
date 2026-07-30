@@ -169,6 +169,15 @@ import {
     marketing_campaign_stats as SEED_MARKETING_CAMPAIGN_STATS,
     marketing_spend as SEED_MARKETING_SPEND,
     import_history as SEED_IMPORT_HISTORY,
+    // Inventory / Retail (2026-07-29, Phase A)
+    retail_categories as SEED_RETAIL_CATEGORIES,
+    retail_products as SEED_RETAIL_PRODUCTS,
+    retail_stock as SEED_RETAIL_STOCK,
+    retail_stock_adjustments as SEED_RETAIL_STOCK_ADJUSTMENTS,
+    type RetailCategory as SeedRetailCategory,
+    type RetailProduct as SeedRetailProduct,
+    type RetailStock as SeedRetailStock,
+    type RetailStockAdjustment as SeedRetailStockAdjustment,
     type Lead,
     type MarketingCampaignStat,
     type MarketingSpend,
@@ -2097,7 +2106,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee";
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -2165,7 +2174,96 @@ export interface CustomerTransaction {
      *  the credit to the customer's wallet. Absent / 0 = no credit was
      *  used and refunds don't touch the wallet. */
     accountCreditAppliedAed?: number;
+    // ── Retail line-item snapshot (Phase A groundwork, 2026-07-29) ──────
+    // Populated for the retail line items at sale time so past receipts
+    // render exactly as sold even after product edits / archives (client
+    // Q9 answer). Only `kind: "membership" | "package" | ...` today; the
+    // retail kind lands with Phase D's POS integration.
+    /** Retail product id at sale time. Enables Retail Sales report's
+     *  category resolution (sku → current category, snapshot fallback). */
+    retailProductId?: string;
+    productSnapshotName?: string;
+    productSnapshotSku?: string;
+    productSnapshotPriceAed?: number;
+    productSnapshotUnitCostAed?: number;
+    /** Sale quantity. Retail lines can have qty > 1; existing kinds are
+     *  always qty 1. */
+    quantity?: number;
+    /** Branch the sale rang up at — needed for Retail Sales report's
+     *  branch filter + Stock on Hand's per-branch drilldown. */
+    branchIdAtSale?: string;
 }
+
+// ─── Inventory / Retail — Phase A store shape (2026-07-29) ──────────────────
+// Camelcase mirror of the snake_case seed types in `_types.ts`. Additive —
+// four new slices on AppState; no existing type is reshaped.
+
+/** Broad grouping for retail products. Renaming a category cascades to POS
+ *  filter chips + report grouping labels via the same "label-lookup by id"
+ *  pattern the follow-up stages use. */
+export interface RetailCategory {
+    id: string;
+    label: string;
+    imageUrl?: string;
+    status: "active" | "inactive";
+    createdAt: string;
+}
+
+/** Studio-global retail product. Stock is per-branch (see `RetailStock`),
+ *  not on this record. */
+export interface RetailProduct {
+    id: string;
+    name: string;
+    sku: string;
+    categoryId: string;
+    description?: string;
+    priceAed: number;
+    unitCostAed: number;
+    reorderThreshold: number;
+    imageUrl?: string;
+    status: "active" | "inactive" | "archived";
+    createdAt: string;
+    updatedAt?: string;
+}
+
+/** One row per (product × branch). `unitsOnHand` decrements on POS sale,
+ *  increments on receive / refund. Every mutation writes a matching
+ *  `RetailStockAdjustment` in the same `set()`. */
+export interface RetailStock {
+    id: string;
+    productId: string;
+    branchId: string;
+    unitsOnHand: number;
+    lastAdjustedAt?: string;
+    lastReceivedAt?: string;
+}
+
+/** Audit log — every stock delta writes a row. The Stock on Hand report
+ *  computes Units received / Sell-through % / Stock turnover × from this
+ *  slice + a period window. */
+export interface RetailStockAdjustment {
+    id: string;
+    productId: string;
+    branchId: string;
+    delta: number;
+    kind: "sale" | "receive" | "adjust" | "loss" | "refund";
+    reason?: string;
+    sourceTransactionId?: string;
+    createdBy: string;
+    createdAt: string;
+}
+
+/** Reason picker options for the future Configure-stock modal. Kept as a
+ *  const-union so consumers can share the same list without duplicating
+ *  strings. Phase A defines it; Phase B wires it into the modal. */
+export const RETAIL_ADJUST_REASONS = [
+    "Received shipment",
+    "Manual adjustment",
+    "Lost",
+    "Damaged",
+    "Reconciliation",
+] as const;
+export type RetailAdjustReason = typeof RETAIL_ADJUST_REASONS[number];
 
 /** Class rating — same ID-only ref pattern as ClassBooking. */
 export interface ClassRating {
@@ -2226,7 +2324,9 @@ export interface AuditLogEntry {
         | "service"        // Services module — appointment templates (Phase 1+)
         | "appointment"    // Services module — concrete appointments (Phase 4)
         | "shift"          // Staff & shift module — shifts CRUD
-        | "blocked_time";  // Staff & shift module — blocked time CRUD
+        | "blocked_time"   // Staff & shift module — blocked time CRUD
+        | "retail_product" // Inventory / Retail Phase A — product CRUD + status flips
+        | "retail_category"; // Inventory / Retail Phase A — category CRUD
     targetId: string;
     /** Display name of the target — read at write time and frozen here so
      *  the audit row survives even if the target is later renamed / deleted. */
@@ -2240,7 +2340,7 @@ export interface AuditLogEntry {
 
 export interface PurchaseLineItem {
     productId: string;
-    productType: "membership" | "package" | "gift_card";
+    productType: "membership" | "package" | "gift_card" | "retail";
     name: string;
     unitPrice: number;
     quantity: number;
@@ -2268,6 +2368,11 @@ export interface PendingPurchase {
     /** Where to redirect after the checkout flow completes. Defaults to the
      *  class detail page when classScheduleId is set; POS sets this to "/admin/pos". */
     returnTo?: string;
+    /** v83 audit-1 (2026-07-29) — POS-selected sale branch, threaded through
+     *  the checkout flow to applyPurchase. Falsy = no override (buyer's home
+     *  branch is used). Only retail line items honour this; membership /
+     *  package / gift-card flows are branch-agnostic in the current model. */
+    saleBranchId?: string;
 }
 
 // ─── SCHEDULE_INSTRUCTORS — built from staff_profiles seed ──────────────────
@@ -2285,6 +2390,33 @@ export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = SEED_STAFF_PROFILES.ma
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const WEEKDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+/** v83 audit-1 (2026-07-29) — human-readable descriptor for the customer
+ *  patch shape `updateCustomer` receives, used by the audit-log entry.
+ *  Recognises the well-known fields the profile / Follow-up settings
+ *  panel edit; anything else collapses to the generic label. */
+function describeCustomerPatch(patch: Record<string, unknown>): string {
+    const keys = Object.keys(patch);
+    if (keys.length === 0) return "Edited customer profile";
+    if (keys.length === 1) {
+        switch (keys[0]) {
+            // v83 audit-2 (2026-07-29) — distinguish "unassign" (patch
+            // value is undefined / empty string) from "reassign" so the
+            // audit trail reads honestly.
+            case "assignedTo":      return patch.assignedTo ? "Reassigned customer" : "Unassigned customer";
+            case "followUpStatus":  return "Updated follow-up status";
+            case "sourceId":
+            case "marketingSource": return "Updated customer source";
+            case "isVip":           return (patch.isVip ? "Marked customer VIP" : "Removed VIP");
+            case "notes":           return "Updated customer notes";
+            case "assignedBranchIds":
+            case "branchId":        return "Updated customer branch access";
+            case "planKind":
+            case "planName":        return "Updated customer plan";
+        }
+    }
+    return "Edited customer profile";
+}
 
 function dateLabelFromISO(iso: string): string {
     const d = new Date(iso + "T00:00:00Z");
@@ -3765,6 +3897,69 @@ const INITIAL_CUSTOMER_AGREEMENTS: CustomerAgreement[] = SEED_CUSTOMER_AGREEMENT
 const INITIAL_CUSTOMER_REFERRALS: CustomerReferral[] = SEED_CUSTOMER_REFERRALS.map(customerReferralFromSeed);
 const INITIAL_WALLET_TRANSACTIONS: WalletTransaction[] = SEED_WALLET_TRANSACTIONS.map(walletTransactionFromSeed);
 
+// ─── Inventory / Retail seed adapters (Phase A, 2026-07-29) ─────────────────
+// Snake_case seed → camelCase store shape. Same shape as class-category /
+// membership adapters above; kept next to the other customer-adjacent
+// initial-state builders for locality.
+
+function retailCategoryFromSeed(c: SeedRetailCategory): RetailCategory {
+    return {
+        id: c.id,
+        label: c.label,
+        imageUrl: c.image_url,
+        status: c.status,
+        createdAt: c.created_at,
+    };
+}
+
+function retailProductFromSeed(p: SeedRetailProduct): RetailProduct {
+    return {
+        id: p.id,
+        name: p.name,
+        sku: p.sku,
+        categoryId: p.category_id,
+        description: p.description,
+        priceAed: p.price_aed,
+        unitCostAed: p.unit_cost_aed,
+        reorderThreshold: p.reorder_threshold,
+        imageUrl: p.image_url,
+        status: p.status,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+    };
+}
+
+function retailStockFromSeed(s: SeedRetailStock): RetailStock {
+    return {
+        id: s.id,
+        productId: s.product_id,
+        branchId: s.branch_id,
+        unitsOnHand: s.units_on_hand,
+        lastAdjustedAt: s.last_adjusted_at,
+        lastReceivedAt: s.last_received_at,
+    };
+}
+
+function retailStockAdjustmentFromSeed(a: SeedRetailStockAdjustment): RetailStockAdjustment {
+    return {
+        id: a.id,
+        productId: a.product_id,
+        branchId: a.branch_id,
+        delta: a.delta,
+        kind: a.kind,
+        reason: a.reason,
+        sourceTransactionId: a.source_transaction_id,
+        createdBy: a.created_by,
+        createdAt: a.created_at,
+    };
+}
+
+const INITIAL_RETAIL_CATEGORIES: RetailCategory[] = SEED_RETAIL_CATEGORIES.map(retailCategoryFromSeed);
+const INITIAL_RETAIL_PRODUCTS: RetailProduct[] = SEED_RETAIL_PRODUCTS.map(retailProductFromSeed);
+const INITIAL_RETAIL_STOCK: RetailStock[] = SEED_RETAIL_STOCK.map(retailStockFromSeed);
+const INITIAL_RETAIL_STOCK_ADJUSTMENTS: RetailStockAdjustment[] =
+    SEED_RETAIL_STOCK_ADJUSTMENTS.map(retailStockAdjustmentFromSeed);
+
 /** Phase 3 — initial branding now derives from the centralized seed at
  *  `src/data/mock/branding_settings.ts`. The deep-copy below ensures runtime
  *  mutations through `updateBrandingSettings` never leak back into the seed
@@ -3870,6 +4065,81 @@ export interface AppState {
      *  for now the slice is seeded from `import_history.ts`. Snake-case
      *  fields, matching the leads / marketingCampaignStats convention. */
     importHistory: ImportHistorySeed[];
+    // ── Inventory / Retail slices (Phase A, 2026-07-29) ─────────────────
+    // Additive — no existing slice reshaped. UI wire-up starts in Phase B
+    // (list page swaps its hardcoded rows for real store data). See
+    // new-prd/inventory-retail-implementation-plan.md for the full plan.
+    /** Retail categories (Apparel, Supplements, Equipment, Accessories,
+     *  Recovery). Editable in Settings → Operations → Retail categories
+     *  (Phase C). Renaming cascades to POS filter chips + report grouping
+     *  labels via label-lookup by id. */
+    retailCategories: RetailCategory[];
+    /** Studio-global retail-product catalog. Stock is per-branch
+     *  (`retailStock`); this slice carries the SKU / price / cost /
+     *  reorder threshold. */
+    retailProducts: RetailProduct[];
+    /** One row per (product × branch). POS sale decrements `unitsOnHand`
+     *  and writes a matching `retailStockAdjustment` in the same set(). */
+    retailStock: RetailStock[];
+    /** Audit trail — every stock delta writes a row. Feeds the Stock on
+     *  Hand report's Units received / Sell-through % / Stock turnover ×
+     *  columns for a period window. */
+    retailStockAdjustments: RetailStockAdjustment[];
+
+    // ── Retail actions (Phase A) ─────────────────────────────────────────
+    /** Create a retail category. Returns the generated id, or `null` when
+     *  the label is empty or collides with an existing category (case-
+     *  insensitive). Emits an audit-log entry. */
+    addRetailCategory: (input: { label: string; imageUrl?: string }) => string | null;
+    /** Patch an existing retail category (label / image / status). Returns
+     *  `false` when the id is missing or the new label collides. */
+    updateRetailCategory: (id: string, patch: Partial<Omit<RetailCategory, "id" | "createdAt">>) => boolean;
+    /** Delete a retail category. Blocked (returns `false`) when any
+     *  non-archived product still references it — same guard the class-
+     *  category delete uses. */
+    deleteRetailCategory: (id: string) => boolean;
+    /** Read-only probe: can this category be deleted right now?
+     *  Returns `{ deletable: true }` OR `{ deletable: false, reason: "in_use", usageCount }`. */
+    canDeleteRetailCategory: (id: string) => { deletable: true } | { deletable: false; reason: "in_use"; usageCount: number };
+    /** Create a retail product. Returns the generated id, or `null` when
+     *  SKU is blank or collides with an existing active/inactive product. */
+    addRetailProduct: (input: Omit<RetailProduct, "id" | "createdAt" | "updatedAt"> & { id?: string }) => string | null;
+    /** Patch an existing retail product. Bumps `updatedAt`. */
+    updateRetailProduct: (id: string, patch: Partial<Omit<RetailProduct, "id" | "createdAt">>) => boolean;
+    /** Bulk status flip (active / inactive / archived). Follows the same
+     *  Archive → Reactivate → Recover ladder every other list uses. */
+    setRetailProductStatus: (ids: string[], status: RetailProduct["status"]) => void;
+    /** Hard-delete retail products. Blocked (returned in `blocked[]`) when
+     *  ANY transaction ever referenced them (snapshot fields preserve the
+     *  receipt history — deleting would break past receipts otherwise). */
+    deleteRetailProducts: (ids: string[]) => { deleted: string[]; blocked: string[] };
+    /** Read-only probe for a single product's delete eligibility. */
+    canDeleteRetailProduct: (id: string) => { deletable: true } | { deletable: false; reason: "has_history"; transactionCount: number };
+    /** Adjust stock for a (product × branch) — negative delta = sale/loss,
+     *  positive = receive/refund/positive-adjust. Writes both the
+     *  `retailStock` row's `unitsOnHand` AND a matching `retailStockAdjustment`
+     *  entry in the same `set()` so the audit log stays in lockstep with
+     *  the running balance. Returns the generated adjustment id. Creates a
+     *  new `retailStock` row if none exists for the pair (e.g. product
+     *  seeded after the stock table). Clamps at 0 for negative deltas so
+     *  demo data can't go negative. */
+    adjustRetailStock: (input: {
+        productId: string;
+        branchId: string;
+        delta: number;
+        kind: RetailStockAdjustment["kind"];
+        reason?: string;
+        sourceTransactionId?: string;
+    }) => string;
+    /** Thin convenience wrapper on `adjustRetailStock` with kind = "receive"
+     *  and delta forced positive. */
+    receiveRetailStock: (input: {
+        productId: string;
+        branchId: string;
+        units: number;
+        reason?: string;
+    }) => string;
+
     /** Live pay rates — powers /admin/staff/pay-rate list/detail/payroll (PRD 10 §6). */
     payRates: PayRate[];
     /** Live instructors — the pay rate detail page's "Assigned instructor" tab
@@ -4785,6 +5055,13 @@ export interface AppState {
          *  Callers pass min(walletBalance, orderTotalPostDiscount) so the debit
          *  never exceeds the sale or the balance. */
         accountCreditAppliedAed?: number,
+        /** v83 audit-1 (2026-07-29) — POS-selected sale branch. Membership /
+         *  package flows default to the buyer's home branch (unchanged), but
+         *  RETAIL lines MUST decrement stock at the physical branch that
+         *  processed the sale, not the customer's home branch. Falsy →
+         *  falls back to `buyer.branchId ?? DEFAULT_BRANCH_ID`. Only the
+         *  retail-line stock loop reads this. */
+        saleBranchIdOverride?: string,
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -5553,6 +5830,13 @@ export const useAppStore = create<AppState>()(persist(
     marketingSpend: [...SEED_MARKETING_SPEND],
     staffAttendanceLog: deriveStaffAttendanceLog(INITIAL_SCHEDULES),
     importHistory: [...SEED_IMPORT_HISTORY],
+    // Inventory / Retail (Phase A, 2026-07-29) — 5 categories · 15 products ·
+    // 45 per-branch stock rows · 30 audit-log rows. Additive slices; nothing
+    // else in the app reads them until Phase B.
+    retailCategories:       INITIAL_RETAIL_CATEGORIES.map(c => ({ ...c })),
+    retailProducts:         INITIAL_RETAIL_PRODUCTS.map(p => ({ ...p })),
+    retailStock:            INITIAL_RETAIL_STOCK.map(s => ({ ...s })),
+    retailStockAdjustments: INITIAL_RETAIL_STOCK_ADJUSTMENTS.map(a => ({ ...a })),
     payRates: [...INITIAL_PAY_RATES],
     instructors: [...INITIAL_INSTRUCTORS_SYNCED],
     payrollEntries: [...INITIAL_PAYROLL_ENTRIES],
@@ -7568,11 +7852,32 @@ export const useAppStore = create<AppState>()(persist(
     },
     updateCustomer: (id, patch) => {
         const target = get().customers.find(c => c.id === id);
+        // v83 audit-1 (2026-07-29) — when `assignedTo` changes, cascade
+        // the new owner into every OPEN follow-up task for this customer
+        // in the same set() so the dashboard "Leads to follow up" widget
+        // routes existing open tasks to the new owner immediately.
+        // Closed tasks keep their historical assigneeId (audit trail).
+        const assignedToChanged =
+            Object.prototype.hasOwnProperty.call(patch, "assignedTo") &&
+            !!target &&
+            target.assignedTo !== patch.assignedTo;
         set((state) => ({
             customers: state.customers.map(c => c.id === id ? { ...c, ...patch } : c),
+            followUpTasks: assignedToChanged
+                ? state.followUpTasks.map(t =>
+                    t.customerId === id && t.status === "open"
+                        ? { ...t, assigneeId: patch.assignedTo }
+                        : t,
+                  )
+                : state.followUpTasks,
         }));
         if (target) {
-            get().recordAudit("Edited customer profile", "customer", id, `${target.firstName} ${target.lastName}`.trim());
+            // v83 audit-1 (2026-07-29) — describe WHAT changed, not just
+            // "Edited customer profile", so the audit trail is usable.
+            // Rely on well-known patch keys; unknown keys collapse into
+            // a generic "profile fields" descriptor.
+            const label = describeCustomerPatch(patch);
+            get().recordAudit(label, "customer", id, `${target.firstName} ${target.lastName}`.trim());
         }
     },
     setCustomerStatus: (ids, status) => {
@@ -8259,6 +8564,12 @@ export const useAppStore = create<AppState>()(persist(
         // its own `isRefundable` check, the store rejects the refund
         // on non-refundable rows (e.g. cancellation-penalty fees).
         if (target && target.isRefundable === false) return;
+        // v83 audit-1 (2026-07-29) — capture whether the set() below will
+        // actually flip the row. The outer if(target) block runs side
+        // effects (wallet credit-back, retail stock restore); those must
+        // only fire ONCE. Double-clicking Refund on the same transaction
+        // otherwise re-credits the wallet and restores stock a second time.
+        const willFlip = !!target && target.status === "complete" && target.isRefundable !== false;
         set(state => ({
             customerTransactions: state.customerTransactions.map(t =>
                 t.id === id && t.status === "complete" && t.isRefundable !== false
@@ -8278,7 +8589,7 @@ export const useAppStore = create<AppState>()(persist(
                     : t,
             ),
         }));
-        if (target) {
+        if (target && willFlip) {
             const targetCustomer = get().customers.find(c => c.id === target.customerId);
             const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
             get().recordAudit(`Refunded ${customerName}'s payment`, "customer", target.customerId, target.name, { amount: target.amountAed, method });
@@ -8294,6 +8605,20 @@ export const useAppStore = create<AppState>()(persist(
                     referenceType: "refund",
                     referenceId: target.id,
                     silent: true,
+                });
+            }
+            // Retail refund (Phase D.2, 2026-07-29) — restore units to the
+            // branch that sold them, and append a matching "refund" audit-log
+            // row keyed to the original transaction so the Stock on Hand
+            // report's Sell-through % nets correctly.
+            if (target.kind === "retail" && target.retailProductId && target.branchIdAtSale && target.quantity) {
+                get().adjustRetailStock({
+                    productId: target.retailProductId,
+                    branchId: target.branchIdAtSale,
+                    delta: target.quantity,
+                    kind: "refund",
+                    reason: `Refunded sale ${target.id}`,
+                    sourceTransactionId: target.id,
                 });
             }
         }
@@ -8661,7 +8986,16 @@ export const useAppStore = create<AppState>()(persist(
             const newLabel = lookupStageLabel(stages, "stg_new", "New");
             const contactedLabel = lookupStageLabel(stages, "stg_contacted", "Contacted");
             const c = get().customers.find(cx => cx.id === target.customerId);
-            if (c && c.followUpStatus === newLabel) {
+            // v83 audit-1 fix (2026-07-29) — seeded Leads have
+            // `followUpStatus === undefined`; the UI renders "New" via a
+            // `?? "New"` fallback so the admin sees "New" and the
+            // "Reached out" outcome should advance them to Contacted.
+            // The prior guard only matched the LITERAL "New" string and
+            // silently no-op'd on undefined. Now treat undefined as "New"
+            // so the outcome actually moves the pill and the toast copy
+            // matches reality.
+            const currentEffective = c?.followUpStatus ?? newLabel;
+            if (c && currentEffective === newLabel) {
                 set(state => ({
                     customers: state.customers.map(cx =>
                         cx.id === target.customerId
@@ -8708,8 +9042,15 @@ export const useAppStore = create<AppState>()(persist(
         );
         if (dup) return false;
         const oldLabel = target.label;
+        // v83 audit-1 (2026-07-29) — also rewrite any `customer.marketingSource`
+        // free-text copy that matches the OLD label so the display fallback
+        // (used when `sourceId` isn't set, see CustomerFollowUpsTab
+        // `sourceLabelForPanel`) doesn't show the stale name after rename.
         set(state => ({
             leadSources: state.leadSources.map(s => (s.id === id ? { ...s, label: clean } : s)),
+            customers: state.customers.map(c =>
+                c.marketingSource === oldLabel ? { ...c, marketingSource: clean } : c,
+            ),
         }));
         get().recordAudit(`Renamed lead source "${oldLabel}" → "${clean}"`, "settings", id, clean);
         return true;
@@ -8823,6 +9164,238 @@ export const useAppStore = create<AppState>()(persist(
             set(s => ({ packages: s.packages.filter(p => !deletedSet.has(p.id)) }));
         }
         return { deleted, blocked };
+    },
+
+    // ── Inventory / Retail (Phase A, 2026-07-29) ────────────────────────────
+    // Additive action set; no existing action changed. Every mutation emits
+    // a recordAudit entry so the Settings → Operations activity log surfaces
+    // retail work alongside other CRUD.
+
+    addRetailCategory: (input) => {
+        const label = input.label.trim();
+        if (!label) return null;
+        const dup = get().retailCategories.some(
+            c => c.label.toLowerCase() === label.toLowerCase(),
+        );
+        if (dup) return null;
+        const id = `retail_cat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const next: RetailCategory = {
+            id,
+            label,
+            imageUrl: input.imageUrl,
+            status: "active",
+            createdAt: new Date().toISOString(),
+        };
+        set(state => ({ retailCategories: [...state.retailCategories, next] }));
+        get().recordAudit("Created retail category", "retail_category", id, label);
+        return id;
+    },
+    updateRetailCategory: (id, patch) => {
+        const target = get().retailCategories.find(c => c.id === id);
+        if (!target) return false;
+        if (patch.label !== undefined) {
+            const clean = patch.label.trim();
+            if (!clean) return false;
+            const dup = get().retailCategories.some(
+                c => c.id !== id && c.label.toLowerCase() === clean.toLowerCase(),
+            );
+            if (dup) return false;
+            patch = { ...patch, label: clean };
+        }
+        set(state => ({
+            retailCategories: state.retailCategories.map(c =>
+                c.id === id ? { ...c, ...patch } : c,
+            ),
+        }));
+        get().recordAudit("Edited retail category", "retail_category", id, patch.label ?? target.label);
+        return true;
+    },
+    canDeleteRetailCategory: (id) => {
+        const usageCount = get().retailProducts.filter(
+            p => p.categoryId === id && p.status !== "archived",
+        ).length;
+        if (usageCount > 0) return { deletable: false, reason: "in_use" as const, usageCount };
+        return { deletable: true as const };
+    },
+    deleteRetailCategory: (id) => {
+        const target = get().retailCategories.find(c => c.id === id);
+        if (!target) return false;
+        const gate = get().canDeleteRetailCategory(id);
+        if (!gate.deletable) return false;
+        set(state => ({ retailCategories: state.retailCategories.filter(c => c.id !== id) }));
+        get().recordAudit("Deleted retail category", "retail_category", id, target.label);
+        return true;
+    },
+
+    addRetailProduct: (input) => {
+        const sku = input.sku.trim();
+        const name = input.name.trim();
+        if (!sku || !name) return null;
+        // SKU is unique across active + inactive rows; archived rows are
+        // ignored so retiring a product doesn't lock its SKU forever.
+        const dup = get().retailProducts.some(
+            p => p.status !== "archived" && p.sku.toLowerCase() === sku.toLowerCase(),
+        );
+        if (dup) return null;
+        const id = input.id ?? `retail_prod_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const now = new Date().toISOString();
+        const next: RetailProduct = {
+            ...input,
+            id,
+            name,
+            sku,
+            createdAt: now,
+            updatedAt: now,
+        };
+        set(state => ({ retailProducts: [...state.retailProducts, next] }));
+        get().recordAudit("Created retail product", "retail_product", id, name);
+        return id;
+    },
+    updateRetailProduct: (id, patch) => {
+        const target = get().retailProducts.find(p => p.id === id);
+        if (!target) return false;
+        if (patch.sku !== undefined) {
+            const cleanSku = patch.sku.trim();
+            if (!cleanSku) return false;
+            const dup = get().retailProducts.some(
+                p => p.id !== id && p.status !== "archived" && p.sku.toLowerCase() === cleanSku.toLowerCase(),
+            );
+            if (dup) return false;
+            patch = { ...patch, sku: cleanSku };
+        }
+        const now = new Date().toISOString();
+        set(state => ({
+            retailProducts: state.retailProducts.map(p =>
+                p.id === id ? { ...p, ...patch, updatedAt: now } : p,
+            ),
+        }));
+        get().recordAudit("Edited retail product", "retail_product", id, target.name);
+        return true;
+    },
+    setRetailProductStatus: (ids, status) => {
+        const targets = get().retailProducts.filter(p => ids.includes(p.id));
+        if (targets.length === 0) return;
+        const now = new Date().toISOString();
+        set(state => {
+            const idSet = new Set(ids);
+            return {
+                retailProducts: state.retailProducts.map(p =>
+                    idSet.has(p.id) ? { ...p, status, updatedAt: now } : p,
+                ),
+            };
+        });
+        const verb = status === "active" ? "Reactivated" : status === "inactive" ? "Deactivated" : "Archived";
+        targets.forEach(t =>
+            get().recordAudit(`${verb} retail product`, "retail_product", t.id, t.name, { status }),
+        );
+    },
+    canDeleteRetailProduct: (id) => {
+        // Hard delete blocked when ANY historical transaction referenced
+        // the product — the receipt-snapshot fields would otherwise dangle
+        // and break past receipts. Archive-only for products with history.
+        const txnCount = get().customerTransactions.filter(
+            t => t.retailProductId === id,
+        ).length;
+        if (txnCount > 0) return { deletable: false, reason: "has_history" as const, transactionCount: txnCount };
+        return { deletable: true as const };
+    },
+    deleteRetailProducts: (ids) => {
+        const state = get();
+        const deleted: string[] = [];
+        const blocked: string[] = [];
+        for (const id of ids) {
+            const gate = state.canDeleteRetailProduct(id);
+            if (gate.deletable) deleted.push(id);
+            else blocked.push(id);
+        }
+        if (deleted.length > 0) {
+            const deletedSet = new Set(deleted);
+            const deletedTargets = state.retailProducts.filter(p => deletedSet.has(p.id));
+            set(s => ({
+                retailProducts: s.retailProducts.filter(p => !deletedSet.has(p.id)),
+                // Also drop the per-branch stock rows + adjustment history
+                // for a fully-deleted product — they'd be orphans otherwise
+                // (the block above already refused deletion when history
+                // exists, so no receipt is losing its snapshot data).
+                retailStock: s.retailStock.filter(st => !deletedSet.has(st.productId)),
+                retailStockAdjustments: s.retailStockAdjustments.filter(
+                    a => !deletedSet.has(a.productId),
+                ),
+            }));
+            deletedTargets.forEach(t =>
+                get().recordAudit("Deleted retail product", "retail_product", t.id, t.name),
+            );
+        }
+        return { deleted, blocked };
+    },
+
+    adjustRetailStock: (input) => {
+        const { productId, branchId, delta, kind, reason, sourceTransactionId } = input;
+        const now = new Date().toISOString();
+        const adjId = `retail_adj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const currentUserId = get().currentUser?.staff_id ?? get().currentUser?.id ?? "unknown";
+        const state = get();
+        const existing = state.retailStock.find(
+            s => s.productId === productId && s.branchId === branchId,
+        );
+        const currentUnits = existing?.unitsOnHand ?? 0;
+        // Clamp negative deltas at 0 so demo data can't drift below zero.
+        const nextUnits = Math.max(0, currentUnits + delta);
+        // Real delta applied — may differ from requested `delta` when the
+        // clamp fires. Kept honest in the audit log for future debugging.
+        const appliedDelta = nextUnits - currentUnits;
+        const adjustment: RetailStockAdjustment = {
+            id: adjId,
+            productId,
+            branchId,
+            delta: appliedDelta,
+            kind,
+            reason,
+            sourceTransactionId,
+            createdBy: currentUserId,
+            createdAt: now,
+        };
+        set(s => {
+            // Update or insert the stock row + append the adjustment in a
+            // single set() so the running balance + audit log commit
+            // atomically. React sees one consistent state.
+            const stockRows = existing
+                ? s.retailStock.map(row =>
+                    row.id === existing.id
+                        ? {
+                            ...row,
+                            unitsOnHand: nextUnits,
+                            lastAdjustedAt: now,
+                            lastReceivedAt: kind === "receive" ? now : row.lastReceivedAt,
+                        }
+                        : row,
+                )
+                : [
+                    ...s.retailStock,
+                    {
+                        id: `retail_stock_${productId}_${branchId}_${Date.now()}`,
+                        productId,
+                        branchId,
+                        unitsOnHand: nextUnits,
+                        lastAdjustedAt: now,
+                        lastReceivedAt: kind === "receive" ? now : undefined,
+                    },
+                ];
+            return {
+                retailStock: stockRows,
+                retailStockAdjustments: [...s.retailStockAdjustments, adjustment],
+            };
+        });
+        return adjId;
+    },
+    receiveRetailStock: (input) => {
+        return get().adjustRetailStock({
+            productId: input.productId,
+            branchId: input.branchId,
+            delta: Math.max(0, Math.abs(input.units)),
+            kind: "receive",
+            reason: input.reason ?? "Received shipment",
+        });
     },
 
     // ── Gift card designs ──────────────────────────────────────────────────
@@ -10448,7 +11021,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -10725,6 +11298,96 @@ export const useAppStore = create<AppState>()(persist(
                 })
                 : state.customerPlans;
 
+            // ─── Retail line items (Phase D.2, 2026-07-29) ────────────────
+            // Retail sales generate a "retail"-kind CustomerTransaction with
+            // the snapshot fields populated (name / SKU / price / unit cost
+            // at sale time), and decrement per-branch stock in the same set()
+            // so a matching adjustment log row appears atomically. Snapshot
+            // fields ensure past receipts render exactly as sold even after
+            // product edits or archival.
+            const retailItems = items.filter(it => it.productType === "retail");
+            const nextRetailStock = state.retailStock.map(s => ({ ...s }));
+            const nextRetailAdjustments: RetailStockAdjustment[] = [];
+            const currentUserId = state.currentUser?.staff_id ?? state.currentUser?.id ?? "unknown";
+            // v83 audit-1 (2026-07-29) — retail stock must decrement at the
+            // PHYSICAL sale branch, not the buyer's home branch. Falls back
+            // to the buyer's home branch when the caller doesn't pass an
+            // override (customer-portal + other non-POS surfaces).
+            const retailBranchId = saleBranchIdOverride || saleBranchId;
+            items.forEach((it, idx) => {
+                if (it.productType !== "retail") return;
+                const product = state.retailProducts.find(p => p.id === it.productId);
+                if (!product) return;
+                const qty = Math.max(1, Math.floor(it.quantity));
+                const lineGross = it.unitPrice * qty;
+                const txnId = `txn_sale_${stamp}_${idx}`;
+                // Tax handling for retail lands as a follow-up — the TaxRule
+                // category union doesn't include "retail" yet. Retail sales
+                // currently write with no tax rule (subtotal = total).
+                const txnExtra: Partial<CustomerTransaction> = {};
+                const source = paymentSource ?? "pos";
+                const cashierStaffId = source === "customer_portal" ? undefined : sellerStaffId;
+                newTransactions.push({
+                    id: txnId,
+                    customerId,
+                    branchId: retailBranchId,
+                    kind: "retail",
+                    productId: it.productId,
+                    name: it.name,
+                    amountAed: lineGross,
+                    ...txnExtra,
+                    status: "complete",
+                    paymentMethod: "card",
+                    paymentSource: source,
+                    transactionType: "sale",
+                    staffId: cashierStaffId,
+                    createdAtISO: nowISO,
+                    // ── Retail snapshot ──
+                    retailProductId: product.id,
+                    productSnapshotName: product.name,
+                    productSnapshotSku: product.sku,
+                    productSnapshotPriceAed: product.priceAed,
+                    productSnapshotUnitCostAed: product.unitCostAed,
+                    quantity: qty,
+                    branchIdAtSale: retailBranchId,
+                });
+                // Stock decrement — clamped at 0. Even if the cart lets the
+                // admin push past on-hand (shouldn't happen — the disabled
+                // "Out of stock" gate is on the card), we never write negative.
+                const stockRow = nextRetailStock.find(s => s.productId === product.id && s.branchId === retailBranchId);
+                const currentUnits = stockRow?.unitsOnHand ?? 0;
+                const nextUnits = Math.max(0, currentUnits - qty);
+                const appliedDelta = nextUnits - currentUnits;
+                if (stockRow) {
+                    stockRow.unitsOnHand = nextUnits;
+                    stockRow.lastAdjustedAt = nowISO;
+                } else if (appliedDelta !== 0) {
+                    nextRetailStock.push({
+                        id: `retail_stock_${product.id}_${retailBranchId}_${Date.now()}`,
+                        productId: product.id,
+                        branchId: retailBranchId,
+                        unitsOnHand: nextUnits,
+                        lastAdjustedAt: nowISO,
+                    });
+                }
+                // v83 audit-1 — skip zero-delta rows. When the clamp fires
+                // (stock was already 0 at the sale branch) we don't need a
+                // "sold 0 units" audit-log entry; the sale row on the
+                // transaction still tells the story.
+                if (appliedDelta !== 0) {
+                    nextRetailAdjustments.push({
+                        id: `retail_adj_sale_${stamp}_${idx}`,
+                        productId: product.id,
+                        branchId: retailBranchId,
+                        delta: appliedDelta,
+                        kind: "sale",
+                        sourceTransactionId: txnId,
+                        createdBy: currentUserId,
+                        createdAt: nowISO,
+                    });
+                }
+            });
+
             return {
                 customers,
                 ...(newIssued.length > 0
@@ -10737,6 +11400,12 @@ export const useAppStore = create<AppState>()(persist(
                         : {}),
                 ...(newTransactions.length > 0
                     ? { customerTransactions: [...newTransactions, ...state.customerTransactions] }
+                    : {}),
+                ...(retailItems.length > 0
+                    ? {
+                        retailStock: nextRetailStock,
+                        retailStockAdjustments: [...state.retailStockAdjustments, ...nextRetailAdjustments],
+                    }
                     : {}),
             };
         });
@@ -11412,18 +12081,22 @@ export const useAppStore = create<AppState>()(persist(
         //   independently reached v86 / v87 with different schema + seed
         //   changes; bump to 88 so every persisted snapshot reseeds cleanly
         //   with the UNION of both branches' slices, seeds, and migrations.
-        // v89 (2026-07-30): Ava Wright (customer demo persona) booking data
-        //   simplified — empty Upcoming + exactly 5 curated Past class bookings
-        //   (attended-rated, attended-unrated, cancelled-no-charge,
-        //   cancelled-late, no-show) and a single kept rating. Bump so pre-v89
-        //   snapshots drop her old generated bookings and reseed the curated set.
-        // v90 (2026-07-30): Ava's Past reshaped to 5 across ALL booking types —
-        //   3 class (1 attended-rateable, 2 cancelled) + 2 appointment (private +
-        //   recovery, both Attended + pre-rated). Her generated appointment
-        //   bookings/ratings are stripped and replaced with curated ones; class
-        //   ratings fully dropped (attended class stays rateable). Bump so pre-v90
-        //   snapshots reseed the appointment overrides + drop the old class rating.
-        version: 90,
+        // v89 (2026-07-29) [main / Retail]: Inventory / Retail Phase A — four
+        //   additive store slices (retailCategories · retailProducts · retailStock ·
+        //   retailStockAdjustments) + optional line-item snapshot fields on
+        //   CustomerTransaction. onRehydrateStorage injects the seeds when a slice
+        //   is missing or empty so every browser lands on the same inventory.
+        // v90 (2026-07-30) [customer-experience]: Ava Wright (customer demo persona)
+        //   Past reshaped to exactly 5 across ALL booking types — 3 class
+        //   (1 attended-rateable, 2 cancelled) + 2 appointment (private + recovery,
+        //   both Attended + pre-rated). Empty Upcoming by default. Her generated
+        //   class + appointment bookings/ratings are stripped and replaced with the
+        //   curated set.
+        // v91 (2026-07-30): MERGE of the Retail (main) + customer-experience
+        //   branches — both independently reached v89 / v90 with different slices +
+        //   seeds. Bump to 91 so every persisted snapshot reseeds cleanly with the
+        //   UNION: the retail slices AND the curated Ava bookings (empty Upcoming).
+        version: 91,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -11712,6 +12385,30 @@ export const useAppStore = create<AppState>()(persist(
                     state.classBookings = [...state.classBookings, ...combinedBookings.filter(b => !knownBookingIds.has(b.id))];
                     state.customerTransactions = [...state.customerTransactions, ...combinedTxns.filter(t => !knownTxnIds.has(t.id))];
                 }
+            }
+            // v89 (2026-07-29) — Inventory / Retail Phase A. Pre-v89 snapshots
+            // have no retail slices at all; the version bump forces a
+            // reseed on next hydrate, but we ALSO backfill by id so that a
+            // future partial-persist edge case (any single slice missing
+            // or emptied) restores the seeded rows deterministically.
+            // Same idempotent-by-id pattern as the customer backfill above.
+            if (!Array.isArray(state.retailCategories)) state.retailCategories = [];
+            if (!Array.isArray(state.retailProducts)) state.retailProducts = [];
+            if (!Array.isArray(state.retailStock)) state.retailStock = [];
+            if (!Array.isArray(state.retailStockAdjustments)) state.retailStockAdjustments = [];
+            {
+                const knownCatIds  = new Set(state.retailCategories.map(c => c.id));
+                const knownProdIds = new Set(state.retailProducts.map(p => p.id));
+                const knownStockIds = new Set(state.retailStock.map(s => s.id));
+                const knownAdjIds  = new Set(state.retailStockAdjustments.map(a => a.id));
+                const freshCats  = INITIAL_RETAIL_CATEGORIES.filter(c => !knownCatIds.has(c.id));
+                const freshProds = INITIAL_RETAIL_PRODUCTS.filter(p => !knownProdIds.has(p.id));
+                const freshStock = INITIAL_RETAIL_STOCK.filter(s => !knownStockIds.has(s.id));
+                const freshAdj   = INITIAL_RETAIL_STOCK_ADJUSTMENTS.filter(a => !knownAdjIds.has(a.id));
+                if (freshCats.length > 0)  state.retailCategories = [...state.retailCategories, ...freshCats.map(c => ({ ...c }))];
+                if (freshProds.length > 0) state.retailProducts = [...state.retailProducts, ...freshProds.map(p => ({ ...p }))];
+                if (freshStock.length > 0) state.retailStock = [...state.retailStock, ...freshStock.map(s => ({ ...s }))];
+                if (freshAdj.length > 0)   state.retailStockAdjustments = [...state.retailStockAdjustments, ...freshAdj.map(a => ({ ...a }))];
             }
             // v83 audit fix (2026-07-27) — recompute lifecycleTag for
             // every customer that lacks one. Without this pass, pre-v83

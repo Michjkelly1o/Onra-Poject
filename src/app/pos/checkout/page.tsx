@@ -165,6 +165,7 @@ function POSCheckoutInner() {
             customer.id, pendingPurchase.items, "pos",
             sellerStaffId ?? undefined,
             accountCreditApplied > 0 ? accountCreditApplied : undefined,
+            pendingPurchase.saleBranchId,
         );
         setPendingPurchase(null);
         showToast(

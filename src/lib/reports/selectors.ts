@@ -405,8 +405,21 @@ export function selectTransactionLedger(state: AppState): LedgerRow[] {
     // revenue — exclude them from Total Sales so revenue totals + Excel
     // exports don't get polluted with penalty AED. Same rule applies in
     // `selectPayments` below (payments report also filters them out).
+    //
+    // v83 audit-3 (2026-07-29) — retail transactions ALSO excluded from
+    // the shared ledger. Retail sales flow through a dedicated report
+    // (`selectRetailSales`); if they leaked here every Financial report
+    // (Total Sales, Payments, ARPM, Acquisition Efficiency, Revenue
+    // per Class, Promo Redemptions) would double-count retail on top
+    // of the standalone Retail Sales report, AND the Sale Category
+    // pivot would sprout a stray "retail" bucket that the label maps
+    // don't know about.
     return resolveLedger(state.customerTransactions)
-        .filter(t => t.kind !== "cancellation_penalty" && t.kind !== "freeze_fee")
+        .filter(t =>
+            t.kind !== "cancellation_penalty"
+            && t.kind !== "freeze_fee"
+            && t.kind !== "retail"
+        )
         .map(t => {
             const c = cust(t.customerId);
             return {
@@ -430,8 +443,14 @@ export function selectPayments(state: AppState): PaymentRow[] {
     const loc = makeLocationLookup(state);
     const cust = makeCustomerLookup(state);
 
+    // v83 audit-3 (2026-07-29) — retail sales use their dedicated report
+    // (`selectRetailSales`); excluded here to avoid double-counting.
     return state.customerTransactions
-        .filter(t => t.kind !== "cancellation_penalty" && t.kind !== "freeze_fee")
+        .filter(t =>
+            t.kind !== "cancellation_penalty"
+            && t.kind !== "freeze_fee"
+            && t.kind !== "retail"
+        )
         .map(t => {
         const c = cust(t.customerId);
         const netPayout = t.processorFee != null ? t.amountAed - t.processorFee : undefined;
@@ -980,4 +999,327 @@ export function selectStaffAttendanceLog(state: AppState): StaffAttendanceLogRow
             location: sched ? loc(sched.branchId) : "—",
         };
     });
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Phase E — Inventory / Retail row shapes + selectors (Excel §7)
+// ═════════════════════════════════════════════════════════════════════════
+//
+// Two reports:
+//   • Retail Sales   — one row per POS retail-line transaction. Reads
+//                      customerTransactions filtered to kind === "retail",
+//                      joins customer + branch + category + product for
+//                      display columns. Snapshot fields (name/SKU/price/
+//                      unit-cost) preserved on the transaction line
+//                      guarantee past receipts render exactly as sold.
+//   • Stock on Hand  — one row per retail product. Reads retailProducts,
+//                      joins retailStock for current unitsOnHand per
+//                      branch, and retailStockAdjustments to derive the
+//                      period-window metrics (Units received, Units sold,
+//                      Sell-through %, Stock turnover ×, Last received,
+//                      Last sold).
+
+export interface RetailSalesRow {
+    id: string;
+    /** ISO date the sale was made — pivot period-bucket source. */
+    dateISO: string;
+    transactionNumber: string;
+    /** "sale" | "refund" (refunds carry a negative signedAmount). */
+    transactionType: "sale" | "refund";
+    customerId: string;
+    customerName: string;
+    customerEmail: string;
+    productName: string;
+    productCategory: string;
+    /** Positive for sale, negative for refund. */
+    unitsSold: number;
+    /** unit price = grossSales ÷ |unitsSold|. */
+    unitPrice: number;
+    /** Gross sale value pre-discount, pre-tax. */
+    grossSales: number;
+    /** Discount applied at line level. */
+    discount: number;
+    /** Tax portion (0 for now — retail tax lands in a later commit). */
+    tax: number;
+    /** Net sale value after discount. Sign follows transactionType. */
+    netSales: number;
+    /** Cost per unit (snapshot at sale time). */
+    unitCost: number;
+    /** (netSales − qty × unitCost) ÷ netSales. 0-safe division. */
+    grossMarginPct: number;
+    /** "Yes" when the same customer had another non-retail line on the
+     *  same day (cross-sell / attachment signal). */
+    attachedTo: "Yes" | "No";
+    /** "in-person" | "online" — POS vs customer portal. */
+    salesChannel: "in-person" | "online";
+    /** Empty when online (self-service). */
+    staffId: string;
+    branchId: string;
+    location: string;
+    /** Signed amount for pivot aggregation (matches other Financial
+     *  selectors' convention). Sales positive, refunds negative. */
+    signedAmount: number;
+}
+
+export interface RetailStockOnHandRow {
+    id: string;
+    productName: string;
+    productCategory: string;
+    sku: string;
+    /** Sum of unitsOnHand across every active branch. */
+    unitsOnHand: number;
+    unitCost: number;
+    /** unitsOnHand × unitCost. */
+    stockValue: number;
+    reorderThreshold: number;
+    /** Units received into stock over the last 30 days. */
+    unitsReceivedPeriod: number;
+    /** Units sold over the last 30 days. */
+    unitsSoldPeriod: number;
+    /** unitsSoldPeriod ÷ unitsReceivedPeriod (0-safe). */
+    sellThroughPct: number;
+    /** unitsSoldPeriod ÷ mean(unitsOnHand in period) — approximated as
+     *  unitsSoldPeriod / ((currentOnHand + (currentOnHand + soldPeriod − receivedPeriod)) / 2). */
+    stockTurnover: number;
+    /** Most recent receive-kind adjustment ISO. */
+    lastReceivedDateISO: string;
+    /** Most recent sale-kind adjustment ISO. */
+    lastSoldDateISO: string;
+    /** Fallback location column — retail products are studio-global so
+     *  this reads "All locations" on the flat report. Pivot dimensions
+     *  can drill by category. */
+    location: string;
+    branchId: string;
+}
+
+/** 13. selectRetailSales — flattens every retail transaction (sale AND
+ *  refund) into a row per line item. Columns land Excel-verbatim per
+ *  Report Columns sheet rows 483-503. */
+export function selectRetailSales(state: AppState): RetailSalesRow[] {
+    const loc = makeLocationLookup(state);
+    const cust = makeCustomerLookup(state);
+    const productById = new Map(state.retailProducts.map(p => [p.id, p] as const));
+    const categoryById = new Map(state.retailCategories.map(c => [c.id, c] as const));
+
+    // Group non-retail transactions + class bookings by (customerId ×
+    // YYYY-MM-DD) for the "Attached to" cross-sell signal — a retail line
+    // reads "Yes" when the SAME customer had ANY non-retail activity on
+    // the SAME day.
+    //
+    // v83 audit-2 (2026-07-29) — key dropped from (customer, day, branch)
+    // to (customer, day). H2's applyPurchase fix writes retail lines'
+    // `branchId` as the PHYSICAL sale branch while membership/package
+    // lines still carry the buyer's home branch — so a walk-in at Branch
+    // A buying a membership + a retail item in the same cart would have
+    // mismatched keys and read "attached to = No" even though both items
+    // were on the same ticket. Same-day-same-customer is the honest
+    // signal here; branch was overly strict.
+    const attachmentIndex = new Set<string>();
+    for (const t of state.customerTransactions) {
+        if (t.kind === "retail") continue;
+        if (t.status !== "complete") continue;
+        const day = t.createdAtISO.slice(0, 10);
+        attachmentIndex.add(`${t.customerId}|${day}`);
+    }
+
+    // Class bookings also count as "attached to" — a customer buying a
+    // recovery balm right after their yoga class is the canonical cross-
+    // sell scenario the client wants to measure. Date joins through the
+    // parent classSchedule since bookings don't carry the date directly.
+    const scheduleDateById = new Map(state.classSchedules.map(cs => [cs.id, cs.dateISO] as const));
+    for (const b of state.classBookings) {
+        if (b.status === "cancelled") continue;
+        const scheduleDate = scheduleDateById.get(b.classScheduleId);
+        if (!scheduleDate) continue;
+        const day = scheduleDate.slice(0, 10);
+        attachmentIndex.add(`${b.customerId}|${day}`);
+    }
+
+    const rows: RetailSalesRow[] = [];
+    for (const t of state.customerTransactions) {
+        if (t.kind !== "retail") continue;
+        // Skip void rows (same rule the Financial selectors follow via
+        // resolveLedger — retail-specific selector inlines the check since
+        // retail lines aren't in the ledger resolver's target set today).
+        if (t.transactionType === "void") continue;
+
+        const qty = t.quantity ?? 1;
+        const gross = t.amountAed;
+        const discount = t.discountValue ?? 0;
+        const tax = t.taxAed ?? 0;
+        const net = gross - discount;
+        const unitCost = t.productSnapshotUnitCostAed ?? 0;
+        const totalCost = unitCost * qty;
+        const grossMargin = net > 0 ? (net - totalCost) / net : 0;
+
+        const buyer = cust(t.customerId);
+        const product = productById.get(t.retailProductId ?? "");
+        const category = product
+            ? categoryById.get(product.categoryId)?.label ?? "—"
+            : "—";
+        const productName = t.productSnapshotName ?? product?.name ?? t.name;
+        const customerName = buyer ? `${buyer.firstName} ${buyer.lastName}`.trim() : "—";
+        const customerEmail = buyer?.email ?? "—";
+        const salesChannel = t.paymentSource === "customer_portal" ? "online" as const : "in-person" as const;
+
+        // ── Refund model (v83 audit-1, 2026-07-29) ───────────────────────
+        // Client spec: past months NEVER restated. A refund shows up in
+        // the report as a NEGATIVE row in its OWN refund-date period,
+        // NOT by nulling the original sale row on the original date.
+        //   • Sale     — positive row on t.createdAtISO
+        //   • Refund   — negative row on t.refundedAtISO (only when the
+        //                transaction is refunded)
+        // Note: this treats every retail refund as a "later" refund per
+        // the plan's void-vs-refund model. Same-day voids would need the
+        // settlement timeline we haven't wired yet; refunds within the
+        // same day still surface as a second row, which is close enough
+        // for the demo and never restates the previous period.
+        const isRefunded = t.status === "refunded" || t.transactionType === "refund";
+
+        // Sale row — always emit on the original sale date (positive).
+        const saleDay = t.createdAtISO.slice(0, 10);
+        const saleAttachKey = `${t.customerId}|${saleDay}`;
+        const saleAttached = attachmentIndex.has(saleAttachKey);
+        rows.push({
+            id: t.id,
+            dateISO: saleDay,
+            transactionNumber: t.id,
+            transactionType: "sale",
+            customerId: t.customerId,
+            customerName,
+            customerEmail,
+            productName,
+            productCategory: category,
+            unitsSold: qty,
+            unitPrice: qty > 0 ? gross / qty : 0,
+            grossSales: gross,
+            discount,
+            tax,
+            netSales: net,
+            unitCost,
+            grossMarginPct: grossMargin,
+            attachedTo: saleAttached ? "Yes" : "No",
+            salesChannel,
+            staffId: t.staffId ?? "",
+            branchId: t.branchId,
+            location: loc(t.branchId),
+            signedAmount: net,
+        });
+
+        // Refund row — only when refunded, and only on the refund date so
+        // the previous month never restates.
+        if (isRefunded && t.refundedAtISO) {
+            const refundDay = t.refundedAtISO.slice(0, 10);
+            const refundAttachKey = `${t.customerId}|${refundDay}`;
+            const refundAttached = attachmentIndex.has(refundAttachKey);
+            rows.push({
+                id: `${t.id}:refund`,
+                dateISO: refundDay,
+                transactionNumber: t.id,
+                transactionType: "refund",
+                customerId: t.customerId,
+                customerName,
+                customerEmail,
+                productName,
+                productCategory: category,
+                unitsSold: -qty,
+                unitPrice: qty > 0 ? gross / qty : 0,
+                grossSales: -gross,
+                discount: -discount,
+                tax: -tax,
+                netSales: -net,
+                unitCost,
+                grossMarginPct: grossMargin,
+                attachedTo: refundAttached ? "Yes" : "No",
+                salesChannel,
+                staffId: t.staffId ?? "",
+                branchId: t.branchId,
+                location: loc(t.branchId),
+                signedAmount: -net,
+            });
+        }
+    }
+
+    // Newest-first — matches every other Financial selector's default.
+    return rows.sort((a, b) => b.dateISO.localeCompare(a.dateISO));
+}
+
+/** 14. selectRetailStockOnHand — one row per retail product with current
+ *  stock aggregate + period metrics. Period window is a rolling 30 days
+ *  from "today"; the shell's period picker can filter further downstream
+ *  but the source metrics stay stable. */
+export function selectRetailStockOnHand(state: AppState): RetailStockOnHandRow[] {
+    const categoryById = new Map(state.retailCategories.map(c => [c.id, c] as const));
+
+    // Rolling 30-day window for the period metrics (Units received / sold /
+    // Sell-through / Turnover). Anchored to today.
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const windowStartISO = windowStart.toISOString();
+
+    const rows: RetailStockOnHandRow[] = [];
+    for (const p of state.retailProducts) {
+        // Skip archived products by default. Inactive still surfaces so
+        // admins can see holdover stock on paused SKUs.
+        if (p.status === "archived") continue;
+
+        const stockRowsForProduct = state.retailStock.filter(s => s.productId === p.id);
+        const unitsOnHand = stockRowsForProduct.reduce((sum, s) => sum + s.unitsOnHand, 0);
+        const stockValue = unitsOnHand * p.unitCostAed;
+
+        const adjsForProduct = state.retailStockAdjustments.filter(a => a.productId === p.id);
+        const adjsInWindow = adjsForProduct.filter(a => a.createdAt >= windowStartISO);
+
+        let unitsReceived = 0;
+        let unitsSold = 0;
+        for (const a of adjsInWindow) {
+            if (a.kind === "receive") unitsReceived += a.delta;
+            else if (a.kind === "sale") unitsSold += Math.abs(a.delta);
+            else if (a.kind === "refund") unitsSold -= a.delta; // refund unwinds a sale
+        }
+        unitsSold = Math.max(0, unitsSold);
+        const sellThrough = unitsReceived > 0 ? unitsSold / unitsReceived : 0;
+
+        // Stock turnover approximation — units sold in period ÷ average on
+        // hand. Average on hand = (start + end) / 2 where
+        // start ≈ current + sold − received.
+        const stockAtStart = unitsOnHand + unitsSold - unitsReceived;
+        const avgOnHand = (Math.max(0, stockAtStart) + unitsOnHand) / 2;
+        const turnover = avgOnHand > 0 ? unitsSold / avgOnHand : 0;
+
+        // Most recent receive + sale events (across ALL time, not just
+        // the rolling window — matches the Excel spec's "most recent"
+        // phrasing).
+        const lastReceived = adjsForProduct
+            .filter(a => a.kind === "receive")
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+        const lastSold = adjsForProduct
+            .filter(a => a.kind === "sale")
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+
+        rows.push({
+            id: p.id,
+            productName: p.name,
+            productCategory: categoryById.get(p.categoryId)?.label ?? "—",
+            sku: p.sku,
+            unitsOnHand,
+            unitCost: p.unitCostAed,
+            stockValue,
+            reorderThreshold: p.reorderThreshold,
+            unitsReceivedPeriod: unitsReceived,
+            unitsSoldPeriod: unitsSold,
+            sellThroughPct: sellThrough,
+            stockTurnover: turnover,
+            lastReceivedDateISO: lastReceived?.createdAt.slice(0, 10) ?? "",
+            lastSoldDateISO: lastSold?.createdAt.slice(0, 10) ?? "",
+            // Retail catalog is studio-global. The report's flat-list mode
+            // groups everything as one location; the pivot Category
+            // dimension is the more useful drilldown.
+            location: "All locations",
+            branchId: "",
+        });
+    }
+
+    // Sort alphabetically by product name — matches the Excel default.
+    return rows.sort((a, b) => a.productName.localeCompare(b.productName));
 }

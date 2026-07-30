@@ -71,6 +71,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/settings/integrations":    "Integrations",
     "/admin/settings/notifications":   "Customer notifications",
     "/admin/settings/tax":             "Tax",
+    "/admin/settings/retail-categories": "Retail categories",
     "/admin/settings/agreements":      "Agreements",
     "/admin/settings/migrations-imports": "Migration & imports",
     "/admin/settings/referral":        "Referral program",
@@ -143,6 +144,7 @@ const MODULE_ROOT: ModuleRoot[] = [
     // /products has three list variants — MOST SPECIFIC prefixes come first
     // so `/products/gift-cards/[id]` doesn't accidentally match `/products`.
     { prefix: "/products/gift-cards", listPath: "/admin/products/gift-cards",  label: "Gift cards",         detailNoun: "Gift card details" },
+    { prefix: "/products/retail",     listPath: "/admin/products/retail",       label: "Retail",             detailNoun: "Retail product" },
     { prefix: "/products/promo-codes",listPath: "/admin/products/promo-codes", label: "Promotions",         detailNoun: "Promo details" },
     { prefix: "/products",            listPath: "/admin/products",          label: "Memberships & packages", detailNoun: "Product details" },
     { prefix: "/marketing",           listPath: "/admin/marketing",         label: "Campaigns",             detailNoun: "Campaign details" },
@@ -215,6 +217,10 @@ const DYNAMIC_LABELS: Record<string, (id: string, s: AppState) => string> = {
     "/products/gift-cards": (id, s) => {
         const g = s.giftCardDesigns.find(x => x.id === id);
         return g?.name ?? "Gift card";
+    },
+    "/products/retail": (id, s) => {
+        const r = s.retailProducts.find(x => x.id === id);
+        return r?.name ?? "Retail product";
     },
     "/products/promo-codes": (id, s) => {
         const p = s.promoCodes.find(x => x.id === id);

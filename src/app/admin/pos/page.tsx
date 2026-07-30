@@ -62,7 +62,7 @@ import { findActiveTaxRuleFor, computeLineTax, categoryForProductType, effective
 // `creditsValue` lets the credits-range filter sort everything in one pass
 // (gift cards get undefined and are excluded from that filter).
 
-type PosProductKind = "membership" | "package" | "gift_card";
+type PosProductKind = "membership" | "package" | "gift_card" | "retail";
 
 interface PosProduct {
     id: string;
@@ -81,6 +81,18 @@ interface PosProduct {
      *  scoping in the data model — they're always treated as "all branches"
      *  here (empty array). Used by the branch filter in `filteredProducts`. */
     branchIds: string[];
+    /** Retail only (2026-07-29). Full-cover product image URL for the card
+     *  banner. When missing, the card renders a sage gradient placeholder. */
+    bannerImageUrl?: string;
+    /** Retail only. Aggregate units on hand across every active branch —
+     *  used when the POS branch picker is set to "All locations" (no
+     *  branch scope). */
+    stockAggregate?: number;
+    /** Retail only. Per-branch units-on-hand map keyed by branch id. The
+     *  "Out of stock" gate reads THIS map when a specific branch is
+     *  picked, so retail can't be sold at a branch that has no stock
+     *  even if another branch is holding units. */
+    perBranchStock?: Record<string, number>;
 }
 
 /** ISO date → DD/MM/YYYY — gift-card "Valid until" cell on the POS card. */
@@ -97,6 +109,8 @@ function buildCatalog(
     memberships: typeof MEMBERSHIPS,
     packages: typeof PACKAGES,
     giftCardDesigns: typeof GIFT_CARD_DESIGNS,
+    retailProducts: import("@/lib/store").RetailProduct[],
+    retailStock: import("@/lib/store").RetailStock[],
 ): PosProduct[] {
     const out: PosProduct[] = [];
 
@@ -160,6 +174,36 @@ function buildCatalog(
         });
     }
 
+    // Retail (2026-07-29, Phase D.1) — physical products stocked per branch.
+    // Only ACTIVE products surface at POS; inactive/archived stay hidden. The
+    // per-branch stock aggregate drives the "Out of stock" card state.
+    for (const r of retailProducts) {
+        if (r.status !== "active") continue;
+        const rowsForProduct = retailStock.filter(s => s.productId === r.id);
+        const stockAggregate = rowsForProduct.reduce((sum, s) => sum + s.unitsOnHand, 0);
+        const perBranchStock: Record<string, number> = {};
+        for (const s of rowsForProduct) perBranchStock[s.branchId] = s.unitsOnHand;
+        out.push({
+            id: r.id,
+            kind: "retail",
+            name: r.name,
+            primaryMeta: r.sku,
+            // secondaryMeta intentionally omitted for retail — the render
+            // site (below) computes the branch-aware label from
+            // perBranchStock. Leaving a value here would be dead code
+            // since the ternary always overrides for retail.
+            priceAed: r.priceAed,
+            priceDisplay: `AED ${r.priceAed.toLocaleString()}`,
+            // Retail products are studio-global; per-branch scoping happens
+            // at stock level, not at product level. Empty branchIds = show
+            // on every branch picker selection.
+            branchIds: [],
+            bannerImageUrl: r.imageUrl,
+            stockAggregate,
+            perBranchStock,
+        });
+    }
+
     return out;
 }
 
@@ -168,17 +212,19 @@ const KIND_TO_CARD_TYPE: Record<PosProductKind, ProductPosCardType> = {
     membership: "membership",
     package:    "package",
     gift_card:  "gift-card",
+    retail:     "retail",
 };
 
 // ─── Tabs + filter state ─────────────────────────────────────────────────────
 
-type TabId = "all" | "memberships" | "packages" | "gift-cards";
+type TabId = "all" | "memberships" | "packages" | "gift-cards" | "retail";
 
 const TAB_FILTER: Record<TabId, PosProductKind[] | null> = {
     "all":          null,
     "memberships":  ["membership"],
     "packages":     ["package"],
     "gift-cards":   ["gift_card"],
+    "retail":       ["retail"],
 };
 
 const TAB_LABEL: Record<TabId, { label: string; unit: string }> = {
@@ -186,6 +232,9 @@ const TAB_LABEL: Record<TabId, { label: string; unit: string }> = {
     "memberships": { label: "Memberships", unit: "memberships" },
     "packages":    { label: "Packages",    unit: "packages"    },
     "gift-cards":  { label: "Gift cards",  unit: "gift cards"  },
+    // Retail (2026-07-29) — physical products (apparel, supplements,
+    // equipment, accessories, recovery). Sits AFTER Gift cards per client.
+    "retail":      { label: "Retail",      unit: "products"    },
 };
 
 interface FilterState {
@@ -214,6 +263,8 @@ function POSInner() {
     const memberships = useAppStore(s => s.memberships);
     const packages = useAppStore(s => s.packages);
     const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
+    const retailProducts = useAppStore(s => s.retailProducts);
+    const retailStock = useAppStore(s => s.retailStock);
     const promoCodes = useAppStore(s => s.promoCodes);
     const branches = useAppStore(s => s.branches);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
@@ -356,8 +407,8 @@ function POSInner() {
 
     // Catalog filtered against the active tab, search box, and filter panel.
     const catalog = useMemo(
-        () => buildCatalog(memberships, packages, giftCardDesigns),
-        [memberships, packages, giftCardDesigns],
+        () => buildCatalog(memberships, packages, giftCardDesigns, retailProducts, retailStock),
+        [memberships, packages, giftCardDesigns, retailProducts, retailStock],
     );
     const filteredProducts = useMemo(() => {
         const kinds = TAB_FILTER[activeTab];
@@ -400,11 +451,13 @@ function POSInner() {
             setGiftCardModalDesignId(p.id);
             return;
         }
+        // Phase D.2 (2026-07-29) — retail is fully sellable. Cart stacking
+        // matches packages (each qty+1 on repeat clicks); memberships still
+        // cap at 1.
         setCartOpen(true);
         setCart(prev => {
             const existing = prev.find(l => l.productId === p.id);
             if (existing) {
-                // Memberships cap at qty 1; packages can stack.
                 if (p.kind === "membership") return prev;
                 return prev.map(l => l.productId === p.id ? { ...l, quantity: l.quantity + 1 } : l);
             }
@@ -471,11 +524,21 @@ function POSInner() {
     // without the admin pressing Apply again.
     const promoEval = useMemo(() => {
         if (!appliedPromoCode) return null;
-        const kinds = Array.from(new Set(cart.map(l => l.kind)));
+        // Retail lines don't participate in promo eligibility today — filter
+        // them out of the eligibility payload. Promos target
+        // memberships / packages / gift cards; retail sits alongside these
+        // in the cart but doesn't stack with a promo code.
+        const promoLines = cart.filter((l): l is CartLine & { kind: "membership" | "package" | "gift_card" } => l.kind !== "retail");
+        const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
+        // v83 audit-1 (2026-07-29) — subtotal for promo eligibility must
+        // EXCLUDE retail lines. Otherwise a cart with a membership below
+        // the promo's min_purchase gets rescued by a retail top-up, even
+        // though retail is filtered out of the eligible lines above.
+        const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         return validatePromoCode(appliedPromoCode, {
-            subtotalAed: subtotal,
+            subtotalAed: promoSubtotal,
             productTypes: kinds,
-            lines: cart.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
+            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
         }, promoCodes);
     }, [appliedPromoCode, cart, subtotal, promoCodes, branchId]);
@@ -489,11 +552,15 @@ function POSInner() {
     function handleApplyPromo() {
         setPromoError(null);
         if (!promoInput.trim()) return;
-        const kinds = Array.from(new Set(cart.map(l => l.kind)));
+        const promoLines = cart.filter((l): l is CartLine & { kind: "membership" | "package" | "gift_card" } => l.kind !== "retail");
+        const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
+        // v83 audit-1 (2026-07-29) — same retail exclusion for the
+        // subtotal used against `min_purchase_aed`.
+        const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         const res = validatePromoCode(promoInput, {
-            subtotalAed: subtotal,
+            subtotalAed: promoSubtotal,
             productTypes: kinds,
-            lines: cart.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
+            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
         }, promoCodes);
         if (res.ok) {
@@ -557,6 +624,9 @@ function POSInner() {
         let runningTax = 0;
         let firstRate = 0;
         for (const line of cart) {
+            // Retail sits outside the tax-category union — no tax rule wired
+            // yet (Phase D.2 scope). Skip retail lines in the tax sum.
+            if (line.kind === "retail") continue;
             const category = categoryForProductType(line.kind);
             if (!category) continue;
             const match = findActiveTaxRuleFor(
@@ -615,6 +685,11 @@ function POSInner() {
             promoCode: appliedPromo?.code,
             promoDiscountAed: promoDiscount,
             returnTo: "/admin/pos",
+            // v83 audit-1 (2026-07-29) — thread the POS-selected branch to
+            // the checkout so retail lines decrement the SALE branch's
+            // stock, not the customer's home branch. Empty = "All locations"
+            // in the picker → applyPurchase falls back to buyer.branchId.
+            saleBranchId: branchId || undefined,
         });
         // Dedicated POS checkout route at /pos/checkout (top-level, outside
         // the /admin layout) so the screen renders FULL-SCREEN without the
@@ -710,8 +785,34 @@ function POSInner() {
                                                 type={KIND_TO_CARD_TYPE[p.kind]}
                                                 name={p.name}
                                                 primaryMeta={p.primaryMeta}
-                                                secondaryMeta={p.secondaryMeta}
+                                                // v83 audit-2 (2026-07-29) — retail cards show
+                                                // the SALE-branch stock in `secondaryMeta` when
+                                                // the POS picker is set to a specific branch,
+                                                // so the label matches the out-of-stock gate.
+                                                // Aggregate label is only honest when no branch
+                                                // scope is set.
+                                                secondaryMeta={
+                                                    p.kind === "retail"
+                                                        ? branchId
+                                                            ? `${p.perBranchStock?.[branchId] ?? 0} at this branch`
+                                                            : `${p.stockAggregate ?? 0} in stock`
+                                                        : p.secondaryMeta
+                                                }
                                                 price={p.priceDisplay}
+                                                bannerImageUrl={p.bannerImageUrl}
+                                                // v83 audit-1 (2026-07-29) — out-of-stock check
+                                                // uses SALE-branch units when the POS picker is
+                                                // set to a specific branch; falls back to the
+                                                // aggregate for "All locations". A walk-in at
+                                                // Branch A can't be sold inventory that only
+                                                // exists at Branch B.
+                                                outOfStock={
+                                                    p.kind === "retail" && (
+                                                        branchId
+                                                            ? (p.perBranchStock?.[branchId] ?? 0) === 0
+                                                            : p.stockAggregate === 0
+                                                    )
+                                                }
                                                 quantity={inCartQty}
                                                 quantityDisplay="badge"
                                                 disabled={isAddDisabled(p)}
@@ -801,11 +902,18 @@ function CartToggleButton({ open, onClick }: { open: boolean; onClick: () => voi
 
 // ─── Cart line shape ─────────────────────────────────────────────────────────
 
+/** Product kinds that are actually sellable through applyPurchase today.
+ *  Phase D.2 (2026-07-29) — retail is now sellable: applyPurchase writes
+ *  snapshot fields on the transaction and decrements per-branch stock in
+ *  one set(). refundTransaction restores stock when a retail sale
+ *  refunds. Cart lines can now hold retail products. */
+type SellableKind = "membership" | "package" | "gift_card" | "retail";
+
 interface CartLine {
     /** Local stable id so duplicate-named gift cards don't collide. */
     lineId: string;
     productId: string;
-    kind: PosProductKind;
+    kind: SellableKind;
     name: string;
     unitPrice: number;
     primaryMeta?: string;

@@ -35,6 +35,8 @@ import {
     selectCampaigns,
     selectMarketingSpend,
     selectStaffAttendanceLog,
+    selectRetailSales,
+    selectRetailStockOnHand,
 } from "@/lib/reports/selectors";
 import { TOTAL_SALES_REPORT }         from "./reports/total-sales";
 import { SALES_BY_CATEGORY_REPORT }   from "./reports/sales-by-category";
@@ -68,6 +70,8 @@ import { CAMPAIGN_PERFORMANCE_REPORT } from "./reports/campaign-performance";
 import { PROMO_REDEMPTIONS_REPORT }    from "./reports/promo-redemptions";
 import { REFERRALS_REPORT }            from "./reports/referrals";
 import { ACQUISITION_EFFICIENCY_REPORT } from "./reports/acquisition-efficiency";
+import { RETAIL_SALES_REPORT }         from "./reports/retail-sales";
+import { RETAIL_STOCK_ON_HAND_REPORT } from "./reports/retail-stock-on-hand";
 
 // ─── Selector dispatch table ──────────────────────────────────────────────
 //
@@ -115,6 +119,9 @@ export const SELECTOR_DISPATCH: Record<SelectorName, SelectorFn> = {
     selectCampaigns:          selectCampaigns          as unknown as SelectorFn,
     selectMarketingSpend:     selectMarketingSpend     as unknown as SelectorFn,
     selectStaffAttendanceLog: selectStaffAttendanceLog as unknown as SelectorFn,
+    // Phase E — Inventory / Retail
+    selectRetailSales:        selectRetailSales        as unknown as SelectorFn,
+    selectRetailStockOnHand:  selectRetailStockOnHand  as unknown as SelectorFn,
 };
 
 // ─── The registry ─────────────────────────────────────────────────────────
@@ -168,6 +175,10 @@ export const REPORTS_REGISTRY: ReportDefinition[] = [
     PROMO_REDEMPTIONS_REPORT,
     REFERRALS_REPORT,
     ACQUISITION_EFFICIENCY_REPORT,
+
+    // Phase E · Inventory / Retail (2026-07-29) — Excel §7
+    RETAIL_SALES_REPORT,
+    RETAIL_STOCK_ON_HAND_REPORT,
 
     // Phase 4D · Client + Activity
     //   Customer Data · Member Movement · Retention & Churn · Win-back

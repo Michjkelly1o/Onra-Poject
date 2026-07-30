@@ -162,6 +162,13 @@ function ScheduleCheckoutInner() {
         if (!customer || !pendingPurchase) return;
         // Account credit debit rides inside `applyPurchase` now — same store
         // path as /admin/pos so the ledger + balance stay in sync.
+        // Retail note (v83 audit-2, 2026-07-29): if a future spec adds
+        // retail to the schedule mini-POS flow, pass
+        // `pendingPurchase.saleBranchId` as the 6th arg so retail stock
+        // decrements at the physical sale branch. Today's flow only sells
+        // memberships/packages/gift-cards, so the omission is safe — the
+        // fallback to buyer.branchId inside applyPurchase does the right
+        // thing for non-retail lines.
         applyPurchase(
             customer.id, pendingPurchase.items, "pos",
             sellerStaffId ?? undefined,

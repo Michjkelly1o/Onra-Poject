@@ -64,6 +64,11 @@ export const SETTINGS_GROUPS: SettingsGroupDef[] = [
         tabs: [
             { label: "Booking rules",        href: "/admin/settings/booking-rules"       },
             { label: "Tax",                  href: "/admin/settings/tax"                 },
+            // Retail categories (2026-07-29, Phase C) — studio-editable
+            // catalog groupings for the retail module. Sits AFTER Tax per
+            // client 2026-07-27 ("under operation after tax"). Uses the
+            // same UI as /admin/categories.
+            { label: "Retail categories",    href: "/admin/settings/retail-categories"   },
             { label: "Integrations",         href: "/admin/settings/integrations"        },
             // Migration & imports (client 2026-07-20) — audit log of every
             // ONRA AI-Agent-driven import. Sits next to Integrations because

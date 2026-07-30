@@ -193,3 +193,13 @@ export { staff_attendance_log } from "./staff_attendance_log";
 // Import / migration history — audit log of AI-Agent-driven imports.
 // Feeds Settings → Operations → "Migration & imports" module (2026-07-20).
 export { import_history } from "./import_history";
+
+// ── Inventory / Retail (2026-07-29, Phase A) ────────────────────────────
+// Retail categories → products → per-branch stock → stock adjustments.
+// See new-prd/inventory-retail-implementation-plan.md. Types live in
+// `_types.ts`; UI wire-up starts in Phase B (list page) once this
+// foundation lands.
+export { retail_categories } from "./retail_categories";
+export { retail_products } from "./retail_products";
+export { retail_stock } from "./retail_stock";
+export { retail_stock_adjustments } from "./retail_stock_adjustments";

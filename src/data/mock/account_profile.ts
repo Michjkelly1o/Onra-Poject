@@ -58,6 +58,11 @@ export const account_profile: User = {
     // straight out of the box (Figma 2858:110671). Subsequent Change
     // password submits overwrite this via `updateAccountProfile`.
     password_changed_at: "2026-03-14T00:00:00Z",
+    // v83 audit-1 (2026-07-29) — Owner demo account maps to the
+    // `user_alex_owen` staff row so "Assigned to me" chips and any
+    // similar UI that compares the signed-in user against a `staff_*` id
+    // (customers.assignedTo, followUpTasks.assigneeId) can resolve.
+    staff_id: "user_alex_owen",
     waiver_signed: true,
     is_active: true,
     created_at: "2024-01-01T00:00:00Z",

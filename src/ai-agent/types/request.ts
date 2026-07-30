@@ -56,6 +56,14 @@ export type AiAgentStateSnapshot = Pick<
     | "referralSettings"
     | "notificationSettings"
     | "cancellationPolicy"
+    // v83 audit-2 (2026-07-29) — readCustomers now computes the LIVE
+    // lifecycle tag per customer (see store-readers.ts:106) so the AI
+    // Agent's find_customer / analyze customers agree with the admin
+    // list. computeLifecycleTag reads customerPlans internally, so it
+    // must be in the snapshot or the server crashes with TypeError on
+    // undefined.filter. classBookings + customerTransactions are already
+    // present above.
+    | "customerPlans"
 >;
 
 /** Thread mode. Insight = analytics chat; migration = 4-step CSV wizard;

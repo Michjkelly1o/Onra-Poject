@@ -19,6 +19,7 @@
 // every dataset in a single query sees a consistent snapshot of the store.
 
 import type { AppState } from "@/lib/store";
+import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 
 /** Row shape the engine works with. Every field is snake_case + primitive-ish. */
 export type Row = Record<string, unknown>;
@@ -84,33 +85,61 @@ export function readTransactions(state: AppState): Row[] {
  *  Instagram", "customers assigned to me", "top VIPs". image_url added
  *  so `find_customer` cards can render avatars. */
 export function readCustomers(state: AppState): Row[] {
-    return state.customers.map(c => ({
-        id: c.id,
-        first_name: c.firstName,
-        last_name: c.lastName,
-        email: c.email,
-        phone: c.phone,
-        image_url: c.imageUrl,
-        status: c.status,
-        plan_kind: c.planKind,
-        plan_name: c.planName,
-        gender: c.gender,
-        city: c.city,
-        state: c.state,
-        branch_id: c.branchId,
-        created_at: c.createdAt,
-        last_visit_iso: c.lastVisitISO,
-        plan_expiry_iso: c.planExpiryISO,
-        first_visit_iso: c.firstVisitISO,
-        // v83 Customer & Lead Management fields
-        lifecycle_tag: c.lifecycleTag,
-        source_id: c.sourceId,
-        follow_up_status: c.followUpStatus,
-        assigned_to: c.assignedTo,
-        is_vip: c.isVip,
-        converted_from: c.convertedFrom,
-        marketing_source: c.marketingSource,
-    }));
+    // v83 audit-1 (2026-07-29) — emit the LIVE lifecycle tag, computed
+    // per-customer against the current store slices, NOT the stored
+    // `c.lifecycleTag`. The admin list / profile pill / dashboard widget
+    // all use live compute; a persisted stale tag (pre-rehydrate seed)
+    // would make the AI Agent report a DIFFERENT stage than the admin
+    // sees for the same person. Live compute keeps everyone in agreement.
+    //
+    // v83 audit-2 (2026-07-29) — defensive guard. computeLifecycleTag
+    // reads customers / classBookings / customerPlans / customerTransactions.
+    // In the AI Agent request path these come from `pickStoreSnapshot`;
+    // if any of those slices ever go missing from the snapshot again
+    // (audit-2 caught customerPlans missing), skip the live compute and
+    // fall back to the stored tag instead of throwing on undefined.filter.
+    const canComputeLive =
+        Array.isArray(state.customers) &&
+        Array.isArray(state.classBookings) &&
+        Array.isArray(state.customerPlans) &&
+        Array.isArray(state.customerTransactions);
+    return state.customers.map(c => {
+        const live = canComputeLive
+            ? computeLifecycleTag(c.id, {
+                customers: state.customers,
+                classBookings: state.classBookings,
+                customerPlans: state.customerPlans,
+                customerTransactions: state.customerTransactions,
+            })
+            : null;
+        return {
+            id: c.id,
+            first_name: c.firstName,
+            last_name: c.lastName,
+            email: c.email,
+            phone: c.phone,
+            image_url: c.imageUrl,
+            status: c.status,
+            plan_kind: c.planKind,
+            plan_name: c.planName,
+            gender: c.gender,
+            city: c.city,
+            state: c.state,
+            branch_id: c.branchId,
+            created_at: c.createdAt,
+            last_visit_iso: c.lastVisitISO,
+            plan_expiry_iso: c.planExpiryISO,
+            first_visit_iso: c.firstVisitISO,
+            // v83 Customer & Lead Management fields
+            lifecycle_tag: live?.tag ?? c.lifecycleTag,
+            source_id: c.sourceId,
+            follow_up_status: c.followUpStatus,
+            assigned_to: c.assignedTo,
+            is_vip: c.isVip,
+            converted_from: c.convertedFrom,
+            marketing_source: c.marketingSource,
+        };
+    });
 }
 
 /** classSchedules → snake_case (matches the POC's `class_schedule` seed shape).
