@@ -12,25 +12,22 @@ import { XClose, ChevronSelectorVertical } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
-import { SelectInput } from "@/components/ui/select-input";
 import {
     useAppStore,
-    RETAIL_ADJUST_REASONS,
     type RetailProduct,
-    type RetailAdjustReason,
     type RetailStockAdjustment,
 } from "@/lib/store";
 
-/** Map the free-form reason picker to the audit log's `kind` enum. */
+/** Infer the audit-log `kind` from the delta direction — inbound stock
+ *  reads as a receive event (drives Units received in the Stock on Hand
+ *  report); outbound stock reads as a manual adjustment. The panel used
+ *  to key this off a closed reason picker but admin asked for a free-
+ *  form reason field, so direction is now the only signal we trust. */
 export function resolveAdjustKind(
-    reason: RetailAdjustReason,
+    _reason: string,
     delta: number,
 ): RetailStockAdjustment["kind"] {
-    if (reason === "Lost" || reason === "Damaged") return "loss";
-    if (reason === "Received shipment") return delta > 0 ? "receive" : "adjust";
-    // "Manual adjustment" + "Reconciliation" — either sign is honest as
-    // an admin edit; both map to `adjust` regardless of direction.
-    return "adjust";
+    return delta > 0 ? "receive" : "adjust";
 }
 
 export function ConfigureStockPanel({ open, onClose, product }: {
@@ -60,7 +57,7 @@ export function ConfigureStockPanel({ open, onClose, product }: {
     }, [stockRows, product.id]);
 
     const [drafts, setDrafts] = useState<Record<string, string>>({});
-    const [reason, setReason] = useState<RetailAdjustReason>("Received shipment");
+    const [reason, setReason] = useState<string>("");
 
     useEffect(() => {
         if (!open) return;
@@ -69,10 +66,12 @@ export function ConfigureStockPanel({ open, onClose, product }: {
             next[b.id] = String(currentByBranch.get(b.id) ?? 0);
         }
         setDrafts(next);
-        setReason("Received shipment");
+        setReason("");
     }, [open, activeBranches, currentByBranch]);
 
     function handleSave() {
+        // Fallback so audit rows aren't blank when admin skips the field.
+        const trimmedReason = reason.trim() || "Manual adjustment";
         let changed = 0;
         for (const b of activeBranches) {
             const raw = drafts[b.id] ?? "0";
@@ -81,13 +80,13 @@ export function ConfigureStockPanel({ open, onClose, product }: {
             const current = currentByBranch.get(b.id) ?? 0;
             const delta = next - current;
             if (delta === 0) continue;
-            const kind = resolveAdjustKind(reason, delta);
+            const kind = resolveAdjustKind(trimmedReason, delta);
             adjustRetailStock({
                 productId: product.id,
                 branchId: b.id,
                 delta,
                 kind,
-                reason,
+                reason: trimmedReason,
             });
             changed += 1;
         }
@@ -120,12 +119,19 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <label className="text-[14px] font-medium text-[#344054]">Reason</label>
-                    <SelectInput
+                    <label className="text-[14px] font-medium text-[#344054]" htmlFor="configure-stock-reason">Reason</label>
+                    <input
+                        id="configure-stock-reason"
+                        type="text"
                         value={reason}
-                        onChange={(v) => setReason(v as RetailAdjustReason)}
-                        options={RETAIL_ADJUST_REASONS.map(r => ({ value: r, label: r }))}
-                        width="w-full"
+                        onChange={e => setReason(e.target.value)}
+                        placeholder="e.g. Received shipment, damaged goods, count reconciliation"
+                        className={cn(
+                            "w-full h-10 px-[14px] rounded-[8px] border-1 border-[#d0d5dd] bg-white",
+                            "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                            "text-[16px] text-[#101828] placeholder:text-[#98a2b3]",
+                            "focus:outline-none focus:border-[#7ba08c] transition-colors",
+                        )}
                     />
                     <p className="text-[13px] text-[#667085]">
                         Every changed branch will get an audit-log entry with this reason.
