@@ -56,6 +56,12 @@ const DATASETS = [
     "packages",
     "gift_card_designs",
     "issued_gift_cards",
+    // AI-agent widening plan Phase 3 Batch B (2026-07-30) — Class + facility:
+    "class_templates",
+    "class_categories",
+    "class_ratings",
+    "rooms",
+    "branches",
 ] as const;
 
 const filter = z.object({

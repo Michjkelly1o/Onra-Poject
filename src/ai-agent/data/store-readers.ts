@@ -558,6 +558,100 @@ export function readGiftCardDesigns(state: AppState): Row[] {
     }));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 Batch B — Class + facility catalog (2026-07-30)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Class templates / categories / ratings / rooms / branches. Templates are
+// camelCase in the store; ratings the same. Rooms + branches + categories
+// are snake_case seed rows spread into the store, so pass-through.
+
+export function readClassTemplates(state: AppState): Row[] {
+    return state.classTemplates.map(t => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        category: t.category,
+        category_id: t.categoryId,
+        location_type: t.locationType,
+        duration_min: t.durationMin,
+        capacity: t.capacity,
+        status: t.status,
+        applicable_memberships_count: t.applicableMembershipIds.length,
+        applicable_packages_count: t.applicablePackageIds.length,
+    }));
+}
+
+export function readClassCategories(state: AppState): Row[] {
+    return state.classCategories.map(c => ({
+        id: c.id,
+        name: c.name,
+        color_hex: c.color_hex,
+        status: c.status,
+    }));
+}
+
+/** class_ratings — one row per submitted rating. Denormalises class name,
+ *  instructor name, customer name so `group_by instructor` / `avg score by
+ *  category` queries render sensible labels. Soft-deleted ratings are
+ *  excluded (matches admin behaviour). */
+export function readClassRatings(state: AppState): Row[] {
+    const scheduleById = new Map(state.classSchedules.map(s => [s.id, s] as const));
+    const customerName = new Map(
+        state.customers.map(c => [c.id, `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim()] as const),
+    );
+    const instructorName = new Map(state.instructors.map(i => [i.id, i.name] as const));
+    return state.classRatings
+        .filter(r => !r.deletedAt)
+        .map(r => {
+            const sched = scheduleById.get(r.classScheduleId);
+            return {
+                id: r.id,
+                class_schedule_id: r.classScheduleId,
+                class_name: sched?.name ?? "—",
+                category: sched?.category ?? "—",
+                branch_id: sched?.branchId,
+                customer_id: r.customerId,
+                customer_name: customerName.get(r.customerId) ?? "—",
+                instructor_id: r.instructorId,
+                instructor_name: instructorName.get(r.instructorId) ?? "—",
+                score: r.score,
+                comment: r.comment,
+                submitted_at: r.submittedAt,
+            };
+        });
+}
+
+export function readRooms(state: AppState): Row[] {
+    return state.rooms.map(r => ({
+        id: r.id,
+        name: r.name,
+        capacity: r.capacity,
+        status: r.status,
+        branch_id: r.branch_id,
+        equipment_notes: r.equipment_notes,
+    }));
+}
+
+export function readBranches(state: AppState): Row[] {
+    return state.branches.map(b => ({
+        id: b.id,
+        name: b.name,
+        status: b.status,
+        is_main: b.is_main ? "true" : "false",
+        address: b.address,
+        phone: b.phone,
+        email: b.email,
+        city: b.city,
+        state: b.state,
+        country: b.country,
+        // branch_id maps to itself so branchFilter treats each row as its
+        // own branch — a Branch Admin scoped to Forma South still sees the
+        // Forma South row, but not Forma East / West.
+        branch_id: b.id,
+    }));
+}
+
 /** issued_gift_cards — sold gift card instances. Carries the live balance
  *  and links back to the design + the customer who owns it. */
 export function readIssuedGiftCards(state: AppState): Row[] {

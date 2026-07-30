@@ -42,6 +42,12 @@ import {
     readPackages,
     readGiftCardDesigns,
     readIssuedGiftCards,
+    // Phase 3 Batch B (2026-07-30) — Class + facility catalog:
+    readClassTemplates,
+    readClassCategories,
+    readClassRatings,
+    readRooms,
+    readBranches,
     type Row,
 } from "@/ai-agent/data/store-readers";
 
@@ -488,6 +494,83 @@ export function buildCatalog(state: AppState): Catalog {
                 status:              { row: "status",              type: "enum",   label: "status", values: ["active", "redeemed", "expired"] },
                 issued_at:           { row: "issued_at",           type: "date",   label: "issued" },
                 expires_at:          { row: "expires_at",          type: "date",   label: "expires" },
+            },
+        },
+
+        // ── Phase 3 Batch B (2026-07-30) — Class + facility catalog ────────
+        class_templates: {
+            key: "class_templates",
+            label: "class templates (reusable class blueprints — name, category, duration, capacity)",
+            rows: readClassTemplates(state),
+            fields: {
+                name:                        { row: "name",                        type: "string", label: "template name" },
+                description:                 { row: "description",                 type: "string", label: "description" },
+                category:                    { row: "category",                    type: "string", label: "category" },
+                location_type:               { row: "location_type",               type: "string", label: "location type" },
+                duration_min:                { row: "duration_min",                type: "number", label: "duration (min)" },
+                capacity:                    { row: "capacity",                    type: "number", label: "capacity" },
+                status:                      { row: "status",                      type: "enum",   label: "status", values: ["Active", "Draft", "Inactive", "Archived"] },
+                applicable_memberships_count:{ row: "applicable_memberships_count",type: "number", label: "applicable memberships" },
+                applicable_packages_count:   { row: "applicable_packages_count",   type: "number", label: "applicable packages" },
+            },
+        },
+
+        class_categories: {
+            key: "class_categories",
+            label: "class categories (Yoga · Pilates · Barre …)",
+            rows: readClassCategories(state),
+            fields: {
+                name:      { row: "name",      type: "string", label: "category" },
+                color_hex: { row: "color_hex", type: "string", label: "color hex" },
+                status:    { row: "status",    type: "enum",   label: "status", values: ["active", "inactive"] },
+            },
+        },
+
+        class_ratings: {
+            key: "class_ratings",
+            label: "class ratings (customer 1–5 scores + comments per class instance)",
+            rows: readClassRatings(state),
+            fields: {
+                class_name:      { row: "class_name",      type: "string", label: "class" },
+                category:        { row: "category",        type: "string", label: "category" },
+                customer:        { row: "customer_id",     type: "ref",    label: "customer",   ref: refs.customerName },
+                customer_name:   { row: "customer_name",   type: "string", label: "customer name" },
+                instructor:      { row: "instructor_id",   type: "ref",    label: "instructor", ref: refs.instructorName },
+                instructor_name: { row: "instructor_name", type: "string", label: "instructor name" },
+                score:           { row: "score",           type: "number", label: "score (1–5)" },
+                comment:         { row: "comment",         type: "string", label: "comment" },
+                branch:          branchField,
+                submitted_at:    { row: "submitted_at",    type: "date",   label: "submitted" },
+            },
+        },
+
+        rooms: {
+            key: "rooms",
+            label: "rooms (bookable spaces per branch)",
+            rows: readRooms(state),
+            fields: {
+                name:            { row: "name",            type: "string", label: "room name" },
+                capacity:        { row: "capacity",        type: "number", label: "capacity" },
+                status:          { row: "status",          type: "enum",   label: "status", values: ["active", "inactive", "archive"] },
+                equipment_notes: { row: "equipment_notes", type: "string", label: "equipment notes" },
+                branch:          branchField,
+            },
+        },
+
+        branches: {
+            key: "branches",
+            label: "branches (studio locations)",
+            rows: readBranches(state),
+            fields: {
+                name:    { row: "name",    type: "string", label: "branch name" },
+                status:  { row: "status",  type: "enum",   label: "status", values: ["active", "inactive", "archive"] },
+                is_main: { row: "is_main", type: "enum",   label: "main branch", values: ["true", "false"] },
+                address: { row: "address", type: "string", label: "address" },
+                phone:   { row: "phone",   type: "string", label: "phone" },
+                email:   { row: "email",   type: "string", label: "email" },
+                city:    { row: "city",    type: "string", label: "city" },
+                state:   { row: "state",   type: "string", label: "state / region" },
+                country: { row: "country", type: "string", label: "country" },
             },
         },
     };
