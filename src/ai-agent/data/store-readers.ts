@@ -483,3 +483,100 @@ export function readRetailStockAdjustments(state: AppState): Row[] {
         };
     });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 Batch A — Product catalog (2026-07-30)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Memberships / packages / gift cards / issued gift cards. Memberships +
+// packages are seeded snake_case and pass through the store without an
+// adapter — the reader just re-exports the fields the AI cares about.
+// A helper `branch_id` is emitted equal to the FIRST branch id in
+// `branch_ids` when that list has one entry so single-branch products
+// still flow through branchFilter cleanly; multi-branch / global products
+// leave it undefined and skip the branch filter (matches the admin UI's
+// "available at every active branch" semantic).
+
+function primaryBranchId(branchIds: readonly string[] | undefined): string | undefined {
+    if (!branchIds || branchIds.length !== 1) return undefined;
+    return branchIds[0];
+}
+
+export function readMemberships(state: AppState): Row[] {
+    return state.memberships.map(m => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+        credits: m.credits === "unlimited" ? "unlimited" : String(m.credits),
+        credits_numeric: m.credits === "unlimited" ? undefined : m.credits,
+        duration_months: m.duration_months,
+        price_aed: m.price_aed,
+        auto_renew: m.auto_renew ? "true" : "false",
+        active_on_first_use: m.active_on_first_use ? "true" : "false",
+        branch_scope: m.branch_ids.length === 0 ? "all" : m.branch_ids.length === 1 ? "single" : "multi",
+        branch_ids: m.branch_ids.join(","),
+        branch_id: primaryBranchId(m.branch_ids),
+        status: m.status,
+        created_at: m.created_at,
+    }));
+}
+
+export function readPackages(state: AppState): Row[] {
+    return state.packages.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        credits: p.credits,
+        validity_days: p.validity_days,
+        price_aed: p.price_aed,
+        per_class_aed: p.credits > 0 ? Math.round(p.price_aed / p.credits) : undefined,
+        is_intro_offer: p.is_intro_offer ? "true" : "false",
+        branch_scope: p.branch_ids.length === 0 ? "all" : p.branch_ids.length === 1 ? "single" : "multi",
+        branch_ids: p.branch_ids.join(","),
+        branch_id: primaryBranchId(p.branch_ids),
+        status: p.status,
+        created_at: p.created_at,
+    }));
+}
+
+export function readGiftCardDesigns(state: AppState): Row[] {
+    return state.giftCardDesigns.map(g => ({
+        id: g.id,
+        name: g.name,
+        value_type: g.value_type,
+        fixed_value_aed: g.fixed_value_aed,
+        min_value_aed: g.min_value_aed,
+        max_value_aed: g.max_value_aed,
+        price_aed: g.price_aed,
+        validity_days: g.validity_days,
+        no_expiry: g.no_expiry ? "true" : "false",
+        status: g.status,
+        description: g.description,
+        issue_date: g.issue_date,
+        valid_until_date: g.valid_until_date,
+        created_at: g.created_at,
+    }));
+}
+
+/** issued_gift_cards — sold gift card instances. Carries the live balance
+ *  and links back to the design + the customer who owns it. */
+export function readIssuedGiftCards(state: AppState): Row[] {
+    const designById = new Map(state.giftCardDesigns.map(d => [d.id, d] as const));
+    return state.issuedGiftCards.map(g => {
+        const design = designById.get(g.design_id);
+        return {
+            id: g.id,
+            design_id: g.design_id,
+            design_name: design?.name ?? "—",
+            code: g.code,
+            customer_id: g.customer_id,
+            recipient_name: g.recipient_name,
+            recipient_email: g.recipient_email,
+            face_value_aed: g.face_value_aed,
+            current_balance_aed: g.current_balance_aed,
+            status: g.status,
+            issued_at: g.issued_at,
+            expires_at: g.expires_at,
+        };
+    });
+}

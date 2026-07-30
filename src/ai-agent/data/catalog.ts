@@ -37,6 +37,11 @@ import {
     readRetailProducts,
     readRetailStock,
     readRetailStockAdjustments,
+    // Phase 3 Batch A (2026-07-30) — Product catalog:
+    readMemberships,
+    readPackages,
+    readGiftCardDesigns,
+    readIssuedGiftCards,
     type Row,
 } from "@/ai-agent/data/store-readers";
 
@@ -397,6 +402,92 @@ export function buildCatalog(state: AppState): Catalog {
                 created_by:            { row: "created_by",            type: "string", label: "actor" },
                 branch:                branchField,
                 created_at:            { row: "created_at",            type: "date",   label: "date" },
+            },
+        },
+
+        // ── Phase 3 Batch A (2026-07-30) — Product catalog ─────────────────
+        //
+        // Memberships / packages / gift cards. Studio-global; `branch_id`
+        // is only present when the product is single-branch scoped, so
+        // multi-branch and "all branches" products correctly skip the
+        // Branch Admin / Front Desk branch filter (matches admin behaviour).
+        memberships: {
+            key: "memberships",
+            label: "memberships (recurring plans — Unlimited / Yoga Focused / Advanced / Beginner…)",
+            rows: readMemberships(state),
+            fields: {
+                name:                { row: "name",                type: "string", label: "membership name" },
+                description:         { row: "description",         type: "string", label: "description" },
+                credits:             { row: "credits",             type: "string", label: "credits per cycle (or 'unlimited')" },
+                credits_numeric:     { row: "credits_numeric",     type: "number", label: "credits per cycle (numeric — unlimited is blank)" },
+                duration_months:     { row: "duration_months",     type: "number", label: "duration (months)" },
+                price_aed:           { row: "price_aed",           type: "number", label: "price (AED)" },
+                auto_renew:          { row: "auto_renew",          type: "enum",   label: "auto-renew default", values: ["true", "false"] },
+                active_on_first_use: { row: "active_on_first_use", type: "enum",   label: "starts on first use", values: ["true", "false"] },
+                branch_scope:        { row: "branch_scope",        type: "enum",   label: "branch scope", values: ["all", "single", "multi"] },
+                branch_ids:          { row: "branch_ids",          type: "string", label: "branch ids (comma-separated)" },
+                branch:              branchField,
+                status:              { row: "status",              type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                created_at:          { row: "created_at",          type: "date",   label: "created" },
+            },
+        },
+
+        packages: {
+            key: "packages",
+            label: "credit packages (one-time class-credit packs)",
+            rows: readPackages(state),
+            fields: {
+                name:            { row: "name",            type: "string", label: "package name" },
+                description:     { row: "description",     type: "string", label: "description" },
+                credits:         { row: "credits",         type: "number", label: "credits included" },
+                validity_days:   { row: "validity_days",   type: "number", label: "validity (days)" },
+                price_aed:       { row: "price_aed",       type: "number", label: "price (AED)" },
+                per_class_aed:   { row: "per_class_aed",   type: "number", label: "per-class price (AED)" },
+                is_intro_offer:  { row: "is_intro_offer",  type: "enum",   label: "intro offer (new customers only)", values: ["true", "false"] },
+                branch_scope:    { row: "branch_scope",    type: "enum",   label: "branch scope", values: ["all", "single", "multi"] },
+                branch_ids:      { row: "branch_ids",      type: "string", label: "branch ids (comma-separated)" },
+                branch:          branchField,
+                status:          { row: "status",          type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                created_at:      { row: "created_at",      type: "date",   label: "created" },
+            },
+        },
+
+        gift_card_designs: {
+            key: "gift_card_designs",
+            label: "gift card designs (POS-sellable templates)",
+            rows: readGiftCardDesigns(state),
+            fields: {
+                name:             { row: "name",             type: "string", label: "design name" },
+                value_type:       { row: "value_type",       type: "enum",   label: "value type", values: ["fixed", "custom"] },
+                fixed_value_aed:  { row: "fixed_value_aed",  type: "number", label: "fixed value (AED)" },
+                min_value_aed:    { row: "min_value_aed",    type: "number", label: "min custom value (AED)" },
+                max_value_aed:    { row: "max_value_aed",    type: "number", label: "max custom value (AED)" },
+                price_aed:        { row: "price_aed",        type: "number", label: "purchase price (AED)" },
+                validity_days:    { row: "validity_days",    type: "number", label: "validity (days)" },
+                no_expiry:        { row: "no_expiry",        type: "enum",   label: "no expiry", values: ["true", "false"] },
+                status:           { row: "status",           type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                description:      { row: "description",      type: "string", label: "description" },
+                issue_date:       { row: "issue_date",       type: "date",   label: "issue date" },
+                valid_until_date: { row: "valid_until_date", type: "date",   label: "valid until" },
+                created_at:       { row: "created_at",       type: "date",   label: "created" },
+            },
+        },
+
+        issued_gift_cards: {
+            key: "issued_gift_cards",
+            label: "issued gift cards (sold instances with live balance)",
+            rows: readIssuedGiftCards(state),
+            fields: {
+                design_name:         { row: "design_name",         type: "string", label: "design" },
+                code:                { row: "code",                type: "string", label: "code" },
+                customer:            { row: "customer_id",         type: "ref",    label: "customer",       ref: refs.customerName },
+                recipient_name:      { row: "recipient_name",      type: "string", label: "recipient" },
+                recipient_email:     { row: "recipient_email",     type: "string", label: "recipient email" },
+                face_value_aed:      { row: "face_value_aed",      type: "number", label: "face value (AED)" },
+                current_balance_aed: { row: "current_balance_aed", type: "number", label: "current balance (AED)" },
+                status:              { row: "status",              type: "enum",   label: "status", values: ["active", "redeemed", "expired"] },
+                issued_at:           { row: "issued_at",           type: "date",   label: "issued" },
+                expires_at:          { row: "expires_at",          type: "date",   label: "expires" },
             },
         },
     };

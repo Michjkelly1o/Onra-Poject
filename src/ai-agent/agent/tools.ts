@@ -51,6 +51,11 @@ const DATASETS = [
     "retail_products",
     "retail_stock",
     "retail_stock_adjustments",
+    // AI-agent widening plan Phase 3 Batch A (2026-07-30) — Product catalog:
+    "memberships",
+    "packages",
+    "gift_card_designs",
+    "issued_gift_cards",
 ] as const;
 
 const filter = z.object({
