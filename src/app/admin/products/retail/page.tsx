@@ -36,6 +36,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfigureStockPanel } from "@/components/retail/ConfigureStockPanel";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { useAppStore, type RetailProduct } from "@/lib/store";
 
@@ -372,6 +373,13 @@ export default function RetailPage() {
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+    // Configure-stock side panel — opened directly from the row action so
+    // admins don't need to jump into the detail page just to adjust units.
+    const [configureId, setConfigureId] = useState<string | null>(null);
+    const configureProduct = useMemo(
+        () => (configureId ? products.find(p => p.id === configureId) ?? null : null),
+        [configureId, products],
+    );
 
     // ─── Row VM ────────────────────────────────────────────────────────────
     const allRows = useMemo<RetailRow[]>(() => {
@@ -711,7 +719,7 @@ export default function RetailPage() {
                                                     history → Deactivate. */}
                                                 <RowActions items={[
                                                     { label: "View details",    icon: Eye,          onClick: () => router.push(`/products/retail/${r.id}`) },
-                                                    { label: "Configure stock", icon: Package,      onClick: () => router.push(`/products/retail/${r.id}?configureStock=1`), hidden: r.status === "archived" },
+                                                    { label: "Configure stock", icon: Package,      onClick: () => setConfigureId(r.id), hidden: r.status === "archived" },
                                                     { label: "Edit",            icon: Edit02,       onClick: () => router.push(`/products/retail/${r.id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`), hidden: r.status !== "active" },
                                                     { label: "Archive",         icon: Archive,      onClick: () => openRowConfirm(r, "archive"),    hidden: r.status !== "active" && r.status !== "inactive" },
                                                     { label: "Reactivate",      icon: Check,        onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
@@ -751,6 +759,14 @@ export default function RetailPage() {
                 onApply={f => { setApplied(f); setPage(1); }}
                 categories={categories.filter(c => c.status === "active").map(c => ({ id: c.id, label: c.label }))}
             />
+
+            {configureProduct && (
+                <ConfigureStockPanel
+                    open={configureId !== null}
+                    onClose={() => setConfigureId(null)}
+                    product={configureProduct}
+                />
+            )}
 
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);

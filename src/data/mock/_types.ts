@@ -715,12 +715,17 @@ export interface CustomerTransaction {
      *  always flagged `is_refundable: false` per client spec.
      *  `freeze_fee` (Jul 2026) is the membership-freeze fee charged when
      *  a customer freezes under a policy that sets a fee — also a fee
-     *  CHARGED, non-refundable. */
-    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee";
+     *  CHARGED, non-refundable.
+     *  `retail` (2026-07-30) is a POS retail-line sale — one row per line
+     *  item. Drives the Retail Sales report; the retail snapshot fields
+     *  below (retail_product_id / product_snapshot_* / quantity /
+     *  branch_id_at_sale) are only populated on `retail`-kind rows. */
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail";
     /** FK → memberships.id / packages.id (depending on `kind`). For
      *  `cancellation_penalty` rows this instead references the
      *  cancelled `class_bookings.id` so Payment history rows can
-     *  deep-link back to the booking that triggered the fee. */
+     *  deep-link back to the booking that triggered the fee. For
+     *  `retail` rows this mirrors `retail_product_id`. */
     product_id: string;
     /** Denormalized product name shown in the table + refund modal. */
     name: string;
@@ -832,6 +837,29 @@ export interface CustomerTransaction {
      *  awaiting an admin decision. */
     refund_requested_at?: string;
     refund_request_reason?: string;
+    // ── Retail line-item snapshot (Phase D groundwork, 2026-07-30) ───────
+    //
+    // Populated ONLY on `kind: "retail"` rows so the Retail Sales report
+    // can render category / cost / branch columns even after the source
+    // product has been edited or archived. Consumers reading legacy
+    // membership/package rows never touch these.
+    /** FK → retail_products.id at sale time. */
+    retail_product_id?: string;
+    /** Denormalized product name captured at sale time. */
+    product_snapshot_name?: string;
+    /** Denormalized SKU captured at sale time. */
+    product_snapshot_sku?: string;
+    /** Retail per-unit list price at sale time. */
+    product_snapshot_price_aed?: number;
+    /** Retail per-unit cost at sale time — feeds Gross margin %. */
+    product_snapshot_unit_cost_aed?: number;
+    /** Sale quantity. Retail lines can have qty > 1; other kinds are
+     *  always qty 1 (leave blank there). */
+    quantity?: number;
+    /** Physical branch the sale rang up at. Retail products are studio-
+     *  global, so this differs from `branch_id` (customer home branch)
+     *  when a member buys from a walk-in branch. */
+    branch_id_at_sale?: string;
 }
 
 // ─── Wallet transactions (PRD 07 §Wallet — account credit ledger) ───────────

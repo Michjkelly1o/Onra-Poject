@@ -28,17 +28,13 @@ import { Toast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
-import { SlidePanel } from "@/components/ui/SlidePanel";
-import { SelectInput } from "@/components/ui/select-input";
-import { NumericStringInput } from "@/components/ui/NumericInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { ConfigureStockPanel } from "@/components/retail/ConfigureStockPanel";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import {
     useAppStore,
-    RETAIL_ADJUST_REASONS,
     type RetailProduct,
-    type RetailAdjustReason,
     type RetailStockAdjustment,
 } from "@/lib/store";
 
@@ -531,153 +527,6 @@ function ActivityTab({ product, adjRows, branches }: {
  *  `kind: "receive"` row, which reads as nonsense in the audit log.
  *  Now: "Lost" / "Damaged" are always loss (negative deltas), and
  *  positive/negative for the other reasons picks kind by sign. */
-function resolveAdjustKind(reason: RetailAdjustReason, delta: number): RetailStockAdjustment["kind"] {
-    if (reason === "Lost" || reason === "Damaged") return "loss";
-    if (reason === "Received shipment") return delta > 0 ? "receive" : "adjust";
-    // "Manual adjustment" + "Reconciliation" — either sign is honest as
-    // an admin edit; both map to `adjust` regardless of direction.
-    return "adjust";
-}
-
-function ConfigureStockPanel({ open, onClose, product }: {
-    open: boolean;
-    onClose: () => void;
-    product: RetailProduct;
-}) {
-    const branches   = useAppStore(s => s.branches);
-    const stockRows  = useAppStore(s => s.retailStock);
-    const adjustRetailStock = useAppStore(s => s.adjustRetailStock);
-    const showToast  = useAppStore(s => s.showToast);
-
-    // v83 fix (2026-07-29) — activeBranches MUST be memoised. Without
-    // it every render produces a new array, and the effect below (which
-    // depends on activeBranches) fires setDrafts on every render →
-    // infinite loop → "Too many re-renders" runtime error the moment
-    // the panel opens via the ?configureStock=1 deep-link.
-    const activeBranches = useMemo(
-        () => branches.filter(b => b.status !== "archive"),
-        [branches],
-    );
-
-    const currentByBranch = useMemo(() => {
-        const map = new Map<string, number>();
-        stockRows
-            .filter(s => s.productId === product.id)
-            .forEach(s => map.set(s.branchId, s.unitsOnHand));
-        return map;
-    }, [stockRows, product.id]);
-
-    const [drafts, setDrafts] = useState<Record<string, string>>({});
-    const [reason, setReason] = useState<RetailAdjustReason>("Received shipment");
-
-    // Seed drafts + reset the reason picker whenever the panel opens.
-    // useEffect (not useMemo!) — the previous useMemo(side-effect)
-    // pattern was calling setState during render, which is the anti-
-    // pattern that triggered the infinite render loop.
-    useEffect(() => {
-        if (!open) return;
-        const next: Record<string, string> = {};
-        for (const b of activeBranches) {
-            next[b.id] = String(currentByBranch.get(b.id) ?? 0);
-        }
-        setDrafts(next);
-        setReason("Received shipment");
-    }, [open, activeBranches, currentByBranch]);
-
-    function handleSave() {
-        let changed = 0;
-        for (const b of activeBranches) {
-            const raw = drafts[b.id] ?? "0";
-            const next = Number(raw);
-            if (Number.isNaN(next) || next < 0 || !Number.isInteger(next)) continue;
-            const current = currentByBranch.get(b.id) ?? 0;
-            const delta = next - current;
-            if (delta === 0) continue;
-            const kind = resolveAdjustKind(reason, delta);
-            adjustRetailStock({
-                productId: product.id,
-                branchId: b.id,
-                delta,
-                kind,
-                reason,
-            });
-            changed += 1;
-        }
-        if (changed === 0) {
-            showToast("No changes", "None of the branch counts were changed.", "warning", "check");
-        } else {
-            showToast(
-                "Stock updated",
-                `${product.name} — ${changed} ${changed === 1 ? "branch" : "branches"} adjusted.`,
-                "success",
-                "check",
-            );
-        }
-        onClose();
-    }
-
-    return (
-        <SlidePanel open={open} onClose={onClose} width={480}>
-            <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                <p className="flex-1 font-semibold text-[18px] text-[#101828]">Configure stock</p>
-                <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors" aria-label="Close">
-                    <XClose className="w-5 h-5 text-[#667085]" />
-                </button>
-            </div>
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[14px] text-[#667085]">Product</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{product.name}</p>
-                    <p className="text-[13px] text-[#667085]">{product.sku}</p>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <label className="text-[14px] font-medium text-[#344054]">Reason</label>
-                    <SelectInput
-                        value={reason}
-                        onChange={(v) => setReason(v as RetailAdjustReason)}
-                        options={RETAIL_ADJUST_REASONS.map(r => ({ value: r, label: r }))}
-                        width="w-full"
-                    />
-                    <p className="text-[13px] text-[#667085]">
-                        Every changed branch will get an audit-log entry with this reason.
-                    </p>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                    <p className="text-[14px] font-medium text-[#344054]">Units on hand — per branch</p>
-                    <div className="flex flex-col gap-3">
-                        {activeBranches.map(b => (
-                            <div key={b.id} className="flex items-center justify-between gap-3">
-                                <div className="flex flex-col min-w-0">
-                                    <p className="text-[14px] text-[#101828] truncate">{b.name}</p>
-                                    <p className="text-[12px] text-[#667085]">Current: {currentByBranch.get(b.id) ?? 0}</p>
-                                </div>
-                                <div className="w-[120px]">
-                                    <NumericStringInput
-                                        value={drafts[b.id] ?? "0"}
-                                        onChange={v => setDrafts(d => ({ ...d, [b.id]: v }))}
-                                        placeholder="0"
-                                        className={cn(
-                                            "w-full rounded-[8px] border-1 border-[#d0d5dd] px-3 py-2",
-                                            "text-[16px] text-[#101828] bg-white",
-                                            "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]",
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
-                <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
-            </div>
-        </SlidePanel>
-    );
-}
-
 // ─── Detail page ────────────────────────────────────────────────────────────
 
 function RetailProductDetailPageInner() {

@@ -3112,6 +3112,14 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         // ── Refund-request approval queue (Jul 2026) ────────────────
         refundRequestedAtISO:  t.refund_requested_at,
         refundRequestReason:   t.refund_request_reason,
+        // ── Retail line-item snapshot (Phase D, 2026-07-30) ─────────
+        retailProductId:              t.retail_product_id,
+        productSnapshotName:          t.product_snapshot_name,
+        productSnapshotSku:           t.product_snapshot_sku,
+        productSnapshotPriceAed:      t.product_snapshot_price_aed,
+        productSnapshotUnitCostAed:   t.product_snapshot_unit_cost_aed,
+        quantity:                     t.quantity,
+        branchIdAtSale:               t.branch_id_at_sale,
     };
 }
 
@@ -12027,7 +12035,14 @@ export const useAppStore = create<AppState>()(persist(
         //   snapshots persisted the OLD image-less products; the id-keyed
         //   backfill only ADDS missing rows, so bumping is the cleanest
         //   way to reseed the 6 rows that gained an image_url.
-        version: 90,
+        // v91 (2026-07-30): Retail catalog trimmed 15 → 6 products (only
+        //   those with real photos ship in the demo). Persisted stock +
+        //   adjustment rows referencing the 9 dropped products would
+        //   dangle otherwise; the id-keyed backfill above never REMOVES
+        //   rows, so a version bump is the only way to force a clean
+        //   reseed. Also adds 20 retail-kind customer_transactions so
+        //   the Retail Sales report has real data on day one.
+        version: 91,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
