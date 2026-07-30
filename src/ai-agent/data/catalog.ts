@@ -96,6 +96,16 @@ export function buildCatalog(state: AppState): Catalog {
             label: "customers",
             rows: readCustomers(state),
             fields: {
+                // Derived — combined first+last so the model's `contains`
+                // filter works on multi-word queries like "Ava Wright".
+                // Always prefer this over first_name/last_name for
+                // name-based lookups; the anti-hallucination rule in the
+                // prompt points here explicitly.
+                full_name:   { row: "full_name",       type: "string", label: "full name" },
+                first_name:  { row: "first_name",      type: "string", label: "first name" },
+                last_name:   { row: "last_name",       type: "string", label: "last name" },
+                email:       { row: "email",           type: "string", label: "email" },
+                phone:       { row: "phone",           type: "string", label: "phone" },
                 status:      { row: "status",          type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
                 plan_kind:   { row: "plan_kind",       type: "enum",   label: "plan kind", values: ["membership", "package"] },
                 gender:      { row: "gender",          type: "enum",   label: "gender", values: ["Male", "Female"] },

@@ -149,10 +149,17 @@ export function readCustomers(state: AppState): Row[] {
         // the customer's own Account Credit tab shows.
         const walletTxns = Array.isArray(state.walletTransactions) ? state.walletTransactions : [];
         const accountCreditAed = computeAccountCreditAed(walletTxns, c.id);
+        // Derived helper for name-based lookups. The AI's `contains` filter
+        // over `first_name` alone can't match a multi-word query like
+        // "Ava Wright" — building the full name here lets the AI filter
+        // full_name contains "<any substring>" and always find the right
+        // person.
+        const fullName = `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim();
         return {
             id: c.id,
             first_name: c.firstName,
             last_name: c.lastName,
+            full_name: fullName,
             email: c.email,
             phone: c.phone,
             image_url: c.imageUrl,

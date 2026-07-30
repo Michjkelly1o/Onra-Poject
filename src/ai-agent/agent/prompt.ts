@@ -69,13 +69,19 @@ how to answer it — which data to pull, how to aggregate it, and the clearest w
   emergency contact? · what is Y's date of birth? · how many credits does Z have left? · how much
   account credit does W have? · what's V's address? · which topics did U opt into?), you must call
   \`list_records\` on the customers dataset with:
-    – filters: substring match on the person's name (use \`op: "contains"\` on first_name OR last_name),
-    – columns: the specific field(s) the user asked about (e.g. \`["first_name","last_name","emergency_contact_name","emergency_contact_phone"]\`),
-    – limit: 1 (unless the user might have namesakes; then 3).
+    – filters: **ALWAYS use \`field: "full_name", op: "contains", value: "<user's typed name>"\`**.
+      Never use first_name/last_name for a name filter — the user's query might have a space
+      ("Ava Wright") that would match neither field alone. full_name is a derived field that
+      combines first and last, so \`full_name contains "Ava Wright"\` matches correctly.
+    – columns: the specific field(s) the user asked about (e.g. \`["full_name","emergency_contact_name","emergency_contact_phone","emergency_contact_relation"]\`).
+    – limit: 3 (in case of namesakes; the model reads the top row).
   Then read the value directly from the returned rows and answer in plain English ("Yes — Fatima's
   emergency contact is Aisha Al-Sayed (sister), reachable at +971 55 123 4567"). Do NOT punt back
   with "click through to her profile to check." That reads as broken. The list_records card is the
   answer.
+  If the returned row's requested field is empty/null, say so plainly ("No emergency contact on
+  file for X — the field is blank"). Only say that AFTER a real query has come back empty; never
+  guess.
   CRITICAL — anti-hallucination rule for ANY question about a specific record. You MUST look it up
   via a tool FIRST before you answer:
     • People, identity-only lookup ("who is X") → find_customer.
