@@ -12,7 +12,6 @@ import { XClose } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { SelectInput } from "@/components/ui/select-input";
-import { NumericStringInput } from "@/components/ui/NumericInput";
 import {
     useAppStore,
     RETAIL_ADJUST_REASONS,
@@ -135,20 +134,48 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                 <div className="flex flex-col gap-3">
                     <p className="text-[14px] font-medium text-[#344054]">Units on hand — per branch</p>
                     <div className="flex flex-col gap-3">
-                        {activeBranches.map(b => (
-                            <div key={b.id} className="flex items-center justify-between gap-3">
-                                <div className="flex flex-col min-w-0">
-                                    <p className="text-[14px] text-[#101828] truncate">{b.name}</p>
-                                    <p className="text-[12px] text-[#667085]">Current: {currentByBranch.get(b.id) ?? 0}</p>
+                        {activeBranches.map(b => {
+                            const raw = drafts[b.id] ?? "0";
+                            // Empty state: `"0"` shows as blank so the placeholder
+                            // "0" is what admins see, matching the memory rule.
+                            const displayed = raw === "0" ? "" : raw;
+                            return (
+                                <div key={b.id} className="grid grid-cols-[1fr_96px] items-center gap-3">
+                                    <div className="flex flex-col min-w-0">
+                                        <p className="text-[14px] text-[#101828] truncate">{b.name}</p>
+                                        <p className="text-[12px] text-[#667085]">Current: {currentByBranch.get(b.id) ?? 0}</p>
+                                    </div>
+                                    {/* Fixed 96 × 40 box. `type="text"` + `inputMode="numeric"`
+                                        keeps the browser off native spinners (which desynced the
+                                        display value on some rows and made typing feel dead).
+                                        Focus state swaps border colour only — no `ring-2` bloom,
+                                        so all three rows read at the same visual size whether or
+                                        not the input is focused. */}
+                                    <div className="w-[96px] h-10 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:border-[#7ba08c] transition-colors">
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            placeholder="0"
+                                            aria-label={`Units at ${b.name}`}
+                                            value={displayed}
+                                            onChange={e => {
+                                                const digits = e.target.value.replace(/\D/g, "");
+                                                const trimmed = digits.replace(/^0+(?=\d)/, "");
+                                                setDrafts(d => ({ ...d, [b.id]: trimmed === "" ? "0" : trimmed }));
+                                            }}
+                                            onBlur={() => {
+                                                setDrafts(d => ({
+                                                    ...d,
+                                                    [b.id]: (d[b.id] ?? "").length === 0 ? "0" : d[b.id],
+                                                }));
+                                            }}
+                                            className="w-full h-full px-3 text-right text-[16px] text-[#101828] bg-transparent focus:outline-none placeholder:text-[#98a2b3] rounded-[8px]"
+                                        />
+                                    </div>
                                 </div>
-                                <NumericStringInput
-                                    value={drafts[b.id] ?? "0"}
-                                    onChange={v => setDrafts(d => ({ ...d, [b.id]: v }))}
-                                    className="w-[104px] shrink-0"
-                                    inputClassName="text-right"
-                                />
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </div>

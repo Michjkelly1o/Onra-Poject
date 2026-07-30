@@ -680,6 +680,11 @@ function POSInner() {
             unitPrice:   l.unitPrice,
             quantity:    l.quantity,
             giftCard:    l.giftCard,
+            // Retail cart lines already carry the product image (see the
+            // buildCatalog step above where `bannerImageUrl` is threaded
+            // in). Passing it through here lets the checkout screen render
+            // the real photo instead of the category-tinted gift icon.
+            imageUrl:    l.imageUrl,
         }));
         // The checkout screen already lives at /schedule/[classId]/checkout.
         // We thread `returnTo: "/admin/pos"` so it bounces back here on

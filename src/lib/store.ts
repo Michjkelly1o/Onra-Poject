@@ -2346,6 +2346,11 @@ export interface PurchaseLineItem {
         senderName: string;
         message?: string;
     };
+    /** Product photo — only set for `productType: "retail"` today, so the
+     *  checkout screen's "Detail product" row can render the real image
+     *  instead of a category icon. Non-retail lines leave this undefined
+     *  and fall back to their category-tinted icon. */
+    imageUrl?: string;
 }
 
 export interface PendingPurchase {
