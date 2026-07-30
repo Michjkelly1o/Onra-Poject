@@ -75,6 +75,9 @@ const DATASETS = [
     "freeze_policy",
     "referral_settings",
     "notification_settings",
+    // AI-agent widening plan Phase 3 Batch E (2026-07-30) — Customer relations:
+    "customer_plans",
+    "customer_referrals",
 ] as const;
 
 const filter = z.object({

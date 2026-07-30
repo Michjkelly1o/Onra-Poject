@@ -897,6 +897,67 @@ export function readNotificationSettings(state: AppState): Row[] {
     }));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 Batch E — Customer relations catalog (2026-07-30)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// customer_plans (which customer holds which membership / package) +
+// customer_referrals (who referred whom + reward). Both denormalise the
+// customer name so the AI can filter / group by name without a join.
+
+export function readCustomerPlans(state: AppState): Row[] {
+    const customerName = new Map(
+        state.customers.map(c => [c.id, `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim()] as const),
+    );
+    const customerBranch = new Map(state.customers.map(c => [c.id, c.branchId] as const));
+    return state.customerPlans.map(p => ({
+        id: p.id,
+        customer_id: p.customerId,
+        customer_name: customerName.get(p.customerId) ?? "—",
+        branch_id: customerBranch.get(p.customerId),
+        kind: p.kind,
+        product_id: p.productId,
+        name: p.name,
+        plan_type_label: p.planTypeLabel,
+        credits_label: p.creditsLabel,
+        status: p.status,
+        purchased_at: p.purchasedAtISO,
+        expiry_iso: p.expiryISO,
+        price_aed: p.priceAed,
+        freeze_start: p.freezeStartISO,
+        freeze_end: p.freezeEndISO,
+        freeze_source: p.freezeSource,
+        freeze_reason: p.freezeReason,
+        freeze_count: p.freezeCount,
+        total_credits: p.totalCredits,
+        credits_used: p.creditsUsed,
+        auto_renew: p.autoRenew ? "true" : "false",
+    }));
+}
+
+export function readCustomerReferrals(state: AppState): Row[] {
+    const customerName = new Map(
+        state.customers.map(c => [c.id, `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim()] as const),
+    );
+    const customerBranch = new Map(state.customers.map(c => [c.id, c.branchId] as const));
+    return state.customerReferrals.map(r => ({
+        id: r.id,
+        referrer_customer_id: r.referrerCustomerId,
+        referrer_name: customerName.get(r.referrerCustomerId) ?? "—",
+        referred_name: r.referredName,
+        referred_email: r.referredEmail,
+        benefit_type: r.benefitType,
+        benefit_amount: r.benefitAmount,
+        benefit_credits: r.benefitCredits,
+        referred_at: r.referredAtISO,
+        expires_at: r.expiresAtISO,
+        origin_branch_id: r.originBranchId,
+        // Refer to referrer's branch for scope filtering when originBranchId
+        // is unset (legacy rows) — keeps rows visible to Branch Admins.
+        branch_id: r.originBranchId ?? customerBranch.get(r.referrerCustomerId),
+    }));
+}
+
 /** issued_gift_cards — sold gift card instances. Carries the live balance
  *  and links back to the design + the customer who owns it. */
 export function readIssuedGiftCards(state: AppState): Row[] {

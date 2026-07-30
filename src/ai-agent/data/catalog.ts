@@ -61,6 +61,9 @@ import {
     readFreezePolicy,
     readReferralSettings,
     readNotificationSettings,
+    // Phase 3 Batch E (2026-07-30) — Customer relations catalog:
+    readCustomerPlans,
+    readCustomerReferrals,
     type Row,
 } from "@/ai-agent/data/store-readers";
 
@@ -797,6 +800,53 @@ export function buildCatalog(state: AppState): Catalog {
                 send_mode:               { row: "send_mode",               type: "string", label: "send mode" },
                 sent_during_campaigns:   { row: "sent_during_campaigns",   type: "enum",   label: "campaign-triggered", values: ["true", "false"] },
                 recipient_source:        { row: "recipient_source",        type: "enum",   label: "recipient", values: ["customer", "gift_card_recipient"] },
+            },
+        },
+
+        // ── Phase 3 Batch E (2026-07-30) — Customer relations catalog ───────
+        customer_plans: {
+            key: "customer_plans",
+            label: "customer plans (which customer holds which membership / package + freeze + credits state)",
+            rows: readCustomerPlans(state),
+            fields: {
+                customer:        { row: "customer_id",     type: "ref",    label: "customer", ref: refs.customerName },
+                customer_name:   { row: "customer_name",   type: "string", label: "customer name" },
+                kind:            { row: "kind",            type: "enum",   label: "plan kind", values: ["membership", "package", "complimentary"] },
+                name:            { row: "name",            type: "string", label: "plan name" },
+                plan_type_label: { row: "plan_type_label", type: "string", label: "plan type label" },
+                credits_label:   { row: "credits_label",   type: "string", label: "credits label" },
+                status:          { row: "status",          type: "enum",   label: "status", values: ["active", "expired", "frozen", "freeze_requested", "cancelled", "removed"] },
+                price_aed:       { row: "price_aed",       type: "number", label: "price (AED)" },
+                total_credits:   { row: "total_credits",   type: "number", label: "credits total" },
+                credits_used:    { row: "credits_used",    type: "number", label: "credits used" },
+                auto_renew:      { row: "auto_renew",      type: "enum",   label: "auto-renew", values: ["true", "false"] },
+                freeze_source:   { row: "freeze_source",   type: "enum",   label: "freeze source", values: ["customer_portal", "admin", "front_desk"] },
+                freeze_reason:   { row: "freeze_reason",   type: "string", label: "freeze reason" },
+                freeze_start:    { row: "freeze_start",    type: "date",   label: "freeze start" },
+                freeze_end:      { row: "freeze_end",      type: "date",   label: "freeze end" },
+                freeze_count:    { row: "freeze_count",    type: "number", label: "lifetime freeze count" },
+                purchased_at:    { row: "purchased_at",    type: "date",   label: "purchased" },
+                expiry_iso:      { row: "expiry_iso",      type: "date",   label: "expires" },
+                branch:          branchField,
+            },
+        },
+
+        customer_referrals: {
+            key: "customer_referrals",
+            label: "customer referrals (who referred whom + reward earned)",
+            rows: readCustomerReferrals(state),
+            fields: {
+                referrer:         { row: "referrer_customer_id", type: "ref",    label: "referrer", ref: refs.customerName },
+                referrer_name:    { row: "referrer_name",        type: "string", label: "referrer name" },
+                referred_name:    { row: "referred_name",        type: "string", label: "referred person name" },
+                referred_email:   { row: "referred_email",       type: "string", label: "referred person email" },
+                benefit_type:     { row: "benefit_type",         type: "string", label: "reward type" },
+                benefit_amount:   { row: "benefit_amount",       type: "number", label: "reward amount" },
+                benefit_credits:  { row: "benefit_credits",      type: "number", label: "reward credits (legacy)" },
+                origin_branch_id: { row: "origin_branch_id",     type: "string", label: "origin branch id" },
+                branch:           branchField,
+                referred_at:      { row: "referred_at",          type: "date",   label: "referred on" },
+                expires_at:       { row: "expires_at",           type: "date",   label: "reward expires" },
             },
         },
     };
