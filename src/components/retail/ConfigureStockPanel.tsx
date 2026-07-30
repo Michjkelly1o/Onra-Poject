@@ -179,7 +179,10 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                                             className="flex-1 min-w-0 h-full px-3 text-right text-[16px] text-[#101828] bg-transparent focus:outline-none placeholder:text-[#98a2b3]"
                                         />
                                         <div className="relative w-6 h-full shrink-0 select-none border-l border-[#e4e7ec] flex items-center justify-center">
-                                            <ChevronSelectorVertical className="pointer-events-none w-4 h-4 text-[#667085]" />
+                                            {/* z-10 keeps the glyph on top of the two absolute
+                                                buttons — otherwise the buttons' hover fill paints
+                                                over the chevron and it looks like it disappeared. */}
+                                            <ChevronSelectorVertical className="pointer-events-none relative z-10 w-4 h-4 text-[#667085]" />
                                             <button
                                                 type="button"
                                                 onClick={() => setValue(numeric + 1)}
