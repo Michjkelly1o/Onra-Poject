@@ -199,7 +199,7 @@ export function ProductDetailScreen({
                 it with a real product photo (aspect-square, ~360px on the
                 phone-frame width) so shoppers see the item before buying. */}
             {isRetail && product.imageUrl ? (
-                <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-[#f9fafb]">
+                <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
                     <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4">
@@ -329,14 +329,6 @@ export function ProductDetailScreen({
                                     </>
                                 )}
                             </InfoRow>
-                            {product.sku && (
-                                <>
-                                    <div className="h-px w-full bg-[#e4e7ec]" />
-                                    <InfoRow icon={CurrencyDollarCircle}>
-                                        SKU <span className="font-medium text-[var(--brand-text)]">{product.sku}</span>
-                                    </InfoRow>
-                                </>
-                            )}
                         </>
                     )}
                 </div>
