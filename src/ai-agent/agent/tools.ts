@@ -29,7 +29,7 @@ import { runAnalyze, runList, runExport } from "@/ai-agent/data/engine";
 import { exportStore } from "@/ai-agent/data/export-store";
 import { branchFilter, ScopeError } from "@/ai-agent/data/scope";
 import type { Row } from "@/ai-agent/data/store-readers";
-import type { InsightCard } from "@/ai-agent/agent/cards";
+import { AED, type InsightCard } from "@/ai-agent/agent/cards";
 import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
 
 const DATASETS = [
@@ -421,6 +421,146 @@ function studioOverview(
     };
 }
 
+// ─── Phase 4 (insight variety) — whats_interesting ───────────────────────────
+//
+// Server-side "what's happening" scan. Runs a handful of cheap checks over
+// the live catalog + snapshot and returns the 2-3 loudest signals right
+// now — top movers, retail low-stock, at-risk customers, upcoming class
+// load, expired-plan renewals. The LLM narrates the returned metric_group
+// and can then decide which lens to drill into with `analyze`.
+//
+// Everything is deterministic on the current snapshot — same query on the
+// same state returns the same tiles. No randomness, no template rotation.
+// Freshness comes from data changing, not from the tool inventing variety.
+function whatsInteresting(
+    ctx: AuthContext,
+    catalog: Catalog,
+    snapshot: AiAgentStateSnapshot,
+): InsightCard {
+    const tiles: Array<{ label: string; value: string }> = [];
+    const now = Date.now();
+    const day = 864e5;
+    const isoDay = (offset = 0) => new Date(now + offset * day).toISOString().slice(0, 10);
+
+    // 1. Retail low stock — how many product×branch pairs are at/below reorder
+    const stockRows = branchFilter(
+        ctx,
+        (catalog.retail_stock?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const lowStock = stockRows.filter((s) => s.below_reorder === "true").length;
+    if (lowStock > 0) {
+        tiles.push({ label: "Retail SKUs below reorder threshold", value: String(lowStock) });
+    }
+
+    // 2. Plans expiring in the next 14 days
+    const plans = branchFilter(
+        ctx,
+        (catalog.customer_plans?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const soonCutoff = isoDay(14);
+    const expiringSoon = plans.filter((p) => {
+        if (p.status !== "active") return false;
+        const exp = String(p.expiry_iso ?? "").slice(0, 10);
+        return exp && exp <= soonCutoff && exp >= isoDay(0);
+    }).length;
+    if (expiringSoon > 0) {
+        tiles.push({ label: "Plans expiring in the next 14 days", value: String(expiringSoon) });
+    }
+
+    // 3. Upcoming class load — classes scheduled in next 7 days
+    const classRows = branchFilter(
+        ctx,
+        (catalog.classes?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const weekCutoff = isoDay(7);
+    const upcoming = classRows.filter((c) => {
+        const iso = String(c.date_iso ?? c.date ?? "").slice(0, 10);
+        return iso && iso >= isoDay(0) && iso <= weekCutoff;
+    }).length;
+    if (upcoming > 0) {
+        tiles.push({ label: "Classes scheduled in the next 7 days", value: String(upcoming) });
+    }
+
+    // 4. Revenue this month (transactions kind ≠ retail, status complete)
+    const txnRows = branchFilter(
+        ctx,
+        (catalog.transactions?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const monthStart = new Date(now).toISOString().slice(0, 7) + "-01";
+    const revenueThisMonth = txnRows
+        .filter((t) => t.status === "complete" && t.kind !== "retail")
+        .filter((t) => String(t.created_at ?? "").slice(0, 10) >= monthStart)
+        .reduce((sum, t) => sum + (typeof t.amount_aed === "number" ? t.amount_aed : 0), 0);
+    if (revenueThisMonth > 0) {
+        tiles.push({ label: "Revenue this month (memberships + packages)", value: AED(revenueThisMonth) });
+    }
+
+    // 5. Retail revenue this month
+    const retailRevMonth = txnRows
+        .filter((t) => t.status === "complete" && t.kind === "retail")
+        .filter((t) => String(t.created_at ?? "").slice(0, 10) >= monthStart)
+        .reduce((sum, t) => sum + (typeof t.amount_aed === "number" ? t.amount_aed : 0), 0);
+    if (retailRevMonth > 0) {
+        tiles.push({ label: "Retail revenue this month", value: AED(retailRevMonth) });
+    }
+
+    // 6. At-risk customers (active plan expiring soon OR no visit in 30+ days)
+    const custRows = branchFilter(
+        ctx,
+        (catalog.customers?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const soonMs = now + 21 * day;
+    const staleCutoff = now - 30 * day;
+    const atRisk = custRows.filter((c) => c.status === "active").filter((c) => {
+        const expIso = c.plan_expiry_iso as string | undefined;
+        const lastIso = c.last_visit_iso as string | undefined;
+        const exp = expIso ? Date.parse(expIso) : NaN;
+        const expiring = !Number.isNaN(exp) && exp <= soonMs;
+        const stale = !!lastIso && Date.parse(lastIso) < staleCutoff;
+        return expiring || stale;
+    }).length;
+    if (atRisk > 0) {
+        tiles.push({ label: "Active customers at churn risk", value: String(atRisk) });
+    }
+
+    // 7. Waitlist backlog — bookings with status waitlisted
+    const bookingRows = branchFilter(
+        ctx,
+        (catalog.bookings?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const waitlisted = bookingRows.filter((b) => b.status === "waitlisted").length;
+    if (waitlisted > 0) {
+        tiles.push({ label: "Bookings on the waitlist right now", value: String(waitlisted) });
+    }
+
+    // 8. Frozen plans currently (customers who paused)
+    const frozen = plans.filter((p) => p.status === "frozen" || p.status === "freeze_requested").length;
+    if (frozen > 0) {
+        tiles.push({ label: "Currently frozen / freeze-requested plans", value: String(frozen) });
+    }
+
+    // Fall-through when the studio has zero data — never return "no data"
+    // as the whole answer. Nudge toward the setup thread instead.
+    if (tiles.length === 0) {
+        return {
+            card: "empty",
+            message: "No live signals to surface yet — the studio needs a bit more activity. If you're just getting started, head to Studio setup and the studio will start telling us its story.",
+        };
+    }
+
+    // Cap at 6 tiles so the card stays scannable — order above puts the
+    // operationally-most-actionable signals first.
+    return {
+        card: "metric_group",
+        title: "What's alive right now",
+        tiles: tiles.slice(0, 6),
+        note:
+            ctx.branchScope === "all"
+                ? "Signals across all active branches."
+                : `Signals for your branches only (${ctx.branchScope.length}).`,
+    };
+}
+
 /** Churn-risk / plan-expiring list. Filters the customers catalog to
  *  active customers with either an expiring plan or a stale last-visit
  *  and returns a ranked_list card. */
@@ -578,6 +718,18 @@ export function insightTools(
                 "A quick KPI snapshot of the studio: active customers, branches, instructors, scheduled classes. Use for 'give me an overview' / first-look questions.",
             parameters: z.object({}),
             execute: async () => guard(() => studioOverview(ctx, catalog, snapshot)),
+        }),
+
+        // Phase 4 (2026-07-30) — insight variety. When the user asks broadly
+        // ("give me insights", "what's happening"), call this FIRST — it
+        // returns the loudest 2-6 signals across finance / retail / plan
+        // health / class load / at-risk / waitlist right now. Then render
+        // one supporting chart via `analyze` on the strongest signal.
+        whats_interesting: tool({
+            description:
+                "Server-side scan for what's alive in the studio RIGHT NOW — top signals across finance, retail, membership health, at-risk customers, upcoming class load, waitlist, frozen plans. Returns a metric_group card with 2-6 tiles the model can narrate. Use whenever the user's question is broad ('give me insights', 'how is the studio doing', 'what's happening this week', 'surprise me') — do NOT default to revenue-by-branch every time. After this returns, render ONE supporting analyze chart on the strongest signal for depth.",
+            parameters: z.object({}),
+            execute: async () => guard(() => whatsInteresting(ctx, catalog, snapshot)),
         }),
 
         find_at_risk_members: tool({
