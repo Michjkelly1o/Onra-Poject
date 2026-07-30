@@ -767,6 +767,136 @@ export function readBlockedTimes(state: AppState): Row[] {
     }));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 Batch D — Settings catalog (2026-07-30)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Tax rates / agreements + single-row policy config (cancellation, freeze,
+// referral) exposed as datasets so the AI can answer "what's our late-cancel
+// policy?" without the model inventing a value. Single-row config datasets
+// return exactly one row so list_records({dataset:"cancellation_policy"})
+// returns a table with 1 row × N columns.
+
+export function readTaxRates(state: AppState): Row[] {
+    return state.taxRates.map(t => ({
+        id: t.id,
+        name: t.name,
+        rate_percentage: t.ratePercentage,
+        kind: t.kind,
+        type: t.type,
+        calculation_mode: t.calculationMode,
+        status: t.status,
+        description: t.description,
+        valid_from: t.validFromISO,
+        valid_until: t.validUntilISO,
+        created_at: t.createdAt,
+    }));
+}
+
+export function readAgreements(state: AppState): Row[] {
+    return state.agreements.map(a => ({
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        description: a.description,
+        required: a.required ? "true" : "false",
+        current_version: a.currentVersion,
+        all_locations: a.allLocations ? "true" : "false",
+        effective_dates_mode: a.effectiveDatesMode ?? "ongoing",
+        effective_from: a.effectiveFrom,
+        effective_until: a.effectiveUntil,
+        require_re_acceptance: a.requireReAcceptance ? "true" : "false",
+        require_guardian_consent: a.requireGuardianConsent ? "true" : "false",
+        status: a.status,
+        updated_at: a.updatedAt,
+        created_at: a.createdAt,
+    }));
+}
+
+/** Single-row cancellation policy — the studio's rule set for late cancels
+ *  + no-shows. Returned as a 1-row table so `list_records({dataset:"cancellation_policy"})`
+ *  is a natural way to ask "what's our cancellation policy?". */
+export function readCancellationPolicy(state: AppState): Row[] {
+    const c = state.cancellationPolicy;
+    if (!c) return [];
+    return [{
+        id: c.id,
+        credit_before_window: `${c.credit_before_window_value} ${c.credit_before_window_unit}`,
+        credit_before_outcome: c.credit_before_outcome,
+        credit_within_window: `${c.credit_within_window_value} ${c.credit_within_window_unit}`,
+        credit_within_outcome: c.credit_within_outcome,
+        membership_penalty_enabled: c.membership_penalty_after_cancellations_enabled ? "true" : "false",
+        membership_penalty_threshold: c.membership_penalty_after_cancellations_count,
+        membership_late_cancel_fee_enabled: c.membership_late_cancel_fee_enabled ? "true" : "false",
+        membership_late_cancel_fee_aed: c.membership_late_cancel_fee_aed,
+        membership_no_show_fee_enabled: c.membership_no_show_fee_enabled ? "true" : "false",
+        membership_no_show_fee_aed: c.membership_no_show_fee_aed,
+        applied_to_package_count: c.applied_to_package_ids.length,
+        applied_to_class_template_count: c.applied_to_class_template_ids.length,
+    }];
+}
+
+/** Single-row freeze policy — the studio's rules for pausing memberships. */
+export function readFreezePolicy(state: AppState): Row[] {
+    const f = state.freezePolicy;
+    if (!f) return [];
+    return [{
+        id: f.id,
+        enabled: f.enabled ? "true" : "false",
+        billing_behavior: f.billing_behavior,
+        who_can_freeze: f.who_can_freeze,
+        min_duration_value: f.min_duration_value,
+        min_duration_unit: f.min_duration_unit,
+        max_freezes_period: f.max_freezes_period,
+        max_freezes: f.max_freezes,
+        limit_freezes_enabled: f.limit_freezes_enabled ? "true" : "false",
+        fee_enabled: f.fee_enabled ? "true" : "false",
+        fee_type: f.fee_type,
+        fee_amount_aed: f.fee_amount_aed,
+        require_reason: f.require_reason ? "true" : "false",
+        reasons_count: (f.reasons ?? []).length,
+    }];
+}
+
+/** Single-row referral settings — the studio's rewards program config. */
+export function readReferralSettings(state: AppState): Row[] {
+    const r = state.referralSettings;
+    if (!r) return [];
+    return [{
+        id: "referral_settings_default",
+        program_active: r.programActive ? "true" : "false",
+        referrer_earn_type: r.referrerEarnType,
+        referrer_earn_amount: r.referrerEarnAmount,
+        friend_earn_type: r.friendEarnType,
+        friend_earn_amount: r.friendEarnAmount,
+        reward_unlock_trigger: r.rewardUnlockTrigger,
+        max_referrals_per_member: r.maxReferralsPerMember,
+        earned_reward_expiry_days: r.earnedRewardExpiryDays,
+        monthly_program_budget_aed: r.monthlyProgramBudgetAed,
+        prevent_self_referral: r.preventSelfReferral ? "true" : "false",
+    }];
+}
+
+/** notification_settings — one row per event × recipient. Channels + template
+ *  approval status + criticality flags exposed so admin can answer "what
+ *  notifications are enabled?" / "which templates are pending approval?". */
+export function readNotificationSettings(state: AppState): Row[] {
+    return state.notificationSettings.map(n => ({
+        id: n.id,
+        category: n.category,
+        notification_type: n.notificationType,
+        label: n.label,
+        email_enabled: n.emailEnabled ? "true" : "false",
+        whatsapp_enabled: n.whatsappEnabled ? "true" : "false",
+        sms_enabled: n.smsEnabled ? "true" : "false",
+        whatsapp_approval_status: n.whatsappApprovalStatus,
+        is_critical: n.isCritical ? "true" : "false",
+        send_mode: n.sendMode,
+        sent_during_campaigns: n.sentDuringCampaigns ? "true" : "false",
+        recipient_source: n.recipientSource ?? "customer",
+    }));
+}
+
 /** issued_gift_cards — sold gift card instances. Carries the live balance
  *  and links back to the design + the customer who owns it. */
 export function readIssuedGiftCards(state: AppState): Row[] {

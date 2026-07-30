@@ -68,6 +68,13 @@ const DATASETS = [
     "shifts",
     "shift_assignments",
     "blocked_times",
+    // AI-agent widening plan Phase 3 Batch D (2026-07-30) — Settings catalog:
+    "tax_rates",
+    "agreements",
+    "cancellation_policy",
+    "freeze_policy",
+    "referral_settings",
+    "notification_settings",
 ] as const;
 
 const filter = z.object({

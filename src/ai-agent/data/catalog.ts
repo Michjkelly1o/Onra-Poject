@@ -54,6 +54,13 @@ import {
     readShifts,
     readShiftAssignments,
     readBlockedTimes,
+    // Phase 3 Batch D (2026-07-30) — Settings catalog:
+    readTaxRates,
+    readAgreements,
+    readCancellationPolicy,
+    readFreezePolicy,
+    readReferralSettings,
+    readNotificationSettings,
     type Row,
 } from "@/ai-agent/data/store-readers";
 
@@ -664,6 +671,132 @@ export function buildCatalog(state: AppState): Catalog {
                 date_from_iso: { row: "date_from_iso", type: "date",   label: "from" },
                 date_to_iso:   { row: "date_to_iso",   type: "date",   label: "to" },
                 branch:        branchField,
+            },
+        },
+
+        // ── Phase 3 Batch D (2026-07-30) — Settings catalog ─────────────────
+        //
+        // Tax rates + agreements as multi-row datasets. Cancellation /
+        // freeze / referral policies are single-row config — the dataset
+        // returns exactly one row so `list_records` yields a table with
+        // one row × N columns (a natural way to ask "what's our late-
+        // cancel policy?"). Notification settings are multi-row (one per
+        // event × recipient).
+        tax_rates: {
+            key: "tax_rates",
+            label: "tax rates (VAT / income tax — rate %, kind, type, effective window)",
+            rows: readTaxRates(state),
+            fields: {
+                name:             { row: "name",             type: "string", label: "tax rate name" },
+                rate_percentage:  { row: "rate_percentage",  type: "number", label: "rate (%)" },
+                kind:             { row: "kind",             type: "enum",   label: "kind", values: ["vat", "income_tax"] },
+                type:             { row: "type",             type: "enum",   label: "type", values: ["default", "zero_rated", "exempt"] },
+                calculation_mode: { row: "calculation_mode", type: "enum",   label: "calculation mode", values: ["inclusive", "exclusive"] },
+                status:           { row: "status",           type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                description:      { row: "description",      type: "string", label: "description" },
+                valid_from:       { row: "valid_from",       type: "date",   label: "valid from" },
+                valid_until:      { row: "valid_until",      type: "date",   label: "valid until" },
+                created_at:       { row: "created_at",       type: "date",   label: "created" },
+            },
+        },
+
+        agreements: {
+            key: "agreements",
+            label: "agreements + waivers (liability, health, booking waivers — with effective window + version)",
+            rows: readAgreements(state),
+            fields: {
+                name:                     { row: "name",                     type: "string", label: "agreement name" },
+                type:                     { row: "type",                     type: "string", label: "type" },
+                description:              { row: "description",              type: "string", label: "description" },
+                required:                { row: "required",                  type: "enum",   label: "required to book", values: ["true", "false"] },
+                current_version:         { row: "current_version",           type: "number", label: "current version" },
+                all_locations:           { row: "all_locations",             type: "enum",   label: "all locations", values: ["true", "false"] },
+                effective_dates_mode:    { row: "effective_dates_mode",      type: "enum",   label: "effective window mode", values: ["ongoing", "expiry"] },
+                effective_from:          { row: "effective_from",            type: "string", label: "effective from" },
+                effective_until:         { row: "effective_until",           type: "string", label: "effective until" },
+                require_re_acceptance:   { row: "require_re_acceptance",     type: "enum",   label: "requires re-acceptance", values: ["true", "false"] },
+                require_guardian_consent:{ row: "require_guardian_consent",  type: "enum",   label: "requires guardian consent", values: ["true", "false"] },
+                status:                  { row: "status",                    type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                updated_at:              { row: "updated_at",                type: "date",   label: "last updated" },
+                created_at:              { row: "created_at",                type: "date",   label: "created" },
+            },
+        },
+
+        cancellation_policy: {
+            key: "cancellation_policy",
+            label: "cancellation policy (single row — late-cancel window + outcomes + membership fee rules)",
+            rows: readCancellationPolicy(state),
+            fields: {
+                credit_before_window:              { row: "credit_before_window",              type: "string", label: "cancel before window" },
+                credit_before_outcome:             { row: "credit_before_outcome",             type: "string", label: "cancel before outcome" },
+                credit_within_window:              { row: "credit_within_window",              type: "string", label: "cancel within window" },
+                credit_within_outcome:             { row: "credit_within_outcome",             type: "string", label: "late-cancel outcome" },
+                membership_penalty_enabled:        { row: "membership_penalty_enabled",        type: "enum",   label: "membership penalty enabled", values: ["true", "false"] },
+                membership_penalty_threshold:      { row: "membership_penalty_threshold",      type: "number", label: "penalty threshold (lifetime cancels)" },
+                membership_late_cancel_fee_enabled:{ row: "membership_late_cancel_fee_enabled",type: "enum",   label: "late-cancel fee enabled", values: ["true", "false"] },
+                membership_late_cancel_fee_aed:    { row: "membership_late_cancel_fee_aed",    type: "number", label: "late-cancel fee (AED)" },
+                membership_no_show_fee_enabled:    { row: "membership_no_show_fee_enabled",    type: "enum",   label: "no-show fee enabled", values: ["true", "false"] },
+                membership_no_show_fee_aed:        { row: "membership_no_show_fee_aed",        type: "number", label: "no-show fee (AED)" },
+                applied_to_package_count:          { row: "applied_to_package_count",          type: "number", label: "applies to N packages" },
+                applied_to_class_template_count:   { row: "applied_to_class_template_count",   type: "number", label: "applies to N class templates" },
+            },
+        },
+
+        freeze_policy: {
+            key: "freeze_policy",
+            label: "freeze policy (single row — pause rules for memberships, billing behaviour, limits)",
+            rows: readFreezePolicy(state),
+            fields: {
+                enabled:                  { row: "enabled",                  type: "enum",   label: "freeze feature enabled", values: ["true", "false"] },
+                billing_behavior:         { row: "billing_behavior",         type: "enum",   label: "billing behaviour", values: ["pause", "stay_on_schedule"] },
+                who_can_freeze:           { row: "who_can_freeze",           type: "enum",   label: "who can freeze", values: ["members_and_admins", "members_request_admins_approve", "admins_only"] },
+                min_duration_value:       { row: "min_duration_value",       type: "number", label: "min duration value" },
+                min_duration_unit:        { row: "min_duration_unit",        type: "string", label: "min duration unit" },
+                max_freezes_period:       { row: "max_freezes_period",       type: "enum",   label: "max freezes period", values: ["rolling_12m", "calendar_year"] },
+                max_freezes:              { row: "max_freezes",              type: "number", label: "max freezes per member per period" },
+                limit_freezes_enabled:    { row: "limit_freezes_enabled",    type: "enum",   label: "freeze cap enabled", values: ["true", "false"] },
+                fee_enabled:              { row: "fee_enabled",              type: "enum",   label: "freeze fee enabled", values: ["true", "false"] },
+                fee_type:                 { row: "fee_type",                 type: "enum",   label: "freeze fee type", values: ["one_time", "recurring"] },
+                fee_amount_aed:           { row: "fee_amount_aed",           type: "number", label: "freeze fee (AED)" },
+                require_reason:           { row: "require_reason",           type: "enum",   label: "reason required", values: ["true", "false"] },
+                reasons_count:            { row: "reasons_count",            type: "number", label: "configured reason options" },
+            },
+        },
+
+        referral_settings: {
+            key: "referral_settings",
+            label: "referral programme settings (single row — rewards, unlock trigger, budget, fraud controls)",
+            rows: readReferralSettings(state),
+            fields: {
+                program_active:            { row: "program_active",            type: "enum",   label: "programme active", values: ["true", "false"] },
+                referrer_earn_type:        { row: "referrer_earn_type",        type: "string", label: "referrer reward type" },
+                referrer_earn_amount:      { row: "referrer_earn_amount",      type: "number", label: "referrer reward amount" },
+                friend_earn_type:          { row: "friend_earn_type",          type: "string", label: "friend reward type" },
+                friend_earn_amount:        { row: "friend_earn_amount",        type: "number", label: "friend reward amount" },
+                reward_unlock_trigger:     { row: "reward_unlock_trigger",     type: "string", label: "unlock trigger" },
+                max_referrals_per_member:  { row: "max_referrals_per_member",  type: "number", label: "max referrals per member" },
+                earned_reward_expiry_days: { row: "earned_reward_expiry_days", type: "number", label: "reward expiry (days)" },
+                monthly_program_budget_aed:{ row: "monthly_program_budget_aed",type: "number", label: "monthly budget (AED)" },
+                prevent_self_referral:     { row: "prevent_self_referral",     type: "enum",   label: "blocks self-referral", values: ["true", "false"] },
+            },
+        },
+
+        notification_settings: {
+            key: "notification_settings",
+            label: "notification settings (one row per event × recipient — channels + WhatsApp approval status)",
+            rows: readNotificationSettings(state),
+            fields: {
+                category:                { row: "category",                type: "string", label: "category" },
+                notification_type:       { row: "notification_type",       type: "string", label: "event type" },
+                label:                   { row: "label",                   type: "string", label: "label" },
+                email_enabled:           { row: "email_enabled",           type: "enum",   label: "email enabled", values: ["true", "false"] },
+                whatsapp_enabled:        { row: "whatsapp_enabled",        type: "enum",   label: "WhatsApp enabled", values: ["true", "false"] },
+                sms_enabled:             { row: "sms_enabled",             type: "enum",   label: "SMS enabled", values: ["true", "false"] },
+                whatsapp_approval_status:{ row: "whatsapp_approval_status",type: "enum",   label: "WhatsApp approval status", values: ["approved", "pending", "rejected", "not_submitted"] },
+                is_critical:             { row: "is_critical",             type: "enum",   label: "critical (can't fully disable)", values: ["true", "false"] },
+                send_mode:               { row: "send_mode",               type: "string", label: "send mode" },
+                sent_during_campaigns:   { row: "sent_during_campaigns",   type: "enum",   label: "campaign-triggered", values: ["true", "false"] },
+                recipient_source:        { row: "recipient_source",        type: "enum",   label: "recipient", values: ["customer", "gift_card_recipient"] },
             },
         },
     };
