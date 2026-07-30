@@ -33,6 +33,10 @@ import {
     readWalletTransactions,
     readPayrollEntries,
     readPromoCodes,
+    // Phase 2 (2026-07-30) — retail catalog readers:
+    readRetailProducts,
+    readRetailStock,
+    readRetailStockAdjustments,
     type Row,
 } from "@/ai-agent/data/store-readers";
 
@@ -81,13 +85,27 @@ export function buildCatalog(state: AppState): Catalog {
             label: "revenue & payments (one row per payment)",
             rows: readTransactions(state),
             fields: {
-                amount_aed:     { row: "amount_aed",     type: "number", label: "amount (AED)" },
-                status:         { row: "status",         type: "enum",   label: "status", values: ["complete", "pending", "failed", "refunded"] },
-                kind:           { row: "kind",           type: "enum",   label: "kind",   values: ["membership", "package", "cancellation_penalty", "freeze_fee"] },
-                payment_method: { row: "payment_method", type: "enum",   label: "payment method", values: ["card", "cash"] },
-                product:        { row: "name",           type: "string", label: "product" },
-                branch:         branchField,
-                created_at:     { row: "created_at",     type: "date",   label: "date" },
+                amount_aed:      { row: "amount_aed",      type: "number", label: "amount (AED)" },
+                subtotal_aed:    { row: "subtotal_aed",    type: "number", label: "subtotal (AED, pre-tax)" },
+                tax_aed:         { row: "tax_aed",         type: "number", label: "tax (AED)" },
+                status:          { row: "status",          type: "enum",   label: "status", values: ["complete", "pending", "failed", "refunded"] },
+                kind:            { row: "kind",            type: "enum",   label: "kind",   values: ["membership", "package", "cancellation_penalty", "freeze_fee", "retail"] },
+                payment_method:  { row: "payment_method",  type: "enum",   label: "payment method", values: ["card", "cash"] },
+                payment_source:  { row: "payment_source",  type: "enum",   label: "payment source", values: ["pos", "customer_portal", "admin"] },
+                transaction_type:{ row: "transaction_type",type: "enum",   label: "ledger kind",    values: ["sale", "refund", "void", "write_off"] },
+                product:         { row: "name",            type: "string", label: "product" },
+                customer:        { row: "customer_id",     type: "ref",    label: "customer",       ref: refs.customerName },
+                branch:          branchField,
+                created_at:      { row: "created_at",      type: "date",   label: "date" },
+                refunded_at:     { row: "refunded_at",     type: "date",   label: "refunded on" },
+                refund_reason:   { row: "refund_reason",   type: "string", label: "refund reason" },
+                card_type:       { row: "card_type",       type: "enum",   label: "card scheme", values: ["visa", "mastercard", "amex"] },
+                // Retail snapshot on the transaction row (populated when kind === "retail")
+                retail_product_id:   { row: "retail_product_id",              type: "string", label: "retail product id" },
+                product_snapshot_name: { row: "product_snapshot_name",        type: "string", label: "product name at sale time" },
+                product_snapshot_sku:  { row: "product_snapshot_sku",         type: "string", label: "SKU at sale time" },
+                quantity:             { row: "quantity",                      type: "number", label: "quantity" },
+                branch_id_at_sale:    { row: "branch_id_at_sale",             type: "string", label: "sale branch id" },
             },
         },
 
@@ -319,6 +337,66 @@ export function buildCatalog(state: AppState): Catalog {
                 name:             { row: "name",             type: "string", label: "promo name" },
                 valid_from:       { row: "valid_from",       type: "date",   label: "valid from" },
                 valid_until:      { row: "valid_until",      type: "date",   label: "expires" },
+            },
+        },
+
+        // ── Phase 2 (2026-07-30) — Retail catalog ────────────────────────────
+        //
+        // Three new datasets so the AI Agent can answer stock, retail-sales,
+        // and audit-log questions. Retail products are studio-global (no
+        // branch_id on the product row); retail_stock + retail_stock_adjustments
+        // ARE branch-scoped, so they flow through branchFilter the same way
+        // transactions do. Every stock + adjustment row denormalizes the
+        // product name / SKU / category so group_by product renders nice
+        // labels without joins.
+        retail_products: {
+            key: "retail_products",
+            label: "retail catalog (studio-global — apparel, supplements, equipment, accessories)",
+            rows: readRetailProducts(state),
+            fields: {
+                name:              { row: "name",              type: "string", label: "product name" },
+                sku:               { row: "sku",               type: "string", label: "SKU" },
+                category:          { row: "category",          type: "string", label: "category" },
+                description:       { row: "description",       type: "string", label: "description" },
+                status:            { row: "status",            type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                price_aed:         { row: "price_aed",         type: "number", label: "price (AED)" },
+                unit_cost_aed:     { row: "unit_cost_aed",     type: "number", label: "unit cost (AED)" },
+                reorder_threshold: { row: "reorder_threshold", type: "number", label: "reorder threshold" },
+                created_at:        { row: "created_at",        type: "date",   label: "created" },
+            },
+        },
+
+        retail_stock: {
+            key: "retail_stock",
+            label: "retail stock — one row per (product × branch), with on-hand units + reorder flag",
+            rows: readRetailStock(state),
+            fields: {
+                product_name:      { row: "product_name",      type: "string", label: "product name" },
+                sku:               { row: "sku",               type: "string", label: "SKU" },
+                category:          { row: "category",          type: "string", label: "category" },
+                units_on_hand:     { row: "units_on_hand",     type: "number", label: "units on hand" },
+                reorder_threshold: { row: "reorder_threshold", type: "number", label: "reorder threshold" },
+                stock_value_aed:   { row: "stock_value_aed",   type: "number", label: "stock value (AED)" },
+                below_reorder:     { row: "below_reorder",     type: "enum",   label: "below reorder threshold", values: ["true", "false"] },
+                branch:            branchField,
+                last_adjusted_at:  { row: "last_adjusted_at",  type: "date",   label: "last adjusted" },
+            },
+        },
+
+        retail_stock_adjustments: {
+            key: "retail_stock_adjustments",
+            label: "retail stock movements audit log (sale / receive / adjust / loss / refund)",
+            rows: readRetailStockAdjustments(state),
+            fields: {
+                product_name:          { row: "product_name",          type: "string", label: "product name" },
+                sku:                   { row: "sku",                   type: "string", label: "SKU" },
+                kind:                  { row: "kind",                  type: "enum",   label: "movement kind", values: ["sale", "receive", "adjust", "loss", "refund"] },
+                delta:                 { row: "delta",                 type: "number", label: "unit delta (signed)" },
+                reason:                { row: "reason",                type: "string", label: "reason" },
+                source_transaction_id: { row: "source_transaction_id", type: "string", label: "source transaction id" },
+                created_by:            { row: "created_by",            type: "string", label: "actor" },
+                branch:                branchField,
+                created_at:            { row: "created_at",            type: "date",   label: "date" },
             },
         },
     };

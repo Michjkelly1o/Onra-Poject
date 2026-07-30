@@ -79,17 +79,39 @@ export function buildRefs(state: AppState): Refs {
 // reader here AND the field map in `catalog.ts` — kept side by side so
 // the pair stays in sync.
 
-/** customerTransactions → snake_case (matches the POC's `customer_transactions` seed shape). */
+/** customerTransactions → snake_case (matches the POC's `customer_transactions` seed shape).
+ *  Phase 2 (2026-07-30) widens the projection so the AI can slice retail
+ *  sales by product / quantity / branch-at-sale + reason customers about
+ *  refunds. Every new field is optional on the store type; the projection
+ *  emits undefined when the row doesn't carry it (e.g. non-retail rows have
+ *  no retail_product_id). */
 export function readTransactions(state: AppState): Row[] {
     return state.customerTransactions.map(t => ({
         id: t.id,
+        customer_id: t.customerId,
         amount_aed: t.amountAed,
+        subtotal_aed: t.subtotalAed,
+        tax_aed: t.taxAed,
         status: t.status,
         kind: t.kind,
         payment_method: t.paymentMethod,
+        payment_source: t.paymentSource,
+        transaction_type: t.transactionType,
         name: t.name, // product name — kept for the `product` field
         branch_id: t.branchId,
+        staff_id: t.staffId,
         created_at: t.createdAtISO,
+        refunded_at: t.refundedAtISO,
+        refund_reason: t.refundReason,
+        card_type: t.cardType,
+        // ── Retail-line-item snapshot (Phase 2 widen) ──
+        retail_product_id: t.retailProductId,
+        product_snapshot_name: t.productSnapshotName,
+        product_snapshot_sku: t.productSnapshotSku,
+        product_snapshot_price_aed: t.productSnapshotPriceAed,
+        product_snapshot_unit_cost_aed: t.productSnapshotUnitCostAed,
+        quantity: t.quantity,
+        branch_id_at_sale: t.branchIdAtSale,
     }));
 }
 
@@ -370,4 +392,94 @@ export function readPromoCodes(state: AppState): Row[] {
         // (multi-branch) that scope.ts doesn't understand. Filtered by
         // `applies_to` product type + `customer_targeting` instead.
     }));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2 — Retail catalog readers (2026-07-30)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Three new datasets so the AI Agent can answer stock, retail-sales, and
+// audit-log questions. Consistent with the "denormalize display strings on
+// dependent rows" pattern the schedule/booking readers use — stock rows and
+// adjustment rows both carry `product_name` + `category_label` so a query
+// like "which items are low on stock at Forma South?" doesn't need a join.
+//
+// Retail products are STUDIO-GLOBAL — no `branch_id` on the product row.
+// Stock + adjustments ARE branch-scoped, so both flow through branchFilter
+// via `branch_id` the same way transactions do.
+
+/** retail_products — studio-global catalog: name, sku, price, cost,
+ *  reorder threshold, category, status. */
+export function readRetailProducts(state: AppState): Row[] {
+    const categoryLabel = new Map(
+        (state.retailCategories ?? []).map(c => [c.id, c.label] as const),
+    );
+    return (state.retailProducts ?? []).map(p => ({
+        id: p.id,
+        name: p.name,
+        sku: p.sku,
+        category_id: p.categoryId,
+        category: categoryLabel.get(p.categoryId) ?? "Retail",
+        description: p.description,
+        price_aed: p.priceAed,
+        unit_cost_aed: p.unitCostAed,
+        reorder_threshold: p.reorderThreshold,
+        image_url: p.imageUrl,
+        status: p.status,
+        created_at: p.createdAt,
+    }));
+}
+
+/** retail_stock — one row per (product × branch). Product name +
+ *  category + reorder_threshold denormalized on the row so the model can
+ *  filter units_on_hand <= reorder_threshold without a join, and group_by
+ *  product_name / category / branch renders sensible axis labels. */
+export function readRetailStock(state: AppState): Row[] {
+    const productById = new Map((state.retailProducts ?? []).map(p => [p.id, p] as const));
+    const categoryLabel = new Map(
+        (state.retailCategories ?? []).map(c => [c.id, c.label] as const),
+    );
+    return (state.retailStock ?? []).map(s => {
+        const product = productById.get(s.productId);
+        return {
+            id: s.id,
+            product_id: s.productId,
+            product_name: product?.name ?? "—",
+            sku: product?.sku ?? "",
+            category: product ? (categoryLabel.get(product.categoryId) ?? "Retail") : "Retail",
+            branch_id: s.branchId,
+            units_on_hand: s.unitsOnHand,
+            reorder_threshold: product?.reorderThreshold ?? 0,
+            stock_value_aed: (product?.unitCostAed ?? 0) * s.unitsOnHand,
+            below_reorder:
+                product != null && s.unitsOnHand <= (product.reorderThreshold ?? 0)
+                    ? "true"
+                    : "false",
+            last_adjusted_at: s.lastAdjustedAt,
+        };
+    });
+}
+
+/** retail_stock_adjustments — audit log for stock movements. Kind =
+ *  sale / receive / adjust / loss / refund. Delta is signed (negative on
+ *  sale/loss, positive on receive/refund). Product name + branch id
+ *  denormalized so the model can group_by product without a join. */
+export function readRetailStockAdjustments(state: AppState): Row[] {
+    const productById = new Map((state.retailProducts ?? []).map(p => [p.id, p] as const));
+    return (state.retailStockAdjustments ?? []).map(a => {
+        const product = productById.get(a.productId);
+        return {
+            id: a.id,
+            product_id: a.productId,
+            product_name: product?.name ?? "—",
+            sku: product?.sku ?? "",
+            branch_id: a.branchId,
+            delta: a.delta,
+            kind: a.kind,
+            reason: a.reason,
+            source_transaction_id: a.sourceTransactionId,
+            created_by: a.createdBy,
+            created_at: a.createdAt,
+        };
+    });
 }

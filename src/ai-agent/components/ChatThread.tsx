@@ -150,6 +150,11 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
         // Missing this slice crashed every AI Agent request with
         // TypeError: undefined.filter.
         customerPlans:           state.customerPlans,
+        // Phase 2 (2026-07-30) — retail catalog for the AI Agent.
+        retailCategories:        state.retailCategories,
+        retailProducts:          state.retailProducts,
+        retailStock:             state.retailStock,
+        retailStockAdjustments:  state.retailStockAdjustments,
     };
 }
 

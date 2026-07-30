@@ -64,6 +64,15 @@ export type AiAgentStateSnapshot = Pick<
     // undefined.filter. classBookings + customerTransactions are already
     // present above.
     | "customerPlans"
+    // Phase 2 (2026-07-30) — Retail catalog. Feeds three new AI Agent
+    // datasets (retail_products / retail_stock / retail_stock_adjustments)
+    // so "which items are low on stock?" / "what did we sell in retail?"
+    // resolve against real data. retailCategories is a ref lookup for
+    // product category labels.
+    | "retailCategories"
+    | "retailProducts"
+    | "retailStock"
+    | "retailStockAdjustments"
 >;
 
 /** Thread mode. Insight = analytics chat; migration = 4-step CSV wizard;
