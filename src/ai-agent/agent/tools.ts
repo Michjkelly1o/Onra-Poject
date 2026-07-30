@@ -197,6 +197,20 @@ const CREATE_SHORTCUTS = [
 
 // ─── Phase 12: customer search ────────────────────────────────────────────────
 
+/** Normalize a name for substring matching: lowercase, strip diacritics,
+ *  fold hyphens/apostrophes/underscores to spaces, and collapse any
+ *  whitespace run to a single space. So "Al-Sayed" matches "Al Sayed"
+ *  and "O'Malley" matches "OMalley" / "O Malley" alike. */
+function normalizeName(s: string): string {
+    return s
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[̀-ͯ]/g, "")   // strip combining diacritics
+        .replace(/[-'_]/g, " ")            // fold hyphens / apostrophes to spaces
+        .replace(/\s+/g, " ")              // collapse whitespace
+        .trim();
+}
+
 function findCustomer(
     ctx: AuthContext,
     catalog: Catalog,
@@ -204,6 +218,7 @@ function findCustomer(
 ): InsightCard {
     const limit = q.limit ?? 12;
     const query = q.query.trim().toLowerCase();
+    const normalizedQuery = normalizeName(q.query);
     if (!query) {
         return {
             card: "empty",
@@ -222,10 +237,16 @@ function findCustomer(
         const last = ((c.last_name as string) ?? "").toLowerCase();
         const email = ((c.email as string) ?? "").toLowerCase();
         const phone = ((c.phone as string) ?? "").toLowerCase();
+        // Hyphen/apostrophe-tolerant name match so "Al Sayed" matches
+        // "Al-Sayed" and vice versa. Falls back to the raw lowercased
+        // compare for email/phone.
+        const firstNorm = normalizeName(first);
+        const lastNorm = normalizeName(last);
+        const fullNorm = `${firstNorm} ${lastNorm}`.trim();
         return (
-            first.includes(query) ||
-            last.includes(query) ||
-            `${first} ${last}`.includes(query) ||
+            firstNorm.includes(normalizedQuery) ||
+            lastNorm.includes(normalizedQuery) ||
+            fullNorm.includes(normalizedQuery) ||
             email.includes(query) ||
             (normalizedQueryDigits.length > 0 && phone.replace(/\D+/g, "").includes(normalizedQueryDigits))
         );
@@ -244,8 +265,9 @@ function findCustomer(
         const name = ((l.contact_name as string) ?? "").toLowerCase();
         const email = ((l.contact_email as string) ?? "").toLowerCase();
         const phone = ((l.phone as string) ?? "").toLowerCase();
+        const nameNorm = normalizeName(name);
         return (
-            name.includes(query) ||
+            nameNorm.includes(normalizedQuery) ||
             email.includes(query) ||
             (normalizedQueryDigits.length > 0 && phone.replace(/\D+/g, "").includes(normalizedQueryDigits))
         );
