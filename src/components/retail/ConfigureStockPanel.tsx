@@ -125,7 +125,7 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                         type="text"
                         value={reason}
                         onChange={e => setReason(e.target.value)}
-                        placeholder="e.g. Received shipment, damaged goods, count reconciliation"
+                        placeholder="Enter reason"
                         className={cn(
                             "w-full h-10 px-[14px] rounded-[8px] border-1 border-[#d0d5dd] bg-white",
                             "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
