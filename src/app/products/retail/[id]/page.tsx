@@ -15,11 +15,11 @@
 // re-learn either. Actions (Configure stock · Edit · Archive/Reactivate/
 // Recover · Delete) live in the sidebar action footer, not the header.
 
-import { useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     Edit02, Archive, RefreshCcw01, Trash01, Trash02, Check, XClose,
-    Image01, Package, CoinsHand, Tag01, CalendarPlus02, Building03,
+    Package, CoinsHand, Tag01, CalendarPlus02, SlashCircle01,
     BankNote01, ShoppingBag01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -91,7 +91,7 @@ const MODAL_CONFIG: Record<ModalAction, {
         confirmLabel: "Archive",
     },
     deactivate: {
-        IconComp: XClose,
+        IconComp: SlashCircle01,
         title: "Deactivate this retail product?",
         description: "This product will be hidden from new POS sales. Existing stock stays where it is.",
         confirmLabel: "Deactivate",
@@ -159,9 +159,7 @@ function ProductBanner({ imageUrl, name, status }: {
                     onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
             ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-[#e9fff3] to-[#f5fffa] flex items-center justify-center">
-                    <Image01 className="w-10 h-10 text-[#7ba08c]" />
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
             )}
             <div className="absolute top-3 right-3">
                 <StatusBadge type="product" status={status} size="lg" />
@@ -187,8 +185,14 @@ function LeftSidebar({
     const status = product.status;
 
     const actions = (() => {
-        // Archived products must be Recovered before they can be edited /
-        // deleted. Inactive products can be Reactivated OR Archived.
+        // Same status-aware ladder as memberships/packages:
+        //  · archived → Recover only (Delete surfaces when no history).
+        //  · inactive → Configure stock + Reactivate + Archive (+ Delete
+        //               only when no history).
+        //  · active   → Configure stock + Edit + Archive + terminal
+        //               swap: Delete (no history) OR Deactivate (has
+        //               history — hides the product from POS but keeps
+        //               stock intact).
         if (status === "archived") {
             return (
                 <>
@@ -217,7 +221,9 @@ function LeftSidebar({
                 <ActionBtn icon={<Package className="w-5 h-5" />} label="Configure stock" onClick={onConfigureStock} />
                 <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit product" onClick={() => onAction("edit")} />
                 <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive product" onClick={() => onAction("archive")} />
-                {!hasHistory && (
+                {hasHistory ? (
+                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate product" danger onClick={() => onAction("deactivate")} />
+                ) : (
                     <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete product" danger onClick={() => onAction("delete")} />
                 )}
             </>
@@ -412,9 +418,6 @@ function StockByBranchTab({ product, stockRows, branches }: {
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-4">
-            <p className="text-[14px] text-[#475467] leading-5">
-                Per-branch units on hand. Anything at or below the reorder threshold ({product.reorderThreshold} units) reads amber; zero reads red.
-            </p>
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
@@ -486,9 +489,6 @@ function ActivityTab({ product, adjRows, branches }: {
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-4">
-            <p className="text-[14px] text-[#475467] leading-5">
-                Last 50 stock movements — every sale, receive, adjustment, or refund writes a row here.
-            </p>
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
@@ -673,6 +673,7 @@ function ConfigureStockPanel({ open, onClose, product }: {
 export default function RetailProductDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
 
     const product      = useAppStore(s => s.retailProducts.find(p => p.id === id));
@@ -685,8 +686,23 @@ export default function RetailProductDetailPage() {
     const deleteRetailProducts   = useAppStore(s => s.deleteRetailProducts);
     const showToast    = useAppStore(s => s.showToast);
 
-    const [configureOpen, setConfigureOpen] = useState(false);
+    // Configure-stock panel is opened either from the sidebar action here
+    // OR from the retail list's row action (`?configureStock=1` deep link).
+    // The list route pushes here with the query param so admins don't need
+    // to click through the detail page first.
+    const [configureOpen, setConfigureOpen] = useState(() => searchParams.get("configureStock") === "1");
     const [pending, setPending] = useState<ModalAction | null>(null);
+
+    // Clean the query param once the panel state has taken effect so a
+    // back-nav doesn't re-open it. Runs once per mount, matches the
+    // returnTo cleanup pattern other detail pages use.
+    useEffect(() => {
+        if (searchParams.get("configureStock") === "1") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("configureStock");
+            window.history.replaceState({}, "", url.toString());
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!product) {
         return (
