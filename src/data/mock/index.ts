@@ -103,6 +103,18 @@ export { class_schedule } from "./class_schedule";
 // Bookings & ratings (FK → class_schedule, customers, staff_profiles, memberships/packages)
 export { class_bookings } from "./class_bookings";
 export { class_ratings } from "./class_ratings";
+// Curated booking set for the Ava Wright customer demo persona — the store
+// substitutes these for her generated class + appointment bookings/ratings
+// (empty Upcoming + 5 Past: 3 class, 2 appointment). Kept in sync admin↔customer.
+export {
+    AVA_CLASS_BOOKINGS,
+    AVA_CUSTOMER_ID,
+    AVA_APPOINTMENTS,
+    AVA_APPOINTMENT_BOOKINGS,
+    AVA_APPOINTMENT_RATINGS,
+    AVA_APPT_PRIVATE_ID,
+    AVA_APPT_RECOVERY_ID,
+} from "./ava_bookings";
 
 // Issued gift cards (FK → gift_card_designs, customers)
 export { issued_gift_cards } from "./issued_gift_cards";

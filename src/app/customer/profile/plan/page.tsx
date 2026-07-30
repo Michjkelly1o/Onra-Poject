@@ -263,13 +263,13 @@ export default function MyPlanPage() {
                     <>
                         {activePlans.length > 0 && (
                             <div className="flex flex-col gap-3">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Active plan</p>
+                                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">Active plan</p>
                                 {activePlans.map(renderCard)}
                             </div>
                         )}
                         {pastPlans.length > 0 && (
                             <div className="flex flex-col gap-3">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Expired plan</p>
+                                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">Expired plan</p>
                                 {pastPlans.map(renderCard)}
                             </div>
                         )}

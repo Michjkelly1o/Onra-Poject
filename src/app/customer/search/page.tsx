@@ -1,16 +1,17 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer — Search (`/customer/search`) — Classes + Appointments tabs
+// Customer — Search (`/customer/search`) — Classes / Private / Recovery tabs
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Two tabs under the shared header (studio chip + filter + bell):
-//   • Classes — date-driven group sessions (date selector + class list).
-//   • Appointments — bookable services (Private / Open session), no date axis here
-//     (date/instructor are chosen in the future booking flow).
-// Each tab has its own filter state, persisted across navigation within Search via
-// the `searchUi` cache. The Classes filter = Time + Instructor + Categories; the
-// Appointments filter = Categories only (same modal, sections hidden).
+// Three tabs under the shared header (studio chip + filter + bell):
+//   • Classes  — date-driven group sessions (date selector + class list).
+//   • Private  — bookable 1:1 private services (no date axis here).
+//   • Recovery — bookable recovery / wellness services (no date axis here).
+// Private and Recovery mirror the admin session-type split; each is pinned to its
+// own service type. Classes has its own filter state; Private + Recovery share a
+// Categories-only filter. State persists across navigation via the `searchUi`
+// cache. The Classes filter = Time + Instructor + Categories.
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -47,7 +48,10 @@ import { offsetForCity, offsetLabel, shouldAutoOpenTzSheet, tzGate } from "@/lib
 import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 
-type Tab = "classes" | "appointments";
+// Three tabs, matching the admin Private/Recovery split — "Appointments" is no
+// longer a single lumped tab (client 2026-07-30).
+type Tab = "classes" | "private" | "recovery";
+const TAB_LABEL: Record<Tab, string> = { classes: "Classes", private: "Private", recovery: "Recovery" };
 
 export default function SearchPage() {
     const router = useRouter();
@@ -135,12 +139,15 @@ export default function SearchPage() {
     const activeApplied = isClasses ? applied : apptApplied;
     const setActiveApplied = isClasses ? setApplied : setApptApplied;
 
+    // On the Private / Recovery tabs, the appointment list is pinned to that
+    // service type (the tab IS the type — no separate type filter).
+    const apptType = tab === "classes" ? undefined : tab;
     const allDayClasses = useDayClasses(selectedISO);
     const dayClasses = applyFilters(allDayClasses, applied);
-    const appointments = useAppointments(apptApplied);
+    const appointments = useAppointments(apptApplied, apptType);
     // What the DRAFT selection would return — recomputed on every toggle so the
     // filter's primary action reads "Show N results" live.
-    const draftAppointments = useAppointments(apptDraft);
+    const draftAppointments = useAppointments(apptDraft, apptType);
     const draftResultCount = isClasses ? applyFilters(allDayClasses, draft).length : draftAppointments.length;
     const unreadNotifs = useUnreadNotifCount();
     const isAuth = useIsAuthenticated();
@@ -154,7 +161,7 @@ export default function SearchPage() {
                 overlap
                 subBar={
                     <div className="flex w-full gap-3 pt-1">
-                        {(["classes", "appointments"] as Tab[]).map((t) => {
+                        {(["classes", "private", "recovery"] as Tab[]).map((t) => {
                             const active = tab === t;
                             return (
                                 <button
@@ -167,7 +174,7 @@ export default function SearchPage() {
                                             : "font-medium text-[#667085]"
                                     }`}
                                 >
-                                    {t === "classes" ? "Classes" : "Appointments"}
+                                    {TAB_LABEL[t]}
                                 </button>
                             );
                         })}
@@ -293,8 +300,8 @@ export default function SearchPage() {
                 ) : (
                     <div className="flex min-h-[calc(100dvh-260px)] flex-1 items-center justify-center">
                         <SearchEmptyState
-                            title="No appointment found"
-                            description="Try selecting another branch to find available appointments."
+                            title={tab === "recovery" ? "No recovery session found" : "No private session found"}
+                            description="Try selecting another branch to find available sessions."
                         />
                     </div>
                 )}
@@ -340,7 +347,7 @@ export default function SearchPage() {
                 onDraftChange={setActiveDraft}
                 showTime={isClasses}
                 showInstructor={isClasses}
-                showType={!isClasses}
+                showType={false}
                 categories={activeCategories}
                 instructors={activeInstructors}
                 onSeeAll={() => router.push("/customer/search/instructors")}

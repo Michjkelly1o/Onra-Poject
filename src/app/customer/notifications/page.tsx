@@ -83,7 +83,7 @@ function Section({
     if (rows.length === 0) return null;
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
+            <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{title}</p>
             <div className="flex flex-col gap-3">
                 {rows.map((n, i) => (
                     <div key={n.id} className="flex flex-col gap-3">

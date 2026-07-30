@@ -984,7 +984,7 @@ function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
             <Button variant="primary" size="md"
                 leftIcon={<Plus className="w-4 h-4" />}
                 onClick={() => setOpen(p => !p)}>
-                Add new
+                Add
             </Button>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[220px]">

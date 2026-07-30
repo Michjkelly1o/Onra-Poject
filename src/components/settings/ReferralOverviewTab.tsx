@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { TableAvatar } from "@/components/ui/avatar";
 import { Pagination } from "@/components/ui/Pagination";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
-import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
+import { type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange } from "@/lib/period-filter";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { useAppStore } from "@/lib/store";
@@ -57,7 +57,7 @@ interface ReferrerRow {
     credits: number;
 }
 
-export function ReferralOverviewTab() {
+export function ReferralOverviewTab({ period }: { period: DateFilter }) {
     const router = useRouter();
     const pathname = usePathname();
     const customerReferrals = useAppStore(s => s.customerReferrals);
@@ -71,14 +71,9 @@ export function ReferralOverviewTab() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
-    // Period filter — client 2026-07-20. Default "This month" so the
-    // Overview tab lands on the same view the (still-monthly) budget bar
-    // is scoped to. All KPI + Top referrers derivations below read from
-    // `filteredReferrals` instead of the raw slice.
-    const [period, setPeriod] = useState<DateFilter>({
-        type: "month",
-        label: "This month",
-    });
+    // Period filter is owned by the PAGE (rendered on the Overview/Setup tab
+    // row, matching the dashboard header layout) and passed in as `period`. All
+    // KPI + Top referrers derivations below read from `filteredReferrals`.
     const filteredReferrals = useMemo(() => {
         const { from, to } = dateFilterToRange(period);
         const fromT = from.getTime();
@@ -189,17 +184,7 @@ export function ReferralOverviewTab() {
     ];
 
     return (
-        <div className="flex flex-col gap-4 max-w-[1100px]">
-            {/* ── Toolbar ────────────────────────────────────────────────
-                Period filter lives ABOVE the containers, matching the
-                dashboard / insights / compensation pattern. `flex-1`
-                spacer pushes the filter to the right so it aligns with
-                every other module's toolbar. */}
-            <div className="flex items-center gap-3">
-                <div className="flex-1" />
-                <DateRangeFilter value={period} onChange={setPeriod} />
-            </div>
-
+        <div className="flex w-full flex-col gap-4">
             {/* ── Header ─────────────────────────────────────────────────── */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex items-center gap-4 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex-1 flex flex-col gap-1">

@@ -138,7 +138,7 @@ export default function BookingRulesPage() {
     }
 
     return (
-        <div className="flex flex-col gap-4 max-w-[1100px]">
+        <div className="flex w-full flex-col gap-4">
             {/* ── Card 1: Booking window ────────────────────────────── */}
             <SettingsCard>
                 <CardHeader

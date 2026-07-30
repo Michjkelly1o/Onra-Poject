@@ -50,6 +50,7 @@ import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
     useAppStore, type Branch,
     type Role, type RoleStatus, type RoleType,
@@ -210,7 +211,7 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
             <Button variant="primary" size="md"
                 leftIcon={<Plus className="w-4 h-4" />}
                 onClick={() => setOpen(p => !p)}>
-                Add new
+                Add
             </Button>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px]">
@@ -890,7 +891,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     //   • Legacy combined view    (undefined)        → /admin/staff
     const returnTo = forceTab === "roles" ? "/admin/staff/roles" : "/admin/staff";
     function handleAddRole()  { router.push(`/staff/roles/new?returnTo=${encodeURIComponent(returnTo)}`); }
-    function handleAddStaff() { router.push(`/staff/members/new?returnTo=${encodeURIComponent(returnTo)}`); }
+    function handleAddStaff() { openStaffFormPanel({ kind: "staff", mode: "create" }); }
     function handleExport() {
         if (tab === "roles") {
             if (filteredRoles.length === 0) return;
@@ -909,7 +910,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         if (kind === "view")             return router.push(`/staff/roles/${role.id}?returnTo=${rt}`);
         if (kind === "edit_details")     return router.push(`/staff/roles/${role.id}/edit?returnTo=${rt}`);
         if (kind === "edit_permissions") return router.push(`/staff/roles/${role.id}/permissions/edit?returnTo=${rt}`);
-        if (kind === "add_staff")        return router.push(`/staff/members/new?roleId=${role.id}&returnTo=${rt}`);
+        if (kind === "add_staff")        return openStaffFormPanel({ kind: "staff", mode: "create", roleId: role.id });
         // Confirmable
         const confirmKind: ConfirmKind = kind;
         setPendingConfirm({ kind: confirmKind, entity: "role", row: role });
@@ -968,7 +969,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     function handleStaffAction(s: Staff, kind: StaffRowActionKind) {
         const rt = encodeURIComponent(returnTo);
         if (kind === "view")          return router.push(`/staff/members/${s.id}?returnTo=${rt}`);
-        if (kind === "edit_details")  return router.push(`/staff/members/${s.id}/edit?returnTo=${rt}`);
+        if (kind === "edit_details")  return openStaffFormPanel({ kind: "staff", mode: "edit", id: s.id });
         if (kind === "change_role") {
             setChangingRoleFor(s);
             return;
@@ -1191,8 +1192,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     variant={forceTab === "roles" ? "role-only" : forceTab === "staff" ? "staff-only" : "combined"}
                     onAddRole={handleAddRole}
                     onAddStaff={handleAddStaff}
-                    onAddShift={() => router.push(`/staff/shifts/new?returnTo=${encodeURIComponent("/admin/staff?subtab=shift-management")}`)}
-                    onAddBlockedTime={() => router.push(`/staff/blocked-time/new?returnTo=${encodeURIComponent("/admin/staff?subtab=blocked-time")}`)}
+                    onAddShift={() => openStaffFormPanel({ kind: "shift", mode: "create" })}
+                    onAddBlockedTime={() => openStaffFormPanel({ kind: "blocked", mode: "create" })}
                 />
             </div>
 

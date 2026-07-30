@@ -81,10 +81,16 @@ export interface ShiftFormPageProps {
     mode: "create" | "edit";
     shiftId?: string;
     returnTo?: string;
+    /** When provided the form renders as SIDE-PANEL content (header + fields +
+     *  footer, no full-page chrome) and this closes the panel instead of
+     *  navigating. Absent → legacy full-page route (edit). Client 2026-07-30. */
+    onClose?: () => void;
 }
 
-export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: ShiftFormPageProps) {
+export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClose }: ShiftFormPageProps) {
     const router = useRouter();
+    const panel = !!onClose;
+    const exit = onClose ?? (() => router.push(returnTo));
 
     const shifts        = useAppStore(s => s.shifts);
     const branches      = useAppStore(s => s.branches);
@@ -249,29 +255,163 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
                 "success", "check",
             );
         }
-        router.push(returnTo);
+        exit();
     }
 
     // Edit-mode safety — shift was deleted while the admin had the form open.
     if (mode === "edit" && !existing) {
-        return (
-            <div className="h-screen bg-white flex flex-col items-center justify-center gap-3">
+        const notFound = (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3">
                 <p className="font-semibold text-[18px] text-[#101828]">Shift not found</p>
                 <p className="text-[14px] text-[#667085]">The shift you're trying to edit no longer exists.</p>
-                <Button variant="primary" size="md" onClick={() => router.push(returnTo)}>
-                    Back to shifts
-                </Button>
+                <Button variant="primary" size="md" onClick={exit}>Back to shifts</Button>
             </div>
         );
+        return panel
+            ? <div className="flex h-full flex-col bg-white">{notFound}</div>
+            : <div className="h-screen bg-white flex flex-col">{notFound}</div>;
     }
 
     const pageTitle = mode === "edit" ? `Edit ${existing?.name ?? "shift"}` : "Add new shift";
 
+    // ── Field content — shared by the side-panel + full-page layouts. ──
+    const fields = (
+        <>
+            <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Shift details</h2>
+
+            {/* Shift name */}
+            <div className="flex flex-col gap-[6px]">
+                <label className="text-[14px] font-medium text-[#344054]">Shift name</label>
+                <input
+                    type="text"
+                    value={form.name}
+                    onChange={e => set({ name: e.target.value })}
+                    placeholder="Enter shift name"
+                    className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                />
+            </div>
+
+            {/* Branch location */}
+            <div className="flex flex-col gap-[6px]">
+                <label className="text-[14px] font-medium text-[#344054]">Branch location</label>
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                    placeholder="Select branch"
+                    value={form.branchId}
+                    // Picking a branch enables the day/hour fields and pre-selects
+                    // the branch's operating days (admin can then trim them).
+                    onChange={v => set({ branchId: v, workingDays: operatingDaysFor(v) })}
+                    options={branchOptions}
+                    width="w-full"
+                />
+            </div>
+
+            {/* Shift hour — start / end constrained to the selected branch's open
+                window. Falls back to the full 24h range when no branch is picked. */}
+            <div className="flex flex-col gap-[6px]">
+                <label className="text-[14px] font-medium text-[#344054]">Shift hour</label>
+                <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                        <SelectInput
+                            triggerIcon={<Clock className="w-4 h-4" />}
+                            placeholder="Start"
+                            value={form.startTime}
+                            onChange={v => set({ startTime: v })}
+                            options={startOptions}
+                            width="w-full"
+                            disabled={!form.branchId}
+                        />
+                    </div>
+                    <span className="text-[14px] text-[#667085] shrink-0">—</span>
+                    <div className="flex-1">
+                        <SelectInput
+                            triggerIcon={<Clock className="w-4 h-4" />}
+                            placeholder="End"
+                            value={form.endTime}
+                            onChange={v => set({ endTime: v })}
+                            options={endOptions}
+                            width="w-full"
+                            disabled={!form.branchId}
+                        />
+                    </div>
+                </div>
+                {!form.branchId && (
+                    <p className="text-[13px] text-[#667085]">Select a branch first — shift hours follow the branch's working hours.</p>
+                )}
+                {form.branchId && form.startTime >= form.endTime && (
+                    <p className="text-[13px] text-[#b42318]">End time must be after start time.</p>
+                )}
+            </div>
+
+            {/* Shift days — pill multi-toggle in Mon..Sun visual order. Disabled
+                until a branch is picked; closed days stay disabled. */}
+            <div className="flex flex-col gap-[6px]">
+                <label className="text-[14px] font-medium text-[#344054]">Shift days</label>
+                <div className="flex flex-wrap gap-2">
+                    {DAY_PILLS.map(d => {
+                        const selected = form.workingDays[d.index];
+                        const dayDisabled = !form.branchId || !branchOperatingDays[d.index];
+                        return (
+                            <button key={d.label} type="button"
+                                disabled={dayDisabled}
+                                onClick={() => !dayDisabled && toggleDay(d.index)}
+                                className={cn(
+                                    "px-4 py-[8px] rounded-[8px] text-[14px] font-medium transition-all",
+                                    dayDisabled
+                                        ? "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed"
+                                        : selected
+                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                                            : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                )}>
+                                {d.label}
+                            </button>
+                        );
+                    })}
+                </div>
+                {!form.branchId ? (
+                    <p className="text-[13px] text-[#667085]">Select a branch first — shift days follow the branch's operating days.</p>
+                ) : !form.workingDays.some(Boolean) && (
+                    <p className="text-[13px] text-[#475467]">Pick at least one day.</p>
+                )}
+            </div>
+        </>
+    );
+
+    const submitBtn = (
+        <Button variant="primary" size="md" disabled={!isValid} onClick={handleSubmit}
+            leftIcon={<Check className="w-4 h-4" />}>
+            {mode === "create" ? "Add shift" : "Save changes"}
+        </Button>
+    );
+
+    // ── Side-panel layout (create via the Staff & Shifts + Add menu) ──
+    if (panel) {
+        return (
+            <>
+                <div className="flex items-center justify-between px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{pageTitle}</h2>
+                    <button type="button" onClick={exit} aria-label="Close"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {fields}
+                </div>
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end gap-3">
+                    <Button variant="secondary-gray" size="md" onClick={exit}>Cancel</Button>
+                    {submitBtn}
+                </div>
+                <Toast />
+            </>
+        );
+    }
+
+    // ── Full-page layout (edit route) ──
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">
-            {/* Header — X close on the left, title beside. */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push(returnTo)}
+                <button type="button" onClick={exit}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
@@ -281,10 +421,8 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
                 </div>
             </div>
 
-            {/* Body — single-step layout. Left = step pill, center = form card. */}
             <div className="flex-1 overflow-hidden">
                 <div className="flex gap-8 px-6 py-6 h-full items-start">
-                    {/* Left rail — single active step (Figma 7412:557790). */}
                     <div className="w-[260px] shrink-0 pt-2">
                         <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] bg-[#f5fffa]">
                             <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
@@ -294,124 +432,12 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff" }: Shif
                         </div>
                     </div>
 
-                    {/* Center form card */}
                     <div className="flex-1 max-w-[628px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden self-stretch shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                         <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
-                            <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Shift details</h2>
-
-                            {/* Shift name */}
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Shift name</label>
-                                <input
-                                    type="text"
-                                    value={form.name}
-                                    onChange={e => set({ name: e.target.value })}
-                                    placeholder="Enter shift name"
-                                    className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
-                                />
-                            </div>
-
-                            {/* Branch location */}
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Branch location</label>
-                                <SelectInput
-                                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
-                                    placeholder="Select branch"
-                                    value={form.branchId}
-                                    // Picking a branch enables the day/hour
-                                    // fields and pre-selects the branch's
-                                    // operating days (admin can then trim them).
-                                    onChange={v => set({ branchId: v, workingDays: operatingDaysFor(v) })}
-                                    options={branchOptions}
-                                    width="w-full"
-                                />
-                            </div>
-
-                            {/* Shift hour — start / end constrained to the
-                                selected branch's open window (admin can't
-                                schedule a shift outside operating hours).
-                                Falls back to the full 24h range when no
-                                branch is picked yet. */}
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Shift hour</label>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1">
-                                        <SelectInput
-                                            triggerIcon={<Clock className="w-4 h-4" />}
-                                            placeholder="Start"
-                                            value={form.startTime}
-                                            onChange={v => set({ startTime: v })}
-                                            options={startOptions}
-                                            width="w-full"
-                                            disabled={!form.branchId}
-                                        />
-                                    </div>
-                                    <span className="text-[14px] text-[#667085] shrink-0">—</span>
-                                    <div className="flex-1">
-                                        <SelectInput
-                                            triggerIcon={<Clock className="w-4 h-4" />}
-                                            placeholder="End"
-                                            value={form.endTime}
-                                            onChange={v => set({ endTime: v })}
-                                            options={endOptions}
-                                            width="w-full"
-                                            disabled={!form.branchId}
-                                        />
-                                    </div>
-                                </div>
-                                {!form.branchId && (
-                                    <p className="text-[13px] text-[#667085]">Select a branch first — shift hours follow the branch's working hours.</p>
-                                )}
-                                {form.branchId && form.startTime >= form.endTime && (
-                                    <p className="text-[13px] text-[#b42318]">End time must be after start time.</p>
-                                )}
-                            </div>
-
-                            {/* Shift days — pill multi-toggle in Mon..Sun visual
-                                order. Disabled until a branch is picked; days the
-                                branch is closed on stay disabled so a shift can't
-                                land on a non-operating day (client 2026-07-24). */}
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Shift days</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {DAY_PILLS.map(d => {
-                                        const selected = form.workingDays[d.index];
-                                        // Closed day (branch not operating) or no
-                                        // branch yet → can't be toggled.
-                                        const dayDisabled = !form.branchId || !branchOperatingDays[d.index];
-                                        return (
-                                            <button key={d.label} type="button"
-                                                disabled={dayDisabled}
-                                                onClick={() => !dayDisabled && toggleDay(d.index)}
-                                                className={cn(
-                                                    "px-4 py-[8px] rounded-[8px] text-[14px] font-medium transition-all",
-                                                    dayDisabled
-                                                        ? "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed"
-                                                        : selected
-                                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                                            : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-                                                )}>
-                                                {d.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {!form.branchId ? (
-                                    <p className="text-[13px] text-[#667085]">Select a branch first — shift days follow the branch's operating days.</p>
-                                ) : !form.workingDays.some(Boolean) && (
-                                    <p className="text-[13px] text-[#475467]">Pick at least one day.</p>
-                                )}
-                            </div>
+                            {fields}
                         </div>
-
-                        {/* Footer — primary action gated by `isValid`. No
-                            top border per the spec — the form card's own
-                            border surrounds everything. */}
                         <div className="shrink-0 px-6 py-4 flex items-center justify-end">
-                            <Button variant="primary" size="md" disabled={!isValid} onClick={handleSubmit}
-                                leftIcon={<Check className="w-4 h-4" />}>
-                                {mode === "create" ? "Add shift" : "Save changes"}
-                            </Button>
+                            {submitBtn}
                         </div>
                     </div>
                 </div>

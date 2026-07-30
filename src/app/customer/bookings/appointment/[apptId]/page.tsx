@@ -22,9 +22,11 @@ import { cancelAppointmentBooking, useAppointmentBookingById } from "@/lib/custo
 import { addCustomerNotification } from "@/lib/customer/notifications-feed";
 import { useAppStore } from "@/lib/store";
 import type { ClassDetailVM } from "@/lib/customer/search-data";
+import { useHasRatedAppointment, useAppointmentReviews } from "@/lib/customer/bookings-data";
 import { ClassDetailLayout, DetailTimeRow, InfoRow } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirmSheet";
+import { RatingsSection } from "@/components/customer/bookings/RatingsSection";
 import { Button } from "@/components/ui/button";
 import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
 
@@ -54,6 +56,11 @@ export default function AppointmentBookingDetailPage() {
     );
     const { timezone, localTimezone } = useCurrentCustomerContext();
     const [cancelOpen, setCancelOpen] = useState(false);
+    // Rating state — keyed by the linked shared appointment (adminAppointmentId)
+    // so the review + admin summary read one source. Mirrors the class flow.
+    const ratedAppointmentId = booking?.adminAppointmentId;
+    const hasRated = useHasRatedAppointment(ratedAppointmentId);
+    const reviews = useAppointmentReviews(ratedAppointmentId);
 
     if (!booking) {
         return (
@@ -96,6 +103,9 @@ export default function AppointmentBookingDetailPage() {
     const isCancelled = booking.status === "cancelled" || adminAppt?.status === "Cancelled";
     const startMs = new Date(`${booking.slotISO}T${booking.slotTime}:00`).getTime();
     const isUpcoming = !isCancelled && startMs > Date.now();
+    // A finished (past), non-cancelled appointment is "Attended" — mirrors the
+    // class booking's attended state so every booking type reads consistently.
+    const isAttended = !isCancelled && !isUpcoming;
 
     // Resolve the appointment's location from the LIVE service config (admin
     // side) so it always reflects the current Private/Recovery setup:
@@ -173,6 +183,7 @@ export default function AppointmentBookingDetailPage() {
         waitlistSpotsLeft: null,
         waitlistCount: 0,
         maxWaitlist: 0,
+        waitlistPosition: null,
         state: "booked",
         description: booking.description,
         equipment: [],
@@ -191,7 +202,7 @@ export default function AppointmentBookingDetailPage() {
     ) : (
         <span className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
             <CheckCircle className="size-3" aria-hidden />
-            Booked
+            {isAttended ? "Attended" : "Booked"}
         </span>
     );
 
@@ -222,14 +233,18 @@ export default function AppointmentBookingDetailPage() {
                         ? booking.lateCancel
                             ? "Cancelled (late)"
                             : "Cancelled (no charge)"
-                        : "Appointment confirmed"}
+                        : isAttended
+                          ? "Appointment attended"
+                          : "Appointment confirmed"}
                 </p>
                 <p className="text-xs font-normal leading-[18px] text-[#344054]">
                     {isCancelled
                         ? booking.lateCancel
                             ? "This appointment was cancelled within 24 hours — no refund was issued."
                             : "This appointment was cancelled and your refund has been processed."
-                        : "Your appointment is confirmed. Please arrive a few minutes before your scheduled time."}
+                        : isAttended
+                          ? "Your attendance has been recorded."
+                          : "Your appointment is confirmed. Please arrive a few minutes before your scheduled time."}
                 </p>
             </div>
             {isCancelled ? (
@@ -304,6 +319,24 @@ export default function AppointmentBookingDetailPage() {
         >
             Cancel appointment
         </Button>
+    ) : isAttended && !hasRated ? (
+        // Attended + not yet rated → the same "Rate" flow as classes.
+        <Button
+            variant="primary"
+            size="xl"
+            className="w-full rounded-full"
+            onClick={() => router.push(`/customer/bookings/appointment/${apptId}/rate`)}
+        >
+            Rate appointment
+        </Button>
+    ) : undefined;
+
+    // Attended appointments show their overall rating + reviews (identical to the
+    // class Booking Detail); a cancelled one shows its refund breakdown instead.
+    const afterLocation = isAttended ? (
+        <RatingsSection reviews={reviews} onMoreReviews={() => router.push(`/customer/bookings/appointment/${apptId}/reviews`)} />
+    ) : refundLines ? (
+        <RefundDetailsSection lines={refundLines} />
     ) : undefined;
 
     return (
@@ -315,7 +348,7 @@ export default function AppointmentBookingDetailPage() {
             infoGrid={infoGrid}
             statusBlock={statusBlock}
             heroBadge={heroBadge}
-            afterLocation={refundLines ? <RefundDetailsSection lines={refundLines} /> : undefined}
+            afterLocation={afterLocation}
             onBack={goBack}
             actionZone={actionZone}
         />

@@ -149,7 +149,10 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                                   icon: a.lateCancel ? SlashCircle01 : RefreshCcw01,
                               }
                             : tab === "past"
-                              ? { label: "Completed", tone: "success" as const }
+                              ? // Past appointments reuse the SAME "Attended" status the class
+                                // bookings use (BOOKING_STATUS.attended) so the finished state
+                                // reads consistently across all booking types.
+                                BOOKING_STATUS.attended.card
                               : { label: "Booked", tone: "success" as const }
                     }
                     mutedCover={isApptCancelled(a)}
@@ -284,7 +287,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                     <div className="flex flex-col gap-6">
                         {dayGroups.map((g) => (
                             <div key={g.key} className="flex flex-col gap-3">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{g.label}</p>
+                                <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{g.label}</p>
                                 <div className="flex flex-col gap-3">{g.rows.map((r) => r.el)}</div>
                             </div>
                         ))}

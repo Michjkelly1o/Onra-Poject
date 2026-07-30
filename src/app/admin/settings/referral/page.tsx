@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { DetailPageTabs } from "@/components/patterns/DetailPageTabs";
+import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { ReferralRewardsPanel } from "@/components/settings/ReferralRewardsPanel";
 import { ReferralEligibilityPanel } from "@/components/settings/ReferralEligibilityPanel";
 import { ReferralOverviewTab } from "@/components/settings/ReferralOverviewTab";
@@ -75,6 +76,10 @@ export default function ReferralSettingsPage() {
     // Page-level tab — Overview (program KPIs) vs Setup (configuration).
     const [pageTab, setPageTab] = useState<PageTab>("overview");
 
+    // Period filter — owned here so it can sit on the tab row (matching the
+    // dashboard header layout). Only the Overview tab uses it. Default "This month".
+    const [period, setPeriod] = useState<DateFilter>({ type: "month", label: "This month" });
+
     // Active sub-tab on the rules card.
     const [rulesTab, setRulesTab] = useState<RulesTab>("rewards");
 
@@ -104,22 +109,31 @@ export default function ReferralSettingsPage() {
                 group header: `bg-white` covers behind the tabs and the white
                 box-shadow extends 24px UPWARD to fill main's top padding so
                 content doesn't bleed above the strip. */}
-            <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec] shadow-[0_-24px_0_0_#ffffff]">
-                <DetailPageTabs
-                    tabs={[
-                        { key: "overview", label: "Overview" },
-                        { key: "setup",    label: "Setup" },
-                    ]}
-                    activeKey={pageTab}
-                    onChange={k => setPageTab(k as PageTab)}
-                    compact
-                />
+            <div className="sticky top-0 z-30 w-full bg-white shadow-[0_-24px_0_0_#ffffff]">
+                {/* Tabs (left) + period filter (right) on ONE row, matching the
+                    Admin Dashboard header. The filter only shows on Overview. */}
+                <div className="flex items-center justify-between gap-3">
+                    <DetailPageTabs
+                        tabs={[
+                            { key: "overview", label: "Overview" },
+                            { key: "setup",    label: "Setup" },
+                        ]}
+                        activeKey={pageTab}
+                        onChange={k => setPageTab(k as PageTab)}
+                        compact
+                    />
+                    {pageTab === "overview" && (
+                        <div className="flex items-center pb-2">
+                            <DateRangeFilter value={period} onChange={setPeriod} />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {pageTab === "overview" ? (
-                <ReferralOverviewTab />
+                <ReferralOverviewTab period={period} />
             ) : (
-            <div className="flex flex-col gap-4 max-w-[1100px]">
+            <div className="flex w-full flex-col gap-4">
             {/* ── Card 1: Referral settings (master toggle) ────────────── */}
             <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex flex-col gap-1">

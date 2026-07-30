@@ -22,6 +22,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
     DotsVertical, XClose, Check, ChevronLeft, ChevronDown, ChevronRight,
     Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Trash02,
@@ -770,7 +771,7 @@ export function ShiftManagementTab({
     // ── Row + bulk action plumbing ─────────────────────────────────────────
     function handleRowAction(row: Shift, kind: RowActionKind) {
         if (kind === "view")         return router.push(`/staff/shifts/${row.id}?returnTo=${encodeURIComponent(returnTo)}`);
-        if (kind === "edit")         return router.push(`/staff/shifts/${row.id}/edit?returnTo=${encodeURIComponent(returnTo)}`);
+        if (kind === "edit")         return openStaffFormPanel({ kind: "shift", mode: "edit", id: row.id });
         if (kind === "assign_staff") {
             setAssignTarget(row);
             return;

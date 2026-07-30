@@ -74,8 +74,11 @@ export function useAppointment(id: string): AppointmentVM | null {
 }
 
 /** Active-branch appointment services, narrowed by the (categories-only) filter.
- *  Only recovery services can be open-session; private services are always 1:1. */
-export function useAppointments(filters: SearchFilters): AppointmentVM[] {
+ *  Only recovery services can be open-session; private services are always 1:1.
+ *  `forceType` pins the result to a single service type — used by the customer
+ *  Search "Private" / "Recovery" tabs (client 2026-07-30) so each tab shows only
+ *  its own sessions, mirroring the admin Private/Recovery split. */
+export function useAppointments(filters: SearchFilters, forceType?: "private" | "recovery"): AppointmentVM[] {
     const { selectedBranchId } = useCurrentCustomerContext();
     const services = useAppStore((s) => s.services);
 
@@ -87,8 +90,10 @@ export function useAppointments(filters: SearchFilters): AppointmentVM[] {
             // Open sessions only exist for recovery services; a private
             // service is always 1:1 (never open).
             .filter((s) => s.type === "recovery" || !s.openSession)
-            .filter((s) => !filters.sessionType || s.type === filters.sessionType.toLowerCase())
+            // The tab pins the type when `forceType` is set; otherwise fall back
+            // to the (now-retired) optional session-type filter.
+            .filter((s) => forceType ? s.type === forceType : (!filters.sessionType || s.type === filters.sessionType.toLowerCase()))
             .filter((s) => filters.categories.length === 0 || filters.categories.includes(s.category))
             .map(toVM);
-    }, [selectedBranchId, services, filters.sessionType, filters.categories]);
+    }, [selectedBranchId, services, filters.sessionType, filters.categories, forceType]);
 }
