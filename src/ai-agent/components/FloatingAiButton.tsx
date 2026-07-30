@@ -50,78 +50,83 @@ export function FloatingAiButton() {
 
     return (
         // Wrapper is anchored to bottom-right with 32px page padding
-        // (Figma spacing-4xl). Bubble sits to the LEFT of the logo tile;
-        // both stay flush-right so the bubble slides in from behind the
-        // logo when it appears.
+        // (Figma spacing-4xl). Bubble sits absolutely to the LEFT of the
+        // logo tile so its shadow can extend beyond the visible chrome
+        // without being clipped — a `max-w-0 + overflow-hidden` layout
+        // would swallow the drop shadow when the bubble collapses.
         <div
-            className="fixed bottom-8 right-8 z-[60] flex items-center gap-4"
+            className="fixed bottom-8 right-8 z-[60]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* Hover chat bubble — collapses to zero width when not hovered
-                so the invisible bubble area doesn't hijack cursor events
-                elsewhere on the page. max-w transition drives the slide-in;
-                opacity fades the content itself. */}
-            <div
-                className={cn(
-                    "overflow-hidden transition-all duration-200 ease-out",
-                    hovered
-                        ? "max-w-[260px] opacity-100"
-                        : "max-w-0 opacity-0",
-                )}
-            >
+            <div className="relative flex items-center">
+                {/* Hover chat bubble — absolute + right-full so it hangs off
+                    the LEFT of the logo tile without consuming layout space
+                    when hidden. `visibility` toggles off hit-testing when
+                    the bubble is fully transparent; scale/translate + opacity
+                    drive the slide-in. Because there's no overflow wrapper,
+                    the shadow renders in full every direction. */}
                 <button
                     type="button"
                     onClick={handleClick}
                     aria-label="Talk to Onra AI Agent"
                     tabIndex={hovered ? 0 : -1}
                     className={cn(
-                        // Figma chrome — the bottom-right corner cuts to 4px
-                        // (radius-xs) so the bubble reads as a chat pointer
-                        // aimed at the logo tile. Other corners keep the
-                        // full 16px radius-2xl.
+                        // Position: floats to the left of the logo (right-full)
+                        // with a 16px gap. Vertically centred against the tile.
+                        "absolute right-full top-1/2 -translate-y-1/2 mr-4",
                         "flex items-center gap-2 whitespace-nowrap",
-                        "bg-white px-4 py-4",
-                        "border-1 border-[#e4e7ec]",
+                        // Figma chrome — brand primary background (matches DS
+                        // Button variant="primary": brand-tertiary bg with
+                        // brand-primary text). Bottom-right corner cuts to
+                        // 4px so the shape reads as a chat pointer aimed at
+                        // the logo.
+                        "bg-[var(--brand-tertiary)] px-4 py-4",
+                        "border-1 border-white/[0.12]",
                         "rounded-tl-[16px] rounded-tr-[16px] rounded-bl-[16px] rounded-br-[4px]",
                         // Two-layer shadow per Figma — the second layer
                         // carries the brand-green tint (#e9fff3) so the
-                        // bubble feels "warm" against the page bg.
-                        "shadow-[0px_2.4px_2.4px_0px_rgba(0,0,0,0.04),0px_6.4px_6.4px_0px_rgba(0,0,0,0.03),0px_4px_24px_0px_#e9fff3]",
+                        // bubble feels "warm" against the page bg. Inset
+                        // rings mirror the DS Button primary spec.
+                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),0px_2.4px_2.4px_0px_rgba(0,0,0,0.04),0px_6.4px_6.4px_0px_rgba(0,0,0,0.03),0px_4px_24px_0px_#e9fff3,inset_0px_0px_0px_1px_rgba(16,24,40,0.10),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
+                        "hover:bg-[#aad4bd] active:bg-[#92baa4]",
+                        "transition-all duration-200 ease-out",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#84c393]",
+                        hovered
+                            ? "opacity-100 translate-x-0 scale-100 visible"
+                            : "opacity-0 translate-x-2 scale-95 invisible",
+                    )}
+                >
+                    <Stars02 className="w-6 h-6 shrink-0 text-[var(--brand-primary)]" aria-hidden />
+                    <span className="text-[14px] font-medium leading-[20px] text-[#0c2d34]">
+                        Talk to agent
+                    </span>
+                </button>
+
+                {/* Logomark trigger — always visible, always clickable. */}
+                <button
+                    type="button"
+                    aria-label="Open Onra AI Agent"
+                    onClick={handleClick}
+                    className={cn(
+                        "shrink-0 w-14 h-14 rounded-[14px] bg-white",
+                        "border-[0.35px] border-[#d0d5dd] overflow-hidden",
+                        "flex items-center justify-center",
+                        "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
                         "hover:bg-[#f9fafb] transition-colors",
                         "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
                     )}
                 >
-                    <Stars02 className="w-6 h-6 shrink-0 text-[var(--brand-primary)]" aria-hidden />
-                    <span className="text-[14px] font-medium leading-[20px] text-[#101828]">
-                        Talk to agent
-                    </span>
+                    <Image
+                        src="/Logomark.webp"
+                        alt=""
+                        width={42}
+                        height={42}
+                        className="w-[42px] h-[42px] object-contain"
+                        unoptimized
+                    />
                 </button>
             </div>
-
-            {/* Logomark trigger — always visible, always clickable. */}
-            <button
-                type="button"
-                aria-label="Open Onra AI Agent"
-                onClick={handleClick}
-                className={cn(
-                    "shrink-0 w-14 h-14 rounded-[14px] bg-white",
-                    "border-[0.35px] border-[#d0d5dd] overflow-hidden",
-                    "flex items-center justify-center",
-                    "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
-                    "hover:bg-[#f9fafb] transition-colors",
-                    "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
-                )}
-            >
-                <Image
-                    src="/Logomark.webp"
-                    alt=""
-                    width={42}
-                    height={42}
-                    className="w-[42px] h-[42px] object-contain"
-                    unoptimized
-                />
-            </button>
         </div>
     );
 }
