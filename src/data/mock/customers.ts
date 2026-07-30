@@ -488,6 +488,13 @@ const handAuthoredCustomers: Customer[] = [
 // branches / addresses), extend the pools below — do NOT hand-author
 // new rows in the story block; those stay pristine.
 
+// Client 2026-07-30 — UNIQUENESS INVARIANT.
+// The (first_name × last_name) product MUST be > total synthetic
+// customer count so every full-name pair is unique. Current setup:
+// 56 × 49 = 2,744 combinations for 1,520 rows — safe headroom.
+// Generator below pairs them SEQUENTIALLY (first = i/49, last = i%49)
+// so no two customers share a full name. Never revert to independent
+// modular cycling.
 const SYNTH_FIRST_NAMES = [
     "Amina",   "Omar",    "Layla",   "Yusuf",   "Sara",    "Karim",   "Nadia",   "Hassan",
     "Zainab",  "Rami",    "Dina",    "Tariq",   "Rania",   "Adam",    "Hana",    "Malik",
@@ -605,8 +612,17 @@ function generateSyntheticCustomers(count: number): Customer[] {
         // valid for every month (Feb-safe).
         for (let mi = 0; mi < monthTotal; mi++, idx++) {
             const i = idx; // preserve the caller-visible index for id + name
-            const first = SYNTH_FIRST_NAMES[i % SYNTH_FIRST_NAMES.length];
-            const last  = SYNTH_LAST_NAMES [(i * 3 + 7) % SYNTH_LAST_NAMES.length];
+            // Client 2026-07-30 — full-name uniqueness invariant. Pair
+            // first + last SEQUENTIALLY so no two synthetic customers
+            // share a full name. 56 × 49 = 2,744 unique combinations for
+            // 1,520 rows, so `i` stays inside the safe range. NEVER
+            // switch back to independent modular cycling (i % firstLen,
+            // (i*3+7) % lastLen) — that caused ~27 duplicate "Amina
+            // Rahman" / "Omar Farouk" / etc. rows in the previous seed.
+            const first = SYNTH_FIRST_NAMES[
+                Math.floor(i / SYNTH_LAST_NAMES.length) % SYNTH_FIRST_NAMES.length
+            ];
+            const last  = SYNTH_LAST_NAMES[i % SYNTH_LAST_NAMES.length];
             const suffix = String(i).padStart(4, "0");
             const pattern = SYNTH_MARKETING_PATTERNS[i % SYNTH_MARKETING_PATTERNS.length];
             const branch = SYNTH_BRANCHES[i % SYNTH_BRANCHES.length];
@@ -689,3 +705,39 @@ export const customers: Customer[] = [
     ...handAuthoredCustomers.map(applyAtRiskPatch).map(applyNewSignupPatch),
     ...generateSyntheticCustomers(1520).map(applyAtRiskPatch).map(applyNewSignupPatch),
 ];
+
+// ─── Uniqueness invariant (client 2026-07-30 major flag) ────────────────────
+//
+// Full name (first + last), email, and phone MUST be globally unique across
+// the entire dataset. If a generator regression ever reintroduces a
+// duplicate, this dev-mode audit throws at module load so the bug can't ship
+// silently. Skipped in production builds so a runtime paste from a real
+// dataset (which may allow same names) doesn't crash the app.
+if (process.env.NODE_ENV !== "production") {
+    const namePairs = new Map<string, string[]>();
+    const emails = new Map<string, string[]>();
+    const phones = new Map<string, string[]>();
+    for (const c of customers) {
+        const nk = `${c.first_name} ${c.last_name}`.toLowerCase();
+        (namePairs.get(nk) ?? namePairs.set(nk, []).get(nk)!).push(c.id);
+        const ek = (c.email ?? "").toLowerCase();
+        if (ek) (emails.get(ek) ?? emails.set(ek, []).get(ek)!).push(c.id);
+        const pk = (c.phone ?? "").replace(/\D+/g, "");
+        if (pk) (phones.get(pk) ?? phones.set(pk, []).get(pk)!).push(c.id);
+    }
+    const dupNames  = Array.from(namePairs.entries()).filter(([, ids]) => ids.length > 1);
+    const dupEmails = Array.from(emails.entries()   ).filter(([, ids]) => ids.length > 1);
+    const dupPhones = Array.from(phones.entries()   ).filter(([, ids]) => ids.length > 1);
+    if (dupNames.length || dupEmails.length || dupPhones.length) {
+        const detail = [
+            dupNames.length  && `${dupNames.length} duplicate name pairs (first e.g. "${dupNames[0][0]}" shared by ${dupNames[0][1].slice(0, 3).join(", ")})`,
+            dupEmails.length && `${dupEmails.length} duplicate emails`,
+            dupPhones.length && `${dupPhones.length} duplicate phone numbers`,
+        ].filter(Boolean).join(" · ");
+        throw new Error(
+            `[customers seed] uniqueness invariant broken: ${detail}. See ` +
+            `memory/feedback_unique_identifiers.md — the generator MUST pair ` +
+            `first × last sequentially, not with independent modular cycling.`
+        );
+    }
+}

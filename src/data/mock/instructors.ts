@@ -34,7 +34,7 @@ export const instructors: InstructorSeed[] = [
         image_url: "/images/instructors/liam-chen.webp",
         // Aligned with `instructor_profile.ts` (Phase 4 audit) — edits made
         // through the cascade in `updateAccountProfile` keep this row in sync.
-        email: "liam@email.com", phone: "+971 55 200 2001",
+        email: "liam@email.com", phone: "+971 55 200 2015",
         joined_date: "Mar 12, 2024",
         branch_id: "branch_forma_south",
         // Monthly rate — commission is Monthly-only; Liam (instructor persona)
