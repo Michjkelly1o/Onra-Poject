@@ -652,6 +652,121 @@ export function readBranches(state: AppState): Row[] {
     }));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 3 Batch C — Staff catalog (2026-07-30)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Staff members / pay rates / shifts / shift assignments / time off. Staff
+// live camelCase in the store; pay rates are a discriminated union — the
+// projection flattens to (type, primary_amount) so the AI can filter without
+// knowing the shape of each variant. Shifts/assignments/blocked times are
+// snake_case seed rows spread as-is; passthrough.
+
+export function readStaff(state: AppState): Row[] {
+    const roleName = new Map(state.roles.map(r => [r.id, r.name] as const));
+    return state.staff.map(s => ({
+        id: s.id,
+        first_name: s.firstName,
+        last_name: s.lastName,
+        full_name: s.fullName || `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim(),
+        email: s.email,
+        phone: s.phone,
+        role_id: s.roleId,
+        role: roleName.get(s.roleId) ?? s.roleId,
+        branch_id: s.branchId,
+        status: s.status,
+        first_login_completed: s.firstLoginCompleted ? "true" : "false",
+        joined_date: s.joinedDate,
+        specialties: (s.specialties ?? []).join(", "),
+        working_experience_years: s.workingExperienceYears,
+        pay_rate_id: s.payRateId,
+        shift_id: s.shiftId,
+    }));
+}
+
+export function readPayRates(state: AppState): Row[] {
+    const branchName = new Map(state.branches.map(b => [b.id, b.name] as const));
+    return state.payRates.map(pr => {
+        // Flatten each variant to a single `primary_amount_aed` so the AI can
+        // sort / group / filter without knowing the shape of each rate type.
+        // Full detail (tiers / commissions / bonuses) lives on the admin
+        // detail page — the AI just needs the summary figure and type.
+        let primary = 0;
+        if (pr.type === "flat") primary = pr.flatAmount;
+        else if (pr.type === "revenue") primary = pr.splitPercent;
+        else if (pr.type === "hybrid") primary = pr.baseRate;
+        else if (pr.type === "monthly") primary = pr.fixedSalary;
+        else if (pr.type === "tiered" && pr.tiers.length > 0) {
+            primary = pr.tiers[0].aed ?? 0;
+        }
+        return {
+            id: pr.id,
+            name: pr.name,
+            type: pr.type,
+            branch_id: pr.branchId,
+            branch: branchName.get(pr.branchId) ?? pr.branchId,
+            primary_amount_aed: primary,
+            status: pr.status,
+            usage_count: pr.usageCount,
+            only_checked_in: pr.onlyCheckedIn ? "true" : "false",
+            include_late_cancelled: pr.includeLateCancelled ? "true" : "false",
+            created_at: pr.createdAt,
+        };
+    });
+}
+
+export function readShifts(state: AppState): Row[] {
+    return state.shifts.map(s => ({
+        id: s.id,
+        name: s.name,
+        branch_id: s.branch_id,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        staffing_target: s.staffing_target,
+        status: s.status,
+        // Number of days per week the shift covers (sum of true bits).
+        working_days_count: s.working_days.filter(Boolean).length,
+        created_at: s.created_at,
+    }));
+}
+
+export function readShiftAssignments(state: AppState): Row[] {
+    const staffName = new Map(state.staff.map(s => [s.id, `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim()] as const));
+    const shiftName = new Map(state.shifts.map(s => [s.id, s.name] as const));
+    const shiftBranch = new Map(state.shifts.map(s => [s.id, s.branch_id] as const));
+    return state.shiftAssignments.map(a => ({
+        id: a.id,
+        shift_id: a.shift_id,
+        shift_name: shiftName.get(a.shift_id) ?? "—",
+        staff_id: a.staff_id,
+        staff_name: staffName.get(a.staff_id) ?? "—",
+        branch_id: shiftBranch.get(a.shift_id),
+        days_of_week_count: a.days_of_week.filter(Boolean).length,
+        created_at: a.created_at,
+    }));
+}
+
+export function readBlockedTimes(state: AppState): Row[] {
+    const staffName = new Map(state.staff.map(s => [s.id, `${s.firstName ?? ""} ${s.lastName ?? ""}`.trim()] as const));
+    return state.blockedTimes.map(b => ({
+        id: b.id,
+        title: b.title,
+        date_from_iso: b.date_from_iso,
+        date_to_iso: b.date_to_iso,
+        all_day: b.all_day ? "true" : "false",
+        start_time: b.start_time,
+        end_time: b.end_time,
+        reason: b.reason,
+        note: b.note,
+        staff_ids: b.staff_ids.join(","),
+        // First-assigned staff (if any) as a resolvable ref — the AI can
+        // filter by `staff_name contains "River"` on a single-staff entry.
+        staff_id: b.staff_ids[0],
+        staff_name: b.staff_ids[0] ? staffName.get(b.staff_ids[0]) ?? "—" : "",
+        branch_id: b.branch_id,
+    }));
+}
+
 /** issued_gift_cards — sold gift card instances. Carries the live balance
  *  and links back to the design + the customer who owns it. */
 export function readIssuedGiftCards(state: AppState): Row[] {

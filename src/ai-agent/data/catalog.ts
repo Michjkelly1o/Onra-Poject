@@ -48,6 +48,12 @@ import {
     readClassRatings,
     readRooms,
     readBranches,
+    // Phase 3 Batch C (2026-07-30) — Staff catalog:
+    readStaff,
+    readPayRates,
+    readShifts,
+    readShiftAssignments,
+    readBlockedTimes,
     type Row,
 } from "@/ai-agent/data/store-readers";
 
@@ -571,6 +577,93 @@ export function buildCatalog(state: AppState): Catalog {
                 city:    { row: "city",    type: "string", label: "city" },
                 state:   { row: "state",   type: "string", label: "state / region" },
                 country: { row: "country", type: "string", label: "country" },
+            },
+        },
+
+        // ── Phase 3 Batch C (2026-07-30) — Staff catalog ────────────────────
+        staff: {
+            key: "staff",
+            label: "staff members (instructors + front desk + admin — name, role, branch, pay rate)",
+            rows: readStaff(state),
+            fields: {
+                full_name:               { row: "full_name",               type: "string", label: "full name" },
+                first_name:              { row: "first_name",              type: "string", label: "first name" },
+                last_name:               { row: "last_name",               type: "string", label: "last name" },
+                email:                   { row: "email",                   type: "string", label: "email" },
+                phone:                   { row: "phone",                   type: "string", label: "phone" },
+                role:                    { row: "role",                    type: "string", label: "role" },
+                status:                  { row: "status",                  type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                specialties:             { row: "specialties",             type: "string", label: "specialties" },
+                working_experience_years:{ row: "working_experience_years",type: "number", label: "years experience" },
+                first_login_completed:   { row: "first_login_completed",   type: "enum",   label: "logged in yet", values: ["true", "false"] },
+                pay_rate_id:             { row: "pay_rate_id",             type: "string", label: "assigned pay rate id" },
+                shift_id:                { row: "shift_id",                type: "string", label: "assigned shift id" },
+                branch:                  branchField,
+                joined_date:             { row: "joined_date",             type: "string", label: "joined" },
+            },
+        },
+
+        pay_rates: {
+            key: "pay_rates",
+            label: "pay rates (compensation rules per branch — flat / tiered / revenue / hybrid / monthly)",
+            rows: readPayRates(state),
+            fields: {
+                name:                { row: "name",                type: "string", label: "pay rate name" },
+                type:                { row: "type",                type: "enum",   label: "type", values: ["flat", "tiered", "revenue", "hybrid", "monthly"] },
+                primary_amount_aed:  { row: "primary_amount_aed",  type: "number", label: "primary amount (AED)" },
+                status:              { row: "status",              type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                usage_count:         { row: "usage_count",         type: "number", label: "usage count" },
+                only_checked_in:     { row: "only_checked_in",     type: "enum",   label: "only counts checked-in customers", values: ["true", "false"] },
+                include_late_cancelled:{ row: "include_late_cancelled", type: "enum", label: "includes late-cancelled", values: ["true", "false"] },
+                branch:              branchField,
+                created_at:          { row: "created_at",          type: "date",   label: "created" },
+            },
+        },
+
+        shifts: {
+            key: "shifts",
+            label: "shifts (recurring staff-schedule slots per branch — Morning / Afternoon / Evening)",
+            rows: readShifts(state),
+            fields: {
+                name:               { row: "name",               type: "string", label: "shift name" },
+                start_time:         { row: "start_time",         type: "string", label: "start time" },
+                end_time:           { row: "end_time",           type: "string", label: "end time" },
+                staffing_target:    { row: "staffing_target",    type: "number", label: "staffing target" },
+                working_days_count: { row: "working_days_count", type: "number", label: "days per week" },
+                status:             { row: "status",             type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
+                branch:             branchField,
+                created_at:         { row: "created_at",         type: "date",   label: "created" },
+            },
+        },
+
+        shift_assignments: {
+            key: "shift_assignments",
+            label: "shift assignments (many-to-many staff ↔ shift)",
+            rows: readShiftAssignments(state),
+            fields: {
+                shift_name:         { row: "shift_name",         type: "string", label: "shift" },
+                staff_name:         { row: "staff_name",         type: "string", label: "staff" },
+                days_of_week_count: { row: "days_of_week_count", type: "number", label: "days assigned" },
+                branch:             branchField,
+                created_at:         { row: "created_at",         type: "date",   label: "created" },
+            },
+        },
+
+        blocked_times: {
+            key: "blocked_times",
+            label: "time off (staff absences — sick / vacation / training / other, with date range + reason)",
+            rows: readBlockedTimes(state),
+            fields: {
+                title:         { row: "title",         type: "string", label: "title" },
+                staff_name:    { row: "staff_name",    type: "string", label: "staff" },
+                reason:        { row: "reason",        type: "enum",   label: "reason", values: ["sick", "vacation", "training", "other"] },
+                note:          { row: "note",          type: "string", label: "note" },
+                all_day:       { row: "all_day",       type: "enum",   label: "all day", values: ["true", "false"] },
+                start_time:    { row: "start_time",    type: "string", label: "start time" },
+                end_time:      { row: "end_time",      type: "string", label: "end time" },
+                date_from_iso: { row: "date_from_iso", type: "date",   label: "from" },
+                date_to_iso:   { row: "date_to_iso",   type: "date",   label: "to" },
+                branch:        branchField,
             },
         },
     };

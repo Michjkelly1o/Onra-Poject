@@ -73,6 +73,22 @@ export type AiAgentStateSnapshot = Pick<
     | "retailProducts"
     | "retailStock"
     | "retailStockAdjustments"
+    // Phase 3 Batch A + B + C (2026-07-30) — Product / class / staff
+    // catalogs. Each slice feeds a new AI Agent dataset registered in
+    // catalog.ts. Every one is READ-ONLY on the server; the pickStoreSnapshot
+    // helper in ChatThread.tsx forwards them from the live Zustand store
+    // once per request so the AI answers against the current state.
+    | "giftCardDesigns"
+    | "issuedGiftCards"
+    | "classRatings"
+    | "staff"
+    | "payRates"
+    | "shifts"
+    | "shiftAssignments"
+    | "blockedTimes"
+    | "customerReferrals"
+    // roles is needed for readStaff to resolve role_id → role name
+    | "roles"
 >;
 
 /** Thread mode. Insight = analytics chat; migration = 4-step CSV wizard;

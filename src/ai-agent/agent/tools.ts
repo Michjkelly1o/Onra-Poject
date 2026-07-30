@@ -62,6 +62,12 @@ const DATASETS = [
     "class_ratings",
     "rooms",
     "branches",
+    // AI-agent widening plan Phase 3 Batch C (2026-07-30) — Staff catalog:
+    "staff",
+    "pay_rates",
+    "shifts",
+    "shift_assignments",
+    "blocked_times",
 ] as const;
 
 const filter = z.object({
