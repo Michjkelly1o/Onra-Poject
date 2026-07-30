@@ -34,11 +34,12 @@ import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelector
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { ShoppingBag03 } from "@untitledui/icons";
 
-type Tab = "all" | "packages" | "giftcard";
+type Tab = "all" | "packages" | "giftcard" | "retail";
 const TABS: { id: Tab; label: string }[] = [
     { id: "all", label: "All" },
     { id: "packages", label: "Packages" },
     { id: "giftcard", label: "Gift cards" },
+    { id: "retail", label: "Retail" },
 ];
 
 export default function ProductsPage() {
@@ -49,7 +50,7 @@ export default function ProductsPage() {
     const memberships = useAppStore((s) => s.memberships);
     const customerPlans = useAppStore((s) => s.customerPlans);
     const showToast = useAppStore((s) => s.showToast);
-    const { plans, giftCards } = useCatalogProducts();
+    const { plans, giftCards, retail } = useCatalogProducts();
     const creditBalance = useCreditBalance();
 
     const [tab, setTab] = useState<Tab>("all");
@@ -156,11 +157,13 @@ export default function ProductsPage() {
             router.push(`/customer/products/gift-card/${plan.id}`);
             return;
         }
-        // The sheet sets the desired quantity (it opens at the current cart qty), so
-        // a package already in the cart is updated to `qty` rather than incremented.
-        // Memberships are always qty 1.
+        // Packages + retail both open the detail page at their current cart qty and
+        // let the shopper set an explicit total — so if the line already exists we
+        // OVERWRITE the qty here rather than adding to it. Memberships stay qty 1.
         const existing =
-            plan.kind === "package" ? purchaseCart.items.find((i) => i.id === plan.id && i.kind === "package") : null;
+            plan.kind === "package" || plan.kind === "retail"
+                ? purchaseCart.items.find((i) => i.id === plan.id && i.kind === plan.kind)
+                : null;
         if (existing) {
             existing.quantity = qty;
             showToast("Cart updated", `${plan.name} quantity set to ${qty}.`, "success", "check");
@@ -211,6 +214,9 @@ export default function ProductsPage() {
         // Package: blocked while a membership is held / in the cart (packages
         // themselves stay multi-buy).
         if (p.kind === "package") return ownsMembership || hasMembershipInCart;
+        // Retail: only blocked when the shopper's branch is out of stock. Never
+        // gated by plan holdings — retail is non-exclusive.
+        if (p.kind === "retail") return (p.unitsOnHand ?? 0) <= 0;
         return false;
     }
     function cardProps(p: PlanRow) {
@@ -224,7 +230,12 @@ export default function ProductsPage() {
     const showFloatingCart = cartCount() > 0;
     const showGiftCards = tab === "all" || tab === "giftcard";
     const showPlans = tab === "all" || tab === "packages";
-    const isEmpty = (showPlans ? plans.length : 0) + (showGiftCards ? giftCards.length : 0) === 0;
+    const showRetail = tab === "all" || tab === "retail";
+    const isEmpty =
+        (showPlans ? plans.length : 0) +
+            (showGiftCards ? giftCards.length : 0) +
+            (showRetail ? retail.length : 0) ===
+        0;
 
     return (
         <div className="flex min-h-full flex-col">
@@ -283,6 +294,17 @@ export default function ProductsPage() {
                                 )}
                                 {giftCards.map((g) => (
                                     <ProductCard key={g.id} product={g} {...cardProps(g)} />
+                                ))}
+                            </>
+                        )}
+
+                        {showRetail && retail.length > 0 && (
+                            <>
+                                {tab === "all" && (
+                                    <h2 className="mt-2 text-base font-semibold leading-6 text-[var(--brand-text)]">Retail</h2>
+                                )}
+                                {retail.map((r) => (
+                                    <ProductCard key={r.id} product={r} {...cardProps(r)} />
                                 ))}
                             </>
                         )}

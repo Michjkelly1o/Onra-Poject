@@ -10978,20 +10978,33 @@ export const useAppStore = create<AppState>()(persist(
             const membership = items.find(it => it.productType === "membership");
             const packages = items.filter(it => it.productType === "package");
             const giftCards = items.filter(it => it.productType === "gift_card");
+            const retails = items.filter(it => it.productType === "retail");
             if (membership) return `the ${membership.name}`;
             if (packages.length === 1) return `the ${packages[0].name}`;
             if (packages.length > 1) return `${packages.reduce((sum, p) => sum + p.quantity, 0)} credit packages`;
             if (giftCards.length > 0) return giftCards.length === 1
                 ? `a ${giftCards[0].name} gift card`
                 : `${giftCards.length} gift cards`;
+            if (retails.length > 0) {
+                const totalUnits = retails.reduce((sum, r) => sum + r.quantity, 0);
+                if (retails.length === 1) {
+                    return totalUnits === 1
+                        ? `a ${retails[0].name}`
+                        : `${totalUnits} × ${retails[0].name}`;
+                }
+                return `${totalUnits} retail items`;
+            }
             return "items at checkout";
         })();
         // Pre-compute the first transaction id so the notification record can
         // deep-link the click-through to the exact receipt on the customer
-        // profile (Payments tab → highlighted row).
+        // profile (Payments tab → highlighted row). Retail-only orders fall
+        // back to the first retail line so click-through still resolves.
         const txnStamp = Date.now();
         const firstSaleIdx = items.findIndex(it => it.productType === "membership" || it.productType === "package");
-        const firstTxnId = firstSaleIdx >= 0 ? `txn_sale_${txnStamp}_${firstSaleIdx}` : undefined;
+        const firstRetailIdx = items.findIndex(it => it.productType === "retail");
+        const resolvedFirstIdx = firstSaleIdx >= 0 ? firstSaleIdx : firstRetailIdx;
+        const firstTxnId = resolvedFirstIdx >= 0 ? `txn_sale_${txnStamp}_${resolvedFirstIdx}` : undefined;
         set((state) => {
             // Business rule (per CLAUDE.md): 1 membership OR multiple packages — never both.
             const membership = items.find(it => it.productType === "membership");
