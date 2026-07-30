@@ -9214,13 +9214,22 @@ export const useAppStore = create<AppState>()(persist(
         );
     },
     canDeleteRetailProduct: (id) => {
-        // Hard delete blocked when ANY historical transaction referenced
-        // the product — the receipt-snapshot fields would otherwise dangle
-        // and break past receipts. Archive-only for products with history.
-        const txnCount = get().customerTransactions.filter(
+        // Hard delete blocked when the product carries ANY historical
+        // record — either a past receipt (customerTransactions with the
+        // retailProductId) OR any stock adjustment (receive / sale /
+        // adjust / loss / refund). Snapshot fields on past receipts and
+        // the audit-log rows would otherwise dangle. Archive-only for
+        // products with history; Deactivate is offered by the UI when
+        // the admin wants to hide-but-keep.
+        const state = get();
+        const txnCount = state.customerTransactions.filter(
             t => t.retailProductId === id,
         ).length;
-        if (txnCount > 0) return { deletable: false, reason: "has_history" as const, transactionCount: txnCount };
+        const adjCount = state.retailStockAdjustments.filter(
+            a => a.productId === id,
+        ).length;
+        const total = txnCount + adjCount;
+        if (total > 0) return { deletable: false, reason: "has_history" as const, transactionCount: total };
         return { deletable: true as const };
     },
     deleteRetailProducts: (ids) => {

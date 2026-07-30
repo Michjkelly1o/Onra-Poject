@@ -360,6 +360,7 @@ export default function RetailPage() {
     const stock                = useAppStore(s => s.retailStock);
     const categories           = useAppStore(s => s.retailCategories);
     const transactions         = useAppStore(s => s.customerTransactions);
+    const adjustments          = useAppStore(s => s.retailStockAdjustments);
     const setRetailProductStatus = useAppStore(s => s.setRetailProductStatus);
     const deleteRetailProducts   = useAppStore(s => s.deleteRetailProducts);
     const showToast              = useAppStore(s => s.showToast);
@@ -382,9 +383,16 @@ export default function RetailPage() {
             if (arr) arr.push(s);
             else stockByProduct.set(s.productId, [s]);
         }
-        const historyIds = new Set(
-            transactions.filter(t => !!t.retailProductId).map(t => t.retailProductId as string),
-        );
+        // hasHistory covers BOTH past receipts (transactions) AND stock
+        // movements (adjustments). A product with any receive / sale /
+        // adjust / loss / refund row on the audit log can't be hard-
+        // deleted — the audit rows would dangle. Matches the store's
+        // canDeleteRetailProduct guard exactly.
+        const historyIds = new Set<string>();
+        for (const t of transactions) {
+            if (t.retailProductId) historyIds.add(t.retailProductId);
+        }
+        for (const a of adjustments) historyIds.add(a.productId);
         return products.map(p => {
             const rows = stockByProduct.get(p.id) ?? [];
             const stockAggregate = rows.reduce((sum, r) => sum + (r.unitsOnHand ?? 0), 0);
@@ -406,7 +414,7 @@ export default function RetailPage() {
                 hasHistory: historyIds.has(p.id),
             };
         });
-    }, [products, stock, categories, transactions]);
+    }, [products, stock, categories, transactions, adjustments]);
 
     // ─── Search + filter ───────────────────────────────────────────────────
     const filteredRows = useMemo(() => {

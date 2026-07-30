@@ -15,7 +15,7 @@
 // re-learn either. Actions (Configure stock · Edit · Archive/Reactivate/
 // Recover · Delete) live in the sidebar action footer, not the header.
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     Edit02, Archive, RefreshCcw01, Trash01, Trash02, Check, XClose,
@@ -670,7 +670,7 @@ function ConfigureStockPanel({ open, onClose, product }: {
 
 // ─── Detail page ────────────────────────────────────────────────────────────
 
-export default function RetailProductDetailPage() {
+function RetailProductDetailPageInner() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -724,7 +724,13 @@ export default function RetailProductDetailPage() {
     const rowsForProduct = stockRows.filter(s => s.productId === product.id);
     const stockAggregate = rowsForProduct.reduce((sum, r) => sum + r.unitsOnHand, 0);
     const stockValue = stockAggregate * product.unitCostAed;
-    const hasHistory = transactions.some(t => t.retailProductId === product.id);
+    // hasHistory mirrors the store's canDeleteRetailProduct guard —
+    // past receipts (customerTransactions with retailProductId) OR any
+    // stock-adjustment audit row (receive / sale / adjust / loss /
+    // refund). Products with any history are Archive/Deactivate only.
+    const hasHistory =
+        transactions.some(t => t.retailProductId === product.id)
+        || adjRows.some(a => a.productId === product.id);
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
@@ -830,5 +836,17 @@ export default function RetailProductDetailPage() {
 
             <Toast />
         </div>
+    );
+}
+
+// Suspense wrapper — Next.js 14 requires useSearchParams (read for the
+// ?configureStock=1 deep-link auto-open) to sit inside a Suspense
+// boundary; without it the page throws during static prerender + on
+// hydration. Same pattern as /products/gift-cards/[id].
+export default function RetailProductDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <RetailProductDetailPageInner />
+        </Suspense>
     );
 }
