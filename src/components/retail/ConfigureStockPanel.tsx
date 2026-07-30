@@ -8,7 +8,8 @@
 // list page just skips the `?configureStock=1` deep-link plumbing.
 
 import { useEffect, useMemo, useState } from "react";
-import { XClose } from "@untitledui/icons";
+import { XClose, ChevronSelectorVertical } from "@untitledui/icons";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { SelectInput } from "@/components/ui/select-input";
@@ -139,19 +140,24 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                             // Empty state: `"0"` shows as blank so the placeholder
                             // "0" is what admins see, matching the memory rule.
                             const displayed = raw === "0" ? "" : raw;
+                            const numeric = Number(raw) || 0;
+                            const setValue = (next: number) => {
+                                const clamped = Math.max(0, Math.trunc(next));
+                                setDrafts(d => ({ ...d, [b.id]: String(clamped) }));
+                            };
                             return (
-                                <div key={b.id} className="grid grid-cols-[1fr_96px] items-center gap-3">
+                                <div key={b.id} className="grid grid-cols-[1fr_112px] items-center gap-3">
                                     <div className="flex flex-col min-w-0">
                                         <p className="text-[14px] text-[#101828] truncate">{b.name}</p>
                                         <p className="text-[12px] text-[#667085]">Current: {currentByBranch.get(b.id) ?? 0}</p>
                                     </div>
-                                    {/* Fixed 96 × 40 box. `type="text"` + `inputMode="numeric"`
-                                        keeps the browser off native spinners (which desynced the
-                                        display value on some rows and made typing feel dead).
-                                        Focus state swaps border colour only — no `ring-2` bloom,
-                                        so all three rows read at the same visual size whether or
-                                        not the input is focused. */}
-                                    <div className="w-[96px] h-10 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:border-[#7ba08c] transition-colors">
+                                    {/* Fixed 112 × 40 box: text field + stacked up/down
+                                        stepper on the right (Onra DS pattern). `type="text"`
+                                        + `inputMode="numeric"` keeps the browser off its own
+                                        native spinner so the display value never desyncs.
+                                        Focus state swaps border colour only — no `ring-2`
+                                        bloom, so all rows read at the same visual size. */}
+                                    <div className="w-[112px] h-10 flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:border-[#7ba08c] transition-colors overflow-hidden">
                                         <input
                                             type="text"
                                             inputMode="numeric"
@@ -170,8 +176,31 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                                                     [b.id]: (d[b.id] ?? "").length === 0 ? "0" : d[b.id],
                                                 }));
                                             }}
-                                            className="w-full h-full px-3 text-right text-[16px] text-[#101828] bg-transparent focus:outline-none placeholder:text-[#98a2b3] rounded-[8px]"
+                                            className="flex-1 min-w-0 h-full px-3 text-right text-[16px] text-[#101828] bg-transparent focus:outline-none placeholder:text-[#98a2b3]"
                                         />
+                                        <div className="relative w-6 h-full shrink-0 select-none border-l border-[#e4e7ec] flex items-center justify-center">
+                                            <ChevronSelectorVertical className="pointer-events-none w-4 h-4 text-[#667085]" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setValue(numeric + 1)}
+                                                aria-label={`Increase units at ${b.name}`}
+                                                className={cn(
+                                                    "absolute inset-x-0 top-0 h-1/2 cursor-pointer",
+                                                    "hover:bg-[#f9fafb] transition-colors",
+                                                )}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setValue(numeric - 1)}
+                                                disabled={numeric <= 0}
+                                                aria-label={`Decrease units at ${b.name}`}
+                                                className={cn(
+                                                    "absolute inset-x-0 bottom-0 h-1/2 cursor-pointer",
+                                                    "hover:bg-[#f9fafb] transition-colors",
+                                                    "disabled:cursor-not-allowed disabled:hover:bg-transparent",
+                                                )}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             );
