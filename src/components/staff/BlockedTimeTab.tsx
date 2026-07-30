@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
     DotsVertical, XClose, Check, ChevronDown,
     Edit02, Trash01, Trash02, Calendar, AlarmClockOff,
@@ -420,7 +421,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                                 </td>
                                                 <td className={TD}>
                                                     <RowMenu
-                                                        onEdit={() => router.push(`/staff/blocked-time/${b.id}/edit?returnTo=${encodeURIComponent("/admin/staff?subtab=blocked-time")}`)}
+                                                        onEdit={() => openStaffFormPanel({ kind: "blocked", mode: "edit", id: b.id })}
                                                         onDelete={() => setPendingDelete({ mode: "row", row: b })}
                                                     />
                                                 </td>

@@ -1600,7 +1600,7 @@ export default function CustomerNotificationsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-4 max-w-[1100px]">
+        <div className="flex w-full flex-col gap-4">
             {/* Single unified card — page title + toolbar sit above the
              *  column header row, with the table body below. Divider
              *  bars come from the border-t on `ColumnHeaders` and each

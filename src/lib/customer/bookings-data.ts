@@ -15,6 +15,7 @@ import { CheckCircle, Hourglass03, RefreshCcw01, SlashCircle01, XCircle } from "
 import { useAppStore, type ClassBooking, type ClassSchedule, liveScheduleStatus } from "@/lib/store";
 import { useCurrentCustomer } from "@/lib/customer/context";
 import { useClassDetail, type ClassDetailVM } from "@/lib/customer/search-data";
+import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
 import { formatShortDate, formatTime12 } from "@/lib/customer/format";
 import { branchTzLabel } from "@/lib/branch-time";
 import type { BookingStatus } from "@/components/customer/bookings/BookingCard";
@@ -387,4 +388,129 @@ export function useClassReviews(scheduleId: string): ClassReviewsVM {
 
         return { average, count: reviews.length, reviews, tags };
     }, [ratings, customers, scheduleId]);
+}
+
+// ─── Appointment reviews (mirror the class rating flow) ──────────────────────
+//
+// Appointments rate the same way classes do, but their ratings live in the
+// shared `appointmentRatings` store (keyed by appointment id) so admin + customer
+// read one source. Ratings already carry the denormalized author fields, so no
+// customer join is needed. Reuses the ClassReviewsVM shape → same <RatingsSection>.
+
+/** Has the current member already rated this appointment? (hides the Rate CTA). */
+export function useHasRatedAppointment(appointmentId: string | undefined): boolean {
+    const member = useCurrentCustomer();
+    const ratings = useAppStore((s) => s.appointmentRatings);
+    return useMemo(
+        () =>
+            !!member &&
+            !!appointmentId &&
+            ratings.some((r) => r.appointmentId === appointmentId && r.customerId === member.id && !r.deletedAt),
+        [ratings, member, appointmentId],
+    );
+}
+
+export function useAppointmentReviews(appointmentId: string | undefined): ClassReviewsVM {
+    const ratings = useAppStore((s) => s.appointmentRatings);
+    return useMemo(() => {
+        const rows = ratings
+            .filter((r) => !!appointmentId && r.appointmentId === appointmentId && !r.deletedAt)
+            .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+
+        const reviews: ReviewVM[] = rows.map((r) => ({
+            id: r.id,
+            authorName: r.customerName || "Member",
+            authorInitials: r.customerInitials || "M",
+            authorAvatar: r.customerImageUrl,
+            score: r.score,
+            comment: r.comment,
+            timeAgo: timeAgo(r.submittedAt),
+            submittedAt: r.submittedAt,
+            tags: r.tags ?? [],
+        }));
+
+        const average = reviews.length
+            ? Math.round((reviews.reduce((s, r) => s + r.score, 0) / reviews.length) * 10) / 10
+            : 0;
+
+        const tagCounts = new Map<string, number>();
+        for (const r of reviews) for (const t of r.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+        const tags = Array.from(tagCounts.entries())
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => b.count - a.count);
+
+        return { average, count: reviews.length, reviews, tags };
+    }, [ratings, appointmentId]);
+}
+
+// ─── Unified upcoming (classes + appointments) ───────────────────────────────
+//
+// The Home "Upcoming bookings" section shows the SINGLE next upcoming booking
+// regardless of type — a Class, a Private appointment, or a Recovery appointment.
+// This merges both sources into one render-ready card VM, sorted soonest-first.
+
+export interface UpcomingCardVM {
+    key: string;
+    name: string;
+    dateShort: string;
+    time: string;
+    location: string;
+    status: BookingStatus;
+    mutedCover: boolean;
+    coverImage?: string;
+    coverColor?: string;
+    sortKey: string;
+    /** Detail route for this booking (class vs appointment). */
+    href: string;
+}
+
+/** Every upcoming booking (classes + private/recovery appointments), soonest-first. */
+export function useUpcomingBookingsMerged(): UpcomingCardVM[] {
+    const { upcoming } = useMemberBookings();
+    const apptBookings = useAppointmentBookings();
+    const appointments = useAppStore((s) => s.appointments);
+
+    return useMemo(() => {
+        const classCards: UpcomingCardVM[] = upcoming.map((b) => ({
+            key: `class-${b.bookingId}`,
+            name: b.name,
+            dateShort: b.dateShort,
+            time: b.time,
+            location: b.location,
+            status: BOOKING_STATUS[b.viewStatus].card,
+            mutedCover: BOOKING_STATUS[b.viewStatus].mutedCover,
+            coverImage: b.coverImage,
+            coverColor: b.coverColor,
+            sortKey: b.sortKey,
+            href: `/customer/bookings/${b.bookingId}`,
+        }));
+
+        // Appointment "upcoming" mirrors the Bookings list: not cancelled by the
+        // customer OR admin, and the slot is today or later (device clock).
+        const now = new Date();
+        const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const adminCancelled = new Map(appointments.map((a) => [a.id, a.status === "Cancelled"] as const));
+        const apptCards: UpcomingCardVM[] = apptBookings
+            .filter(
+                (a) =>
+                    a.status !== "cancelled" &&
+                    !(a.adminAppointmentId != null && adminCancelled.get(a.adminAppointmentId)) &&
+                    a.slotISO >= todayISO,
+            )
+            .map((a) => ({
+                key: `appt-${a.id}`,
+                name: a.name,
+                dateShort: formatShortDate(a.slotISO),
+                time: formatTime12(a.slotTime),
+                location: a.branchName,
+                status: { label: "Booked", tone: "success" as const },
+                mutedCover: false,
+                coverImage: a.coverImage,
+                coverColor: a.coverColor,
+                sortKey: `${a.slotISO}T${a.slotTime}`,
+                href: `/customer/bookings/appointment/${a.id}`,
+            }));
+
+        return [...classCards, ...apptCards].sort((x, y) => x.sortKey.localeCompare(y.sortKey));
+    }, [upcoming, apptBookings, appointments]);
 }

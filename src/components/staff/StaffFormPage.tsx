@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { cn } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { PanelStepper } from "@/components/ui/PanelStepper";
 import {
     useAppStore,
     type Staff, type StaffStatus, type Shift, type StaffPayConfig,
@@ -653,12 +653,20 @@ export interface StaffFormPageProps {
     mode: "create" | "edit";
     staffId?: string;
     returnTo?: string;
+    /** Prefill the role (create-staff-from-a-role). Side-panel equivalent of the
+     *  legacy `?roleId=` query param. */
+    roleId?: string;
+    /** When provided the form renders as SIDE-PANEL content and this closes the
+     *  panel instead of navigating (client 2026-07-30). */
+    onClose?: () => void;
 }
 
-export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff" }: StaffFormPageProps) {
+export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff", roleId, onClose }: StaffFormPageProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const prefilledRoleId = searchParams.get("roleId") ?? "";
+    const prefilledRoleId = roleId ?? searchParams.get("roleId") ?? "";
+    const panel = !!onClose;
+    const exit = onClose ?? (() => router.push(returnTo));
 
     const allRoles    = useAppStore(s => s.roles);
     const allStaff    = useAppStore(s => s.staff);
@@ -706,7 +714,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     useEffect(() => {
         if (mode === "edit" && staffId && allStaff.length > 0 && !existing) {
             showToast("Staff not found", "Returned to the staff list.", "error");
-            router.push(returnTo);
+            exit();
         }
     }, [mode, staffId, allStaff, existing, router, returnTo, showToast]);
 
@@ -853,7 +861,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                 addShiftAssignment({ shift_id: sid, staff_id: newStaffId });
             }
             showToast("Invitation sent", `Invite sent to ${form.email.trim().toLowerCase()}.`, "success", "check");
-            router.push(returnTo);
+            exit();
             return;
         }
         if (!staffId || !existing) return;
@@ -897,7 +905,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             removeShiftAssignment(a.id);
         }
         showToast("Staff updated", `${fullName} details saved.`, "success", "check");
-        router.push(returnTo);
+        exit();
     }
 
     // A branch must be picked unless the role is Owner (all-locations).
@@ -932,70 +940,27 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     }
 
     return (
-        <div className="h-screen bg-white flex flex-col overflow-hidden">
-            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push(returnTo)}
-                    aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+        <>
+            {/* Side-panel header */}
+            <div className="flex items-center justify-between px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                    {mode === "create" ? "Add new staff" : "Edit staff"}
+                </h2>
+                <button type="button" onClick={exit} aria-label="Close"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
-                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
-                        {mode === "create" ? "Add new staff" : "Edit staff"}
-                    </h1>
-                    <Breadcrumbs className="p-0 text-[12px]" />
-                </div>
             </div>
 
-            <div className="flex-1 min-h-0 px-6 pb-8 flex gap-8 items-start overflow-hidden">
-                {/* Left progress — two steps (client 2026-07-24). Step 1 stays
-                    clickable so the admin can jump back; step 2 only after
-                    step-1 fields are valid. */}
-                <div className="w-[260px] shrink-0 flex flex-col gap-1">
-                    {([
-                        { n: 1, label: "User details" },
-                        { n: 2, label: "Pay rate" },
-                    ] as const).map((s, idx, arr) => {
-                        const active = step === s.n;
-                        const complete = step > s.n;
-                        const isLast = idx === arr.length - 1;
-                        const clickable = s.n === 1 || step1Valid;
-                        return (
-                            <button key={s.n} type="button"
-                                onClick={() => { if (clickable) setStep(s.n as 1 | 2); }}
-                                disabled={!clickable}
-                                className={cn(
-                                    "flex items-center gap-4 h-[52px] p-4 rounded-[12px] transition-colors text-left w-full",
-                                    active ? "bg-[#f5fffa]" : "bg-transparent hover:bg-[#f9fafb]",
-                                    !clickable && "opacity-60 cursor-not-allowed",
-                                )}>
-                                {/* Circle + connector line — canonical StepItem pattern
-                                    (matches Product/Role/Service create flows). */}
-                                <div className="relative flex flex-col items-center shrink-0">
-                                    <div className={cn(
-                                        "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
-                                        active
-                                            ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                                            : complete
-                                                ? "bg-[#658774] text-white"
-                                                : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3]",
-                                    )}>{complete ? <Check className="w-3 h-3" /> : s.n}</div>
-                                    {!isLast && (
-                                        <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
-                                    )}
-                                </div>
-                                <p className={cn(
-                                    "flex-1 text-[14px] leading-[20px]",
-                                    active ? "font-semibold text-[#3b5446]" : complete ? "font-medium text-[#344054]" : "font-medium text-[#667085]",
-                                )}>{s.label}</p>
-                            </button>
-                        );
-                    })}
-                </div>
+            {/* Two-step stepper (User details › Pay rate). Step 2 only reachable
+                once step-1 fields validate. */}
+            <PanelStepper
+                steps={[{ n: 1, label: "User details" }, { n: 2, label: "Pay rate" }]}
+                current={step}
+                onStep={(n) => { if (n === 1 || step1Valid) setStep(n as 1 | 2); }}
+            />
 
-                {/* Center card */}
-                <div className="flex-1 min-w-0 max-w-[680px] h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
-                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-5">
                         <div className="flex flex-col gap-5 w-full">
                             <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{step === 1 ? "Staff details" : "Pay rate"}</p>
 
@@ -1271,35 +1236,24 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                         </div>
                     </div>
 
-                    <div className="shrink-0 px-6 py-4 flex items-center justify-end gap-3">
-                        {step === 2 && (
-                            <Button variant="secondary-gray" size="md" onClick={() => setStep(1)}>
-                                Back
-                            </Button>
-                        )}
-                        {step === 1 ? (
-                            <Button variant="primary" size="md" disabled={!step1Valid} onClick={() => setStep(2)}>
-                                Continue
-                            </Button>
-                        ) : (
-                            <Button variant="primary" size="md" disabled={!formValid} onClick={handleSave}>
-                                {mode === "create" ? "Add staff" : "Save changes"}
-                            </Button>
-                        )}
-                    </div>
+            {/* Side-panel footer — Cancel + Back/Continue/Save. */}
+            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <Button variant="secondary-gray" size="md" onClick={exit}>Cancel</Button>
+                <div className="flex items-center gap-3">
+                    {step === 2 && (
+                        <Button variant="secondary-gray" size="md" onClick={() => setStep(1)}>Back</Button>
+                    )}
+                    {step === 1 ? (
+                        <Button variant="primary" size="md" disabled={!step1Valid} onClick={() => setStep(2)}>Continue</Button>
+                    ) : (
+                        <Button variant="primary" size="md" disabled={!formValid} onClick={handleSave}>
+                            {mode === "create" ? "Add staff" : "Save changes"}
+                        </Button>
+                    )}
                 </div>
-
-                {/* Right preview */}
-                <StaffPreview
-                    form={form}
-                    roleName={selectedRole?.name ?? ""}
-                    payRateName={selectedPayRate?.name ?? ""}
-                    branchLabel={branchLabel}
-                    joinedLabel={existing?.joinedDate ?? new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                />
             </div>
 
             <Toast />
-        </div>
+        </>
     );
 }

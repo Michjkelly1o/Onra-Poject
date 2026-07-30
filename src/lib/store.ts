@@ -107,6 +107,11 @@ import {
     class_schedule as SEED_CLASS_SCHEDULE,
     class_bookings as SEED_CLASS_BOOKINGS,
     class_ratings as SEED_CLASS_RATINGS,
+    AVA_CLASS_BOOKINGS,
+    AVA_CUSTOMER_ID,
+    AVA_APPOINTMENTS,
+    AVA_APPOINTMENT_BOOKINGS,
+    AVA_APPOINTMENT_RATINGS,
     class_templates as SEED_CLASS_TEMPLATES,
     services as SEED_SERVICES,
     appointments as SEED_APPOINTMENTS,
@@ -3831,18 +3836,42 @@ function syncInstructorsFromStaff(
 
 const INITIAL_TEMPLATES: ClassTemplate[] = SEED_CLASS_TEMPLATES.map(templateFromSeed);
 const INITIAL_SERVICES:  Service[]       = SEED_SERVICES.map(serviceFromSeed);
-const INITIAL_APPOINTMENTS:         Appointment[]        = SEED_APPOINTMENTS.map(a => appointmentFromSeed(a, INITIAL_SERVICES))
+const INITIAL_APPOINTMENTS:         Appointment[]        = [...SEED_APPOINTMENTS, ...AVA_APPOINTMENTS].map(a => appointmentFromSeed(a, INITIAL_SERVICES))
     // Client 2026-07-24 — flag a demonstrable subset of PRIVATE appointments as
     // "booked with Preference: Flexible" (studio-assigned instructor) so the
     // Appointment Details Flexible badge + Reassign-instructor action have live
     // data. Every 2nd private appointment, deterministically. Reuses existing
     // appointment records — no new/duplicate entity, no seed-file change.
     .map((a, i) => (!a.openSession && a.instructorId && i % 2 === 0 ? { ...a, flexible: true } : a));
-const INITIAL_APPOINTMENT_BOOKINGS: AppointmentBooking[] = SEED_APPOINTMENT_BOOKINGS.map(appointmentBookingFromSeed);
-const INITIAL_APPOINTMENT_RATINGS:  AppointmentRating[]  = SEED_APPOINTMENT_RATINGS.map(appointmentRatingFromSeed);
+// Ava (customer demo persona): strip her generated appointment bookings + ratings
+// and substitute the 2 curated ones (1 private + 1 recovery, both Attended +
+// pre-rated) so admin + customer show the same simplified, in-sync set. The
+// curated parent appointments are appended to INITIAL_APPOINTMENTS above.
+const INITIAL_APPOINTMENT_BOOKINGS: AppointmentBooking[] = [
+    ...SEED_APPOINTMENT_BOOKINGS.filter(b => b.customer_id !== AVA_CUSTOMER_ID),
+    ...AVA_APPOINTMENT_BOOKINGS,
+].map(appointmentBookingFromSeed);
+const INITIAL_APPOINTMENT_RATINGS:  AppointmentRating[]  = [
+    ...SEED_APPOINTMENT_RATINGS.filter(r => r.customer_id !== AVA_CUSTOMER_ID),
+    ...AVA_APPOINTMENT_RATINGS,
+].map(appointmentRatingFromSeed);
 const INITIAL_SCHEDULES: ClassSchedule[] = SEED_CLASS_SCHEDULE.map(s => scheduleFromSeed(s, INITIAL_TEMPLATES));
-const INITIAL_BOOKINGS:  ClassBooking[]  = SEED_CLASS_BOOKINGS.map(bookingFromSeed);
-const INITIAL_RATINGS:   ClassRating[]   = SEED_CLASS_RATINGS.map(ratingFromSeed);
+// Ava Wright (the customer demo persona) gets a curated booking set so the demo
+// opens with an EMPTY Upcoming tab + exactly 5 Past bookings (3 class + 2
+// appointment). Strip ALL her generated class bookings and substitute
+// AVA_CLASS_BOOKINGS. Admin + customer read this same list, so the two sides stay
+// in sync. (Appointment overrides are applied to INITIAL_APPOINTMENT_* above.)
+const INITIAL_BOOKINGS:  ClassBooking[]  = [
+    ...SEED_CLASS_BOOKINGS.filter(b => b.customer_id !== AVA_CUSTOMER_ID),
+    ...AVA_CLASS_BOOKINGS,
+].map(bookingFromSeed);
+// Drop ALL of Ava's class ratings — her one attended class stays rateable so the
+// "Rate class" submit flow is testable (the pre-rated / completed-review state is
+// demonstrated by her two attended appointments instead). Other customers' class
+// ratings are untouched.
+const INITIAL_RATINGS:   ClassRating[]   = SEED_CLASS_RATINGS
+    .filter(r => r.customer_id !== AVA_CUSTOMER_ID)
+    .map(ratingFromSeed);
 const INITIAL_CUSTOMER_PLANS: CustomerPlan[] = SEED_CUSTOMER_PLANS.map(customerPlanFromSeed);
 
 /** Reconcile `customer.creditsRemaining` from active/frozen finite plans.
@@ -4334,6 +4363,17 @@ export interface AppState {
      *  `ratingCount` + recomputes the aggregate. */
     deleteAppointmentRating: (id: string, deletedBy?: string) => void;
     deleteAppointmentRatings: (ids: string[], deletedBy?: string) => void;
+    /** Submit a customer's rating for a completed appointment (mirrors the
+     *  class-schedule `submitClassRating`). Appends an `appointmentRatings` row
+     *  AND recomputes the parent appointment's denormalized `rating`/`ratingCount`
+     *  so the admin summary + customer review state read one shared source. */
+    submitAppointmentRating: (input: {
+        appointmentId: string;
+        customerId: string;
+        score: number;
+        comment: string;
+        tags?: string[];
+    }) => void;
 
     addClassSchedule: (schedule: Omit<ClassSchedule, "id">) => string;
     addClassSchedules: (schedules: Omit<ClassSchedule, "id">[]) => void;
@@ -6548,6 +6588,42 @@ export const useAppStore = create<AppState>()(persist(
         }));
         if (affected.size > 0) get().recordAudit("Deleted appointment ratings", "appointment",
             Array.from(affected)[0], `${ids.length} rating${ids.length === 1 ? "" : "s"}`);
+    },
+
+    submitAppointmentRating: (input) => {
+        set((state) => {
+            const appt = state.appointments.find(a => a.id === input.appointmentId);
+            const customer = state.customers.find(c => c.id === input.customerId);
+            // A private appointment's rating carries its instructor; open-session
+            // (recovery) appointments rate the experience — no instructor FK.
+            const instructorId = appt && !appt.openSession ? appt.instructorId : undefined;
+            const rating: AppointmentRating = {
+                id: `appt_rat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                appointmentId: input.appointmentId,
+                customerId: input.customerId,
+                customerName: customer ? `${customer.firstName} ${customer.lastName}`.trim() : "",
+                customerInitials: customer?.initials ?? "?",
+                customerImageUrl: customer?.imageUrl,
+                instructorId,
+                instructorName: instructorId ? appt?.instructorName : undefined,
+                score: input.score,
+                comment: input.comment,
+                tags: input.tags,
+                submittedAt: new Date().toISOString(),
+            };
+            const appointmentRatings = [...state.appointmentRatings, rating];
+            // Recompute the appointment's aggregate from its non-deleted ratings so
+            // the admin Rating column + summary reflect the new review same render.
+            const appointments = state.appointments.map((a) => {
+                if (a.id !== input.appointmentId) return a;
+                const rows = appointmentRatings.filter(r => r.appointmentId === a.id && !r.deletedAt);
+                const avg = rows.length
+                    ? Math.round((rows.reduce((sum, r) => sum + r.score, 0) / rows.length) * 10) / 10
+                    : 0;
+                return { ...a, rating: avg, ratingCount: rows.length };
+            });
+            return { appointmentRatings, appointments };
+        });
     },
 
     addClassSchedule: (schedule) => {
@@ -12040,27 +12116,42 @@ export const useAppStore = create<AppState>()(persist(
         //   independently reached v86 / v87 with different schema + seed
         //   changes; bump to 88 so every persisted snapshot reseeds cleanly
         //   with the UNION of both branches' slices, seeds, and migrations.
-        // v89 (2026-07-29): Inventory / Retail Phase A — four additive
-        //   store slices (retailCategories · retailProducts · retailStock ·
-        //   retailStockAdjustments) + optional line-item snapshot fields
-        //   on CustomerTransaction. Pre-v89 snapshots have no retail slices;
-        //   the onRehydrateStorage handler below injects the seeds when
-        //   each slice is missing or empty. Bump forces the sweep so
-        //   every browser lands on the same starting inventory.
-        // v90 (2026-07-29): Retail products gained real photo assets under
-        //   /public/images/retail/ (studio-tank, grip-socks, pre-workout,
-        //   resistance-bands, stainless-bottle, studio-towel). Pre-v90
-        //   snapshots persisted the OLD image-less products; the id-keyed
-        //   backfill only ADDS missing rows, so bumping is the cleanest
-        //   way to reseed the 6 rows that gained an image_url.
-        // v91 (2026-07-30): Retail catalog trimmed 15 → 6 products (only
-        //   those with real photos ship in the demo). Persisted stock +
-        //   adjustment rows referencing the 9 dropped products would
-        //   dangle otherwise; the id-keyed backfill above never REMOVES
-        //   rows, so a version bump is the only way to force a clean
-        //   reseed. Also adds 20 retail-kind customer_transactions so
-        //   the Retail Sales report has real data on day one.
-        version: 91,
+        // v89 (2026-07-29) [main / Retail]: Inventory / Retail Phase A — four
+        //   additive store slices (retailCategories · retailProducts · retailStock ·
+        //   retailStockAdjustments) + optional line-item snapshot fields on
+        //   CustomerTransaction. onRehydrateStorage injects the seeds when a slice
+        //   is missing or empty so every browser lands on the same inventory.
+        // v90 (2026-07-29) [insights-kpi-ai-agent-polish]: Retail products gained
+        //   real photo assets under /public/images/retail/ (studio-tank, grip-socks,
+        //   pre-workout, resistance-bands, stainless-bottle, studio-towel). Pre-v90
+        //   snapshots persisted the OLD image-less products; the id-keyed backfill
+        //   only ADDS missing rows, so bumping is the cleanest way to reseed the 6
+        //   rows that gained an image_url.
+        // v91 (2026-07-30) [insights-kpi-ai-agent-polish]: Retail catalog trimmed
+        //   15 → 6 products (only those with real photos ship in the demo). Persisted
+        //   stock + adjustment rows referencing the 9 dropped products would dangle
+        //   otherwise; the id-keyed backfill above never REMOVES rows, so a version
+        //   bump is the only way to force a clean reseed. Also adds 20 retail-kind
+        //   customer_transactions so the Retail Sales report has real data on day one.
+        // v91 (2026-07-30) [customer-experience]: Ava Wright (customer demo persona)
+        //   Past reshaped to exactly 5 across ALL booking types — 3 class
+        //   (1 attended-rateable, 2 cancelled) + 2 appointment (private + recovery,
+        //   both Attended + pre-rated). Empty Upcoming by default. Her generated
+        //   class + appointment bookings/ratings are stripped and replaced with the
+        //   curated set.
+        // v92 (2026-07-30) [merge]: BOTH branches independently reached v91 for
+        //   different reasons (see the two v91 entries above). Bump to 92 forces
+        //   every persisted snapshot from either branch to reseed cleanly from
+        //   the merged INITIAL_* — this is the only path that guarantees BOTH:
+        //     • the trimmed retail catalog + real photos + 20 retail
+        //       customer_transactions (only in this branch's INITIAL_*), AND
+        //     • Ava Wright's curated Past = 5, empty Upcoming, both appointment
+        //       ratings baked in (only in the customer-experience branch's
+        //       INITIAL_APPOINTMENT_* + INITIAL_BOOKINGS filters).
+        //   The onRehydrateStorage id-keyed backfill only ADDS retail rows —
+        //   it can't reshape existing Ava bookings, so a version bump is the
+        //   correct forcing function.
+        version: 92,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

@@ -1,44 +1,69 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer Home — Upcoming Class section (PRD 13 §6.5)
+// Customer Home — Upcoming Booking section (PRD 13 §6.5)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Figma: 9ByGNc4N7Vw3BLMHyaWJ1j node 3675-41143 ("Upcoming Bookings"). Section
-// title + the shared <BookingCard>, rendered IDENTICALLY to the Bookings module
-// (same BookingListItemVM + BOOKING_STATUS mapping) so the two never diverge.
+// title + the shared <BookingCard>, rendered IDENTICALLY to the Bookings module.
+// Shows the SINGLE next upcoming booking regardless of type (class, private, or
+// recovery appointment). When there are none, the Figma empty state (node
+// 4567-119566) renders at the SAME height as a populated card so the layout never
+// shifts.
 
+import { Calendar } from "@untitledui/icons";
 import { BookingCard } from "@/components/customer/bookings/BookingCard";
-import { BOOKING_STATUS, type BookingListItemVM } from "@/lib/customer/bookings-data";
+import type { UpcomingCardVM } from "@/lib/customer/bookings-data";
+
+/** Figma "NEW Booking card" empty state (4567-119566) — a bordered card with a
+ *  green calendar featured-icon tile + title + supporting text, centered. Fixed
+ *  min-height matches a populated <BookingCard> so toggling doesn't shift the page. */
+function EmptyUpcoming() {
+    return (
+        <div className="flex min-h-[124px] flex-col items-center justify-center gap-3 rounded-2xl border border-[#e4e7ec] bg-white px-4 pb-4 pt-3 text-center">
+            {/* Featured icon — DS skeuomorphic tile (secondary/50 wash + calendar) */}
+            <span
+                className="flex size-8 items-center justify-center rounded-lg border-[2.65px] border-white/10 bg-[#e9fff3]"
+                style={{
+                    boxShadow:
+                        "0px 3.49px 3.49px 0px rgba(0,0,0,0.04), 0px 3.49px 20.94px 0px rgba(224,248,164,0.12), inset 4.5px 4.5px 6px 0px rgba(255,255,255,0.2)",
+                }}
+            >
+                <Calendar className="size-4 text-[var(--brand-primary)]" aria-hidden />
+            </span>
+            <div className="flex flex-col gap-1">
+                <p className="text-sm font-semibold leading-5 text-[#101828]">No upcoming booking yet</p>
+                <p className="text-xs font-normal leading-[18px] text-[#475467]">Your upcoming bookings will appear here.</p>
+            </div>
+        </div>
+    );
+}
 
 export function UpcomingBookings({
-    bookings,
+    items,
     onSelect,
 }: {
-    bookings: BookingListItemVM[];
-    onSelect: (bookingId: string) => void;
+    items: UpcomingCardVM[];
+    onSelect: (href: string) => void;
 }) {
     return (
         <section className="flex w-full flex-col gap-3">
             <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Upcoming bookings</h2>
 
-            {bookings.length === 0 ? (
-                <div className="flex flex-col items-start gap-1 rounded-2xl border border-[var(--colors-border-secondary,#e4e7ec)] bg-white px-4 py-5">
-                    <p className="text-sm font-medium text-[#344054]">No upcoming classes</p>
-                    <p className="text-xs text-[#667085]">Find a class to book and it’ll show up here.</p>
-                </div>
+            {items.length === 0 ? (
+                <EmptyUpcoming />
             ) : (
                 <div className="flex flex-col gap-3">
-                    {bookings.map((b) => (
+                    {items.map((b) => (
                         <BookingCard
-                            key={b.bookingId}
+                            key={b.key}
                             name={b.name}
                             date={b.dateShort}
                             time={b.time}
                             location={b.location}
-                            status={BOOKING_STATUS[b.viewStatus].card}
-                            mutedCover={BOOKING_STATUS[b.viewStatus].mutedCover}
+                            status={b.status}
+                            mutedCover={b.mutedCover}
                             image={b.coverImage}
                             imageColor={b.coverColor}
-                            onClick={() => onSelect(b.bookingId)}
+                            onClick={() => onSelect(b.href)}
                         />
                     ))}
                 </div>

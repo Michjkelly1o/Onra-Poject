@@ -15,7 +15,7 @@ import { useAppStore } from "@/lib/store";
 import { useHomeData } from "@/lib/customer/home-data";
 import { useUnreadNotifCount } from "@/lib/customer/notifications-feed";
 import { hasOnboarded, useIsAuthenticated } from "@/lib/customer/auth";
-import { useMemberBookings } from "@/lib/customer/bookings-data";
+import { useUpcomingBookingsMerged } from "@/lib/customer/bookings-data";
 import { CUSTOMER_HEADER_CONTENT_OFFSET } from "@/components/customer/shell/CustomerHeader";
 import { CustomerHomeHeader } from "@/components/customer/home/Header";
 import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelectorSheet";
@@ -28,7 +28,8 @@ import { RecommendedServices } from "@/components/customer/home/RecommendedServi
 export default function CustomerHomePage() {
     const home = useHomeData();
     const unreadNotifs = useUnreadNotifCount();
-    const { upcoming } = useMemberBookings();
+    // Next upcoming booking across ALL types (class + private/recovery appointment).
+    const upcomingMerged = useUpcomingBookingsMerged();
     const router = useRouter();
     const showToast = useAppStore((s) => s.showToast);
 
@@ -91,10 +92,10 @@ export default function CustomerHomePage() {
                                     />
                                 </div>
 
-                                {/* Home shows only the next upcoming booking; the full list lives in Bookings. */}
+                                {/* Home shows only the next upcoming booking (any type); the full list lives in Bookings. */}
                                 <UpcomingBookings
-                                    bookings={upcoming.slice(0, 1)}
-                                    onSelect={(bookingId) => router.push(`/customer/bookings/${bookingId}`)}
+                                    items={upcomingMerged.slice(0, 1)}
+                                    onSelect={(href) => router.push(href)}
                                 />
                             </>
                         )}

@@ -384,15 +384,6 @@ function BookingConfirmation() {
                         <div className="h-px w-full bg-[#e4e7ec]" />
                         <section className="flex w-full flex-col gap-3">
                             <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
-                            {mode === "waitlist" && (
-                                <div className="flex w-full items-start gap-2 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
-                                    <Lightbulb02 className="mt-0.5 size-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
-                                    <p className="text-sm font-normal leading-5 text-[#3f5b4c]">
-                                        Nothing is charged now. Your credit is only used once a spot opens up and
-                                        you&apos;re moved to booked.
-                                    </p>
-                                </div>
-                            )}
                             <div className="flex items-center justify-between gap-3 text-sm leading-5">
                                 <span className="min-w-0 truncate font-normal text-[#475467]">
                                     {detail.name} x{memberCreditSeats}

@@ -45,6 +45,9 @@ export interface SearchClassVM {
     waitlistCount: number;
     /** Max waitlist size (studio setting) — the badge denominator. */
     maxWaitlist: number;
+    /** The member's OWN 1-based waitlist position (from the store — the same
+     *  field the admin waitlist orders by), or null when not waitlisted. */
+    waitlistPosition: number | null;
     state: ClassState;
 }
 
@@ -101,6 +104,12 @@ function buildDetailVM(
             (b.status === "booked" || b.status === "waitlisted"),
     );
 
+    // The member's own waitlist position — read straight from the booking (the
+    // store sets + maintains it, and the admin waitlist tab orders by the same
+    // field, so both sides show the same number).
+    const waitlistPosition =
+        memberBooking?.status === "waitlisted" ? memberBooking.waitlistPosition ?? null : null;
+
     const equipment =
         typeof schedule.equipment === "string" && schedule.equipment.trim().length > 0
             ? schedule.equipment.split(",").map((e) => e.trim()).filter(Boolean)
@@ -134,6 +143,7 @@ function buildDetailVM(
         waitlistSpotsLeft,
         waitlistCount,
         maxWaitlist: maxWaitingSpots,
+        waitlistPosition,
         state: resolveState(schedule, memberBooking, waitlistSpotsLeft),
         description: schedule.description,
         equipment,
@@ -232,8 +242,11 @@ export function cardPresentation(vm: SearchClassVM): {
                 ctaDisabled: false,
             };
         case "waitlist":
+            // Class capacity is full (waitlist still open) — show "FULL" so the
+            // member understands the class is full but can still join the waitlist
+            // (the "Join waitlist" CTA). Keeps the hourglass to signal waitlist.
             return {
-                badgeLabel: `${vm.waitlistCount}/${vm.maxWaitlist}`,
+                badgeLabel: "FULL",
                 badgeTone: "neutral",
                 badgeIcon: "hourglass",
                 ctaLabel: "Join waitlist",
@@ -245,7 +258,9 @@ export function cardPresentation(vm: SearchClassVM): {
             // the instructor so the member's own state is clear without losing info.
             return { badgeLabel: `${vm.booked}/${vm.capacity}`, badgeTone: "success", badgeIcon: "users", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false, statusPill: { label: "Booked", tone: "booked" } };
         case "waitlisted":
-            return { badgeLabel: `${vm.waitlistCount}/${vm.maxWaitlist}`, badgeTone: "neutral", badgeIcon: "hourglass", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false, statusPill: { label: "Waitlist", tone: "waitlisted" } };
+            // The member is on the waitlist — the class is FULL (capacity badge),
+            // and their own position shows in the pill ("Waitlist #2").
+            return { badgeLabel: "FULL", badgeTone: "neutral", badgeIcon: "hourglass", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false, statusPill: { label: vm.waitlistPosition ? `Waitlist #${vm.waitlistPosition}` : "Waitlist", tone: "waitlisted" } };
         case "closed":
             return { badgeLabel: "Closed", badgeTone: "neutral", badgeIcon: null, ctaLabel: "Closed", ctaVariant: "secondary", ctaDisabled: true };
         case "full":
@@ -300,9 +315,9 @@ export function applyFilters(list: SearchClassVM[], f: SearchFilters): SearchCla
  * whether the filter modal is open all survive a page remount. Resets on reload.
  */
 export const searchUi: {
-    tab: "classes" | "appointments";
+    tab: "classes" | "private" | "recovery";
     /** One-shot: a Home discover rail can request the tab Search opens on. */
-    forceTab?: "classes" | "appointments";
+    forceTab?: "classes" | "private" | "recovery";
     selectedISO: string | null;
     /** Classes tab filters (Time + Instructor + Categories). */
     applied: SearchFilters;

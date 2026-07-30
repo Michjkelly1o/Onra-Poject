@@ -14,6 +14,9 @@ import { account_profile } from "@/data/mock/account_profile";
 // AI_AGENT_UI_VISIBLE off, the button never appears; testers reach the
 // agent by typing /ai-agent in the URL.
 import { FloatingAiButton } from "@/ai-agent/components/FloatingAiButton";
+// Staff & Shifts create/edit forms open as side panels (client 2026-07-30) —
+// this host renders them, driven by the staff-form-panel store.
+import { StaffFormPanelHost } from "@/components/staff/StaffFormPanelHost";
 
 export default function AdminLayout({
     children,
@@ -104,6 +107,7 @@ export default function AdminLayout({
             </div>
             <Toast />
             <FloatingAiButton />
+            <StaffFormPanelHost />
         </>
     );
 }

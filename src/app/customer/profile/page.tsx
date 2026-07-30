@@ -185,13 +185,13 @@ export default function ProfilePage() {
                 </div>
             </button>
 
-            {/* Bookings — Upcoming / History with green featured icons (Figma
+            {/* Bookings — Upcoming / Past with green featured icons (Figma
                 4560-117455). Same nav targets as before. */}
             <div className={`p-4 ${CARD}`}>
                 <div className="flex items-start gap-4">
                     {([
                         { icon: Calendar, label: "Upcoming", tab: "upcoming" },
-                        { icon: CalendarCheck01, label: "History", tab: "past" },
+                        { icon: CalendarCheck01, label: "Past", tab: "past" },
                     ] as { icon: typeof Calendar; label: string; tab: BookingTab }[]).map(({ icon: Icon, label, tab }, i) => (
                         <Fragment key={label}>
                             {i > 0 && <div className="w-px self-stretch bg-[#e4e7ec]" aria-hidden />}

@@ -25,6 +25,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
     XClose, Check, Clock,
     Edit02, Archive, RefreshCcw01, SlashCircle01, Trash01, Trash02,
@@ -475,7 +476,7 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
         // chain lands on the Shift sub-tab (not the Staff tab).
         const back = encodeURIComponent(`/staff/shifts/${shift.id}?returnTo=${encodeURIComponent(returnTo)}`);
         if (kind === "view")          return router.push(`/staff/members/${s.id}?returnTo=${back}`);
-        if (kind === "edit_details")  return router.push(`/staff/members/${s.id}/edit?returnTo=${back}`);
+        if (kind === "edit_details")  return openStaffFormPanel({ kind: "staff", mode: "edit", id: s.id });
         if (kind === "change_role")   return onChangeRoleFor(s);
         if (kind === "change_shift")  return onChangeShiftFor(s);
         if (kind === "resend_invite") {
@@ -907,7 +908,7 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
             // Edit shift → back returns to THIS detail page, which itself keeps
             // its returnTo so the whole chain lands back on the Shift sub-tab.
             const selfUrl = `/staff/shifts/${shift!.id}?returnTo=${encodeURIComponent(returnTo)}`;
-            return router.push(`/staff/shifts/${shift!.id}/edit?returnTo=${encodeURIComponent(selfUrl)}`);
+            return openStaffFormPanel({ kind: "shift", mode: "edit", id: shift!.id });
         }
         setSidebarConfirm(kind);
     }

@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Reusable booking card used on Home → Upcoming Class, Bookings → Upcoming, and
-// Bookings → History. Built from scratch for the member surface (not the
+// Bookings → Past. Built from scratch for the member surface (not the
 // admin/instructor DS). Figma: 9ByGNc4N7Vw3BLMHyaWJ1j node 3675-40391
 // ("New Booking Card"). Content hierarchy and tokens match the design exactly;
 // the status icon/colour is driven by `tone` so the same card serves booked /

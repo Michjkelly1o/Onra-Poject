@@ -22,6 +22,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
     XClose, Check, Edit02, UserSquare, Archive, RefreshCcw01, SlashCircle01,
     Trash01, Send01, ArrowUp, ArrowDown, ArrowUpRight,
@@ -951,7 +952,7 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
             // the chain lands on wherever the detail was opened from (Staff tab,
             // or a Shift detail's roster) — not a reset to the Staff tab.
             const selfUrl = `/staff/members/${staff!.id}?returnTo=${encodeURIComponent(returnTo)}`;
-            return router.push(`/staff/members/${staff!.id}/edit?returnTo=${encodeURIComponent(selfUrl)}`);
+            return openStaffFormPanel({ kind: "staff", mode: "edit", id: staff!.id });
         }
         if (kind === "change_role")   return setChangeRoleOpen(true);
         if (kind === "resend_invite") return handleResend();

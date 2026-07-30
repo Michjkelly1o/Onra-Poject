@@ -20,9 +20,10 @@ export function RecommendedServices() {
     const services = useAppointments(EMPTY_FILTERS).slice(0, 8);
     if (services.length === 0) return null;
 
-    function openSearchAppointments() {
-        // One-shot hint honoured by the Search page's mount effect.
-        searchUi.forceTab = "appointments";
+    function openSearchAppointments(isRecovery: boolean) {
+        // One-shot hint honoured by the Search page's mount effect — land on the
+        // Private or Recovery tab that matches the tapped service.
+        searchUi.forceTab = isRecovery ? "recovery" : "private";
         router.push("/customer/search");
     }
 
@@ -39,7 +40,7 @@ export function RecommendedServices() {
                         coverColor={s.coverColor}
                         title={s.name}
                         subtitle={`${s.durationMins} min • ${s.type === "private" ? "Private session" : "Open session"}`}
-                        onClick={openSearchAppointments}
+                        onClick={() => openSearchAppointments(s.isRecovery)}
                     />
                 ))}
             </div>

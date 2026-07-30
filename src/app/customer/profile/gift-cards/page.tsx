@@ -126,7 +126,7 @@ export default function GiftCardPage() {
                 </div>
 
                 {/* Redeemed */}
-                <p className="relative mb-3 mt-8 text-base font-semibold leading-6 text-[var(--brand-text)]">Redeemed gift card</p>
+                <p className="relative mb-3 mt-8 text-sm font-semibold leading-5 text-[var(--brand-text)]">Redeemed gift card</p>
                 {redeemed.length > 0 ? (
                     <div className="relative flex flex-col gap-3">
                         {redeemed.map((r) => (

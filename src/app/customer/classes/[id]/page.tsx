@@ -91,7 +91,7 @@ export default function ClassDetailPage() {
         detail.state === "available"
             ? { icon: Users01, label: `${detail.booked}/${detail.capacity} spots`, cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
             : detail.state === "waitlist"
-              ? { icon: Hourglass03, label: `${detail.waitlistCount}/${detail.maxWaitlist} waitlist`, cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
+              ? { icon: Hourglass03, label: "FULL", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
               : detail.state === "booked"
                 ? { icon: null, label: "Booked", cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
                 : detail.state === "waitlisted"

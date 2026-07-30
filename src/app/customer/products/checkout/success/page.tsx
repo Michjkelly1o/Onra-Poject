@@ -1,19 +1,16 @@
 "use client";
 
 // Customer — Products Payment Success (`/customer/products/checkout/success`) — Figma 3298-70578
-// Shared <PaymentSuccess>; footer routes into Profile — "View plan" (membership/
-// package) and/or "View gift card" — based on what was purchased.
+// Shared <PaymentSuccess>; a single, purchase-type-agnostic action —
+// "View purchase history" — routes to the customer's Payment history so it reads
+// consistently for memberships, packages, gift cards, and any future product.
 
 import { useRouter } from "next/navigation";
-import { lastOrder } from "@/lib/customer/purchase";
 import { PaymentSuccess } from "@/components/customer/checkout/PaymentSuccess";
 import { Button } from "@/components/ui/button";
 
 export default function ProductsSuccessPage() {
     const router = useRouter();
-    const kinds = lastOrder.value?.kinds ?? [];
-    const hasPlan = kinds.includes("membership") || kinds.includes("package");
-    const hasGiftCard = kinds.includes("gift_card");
 
     return (
         <PaymentSuccess
@@ -24,18 +21,12 @@ export default function ProductsSuccessPage() {
                     size="xl"
                     className="w-full rounded-full"
                     onClick={() =>
-                        router.replace(
-                            // ?back= → Back leaves the finished purchase flow and
-                            // returns to Profile, never to checkout/processing.
-                            hasPlan
-                                ? "/customer/profile/plan?back=/customer/profile"
-                                : hasGiftCard
-                                  ? "/customer/profile/gift-cards?back=/customer/profile"
-                                  : "/customer/products",
-                        )
+                        // ?back= → Back leaves the finished purchase flow and returns
+                        // to Profile, never to checkout/processing.
+                        router.replace("/customer/profile/payment-history?back=/customer/profile")
                     }
                 >
-                    {hasPlan ? "View plan" : hasGiftCard ? "View gift card" : "Done"}
+                    View purchase history
                 </Button>
             }
         />

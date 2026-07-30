@@ -222,10 +222,15 @@ export interface BlockedTimeFormPageProps {
     mode: "create" | "edit";
     blockedTimeId?: string;
     returnTo?: string;
+    /** When provided the form renders as SIDE-PANEL content and this closes the
+     *  panel instead of navigating (client 2026-07-30). */
+    onClose?: () => void;
 }
 
-export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/staff" }: BlockedTimeFormPageProps) {
+export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/staff", onClose }: BlockedTimeFormPageProps) {
     const router = useRouter();
+    const panel = !!onClose;
+    const exit = onClose ?? (() => router.push(returnTo));
 
     const blockedTimes      = useAppStore(s => s.blockedTimes);
     const staff             = useAppStore(s => s.staff);
@@ -416,56 +421,30 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                 "success", "check",
             );
         }
-        router.push(returnTo);
+        exit();
     }
 
     if (mode === "edit" && !existing) {
-        return (
-            <div className="h-screen bg-white flex flex-col items-center justify-center gap-3">
+        const notFound = (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3">
                 <p className="font-semibold text-[18px] text-[#101828]">Time off not found</p>
                 <p className="text-[14px] text-[#667085]">The entry you're trying to edit no longer exists.</p>
-                <Button variant="primary" size="md" onClick={() => router.push(returnTo)}>
-                    Back to list
-                </Button>
+                <Button variant="primary" size="md" onClick={exit}>Back to list</Button>
             </div>
         );
+        return panel
+            ? <div className="flex h-full flex-col bg-white">{notFound}</div>
+            : <div className="h-screen bg-white flex flex-col">{notFound}</div>;
     }
 
     const pageTitle = mode === "edit" ? "Edit time off" : "Add time off";
 
-    return (
-        <div className="h-screen bg-white flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
-                <button type="button" onClick={() => router.push(returnTo)}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
-                </button>
-                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{pageTitle}</h1>
-                    <Breadcrumbs className="p-0 text-[12px]" />
-                </div>
-            </div>
+    // ── Field content — shared by the side-panel + full-page layouts. ──
+    const fields = (
+        <>
+            <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Time off details</h2>
 
-            {/* Body */}
-            <div className="flex-1 overflow-hidden">
-                <div className="flex gap-8 px-6 py-6 h-full items-start">
-                    {/* Left rail */}
-                    <div className="w-[260px] shrink-0 pt-2">
-                        <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] bg-[#f5fffa]">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
-                                1
-                            </div>
-                            <span className="text-[14px] font-semibold text-[#3b5446]">Time off details</span>
-                        </div>
-                    </div>
-
-                    {/* Form card */}
-                    <div className="flex-1 max-w-[628px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden self-stretch shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
-                            <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Time off details</h2>
-
-                            {/* Reason category (Sick / Vacation / Training /
+            {/* Reason category (Sick / Vacation / Training /
                                 Other). Client 2026-07-22 replaced the
                                 free-text-only title — reason drives
                                 payroll classification + the list chip. */}
@@ -619,24 +598,80 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                 )}
                             </div>
 
-                            {/* Staffs */}
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Staff</label>
-                                <MultiStaffDropdown
-                                    options={availableStaff}
-                                    selectedIds={form.staffIds}
-                                    onChange={ids => set({ staffIds: ids })}
-                                    placeholder="Search and select staff members"
-                                />
-                                <p className="text-[13px] text-[#667085]">Search and select staff members</p>
-                            </div>
-                        </div>
+            {/* Staffs */}
+            <div className="flex flex-col gap-[6px]">
+                <label className="text-[14px] font-medium text-[#344054]">Staff</label>
+                <MultiStaffDropdown
+                    options={availableStaff}
+                    selectedIds={form.staffIds}
+                    onChange={ids => set({ staffIds: ids })}
+                    placeholder="Search and select staff members"
+                />
+                <p className="text-[13px] text-[#667085]">Search and select staff members</p>
+            </div>
+        </>
+    );
 
-                        {/* Footer */}
+    const submitBtn = (
+        <Button variant="primary" size="md" disabled={!isValid} onClick={handleSubmit}>
+            {mode === "create" ? "Add time off" : "Save changes"}
+        </Button>
+    );
+
+    // ── Side-panel layout (create via the Staff & Shifts + Add menu) ──
+    if (panel) {
+        return (
+            <>
+                <div className="flex items-center justify-between px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{pageTitle}</h2>
+                    <button type="button" onClick={exit} aria-label="Close"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
+                    {fields}
+                </div>
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end gap-3">
+                    <Button variant="secondary-gray" size="md" onClick={exit}>Cancel</Button>
+                    {submitBtn}
+                </div>
+                <Toast />
+            </>
+        );
+    }
+
+    // ── Full-page layout (edit route) ──
+    return (
+        <div className="h-screen bg-white flex flex-col overflow-hidden">
+            <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
+                <button type="button" onClick={exit}
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[#667085]" />
+                </button>
+                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{pageTitle}</h1>
+                    <Breadcrumbs className="p-0 text-[12px]" />
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+                <div className="flex gap-8 px-6 py-6 h-full items-start">
+                    <div className="w-[260px] shrink-0 pt-2">
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] bg-[#f5fffa]">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
+                                1
+                            </div>
+                            <span className="text-[14px] font-semibold text-[#3b5446]">Time off details</span>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 max-w-[628px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden self-stretch shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
+                            {fields}
+                        </div>
                         <div className="shrink-0 px-6 py-4 flex items-center justify-end">
-                            <Button variant="primary" size="md" disabled={!isValid} onClick={handleSubmit}>
-                                {mode === "create" ? "Add time off" : "Save changes"}
-                            </Button>
+                            {submitBtn}
                         </div>
                     </div>
                 </div>

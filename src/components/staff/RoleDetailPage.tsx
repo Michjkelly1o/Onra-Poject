@@ -19,6 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
     XClose, ChevronLeft, ChevronDown, ChevronUp, User01, Check,
     Edit02, UserSquare, Archive, RefreshCcw01, SlashCircle01, Trash01, Trash02,
@@ -553,7 +554,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
 
     function handleAction(s: Staff, kind: StaffRowAction) {
         if (kind === "view")          return router.push(`/staff/members/${s.id}?returnTo=/staff/roles/${role.id}`);
-        if (kind === "edit_details")  return router.push(`/staff/members/${s.id}/edit?returnTo=/staff/roles/${role.id}`);
+        if (kind === "edit_details")  return openStaffFormPanel({ kind: "staff", mode: "edit", id: s.id });
         if (kind === "change_role")   return onChangeRoleFor(s);
         if (kind === "resend_invite") {
             const ok = resendStaffInvite(s.id);
@@ -906,7 +907,7 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
 
     function handleSidebarAction(kind: "add_staff" | "edit_details" | "edit_permissions" | ConfirmKind) {
         if (!role) return;
-        if (kind === "add_staff")        return router.push(`/staff/members/new?roleId=${role.id}&returnTo=/staff/roles/${role.id}`);
+        if (kind === "add_staff")        return openStaffFormPanel({ kind: "staff", mode: "create", roleId: role.id });
         if (kind === "edit_details")     return router.push(`/staff/roles/${role.id}/edit?returnTo=${encodeURIComponent(pathname)}`);
         if (kind === "edit_permissions") return router.push(`/staff/roles/${role.id}/permissions/edit?returnTo=${encodeURIComponent(pathname)}`);
         setSidebarConfirm(kind);
