@@ -421,6 +421,73 @@ function studioOverview(
     };
 }
 
+// ─── Phase 5 (empty-state pivot) — data_coverage ─────────────────────────────
+//
+// Returns a small object summarising how much live data the studio has.
+// The insight prompt tells the model to call this BEFORE running trend /
+// comparison analyses — if the studio is brand-new (all counts below the
+// threshold), the model pivots to guidance mode instead of showing bland
+// zero-value charts. Same snapshot the other tools use.
+function dataCoverage(
+    ctx: AuthContext,
+    catalog: Catalog,
+    snapshot: AiAgentStateSnapshot,
+): InsightCard {
+    // Branch-scope the counts so a Branch Admin's "is my branch new?" gets
+    // an honest yes/no even when other branches carry data.
+    const custRows      = branchFilter(ctx, (catalog.customers?.rows      ?? []) as { branch_id?: string | null }[]) as Row[];
+    const txnRows       = branchFilter(ctx, (catalog.transactions?.rows   ?? []) as { branch_id?: string | null }[]) as Row[];
+    const classRows     = branchFilter(ctx, (catalog.classes?.rows        ?? []) as { branch_id?: string | null }[]) as Row[];
+    const bookingRows   = branchFilter(ctx, (catalog.bookings?.rows       ?? []) as { branch_id?: string | null }[]) as Row[];
+    const staffRows     = branchFilter(ctx, (catalog.staff?.rows          ?? []) as { branch_id?: string | null }[]) as Row[];
+    const retailProds   = (catalog.retail_products?.rows ?? []) as Row[]; // studio-global
+    const memberships   = (catalog.memberships?.rows ?? []) as Row[]; // studio-global
+    const activePlans   = (branchFilter(ctx, (catalog.customer_plans?.rows ?? []) as { branch_id?: string | null }[]) as Row[])
+        .filter((p) => p.status === "active");
+
+    // "Days of history" — spread of transactions from earliest to today.
+    // Falls back to customers.created_at if no transactions yet.
+    const now = Date.now();
+    const parseIso = (v: unknown): number => {
+        const s = String(v ?? "").slice(0, 10);
+        const t = Date.parse(s);
+        return Number.isNaN(t) ? Infinity : t;
+    };
+    const earliestTxn = txnRows.reduce((min, t) => Math.min(min, parseIso(t.created_at)), Infinity);
+    const earliestCust = custRows.reduce((min, c) => Math.min(min, parseIso(c.created_at)), Infinity);
+    const earliest = Math.min(earliestTxn, earliestCust);
+    const daysOfHistory = earliest === Infinity ? 0 : Math.max(1, Math.floor((now - earliest) / 864e5));
+
+    // "Is new studio" threshold — genuinely sparse setup. Any studio hitting
+    // ALL of these is a first-day install with only seed defaults.
+    const isNewStudio =
+        custRows.length < 5 &&
+        txnRows.length < 5 &&
+        classRows.length < 3 &&
+        bookingRows.length < 5;
+
+    const tiles: Array<{ label: string; value: string }> = [
+        { label: "Customers",              value: String(custRows.length) },
+        { label: "Active plans",           value: String(activePlans.length) },
+        { label: "Transactions",           value: String(txnRows.length) },
+        { label: "Classes on the calendar",value: String(classRows.length) },
+        { label: "Bookings recorded",      value: String(bookingRows.length) },
+        { label: "Staff on the team",      value: String(staffRows.length) },
+        { label: "Retail products",        value: String(retailProds.length) },
+        { label: "Memberships offered",    value: String(memberships.length) },
+        { label: "Days of history",        value: String(daysOfHistory) },
+    ];
+
+    return {
+        card: "metric_group",
+        title: isNewStudio ? "This studio is just getting started" : "Data coverage",
+        tiles,
+        note: isNewStudio
+            ? "Not enough activity yet to spot trends — head to the Studio setup thread to finish configuring, or come back once a few sales / bookings have landed."
+            : `${daysOfHistory} day${daysOfHistory === 1 ? "" : "s"} of history to draw on.`,
+    };
+}
+
 // ─── Phase 4 (insight variety) — whats_interesting ───────────────────────────
 //
 // Server-side "what's happening" scan. Runs a handful of cheap checks over
@@ -718,6 +785,17 @@ export function insightTools(
                 "A quick KPI snapshot of the studio: active customers, branches, instructors, scheduled classes. Use for 'give me an overview' / first-look questions.",
             parameters: z.object({}),
             execute: async () => guard(() => studioOverview(ctx, catalog, snapshot)),
+        }),
+
+        // Phase 5 (2026-07-30) — empty-state pivot. Call BEFORE any
+        // trend / comparison analysis on a fresh thread — if the studio
+        // is genuinely new (all counts sparse), pivot to guidance mode
+        // instead of showing zero-value charts.
+        data_coverage: tool({
+            description:
+                "Read-only snapshot of how much live data the studio has right now — customers / plans / transactions / classes / bookings / staff / retail products / memberships / days of history. Call this at the START of a fresh insight thread, especially before running any trend or comparison analysis. If the returned `note` mentions 'just getting started', DO NOT try to render trends — respond in guidance mode ('You're just getting started. Once a few sales and bookings land I can start showing patterns.') and point the user at the Studio setup thread.",
+            parameters: z.object({}),
+            execute: async () => guard(() => dataCoverage(ctx, catalog, snapshot)),
         }),
 
         // Phase 4 (2026-07-30) — insight variety. When the user asks broadly

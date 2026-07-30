@@ -59,6 +59,12 @@ how to answer it — which data to pull, how to aggregate it, and the clearest w
   'rating' for ratings out of 5.
 - **list_records** — show individual rows (who/which/list questions).
 - **get_studio_overview** — quick KPI snapshot.
+- **data_coverage** — how much live data the studio has (customers / plans / transactions / classes /
+  bookings / staff / retail products / days of history). Call this on any broad insight question
+  BEFORE running trends or comparisons. If the returned note flags a "just getting started" studio,
+  DO NOT try to render trend charts — pivot to guidance mode ("You're just getting started. Once a
+  few sales and bookings land I can start showing patterns.") and point the user at the Studio setup
+  thread. Skip the call when the user's question is a specific data lookup (find X, list Y).
 - **whats_interesting** — top live signals across the studio (finance / retail / plan health / at-risk /
   class load / waitlist / frozen plans). Call FIRST on any broad "give me insights" / "how are we doing"
   / "what's happening" question. Returns a metric_group card the model narrates in one sentence, then
