@@ -2,31 +2,32 @@
 // Onra AI Agent · Floating trigger button (fixed bottom-right)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Client 2026-07-27 (Figma 667:650314) — the trigger is now the "How can I
-// help today?" prompt bubble + Onra logomark tile pair rather than a plain
-// circle. Both halves click through to /ai-agent. Positioned bottom-right
-// with 32px page padding per the Figma frame.
+// Client 2026-07-30 (Figma 667:650314) — hover-reveal chat bubble.
+// The logomark tile stays as the always-visible fixed trigger; hovering
+// the entry area slides in a "Talk to agent" chat bubble to its LEFT,
+// styled per the Figma reference (white card, 16/16/16/4 radii — the
+// bottom-right corner is small so the shape reads as a chat bubble
+// pointing at the logo, subtle brand-green tinted shadow). Both halves
+// (bubble + logo) navigate to /ai-agent on click.
 //
 // Three gates stack — every one MUST pass, or the button renders null:
 //
-//   1. `AI_AGENT_UI_VISIBLE` (flags.ts) — a master switch. Currently `false`
-//      because today's push ships every other update but keeps the AI Agent
-//      hidden in the admin chrome. URL access via `/ai-agent` still works
-//      while this is off.
+//   1. `AI_AGENT_UI_VISIBLE` (flags.ts) — master switch.
 //   2. `isAiAgentEnabled(role)` (flags.ts) — role gate. Admin only.
-//   3. `pathname === "/ai-agent"` — hide the trigger while the user is
-//      already on the agent page; no reason to nudge them somewhere they
-//      already are, and avoids the button floating over its own content.
+//   3. `pathname === "/ai-agent"` — hide while the user is already on
+//      the agent page.
 //
-// On click, navigates to `/ai-agent?returnTo=<current path>` so the page's
-// close (X) can put the user back exactly where they came from.
+// On click, navigates to `/ai-agent?returnTo=<current path>` so the
+// page's close (X) can put the user back exactly where they came from.
 
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Stars02 } from "@untitledui/icons";
+import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
-import { IconTooltip } from "@/components/patterns/IconTooltip";
 import {
     AI_AGENT_UI_VISIBLE,
     isAiAgentEnabled,
@@ -36,6 +37,7 @@ export function FloatingAiButton() {
     const router = useRouter();
     const pathname = usePathname();
     const role = useAppStore((s) => s.currentRole);
+    const [hovered, setHovered] = useState(false);
 
     if (!AI_AGENT_UI_VISIBLE) return null;
     if (!isAiAgentEnabled(role)) return null;
@@ -47,42 +49,79 @@ export function FloatingAiButton() {
     };
 
     return (
-        // Client 2026-07-27 — the "How can I help today?" bubble was
-        // hidden per client feedback ("hide this like the bubble chat")
-        // to keep the entry point compact + non-blocking on scroll. Only
-        // the logomark tile remains as the fixed trigger. The wrapper's
-        // bottom-8 right-8 gives 32px viewport padding per Figma
-        // spacing-4xl.
-        //
-        // Tooltip added (2026-07-27) — IconTooltip anchored `above` the
-        // tile so hovering surfaces the "AI Agent" label without needing
-        // to click first.
-        <div className="fixed bottom-8 right-8 z-[60] flex items-center gap-4 pointer-events-none">
-            <IconTooltip label="AI Agent" side="above">
+        // Wrapper is anchored to bottom-right with 32px page padding
+        // (Figma spacing-4xl). Bubble sits to the LEFT of the logo tile;
+        // both stay flush-right so the bubble slides in from behind the
+        // logo when it appears.
+        <div
+            className="fixed bottom-8 right-8 z-[60] flex items-center gap-4"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+            {/* Hover chat bubble — collapses to zero width when not hovered
+                so the invisible bubble area doesn't hijack cursor events
+                elsewhere on the page. max-w transition drives the slide-in;
+                opacity fades the content itself. */}
+            <div
+                className={cn(
+                    "overflow-hidden transition-all duration-200 ease-out",
+                    hovered
+                        ? "max-w-[260px] opacity-100"
+                        : "max-w-0 opacity-0",
+                )}
+            >
                 <button
                     type="button"
-                    aria-label="Open Onra AI Agent"
                     onClick={handleClick}
-                    className={[
-                        "pointer-events-auto",
-                        "shrink-0 w-14 h-14 rounded-[14px] bg-white",
-                        "border-[0.35px] border-[#d0d5dd] overflow-hidden",
-                        "flex items-center justify-center",
-                        "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
+                    aria-label="Talk to Onra AI Agent"
+                    tabIndex={hovered ? 0 : -1}
+                    className={cn(
+                        // Figma chrome — the bottom-right corner cuts to 4px
+                        // (radius-xs) so the bubble reads as a chat pointer
+                        // aimed at the logo tile. Other corners keep the
+                        // full 16px radius-2xl.
+                        "flex items-center gap-2 whitespace-nowrap",
+                        "bg-white px-4 py-4",
+                        "border-1 border-[#e4e7ec]",
+                        "rounded-tl-[16px] rounded-tr-[16px] rounded-bl-[16px] rounded-br-[4px]",
+                        // Two-layer shadow per Figma — the second layer
+                        // carries the brand-green tint (#e9fff3) so the
+                        // bubble feels "warm" against the page bg.
+                        "shadow-[0px_2.4px_2.4px_0px_rgba(0,0,0,0.04),0px_6.4px_6.4px_0px_rgba(0,0,0,0.03),0px_4px_24px_0px_#e9fff3]",
                         "hover:bg-[#f9fafb] transition-colors",
                         "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
-                    ].join(" ")}
+                    )}
                 >
-                    <Image
-                        src="/Logomark.webp"
-                        alt=""
-                        width={42}
-                        height={42}
-                        className="w-[42px] h-[42px] object-contain"
-                        unoptimized
-                    />
+                    <Stars02 className="w-6 h-6 shrink-0 text-[var(--brand-primary)]" aria-hidden />
+                    <span className="text-[14px] font-medium leading-[20px] text-[#101828]">
+                        Talk to agent
+                    </span>
                 </button>
-            </IconTooltip>
+            </div>
+
+            {/* Logomark trigger — always visible, always clickable. */}
+            <button
+                type="button"
+                aria-label="Open Onra AI Agent"
+                onClick={handleClick}
+                className={cn(
+                    "shrink-0 w-14 h-14 rounded-[14px] bg-white",
+                    "border-[0.35px] border-[#d0d5dd] overflow-hidden",
+                    "flex items-center justify-center",
+                    "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
+                    "hover:bg-[#f9fafb] transition-colors",
+                    "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
+                )}
+            >
+                <Image
+                    src="/Logomark.webp"
+                    alt=""
+                    width={42}
+                    height={42}
+                    className="w-[42px] h-[42px] object-contain"
+                    unoptimized
+                />
+            </button>
         </div>
     );
 }
