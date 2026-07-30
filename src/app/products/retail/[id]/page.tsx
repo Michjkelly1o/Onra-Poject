@@ -549,7 +549,15 @@ function ConfigureStockPanel({ open, onClose, product }: {
     const adjustRetailStock = useAppStore(s => s.adjustRetailStock);
     const showToast  = useAppStore(s => s.showToast);
 
-    const activeBranches = branches.filter(b => b.status !== "archive");
+    // v83 fix (2026-07-29) — activeBranches MUST be memoised. Without
+    // it every render produces a new array, and the effect below (which
+    // depends on activeBranches) fires setDrafts on every render →
+    // infinite loop → "Too many re-renders" runtime error the moment
+    // the panel opens via the ?configureStock=1 deep-link.
+    const activeBranches = useMemo(
+        () => branches.filter(b => b.status !== "archive"),
+        [branches],
+    );
 
     const currentByBranch = useMemo(() => {
         const map = new Map<string, number>();
@@ -562,16 +570,18 @@ function ConfigureStockPanel({ open, onClose, product }: {
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     const [reason, setReason] = useState<RetailAdjustReason>("Received shipment");
 
-    useMemo(() => {
-        if (open) {
-            const next: Record<string, string> = {};
-            for (const b of activeBranches) {
-                next[b.id] = String(currentByBranch.get(b.id) ?? 0);
-            }
-            setDrafts(next);
-            setReason("Received shipment");
+    // Seed drafts + reset the reason picker whenever the panel opens.
+    // useEffect (not useMemo!) — the previous useMemo(side-effect)
+    // pattern was calling setState during render, which is the anti-
+    // pattern that triggered the infinite render loop.
+    useEffect(() => {
+        if (!open) return;
+        const next: Record<string, string> = {};
+        for (const b of activeBranches) {
+            next[b.id] = String(currentByBranch.get(b.id) ?? 0);
         }
-        return null;
+        setDrafts(next);
+        setReason("Received shipment");
     }, [open, activeBranches, currentByBranch]);
 
     function handleSave() {

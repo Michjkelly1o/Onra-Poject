@@ -12021,7 +12021,13 @@ export const useAppStore = create<AppState>()(persist(
         //   the onRehydrateStorage handler below injects the seeds when
         //   each slice is missing or empty. Bump forces the sweep so
         //   every browser lands on the same starting inventory.
-        version: 89,
+        // v90 (2026-07-29): Retail products gained real photo assets under
+        //   /public/images/retail/ (studio-tank, grip-socks, pre-workout,
+        //   resistance-bands, stainless-bottle, studio-towel). Pre-v90
+        //   snapshots persisted the OLD image-less products; the id-keyed
+        //   backfill only ADDS missing rows, so bumping is the cleanest
+        //   way to reseed the 6 rows that gained an image_url.
+        version: 90,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
