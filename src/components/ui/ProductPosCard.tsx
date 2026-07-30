@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CreditCard02, Package, Gift01, Plus, Minus, CalendarCheck01, ClockFastForward, BankNote01, ShoppingBag01, List, Box } from "@untitledui/icons";
+import { CreditCard02, Package, Gift01, Plus, Minus, CalendarCheck01, ClockFastForward, BankNote01, ShoppingBag01, Box, Tag03 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 
 // ─── Onra DS — Product POS Card ───────────────────────────────────────────────
@@ -189,12 +189,14 @@ export function ProductPosCard({
                             {primaryMeta && (
                                 <div className="flex items-center gap-1">
                                     {/* Gift cards lead with the loaded value (bank-note);
-                                        retail leads with the category (list icon);
+                                        retail leads with the category (Tag03 — same
+                                        icon the customer product-detail page uses for
+                                        the "Category" row);
                                         memberships/packages lead with class count. */}
                                     {type === "gift-card"
                                         ? <BankNote01 className="w-4 h-4 text-[#667085] shrink-0" />
                                         : type === "retail"
-                                            ? <List className="w-4 h-4 text-[#667085] shrink-0" />
+                                            ? <Tag03 className="w-4 h-4 text-[#667085] shrink-0" />
                                             : <CalendarCheck01 className="w-4 h-4 text-[#667085] shrink-0" />}
                                     <span className="text-[14px] font-medium text-[#667085]">{primaryMeta}</span>
                                 </div>
