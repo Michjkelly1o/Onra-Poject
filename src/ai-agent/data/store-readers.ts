@@ -18,9 +18,24 @@
 // `useAppStore.getState()` once per request and passes it through, so
 // every dataset in a single query sees a consistent snapshot of the store.
 
-import type { AppState } from "@/lib/store";
+import type { AppState, WalletTransaction } from "@/lib/store";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
-import { walletBalanceAed } from "@/lib/store";
+
+/** Inlined wallet-balance derivation. Kept LOCAL to the server-side agent
+ *  readers so we don't have to import from `@/lib/store` (which is marked
+ *  `"use client"` — pulling that into the API route would break the
+ *  server bundle). Matches the store's own `walletBalanceAed` exactly. */
+function computeAccountCreditAed(
+    transactions: readonly WalletTransaction[],
+    customerId: string,
+): number {
+    let sum = 0;
+    for (const t of transactions) {
+        if (t.customerId !== customerId) continue;
+        sum += t.type === "credit" ? t.amountAed : -t.amountAed;
+    }
+    return sum;
+}
 
 /** Row shape the engine works with. Every field is snake_case + primitive-ish. */
 export type Row = Record<string, unknown>;
@@ -133,7 +148,7 @@ export function readCustomers(state: AppState): Row[] {
         // every consumer surface uses, so the AI reads exactly the number
         // the customer's own Account Credit tab shows.
         const walletTxns = Array.isArray(state.walletTransactions) ? state.walletTransactions : [];
-        const accountCreditAed = walletBalanceAed(walletTxns, c.id);
+        const accountCreditAed = computeAccountCreditAed(walletTxns, c.id);
         return {
             id: c.id,
             first_name: c.firstName,
