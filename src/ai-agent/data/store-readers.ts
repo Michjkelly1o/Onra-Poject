@@ -20,6 +20,7 @@
 
 import type { AppState } from "@/lib/store";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { walletBalanceAed } from "@/lib/store";
 
 /** Row shape the engine works with. Every field is snake_case + primitive-ish. */
 export type Row = Record<string, unknown>;
@@ -103,6 +104,21 @@ export function readCustomers(state: AppState): Row[] {
         Array.isArray(state.classBookings) &&
         Array.isArray(state.customerPlans) &&
         Array.isArray(state.customerTransactions);
+    // Pre-index held-plan totals per customer so the credits_remaining +
+    // credits_used projections don't scan customerPlans on every row.
+    // Only ACTIVE / FROZEN plans count — cancelled or expired plans
+    // wouldn't contribute credits the customer can still use.
+    const planTotalsByCustomer = new Map<string, { total: number; used: number }>();
+    if (Array.isArray(state.customerPlans)) {
+        for (const p of state.customerPlans) {
+            if (p.status !== "active" && p.status !== "frozen" && p.status !== "freeze_requested") continue;
+            const prev = planTotalsByCustomer.get(p.customerId) ?? { total: 0, used: 0 };
+            planTotalsByCustomer.set(p.customerId, {
+                total: prev.total + (p.totalCredits ?? 0),
+                used: prev.used + (p.creditsUsed ?? 0),
+            });
+        }
+    }
     return state.customers.map(c => {
         const live = canComputeLive
             ? computeLifecycleTag(c.id, {
@@ -112,6 +128,12 @@ export function readCustomers(state: AppState): Row[] {
                 customerTransactions: state.customerTransactions,
             })
             : null;
+        const planTotals = planTotalsByCustomer.get(c.id);
+        // Wallet balance is DERIVED (never persisted) via the same helper
+        // every consumer surface uses, so the AI reads exactly the number
+        // the customer's own Account Credit tab shows.
+        const walletTxns = Array.isArray(state.walletTransactions) ? state.walletTransactions : [];
+        const accountCreditAed = walletBalanceAed(walletTxns, c.id);
         return {
             id: c.id,
             first_name: c.firstName,
@@ -122,16 +144,42 @@ export function readCustomers(state: AppState): Row[] {
             status: c.status,
             plan_kind: c.planKind,
             plan_name: c.planName,
+            membership_id: c.membershipId,
             gender: c.gender,
             city: c.city,
             state: c.state,
+            country: c.country,
+            postal_code: c.postalCode,
+            street_address: c.streetAddress,
             branch_id: c.branchId,
             created_at: c.createdAt,
             last_visit_iso: c.lastVisitISO,
             plan_expiry_iso: c.planExpiryISO,
             first_visit_iso: c.firstVisitISO,
-            // v83 Customer & Lead Management fields
+            // ── Personal / safety (Phase 1 widening 2026-07-30) ───────
+            date_of_birth: c.dateOfBirth,
+            emergency_contact_name: c.emergencyContactName,
+            emergency_contact_phone: c.emergencyContactPhone,
+            emergency_contact_relation: c.emergencyContactRelation,
+            // ── Plan usage + money ────────────────────────────────────
+            credits_remaining: c.creditsRemaining,
+            credits_total: planTotals?.total,
+            credits_used: planTotals?.used,
+            account_credit_aed: accountCreditAed,
+            referral_code: c.referralCode,
+            // ── Marketing preferences (channels + topics) ─────────────
+            marketing_email: c.marketingChannelEmail,
+            marketing_whatsapp: c.marketingChannelWhatsapp,
+            marketing_sms: c.marketingChannelSms,
+            marketing_push: c.marketingChannelPush,
+            marketing_topic_announcements: c.marketingTopicStudioAnnouncements,
+            marketing_topic_new_class_launch: c.marketingTopicNewClassLaunch,
+            marketing_topic_special_offers: c.marketingTopicSpecialOffers,
+            marketing_topic_promo_codes: c.marketingTopicPromoCodeOffers,
+            google_connected: c.googleConnected,
+            // ── v83 Customer & Lead Management fields ─────────────────
             lifecycle_tag: live?.tag ?? c.lifecycleTag,
+            lifecycle_tagged_on: c.lifecycleTaggedOn,
             source_id: c.sourceId,
             follow_up_status: c.followUpStatus,
             assigned_to: c.assignedTo,

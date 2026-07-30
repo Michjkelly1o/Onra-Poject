@@ -100,7 +100,7 @@ export function buildCatalog(state: AppState): Catalog {
                 plan_kind:   { row: "plan_kind",       type: "enum",   label: "plan kind", values: ["membership", "package"] },
                 gender:      { row: "gender",          type: "enum",   label: "gender", values: ["Male", "Female"] },
                 city:        { row: "city",            type: "string", label: "city" },
-                state:       { row: "state",           type: "string", label: "state" },
+                state:       { row: "state",           type: "string", label: "state / region" },
                 plan_name:   { row: "plan_name",       type: "string", label: "plan" },
                 branch:      branchField,
                 created_at:  { row: "created_at",      type: "date",   label: "joined date" },
@@ -113,6 +113,37 @@ export function buildCatalog(state: AppState): Catalog {
                 is_vip:           { row: "is_vip",           type: "enum",   label: "VIP", values: ["true", "false"] },
                 marketing_source: { row: "marketing_source", type: "string", label: "source" },
                 converted_from:   { row: "converted_from",   type: "enum",   label: "converted from", values: ["first-visit", "intro-offer", "trial-class", "referral"] },
+                // ── Phase 1 widening (2026-07-30) ───────────────────────────────
+                // Personal + safety — surfaced on the customer detail page and
+                // used by front-desk / instructors during on-floor incidents.
+                date_of_birth:              { row: "date_of_birth",              type: "date",   label: "date of birth" },
+                emergency_contact_name:     { row: "emergency_contact_name",     type: "string", label: "emergency contact name" },
+                emergency_contact_phone:    { row: "emergency_contact_phone",    type: "string", label: "emergency contact phone" },
+                emergency_contact_relation: { row: "emergency_contact_relation", type: "string", label: "emergency contact relation" },
+                // Address
+                country:        { row: "country",       type: "string", label: "country" },
+                postal_code:    { row: "postal_code",   type: "string", label: "postal code" },
+                street_address: { row: "street_address",type: "string", label: "street address" },
+                // Plan usage — credits / balance
+                credits_remaining:  { row: "credits_remaining",  type: "number", label: "credits remaining" },
+                credits_total:      { row: "credits_total",      type: "number", label: "credits total" },
+                credits_used:       { row: "credits_used",       type: "number", label: "credits used" },
+                account_credit_aed: { row: "account_credit_aed", type: "number", label: "account credit (AED)" },
+                referral_code:      { row: "referral_code",      type: "string", label: "referral code" },
+                membership_id:      { row: "membership_id",      type: "string", label: "held membership id" },
+                // Marketing preferences — channels
+                marketing_email:    { row: "marketing_email",    type: "enum", label: "marketing email opt-in", values: ["true", "false"] },
+                marketing_whatsapp: { row: "marketing_whatsapp", type: "enum", label: "marketing WhatsApp opt-in", values: ["true", "false"] },
+                marketing_sms:      { row: "marketing_sms",      type: "enum", label: "marketing SMS opt-in", values: ["true", "false"] },
+                marketing_push:     { row: "marketing_push",     type: "enum", label: "push notifications opt-in", values: ["true", "false"] },
+                // Marketing preferences — topics
+                marketing_topic_announcements:    { row: "marketing_topic_announcements",    type: "enum", label: "studio announcements opt-in", values: ["true", "false"] },
+                marketing_topic_new_class_launch: { row: "marketing_topic_new_class_launch", type: "enum", label: "new class launch opt-in", values: ["true", "false"] },
+                marketing_topic_special_offers:   { row: "marketing_topic_special_offers",   type: "enum", label: "special offers opt-in", values: ["true", "false"] },
+                marketing_topic_promo_codes:      { row: "marketing_topic_promo_codes",      type: "enum", label: "promo code offers opt-in", values: ["true", "false"] },
+                // Integration + lifecycle transition date
+                google_connected:    { row: "google_connected",    type: "enum", label: "Google account linked", values: ["true", "false"] },
+                lifecycle_tagged_on: { row: "lifecycle_tagged_on", type: "date", label: "current stage tagged on" },
             },
         },
 
