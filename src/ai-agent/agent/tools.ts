@@ -31,6 +31,7 @@ import { branchFilter, ScopeError } from "@/ai-agent/data/scope";
 import type { Row } from "@/ai-agent/data/store-readers";
 import { AED, type InsightCard } from "@/ai-agent/agent/cards";
 import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
+import { assertKnownRoute } from "@/ai-agent/data/known-routes";
 
 const DATASETS = [
     // Phase 2 — original 7:
@@ -327,7 +328,10 @@ function findCustomer(
             title: `${first} ${last}`.trim() || email || "Unnamed customer",
             subtitle: email ? `${email} · ${planName}` : planName,
             right1: status,
-            href: `/customers/${c.id}`,
+            // Phase 6 (2026-07-30) — every href routes through the deadlink
+            // validator. `/customers/:id` is a known route, so this stays
+            // clickable in every case a legit customer row is returned.
+            href: assertKnownRoute(`/customers/${c.id}`),
             avatarImageUrl: imageUrl,
             avatarInitials: initials,
         };
@@ -841,7 +845,14 @@ export function insightTools(
                     // The CREATE_SHORTCUTS constant is declared as
                     // `as const`; strip the readonly modifier so it fits
                     // the mutable RankedRow[] the card contract expects.
-                    rows: CREATE_SHORTCUTS.map((s) => ({ ...s })),
+                    // Phase 6 (2026-07-30) — every href passes through
+                    // the deadlink validator so a bad shortcut can't ship
+                    // silently. Unknown routes drop the href, keeping the
+                    // row visible but non-clickable.
+                    rows: CREATE_SHORTCUTS.map((s) => ({
+                        ...s,
+                        href: assertKnownRoute(s.href),
+                    })).filter((s) => s.href !== undefined),
                     note: "Click any row to open the form pre-scoped for a new record.",
                 })),
         }),
