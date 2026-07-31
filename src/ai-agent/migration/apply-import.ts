@@ -44,6 +44,9 @@ import type {
     ClassRating,
     PayrollEntry,
     StaffAttendanceLog,
+    RetailProduct,
+    RetailCategory,
+    RetailStockAdjustment,
 } from "@/lib/store";
 import { materialize } from "@/ai-agent/migration/parser";
 
@@ -209,6 +212,30 @@ export interface ImportDeps {
     addStaffAttendanceLog: (
         input: Omit<StaffAttendanceLog, "id"> & { id?: string },
     ) => string;
+    /** Retail — create-category + create-product + initial-stock receive.
+     *  addRetailCategory / addRetailProduct return `string | null` (null
+     *  on duplicate-name / duplicate-SKU rejection); the applier counts
+     *  nulls as failed rows so partial imports report correctly. */
+    addRetailCategory: (input: { label: string; imageUrl?: string }) => string | null;
+    addRetailProduct: (
+        input: Omit<RetailProduct, "id" | "createdAt" | "updatedAt"> & { id?: string },
+    ) => string | null;
+    adjustRetailStock: (input: {
+        productId: string;
+        branchId: string;
+        delta: number;
+        kind: RetailStockAdjustment["kind"];
+        reason?: string;
+        sourceTransactionId?: string;
+    }) => string;
+    /** Live retail categories slice for FK resolution + dedupe against the
+     *  seeded five (Apparel, Supplements, Equipment, Accessories, Recovery)
+     *  so re-importing the same list is idempotent. */
+    retailCategories: RetailCategory[];
+    /** Live retail products slice — used to skip rows whose SKU would
+     *  collide with an existing product before we even call the store
+     *  (the store also rejects, but this makes the failed-count precise). */
+    retailProducts: RetailProduct[];
     /** Live pay-rate name → id map (for the payroll adapter). */
     payRates: { id: string; name: string }[];
     /** Live staff slice by email (for the staff-attendance adapter). */
@@ -249,7 +276,9 @@ export interface ImportDeps {
             | "customer_referrals"
             | "class_ratings"
             | "payroll_entries"
-            | "staff_attendance_log";
+            | "staff_attendance_log"
+            | "retail_categories"
+            | "retail_products";
         file_name: string;
         file_type: "csv" | "xlsx" | "xls";
         total_rows: number;
@@ -342,6 +371,54 @@ function coerceRoleType(
 
 /** Deterministic avatar colours for imported staff (from the studio palette). */
 const STAFF_PALETTE = ["#7ba08c", "#a3b18a", "#c4a484", "#8a9bb0", "#b0879b", "#87a8b0"];
+
+// ─── Retail SKU auto-gen (mirrors RetailProductFormPage) ─────────────────────
+//
+// When a retail_products CSV has no SKU column (or the cell is blank) the
+// applier auto-generates one from `{CAT}-{INITIALS}-{NNN}`, same shape the
+// admin form uses. Kept inline to avoid coupling the AI Agent to the form
+// module — the retail-product page owns the interactive version and we own
+// the batch version.
+const RETAIL_CATEGORY_PREFIX: Record<string, string> = {
+    apparel: "APP", supplements: "SUP", equipment: "EQP",
+    accessories: "ACC", recovery: "REC",
+};
+function retailCategoryPrefix(label: string): string {
+    const key = label.trim().toLowerCase();
+    if (key in RETAIL_CATEGORY_PREFIX) return RETAIL_CATEGORY_PREFIX[key];
+    const letters = key.replace(/[^a-z]/g, "").slice(0, 3).toUpperCase();
+    return (letters + "XXX").slice(0, 3);
+}
+function retailNameInitials(name: string): string {
+    const words = name.trim().split(/\s+/).filter(w => w.length >= 2);
+    let init = words.map(w => w[0]!.toUpperCase()).join("");
+    if (init.length < 2) {
+        const first = (name.trim().split(/\s+/)[0] ?? "").toUpperCase();
+        init = (init + first).slice(0, Math.max(2, init.length + 1));
+    }
+    return init.slice(0, 4);
+}
+function nextRetailSkuOrdinal(stem: string, existingSkus: readonly string[]): string {
+    let maxN = 0;
+    const rx = new RegExp(`^${stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d{3,})$`);
+    for (const sku of existingSkus) {
+        const m = sku.toUpperCase().match(rx);
+        if (!m) continue;
+        const n = Number(m[1]);
+        if (Number.isFinite(n) && n > maxN) maxN = n;
+    }
+    return String(maxN + 1).padStart(3, "0");
+}
+function generateRetailSku(
+    name: string,
+    categoryLabel: string,
+    existingSkus: readonly string[],
+): string {
+    const trimmedName = name.trim();
+    if (!trimmedName || !categoryLabel) return "";
+    const stem = `${retailCategoryPrefix(categoryLabel)}-${retailNameInitials(trimmedName)}`;
+    return `${stem}-${nextRetailSkuOrdinal(stem, existingSkus)}`;
+}
 
 // ── Date / time helpers (class_schedule) ─────────────────────────────────────
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -454,6 +531,8 @@ const HISTORY_TYPE: Partial<Record<EntityKey, HistoryType>> = {
     class_ratings: "class_ratings",
     payroll_entries: "payroll_entries",
     staff_attendance_log: "staff_attendance_log",
+    retail_categories: "retail_categories",
+    retail_products: "retail_products",
 };
 
 /** Write a confirmed import into the live store. Returns the created/failed
@@ -1566,6 +1645,114 @@ export function applyImportToStore(
                 status: "active",
                 equipment_notes: rec.equipment_notes || undefined,
             });
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "retail_categories") {
+        // Dedupe against LIVE categories too — never duplicate an existing
+        // category by name (Apparel/Supplements/Equipment etc. ship in the
+        // seed). Store also rejects duplicates via addRetailCategory
+        // returning null; we short-circuit here so the failed count in the
+        // history row stays precise instead of double-counting.
+        const existing = new Set(
+            deps.retailCategories.map((c) => c.label.trim().toLowerCase()),
+        );
+        const records = materialize("retail_categories", file);
+        let created = 0;
+        for (const rec of records) {
+            const label = rec.name?.trim();
+            if (!label) continue;
+            if (existing.has(label.toLowerCase())) continue;
+            const id = deps.addRetailCategory({
+                label,
+                imageUrl: rec.image_url?.trim() || undefined,
+            });
+            if (!id) continue;
+            existing.add(label.toLowerCase());
+            created++;
+        }
+        const total = file.rows.length;
+        const failed = Math.max(0, total - created);
+        writeHistory(entity, fileName, total, created, failed, deps);
+        return { created, failed };
+    }
+
+    if (entity === "retail_products") {
+        // Category is a soft FK — resolve by name against live retail
+        // categories, fall back to the first active one. If the studio has
+        // NO retail categories at all we can't build a valid product, so
+        // skip every row (counted failed) rather than insert with a dangling
+        // FK. Admins can import retail_categories first to seed the parents.
+        const cats = deps.retailCategories.filter((c) => c.status === "active");
+        if (cats.length === 0) {
+            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps);
+            return { created: 0, failed: file.rows.length };
+        }
+        const catByName = new Map(cats.map((c) => [c.label.trim().toLowerCase(), c]));
+        // Running SKU pool — seeds with live SKUs so auto-generation picks
+        // the next ordinal correctly across the whole batch (not just within
+        // the CSV) and we don't collide with existing catalog entries.
+        const skuPool: string[] = deps.retailProducts.map((p) => p.sku);
+        // Also track SKUs used earlier in THIS batch so blank-SKU rows
+        // auto-generate a unique code even when they share a category.
+        const usedSkus = new Set(skuPool.map((s) => s.toLowerCase()));
+        const records = materialize("retail_products", file);
+        let created = 0;
+        for (const rec of records) {
+            const name = rec.name?.trim();
+            if (!name) continue;
+            const cat =
+                catByName.get((rec.category ?? "").trim().toLowerCase()) ??
+                cats[0];
+            // SKU handling: honour the CSV cell when present + non-colliding.
+            // Blank cell → auto-generate. Colliding cell → skip the row so
+            // the store's uniqueness invariant stays intact (counted failed).
+            let sku = rec.sku?.trim().toUpperCase() ?? "";
+            if (sku) {
+                if (usedSkus.has(sku.toLowerCase())) continue;
+            } else {
+                sku = generateRetailSku(name, cat.label, skuPool);
+                if (!sku) continue;
+                // Guard against the unlikely case where two blank-SKU rows
+                // in the same batch produce the same generated code (same
+                // name + category). skuPool being updated after each add
+                // prevents this in normal flow; check anyway.
+                if (usedSkus.has(sku.toLowerCase())) continue;
+            }
+            const id = deps.addRetailProduct({
+                name,
+                sku,
+                categoryId: cat.id,
+                description: rec.description?.trim() || undefined,
+                priceAed: toNumber(rec.price, 0),
+                unitCostAed: toNumber(rec.unit_cost, 0),
+                reorderThreshold: Math.max(0, Math.floor(toNumber(rec.reorder_threshold, 0))),
+                imageUrl: rec.image_url?.trim() || undefined,
+                status: "active",
+            });
+            if (!id) continue; // store rejected (dup SKU race)
+            skuPool.push(sku);
+            usedSkus.add(sku.toLowerCase());
+            // Optional per-branch initial stock — seeds a `receive`
+            // adjustment into the wizard's picked branch so the product
+            // ships with real on-hand units + a matching audit-log row.
+            // Cross-branch distribution isn't supported at CSV level; use
+            // the retail product edit page for that.
+            const units = Math.floor(toNumber(rec.initial_stock, 0));
+            if (units > 0 && deps.branchId) {
+                deps.adjustRetailStock({
+                    productId: id,
+                    branchId: deps.branchId,
+                    delta: units,
+                    kind: "receive",
+                    reason: "Initial stock from AI Agent import",
+                });
+            }
             created++;
         }
         const total = file.rows.length;

@@ -2975,7 +2975,9 @@ export interface ImportHistorySeed {
         | "customer_referrals"
         | "class_ratings"
         | "payroll_entries"
-        | "staff_attendance_log";
+        | "staff_attendance_log"
+        | "retail_categories"
+        | "retail_products";
     /** Original filename the admin uploaded — surfaced in the "Imported
      *  file" column with a matching CSV/XLSX chip. */
     file_name: string;
