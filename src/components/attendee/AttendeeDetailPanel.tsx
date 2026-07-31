@@ -20,7 +20,7 @@ import { useState, useMemo } from "react";
 import {
     XClose, ChevronLeft, CheckCircle, Check, Clock, AlertCircle, Package, SearchMd,
 } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, to12h } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -375,7 +375,13 @@ export function AttendeeDetailPanel({ open, classId, onClose }: { open: boolean;
     );
 }
 
-function AttendeeDetailContent({ classId, onClose }: { classId: string; onClose: () => void }) {
+export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
+    classId: string;
+    /** "panel" — inside the SlidePanel (has a close X). "page" — standalone
+     *  full-page view (no close X), used when opened in its own browser tab. */
+    variant?: "panel" | "page";
+    onClose?: () => void;
+}) {
     const classSchedules = useAppStore(s => s.classSchedules);
     const classBookings = useAppStore(s => s.classBookings);
     const appointments = useAppStore(s => s.appointments);
@@ -396,7 +402,6 @@ function AttendeeDetailContent({ classId, onClose }: { classId: string; onClose:
         ? (appointment ? appointmentToClassInstance(appointment) : undefined)
         : classSchedules.find(c => c.id === classId);
 
-    const [tab, setTab] = useState<RosterTab>("booked");
     const [rosterSearch, setRosterSearch] = useState("");
     const [confirm, setConfirm] = useState<{ kind: ConfirmKind; booking?: ClassBooking } | null>(null);
     const [presentDetails, setPresentDetails] = useState<
@@ -422,26 +427,28 @@ function AttendeeDetailContent({ classId, onClose }: { classId: string; onClose:
         [isAppt, appointmentBookings, classBookings, classId],
     );
     const bookedRows = bookings.filter(b => b.status === "booked");
-    const waitlistedRows = bookings.filter(b => b.status === "waitlisted");
-    const cancelledRows = bookings.filter(b => b.status === "cancelled");
 
     if (!classInstance) {
         return (
             <div className="flex h-full flex-col bg-white">
                 <div className="flex items-center justify-between h-[64px] shrink-0 border-b border-[#e4e7ec] px-6">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{isAppt ? "Appointment details" : "Class details"}</p>
-                    <button type="button" onClick={onClose} aria-label="Close"
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
-                    </button>
+                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{isAppt ? "Appointment" : "Class"}</p>
+                    {variant === "panel" && (
+                        <button type="button" onClick={onClose} aria-label="Close"
+                            className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+                            <XClose className="w-5 h-5 text-[#667085]" />
+                        </button>
+                    )}
                 </div>
                 <div className="flex-1 flex items-center justify-center text-center px-6">
                     <div>
                         <p className="text-[18px] font-semibold text-[#101828]">This {isAppt ? "appointment" : "class"} is no longer available</p>
-                        <button type="button" onClick={onClose}
-                            className="mt-4 text-[14px] text-[#658774] hover:underline">
-                            Back to Attendee
-                        </button>
+                        {variant === "panel" && (
+                            <button type="button" onClick={onClose}
+                                className="mt-4 text-[14px] text-[#658774] hover:underline">
+                                Back to Attendee
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -450,7 +457,7 @@ function AttendeeDetailContent({ classId, onClose }: { classId: string; onClose:
     const ci: ClassInstance = classInstance;
 
     const isOngoing = ci.status === "Ongoing";
-    const startHint = `Starts at ${ci.startTime}`;
+    const startHint = `Starts at ${to12h(ci.startTime)}`;
     const instructorLabel = (() => {
         const parts = ci.instructorName.split(" ");
         if (parts.length <= 1) return ci.instructorName || "Open session";
@@ -550,138 +557,80 @@ function AttendeeDetailContent({ classId, onClose }: { classId: string; onClose:
         ? resolveActivePlan(customerPlans, presentDetails.booking.customerId)
         : { plan: null, kind: null };
 
-    // Appointments (Private + Recovery) have no waitlist — only classes do — so
-    // the Waitlisted tab is omitted for appointments, matching the Schedule module.
-    const TABS: { id: RosterTab; label: string; badge: string }[] = [
-        { id: "booked", label: "Booked", badge: `${bookedCount}/${ci.capacity}` },
-        ...(isAppt ? [] : [{ id: "waitlisted" as const, label: "Waitlisted", badge: String(waitlistedRows.length) }]),
-        { id: "cancelled", label: "Cancelled", badge: String(cancelledRows.length) },
-    ];
+    // Header title follows the booking name — a class reads "<name> class"; an
+    // appointment (Private / Recovery) reads just its service name.
+    const headerTitle = isAppt ? ci.name : `${ci.name} class`;
 
     return (
         <div className="flex h-full flex-col bg-white">
-            {/* Header — Class details + close (X), matching the shared side-panel chrome. */}
+            {/* Header — booking name; close (X) only in the side-panel variant. */}
             <div className="flex items-center justify-between h-[64px] shrink-0 border-b border-[#e4e7ec] px-6">
-                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{isAppt ? "Appointment details" : "Class details"}</p>
-                <button type="button" onClick={onClose} aria-label="Close"
-                    className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
-                </button>
+                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{headerTitle}</p>
+                {variant === "panel" && (
+                    <button type="button" onClick={onClose} aria-label="Close"
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                )}
             </div>
 
-            {/* Body — info column + roster card, side by side. */}
+            {/* Body — info column + participants card, side by side. */}
             <div className="flex-1 min-h-0 flex gap-6 p-6 overflow-hidden">
                 <LeftPanel ci={ci} instructorLabel={instructorLabel} />
                 <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
-                        {/* Tabs */}
-                        <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
-                            <div className="flex gap-1">
-                                {TABS.map(t => (
-                                    <button key={t.id} type="button" onClick={() => setTab(t.id)}
-                                        className={cn(
-                                            "flex items-center gap-2 px-4 py-3 text-[14px] font-semibold border-b-2 -mb-px transition-colors",
-                                            tab === t.id
-                                                ? "border-[#658774] text-[#101828]"
-                                                : "border-transparent text-[#667085] hover:text-[#344054]",
-                                        )}>
-                                        {t.label}
-                                        <span className={cn(
-                                            "inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-full text-[12px] font-medium border",
-                                            tab === t.id ? "bg-white border-[#e4e7ec] text-[#344054]" : "bg-[#f2f4f7] border-transparent text-[#667085]",
-                                        )}>
-                                            {t.badge}
-                                        </span>
-                                    </button>
-                                ))}
+                    {/* Participants header — title + Search participant (no tabs, no filter). */}
+                    <div className="shrink-0 flex items-center gap-3 flex-wrap px-6 pt-6 pb-4">
+                        <p className="flex-1 min-w-0 text-[18px] font-semibold text-[#101828] leading-[28px]">Participants</p>
+                        <div className="relative w-[240px]">
+                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
+                            <input
+                                type="text"
+                                value={rosterSearch}
+                                onChange={(e) => setRosterSearch(e.target.value)}
+                                placeholder="Search participant..."
+                                className="w-full h-10 pl-9 pr-3 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Participants grid */}
+                    <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pb-6 flex flex-col gap-5">
+                        {!isOngoing && (
+                            <div className="flex items-center gap-2 p-3 bg-[#fffaeb] border-1 border-[#fedf89] rounded-[10px]">
+                                <AlertCircle className="w-4 h-4 text-[#dc6803] shrink-0" />
+                                <p className="text-[13px] text-[#93370d]">
+                                    This {isAppt ? "session" : "class"} hasn&apos;t started yet — attendance opens when it becomes Ongoing ({startHint}).
+                                </p>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto scrollbar-hide">
-                            {tab === "booked" && (
-                                <div className="flex flex-col gap-5 p-6">
-                                    {/* Booked header — Total / N customers · Search + Present all */}
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                                            <p className="text-[13px] text-[#667085] leading-[18px]">Total</p>
-                                            <p className="text-[15px] font-semibold text-[#101828] leading-[22px]">{bookedCount} customer{bookedCount === 1 ? "" : "s"}</p>
-                                        </div>
-                                        <div className="relative w-[240px]">
-                                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
-                                            <input
-                                                type="text"
-                                                value={rosterSearch}
-                                                onChange={(e) => setRosterSearch(e.target.value)}
-                                                placeholder="Search customer..."
-                                                className="w-full h-10 pl-9 pr-3 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {!isOngoing && (
-                                        <div className="flex items-center gap-2 p-3 bg-[#fffaeb] border-1 border-[#fedf89] rounded-[10px]">
-                                            <AlertCircle className="w-4 h-4 text-[#dc6803] shrink-0" />
-                                            <p className="text-[13px] text-[#93370d]">
-                                                This class hasn&apos;t started yet — attendance opens when it becomes Ongoing ({startHint}).
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {bookedRows.length === 0 ? (
-                                        <div className="py-16 text-center">
-                                            <p className="text-[15px] font-semibold text-[#101828]">No one is booked into this class yet.</p>
-                                            <p className="text-[14px] text-[#667085] mt-1">Bookings will appear here as customers reserve a spot.</p>
-                                        </div>
-                                    ) : visibleBooked.length === 0 ? (
-                                        <div className="py-16 text-center">
-                                            <p className="text-[15px] font-semibold text-[#101828]">No customers match &ldquo;{rosterSearch}&rdquo;.</p>
-                                            <p className="text-[14px] text-[#667085] mt-1">Try a different name.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            {visibleBooked.map(b => (
-                                                <BookedCard
-                                                    key={b.id}
-                                                    booking={b}
-                                                    customer={customerById.get(b.customerId)}
-                                                    canPresent={isOngoing}
-                                                    onPresent={() => setConfirm({ kind: "single", booking: b })}
-                                                    onViewDetails={() => setPresentDetails({ mode: "single", booking: b, count: 1 })}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {tab === "waitlisted" && (
-                                <RosterList rows={waitlistedRows} customerById={customerById}
-                                    emptyTitle="No one is waitlisted"
-                                    emptySubtitle="Waitlisted customers will appear here when the class is full." />
-                            )}
-
-                            {tab === "cancelled" && (
-                                <RosterList rows={cancelledRows} customerById={customerById}
-                                    emptyTitle="No cancellations"
-                                    emptySubtitle="Cancelled bookings for this class will appear here." />
-                            )}
-                        </div>
-
-                        {/* Present all — sticky footer at the bottom of the roster card
-                            (Booked tab, when there are bookings). */}
-                        {tab === "booked" && bookedRows.length > 0 && (
-                            <div className="shrink-0 border-t border-[#e4e7ec] p-4">
-                                <Button variant="primary" size="md"
-                                    leftIcon={<CheckCircle className="w-4 h-4" />}
-                                    className="w-full"
-                                    disabled={!isOngoing || notYetPresent.length === 0}
-                                    onClick={() => setConfirm({ kind: "all" })}>
-                                    Present all
-                                </Button>
+                        {bookedRows.length === 0 ? (
+                            <div className="py-16 text-center">
+                                <p className="text-[15px] font-semibold text-[#101828]">No participants yet.</p>
+                                <p className="text-[14px] text-[#667085] mt-1">Booked customers will appear here.</p>
+                            </div>
+                        ) : visibleBooked.length === 0 ? (
+                            <div className="py-16 text-center">
+                                <p className="text-[15px] font-semibold text-[#101828]">No participants match &ldquo;{rosterSearch}&rdquo;.</p>
+                                <p className="text-[14px] text-[#667085] mt-1">Try a different name.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {visibleBooked.map(b => (
+                                    <BookedCard
+                                        key={b.id}
+                                        booking={b}
+                                        customer={customerById.get(b.customerId)}
+                                        canPresent={isOngoing}
+                                        onPresent={() => setConfirm({ kind: "single", booking: b })}
+                                        onViewDetails={() => setPresentDetails({ mode: "single", booking: b, count: 1 })}
+                                    />
+                                ))}
                             </div>
                         )}
                     </div>
                 </div>
+            </div>
 
             {/* Present confirmation — every Present action confirms first. */}
             <ConfirmModal

@@ -9,7 +9,7 @@ import {
     Calendar, UserPlus01, Copy01, ClockFastForward, Tag01, Building01,
     ChevronDown, User01, HeartHand, Shuffle01,
 } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeRange12 } from "@/lib/utils";
 import { buildMonthGrid } from "@/lib/calendar-utils";
 import { AttendanceBar } from "@/components/patterns/AttendanceBar";
 import { Button } from "@/components/ui/button";
@@ -1009,7 +1009,7 @@ function exportScheduleCsv(rows: ClassSchedule[]) {
         c.name,
         c.category,
         c.dateISO,
-        `${c.startTime}-${c.endTime}`,
+        formatTimeRange12(c.startTime, c.endTime),
         c.instructorName,
         c.location,
         c.room,

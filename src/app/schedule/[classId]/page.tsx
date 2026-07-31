@@ -6,6 +6,7 @@ import {
     XClose, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
     UserPlus01, Edit02, Trash04, Trash01, Trash02, SlashCircle01, Check, CheckCircle, Star01, Plus, Minus,
     Lightbulb02, CreditCard02, ShoppingBag03, Users01, Sale04, Package, SwitchHorizontal01, AlertCircle,
+    ArrowUpRight,
 } from "@untitledui/icons";
 import { ProductPosCard, type ProductPosCardType } from "@/components/ui/ProductPosCard";
 import type { PurchaseLineItem } from "@/lib/store";
@@ -37,7 +38,7 @@ import { firstFreeSpot } from "@/lib/spot-layout";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type DetailTab = "booked" | "waitlisted" | "cancelled" | "reviews";
+type DetailTab = "booked" | "waitlisted" | "cancelled" | "reviews" | "attendee";
 type ReviewsSubTab = "ratings" | "deletion-log";
 
 function fmtBookingTime(iso: string): string {
@@ -1764,6 +1765,9 @@ const BASE_TABS: { id: DetailTab; label: string }[] = [
     { id: "booked", label: "Booked" },
     { id: "waitlisted", label: "Waitlisted" },
     { id: "cancelled", label: "Cancelled" },
+    // Opens the standalone Attendee details in a new browser tab (not a real
+    // tab switch) — see the tab-strip onClick below.
+    { id: "attendee", label: "Attendee" },
 ];
 const COMPLETED_TABS: { id: DetailTab; label: string }[] = [
     ...BASE_TABS,
@@ -2375,21 +2379,31 @@ export default function ClassDetailPage() {
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
                             <div className="flex gap-1">
                                 {TABS.map(t => {
-                                    const badge = t.id === "booked"
-                                        ? `${bookedCount}/${ci.capacity}`
+                                    // The Attendee tab is an ACTION, not a real tab — it opens the
+                                    // standalone attendance view in a new browser tab and carries no
+                                    // count badge.
+                                    const badge = t.id === "attendee" ? null
+                                        : t.id === "booked" ? `${bookedCount}/${ci.capacity}`
                                         : t.id === "waitlisted" ? String(waitlistCount)
-                                            : t.id === "cancelled" ? String(cancelledCount)
-                                                : String(visibleRatings.length);
+                                        : t.id === "cancelled" ? String(cancelledCount)
+                                        : String(visibleRatings.length);
                                     return (
-                                        <button key={t.id} type="button" onClick={() => handleTabChange(t.id)}
+                                        <button key={t.id} type="button"
+                                            onClick={() => {
+                                                if (t.id === "attendee") { window.open(`/attendee/${classId}`, "_blank", "noopener"); return; }
+                                                handleTabChange(t.id);
+                                            }}
                                             className={cn(
                                                 "h-[48px] px-3 text-[14px] font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
                                                 tab === t.id ? "border-b-2 border-[#101828] text-[#101828]" : "text-[#667085] hover:text-[#344054]",
                                             )}>
                                             {t.label}
-                                            <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
-                                                tab === t.id ? "bg-[#f2f4f7] text-[#344054]" : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#667085]"
-                                            )}>{badge}</span>
+                                            {t.id === "attendee" && <ArrowUpRight className="w-4 h-4" />}
+                                            {badge != null && (
+                                                <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
+                                                    tab === t.id ? "bg-[#f2f4f7] text-[#344054]" : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#667085]"
+                                                )}>{badge}</span>
+                                            )}
                                         </button>
                                     );
                                 })}

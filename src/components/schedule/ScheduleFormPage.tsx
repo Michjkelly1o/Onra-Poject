@@ -8,7 +8,7 @@ import {
     AlertCircle, Plus, Trash01,
     Settings03, Building01, Star01, Grid01, ArrowRight,
 } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeRange12 } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess } from "@/lib/store";
 import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByShift as gateSlotsByShiftHelper, instructorBlockedSlots as instructorBlockedSlotsHelper } from "@/lib/instructor-availability";
@@ -2015,7 +2015,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                 date: isoDateLabel(selectedDate),
                 dateISO: selectedDate, dayOfWeek: isoDayOfWeek(selectedDate),
                 startTime, endTime,
-                displayTime: `${startTime} – ${endTime}`,
+                displayTime: formatTimeRange12(startTime, endTime),
                 booked: 0, capacity,
                 classType: typedClassType,
                 equipment, spotSelectionEnabled: spotEnabled, spotLayout, waitlistEnabled: true,
@@ -2037,7 +2037,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                     date: isoDateLabel(p.dateISO), dateISO: p.dateISO,
                     dayOfWeek: isoDayOfWeek(p.dateISO),
                     startTime: p.startTime, endTime: p.endTime,
-                    displayTime: `${p.startTime} – ${p.endTime}`,
+                    displayTime: formatTimeRange12(p.startTime, p.endTime),
                     booked: 0, capacity,
                     classType: typedClassType,
                     equipment, spotSelectionEnabled: spotEnabled, spotLayout, waitlistEnabled: true,
@@ -2096,7 +2096,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                 dayOfWeek: isoDayOfWeek(selectedDate),
                 startTime,
                 endTime,
-                displayTime: `${startTime} – ${endTime}`,
+                displayTime: formatTimeRange12(startTime, endTime),
             };
         }
 

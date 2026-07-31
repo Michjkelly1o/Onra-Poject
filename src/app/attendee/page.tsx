@@ -568,9 +568,9 @@ function AttendeePage() {
         });
     }, [mergedSchedules, location, applied, search]);
 
-    // Both Day and Week views render a single SELECTED day's cards (Week view
-    // just adds the day strip + week nav). Matches the Figma exactly.
-    const selectedDayISO = activeView === "day" ? dayDateISO : weekSelectedISO;
+    // The Attendee module is TODAY-ONLY (client 2026-07-31) — no Day/Week toggle,
+    // no date navigator. Always shows today's on-and-upcoming classes.
+    const selectedDayISO = TODAY_ISO;
     const dayClasses = useMemo(
         () => filteredClasses
             .filter(c => c.dateISO === selectedDayISO)
@@ -578,6 +578,10 @@ function AttendeePage() {
         [filteredClasses, selectedDayISO],
     );
     const schedulesCount = dayClasses.length;
+    // Section-header date label, e.g. "Friday, 26 Feb 2026".
+    const todayLabel = new Date(`${TODAY_ISO}T00:00:00`).toLocaleDateString("en-GB", {
+        weekday: "long", day: "numeric", month: "short", year: "numeric",
+    });
 
     // Class-details slide panel state. `detailId` is kept even after the panel
     // closes so its content stays mounted through the slide-out animation.
@@ -642,12 +646,6 @@ function AttendeePage() {
                                 </span>
                                 <p className="text-[24px] font-bold leading-[28px] text-[#0c2d34] truncate">{studioName}</p>
                             </div>
-                            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e4e7ec] bg-white px-3 py-1.5 shrink-0">
-                                <CalendarCheck01 className="w-4 h-4 text-[#667085]" />
-                                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">
-                                    {schedulesCount} schedule{schedulesCount === 1 ? "" : "s"}
-                                </span>
-                            </span>
                         </div>
                         <BranchDropdown value={location} options={locationOptions} onChange={setLocation} />
                     </AttendeeTopBar>
@@ -658,31 +656,18 @@ function AttendeePage() {
                             {/* Controls row */}
                             <div className="flex flex-col gap-4 shrink-0">
                                 <div className="relative flex items-center justify-between gap-4">
-                                    <SegmentedTabs
-                                        tabs={[{ key: "day", label: "Day" }, { key: "week", label: "Week" }]}
-                                        activeKey={activeView}
-                                        onChange={(k) => setActiveView(k as AttendeeView)}
-                                    />
+                                    {/* Today section header — date + upcoming-class count.
+                                        Today-only view: no Day/Week toggle, no date navigator. */}
+                                    <div className="flex flex-col gap-0.5 min-w-0">
+                                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px] truncate">{todayLabel}</p>
+                                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                                            {schedulesCount} upcoming class{schedulesCount === 1 ? "" : "es"}
+                                        </p>
+                                    </div>
 
-                                    {/* Centred date navigator — Schedule `DateNav`/`NavBtn`
-                                        pattern (Day = single date, Week = range). The ‹ ›
-                                        move one day (Day) or exactly 7 days (Week); in Week
-                                        view the day strip + range label both re-render. */}
-                                    {activeView === "day" ? (
-                                        <DateNav>
-                                            <NavBtn onClick={prevDay} label="Previous day" disabled={atFirstDay}><ChevronLeft className="w-4 h-4" /></NavBtn>
-                                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[152px] text-center">{isoToDisplay(dayDateISO)}</span>
-                                            <NavBtn onClick={nextDay} label="Next day"><ChevronRight className="w-4 h-4" /></NavBtn>
-                                        </DateNav>
-                                    ) : (
-                                        <DateNav>
-                                            <NavBtn onClick={prevWeek} label="Previous week" disabled={atFirstWeek}><ChevronLeft className="w-4 h-4" /></NavBtn>
-                                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[168px] text-center">{formatWeekRange(weekStart)}</span>
-                                            <NavBtn onClick={nextWeek} label="Next week"><ChevronRight className="w-4 h-4" /></NavBtn>
-                                        </DateNav>
-                                    )}
-
-                                    {/* Search + Filter */}
+                                    {/* Search — the day/filter controls were retired with
+                                        the today-only view (client 2026-07-31), so only the
+                                        participant search remains. */}
                                     <div className="flex items-center gap-3">
                                         <div className="relative w-[240px]">
                                             <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
@@ -694,66 +679,9 @@ function AttendeePage() {
                                                 className="w-full h-10 pl-9 pr-3 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                                             />
                                         </div>
-                                        {/* Slider filter icon — matches the app-wide Filter
-                                            chrome (ToolbarFilter uses the same custom glyph). */}
-                                        <Button variant="secondary-gray" size="md" leftIcon={<Sliders className="w-5 h-5" />}
-                                            onClick={() => setFilterOpen(true)}
-                                            className={cn(hasActiveFilter && "border-[#7ba08c] text-[#3b5446]")}>
-                                            Filter
-                                        </Button>
                                     </div>
                                 </div>
 
-                                {/* Week strip (Week view only) — Mon–Sun boxes for the
-                                    selected week; horizontally scrollable/swipeable like
-                                    the customer DateStrip. The ‹ › on the navigator page
-                                    the whole strip forward/back by 7 days. */}
-                                {activeView === "week" && (
-                                    <div
-                                        ref={weekStripRef}
-                                        onScroll={handleWeekScroll}
-                                        className="flex snap-x snap-mandatory scroll-smooth gap-4 overflow-x-auto scrollbar-hide -mx-1 px-1"
-                                    >
-                                        {Array.from({ length: weekPageCount }, (_, w) => {
-                                            const pageMonday = isoAddDays(weekAnchorMonday, w * 7);
-                                            return (
-                                                <div key={w} data-week={w} className="flex w-full shrink-0 snap-start items-stretch gap-4">
-                                                    {Array.from({ length: 7 }, (_, d) => {
-                                                        const iso = isoAddDays(pageMonday, d);
-                                                        const p = isoParts(iso);
-                                                        const selected = iso === weekSelectedISO;
-                                                        // Past days are disabled — same as the customer DateStrip.
-                                                        const disabled = iso < TODAY_ISO;
-                                                        return (
-                                                            <button
-                                                                key={iso}
-                                                                type="button"
-                                                                disabled={disabled}
-                                                                onClick={() => setWeekSelectedISO(iso)}
-                                                                aria-pressed={selected}
-                                                                className={cn(
-                                                                    "flex-1 flex flex-col items-center gap-1 p-3 rounded-[16px] border transition-colors",
-                                                                    selected
-                                                                        ? "bg-[#e9fff3] border-2 border-[#658774]"
-                                                                        : disabled
-                                                                            ? "bg-white border border-[#e4e7ec] opacity-40 cursor-not-allowed"
-                                                                            : "bg-white border border-[#e4e7ec] hover:bg-[#f9fafb]",
-                                                                )}
-                                                            >
-                                                                <span className={cn("text-[12px] leading-[18px]", selected ? "text-[#658774]" : disabled ? "text-[#98a2b3]" : "text-[#667085]")}>
-                                                                    {p.weekday}
-                                                                </span>
-                                                                <span className={cn("text-[20px] font-medium leading-[28px]", selected ? "text-[#658774]" : disabled ? "text-[#98a2b3]" : "text-[#344054]")}>
-                                                                    {p.day}
-                                                                </span>
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
                             </div>
 
                             {/* Card grid — scrolls within the fixed-height card. */}
@@ -779,12 +707,6 @@ function AttendeePage() {
                             )}
                         </div>
                     </div>
-
-            <FilterPanel
-                open={filterOpen} onClose={() => setFilterOpen(false)}
-                applied={applied} onApply={f => setApplied(f)}
-                categories={categoryNames}
-            />
 
             {/* Class details — a wide right slide panel (replaces the old full-page
                 detail). Opens on "View details"; closing keeps you on the calendar. */}

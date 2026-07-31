@@ -36,7 +36,7 @@ import {
     ChevronDown, DotsVertical, Clock, Trash01, Send03, HelpCircle,
     AlertCircle, Plus, MarkerPin01,
 } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, to12h } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { UnitSuffixSelect } from "@/components/patterns/UnitSuffixSelect";
@@ -1625,7 +1625,7 @@ export default function CustomerNotificationsPage() {
                         <Pill tone="blue">
                             <span className="flex items-center gap-1.5">
                                 <Clock className="w-3.5 h-3.5" />
-                                Quiet hours {delivery.quietHoursStart}-{delivery.quietHoursEnd}
+                                Quiet hours {to12h(delivery.quietHoursStart)}-{to12h(delivery.quietHoursEnd)}
                             </span>
                         </Pill>
                         <Button variant="secondary-gray" size="md"

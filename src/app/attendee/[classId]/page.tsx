@@ -4,32 +4,26 @@
 // Module 13 — Attendee class details route (`/attendee/[classId]`)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The class-details view is a wide right slide panel — <AttendeeDetailPanel>.
-// The PRIMARY entry is the Attendee calendar's "View details", which opens that
-// panel inline (no navigation). This route only handles a direct URL / deep
-// link: it opens the same panel over a blank backdrop and, on close, returns to
-// `returnTo` (defaults to /attendee).
+// A STANDALONE full-page view of the attendance details — opened in its own
+// browser tab (e.g. from the Schedule → Class Details "Attendee" tab). It reuses
+// the exact same <AttendeeDetailContent> as the Attendee module, rendered in the
+// "page" variant (no close button). The Attendee module's calendar renders the
+// same content inline as a right slide panel instead.
 
-import { Suspense, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { AttendeeDetailPanel } from "@/components/attendee/AttendeeDetailPanel";
+import { Suspense } from "react";
+import { useParams } from "next/navigation";
+import { AttendeeDetailContent } from "@/components/attendee/AttendeeDetailPanel";
 
 export default function AttendeeDetailRoute() {
-    return <Suspense fallback={null}><AttendeeDetailRoutePanel /></Suspense>;
+    return <Suspense fallback={null}><AttendeeDetailRoutePage /></Suspense>;
 }
 
-function AttendeeDetailRoutePanel() {
-    const router = useRouter();
+function AttendeeDetailRoutePage() {
     const params = useParams();
-    const searchParams = useSearchParams();
     const classId = String(params.classId);
-    const returnTo = searchParams?.get("returnTo") || "/attendee";
-    const [open, setOpen] = useState(true);
     return (
-        <AttendeeDetailPanel
-            open={open}
-            classId={classId}
-            onClose={() => { setOpen(false); window.setTimeout(() => router.push(returnTo), 260); }}
-        />
+        <div className="h-screen bg-white overflow-hidden">
+            <AttendeeDetailContent classId={classId} variant="page" />
+        </div>
     );
 }
