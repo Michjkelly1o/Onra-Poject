@@ -29,6 +29,7 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { AttendeeTopBar } from "@/components/attendee/AttendeeTopBar";
+import { AttendeeDetailPanel } from "@/components/attendee/AttendeeDetailPanel";
 import {
     INSTRUCTORS, isoAddDays, isoToDisplay, isoToMonday, formatWeekRange, TODAY_ISO, DAY_VIEW_DATE,
 } from "@/components/schedule/ScheduleGridViews";
@@ -578,12 +579,19 @@ function AttendeePage() {
     );
     const schedulesCount = dayClasses.length;
 
+    // Class-details slide panel state. `detailId` is kept even after the panel
+    // closes so its content stays mounted through the slide-out animation.
+    const [detailId, setDetailId] = useState<string | null>(null);
+    const [detailOpen, setDetailOpen] = useState(false);
+
     function handleView(cls: ClassInstance) {
-        const rt = encodeURIComponent("/attendee");
         // Classes AND appointments (Private + Recovery) open in the SAME
         // Attendee detail so both render through the identical roster card.
-        // The detail resolves `appt_` ids from the appointments slice.
-        router.push(`/attendee/${cls.id}?returnTo=${rt}`);
+        // Opens as a right slide panel (no navigation); the detail resolves
+        // `appt_` ids from the appointments slice. `detailId` persists through
+        // the panel's slide-out so the content stays mounted during the exit.
+        setDetailId(cls.id);
+        setDetailOpen(true);
     }
 
     // Backward nav is clamped to today / the current week.
@@ -777,6 +785,16 @@ function AttendeePage() {
                 applied={applied} onApply={f => setApplied(f)}
                 categories={categoryNames}
             />
+
+            {/* Class details — a wide right slide panel (replaces the old full-page
+                detail). Opens on "View details"; closing keeps you on the calendar. */}
+            {detailId && (
+                <AttendeeDetailPanel
+                    open={detailOpen}
+                    classId={detailId}
+                    onClose={() => setDetailOpen(false)}
+                />
+            )}
         </div>
     );
 }

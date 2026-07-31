@@ -12096,7 +12096,10 @@ export const useAppStore = create<AppState>()(persist(
         //   branches — both independently reached v89 / v90 with different slices +
         //   seeds. Bump to 91 so every persisted snapshot reseeds cleanly with the
         //   UNION: the retail slices AND the curated Ava bookings (empty Upcoming).
-        version: 91,
+        // v92 (2026-07-31): Two live-demo classes TODAY at 1 PM + 2 PM (with
+        //   attendees) for the attendance-flow walkthrough. Bump so existing
+        //   snapshots reseed and pick up the new class schedules + bookings.
+        version: 92,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

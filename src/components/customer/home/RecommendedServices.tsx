@@ -11,13 +11,15 @@
 // offers no services.
 
 import { useRouter } from "next/navigation";
-import { EMPTY_FILTERS, searchUi } from "@/lib/customer/search-data";
-import { useAppointments } from "@/lib/customer/appointments-data";
+import { searchUi } from "@/lib/customer/search-data";
+import { useRecommendedServices } from "@/lib/customer/appointments-data";
 import { DiscoverCard } from "@/components/customer/home/DiscoverCard";
 
 export function RecommendedServices() {
     const router = useRouter();
-    const services = useAppointments(EMPTY_FILTERS).slice(0, 8);
+    // Branch-scoped with an all-branches fallback so the rail never renders empty
+    // (services are seeded under one branch in the demo).
+    const services = useRecommendedServices(8);
     if (services.length === 0) return null;
 
     function openSearchAppointments(isRecovery: boolean) {
