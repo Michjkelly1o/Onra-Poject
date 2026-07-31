@@ -71,6 +71,23 @@ export const tax_rules: TaxRuleSeed[] = [
         created_at: "2026-01-15T10:01:00Z",
     },
 
+    // ── Retail — VAT tab ────────────────────────────────────────────────────
+    // Client 2026-07-31 — physical merchandise sold at POS is taxed at
+    // PURCHASE time (unlike gift cards, which tax on redemption). Uses
+    // the same standard services VAT rate so the demo studio's retail
+    // lines carry the studio's headline rate out of the box. Admins can
+    // point this at a different rate (or add per-branch rules) from
+    // Settings → Tax → Apply tax rates.
+    {
+        id: "trl_retail_default",
+        category: "retail",
+        tax_rate_id: "tax_services_vat",
+        all_locations: true,
+        location_ids: [],
+        status: "active",
+        created_at: "2026-01-20T10:00:30Z",
+    },
+
     // ── Gift card (redeemed tax) — placeholder ──────────────────────────────
     // Gift cards are stored-value transfers. No tax on purchase; tax
     // applies at REDEMPTION when the card is spent on a taxable category

@@ -241,12 +241,16 @@ export function effectiveRatePercentage(rate: TaxRate | undefined | null): numbe
  *  Unmapped types (`gift_card`, `drop_in`, anything new) return `null` so
  *  the caller skips them when iterating cart lines. */
 export function categoryForProductType(
-    type: "membership" | "package" | "appointment" | "gift_card" | "drop_in",
+    type: "membership" | "package" | "appointment" | "gift_card" | "drop_in" | "retail",
 ): TaxRuleCategory | null {
     switch (type) {
         case "membership":  return "membership";
         case "package":     return "credit_package";
         case "appointment": return "appointment";
+        case "retail":      return "retail";
+        // gift_card + drop_in remain intentionally unmapped — sold at face
+        // value with no tax on the card itself; tax applies when the card
+        // is later redeemed against a taxable line.
         case "gift_card":   return null;
         case "drop_in":     return null;
     }

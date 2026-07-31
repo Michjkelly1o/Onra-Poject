@@ -531,16 +531,15 @@ function POSInner() {
     // without the admin pressing Apply again.
     const promoEval = useMemo(() => {
         if (!appliedPromoCode) return null;
-        // Retail lines don't participate in promo eligibility today — filter
-        // them out of the eligibility payload. Promos target
-        // memberships / packages / gift cards; retail sits alongside these
-        // in the cart but doesn't stack with a promo code.
-        const promoLines = cart.filter((l): l is CartLine & { kind: "membership" | "package" | "gift_card" } => l.kind !== "retail");
+        // Client 2026-07-31 — retail lines NOW participate in promo
+        // eligibility (PromoCode.applies_to gained a "retail" member).
+        // A promo scoped to `["retail"]` discounts only merchandise; one
+        // with an empty applies_to (= all types) discounts retail too.
+        // `validatePromoCode`'s own `lineEligible` gate does the
+        // per-type filtering, so the POS passes the FULL cart through
+        // and lets the validator decide.
+        const promoLines = cart;
         const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
-        // v83 audit-1 (2026-07-29) — subtotal for promo eligibility must
-        // EXCLUDE retail lines. Otherwise a cart with a membership below
-        // the promo's min_purchase gets rescued by a retail top-up, even
-        // though retail is filtered out of the eligible lines above.
         const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         return validatePromoCode(appliedPromoCode, {
             subtotalAed: promoSubtotal,
@@ -559,10 +558,10 @@ function POSInner() {
     function handleApplyPromo() {
         setPromoError(null);
         if (!promoInput.trim()) return;
-        const promoLines = cart.filter((l): l is CartLine & { kind: "membership" | "package" | "gift_card" } => l.kind !== "retail");
+        // Client 2026-07-31 — full cart (retail included); the validator's
+        // own applies_to gate decides which lines actually qualify.
+        const promoLines = cart;
         const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
-        // v83 audit-1 (2026-07-29) — same retail exclusion for the
-        // subtotal used against `min_purchase_aed`.
         const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         const res = validatePromoCode(promoInput, {
             subtotalAed: promoSubtotal,
@@ -631,9 +630,11 @@ function POSInner() {
         let runningTax = 0;
         let firstRate = 0;
         for (const line of cart) {
-            // Retail sits outside the tax-category union — no tax rule wired
-            // yet (Phase D.2 scope). Skip retail lines in the tax sum.
-            if (line.kind === "retail") continue;
+            // Retail is now taxed via its own `TaxRuleCategory` (client
+            // 2026-07-31 — was excluded during Phase D.2 before Tax
+            // gained a retail category). The applies-to lookup below
+            // sources a per-branch or all-locations rule the same way
+            // memberships / packages / appointments do.
             const category = categoryForProductType(line.kind);
             if (!category) continue;
             const match = findActiveTaxRuleFor(

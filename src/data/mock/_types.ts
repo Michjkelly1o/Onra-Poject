@@ -1120,8 +1120,10 @@ export interface PromoCode {
     max_discount_aed?: number;
     /** Minimum cart subtotal (AED) required for the code to apply. */
     min_purchase_aed?: number;
-    /** Which product types the promo applies to. Empty = applies to all. */
-    applies_to: ("membership" | "package" | "gift_card")[];
+    /** Which product types the promo applies to. Empty = applies to all.
+     *  `retail` added client 2026-07-31 — physical merchandise lines at POS
+     *  are now discountable like every other product type. */
+    applies_to: ("membership" | "package" | "gift_card" | "retail")[];
     /** null = unlimited uses; otherwise total uses across all customers. */
     usage_limit?: number;
     /** Cached count of times the code has been redeemed. */
@@ -2564,7 +2566,12 @@ export type TaxRuleCategorySeed =
     | "credit_package"
     | "appointment"
     | "gift_card"
-    | "pay_rate";
+    | "pay_rate"
+    // Client 2026-07-31 — retail added after the initial Tax module ship.
+    // Every retail POS sale now sources a tax rule from this category so
+    // retail transactions carry VAT (or whatever the studio configures)
+    // the same way memberships / packages / appointments do.
+    | "retail";
 
 /** Rule-level on/off — driven by the per-row toggle in the Figma. Toggling
  *  off keeps the rule's configuration but stops it applying to future sales. */

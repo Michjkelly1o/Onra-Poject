@@ -25,7 +25,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ChevronUp, ChevronDown, Trash02, Plus, Check, XClose,
     CreditCard02, Package, Gift01, CoinsHand, CalendarCheck01,
-    SlashCircle01, InfoCircle, Lightbulb02,
+    ShoppingBag03, SlashCircle01, InfoCircle, Lightbulb02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,20 +43,26 @@ const CATEGORY_META: Record<TaxRuleCategory, {
     membership:     { title: "Membership",               Icon: CreditCard02   },
     credit_package: { title: "Credit package",           Icon: Package        },
     appointment:    { title: "Appointment",              Icon: CalendarCheck01 },
+    // Client 2026-07-31 — retail added after the Tax module shipped.
+    // Physical merchandise sold at POS is taxed at purchase time (unlike
+    // gift cards, which are taxed on redemption), so it sits alongside
+    // the Services group on the VAT tab as its own top-level category.
+    retail:         { title: "Retail",                   Icon: ShoppingBag03  },
     gift_card:      { title: "Gift card (redeemed tax)", Icon: Gift01         },
     pay_rate:       { title: "Pay rate",                 Icon: CoinsHand      },
 };
 
 const CATEGORY_ORDER: TaxRuleCategory[] = [
-    "membership", "credit_package", "appointment", "gift_card", "pay_rate",
+    "membership", "credit_package", "appointment", "retail", "gift_card", "pay_rate",
 ];
 
 /** Which categories live under which top-level tab. The Apply view scopes
  *  its rendered accordions to one of these arrays based on `props.kind`.
  *  Membership / Credit package / Appointment also share the "Services"
- *  parent wrapper card on the VAT tab. */
+ *  parent wrapper card on the VAT tab. Retail is VAT-scoped but stands
+ *  alone (it's merchandise, not a service). */
 const CATEGORIES_BY_KIND: Record<TaxRateKind, TaxRuleCategory[]> = {
-    vat:    ["membership", "credit_package", "appointment", "gift_card"],
+    vat:    ["membership", "credit_package", "appointment", "retail", "gift_card"],
     income: ["pay_rate"],
 };
 
@@ -664,6 +670,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
         membership:     true,
         credit_package: true,
         appointment:    true,
+        retail:         kind !== "income",
         gift_card:      kind !== "income",
         pay_rate:       true,
     });
@@ -708,7 +715,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
     // Group rules by category, preserving createdAt order.
     const rulesByCategory = useMemo(() => {
         const byCat: Record<TaxRuleCategory, TaxRule[]> = {
-            membership: [], credit_package: [], appointment: [], gift_card: [], pay_rate: [],
+            membership: [], credit_package: [], appointment: [], retail: [], gift_card: [], pay_rate: [],
         };
         for (const r of taxRules) {
             byCat[r.category].push(r);

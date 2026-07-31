@@ -411,13 +411,14 @@ export function buildTimeSlots(window: HoursWindow, durationMin?: number): strin
 export interface PromoValidationCart {
     /** Pre-discount cart subtotal in AED. */
     subtotalAed: number;
-    /** Distinct product types currently in the cart. */
-    productTypes: ("membership" | "package" | "gift_card")[];
+    /** Distinct product types currently in the cart. `retail` added client
+     *  2026-07-31 — merchandise lines are promo-eligible now. */
+    productTypes: ("membership" | "package" | "gift_card" | "retail")[];
     /** Per-line breakdown. When provided, the validator restricts a promo to
      *  only the products it targets (`applies_to_product_ids`) and computes
      *  the discount against the eligible lines alone. Without it the check
      *  falls back to the cart-level type list. */
-    lines?: { productId: string; kind: "membership" | "package" | "gift_card"; lineTotal: number }[];
+    lines?: { productId: string; kind: "membership" | "package" | "gift_card" | "retail"; lineTotal: number }[];
     /** Branch the sale happens at — gates branch-scoped promos. Empty /
      *  undefined (e.g. "All locations") skips branch gating. */
     branchId?: string;
@@ -472,7 +473,7 @@ export function validatePromoCode(
     // share the same type.
     const allowedTypes = promo.applies_to ?? [];
     const allowedProductIds = promo.applies_to_product_ids ?? [];
-    const lineEligible = (kind: "membership" | "package" | "gift_card", productId: string): boolean => {
+    const lineEligible = (kind: "membership" | "package" | "gift_card" | "retail", productId: string): boolean => {
         if (allowedTypes.length > 0 && !allowedTypes.includes(kind)) return false;
         if (allowedProductIds.length > 0 && !allowedProductIds.includes(productId)) return false;
         return true;
@@ -12175,7 +12176,13 @@ export const useAppStore = create<AppState>()(persist(
         //   `displayTime` is now RE-DERIVED at boot from the raw 24h start/end via the
         //   canonical `formatTimeRange12` (e.g. "5:00 - 6:00 PM"), so persisted
         //   snapshots carrying the old 24h / zero-padded strings must reseed.
-        version: 94,
+        // v95 (2026-07-31): Retail integration sweep — new `retail` tax-rule
+        //   category + a seeded `trl_retail_default` rule (so POS retail lines
+        //   pick up VAT), promo codes now apply to retail lines, a
+        //   `retail_purchase` customer-notification event, and referral rewards
+        //   count retail spend. Persisted snapshots predate every one of those
+        //   seed rows, so a bump is required to pick them up.
+        version: 95,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

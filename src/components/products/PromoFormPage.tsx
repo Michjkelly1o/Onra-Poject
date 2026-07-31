@@ -490,6 +490,7 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
     const showToast       = useAppStore(s => s.showToast);
     const memberships     = useAppStore(s => s.memberships);
     const packages        = useAppStore(s => s.packages);
+    const retailProducts  = useAppStore(s => s.retailProducts);
     const classTemplates  = useAppStore(s => s.classTemplates);
     const branches        = useAppStore(s => s.branches);
 
@@ -546,7 +547,13 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
             .map(m => ({ id: m.id, label: m.name, group: "Membership" })),
         ...packages.filter(p => p.status === "active")
             .map(p => ({ id: p.id, label: p.name, group: "Class package" })),
-    ], [memberships, packages]);
+        // Client 2026-07-31 — retail merchandise is now promo-eligible.
+        // Selecting a retail product here scopes the promo to that SKU
+        // via `applies_to_product_ids`, which the POS validator honours
+        // on retail cart lines the same way it does for plans.
+        ...retailProducts.filter(p => p.status === "active")
+            .map(p => ({ id: p.id, label: p.name, group: "Retail" })),
+    ], [memberships, packages, retailProducts]);
 
     const classOptions: MultiOption[] = useMemo(() =>
         classTemplates.filter(t => t.status === "Active")
