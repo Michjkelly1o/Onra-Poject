@@ -13,12 +13,17 @@
 //   DS-primary button. Both the pill background AND the inline button
 //   remain clickable — same click handler.
 //
-// Three gates stack — every one MUST pass, or the button renders null:
+// Four gates stack — every one MUST pass, or the button renders null:
 //
 //   1. `AI_AGENT_UI_VISIBLE` (flags.ts) — master switch.
 //   2. `isAiAgentEnabled(role)` (flags.ts) — role gate. Admin only.
 //   3. `pathname === "/ai-agent"` — hide while the user is already on
 //      the agent page.
+//   4. `bulkSelectionActive` (store) — hide the moment any admin list
+//      page's Bulk-select mode has ≥1 row checked. Both the pill AND
+//      the page's BulkActionBar are bottom-fixed; they'd stack /
+//      overlap and steal each other's clicks. See
+//      `useBulkSelectionSignal` — every list page owns the wire.
 //
 // On click, navigates to `/ai-agent?returnTo=<current path>` so the
 // page's close (X) can put the user back exactly where they came from.
@@ -39,11 +44,13 @@ export function FloatingAiButton() {
     const router = useRouter();
     const pathname = usePathname();
     const role = useAppStore((s) => s.currentRole);
+    const bulkSelectionActive = useAppStore((s) => s.bulkSelectionActive);
     const [hovered, setHovered] = useState(false);
 
     if (!AI_AGENT_UI_VISIBLE) return null;
     if (!isAiAgentEnabled(role)) return null;
     if (pathname === "/ai-agent") return null;
+    if (bulkSelectionActive) return null;
 
     const handleClick = () => {
         const returnTo = pathname || "/admin/dashboard";

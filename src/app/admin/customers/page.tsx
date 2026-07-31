@@ -32,6 +32,7 @@ import { usePersistedListState } from "@/lib/list-ui-cache";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { useAppStore, type Customer } from "@/lib/store";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 // CustomerImportModal import removed (Jul 2026) — the Import Data entry is
 // hidden pending a proper migration flow build. The modal file stays on disk
 // as reference for that rebuild.
@@ -513,6 +514,8 @@ export default function CustomersPage() {
     const [page, setPage] = usePersistedListState("customers:page", 1);
     const [pageSize, setPageSize] = usePersistedListState("customers:pageSize", 10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
     // v83 lifecycle — segment tabs. Buckets match PDF §5.1 "leads inside
     // Customers list + segment tabs":

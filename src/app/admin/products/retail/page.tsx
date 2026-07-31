@@ -40,6 +40,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfigureStockPanel } from "@/components/retail/ConfigureStockPanel";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { useAppStore, type RetailProduct } from "@/lib/store";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -386,6 +387,8 @@ export default function RetailPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
     // Client 2026-07-31 — accordion state. Chevron on the LEFT of each row
     // toggles a nested per-branch table (Branch / Stock / Sold). Multi-open

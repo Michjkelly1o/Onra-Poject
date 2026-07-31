@@ -35,6 +35,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { useAppStore } from "@/lib/store";
 import type { ClassCategory } from "@/lib/store";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
@@ -74,6 +75,8 @@ export default function CategoriesPage() {
 
     // ── Selection + pagination state ──────────────────────────────────────
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     useEffect(() => { setPage(1); }, [search]);

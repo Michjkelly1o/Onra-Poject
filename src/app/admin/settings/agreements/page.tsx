@@ -46,6 +46,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type Agreement, type AgreementStatus, type Branch } from "@/lib/store";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import {
     branchLocationText,
     computeCoverage,
@@ -432,6 +433,8 @@ export default function AgreementsPage() {
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied] = usePersistedListState<FilterState>("agreements:applied", EMPTY_FILTER);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [page, setPage] = usePersistedListState("agreements:page", 1);
     const [pageSize, setPageSize] = usePersistedListState("agreements:pageSize", 10);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);

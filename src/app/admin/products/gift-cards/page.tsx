@@ -49,6 +49,7 @@ import {
     type GiftCardDesign,
 } from "@/lib/store";
 import { giftCardHolderCount } from "@/lib/giftCardHolders";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import type { IssuedGiftCard } from "@/lib/store";
 import { Sliders } from "@/components/icons/Sliders";
 
@@ -507,6 +508,8 @@ export default function GiftCardsPage() {
     const [page, setPage] = usePersistedListState("giftCards:page", 1);
     const [pageSize, setPageSize] = usePersistedListState("giftCards:pageSize", 10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
     // Reset to page 1 when filters change — skip the initial mount so a page

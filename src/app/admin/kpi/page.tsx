@@ -4,27 +4,22 @@
 // Onra Studio — KPI page (/admin/kpi)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// KPI catalogue from new-prd/Onra_KPI_Catalogue.pdf. Four category tabs —
-// Financial · Client · Class · Marketing — each rendered with the SAME
-// chrome as /admin/insights:
+// KPI catalogue from new-prd/Onra_KPI_Catalogue.pdf. Six category tabs —
+// Financial · Client · Class · Private · Recovery · Marketing — each
+// rendered as a KPI-tile-only grid:
 //
 //   1. Tabs strip
-//   2. Toolbar — "Total · N X KPIs" + search + period dropdown
-//   3. Metric grid (4 per row, gap-6)  — the KPI cards
-//   4. Widget grid (2 per row, gap-6)  — Recharts widgets from WIDGET_CATALOG
+//   2. Toolbar — location · search · period dropdown
+//   3. Metric grid (4 per row, gap-6) — the KPI cards
 //
-// Layout, components, and styling are IDENTICAL to Insights. Only the
-// data (KPI list per tab) and the chart selection differ.
+// Client 2026-07-31 — the chart-widget grid (`DashboardWidgetCard` from
+// WIDGET_CATALOG) that used to sit below the metric grid was removed
+// across every tab. The module is now a "tiles-only" overview surface;
+// charts live on the Dashboard. The tab configs no longer carry
+// widgetIds and the WIDGET_CATALOG import was dropped.
 //
-// Phase 2 (this file): Financial tab fully wired. 10 KPI cards computed
-// from real store data via `computeFinancialKpis`. 4 chart widgets
-// reused from the existing "Finance" widget catalog (revenue-overview,
-// sales-by-product, payments-collected, payments-by-source). The retired
-// `payments-status` widget was folded into `payments-collected` (Jul 2026).
-//
-// Not covered per plan:
-//   • Inventory KPIs (13) — no retail module
-//   • Forward/live KPIs (4) — Dashboard's territory per PDF
+// KPI compute functions per tab live in `src/lib/kpi/*` and read from
+// the shared Zustand snapshot.
 //
 // See new-prd/kpi-implementation-plan.md for the full phase timeline.
 
@@ -33,9 +28,7 @@ import { cn } from "@/lib/utils";
 import { SearchMd, MarkerPin01 } from "@untitledui/icons";
 import { SelectInput } from "@/components/ui/select-input";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
-import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
-import { WIDGET_CATALOG } from "@/components/dashboard/widget-catalog";
 import { InsightMetricCard, type Metric } from "@/components/insights/InsightMetricCard";
 import { useAppStore } from "@/lib/store";
 import { resolveRangePair } from "@/lib/kpi/date-range";
@@ -59,77 +52,20 @@ type TabKey =
 interface TabConfig {
     key: TabKey;
     label: string;
-    /** Widget IDs to render on this tab (in order). Empty = no widget grid
-     *  yet. Phase 2-5 fills each tab's list. */
-    widgetIds: string[];
 }
 
-// ─── Tab widget selection ───────────────────────────────────────────────────
+// ─── Tab list ───────────────────────────────────────────────────────────────
 //
-// Widgets reused from the existing WIDGET_CATALOG (Finance category
-// today; other categories light up in later phases). The KPI page never
-// duplicates widget definitions — it just picks which ones to render.
+// Chart widgets (WIDGET_CATALOG) were removed client 2026-07-31 — this
+// module is tiles-only now. TABS is just the ordered label list.
 
 const TABS: TabConfig[] = [
-    {
-        key: "financial",
-        label: "Financial",
-        // Phase 2 hero charts — reuse existing Finance widgets that map
-        // cleanly to the PDF's Financial charts:
-        //   revenue-overview     → Net revenue vs last period (line)
-        //   sales-by-product     → Sales by stream (bar)
-        //   payments-collected   → Payments collected + failed overlay
-        //                          (client Jul 2026 — the retired
-        //                           `payments-status` merged in here).
-        //   payments-by-source   → Payments by sales channel
-        widgetIds: ["revenue-overview", "sales-by-product", "payments-collected", "payments-by-source"],
-    },
-    {
-        key: "client",
-        label: "Customer",
-        // Phase 3 hero charts — reuse existing Memberships widgets that
-        // map cleanly to the PDF's Client charts:
-        //   active-memberships   → Active members trend
-        //   active-subscriptions → Active recurring subscriptions trend
-        //   memberships-sold     → New sign-ups over time (proxy)
-        //   top-memberships      → Top spenders / most-purchased plans (ranked)
-        widgetIds: ["active-memberships", "active-subscriptions", "memberships-sold", "top-memberships"],
-    },
-    {
-        key: "class",
-        label: "Classes",
-        // Phase 4 hero charts — reuse existing Classes widgets:
-        //   class-bookings       → Bookings over time
-        //   bookings-by-source   → Where bookings come from (grouped bar)
-        //   attendance-overview  → Attendance vs cancellations vs no-shows
-        //   class-by-popularity  → Class popularity ranked
-        widgetIds: ["class-bookings", "bookings-by-source", "attendance-overview", "class-by-popularity"],
-    },
-    {
-        // Client 2026-07-23 — new tab. Reuses the widgets already tagged
-        // "Private sessions" in the widget catalog, so the same visuals
-        // that appear under Add-widget on the dashboard render here.
-        key: "private-sessions",
-        label: "Private sessions",
-        widgetIds: ["private-utilization", "private-rebooking", "private-top-trainers"],
-    },
-    {
-        // Client 2026-07-23 — new tab, sibling of Private sessions.
-        key: "recovery",
-        label: "Recovery",
-        widgetIds: ["recovery-top-services", "recovery-bookings", "recovery-attach-rate"],
-    },
-    {
-        key: "marketing",
-        label: "Marketing",
-        // Phase 5 hero charts — new Marketing widgets added to the
-        // catalog for the KPI module:
-        //   kpi-leads-by-source      → Acquisition source split
-        //   kpi-lead-funnel          → New → Trial → Paid funnel
-        //   kpi-campaign-perf        → Campaign performance
-        //   kpi-marketing-efficiency → CPL / CAC / ROAS trend
-        widgetIds: ["kpi-leads-by-source", "kpi-lead-funnel", "kpi-campaign-perf", "kpi-marketing-efficiency"],
-    },
+    { key: "financial",        label: "Financial" },
+    { key: "client",           label: "Customer" },
+    { key: "class",            label: "Classes" },
+    { key: "private-sessions", label: "Private sessions" },
+    { key: "recovery",         label: "Recovery" },
+    { key: "marketing",        label: "Marketing" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -243,28 +179,17 @@ export default function KpiPage() {
 
     const activeTab = TABS.find(t => t.key === tab)!;
     const activeMetrics = metricsByTab[activeTab.key];
-    const widgetsForTab = useMemo(
-        () => activeTab.widgetIds
-            .map(id => WIDGET_CATALOG.find(w => w.id === id))
-            .filter((w): w is NonNullable<typeof w> => !!w),
-        [activeTab.widgetIds],
-    );
 
-    // Search filters metrics + widgets simultaneously, case-insensitive.
+    // Search filters the metric grid only (widget grid removed
+    // client 2026-07-31 — this module is tiles-only).
     const q = search.trim().toLowerCase();
     const filteredMetrics = q
         ? activeMetrics.filter(m => m.label.toLowerCase().includes(q))
         : activeMetrics;
-    const filteredWidgets = q
-        ? widgetsForTab.filter(w =>
-            w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q))
-        : widgetsForTab;
 
-    // Phase 1 empty state — surfaces when a tab has no metrics AND no
-    // widgets yet. Removed once each tab gets its cards + widgets.
-    const showPhaseEmptyState = !q
-        && filteredMetrics.length === 0
-        && filteredWidgets.length === 0;
+    // Phase 1 empty state — surfaces when a tab has no metrics yet.
+    // Removed once each tab gets its KPI card set.
+    const showPhaseEmptyState = !q && filteredMetrics.length === 0;
 
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
@@ -314,20 +239,11 @@ export default function KpiPage() {
                 </div>
             </div>
 
-            {/* Metric grid */}
+            {/* Metric grid — tiles only (chart-widget grid removed 2026-07-31). */}
             {filteredMetrics.length > 0 && (
                 <div className="grid grid-cols-4 gap-6">
                     {filteredMetrics.map(m => (
                         <InsightMetricCard key={m.label} metric={m} />
-                    ))}
-                </div>
-            )}
-
-            {/* Widget grid — reuses WIDGET_CATALOG + DashboardWidgetCard. */}
-            {filteredWidgets.length > 0 && (
-                <div className="grid grid-cols-2 gap-6">
-                    {filteredWidgets.map(w => (
-                        <DashboardWidgetCard key={w.id} widgetId={w.id} period={period} branchIds={location ? [location] : undefined} />
                     ))}
                 </div>
             )}
@@ -339,13 +255,13 @@ export default function KpiPage() {
                         {activeTab.label} KPIs — coming soon
                     </p>
                     <p className="text-[14px] text-[#475467]">
-                        Metric cards + widget charts land in the phase for this tab.
+                        Metric cards land in the phase for this tab.
                     </p>
                 </div>
             )}
 
             {/* Search empty state — same chrome as Insights. */}
-            {q && filteredMetrics.length === 0 && filteredWidgets.length === 0 && (
+            {q && filteredMetrics.length === 0 && (
                 <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
                     <p className="text-[16px] font-semibold text-[#101828]">No KPIs found</p>
                     <p className="text-[14px] text-[#475467]">Try a different search term.</p>

@@ -42,6 +42,7 @@ import {
     type PayRate, type PayRateStatus, type PayRateType,
     computePayRateDisplay,
 } from "@/lib/store";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { Sliders } from "@/components/icons/Sliders";
 
 // ─── Display config ──────────────────────────────────────────────────────────
@@ -304,6 +305,8 @@ export default function PayRatePage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
 
     useEffect(() => { setPage(1); setSelectedIds(new Set()); }, [branchId, search, filter]);

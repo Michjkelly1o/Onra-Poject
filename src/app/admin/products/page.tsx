@@ -53,6 +53,7 @@ import {
     type Membership, type Package, type Customer, type Branch,
 } from "@/lib/store";
 import { findActiveTaxRuleFor, categoryForProductType } from "@/lib/tax-calc";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
@@ -714,6 +715,8 @@ export default function ProductsPage() {
     const [pageSize, setPageSize] = usePersistedListState("products:pageSize", 10);
     const [selectedMemberships, setSelectedMemberships] = useState<Set<string>>(new Set());
     const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedMemberships.size > 0 || selectedPackages.size > 0);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
     const selectedIds = tab === "memberships" ? selectedMemberships : selectedPackages;

@@ -51,6 +51,7 @@ import { TaxRateModal } from "@/components/settings/TaxRateModal";
 import { ApplyTaxRatesView } from "@/components/settings/ApplyTaxRatesView";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { useAppStore, type TaxRate, type TaxRateStatus, type TaxRateKind, type TaxRoundingMode } from "@/lib/store";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -419,6 +420,8 @@ export default function TaxPage() {
     const [tab, setTab] = useState<TabId>("list");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);

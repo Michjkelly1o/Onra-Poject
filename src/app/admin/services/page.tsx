@@ -49,6 +49,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SelectInput } from "@/components/ui/select-input";
 import { useAppStore, type Service, type ServiceStatus, type ServiceType } from "@/lib/store";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
@@ -550,6 +551,8 @@ function ServicesPageInner() {
     const [page, setPage]                     = usePersistedListState("services:page", 1);
     const [pageSize, setPageSize]             = usePersistedListState("services:pageSize", 10);
     const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set());
+    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
     // Reset to page 1 when filters change — skip initial mount so a page

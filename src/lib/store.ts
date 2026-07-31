@@ -4216,6 +4216,16 @@ export interface AppState {
     pendingPurchase: PendingPurchase | null;
     toast: ToastData | null;
 
+    /** Client 2026-07-31 — true while ANY admin list page has at least one
+     *  row checked (bulk-selection mode). The floating AI Agent button
+     *  reads this and hides itself so the bulk-action bar (also bottom-
+     *  fixed) never fights the AI pill for the same real estate. Each
+     *  page that owns a `selectedIds` Set flips this via the small
+     *  `useBulkSelectionSignal` hook — cleanup on unmount guarantees the
+     *  flag never leaks between routes. Per-tab, never persisted. */
+    bulkSelectionActive: boolean;
+    setBulkSelectionActive: (active: boolean) => void;
+
     /** Branding module (PRD 11 §5) — single source of truth for studio
      *  identity + customer-portal preferences. Read by the Branding landing,
      *  the Design settings sub-page, the Portal preferences sub-page, and
@@ -5873,6 +5883,17 @@ export const useAppStore = create<AppState>()(persist(
     paymentProviders: [...INITIAL_PAYMENT_PROVIDERS],
     pendingPurchase: null,
     toast: null,
+    bulkSelectionActive: false,
+
+    setBulkSelectionActive: (active) => {
+        // Skip the write when the flag is already at the target value —
+        // the hook fires this on every render where selection size crosses
+        // 0 in either direction, and Zustand still re-notifies subscribers
+        // even for identity-equal writes. Guard keeps the AI button's
+        // subscription from re-rendering on every unrelated tick.
+        if (get().bulkSelectionActive === active) return;
+        set({ bulkSelectionActive: active });
+    },
 
     updateBusinessProfile: (patch) => {
         const name = get().businessProfile.name;
@@ -12625,6 +12646,12 @@ export const useAppStore = create<AppState>()(persist(
                 sidebarCollapsed: _sidebarCollapsed,
                 toast:          _toast,
                 pendingPurchase: _pendingPurchase,
+                // bulkSelectionActive is UI-only ephemeral state driven by
+                // the currently mounted list page. Persisting it would
+                // cause a stale "true" to survive across reloads and
+                // hide the AI button forever until the next page mount
+                // reset it.
+                bulkSelectionActive: _bulkSelectionActive,
                 ...persistable
             } = state;
             return persistable;
