@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Retail categories tab (/admin/settings/retail-categories)
+// Onra Studio — Retail categories page (/admin/products/retail-categories)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Phase C (2026-07-29). Studio-editable groupings for the retail module —
@@ -9,6 +9,12 @@
 // don't have to relearn the surface. Renames cascade to the retail list
 // page's Category column, POS filter chips (Phase D), and report grouping
 // labels (Phase E) via the "label-lookup by id" pattern.
+//
+// Sidebar home (client 2026-07-31): moved from Settings → Operations
+// into the "Products & pricing" group directly under "Retail", mirroring
+// how "Templates" + "Categories" cluster under Classes. Old URL
+// /admin/settings/retail-categories is retired; the settings-groups
+// registry no longer surfaces it as a tab.
 //
 // Delete is blocked when any non-archived retail product still references
 // the category — `canDeleteRetailCategory` enforces this at the store

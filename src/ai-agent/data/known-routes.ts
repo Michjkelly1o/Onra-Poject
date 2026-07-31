@@ -74,7 +74,6 @@ const STATIC_ROUTES: readonly string[] = [
     "/settings/notifications",
     "/settings/referral",
     "/settings/referral/edit-information",
-    "/settings/retail-categories",
     "/settings/rooms",
     "/settings/rooms/new",
     "/settings/tax",
@@ -90,7 +89,7 @@ const STATIC_ROUTES: readonly string[] = [
     "/admin/marketing",
     "/admin/instructors",
     "/admin/products/retail",
-    "/admin/settings/retail-categories",
+    "/admin/products/retail-categories",
     "/admin/settings/integrations",
     // AI Agent surfaces
     "/ai-agent",

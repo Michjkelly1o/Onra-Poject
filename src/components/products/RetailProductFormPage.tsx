@@ -835,7 +835,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
             </div>
 
             {/* Client 2026-07-31 — reuse the SAME CategoryModal the admin
-                uses on /admin/settings/retail-categories so both surfaces
+                uses on /admin/products/retail-categories so both surfaces
                 stay 1:1 (chrome, validation, image upload). Submit calls
                 the same addRetailCategory action → Retail Categories
                 module + POS filter chips + AI-agent dataset all see the
