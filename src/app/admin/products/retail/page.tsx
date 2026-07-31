@@ -620,18 +620,58 @@ export default function RetailPage() {
     }
 
     function exportCsv() {
-        const csv = buildCsv(
-            ["Name", "SKU", "Retail category", "Price AED", "Stock", "Reorder threshold", "Status"],
-            sorted.map(r => [
+        // Client 2026-07-31 — CSV now round-trips through the AI Agent
+        // migrate wizard. Two changes over the older "one Stock column"
+        // shape:
+        //   1. Per-branch stock columns — one `stock_<Branch Name>`
+        //      column per active branch, matching the applier's
+        //      `stock_<branch>` regex on the import side. Aggregate is
+        //      no longer written; it's derivable by summing the
+        //      per-branch columns anyway.
+        //   2. Extra product fields — Unit cost AED, Description, Image
+        //      URL — so an exported CSV re-imports without losing the
+        //      admin's original data. Field names are chosen so the
+        //      retail-products entity dict recognises them verbatim
+        //      after `normHeader` (lowercase + space-normalised).
+        //
+        // Status is exported for admin readability but is NOT a
+        // migration target (import always creates as `active`); leaving
+        // the column in the CSV doesn't confuse the mapper because
+        // there's no `status` field on the entity to match.
+        const activeBranchesForExport = branches
+            .filter(b => b.status !== "archive")
+            .map(b => ({ id: b.id, name: b.name }));
+        const stockHeaders = activeBranchesForExport.map(b => `stock_${b.name}`);
+        const headers = [
+            "Name", "SKU", "Retail category", "Description",
+            "Price AED", "Unit cost AED", "Reorder threshold",
+            "Image URL", "Status",
+            ...stockHeaders,
+        ];
+        const productsById = new Map(products.map(p => [p.id, p]));
+        const rows = sorted.map(r => {
+            const p = productsById.get(r.id);
+            const perBranch = activeBranchesForExport.map(b => {
+                const cell = r.branchBreakdown.find(x => x.branchId === b.id);
+                // Blank cell (not "0") when a branch carries no stock —
+                // keeps the CSV visually clean AND round-trips correctly
+                // (import skips blank/zero stock cells).
+                return cell && cell.unitsOnHand > 0 ? cell.unitsOnHand.toString() : "";
+            });
+            return [
                 r.name,
                 r.sku,
                 r.categoryLabel,
+                p?.description ?? "",
                 r.priceAed.toString(),
-                r.stockAggregate.toString(),
+                p ? p.unitCostAed.toString() : "",
                 r.reorderThreshold.toString(),
+                r.imageUrl ?? "",
                 r.status,
-            ]),
-        );
+                ...perBranch,
+            ];
+        });
+        const csv = buildCsv(headers, rows);
         downloadCsv(`retail-products-${todayISO()}.csv`, csv);
         showToast("Products exported", `${sorted.length} ${sorted.length === 1 ? "row" : "rows"} exported to CSV.`, "success", "check");
     }
