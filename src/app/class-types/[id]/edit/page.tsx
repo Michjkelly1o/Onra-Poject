@@ -5,11 +5,11 @@
 
 import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAppStore, type Membership, type Package } from "@/lib/store";
+import { useAppStore, type Membership, type Package, type ClassCategory } from "@/lib/store";
 import { Toast } from "@/components/ui/Toast";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import {
-    XClose, Grid01,
+    XClose, Grid01, Plus,
     ClockFastForward, Users01,
     ChevronDown, ChevronUp, Check, Lightbulb02, FilterLines,
 } from "@untitledui/icons";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -200,11 +201,15 @@ interface Step1Data {
     durationMin: string; capacity: string; coverPreview: string | null; coverFile: File | null;
 }
 
-function BasicInformationStep({ data, onChange, onContinue, categoryOptions }: {
+function BasicInformationStep({ data, onChange, onContinue, categoryOptions, onCreateCategory }: {
     data: Step1Data; onChange: (d: Partial<Step1Data>) => void; onContinue: () => void;
     /** Live category names — passed from the page so this step doesn't
      *  re-subscribe to the store (Phase 4 wiring). */
     categoryOptions: string[];
+    /** Client 2026-07-31 — opens the parent's inline "+ Create class
+     *  category" modal so admins can add a missing category directly
+     *  from the class-template edit flow. */
+    onCreateCategory: () => void;
 }) {
     const canContinue = data.name.trim() && data.description.trim() && data.category && data.durationMin && data.capacity;
     return (
@@ -223,7 +228,18 @@ function BasicInformationStep({ data, onChange, onContinue, categoryOptions }: {
                     {/* Class category — class type field removed (always Group). */}
                     <FormField label="Class category">
                         <SelectInput placeholder="Select class category" value={data.category} onChange={v => onChange({ category: v })}
-                            options={categoryOptions.map(o => ({ value: o, label: o }))} width="w-full" />
+                            options={categoryOptions.map(o => ({ value: o, label: o }))} width="w-full"
+                            menuHeader={({ close }) => (
+                                <button
+                                    type="button"
+                                    onClick={() => { close(); onCreateCategory(); }}
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors rounded-t-[8px]"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create class category
+                                </button>
+                            )}
+                        />
                     </FormField>
                     <div className="grid grid-cols-2 gap-4">
                         <FormField label="Duration" hint="in minutes">
@@ -349,7 +365,12 @@ function ApplicableMembershipsStep({ items, selected, onChange, onBack, onSave }
 function EditClassTemplatePageInner() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
-    const { classTemplates, updateClassTemplate, showToast } = useAppStore();
+    const { classTemplates, updateClassTemplate, showToast, addClassCategory } = useAppStore();
+
+    // Client 2026-07-31 — inline "+ Create class category" modal reachable
+    // from the Class-category dropdown header on Step 1. Admin never has
+    // to leave the class-template edit flow to add a missing category.
+    const [creatingCategory, setCreatingCategory] = useState(false);
     // Live store memberships/packages — picker reflects current catalog mutations.
     const allMemberships = useAppStore(s => s.memberships);
     const allPackages    = useAppStore(s => s.packages);
@@ -447,7 +468,7 @@ function EditClassTemplatePageInner() {
 
                     {/* Form */}
                     {step === 1 ? (
-                        <BasicInformationStep data={step1} onChange={d => setStep1(prev => ({ ...prev, ...d }))} onContinue={() => setStep(2)} categoryOptions={categoryOptions} />
+                        <BasicInformationStep data={step1} onChange={d => setStep1(prev => ({ ...prev, ...d }))} onContinue={() => setStep(2)} categoryOptions={categoryOptions} onCreateCategory={() => setCreatingCategory(true)} />
                     ) : (
                         <ApplicableMembershipsStep items={membershipItems} selected={selectedMemberships}
                             onChange={setSelectedMemberships} onBack={() => setStep(1)} onSave={handleSave} />
@@ -466,6 +487,39 @@ function EditClassTemplatePageInner() {
                 </div>
             </div>
             <Toast />
+
+            {/* Client 2026-07-31 — reuse the SAME CategoryModal the admin
+                uses on /admin/categories. Every consumer subscribing
+                to the classCategories slice sees the new row in the
+                same render cycle. Live duplicate check via `takenNames`
+                surfaces "already exists" inline. On success we auto-
+                select the fresh category name on Step 1 so the admin
+                can keep editing without re-opening the dropdown. */}
+            {creatingCategory && (
+                <CategoryModal
+                    onClose={() => setCreatingCategory(false)}
+                    takenNames={classCategories.map(c => c.name)}
+                    onSubmit={({ name, image_url }) => {
+                        const cleanName = name.trim();
+                        if (!cleanName) return;
+                        const next: ClassCategory = {
+                            id: `cat_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                            name: cleanName,
+                            color_hex: "#f9fafb",
+                            status: "active",
+                            image_url: image_url || undefined,
+                        };
+                        addClassCategory(next);
+                        setStep1(prev => ({ ...prev, category: cleanName }));
+                        setCreatingCategory(false);
+                        showToast(
+                            "Category created",
+                            `"${cleanName}" has been added to your categories.`,
+                            "success", "check",
+                        );
+                    }}
+                />
+            )}
         </div>
     );
 }
