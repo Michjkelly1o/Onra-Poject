@@ -39,14 +39,20 @@ arc from the frames:
 
 → **Class preview** card renders, partially filled.
 
-### Step 2 — Location & instructor (`2 of 3 steps`)
-| # | Question | Widget |
-|---|---|---|
-| 2.1 | Which room should it use? | Grouped list by branch. Per-room capacity, `Over capacity` amber badge, `Used by other class` disabled rows, `+ Add room` per branch |
-| 2.2 | What equipment will be used? | Checkbox multi-select + `Something else` free-text row |
-| 2.3 | Would you like to activate spots selection? | Yes / No with check + X icons |
-| 2.3b | *(if yes)* Spot layout | Standard / Custom → **Customize area** editor: instructor block, spot grid (A1–A4 / B1–B4), column + row number inputs, click-to-block spots, `Use default` / `Customize spot` |
-| 2.4 | Who's teaching it? | Searchable list — avatar, name, rating |
+### Step 2 — Location & instructor (`2 of 3 steps`) — **5 questions**
+| # | Question | Widget | Pager |
+|---|---|---|---|
+| 2.1 | Which room should it use? | Grouped list by branch. Per-room capacity, `Over capacity` amber badge, `Used by other class` disabled rows, `+ Add room` per branch | 1 of 5 |
+| 2.2 | What equipment will be used? | Checkbox multi-select, options **AI-suggested from the picked template**, + `Something else` free-text (comma-separated). Joins to one comma-separated string — see §7 | 2 of 5 |
+| 2.3 | Would you like to activate spots selection? | Yes / No with check + X icons | 3 of 5 |
+| 2.3b | *(if yes)* Spot layout | Standard / Custom → **Customize area** editor: instructor block, spot grid (A1–A4 / B1–B4), column + row number inputs, click-to-block spots, `Use default` / `Customize spot` | — |
+| 2.4 | Who's teaching it? | Searchable list — avatar, name, rating | 4 of 5 |
+| **2.5** | **Which pay rate should apply to this instructor for this class?** | Numbered list — `Standard` / `Class Tiers` / `Split Rate` / `Senior Rate` / `Monthly Rate` | **5 of 5** |
+
+**2.5 was missed in the first pass** (frame 382-124222). Sources from the
+`payRates` slice, filtered to rates assigned to the chosen instructor
+(`staffPayRateAssignments`). This is what makes the created class payroll-correct
+— without it, commission/payroll can't attribute the session.
 
 ### Step 3 — Date & time (`3 of 3 steps`)
 
@@ -117,8 +123,15 @@ Same presentation as the admin form's schedule preview — reuse it.
 3. Loading: *"Validating your class schedule data. Moving to the next step…"* + sparkle
 4. Success: *"Your class schedule has been published."* + check icon
 
-**Edit-a-field is a loop, not a back button.** It jumps to any single field, re-asks
-it, and returns to the publish prompt — frames 17–19 confirm this.
+**Edit-a-field is FREE TEXT, not a submenu** (frame 391-140961). Choosing it
+replies:
+
+> *"Sure! tell me what to change below (e.g. "make it 45 minutes") and I'll update
+> just that field."*
+
+The admin then types a natural-language correction into the normal composer and
+the AI patches **that one field**, then returns to the publish prompt. This is an
+LLM comprehension step, not a picker — no field list is ever rendered.
 
 ---
 
@@ -129,16 +142,43 @@ flow — confirmed by the source doc's own opening note ("SO FAR WE ONLY HAVE FO
 THE CLASS SCHEDULE THE NORMAL ONE, BUT WE CAN REUSE IT FOR THE PRIVATE AND
 RECOVERY"). We reuse the class wizard verbatim and swap the data source.
 
-Same wizard, one substitution: **step 1.1 picks a SERVICE, not a class template.**
+Reuse the class wizard's COMPONENTS, but the LOGIC follows the existing
+private/recovery creation path. Client: *"the logic is same like when we create
+the private/recovery — you must see the recovery and private creation module."*
+
+### `Appointment` field audit (done — was previously unaudited)
+32 fields. Materially different from `ClassSchedule` in four ways:
+
+| Difference | Detail |
+|---|---|
+| **Creation action** | `addCustomerAppointment` (`store.ts:6355`) — appointments are created **customer-first**, not schedule-first. A class exists with `booked: 0`; an appointment is born from a booking |
+| **Service, not template** | `serviceId` · `serviceName` · `serviceCategory` replace `templateId` / `name` / `category` |
+| **`openSession: boolean`** | Recovery-only concept — a multi-customer recovery session. No `ClassSchedule` equivalent |
+| **Branch is denormalised** | Carries `branchName` as well as `branchId` (class carries `location`) |
+
+Fields `ClassSchedule` has that `Appointment` does NOT — these questions must be
+**skipped** on the private/recovery path:
+`equipment` · `spotSelectionEnabled` · `spotLayout` · `waitlistEnabled` ·
+`genderAccess` · `applicableMembershipIds` · `applicablePackageIds` ·
+`recurrenceGroupId`
+
+**Consequence:** Step 2 drops from 5 questions to 3 (room · instructor · pay
+rate) and Step 3 has no recurring branch. The wizard is genuinely shorter, not
+just re-sourced.
 
 | | Class | Private | Recovery |
 |---|---|---|---|
 | Step 1.1 source | `classTemplates` | `services` (`type: "private"`) | `services` (`type: "recovery"`) |
-| Capacity | template capacity | 1 | service capacity |
-| Spot selection | offered | skipped | skipped |
-| Writes to | `addClassSchedules` | `addAppointment` | `addAppointment` |
+| Capacity | template capacity | 1 | service capacity / `openSession` |
+| Step 2 questions | 5 | 3 | 3 |
+| Equipment / spots / gender | asked | **skipped** | **skipped** |
+| Recurring | yes | **no** | **no** |
+| Terminal write | `addClassSchedules` | `addCustomerAppointment` | `addCustomerAppointment` |
 
-Steps 2 and 3 are identical across all three.
+**Open for Phase 8:** `addCustomerAppointment` requires a customer. The wizard
+creates a *slot*, not a booking. Either an "open" appointment row is needed, or
+the wizard must also ask which customer it's for — read `ServiceDetailPage` +
+`AppointmentDetailPage` at the start of Phase 8 to see how the admin does it.
 
 ---
 
@@ -398,58 +438,112 @@ nobody treats an inference as fact mid-build.
 - `addClassSchedules` groups by instructor → one summary notification, not N
 - `AiQuestionPrompt` already has header + `1 of N` pager + compact mode
 
-### Read in Figma
-~22 of ~40 frames. The rest were inferred from the established pattern.
-**That inference has already been wrong once** — frames 22–35 were first mapped
-as private/recovery and are actually the recurrence branches. Treat any
-unread frame as unconfirmed; read it at the start of the phase that needs it.
+### Read in Figma — ALL frames now read (2026-07-31)
+Every frame in the source doc has been opened, plus the four that were never in
+the numbered list (`391-138124`, `391-156601`, `394-171364`, `394-171779`).
+No frame remains inferred.
 
-### GAP — equipment has no option source
-`ClassSchedule.equipment` is a **plain string**, and the admin form treats it as
-**free text** (`ScheduleFormPage:1291` — `useState("")`). But the wizard frame is
-a **checkbox multi-select** (Mat · Resistance bands · Pilates ring · Light
-dumbbells · Something else) and the preview renders `"Mat, resistance bands"`.
+**The first reading was wrong once** — frames 22–35 were mapped as
+private/recovery and are actually the recurrence branches. Corrected.
 
-Two consequences:
-1. **The option list has no data source.** There is no equipment slice. The four
-   options are hard-coded in the Figma. Decide: hard-code the same list, derive
-   from room `equipment_notes`, or add a small seed.
-2. **Multi-select must join to one string** (comma-separated, per the preview) so
-   the field stays compatible with the admin form and everything reading it.
+Findings from the final sweep that were not in the earlier reading:
 
-*Not blocking Phase 1.* Needs a decision before Phase 4.
+| Frame | Finding |
+|---|---|
+| `382-124222` (9) | **Pay rate question exists** — *"Which pay rate should apply to this instructor for this class?"* → `Standard` / `Class Tiers` / `Split Rate` / `Senior Rate` / `Monthly Rate`, pager **5 of 5**. This is why Step 2 has 5 questions, not 4. |
+| `391-140961` (18) | Edit-a-field is **FREE TEXT**, not a submenu: *"Sure! tell me what to change below (e.g. \"make it 45 minutes\") and I'll update just that field."* |
+| `387-131806` (15) | Single-class preview — **no** `Preview of scheduled classes` row. That row is recurring-only. |
+| `391-143357` (22), `394-171779` | `Select days` panel is **identical** in the `Never` and `After` branches — same component, no branch-specific variant. |
+| `391-158338` (28), `394-172822` (33), `394-173101` (34) | Recurring preview is the single-class preview **plus** one expandable row: `Preview of scheduled classes` / *"Review all upcoming scheduled dates and time slots."* / `11 classes` pill / chevron. |
+| `394-171364` | Spot layout panel = `Column number` + `Row number` steppers with `Use default` / `Customize spot`; picking `Use default` posts the bubble **"Use as default"**. Step 3 opens with a `3 of 3 steps` badge and *"Last step! Set when this class runs, a single class session or a recurring class."* |
+| `394-171779` | Confirms the `After` branch Q order: repeat? → start date → end rule → **after how many sessions** → repeat every X week → select days. |
 
-### NOT audited — `Appointment` contract (Phase 8)
-Private + recovery write appointments, not class schedules. The `Appointment`
-interface exists but has **not** been field-mapped the way `ClassSchedule` was.
-Phase 8 must start by repeating §6b against it — expect the same class of
-surprise `waitlistEnabled` produced here.
+Select-days panel spec (confirmed on both branches): 7 day chips, multi-select,
+selected chip = green outline + tint. Each selected day renders its own card
+(`Friday` / *"Set schedule for this day."*) with a `Start time` + `End time`
+select pair, a trash button per row, and `+ Add time slot`. A bottom-right
+`Confirm` stays disabled until every selected day has at least one complete
+slot. Confirming posts the bubble **"Days confirmed"**.
 
-### NOT verified — intent detection inside General chat
-The client chose to run the wizard inside General chat rather than as a 4th
-thread. That means merging the schedule tools into `insightTools`, which the
-migration wizard never had to do (it owns its own mode). Feasible in principle,
-but the tool-count and prompt-length impact on an already-large insight tool set
-is unmeasured. **Verify at the start of Phase 4**; falling back to a dedicated
-mode is the escape hatch if the merged prompt degrades general chat.
+### RESOLVED — equipment
+`ClassSchedule.equipment` stays a **plain comma-separated string** — same as the
+admin form (`ScheduleFormPage:1291`, free text). No schema change, no new slice,
+no seed.
 
-### NOT checked — RBAC
-The AI Agent is admin-only, but whether schedule creation should be further
-gated (Owner / Branch Admin only vs Front Desk) has not been confirmed against
-`permissions`. Check in Phase 4.
+The wizard's option list is **AI-suggested and personalised to the class**: the
+model proposes equipment from the picked template's name / category /
+description (a Reformer Pilates class suggests different kit than a Barre class).
+The Figma's four options are one such example, not a fixed list.
+
+Rules:
+- Options are **multi-select** checkboxes.
+- A `Something else` option opens free-text entry. Custom entries are
+  **comma-separated**, exactly like the admin field.
+- On submit the selections join to one comma-separated string
+  (`"Mat, resistance bands"`, matching the preview) before hitting
+  `ClassSchedule.equipment`.
+- Round-trips cleanly: a class created in the wizard opens in the admin form as
+  ordinary text, and a class created in admin previews correctly in the agent.
+
+### RESOLVED — RBAC
+Full spec: **[`docs/ai-agent-rbac.md`](../docs/ai-agent-rbac.md)** — written for
+the implementing developer.
+
+Summary: the agent has two existing gates (`AI_AGENT_UI_VISIBLE`,
+`isAiAgentEnabled(role)`), and both are persona-level (`admin` yes, instructor
+and customer no). Neither distinguishes the five studio roles, which was fine
+while the agent was read-only and stops being fine now that it writes.
+
+Governing rule: **the agent may never exceed the sidebar.** An action is allowed
+iff the same user could do it through admin. Schedule creation therefore gates on
+`manage_schedule` — the same key `Sidebar.tsx:65`/`:108` uses. Enforcement is at
+tool registration in `/api/ai-agent/route.ts` (an unregistered tool can't be
+prompt-coaxed into firing); prompt and client render are UX layers on top.
+Missing permissions **degrade** the flow (hide `+ Add room`, skip the pay-rate
+question and use the instructor's default rate) rather than dead-ending it. A
+user with no `manage_schedule` is declined up front, never mid-wizard.
+
+### RESOLVED — intent detection lives in General chat
+Not a 4th chat type. In **General chat only**, the user can say *"create a class
+schedule"* / *"book a private session"* / *"schedule a recovery session"* and the
+wizard runs **inline in that same thread** — the question panels render as
+ordinary assistant messages in the general conversation.
+
+Implications:
+- Schedule tools merge into `insightTools`, the General-chat tool set.
+- Migration and Setup modes are untouched — they keep their own scoped tools and
+  do **not** get schedule creation.
+- The detected intent (class / private / recovery) selects the data source and
+  the Step-2 question set; the wizard shell is the same component either way.
+- Risk to watch: tool-count and prompt length on an already-large insight tool
+  set. Measure at the start of Phase 4. Escape hatch if general chat degrades:
+  keep the surface in General chat but lazy-register the schedule tools once the
+  intent is detected, rather than on every request.
+
+### Appointment contract — audited (see §3)
+Private + recovery write `Appointment`, not `ClassSchedule`. The full field audit
+is in §3. One Phase-8 question remains open there:
+`addCustomerAppointment` is **customer-first** and requires a customer, while the
+wizard is schedule-first.
 
 ---
 
 ## 8. Summary
 
-Phase 1 is unblocked and fully specified. Four items need resolving before
-**Phase 4**, none before Phase 1:
-1. Equipment option source + string-join rule
-2. Intent detection inside General chat (feasibility)
-3. RBAC gate
-4. Re-read any Phase-4 frame not yet opened
+**Phase 0 is complete.** All ~40 frames read, the data contract mapped, both
+creation paths (template + scratch) covered, cross-module sync enumerated, and
+every previously-open item resolved:
 
-`Appointment` field-mapping is a Phase 8 prerequisite.
+| Was open | Now |
+|---|---|
+| Equipment option source | AI-suggested per class, multi-select + comma-separated custom, joins to the existing free-text string |
+| Intent detection | General chat only, inline in-thread; tools merge into `insightTools` |
+| RBAC gate | `manage_schedule`, enforced at tool registration — [`docs/ai-agent-rbac.md`](../docs/ai-agent-rbac.md) |
+| Unread frames | All read; findings folded into §2 and the table above |
+| `Appointment` contract | Audited in §3 |
+
+One question stays open and is scoped to **Phase 8**, not Phase 1:
+`addCustomerAppointment` requires a customer while the wizard is schedule-first.
 
 ### Recurring — reuse the admin form, don't rebuild
 The client was explicit that the recurrence editor and the session preview follow

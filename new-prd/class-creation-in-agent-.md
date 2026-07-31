@@ -61,6 +61,21 @@ preview grows a **`Preview of scheduled classes · N classes ▾`** expandable r
   NOT a plain modal, NOT a deep-link.
 - **`Used by other class`** → hard block, not selectable.
 - **Over-capacity** → auto-trim the capacity and say so in the AI's reply.
+- **Equipment** → options are **AI-suggested per class** (personalised from the
+  template), multi-select, custom entries comma-separated. Stays the same
+  free-text comma-separated string the admin form already uses — no new schema.
+- **Intent detection** → **General chat only**. Asking the AI to create a class
+  schedule / private / recovery runs the wizard **inline in that thread**. It is
+  NOT a 4th chat type, and Migration/Setup modes don't get it.
+- **RBAC** → gated on `manage_schedule`, the same permission the Schedule nav
+  item uses. Developer spec: [`docs/ai-agent-rbac.md`](../docs/ai-agent-rbac.md).
+- **Private + Recovery** → reuse the class-schedule components, but the LOGIC
+  follows the admin private/recovery creation modules (they write `Appointment`,
+  not `ClassSchedule` — audited in §3 of the plan).
+
+### Frame coverage
+**All frames read (2026-07-31).** The four unnumbered ones — `391-138124`,
+`391-156601`, `394-171364`, `394-171779` — are included. Nothing is inferred.
 
 ---
 
