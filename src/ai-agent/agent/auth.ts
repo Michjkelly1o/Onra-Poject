@@ -21,6 +21,7 @@
 // module trusts that gate and only maps the persona to an AuthContext.
 
 import type { UserRole, User } from "@/types";
+import { DEFAULT_PERMISSIONS_BY_TYPE } from "@/data/mock/permission_templates";
 
 export type RoleType =
     | "owner"
@@ -28,6 +29,41 @@ export type RoleType =
     | "operator"
     | "front_desk"
     | "instructor";
+
+/** Fine-grained capabilities the class-creation wizard gates on. Each maps to
+ *  ONE cell of the permission matrix (docs/ai-agent-rbac.md) — never to a role
+ *  name — so a studio editing its own roles gets the right behaviour for free. */
+export interface ScheduleCapabilities {
+    /** classes.schedule.create — may run the wizard at all. Front Desk = false. */
+    createSchedule: boolean;
+    /** settings.locations_rooms.create — expose `+ Add room`. Owner only. */
+    addRoom: boolean;
+    /** staff.pay_rates_payroll.view — include the pay-rate question (2.5). */
+    seePayRate: boolean;
+}
+
+/** Read one matrix cell as a hard boolean (`"na"`/false → false). */
+function cellTrue(
+    roleType: RoleType,
+    section: string,
+    moduleKey: string,
+    action: "create" | "edit" | "delete" | "view",
+): boolean {
+    const matrix = DEFAULT_PERMISSIONS_BY_TYPE[roleType] as unknown as
+        | Record<string, Record<string, Record<string, boolean | "na">>>
+        | undefined;
+    return matrix?.[section]?.[moduleKey]?.[action] === true;
+}
+
+/** Derive the wizard capabilities for a role by READING the permission cells
+ *  (see docs/ai-agent-rbac.md §3). */
+export function resolveScheduleCapabilities(roleType: RoleType): ScheduleCapabilities {
+    return {
+        createSchedule: cellTrue(roleType, "classes", "schedule", "create"),
+        addRoom: cellTrue(roleType, "settings", "locations_rooms", "create"),
+        seePayRate: cellTrue(roleType, "staff", "pay_rates_payroll", "view"),
+    };
+}
 
 /** "all" => every branch of the studio; otherwise the explicit allowed
  *  branch ids. Empty array is invalid (a branch-scoped persona always has
@@ -50,6 +86,8 @@ export interface AuthContext {
      *  Insight mode is read-only — this flag is currently unused but kept
      *  so Phase 7's migration tools can gate cleanly. */
     canWrite: boolean;
+    /** Per-cell capabilities for the class-creation wizard (docs/ai-agent-rbac.md). */
+    scheduleCaps: ScheduleCapabilities;
 }
 
 /**
@@ -98,5 +136,6 @@ export function resolveAuthContext(user: User, role: UserRole): AuthContext {
         roleType,
         branchScope,
         canWrite,
+        scheduleCaps: resolveScheduleCapabilities(roleType),
     };
 }

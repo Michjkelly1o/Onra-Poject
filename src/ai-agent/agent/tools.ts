@@ -31,6 +31,7 @@ import { branchFilter, ScopeError } from "@/ai-agent/data/scope";
 import type { Row } from "@/ai-agent/data/store-readers";
 import { AED, type InsightCard } from "@/ai-agent/agent/cards";
 import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
+import { scheduleTools } from "@/ai-agent/schedule/schedule-tools";
 import { assertKnownRoute } from "@/ai-agent/data/known-routes";
 
 const DATASETS = [
@@ -127,6 +128,17 @@ export function askQuestionsTool() {
                     .array(
                         z.object({
                             title: z.string().describe("the question itself, e.g. 'Which branch?'"),
+                            kind: z
+                                .enum(["radio", "checkbox", "grouped", "searchable"])
+                                .optional()
+                                .describe(
+                                    "widget shape (default radio). checkbox = multi-select (e.g. equipment); searchable = long lists with a filter box (e.g. rooms/instructors); grouped = sections via option.groupLabel",
+                                ),
+                            allowOther: z.boolean().optional().describe("show a free-text row (default true for radio)"),
+                            otherPlaceholder: z.string().optional(),
+                            searchPlaceholder: z.string().optional().describe("placeholder for the searchable filter box"),
+                            minSelected: z.number().optional().describe("checkbox: min picks before Confirm (default 1; 0 = optional)"),
+                            maxSelected: z.number().optional().describe("checkbox: max picks"),
                             options: z
                                 .array(
                                     z.object({
@@ -140,6 +152,9 @@ export function askQuestionsTool() {
                                             .string()
                                             .optional()
                                             .describe("optional one-line hint under the label"),
+                                        groupLabel: z.string().optional().describe("section header (kind: grouped)"),
+                                        disabled: z.boolean().optional().describe("hard-block this option (e.g. a room already in use)"),
+                                        disabledReason: z.string().optional().describe("why it's blocked, shown muted"),
                                     }),
                                 )
                                 .min(1)
@@ -698,6 +713,9 @@ export function insightTools(
 ) {
     return {
         ...askQuestionsTool(),
+        // Class-creation wizard (Phase 4). Additive — general chat can now
+        // create a class schedule inline. See docs/ai-agent-rbac.md for gating.
+        ...scheduleTools(ctx, snapshot),
         analyze: tool({
             description:
                 "The primary analytics tool. Answer ANY numeric/comparison/trend question about the studio by describing the query — the server computes it and returns a chart. Pick a dataset, a metric, and (usually) a group_by, and choose the RIGHT chart like a data-viz expert. Examples: revenue by branch → dataset=transactions, metric=sum, metric_field=amount_aed, group_by=branch, filters=[{field:status,op:eq,value:complete}], unit=AED, visualize_as=bar (money → bar, never pie). Revenue over time → group_by=created_at, visualize_as=line. Gender split of members → dataset=customers, group_by=gender, visualize_as=donut (a true % share with few slices). Lead sources → dataset=leads, group_by=source, visualize_as=bar. Use the DATASETS list in the system prompt for valid dataset/field names. Set unit='AED' for money, 'rating' for ratings (0–5).",

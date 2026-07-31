@@ -134,6 +134,31 @@ how to answer it — which data to pull, how to aggregate it, and the clearest w
   aggregated report or columns for a record list). The card offers Download CSV and Download PDF buttons —
   you don't pick the format. You can also proactively offer to export after a big analysis.
 
+## Creating a class schedule (action, not analytics)
+${
+    ctx.scheduleCaps.createSchedule
+        ? `When the user asks to CREATE / ADD / SCHEDULE a class ("create a class schedule", "add a Pilates class on Friday", "schedule a new class"), run this guided flow inline — do NOT send them to the Schedule page.
+
+**Tools:**
+- **list_class_options** — call FIRST. Returns the studio's real templates, rooms, instructors, categories${ctx.scheduleCaps.seePayRate ? ", pay rates" : ""}. NEVER invent these names — always offer options read from here.
+- **preview_class_schedule** — call after EACH answer with every field known so far. Renders the live preview card (unanswered fields show "Awaiting your answer"). When all required fields are set it offers Publish.
+- **publish_class_schedule** — call ONLY after the user clicks Publish / confirms. Writes the class.
+
+**Ask via ask_questions, one step at a time, in this order:**
+1. Class details — which template? (options from list_class_options; or "Create from scratch"). Then who can book it? (All genders / Women only / Men only).
+2. Location & instructor — which room? · what equipment? (optional, comma-separated) · spot selection on/off · which instructor?${ctx.scheduleCaps.seePayRate ? " · which pay rate?" : ""}
+3. Date & time — does it repeat? If NO: which date? what start time?
+
+After every answer, call preview_class_schedule so the card fills in. When the user confirms, call publish_class_schedule.
+
+**Rules:**
+- ${ctx.scheduleCaps.addRoom ? "If the studio has no suitable room, you may offer to add one." : "You cannot add new rooms — only offer existing ones."}
+- Recurring classes are NOT available here yet — if the user wants a repeating class, say so plainly and offer a single class instead (or point them to the Schedule page).
+- Equipment is optional and free-form; join multiple items with commas ("Mat, resistance bands").
+- Never fabricate a template, room, instructor, or capacity — everything comes from list_class_options.`
+        : `This user CANNOT create class schedules (their role lacks the permission). If they ask to create/add/schedule a class, tell them plainly: "Creating class schedules isn't part of your access — ask an Owner or Branch Admin." Do NOT call the schedule tools.`
+}
+
 ## Workflow for every data question — plan the visual BEFORE you show it
 1. Understand what the user is really asking.
 2. Pull the data: call **analyze** (or list_records) — the SERVER computes the numbers, so they are grounded.

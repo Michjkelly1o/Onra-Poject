@@ -72,6 +72,9 @@ import {
 import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
+import { ClassCard } from "@/ai-agent/components/cards/ClassCard";
+import { isClassCard } from "@/ai-agent/schedule/schedule-cards";
+import { expandDraftToRow, summariseDraft } from "@/ai-agent/schedule/apply-class-schedule";
 import { TypingDots } from "@/ai-agent/components/TypingDots";
 import { AiQuestionPrompt, type AiQuestionAnswer } from "@/ai-agent/components/AiQuestionPrompt";
 
@@ -271,6 +274,23 @@ export function ChatThread({
         ),
     );
 
+    // Class-creation commit applier (Phase 4) — track which class_result cards
+    // we've already written so a published class is added exactly once, even
+    // across re-renders and a page reload (seeded from hydrated history).
+    const appliedClassRef = useRef<Set<string>>(
+        new Set(
+            initialMessages.current.flatMap((mm) =>
+                (mm.toolInvocations ?? [])
+                    .filter(
+                        (ti) =>
+                            ti.state === "result" &&
+                            (ti.result as { card?: string } | undefined)?.card === "class_result",
+                    )
+                    .map((ti) => ti.toolCallId),
+            ),
+        ),
+    );
+
     const {
         messages,
         input,
@@ -390,6 +410,35 @@ export function ChatThread({
             }
         }
     }, [messages, mode]);
+
+    // Class-creation commit applier (Phase 4). When a class_result card lands,
+    // expand its draft into a full schedule row and write it once. The store
+    // is client-side, so the write happens here — mirroring the import applier.
+    useEffect(() => {
+        for (const mm of messages) {
+            if (mm.role !== "assistant" || !mm.toolInvocations) continue;
+            for (const ti of mm.toolInvocations) {
+                if (ti.state !== "result") continue;
+                const res = ti.result as { card?: string; draft?: unknown } | undefined;
+                if (res?.card !== "class_result" || !res.draft) continue;
+                if (appliedClassRef.current.has(ti.toolCallId)) continue;
+                appliedClassRef.current.add(ti.toolCallId);
+                const st = useAppStore.getState();
+                try {
+                    const draft = res.draft as Parameters<typeof expandDraftToRow>[0];
+                    const row = expandDraftToRow(draft, {
+                        instructors: st.instructors,
+                        rooms: st.rooms,
+                        branches: st.branches,
+                    });
+                    st.addClassSchedules([row]);
+                    st.showToast("Class scheduled", summariseDraft(draft), "success", "check");
+                } catch (e) {
+                    st.showToast("Couldn't publish class", e instanceof Error ? e.message : "Please try again.", "error");
+                }
+            }
+        }
+    }, [messages]);
 
     const endRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -831,6 +880,15 @@ export function ChatThread({
             if (answer.kind === "option") {
                 const opt = entry.spec.options.find((o) => o.id === answer.optionId);
                 return opt?.label ?? null;
+            }
+            if (answer.kind === "options") {
+                // Multi-select (checkbox, e.g. equipment) — join picked labels
+                // + any free-text "something else" so the model reads them all.
+                const labels = answer.optionIds
+                    .map((id) => entry.spec.options.find((o) => o.id === id)?.label)
+                    .filter((l): l is string => !!l);
+                if (answer.otherText) labels.push(answer.otherText);
+                return labels.length ? labels.join(", ") : null;
             }
             if (answer.kind === "other") return answer.text;
             return null;
@@ -1695,6 +1753,10 @@ function MessageRow({
                             // float above the composer (see PendingQuestionPanel).
                             const qc = result as Extract<InsightCard, { card: "questions" }>;
                             return <QuestionStepCard key={ti.toolCallId} data={qc} />;
+                        }
+                        // Class-creation cards (Phase 4) — live in insight mode.
+                        if (isClassCard(result)) {
+                            return <ClassCard key={ti.toolCallId} data={result} send={act.send} />;
                         }
                         return mode === "migration" ? (
                             <MigCard key={ti.toolCallId} data={result as MigrationCard} act={act} />
