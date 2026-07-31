@@ -219,6 +219,7 @@ function POSCheckoutInner() {
                 taxAmount={taxAmount}
                 taxIncluded={taxIncluded}
                 accountCreditApplied={accountCreditApplied}
+
                 total={total}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
@@ -230,9 +231,9 @@ function POSCheckoutInner() {
                 canConfirm={canConfirm()}
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
-                giftCardBalance={giftCardBalance}
                 giftCardApplied={giftCardApplied}
-                useGiftCard={useGiftCard}
+                giftCardBalance={giftCardBalance}
+                                useGiftCard={useGiftCard}
                 setUseGiftCard={setUseGiftCard}
                 walletBalance={walletBalance}
                 useAccountCredit={useAccountCredit}
@@ -254,6 +255,7 @@ function POSCheckoutInner() {
             taxAmount={taxAmount}
             taxIncluded={taxIncluded}
             accountCreditApplied={accountCreditApplied}
+            giftCardApplied={giftCardApplied}
             total={total}
             paymentMethodLabel={paymentMethodLabel}
             chargedTo={chargedTo}

@@ -82,6 +82,7 @@ import { account_profile as adminUser } from "@/data/mock/account_profile";
 import { capitalizeName } from "./format-name";
 import { formatTimeRange12 } from "./utils";
 import { commissionForPeriod } from "./payroll-calc";
+import { evaluateReferralRewards } from "./referral-helpers";
 import { getFrozenActiveMembership } from "./customer/freeze-eligibility";
 import {
     computeLifecycleTag,
@@ -1464,6 +1465,23 @@ export interface CustomerReferral {
      *  seed rows — treated as "unrestricted" by the helper so
      *  historical data doesn't get inadvertently locked out. */
     originBranchId?: string;
+    /** Client 2026-07-31 — when the referrer's reward actually PAID OUT.
+     *  Undefined = the referral exists but the unlock condition (see
+     *  `referralSettings.rewardUnlockTrigger`) hasn't been met yet, so
+     *  the reward is still pending. Set the moment
+     *  `evaluateReferralRewards` fires, which also guarantees a reward
+     *  can never be issued twice for the same referral.
+     *
+     *  Seeded rows are backfilled to their `referredAtISO` at boot —
+     *  they're historical records whose rewards were already counted in
+     *  the Rewards-earned card, so they must not re-fire. */
+    rewardIssuedAtISO?: string;
+    /** FK → customers.id for the FRIEND once they exist as a real
+     *  customer. Referrals start life keyed only by name + email (the
+     *  friend hasn't signed up yet); this is stamped when the signup's
+     *  referral code resolves, and is what lets a later purchase find
+     *  the pending referral without an email round-trip. */
+    referredCustomerId?: string;
     // ── Reports v33 fields (Referral Report + Win-back) ──────────────────
     campaign?: string;
     reactivated?: boolean;
@@ -2928,6 +2946,12 @@ function customerReferralFromSeed(r: SeedCustomerReferral): CustomerReferral {
         referredAtISO: r.referred_at,
         expiresAtISO:   r.expires_at,
         originBranchId: r.origin_branch_id,
+        // Client 2026-07-31 — every SEEDED referral is a historical record
+        // whose reward already counted toward the Rewards-earned card, so
+        // it's marked issued at boot. Without this the new auto-issuance
+        // engine would re-pay every seeded referral the first time its
+        // friend made a purchase.
+        rewardIssuedAtISO: r.referred_at,
         // Reports v33 derivations
         campaign: r.campaign ?? derivedReferralCampaign(r.id),
         reactivated,
@@ -7920,6 +7944,55 @@ export const useAppStore = create<AppState>()(persist(
         // of relying on the segment-tab `?? "Lead"` fallback until
         // something else triggers a recompute.
         set(state => recomputePatch(state, id));
+
+        // ── Referral link (client 2026-07-31) ──────────────────────────────
+        // A signup that entered someone's referral code now CREATES a
+        // pending referral row. Before this, the code was stored on the
+        // customer and nothing else happened — there was no record tying
+        // friend to referrer, so no reward could ever fire.
+        //
+        // The row starts with `rewardIssuedAtISO` undefined (= pending).
+        // `applyPurchase` → `evaluateReferralRewards` pays it out when the
+        // friend's first purchase meets the studio's configured rules.
+        //
+        // Lives in `addCustomer` rather than the signup page so EVERY
+        // creation path benefits — customer portal signup, admin "Add
+        // customer", and AI-Agent CSV import all funnel through here.
+        if (input.referralCode) {
+            const code = input.referralCode.trim().toUpperCase();
+            const referrer = get().customers.find(
+                c => c.id !== id && c.referralCode?.trim().toUpperCase() === code,
+            );
+            // Self-referral is rejected outright at link time (not just at
+            // payout) so the Referrals tab never shows a bogus row.
+            if (referrer) {
+                const settings = get().referralSettings;
+                const nowISO = new Date().toISOString();
+                const expiryDays = settings.earnedRewardExpiryDays;
+                get().addCustomerReferral({
+                    referrerCustomerId: referrer.id,
+                    referredCustomerId: id,
+                    referredName: `${input.firstName} ${input.lastName}`.trim(),
+                    referredEmail: input.email,
+                    // Reward fields are provisional — the payout re-stamps
+                    // them from live settings at issue time so a mid-flight
+                    // settings change applies to still-pending referrals.
+                    benefitType:   settings.referrerEarnType,
+                    benefitAmount: settings.referrerEarnAmount,
+                    benefitCredits: settings.referrerEarnType === "free_credits"
+                        ? settings.referrerEarnAmount
+                        : 0,
+                    referredAtISO: nowISO,
+                    expiresAtISO: expiryDays > 0
+                        ? new Date(Date.now() + expiryDays * 86_400_000).toISOString()
+                        : undefined,
+                    // Branch gate — credits lock to the REFERRER's home branch
+                    // when "redeemable across all branches" is off.
+                    originBranchId: referrer.branchId,
+                    // rewardIssuedAtISO intentionally omitted → pending.
+                });
+            }
+        }
         return id;
     },
     updateCustomer: (id, patch) => {
@@ -11642,6 +11715,98 @@ export const useAppStore = create<AppState>()(persist(
                 });
             }
         }
+
+        // ── Referral auto-issuance (client 2026-07-31) ─────────────────────
+        // Settings → Referral used to be pure decoration: an admin could
+        // configure "reward the referrer when their friend's first purchase
+        // clears AED X" and NOTHING ever read it. This is the missing
+        // evaluator call. `applyPurchase` is the single choke point every
+        // checkout funnels through (admin POS, schedule mini-POS, customer
+        // portal), so wiring it here covers all three at once.
+        //
+        // Rules live in the pure `evaluateReferralRewards` helper; this block
+        // only APPLIES the decisions it returns. Wrapped defensively so a
+        // referral-config edge case can never break a completed sale — the
+        // money has already changed hands by this point.
+        try {
+            const stateNow = get();
+            const buyer = stateNow.customers.find(c => c.id === customerId);
+            if (buyer) {
+                // "First purchase" = this buyer had no COMPLETED sale rows
+                // before the ones we just wrote. Filter to sales (not
+                // refunds/voids) and exclude this run's rows — every id
+                // written above shares the `txn_sale_<txnStamp>_` prefix.
+                const thisRunPrefix = `txn_sale_${txnStamp}_`;
+                const priorSales = stateNow.customerTransactions.filter(t =>
+                    t.customerId === customerId &&
+                    (t.transactionType ?? "sale") === "sale" &&
+                    !t.id.startsWith(thisRunPrefix));
+                const payouts = evaluateReferralRewards({
+                    buyerCustomerId: customerId,
+                    buyerEmail: buyer.email ?? "",
+                    purchaseTotalAed: purchaseTotal,
+                    isFirstPurchase: priorSales.length === 0,
+                    referrals: stateNow.customerReferrals,
+                    settings: {
+                        referrerEarnType:      stateNow.referralSettings.referrerEarnType,
+                        referrerEarnAmount:    stateNow.referralSettings.referrerEarnAmount,
+                        rewardUnlockTrigger:   stateNow.referralSettings.rewardUnlockTrigger,
+                        maxReferralsPerMember: stateNow.referralSettings.maxReferralsPerMember,
+                        minFirstSpendAed:      stateNow.referralSettings.minFirstSpendAed,
+                        preventSelfReferral:   stateNow.referralSettings.preventSelfReferral,
+                    },
+                    emailForCustomer: (id: string) =>
+                        get().customers.find(c => c.id === id)?.email,
+                });
+                for (const payout of payouts) {
+                    if (payout.rewardType === "wallet_credit") {
+                        // AED lands in the referrer's account-credit balance —
+                        // spendable at POS + customer checkout on any product
+                        // type, same as any other credit.
+                        get().creditWallet({
+                            customerId: payout.referrerCustomerId,
+                            amountAed: payout.amount,
+                            reason: payout.reason,
+                            referenceType: "referral",
+                            referenceId: payout.referralId,
+                            silent: true,
+                        });
+                    }
+                    // `free_credits` (class credits) + `discount` need no
+                    // ledger write — the referral row itself IS the record,
+                    // and the customer-detail Referrals tab + customer portal
+                    // both read `benefitType`/`benefitAmount` off it.
+                    //
+                    // Stamp the row so this referral can never pay out twice,
+                    // and freeze the reward terms as they were at issue time
+                    // (a later settings change must not retroactively rewrite
+                    // what someone already earned).
+                    set(s => ({
+                        customerReferrals: s.customerReferrals.map(r =>
+                            r.id === payout.referralId
+                                ? {
+                                      ...r,
+                                      rewardIssuedAtISO: new Date(txnStamp).toISOString(),
+                                      benefitType: payout.rewardType,
+                                      benefitAmount: payout.amount,
+                                      benefitCredits: payout.rewardType === "free_credits"
+                                          ? payout.amount
+                                          : r.benefitCredits,
+                                  }
+                                : r),
+                    }));
+                    get().recordAudit(
+                        "Referral reward issued",
+                        "customer",
+                        payout.referrerCustomerId,
+                        payout.reason,
+                        { amount: payout.amount },
+                    );
+                }
+            }
+        } catch {
+            // Never let referral evaluation break a completed sale.
+        }
         // v83 audit-2 fix (2026-07-27) — POS applyPurchase writes plans +
         // transactions inline without routing through addCustomerPlan /
         // addCustomerTransaction, so the recompute hook never fires and
@@ -12318,7 +12483,13 @@ export const useAppStore = create<AppState>()(persist(
         //   `retail_purchase` customer-notification event, and referral rewards
         //   count retail spend. Persisted snapshots predate every one of those
         //   seed rows, so a bump is required to pick them up.
-        version: 95,
+        // v96 (2026-07-31): Gift-card redemption + referral auto-issuance.
+        //   CustomerTransaction gains `giftCardDebits[]`; CustomerReferral
+        //   gains `rewardIssuedAtISO` + `referredCustomerId`. Seeded referrals
+        //   are backfilled as already-issued at boot so the new engine can't
+        //   re-pay historical rows — persisted v95 payloads predate the field
+        //   and would look "pending", double-paying every seeded referrer.
+        version: 96,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

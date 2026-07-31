@@ -191,6 +191,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                     taxAmount={p.taxAmount}
                     taxIncluded={p.taxIncluded}
                     accountCreditApplied={p.accountCreditApplied ?? 0}
+                    giftCardApplied={p.giftCardApplied ?? 0}
                     total={p.total}
                 />
 
@@ -318,7 +319,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     );
 }
 
-function PaymentInformation({ customer, items, subtotal, discountPercent, discountAmount, promoCode, taxRate, taxAmount, taxIncluded, accountCreditApplied = 0, total }: {
+function PaymentInformation({ customer, items, subtotal, discountPercent, discountAmount, promoCode, taxRate, taxAmount, taxIncluded, accountCreditApplied = 0, giftCardApplied = 0, total }: {
     customer: Customer;
     items: PurchaseLineItem[];
     subtotal: number; discountPercent: number; discountAmount: number; promoCode?: string;
@@ -330,6 +331,9 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
     /** Account-credit AED applied to the sale via the "Use my balance" toggle.
      *  Renders as a reduction line between Discount and Total when > 0. */
     accountCreditApplied?: number;
+    /** Gift-card AED applied via the "Gift card" toggle (client 2026-07-31).
+     *  Renders directly under Account credit — same reduction treatment. */
+    giftCardApplied?: number;
     total: number;
 }) {
     // Sales-commission attribution is now an EXPLICIT "Credited to" pick — see
@@ -405,6 +409,17 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                     <div className="flex items-center justify-between">
                         <p className="text-[14px] text-[#667085]">Account credit</p>
                         <p className="text-[16px] font-medium text-[#d92d20]">-AED {accountCreditApplied.toLocaleString()}</p>
+                    </div>
+                )}
+                {/* Gift card reduction — client 2026-07-31. Renders directly
+                    under Account credit and in the same tone, because both
+                    are stored-balance reductions applied before the payment
+                    method. Order on screen mirrors the order they're applied
+                    in `computeTotals` (credit first, then gift card). */}
+                {giftCardApplied > 0 && (
+                    <div className="flex items-center justify-between">
+                        <p className="text-[14px] text-[#667085]">Gift card</p>
+                        <p className="text-[16px] font-medium text-[#d92d20]">-AED {giftCardApplied.toLocaleString()}</p>
                     </div>
                 )}
                 <div className="flex items-center justify-between">
@@ -809,6 +824,9 @@ export interface ReceiptStepProps {
      *  Renders as a red reduction line between Discount and Total when > 0,
      *  matching the PaymentInformation summary shape. */
     accountCreditApplied?: number;
+    /** Gift-card AED applied to this sale (client 2026-07-31). Same red
+     *  reduction line, directly under Account credit. */
+    giftCardApplied?: number;
     total: number;
     paymentMethodLabel: string;
     chargedTo: string;
@@ -893,6 +911,16 @@ export function ReceiptStep(p: ReceiptStepProps) {
                             <div className="flex items-center justify-between">
                                 <p className="text-[14px] text-[#667085]">Account credit</p>
                                 <p className="text-[16px] font-medium text-[#d92d20]">-AED {(p.accountCreditApplied ?? 0).toLocaleString()}</p>
+                            </div>
+                        )}
+                        {/* Gift card — client 2026-07-31. Same placement +
+                            treatment as Account credit so the receipt shows
+                            exactly how the total was reduced before the
+                            payment method charged the remainder. */}
+                        {(p.giftCardApplied ?? 0) > 0 && (
+                            <div className="flex items-center justify-between">
+                                <p className="text-[14px] text-[#667085]">Gift card</p>
+                                <p className="text-[16px] font-medium text-[#d92d20]">-AED {(p.giftCardApplied ?? 0).toLocaleString()}</p>
                             </div>
                         )}
                         <div className="flex items-center justify-between">

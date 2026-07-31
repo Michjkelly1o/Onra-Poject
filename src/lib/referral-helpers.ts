@@ -178,3 +178,150 @@ export function canRedeemReferralCreditsAt(
         reason: `These credits can only be redeemed at ${branchLabel}.`,
     };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auto-issuance engine (client 2026-07-31)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Before this, `referralSettings` was CONFIG-ONLY — an admin could set
+// "give the referrer AED 50 when their friend's first purchase clears
+// AED 100", the setting saved and rendered, and nothing ever acted on it.
+// A referred friend could buy a membership and the referrer got nothing.
+//
+// This is the missing evaluator. It's a PURE function: it reads state +
+// the completed purchase and returns a decision. The store applies the
+// decision (credit the wallet / grant class credits + stamp the referral
+// as issued). Keeping it pure means the rules are testable in isolation
+// and there's exactly one place to reason about eligibility.
+
+/** One referrer payout the caller should apply. */
+export interface ReferralPayout {
+    /** The referral row to stamp `rewardIssuedAtISO` on. */
+    referralId: string;
+    /** Who gets paid — the existing customer who shared their code. */
+    referrerCustomerId: string;
+    /** What they get. Mirrors `referralSettings.referrerEarnType`. */
+    rewardType: ReferralRewardType;
+    /** AED for `wallet_credit`, class-credit count for `free_credits`. */
+    amount: number;
+    /** Branch the credit is locked to when the all-branches toggle is
+     *  off — carried from the referral row so redemption gating works. */
+    originBranchId?: string;
+    /** Human-readable reason for the wallet ledger row / audit entry. */
+    reason: string;
+}
+
+/** Everything the evaluator needs. Deliberately a narrow slice of the
+ *  store rather than `AppState` so the rules stay easy to follow. */
+export interface ReferralEvaluationInput {
+    /** The customer who just completed a purchase. */
+    buyerCustomerId: string;
+    /** Buyer's email — the fallback link when a referral row predates
+     *  the friend having a customer record. */
+    buyerEmail: string;
+    /** Post-discount AED the buyer actually paid on this purchase.
+     *  Compared against `minFirstSpendAed`. */
+    purchaseTotalAed: number;
+    /** Has this buyer purchased BEFORE this transaction? Drives the
+     *  `friend_first_purchase` trigger. */
+    isFirstPurchase: boolean;
+    referrals: CustomerReferral[];
+    settings: {
+        referrerEarnType: ReferralRewardType;
+        referrerEarnAmount: number;
+        rewardUnlockTrigger: ReferralUnlockTrigger;
+        maxReferralsPerMember: number;
+        minFirstSpendAed: number;
+        preventSelfReferral: boolean;
+    };
+    /** Email lookup for the self-referral guard. */
+    emailForCustomer: (customerId: string) => string | undefined;
+}
+
+/** Decide which referrer rewards (if any) this purchase unlocks.
+ *
+ *  Returns an array because a buyer could in principle match more than
+ *  one pending referral row (bad data, duplicate invites) — the caller
+ *  applies each one. In practice it's 0 or 1.
+ *
+ *  Every gate below mirrors a setting the admin can already see in
+ *  Settings → Referral, so the UI stops being decorative:
+ *    • rewardUnlockTrigger  — "friend_first_purchase" fires here;
+ *      "friend_signup" fires at signup (not this function's job);
+ *      "friend_first_class" fires on first attendance (not here).
+ *    • minFirstSpendAed     — purchase must clear the floor.
+ *    • maxReferralsPerMember — referrer's PAID-OUT count is capped.
+ *    • preventSelfReferral  — referrer and friend can't share an email.
+ *  A referral with `rewardIssuedAtISO` already set never re-fires. */
+export function evaluateReferralRewards(
+    input: ReferralEvaluationInput,
+): ReferralPayout[] {
+    const { settings } = input;
+
+    // Gate 1 — trigger. This evaluator only handles the purchase trigger.
+    // The other two unlock on different events entirely.
+    if (settings.rewardUnlockTrigger !== "friend_first_purchase") return [];
+
+    // Gate 2 — "first purchase" means first. A second purchase by an
+    // already-converted friend doesn't re-earn.
+    if (!input.isFirstPurchase) return [];
+
+    // Gate 3 — minimum spend. 0 disables the floor.
+    if (settings.minFirstSpendAed > 0 && input.purchaseTotalAed < settings.minFirstSpendAed) {
+        return [];
+    }
+
+    const buyerEmail = input.buyerEmail.trim().toLowerCase();
+
+    // Find pending referrals pointing at this buyer — by customer id when
+    // the signup stamped it, else by email match on the invite.
+    const pending = input.referrals.filter(r => {
+        if (r.rewardIssuedAtISO) return false; // already paid out
+        if (r.referredCustomerId) return r.referredCustomerId === input.buyerCustomerId;
+        return !!buyerEmail && r.referredEmail.trim().toLowerCase() === buyerEmail;
+    });
+    if (pending.length === 0) return [];
+
+    // Per-referrer PAID count, used for the cap. Counts only rows that
+    // actually paid out, so pending invites don't consume the allowance.
+    const paidCountByReferrer = new Map<string, number>();
+    for (const r of input.referrals) {
+        if (!r.rewardIssuedAtISO) continue;
+        paidCountByReferrer.set(
+            r.referrerCustomerId,
+            (paidCountByReferrer.get(r.referrerCustomerId) ?? 0) + 1,
+        );
+    }
+
+    const payouts: ReferralPayout[] = [];
+    for (const r of pending) {
+        // Gate 4 — self-referral. Same email on both sides = blocked.
+        if (settings.preventSelfReferral) {
+            if (r.referrerCustomerId === input.buyerCustomerId) continue;
+            const referrerEmail = input.emailForCustomer(r.referrerCustomerId)?.trim().toLowerCase();
+            if (referrerEmail && buyerEmail && referrerEmail === buyerEmail) continue;
+        }
+
+        // Gate 5 — per-member cap. 0 / negative means unlimited.
+        if (settings.maxReferralsPerMember > 0) {
+            const already = paidCountByReferrer.get(r.referrerCustomerId) ?? 0;
+            if (already >= settings.maxReferralsPerMember) continue;
+        }
+
+        payouts.push({
+            referralId: r.id,
+            referrerCustomerId: r.referrerCustomerId,
+            rewardType: settings.referrerEarnType,
+            amount: settings.referrerEarnAmount,
+            originBranchId: r.originBranchId,
+            reason: `Referral reward — ${r.referredName || "a friend"} completed their first purchase`,
+        });
+        // Count this payout so a buyer matching two rows can't blow past
+        // the cap within a single evaluation.
+        paidCountByReferrer.set(
+            r.referrerCustomerId,
+            (paidCountByReferrer.get(r.referrerCustomerId) ?? 0) + 1,
+        );
+    }
+    return payouts;
+}
