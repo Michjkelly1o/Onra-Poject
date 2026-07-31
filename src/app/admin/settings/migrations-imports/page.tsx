@@ -48,6 +48,7 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -137,6 +138,41 @@ function FileTypeChip({ type }: { type: ImportHistorySeed["file_type"] }) {
             />
         </div>
     );
+}
+
+// ─── Invalid-rows CSV download ───────────────────────────────────────────────
+//
+// Client 2026-07-31 — the "Invalid rows data" column cell is now a click-
+// to-download button (tooltip: "Click to download the Invalid rows data").
+//
+// Behaviour:
+//   • Fresh imports committed by the AI Agent applier carry the real CSV
+//     content on `row.invalid_rows_csv` (each raw failed row + a trailing
+//     `_reason` column). Click → blob download with the exact filename
+//     shown next to the chip.
+//   • Older SEEDED history rows (which pre-date this feature) don't have
+//     `invalid_rows_csv`. The button still works — it downloads a small
+//     placeholder CSV so admins can see the flow, with a clear note that
+//     the row is demo data. This keeps the demo self-consistent without
+//     retroactively backfilling every seed row.
+function downloadInvalidRowsReport(row: ImportHistorySeed): void {
+    const filename = row.invalid_rows_file_name ?? "invalid-rows.csv";
+    const content = row.invalid_rows_csv
+        ?? [
+            "row,reason",
+            `"(demo data — no captured invalid rows for this seeded import)","This import was pre-populated in the demo seed. Real AI-Agent imports attach the full row + reason list here."`,
+        ].join("\n");
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Revoke on the next microtask so the click fully consumes the
+    // object URL before the browser garbage-collects it.
+    setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 // ─── Filter panel ────────────────────────────────────────────────────────────
@@ -438,16 +474,23 @@ export default function MigrationsImportsPage() {
                                         </td>
                                         <td className={TD}>
                                             {row.invalid_rows_file_name ? (
-                                                <div className="flex items-center gap-3 max-w-[240px]">
-                                                    <FileTypeChip type={
-                                                        row.invalid_rows_file_name.toLowerCase().endsWith(".xlsx") ? "xlsx"
-                                                        : row.invalid_rows_file_name.toLowerCase().endsWith(".xls") ? "xls"
-                                                        : "csv"
-                                                    } />
-                                                    <span className="text-[14px] font-medium text-[#101828] truncate">
-                                                        {row.invalid_rows_file_name}
-                                                    </span>
-                                                </div>
+                                                <IconTooltip label="Click to download the Invalid rows data" side="above">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => downloadInvalidRowsReport(row)}
+                                                        aria-label={`Download ${row.invalid_rows_file_name}`}
+                                                        className="flex items-center gap-3 max-w-[240px] rounded-[6px] px-1 py-0.5 -mx-1 -my-0.5 hover:bg-[#f2f4f7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd] transition-colors cursor-pointer text-left"
+                                                    >
+                                                        <FileTypeChip type={
+                                                            row.invalid_rows_file_name.toLowerCase().endsWith(".xlsx") ? "xlsx"
+                                                            : row.invalid_rows_file_name.toLowerCase().endsWith(".xls") ? "xls"
+                                                            : "csv"
+                                                        } />
+                                                        <span className="text-[14px] font-medium text-[#101828] truncate underline decoration-transparent hover:decoration-[#7ba08c] underline-offset-2">
+                                                            {row.invalid_rows_file_name}
+                                                        </span>
+                                                    </button>
+                                                </IconTooltip>
                                             ) : (
                                                 <span className="text-[14px] font-medium text-[#101828]">-</span>
                                             )}

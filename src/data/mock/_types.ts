@@ -2989,11 +2989,20 @@ export interface ImportHistorySeed {
     /** Rows that failed validation and were surfaced in the report file
      *  below. `0` renders as an em-dash "-" in the UI. */
     invalid_rows: number;
-    /** Filename of the auto-generated invalid-rows XLSX report the AI
-     *  Agent produces at commit time. Optional — only present when
+    /** Filename of the auto-generated invalid-rows report the AI Agent
+     *  produces at commit time. Optional — only present when
      *  invalid_rows > 0; otherwise the "Invalid rows data" column
      *  renders an em-dash. */
     invalid_rows_file_name?: string;
+    /** CSV content of the invalid-rows report. Present for imports
+     *  committed by the AI Agent applier (client 2026-07-31); the
+     *  Migrations & imports table renders the filename as a clickable
+     *  Download link when this is set. Older seeded history rows keep
+     *  this undefined — the click still works, but downloads a small
+     *  placeholder CSV explaining the row is demo data. Each line is
+     *  one raw CSV row that failed to import, with an extra `_reason`
+     *  column at the end explaining why. */
+    invalid_rows_csv?: string;
     status: "imported" | "partial" | "failed" | "pending";
     /** ISO date-time when the AI Agent committed the import. Feeds the
      *  "Imported {date}" subtitle on the Data type cell and the

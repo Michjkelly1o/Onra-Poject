@@ -283,7 +283,7 @@ The wizard supports these target entities. Ask the user which one they're import
 - **payroll_entries** — historical payroll runs (instructor email, period, pay rate, earnings)
 - **staff_attendance_log** — instructor class attendance (staff email, class name, class date, status)
 - **retail_categories** — retail catalog category tags (name, image URL) — the parent of retail_products
-- **retail_products** — retail SKUs sold at POS (name, SKU, category, price, unit cost, reorder threshold, optional initial stock for the picked branch)
+- **retail_products** — retail SKUs sold at POS (name, SKU, category, price, unit cost, reorder threshold, optional stock). Per-branch stock: a column named "stock_<branch>" (e.g. "stock_Main", "stock_Downtown") for each active branch seeds units per (product × branch). Falls back to a single "initial_stock" column into the wizard-picked branch when no per-branch columns are present.
 
 If the user says something ambiguous ("import my classes"), ask whether they mean class TEMPLATES (definitions) or class SCHEDULE (instances). If they haven't told you the entity by step 2, ASK before calling inspect_source.
 

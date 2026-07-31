@@ -34,6 +34,16 @@ export const retailProductsEntity: EntityDef = {
         { key: "reorder_threshold", label: "Reorder threshold" },
         { key: "image_url",         label: "Image URL" },
         { key: "initial_stock",     label: "Initial stock (units)" },
+        // Per-branch stock — CSVs can carry a column named
+        // `stock_<branch>` for each active branch (e.g. `stock_Main`,
+        // `stock_Downtown`, `stock_West`). Applier auto-detects these
+        // by column name (case-insensitive, `_` / `-` / space all fine)
+        // and seeds a `receive` adjustment per (product × branch).
+        // Not represented as a first-class target field here because
+        // the branch set is DYNAMIC (varies per studio) — see the
+        // retail_products branch in apply-import.ts for the resolver.
+        // Legacy single-branch `initial_stock` still works as a
+        // fallback when no per-branch columns are present.
     ],
     dict: {
         // Name

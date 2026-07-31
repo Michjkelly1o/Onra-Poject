@@ -18,7 +18,9 @@
 // pre-existing "counts only" behaviour, so nothing regresses.
 
 import type { ParsedFile } from "@/ai-agent/migration/migration-cards";
-import type { EntityKey } from "@/ai-agent/migration/entities";
+import type { EntityKey, CsvRow } from "@/ai-agent/migration/entities";
+import { ENTITIES } from "@/ai-agent/migration/entities";
+import { proposeMapping } from "@/ai-agent/migration/parser";
 import type {
     ClassTemplate,
     ClassCategory,
@@ -285,6 +287,13 @@ export interface ImportDeps {
         imported_rows: number;
         invalid_rows: number;
         invalid_rows_file_name?: string;
+        /** CSV content of the failed rows (raw cells + a trailing
+         *  `_reason` column). writeHistory generates this at commit
+         *  time via `buildInvalidRowsCsv` and passes it through so the
+         *  migrations-imports table's "Invalid rows data" cell can
+         *  offer a real client-side download. Undefined when
+         *  invalid_rows === 0. */
+        invalid_rows_csv?: string;
         status: "imported" | "partial" | "failed" | "pending";
         branch_id: string;
     }) => string;
@@ -576,7 +585,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -604,7 +613,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -626,7 +635,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -652,7 +661,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -663,7 +672,7 @@ export function applyImportToStore(
         // rather than insert a template with a dangling category.
         const cats = deps.classCategories;
         if (cats.length === 0) {
-            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps);
+            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps, file);
             return { created: 0, failed: file.rows.length };
         }
         const byName = new Map(cats.map((c) => [c.name.trim().toLowerCase(), c]));
@@ -691,7 +700,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -760,7 +769,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -769,7 +778,7 @@ export function applyImportToStore(
         // studio has no categories we can't build a valid service → skip all.
         const cats = deps.classCategories;
         if (cats.length === 0) {
-            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps);
+            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps, file);
             return { created: 0, failed: file.rows.length };
         }
         const byName = new Map(cats.map((c) => [c.name.trim().toLowerCase(), c]));
@@ -805,7 +814,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -863,7 +872,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -914,7 +923,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -955,7 +964,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -998,7 +1007,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1054,7 +1063,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1095,7 +1104,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1160,7 +1169,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1231,7 +1240,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1318,7 +1327,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1348,7 +1357,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1412,7 +1421,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1451,7 +1460,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1489,7 +1498,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1514,7 +1523,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1543,7 +1552,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1553,7 +1562,7 @@ export function applyImportToStore(
         // non-owner role (then any role). No roles at all → skip everything.
         const roles = deps.roles;
         if (roles.length === 0) {
-            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps);
+            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps, file);
             return { created: 0, failed: file.rows.length };
         }
         const branchByName = new Map(deps.branches.map((b) => [b.name.trim().toLowerCase(), b]));
@@ -1596,7 +1605,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1622,7 +1631,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1649,7 +1658,7 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
@@ -1679,7 +1688,9 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        // Pass live category-name keys so the invalid-rows CSV correctly
+        // labels rows that would collide with an already-seeded category.
+        writeHistory(entity, fileName, total, created, failed, deps, file, [...existingKeys]);
         return { created, failed };
     }
 
@@ -1691,7 +1702,7 @@ export function applyImportToStore(
         // FK. Admins can import retail_categories first to seed the parents.
         const cats = deps.retailCategories.filter((c) => c.status === "active");
         if (cats.length === 0) {
-            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps);
+            writeHistory(entity, fileName, file.rows.length, 0, file.rows.length, deps, file);
             return { created: 0, failed: file.rows.length };
         }
         const catByName = new Map(cats.map((c) => [c.label.trim().toLowerCase(), c]));
@@ -1709,6 +1720,45 @@ export function applyImportToStore(
         // check. Also thread file.mapping so user overrides from Step 3
         // are honoured on the client side too.
         const records = materialize("retail_products", file, file.mapping, Array.from(usedSkus));
+        // Per-branch stock columns — CSVs can carry a column named
+        // `stock_<branch>` (or `stock <branch>` / `stock-<branch>`) for
+        // EACH active branch. Applier scans the raw file.columns once,
+        // pre-resolves each `stock_*` column to a live branch id (case-
+        // insensitive, punctuation-agnostic name match), and later
+        // per-product looks up the units to seed. Falls back to the
+        // legacy single-branch `initial_stock` column when no per-branch
+        // columns are found — that path still seeds into deps.branchId.
+        const normBranchName = (s: string) =>
+            s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+        const branchByNorm = new Map(
+            deps.branches
+                .filter(b => b.status === "active")
+                .map(b => [normBranchName(b.name), b] as const),
+        );
+        const perBranchStockCols: { column: string; branchId: string; branchName: string }[] = [];
+        for (const col of file.columns) {
+            const m = col.trim().match(/^stock[\s_-]+(.+)$/i);
+            if (!m) continue;
+            const branch = branchByNorm.get(normBranchName(m[1]));
+            if (!branch) continue;
+            perBranchStockCols.push({ column: col, branchId: branch.id, branchName: branch.name });
+        }
+        // Build a raw-row lookup keyed by the SAME dedup key materialize
+        // uses (lowercase SKU, or name fallback) so we can pull stock_*
+        // cells for each materialized record. Only meaningful when
+        // per-branch columns actually exist.
+        const rawByDedupKey = new Map<string, CsvRow>();
+        if (perBranchStockCols.length > 0) {
+            const def = ENTITIES["retail_products"];
+            const auto = proposeMapping("retail_products", file).mapping;
+            const eff = file.mapping ? { ...auto, ...file.mapping } : auto;
+            const inv: Record<string, string> = {};
+            for (const [src, tgt] of Object.entries(eff)) if (tgt) inv[tgt] = src;
+            for (const raw of file.rows) {
+                const key = def.dedupeKey?.(raw, inv);
+                if (key && !rawByDedupKey.has(key)) rawByDedupKey.set(key, raw);
+            }
+        }
         let created = 0;
         for (const rec of records) {
             const name = rec.name?.trim();
@@ -1745,26 +1795,50 @@ export function applyImportToStore(
             if (!id) continue; // store rejected (dup SKU race)
             skuPool.push(sku);
             usedSkus.add(sku.toLowerCase());
-            // Optional per-branch initial stock — seeds a `receive`
-            // adjustment into the wizard's picked branch so the product
-            // ships with real on-hand units + a matching audit-log row.
-            // Cross-branch distribution isn't supported at CSV level; use
-            // the retail product edit page for that.
-            const units = Math.floor(toNumber(rec.initial_stock, 0));
-            if (units > 0 && deps.branchId) {
-                deps.adjustRetailStock({
-                    productId: id,
-                    branchId: deps.branchId,
-                    delta: units,
-                    kind: "receive",
-                    reason: "Initial stock from AI Agent import",
-                });
+            // Per-branch stock — if the CSV has any `stock_<branch>`
+            // columns matched to live branches, we distribute across
+            // them from THIS row's raw cells. Falls back to the legacy
+            // single-branch `initial_stock` when no per-branch columns
+            // were detected (that path still seeds into deps.branchId).
+            if (perBranchStockCols.length > 0) {
+                const rawKey = sku.toLowerCase();
+                const raw = rawByDedupKey.get(rawKey);
+                if (raw) {
+                    for (const { column, branchId, branchName } of perBranchStockCols) {
+                        const units = Math.floor(toNumber(raw[column], 0));
+                        if (units <= 0) continue;
+                        deps.adjustRetailStock({
+                            productId: id,
+                            branchId,
+                            delta: units,
+                            kind: "receive",
+                            reason: `Initial stock from AI Agent import (${branchName})`,
+                        });
+                    }
+                }
+            } else {
+                const units = Math.floor(toNumber(rec.initial_stock, 0));
+                if (units > 0 && deps.branchId) {
+                    deps.adjustRetailStock({
+                        productId: id,
+                        branchId: deps.branchId,
+                        delta: units,
+                        kind: "receive",
+                        reason: "Initial stock from AI Agent import",
+                    });
+                }
             }
             created++;
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        // Pass a SNAPSHOT of live SKUs (before this batch created any)
+        // so the invalid-rows CSV correctly labels which rows collided
+        // with the existing catalog vs which repeated within the file.
+        // Using `usedSkus` here would misattribute in-file dupes as
+        // catalog dupes because usedSkus grew during the create loop.
+        const liveSkusBeforeBatch = deps.retailProducts.map(p => p.sku.trim().toLowerCase());
+        writeHistory(entity, fileName, total, created, failed, deps, file, liveSkusBeforeBatch);
         return { created, failed };
     }
 
@@ -1790,11 +1864,69 @@ export function applyImportToStore(
         }
         const total = file.rows.length;
         const failed = Math.max(0, total - created);
-        writeHistory(entity, fileName, total, created, failed, deps);
+        writeHistory(entity, fileName, total, created, failed, deps, file);
         return { created, failed };
     }
 
     return null;
+}
+
+/** CSV-escape one cell — quotes the value when it contains a comma,
+ *  quote, or newline; doubles any embedded quotes. */
+function csvEscape(s: string): string {
+    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+}
+
+/** Build a downloadable CSV of the raw rows that did NOT make it into
+ *  the import — one row per failure, with an extra `_reason` column at
+ *  the end explaining why. Mirrors the entity's own `validate` + dedupe
+ *  logic so the failure attribution matches what preview_import reported
+ *  at step 4. `existingKeys` (retail today) seeds the dedup set with
+ *  live-store keys so live-collisions read as "Duplicate — already in
+ *  your catalog" instead of slipping through as valid. Returns undefined
+ *  when there are no invalid rows to write (keeps the ImportHistory
+ *  row's `invalid_rows_csv` field null in that case). */
+function buildInvalidRowsCsv(
+    entity: EntityKey,
+    file: ParsedFile,
+    existingKeys?: readonly string[],
+): string | undefined {
+    const def = ENTITIES[entity];
+    const auto = proposeMapping(entity, file).mapping;
+    const eff = file.mapping ? { ...auto, ...file.mapping } : auto;
+    const inv: Record<string, string> = {};
+    for (const [src, tgt] of Object.entries(eff)) if (tgt) inv[tgt] = src;
+    const liveKeys = new Set<string>(existingKeys ?? []);
+    const seen = new Set<string>(liveKeys);
+    const failed: { row: CsvRow; reason: string }[] = [];
+    for (const r of file.rows) {
+        if (!def.validate(r, inv)) {
+            failed.push({ row: r, reason: "Missing required field(s)" });
+            continue;
+        }
+        const key = def.dedupeKey?.(r, inv);
+        if (!key) continue; // no dedupe hook → nothing to flag beyond validation
+        if (liveKeys.has(key)) {
+            failed.push({ row: r, reason: "Duplicate — already in your catalog" });
+            continue;
+        }
+        if (seen.has(key)) {
+            failed.push({ row: r, reason: "Duplicate — appears earlier in this file" });
+            continue;
+        }
+        seen.add(key);
+    }
+    if (failed.length === 0) return undefined;
+    const cols = [...file.columns, "_reason"];
+    const lines: string[] = [];
+    lines.push(cols.map(csvEscape).join(","));
+    for (const f of failed) {
+        const cells = file.columns.map(c => csvEscape((f.row[c] ?? "").toString()));
+        cells.push(csvEscape(f.reason));
+        lines.push(cells.join(","));
+    }
+    return lines.join("\n");
 }
 
 /** Append the Migrations-module history row for a completed import. */
@@ -1805,9 +1937,12 @@ function writeHistory(
     created: number,
     failed: number,
     deps: ImportDeps,
+    file: ParsedFile,
+    existingKeys?: readonly string[],
 ): void {
     const dataType = HISTORY_TYPE[entity];
     if (!dataType) return;
+    const invalidCsv = failed > 0 ? buildInvalidRowsCsv(entity, file, existingKeys) : undefined;
     deps.addImportHistory({
         data_type: dataType,
         file_name: fileName || "Imported file.csv",
@@ -1816,6 +1951,7 @@ function writeHistory(
         imported_rows: created,
         invalid_rows: failed,
         invalid_rows_file_name: failed > 0 ? "Invalid rows data report.csv" : undefined,
+        invalid_rows_csv: invalidCsv,
         status: created === 0 ? "failed" : failed > 0 ? "partial" : "imported",
         branch_id: deps.branchId,
     });
