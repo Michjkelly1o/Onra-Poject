@@ -362,6 +362,13 @@ export default function RetailCategoriesPage() {
                     existing={categoryModalExisting()}
                     onClose={() => setCategoryModal(null)}
                     onSubmit={handleCategorySubmit}
+                    // Client 2026-07-31 — pass every OTHER category's label so
+                    // the modal shows the duplicate-name error INLINE below
+                    // the input as the admin types. Editing a row excludes
+                    // its own label so re-saving without renaming is legal.
+                    takenNames={categories
+                        .filter(c => categoryModal === "new" || c.id !== categoryModal.id)
+                        .map(c => c.label)}
                 />
             )}
 

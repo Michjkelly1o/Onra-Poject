@@ -21,7 +21,7 @@
 // category record so the avatar shows the picked image until the row is
 // reloaded from seed.
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { XClose, Image01, UploadCloud02 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,15 +35,37 @@ export interface CategoryModalProps {
     existing?: ClassCategory;
     onClose: () => void;
     onSubmit: (patch: { name: string; image_url: string }) => void;
+    /** Names already in use in the caller's collection. When the typed
+     *  name (case-insensitive) matches any of these AND it isn't the
+     *  existing category's own name, an inline error shows below the
+     *  input in the DS error tone + the submit button is disabled.
+     *  Both surfaces (admin retail-categories + inline create-in-form
+     *  on the retail product form) pass their category name list so
+     *  admins get the collision hint the moment they type it — no
+     *  toast, error stays anchored to the field. */
+    takenNames?: string[];
 }
 
-export function CategoryModal({ existing, onClose, onSubmit }: CategoryModalProps) {
+export function CategoryModal({ existing, onClose, onSubmit, takenNames }: CategoryModalProps) {
     const isEditing = !!existing;
     const [name,     setName]     = useState<string>(existing?.name ?? "");
     const [imageUrl, setImageUrl] = useState<string>(existing?.image_url ?? "");
     const fileRef = useRef<HTMLInputElement>(null);
 
-    const canSubmit = name.trim().length > 0;
+    const trimmedName = name.trim();
+    const isDuplicate = useMemo(() => {
+        if (!trimmedName || !takenNames || takenNames.length === 0) return false;
+        const lower = trimmedName.toLowerCase();
+        const ownLower = existing?.name.trim().toLowerCase();
+        return takenNames.some(n => {
+            const cmp = n.trim().toLowerCase();
+            if (!cmp) return false;
+            if (cmp === ownLower) return false; // don't clash with self in edit mode
+            return cmp === lower;
+        });
+    }, [trimmedName, takenNames, existing]);
+
+    const canSubmit = trimmedName.length > 0 && !isDuplicate;
 
     function handleUploadClick() { fileRef.current?.click(); }
     function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
@@ -115,11 +137,15 @@ export function CategoryModal({ existing, onClose, onSubmit }: CategoryModalProp
                         />
                     </div>
 
-                    <Field label="Category name">
+                    <Field
+                        label="Category name"
+                        error={isDuplicate ? `A category called "${trimmedName}" already exists.` : undefined}
+                    >
                         <TextInput
                             value={name}
                             onChange={setName}
                             placeholder="Enter category name"
+                            invalid={isDuplicate}
                         />
                     </Field>
                 </div>

@@ -308,18 +308,20 @@ function BasicInformationStep({
                         preview={data.imageUrl || null}
                         onChange={(url) => onChange({ imageUrl: url ?? "" })}
                     />
-                    {/* Client 2026-07-31 — SKU FIRST, name second. SKU
-                        auto-fills from the name below as the admin types;
-                        admin can still override for legacy / supplier codes.
-                        See generateAutoSku + tracking flag in the parent.
-                        Hint text removed — live-duplicate check surfaces
-                        the "SKU must be unique" error inline in RED as the
-                        admin types. */}
+                    {/* Client 2026-07-31 — SKU FIRST, name second. Now
+                        strictly auto-driven: every time name or category
+                        changes the SKU regenerates from (category prefix,
+                        name initials, next ordinal). The admin CAN still
+                        type in the field — the edit lives in state until
+                        the next name/category change overwrites it. Live
+                        duplicate check surfaces its error inline in RED
+                        below (no "hint" copy, since the field is never
+                        empty by design — it's pre-seeded on mount from
+                        the default category + a placeholder name). */}
                     <FormField label="SKU" error={errors.sku}>
                         <TextInput
                             value={data.sku}
                             onChange={v => onChange({ sku: v.toUpperCase() })}
-                            placeholder="APP-OST-001"
                             invalid={!!errors.sku}
                         />
                     </FormField>
@@ -555,18 +557,35 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         : undefined;
 
     const [step, setStep] = useState(1);
-    const [basic, setBasic] = useState<BasicInfo>(() => ({
-        imageUrl:    target?.imageUrl ?? "",
-        name:        target?.name ?? "",
-        sku:         target?.sku ?? "",
-        categoryId:  target?.categoryId ?? "",
-        description: target?.description ?? "",
-    }));
-    // Track whether the SKU field has been manually edited. In edit mode
-    // the seed SKU is treated as "manual" so we don't overwrite it when the
-    // admin tweaks the name. In create mode we auto-sync SKU until the
-    // admin edits it directly, then we stop.
-    const [skuManuallyEdited, setSkuManuallyEdited] = useState<boolean>(mode === "edit");
+    // Client 2026-07-31 — SKU always has a REAL value from mount, not just a
+    // placeholder. In CREATE mode we pre-select the first active category
+    // and pre-seed the SKU using "New Product" as a placeholder name so the
+    // field reads like `APP-NP-001` before the admin has typed anything.
+    // In EDIT mode we take the target's existing values verbatim.
+    const [basic, setBasic] = useState<BasicInfo>(() => {
+        if (target) {
+            return {
+                imageUrl:    target.imageUrl ?? "",
+                name:        target.name,
+                sku:         target.sku,
+                categoryId:  target.categoryId,
+                description: target.description ?? "",
+            };
+        }
+        const firstActiveCategory = categories.find(c => c.status === "active");
+        const initialCategoryId   = firstActiveCategory?.id ?? "";
+        const initialCategoryLabel = firstActiveCategory?.label ?? "";
+        const initialSku = initialCategoryLabel
+            ? generateAutoSku("New Product", initialCategoryLabel, products.map(p => p.sku))
+            : "";
+        return {
+            imageUrl:    "",
+            name:        "",
+            sku:         initialSku,
+            categoryId:  initialCategoryId,
+            description: "",
+        };
+    });
     const [pricing, setPricing] = useState<PricingInfo>(() => ({
         priceAed:         target ? String(target.priceAed) : "",
         unitCostAed:      target ? String(target.unitCostAed) : "",
@@ -606,32 +625,35 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
     function updateBasic(patch: Partial<BasicInfo>) {
         setBasic(prev => {
             const next = { ...prev, ...patch };
-            // Auto-SKU: fire when name / category changed AND admin hasn't
-            // hand-edited the SKU field. Uses the LATEST name + category and
-            // scans OTHER products' SKUs so the ordinal never collides.
+            // Client 2026-07-31 — SKU ALWAYS auto-regenerates from the
+            // latest (name, category). No "manually edited" latch — the
+            // admin's direct edits to the SKU field live in state until
+            // the next name/category change overwrites them. Empty name
+            // falls back to a placeholder ("New Product") so the field
+            // always ends up with a real value like `APP-NP-001`.
             const nameOrCategoryChanged = "name" in patch || "categoryId" in patch;
-            if (nameOrCategoryChanged && !skuManuallyEdited) {
+            if (nameOrCategoryChanged) {
                 const nextCategoryLabel = categories.find(c => c.id === next.categoryId)?.label ?? "";
-                const otherSkus = products
-                    .filter(p => p.id !== productId) // ignore the edit target's own SKU
-                    .map(p => p.sku);
-                const auto = generateAutoSku(next.name, nextCategoryLabel, otherSkus);
-                if (auto) next.sku = auto;
+                if (nextCategoryLabel) {
+                    const otherSkus = products
+                        .filter(p => p.id !== productId) // ignore the edit target's own SKU
+                        .map(p => p.sku);
+                    const auto = generateAutoSku(
+                        next.name.trim() || "New Product",
+                        nextCategoryLabel,
+                        otherSkus,
+                    );
+                    if (auto) next.sku = auto;
+                }
             }
             return next;
         });
-        // Detect a direct SKU edit — if the admin typed in the SKU field
-        // itself, flip the manual flag so subsequent name/category changes
-        // stop overwriting their code.
-        if ("sku" in patch) {
-            setSkuManuallyEdited(true);
-        }
-        // Live-duplicate check on the SKU field. Fires when name / category /
-        // sku changes because auto-SKU can also produce a value the admin
-        // needs to see validated. Compares case-insensitively against every
-        // OTHER product's SKU (edit target excluded) and every ARCHIVED
-        // product too — archived rows don't block store-side saves per
-        // spec, but showing the error early stops the admin from clashing.
+        // Live-duplicate check on the SKU field. Fires on name/category/sku
+        // changes because auto-SKU can also produce a value the admin needs
+        // to see validated. Compares case-insensitively against every OTHER
+        // product's SKU (edit target excluded). Includes archived rows too —
+        // the store doesn't block against them on save per spec, but showing
+        // the error early stops the admin from clashing.
         const nextSkuRaw = ("sku" in patch ? String(patch.sku ?? "") : basic.sku).trim();
         const keys = Object.keys(patch) as (keyof BasicInfo)[];
         setErrors(e => {
@@ -812,18 +834,19 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 </div>
             </div>
 
-            {/* Client 2026-07-31 — reuse the SAME CategoryModal the
-                admin uses on /admin/settings/retail-categories so both
-                surfaces stay 1:1 (chrome, validation, image upload).
-                Submit calls the same addRetailCategory action → the
-                Retail Categories module + POS filter chips + AI-agent
-                dataset all see the new row in the same render cycle
-                (Zustand subscription). On duplicate the store returns
-                null and we fire the same "Duplicate name" toast the
-                admin module uses. */}
+            {/* Client 2026-07-31 — reuse the SAME CategoryModal the admin
+                uses on /admin/settings/retail-categories so both surfaces
+                stay 1:1 (chrome, validation, image upload). Submit calls
+                the same addRetailCategory action → Retail Categories
+                module + POS filter chips + AI-agent dataset all see the
+                new row in the same render cycle (Zustand subscription).
+                Duplicate names surface INLINE under the field (via
+                takenNames) so the admin sees the error the moment they
+                type it — no toast, no submit-then-fail flow. */}
             {creatingCategory && (
                 <CategoryModal
                     onClose={() => setCreatingCategory(false)}
+                    takenNames={categories.map(c => c.label)}
                     onSubmit={({ name, image_url }) => {
                         const label = name.trim();
                         if (!label) return;
@@ -831,14 +854,11 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                             label,
                             imageUrl: image_url || undefined,
                         });
-                        if (!id) {
-                            showToast(
-                                "Duplicate name",
-                                `A category called "${label}" already exists.`,
-                                "error", "slash",
-                            );
-                            return;
-                        }
+                        // Store rejects only on duplicate — but the modal
+                        // already blocks submit for that case via
+                        // takenNames, so hitting this branch would mean a
+                        // race. Bail silently and let the admin retry.
+                        if (!id) return;
                         // Auto-select the fresh category on this product so
                         // the form is ready to continue.
                         updateBasic({ categoryId: id });

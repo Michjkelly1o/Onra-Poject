@@ -359,22 +359,38 @@ function StepRow({ step, current, isLast }: {
 export { SectionHeader } from "@/components/patterns/SectionHeader";
 
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({ label, children, error }: {
+    label: string;
+    children: React.ReactNode;
+    /** Optional inline error line rendered directly below the field in
+     *  the DS error tone (`#d92d20`). Used for live-validation feedback
+     *  (e.g. the CategoryModal's duplicate-name check) so admins see
+     *  the error next to the offending input instead of via toast. */
+    error?: string;
+}) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
             <label className="text-[14px] font-medium text-[#344054] leading-5">{label}</label>
             {children}
+            {error && (
+                <p className="text-[13px] leading-5 text-[#d92d20]">{error}</p>
+            )}
         </div>
     );
 }
 
-const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS       = "h-10 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS_OK    = "border-[#d0d5dd] focus:ring-[#aad4bd] focus:border-[#7ba08c]";
+const INPUT_CLS_ERROR = "border-[#fda29b] focus:ring-[#fecdca] focus:border-[#d92d20]";
 
-export function TextInput({ value, onChange, placeholder, type = "text" }: {
+export function TextInput({ value, onChange, placeholder, type = "text", invalid = false }: {
     value: string;
     onChange: (v: string) => void;
     placeholder?: string;
     type?: "text" | "email" | "tel" | "url";
+    /** When true, swaps the border/ring to the DS error tone so a live
+     *  validation error reads the moment the admin types. */
+    invalid?: boolean;
 }) {
     return (
         <input
@@ -382,7 +398,8 @@ export function TextInput({ value, onChange, placeholder, type = "text" }: {
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            className={INPUT_CLS}
+            aria-invalid={invalid || undefined}
+            className={`${INPUT_CLS} ${invalid ? INPUT_CLS_ERROR : INPUT_CLS_OK}`}
         />
     );
 }
