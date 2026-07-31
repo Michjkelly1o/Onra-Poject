@@ -277,10 +277,77 @@ half-configured rooms.
 
 ---
 
+## 6b. Data-contract audit — wizard answers → `ClassSchedule`
+
+`ClassSchedule` has 38 fields. Mapping what the wizard actually produces:
+
+### Derived from the picked TEMPLATE (no question needed)
+`templateId` · `name` · `description` · `category` · `type` · `classType` ·
+`capacity` · `coverColor` · `coverImage` · `applicableMembershipIds` ·
+`applicablePackageIds`
+
+### Answered by a wizard question
+| Field | Question |
+|---|---|
+| `genderAccess` | 1.2 Who can book this class? |
+| `roomId` · `room` · `branchId` · `location` | 2.1 Which room? |
+| `equipment` | 2.2 What equipment? |
+| `spotSelectionEnabled` · `spotLayout` | 2.3 / 2.3b |
+| `instructorId` · `instructorName` · `instructorInitials` · `instructorColor` | 2.4 Who's teaching? |
+| `date` · `dateISO` · `dayOfWeek` · `startTime` · `endTime` · `displayTime` | Step 3 |
+| `recurrenceGroupId` | Step 3 recurring branch |
+
+### Defaulted, never asked — MUST be set explicitly
+| Field | Value | Source of truth |
+|---|---|---|
+| `booked` | `0` | new class |
+| `rating` · `ratingCount` | `0` | new class |
+| `status` | `Upcoming` (derive vs today, like the seed adapter) | |
+| **`waitlistEnabled`** | **`true`** | `ScheduleFormPage:2083` hard-codes `true`. Match it — do NOT leave undefined |
+| `flexible` | omit | optional |
+
+**Gap closed:** `waitlistEnabled` is never asked in any frame. The admin form
+always sets `true`. The wizard must do the same or waitlist behaviour silently
+diverges between the two creation paths.
+
+---
+
+## 6c. Cross-module sync — what a created class must trigger
+
+`addClassSchedules` already fans out; the wizard gets this free **only if it
+calls that action** rather than writing to the slice directly.
+
+| Downstream | Behaviour |
+|---|---|
+| **Instructor notification** | `addClassSchedules` groups by instructor and sends ONE summary notification per instructor, not N. Recurring series depends on this — do not call the action once per generated row |
+| Admin schedule grid | Subscribes to `classSchedules`; appears same render |
+| Instructor `/my-schedule` | Same slice, branch + instructor scoped |
+| Customer app class list | Same slice, gated on `status` + `genderAccess` |
+| Dashboard "Classes today" | Derived count |
+| Reports (class attendance / utilization) | Derived from `classSchedules` + `classBookings` |
+| Room availability | The "used by other class" gate reads the same slice — a created class must immediately block that room for that slot |
+
+**Rule for Phase 4:** the wizard's terminal write is `addClassSchedules(rows[])`
+— ONE call with the whole array. Never a loop.
+
+---
+
 ## 7. Still open
 
-**None.** Every question is answered and every referenced frame has been read.
-Ready to start Phase 1 on approval.
+### The "Create from scratch" branch is UNMAPPED
+Frame 2 offers **Create from scratch** as the first option in the template
+picker, but no frame shows what follows. Picking it means the template-derived
+fields above have no source — the wizard would need to ask for `name`,
+`description`, `category`, `duration`, and `capacity` before it can build a valid
+row.
+
+Three ways to resolve — **needs a client decision before Phase 4**:
+1. Client supplies the missing frames
+2. Wizard asks those 5 as extra questions in Step 1 (reusing existing widgets)
+3. Hide "Create from scratch" in v1 — template-only, revisit later
+
+Until this is settled, Phase 4 ships **template-only** and the scratch row is
+hidden.
 
 ### Recurring — reuse the admin form, don't rebuild
 The client was explicit that the recurrence editor and the session preview follow
