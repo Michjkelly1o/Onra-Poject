@@ -332,22 +332,63 @@ calls that action** rather than writing to the slice directly.
 
 ---
 
+## 6d. "Create from scratch" — mirrors the admin form
+
+**Resolved** (client 2026-07-31): *"the logic is same like when we create it from
+scratch in admin side class schedule creation."* Read `ScheduleFormPage` and
+mirror it — no new design needed.
+
+### What the admin form does on the scratch path
+`ScheduleFormPage:2243` sets `isScratch = templateId === SCRATCH_TEMPLATE_ID`,
+which changes the flow in three ways:
+
+**1. Four core fields become required** (`:2257` — `canProceedDetails`)
+```
+isScratch → name.trim() && category && duration > 0 && capacity > 0
+```
+So the wizard's Step 1 gains **four extra questions** on this path only:
+
+| Field | Widget |
+|---|---|
+| Class name | free text |
+| Category | class-category picker — reuse the same list + the `+ Create class category` inline flow already shipped |
+| Duration | preset minutes list + custom |
+| Capacity | number |
+
+**2. An extra step is inserted** (`:2246`)
+```
+if (isScratch || isEditing) out.push("applicable")
+```
+→ **Applicable memberships & packages** slots in right after Class details.
+Not required — an empty list is a meaningful "no plans" state
+(`canProceedApplicable = true`), so the question is skippable.
+
+**3. Template-derived fields are persisted differently** (`:2042`–`:2055`)
+```
+persistedTemplateId  = isScratch ? "" : templateId
+persistedMemberships = isScratch ? <admin's picks> : <template's>
+persistedPackages    = isScratch ? <admin's picks> : <template's>
+```
+`templateId` is stored as an **empty string**, not the scratch sentinel. The
+sentinel is UI-only and must never reach the store.
+
+### Net effect on the wizard
+| | Template path | Scratch path |
+|---|---|---|
+| Step 1 questions | 2 (template, gender) | **6** (name, category, duration, capacity, gender, + applicable plans) |
+| `templateId` written | real id | `""` |
+| Applicable plans | inherited from template | asked, skippable |
+| Steps 2 + 3 | identical | identical |
+
+**Phase 4 ships BOTH paths.** No longer blocked, and the scratch row stays
+visible in the template picker.
+
+---
+
 ## 7. Still open
 
-### The "Create from scratch" branch is UNMAPPED
-Frame 2 offers **Create from scratch** as the first option in the template
-picker, but no frame shows what follows. Picking it means the template-derived
-fields above have no source — the wizard would need to ask for `name`,
-`description`, `category`, `duration`, and `capacity` before it can build a valid
-row.
-
-Three ways to resolve — **needs a client decision before Phase 4**:
-1. Client supplies the missing frames
-2. Wizard asks those 5 as extra questions in Step 1 (reusing existing widgets)
-3. Hide "Create from scratch" in v1 — template-only, revisit later
-
-Until this is settled, Phase 4 ships **template-only** and the scratch row is
-hidden.
+**Nothing blocking.** Every branch is mapped, the data contract is complete, and
+the scratch path resolves to existing admin-form logic.
 
 ### Recurring — reuse the admin form, don't rebuild
 The client was explicit that the recurrence editor and the session preview follow
