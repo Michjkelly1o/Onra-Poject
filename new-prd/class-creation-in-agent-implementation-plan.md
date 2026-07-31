@@ -385,10 +385,71 @@ visible in the template picker.
 
 ---
 
-## 7. Still open
+## 7. Verification status — read before starting
 
-**Nothing blocking.** Every branch is mapped, the data contract is complete, and
-the scratch path resolves to existing admin-form logic.
+Being precise about what is **verified in code** vs **inferred from pattern**, so
+nobody treats an inference as fact mid-build.
+
+### Verified against code
+- All 38 `ClassSchedule` fields + which wizard answer supplies each
+- `spotLayout` shape → `{ cols: number; rows: number; blockedSpots: string[] }`
+- `waitlistEnabled` → admin hard-codes `true` (`ScheduleFormPage:2083`)
+- Scratch path → `isScratch` gate, inserted `applicable` step, `templateId: ""`
+- `addClassSchedules` groups by instructor → one summary notification, not N
+- `AiQuestionPrompt` already has header + `1 of N` pager + compact mode
+
+### Read in Figma
+~22 of ~40 frames. The rest were inferred from the established pattern.
+**That inference has already been wrong once** — frames 22–35 were first mapped
+as private/recovery and are actually the recurrence branches. Treat any
+unread frame as unconfirmed; read it at the start of the phase that needs it.
+
+### GAP — equipment has no option source
+`ClassSchedule.equipment` is a **plain string**, and the admin form treats it as
+**free text** (`ScheduleFormPage:1291` — `useState("")`). But the wizard frame is
+a **checkbox multi-select** (Mat · Resistance bands · Pilates ring · Light
+dumbbells · Something else) and the preview renders `"Mat, resistance bands"`.
+
+Two consequences:
+1. **The option list has no data source.** There is no equipment slice. The four
+   options are hard-coded in the Figma. Decide: hard-code the same list, derive
+   from room `equipment_notes`, or add a small seed.
+2. **Multi-select must join to one string** (comma-separated, per the preview) so
+   the field stays compatible with the admin form and everything reading it.
+
+*Not blocking Phase 1.* Needs a decision before Phase 4.
+
+### NOT audited — `Appointment` contract (Phase 8)
+Private + recovery write appointments, not class schedules. The `Appointment`
+interface exists but has **not** been field-mapped the way `ClassSchedule` was.
+Phase 8 must start by repeating §6b against it — expect the same class of
+surprise `waitlistEnabled` produced here.
+
+### NOT verified — intent detection inside General chat
+The client chose to run the wizard inside General chat rather than as a 4th
+thread. That means merging the schedule tools into `insightTools`, which the
+migration wizard never had to do (it owns its own mode). Feasible in principle,
+but the tool-count and prompt-length impact on an already-large insight tool set
+is unmeasured. **Verify at the start of Phase 4**; falling back to a dedicated
+mode is the escape hatch if the merged prompt degrades general chat.
+
+### NOT checked — RBAC
+The AI Agent is admin-only, but whether schedule creation should be further
+gated (Owner / Branch Admin only vs Front Desk) has not been confirmed against
+`permissions`. Check in Phase 4.
+
+---
+
+## 8. Summary
+
+Phase 1 is unblocked and fully specified. Four items need resolving before
+**Phase 4**, none before Phase 1:
+1. Equipment option source + string-join rule
+2. Intent detection inside General chat (feasibility)
+3. RBAC gate
+4. Re-read any Phase-4 frame not yet opened
+
+`Appointment` field-mapping is a Phase 8 prerequisite.
 
 ### Recurring — reuse the admin form, don't rebuild
 The client was explicit that the recurrence editor and the session preview follow
