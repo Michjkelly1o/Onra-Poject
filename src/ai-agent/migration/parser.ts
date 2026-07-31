@@ -36,18 +36,56 @@ import {
     type EntityKey,
 } from "@/ai-agent/migration/entities";
 
-/** CSV parser with proper quoted-field handling. Client 2026-07-24 audit
- *  fix — the previous naive `.split(",")` broke on any real export that
- *  quoted a comma (e.g. `"Doe, Jane"`), silently shifting every column
- *  after the quoted field by one and making every row fail validation.
+/** CSV parser with proper quoted-field handling.
  *
  *  RFC 4180 subset we handle:
- *    • Fields comma-separated, rows LF or CRLF separated.
+ *    • Fields separated by an AUTO-DETECTED delimiter (see below),
+ *      rows separated by LF or CRLF.
  *    • Fields optionally wrapped in double quotes.
- *    • Quoted fields may contain commas AND newlines.
+ *    • Quoted fields may contain the delimiter AND newlines.
  *    • Escaped double-quote inside a quoted field is a doubled `""`.
- *  Not handled (out of scope for the demo): custom delimiters,
- *  Windows-1252 encoding weirdness, BOM stripping is best-effort. */
+ *    • UTF-8 BOM stripped on entry.
+ *
+ *  Client 2026-07-31 delimiter auto-detect — Numbers.app on macOS (and
+ *  Excel in every EU locale) exports "CSV" with SEMICOLONS instead of
+ *  commas whenever a cell might contain a comma-as-decimal separator or
+ *  the OS locale uses `,` as the decimal mark. Same file opens fine in
+ *  Numbers because it also auto-detects on read. Our earlier parser was
+ *  comma-only, so a semicolon export landed as ONE giant header column
+ *  and zero rows — admin sees "0 mapped, 1 need review" on the mapping
+ *  card with the entire header line concatenated.
+ *
+ *  Detection algorithm — inspect the FIRST non-blank line (the header)
+ *  outside of quoted spans and count `,`, `;`, and `\t` occurrences. The
+ *  most frequent one wins; comma is the tiebreaker so pure-comma files
+ *  behave exactly as before. */
+function detectDelimiter(src: string): "," | ";" | "\t" {
+    // Walk the first line respecting quotes so a value like
+    // `"1,200 AED"` doesn't get counted as a comma delimiter.
+    let commas = 0, semis = 0, tabs = 0;
+    let inQ = false;
+    for (let i = 0; i < src.length; i++) {
+        const c = src[i];
+        if (inQ) {
+            if (c === '"') {
+                if (src[i + 1] === '"') { i++; continue; }
+                inQ = false;
+            }
+            continue;
+        }
+        if (c === '"') { inQ = true; continue; }
+        if (c === "\n") break; // first line only
+        if (c === "\r") continue;
+        if (c === ",") commas++;
+        else if (c === ";") semis++;
+        else if (c === "\t") tabs++;
+    }
+    // Pick the winner. Ties → comma (backward-compatible default).
+    if (semis > commas && semis >= tabs) return ";";
+    if (tabs > commas && tabs > semis) return "\t";
+    return ",";
+}
+
 export function parseCsv(text: string): {
     columns: string[];
     rows: Record<string, string>[];
@@ -55,6 +93,7 @@ export function parseCsv(text: string): {
     // Strip UTF-8 BOM if present so the first header cell doesn't carry
     // an invisible U+FEFF prefix.
     const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+    const delim = detectDelimiter(src);
     const grid: string[][] = [];
     let row: string[] = [];
     let field = "";
@@ -77,7 +116,7 @@ export function parseCsv(text: string): {
         }
         if (c === '"') {
             inQuotes = true;
-        } else if (c === ",") {
+        } else if (c === delim) {
             row.push(field);
             field = "";
         } else if (c === "\r") {
