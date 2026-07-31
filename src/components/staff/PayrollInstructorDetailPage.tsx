@@ -1051,7 +1051,7 @@ export default function PayrollInstructorDetailPage({
                             </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col">
+                        <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
                             {/* Metric cards */}
                             <div className="px-6 pt-4 flex items-stretch gap-4">
                                 <PayRateSnapshotCard payRate={payRate} />

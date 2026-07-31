@@ -677,7 +677,7 @@ export default function InstructorClassDetailPage() {
                             horizontal padding the canonical earnings detail
                             uses. Keeps table edges aligned with the toolbar
                             + pagination above and below. */}
-                        <div className="flex-1 px-6 pb-2 relative">
+                        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pb-2 relative">
                             {totalRows === 0 ? (
                                 <div className="relative" style={{ minHeight: 360 }}>
                                     <EmptyState

@@ -974,7 +974,7 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
                                 onChange={(k) => setTab(k as typeof tab)}
                             />
                         </div>
-                        <div className="flex-1 pt-6">
+                        <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
                             {tab === "permissions"
                                 ? <PermissionsTab role={role} />
                                 : <StaffListTab role={role} onChangeRoleFor={setChangingRoleFor} />

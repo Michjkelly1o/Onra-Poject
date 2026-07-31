@@ -630,7 +630,7 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
                                 onChange={(k) => setTab(k as typeof tab)}
                             />
                         </div>
-                        <div className="flex-1 pt-6">
+                        <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
                             <DetailsTab
                                 branch={branch}
                                 hours={hours}

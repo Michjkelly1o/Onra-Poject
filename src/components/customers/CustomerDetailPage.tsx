@@ -220,7 +220,7 @@ function ModalShell({ width = "w-[480px]", title, subtitle, onClose, children, f
                     </div>
                     <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
                 </div>
-                <div className="flex-1 px-6 py-5 flex flex-col gap-4">
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-4">
                     {children}
                 </div>
                 {footer && (
@@ -854,7 +854,7 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
                         <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
-                <div className="flex-1 px-6 py-5 flex flex-col gap-5">
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Date range — filters on plan expiry date */}
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Date range</p>
@@ -1443,7 +1443,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 </div>
 
                                 {/* Table */}
-                                <div className="flex-1 relative">
+                                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                                     {pagedPlans.length === 0 ? (
                                         <EmptyBlock
                                             title={plans.length === 0 ? "No plans yet" : "No plans found"}
@@ -1620,7 +1620,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                             <XClose className="w-5 h-5 text-[#667085]" />
                         </button>
                     </div>
-                    <div className="flex-1 px-6 py-6 flex flex-col gap-6">
+                    <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
                         {/* Current stage — Client 2026-07-29. Removed the
                             "Current stage for {name}" subtitle (the panel
                             title + customer context in the profile chrome

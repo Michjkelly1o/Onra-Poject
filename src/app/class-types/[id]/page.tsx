@@ -476,7 +476,7 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 px-6 py-5 flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="grid grid-cols-2 gap-2">
@@ -781,7 +781,7 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                 </div>
 
                 {/* Table content — relative so empty states can use absolute centering */}
-                <div className="flex-1 relative">
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                     {tab === "classes" && (
                         hasData && filteredSessions.length > 0 ? (
                             <div className="px-6">

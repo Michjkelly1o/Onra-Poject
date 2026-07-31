@@ -999,7 +999,7 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                                     onChange={(k) => setTab(k as typeof tab)}
                                 />
                             </div>
-                            <div className="flex-1 pt-6">
+                            <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
                                 {!role ? (
                                     <div className="px-6 pb-6 relative" style={{ minHeight: 320 }}>
                                         <EmptyState title="Role missing" subtitle="The role assigned to this staff member is no longer available." />

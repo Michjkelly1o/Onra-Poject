@@ -10,37 +10,47 @@
 //
 //   <div className="flex-1 overflow-y-auto px-6 py-6">
 //     <div className="flex gap-6 items-stretch" style={{ minHeight: 832 }}>
-//       {sidebar}
-//       {main}
+//       {sidebar}                                  ← sets the row height
+//       <div className="flex-1 min-w-0 relative">  ← contributes 0 height
+//         <div className="absolute inset-0">{main}</div>
+//       </div>
 //     </div>
 //   </div>
 //
+// ── Height model (client 2026-07-31) ────────────────────────────────────
+// THE SIDEBAR DRIVES THE HEIGHT. The main panel matches it and scrolls
+// internally.
+//
+// Why: the sidebar holds the entity summary + the action buttons, and
+// those must ALWAYS be fully visible — an admin should never have to
+// discover a nested scrollbar to reach "Archive membership". The main
+// panel, by contrast, holds tabs whose tables can be arbitrarily long;
+// capping it and letting it scroll is the correct trade.
+//
+// Mechanism: the main column sits in a `relative` wrapper whose child is
+// `absolute inset-0`. An absolutely-positioned child is out of flow, so
+// it contributes ZERO height to the flex line — the sidebar alone
+// determines the row height, no matter how long the main content is.
+// `items-stretch` then stretches the main wrapper to that height, so
+// both cards share one bound and their edges stay aligned.
+//
 // The 832px floor is mandated by CLAUDE.md rule #7 ("bordered view-card
 // containers MUST have an explicit min-height (or fixed height) — NEVER
-// hug content"). A short detail page still fills 832px rather than
-// collapsing to its content.
-//
-// Client 2026-07-31 — changed from a FIXED `height` to `minHeight`. The
-// fixed height forced any column whose content exceeded 832px to scroll
-// INTERNALLY, which on the retail detail page buried the sidebar's
-// action buttons below a scroll line. Now the row grows to fit its
-// tallest column and the page scrolls as a whole, so every action is
-// reachable without a nested scrollbar.
-//
-// `items-stretch` (flex default, stated explicitly) is what keeps the
-// two columns the SAME height as each other — the taller one sets the
-// row height and the shorter one stretches to match, so the left and
-// right card edges stay aligned exactly as before.
+// hug content") — a sparse detail page still fills the frame instead of
+// collapsing. It's now a FLOOR rather than a cap, so a sidebar with many
+// actions grows the row rather than scrolling inside itself.
 //
 // IMPORTANT: this canonical owns the OUTER wrapper only. The sidebar and
 // main-panel cards are passed in as props — their internal layout (white
 // card / radius / padding / inner tabs) lives at the call site so each
 // page keeps its bespoke chrome.
 //
-// Call-site contract: a column that wants to grow must NOT cap itself
-// with `h-full` + `overflow-y-auto` on its scroll body — that re-creates
-// the internal scrollbar this change removes. Use `h-full` on the card
-// (so it stretches to the row) and let the inner content flow.
+// Call-site contract:
+//   • Sidebar — must NOT wrap its body in `overflow-y-auto`. It should
+//     render at natural height; the row grows to fit it.
+//   • Main    — its card should be `h-full` with the tab/table body
+//     scrolling internally (`flex-1 overflow-y-auto`). That's what keeps
+//     long tables inside the shared height.
 
 import { cn } from "@/lib/utils";
 
@@ -52,11 +62,9 @@ export interface DetailPageShellProps {
      *  body content. */
     main: React.ReactNode;
     /** MINIMUM container height in pixels. Default 832 — matches
-     *  CLAUDE.md rule #7 and every audited caller. The row grows past
-     *  this when either column's content is taller (client 2026-07-31);
-     *  the value is a floor, not a cap, so short pages still fill the
-     *  frame instead of hugging. Override only when a Figma frame
-     *  specifies a different floor. */
+     *  CLAUDE.md rule #7 and every audited caller. This is a FLOOR, not
+     *  a cap: a tall sidebar grows the row past it (client 2026-07-31).
+     *  Override only when a Figma frame specifies a different floor. */
     height?: number;
     /** Extra classes for the outer scroll wrapper (rarely needed). */
     className?: string;
@@ -79,7 +87,15 @@ export function DetailPageShell({
                 style={{ minHeight: `${height}px` }}
             >
                 {sidebar}
-                {main}
+                {/* Main column — the `relative` wrapper stretches to the row
+                    height set by the sidebar, while its `absolute inset-0`
+                    child is OUT OF FLOW and so contributes no height of its
+                    own. That's what stops a long table from pushing the row
+                    taller than the sidebar. The main card fills the wrapper
+                    and scrolls its own body. */}
+                <div className="flex-1 min-w-0 relative">
+                    <div className="absolute inset-0 flex">{main}</div>
+                </div>
             </div>
         </div>
     );

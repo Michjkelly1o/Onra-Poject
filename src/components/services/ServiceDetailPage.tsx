@@ -308,7 +308,7 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
                     </button>
                 </div>
 
-                <div className="flex-1 px-6 py-5 flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
@@ -827,7 +827,7 @@ function RightPanel({ service }: { service: Service }) {
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 relative">
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                     {tab === "appointments" && (
                         pagedAppointments.length > 0 ? (
                             <div className="px-6">

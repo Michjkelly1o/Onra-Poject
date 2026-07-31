@@ -379,7 +379,7 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
                     </button>
                 </div>
 
-                <div className="flex-1 px-6 py-5 flex flex-col gap-5">
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Branch location */}
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
@@ -883,7 +883,7 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
                         </div>
 
                         {/* Tab body */}
-                        <div className="flex-1 pt-6">
+                        <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
                             {tab === "instructor" || payRate.type === "flat" || payRate.type === "monthly" ? (
                                 <AssignedInstructorTab
                                     payRateId={payRate.id}

@@ -806,7 +806,7 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                     </button>
                 </div>
 
-                <div className="flex-1 px-6 py-5 flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Date range</p>
@@ -1117,7 +1117,7 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
             </div>
 
             {/* Body */}
-            <div className="flex-1 relative">
+            <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                 {tab === "reviews" ? (
                     reviewsCurrentList.length === 0 ? (
                         <EmptyState

@@ -972,7 +972,7 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
                                 <TabBtn label="Assigned staffs" active onClick={() => {}} />
                             </div>
                         </div>
-                        <div className="flex-1 pt-6">
+                        <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
                             <AssignedStaffsTab
                                 shift={shift}
                                 returnTo={returnTo}

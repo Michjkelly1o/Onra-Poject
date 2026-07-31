@@ -414,7 +414,7 @@ export default function InstructorClassDetailPage() {
 
                     {/* Tab content — scrollable, takes remaining vertical
                         space so Pagination below stays pinned and visible. */}
-                    <div className="flex-1 px-6 pb-2">
+                    <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pb-2">
                         {tab === "booked" && (
                             <BookedTable
                                 rows={filteredBooked}
@@ -1036,7 +1036,7 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 px-6 py-5 flex flex-col gap-6">
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Date range</p>

@@ -386,7 +386,7 @@ function RightPanel({ kind, vm, productId, activeCustomers, renewalFor, branches
 function DetailsTab({ vm, productId, branches }: { vm: MembershipDetailVM; productId: string; branches: Branch[] }) {
     const groups = buildPurchaseRuleGroups(vm);
     return (
-        <div className="flex-1 px-6 py-6 flex flex-col gap-6">
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
             {/* ── Basic information ── */}
             <SectionHeading>Basic information</SectionHeading>
             <DescriptionCard label="Description" body={vm.description || "—"} />
@@ -960,7 +960,7 @@ function ActiveCustomersTab({ customers, productName, renewalFor }: {
             </div>
 
             {/* Body */}
-            <div className="flex-1 relative">
+            <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                 {filtered.length === 0 ? (
                     <EmptyState
                         title={customers.length === 0 ? "No active customers" : "No customers found"}

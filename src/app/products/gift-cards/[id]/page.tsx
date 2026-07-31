@@ -287,7 +287,7 @@ function RightPanel({ design, holders }: {
 
 function DetailsTab({ design }: { design: GiftCardDesign }) {
     return (
-        <div className="flex-1 px-6 py-6 flex flex-col gap-6">
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
             {/* ── Basic information ── */}
             <SectionHeading>Basic information</SectionHeading>
             <DescriptionCard body={design.description || "—"} />
@@ -464,7 +464,7 @@ function ActiveCustomersTab({ holders, cardName }: {
             </div>
 
             {/* Body */}
-            <div className="flex-1 relative">
+            <div className="flex-1 overflow-y-auto scrollbar-hide relative">
                 {filtered.length === 0 ? (
                     <EmptyState
                         title={holders.length === 0 ? "No active customers" : "No customers found"}

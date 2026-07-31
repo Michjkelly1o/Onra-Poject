@@ -348,7 +348,7 @@ function DetailsTab({ agreement, serviceList }: {
         : branches.filter(b => agreement.locationIds.includes(b.id));
 
     return (
-        <div className="flex-1 px-6 py-6 flex flex-col gap-6">
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
             <SectionHeading>Basic information</SectionHeading>
             <DescriptionCard label="Description" body={agreement.description || "—"} />
 
@@ -532,7 +532,7 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
     const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
             {/* Toolbar */}
             <div className="shrink-0 px-6 pt-6 pb-3 flex items-center justify-between gap-3">
                 <div className="flex flex-col">
@@ -732,7 +732,7 @@ function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
     }
 
     return (
-        <div className="flex-1 px-6 py-6 flex flex-col gap-5">
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-5">
             {/* KPI cards (Figma 7684:192230 top row) — display-only
              *  metrics. Filtering happens through the sub-tabs +
              *  customer table below (client feedback: "just make the

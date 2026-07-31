@@ -384,7 +384,7 @@ function CheckRow({ label, trailing }: { label: string; trailing?: string }) {
 function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] }) {
     return (
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
-            <div className="flex-1 px-6 py-6 flex flex-col gap-6">
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
                 {/* ── Promo configuration ── */}
                 <SectionHeading>Promotion configuration</SectionHeading>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
