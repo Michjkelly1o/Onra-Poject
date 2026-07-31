@@ -10,7 +10,8 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess, type ClassCategory } from "@/lib/store";
+import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByShift as gateSlotsByShiftHelper, instructorBlockedSlots as instructorBlockedSlotsHelper } from "@/lib/instructor-availability";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
@@ -187,8 +188,19 @@ const hintCls   = "text-[14px] text-[#475467]";
 // Local FieldLabel removed — uses canonical `<FieldLabel label hint />` from
 // `@/components/patterns/FieldLabel`.
 
-function SimpleSelect({ label, value, options, onChange, disabled = false }: {
-    label: string; value: string; options: string[]; onChange: (v: string) => void; disabled?: boolean;
+function SimpleSelect({ label, value, options, onChange, disabled = false, menuHeader }: {
+    label: string;
+    value: string;
+    options: string[];
+    onChange: (v: string) => void;
+    disabled?: boolean;
+    /** Client 2026-07-31 — optional slot rendered at the TOP of the open
+     *  menu, above the option list. Used by the schedule form to inject
+     *  a "+ Create class category" button so admins can add a category
+     *  without leaving the schedule creation flow. Mirrors the same prop
+     *  on the shared `SelectInput`. The caller receives a `close()`
+     *  callback so their button can dismiss the dropdown after firing. */
+    menuHeader?: (ctx: { close: () => void }) => React.ReactNode;
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -208,6 +220,11 @@ function SimpleSelect({ label, value, options, onChange, disabled = false }: {
             </button>
             {open && (
                 <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[200px] overflow-y-auto">
+                    {menuHeader && (
+                        <div className="border-b border-[#e4e7ec] mb-1">
+                            {menuHeader({ close: () => setOpen(false) })}
+                        </div>
+                    )}
                     {options.map(o => (
                         <button key={o} type="button" onClick={() => { onChange(o); setOpen(false); }}
                             className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium transition-colors text-left",
@@ -1031,7 +1048,12 @@ function CsBlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
 export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { editingId?: string; returnTo?: string } = {}) {
     const router  = useRouter();
     const searchParams = useSearchParams();
-    const { classTemplates, classSchedules, addClassSchedules, updateClassSchedule, showToast } = useAppStore();
+    const { classTemplates, classSchedules, addClassSchedules, updateClassSchedule, showToast, addClassCategory } = useAppStore();
+
+    // Client 2026-07-31 — inline "+ Create class category" modal reachable
+    // from the Class-category dropdown header. Admin never leaves the
+    // schedule creation flow to add a missing category.
+    const [creatingCategory, setCreatingCategory] = useState(false);
     // Live business hours — Read here so any branch-hours edit made in
     // Settings → Business & Locations immediately drives the form's
     // Start/End time slot list (no static seed reads).
@@ -2366,7 +2388,22 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1.5">
                                                 <label className={labelCls}>Class category</label>
-                                                <SimpleSelect label="Select category" value={category} options={categoryOptions} onChange={setCategory} />
+                                                <SimpleSelect
+                                                    label="Select category"
+                                                    value={category}
+                                                    options={categoryOptions}
+                                                    onChange={setCategory}
+                                                    menuHeader={({ close }) => (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { close(); setCreatingCategory(true); }}
+                                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                            Create class category
+                                                        </button>
+                                                    )}
+                                                />
                                             </div>
                                             <div className="flex flex-col gap-1.5">
                                                 <label className={labelCls}>Gender</label>
@@ -3099,6 +3136,41 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                     </div>
                 );
             })()}
+
+            {/* Client 2026-07-31 — reuse the SAME CategoryModal the admin
+                uses on /admin/categories. Submit calls addClassCategory
+                → every consumer subscribing to classCategories (this
+                schedule form, service form, class-template form, staff
+                form, AI-agent dataset) sees the new row in the same
+                render cycle. Live duplicate check via `takenNames` shows
+                the "already exists" error inline. On success we auto-
+                select the fresh category by name so the admin can keep
+                going without re-opening the dropdown. */}
+            {creatingCategory && (
+                <CategoryModal
+                    onClose={() => setCreatingCategory(false)}
+                    takenNames={classCategories.map(c => c.name)}
+                    onSubmit={({ name, image_url }) => {
+                        const cleanName = name.trim();
+                        if (!cleanName) return;
+                        const next: ClassCategory = {
+                            id: `cat_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                            name: cleanName,
+                            color_hex: "#f9fafb",
+                            status: "active",
+                            image_url: image_url || undefined,
+                        };
+                        addClassCategory(next);
+                        setCategory(cleanName);
+                        setCreatingCategory(false);
+                        showToast(
+                            "Category created",
+                            `"${cleanName}" has been added to your categories.`,
+                            "success", "check",
+                        );
+                    }}
+                />
+            )}
         </div>
     );
 }

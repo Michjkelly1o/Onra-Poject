@@ -22,16 +22,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, User01, Upload01, MarkerPin01, Lightbulb02,
     Mail01, Phone, UserSquare, CoinsHand, Calendar, Lock01,
-    Check, ChevronDown, SearchMd,
+    Check, ChevronDown, SearchMd, Plus,
 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { cn } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
 import { PanelStepper } from "@/components/ui/PanelStepper";
+import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import {
     useAppStore,
-    type Staff, type StaffStatus, type Shift, type StaffPayConfig,
+    type Staff, type StaffStatus, type Shift, type StaffPayConfig, type ClassCategory,
 } from "@/lib/store";
 import { isValidEmail } from "@/lib/validation";
 import { FieldLabel } from "@/components/patterns/FieldLabel";
@@ -244,10 +245,15 @@ const NEUTRAL_AVATAR_BG = "#f2f4f7";
 // hover) but the trigger renders SELECTED ITEMS AS PILLS instead of one
 // label, and the panel rows are checkable. Closes on outside click + Esc.
 
-function MultiCategoryDropdown({ options, selectedIds, onChange }: {
+function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategory }: {
     options: { id: string; name: string }[];
     selectedIds: string[];
     onChange: (next: string[]) => void;
+    /** Client 2026-07-31 — opens the parent's "+ Create class category"
+     *  modal. A button at the TOP of the open dropdown fires this so
+     *  admins can add a missing category directly from the staff form
+     *  without leaving the flow. */
+    onCreateCategory?: () => void;
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -301,6 +307,22 @@ function MultiCategoryDropdown({ options, selectedIds, onChange }: {
             </button>
             {open && (
                 <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 max-h-[260px] overflow-y-auto">
+                    {/* Client 2026-07-31 — "+ Create class category" is
+                        always the first row so admins can add a missing
+                        category without leaving the staff form. Mirrors
+                        the same top-of-dropdown pattern used on retail-
+                        product forms + schedule / service / class-type
+                        creation flows. */}
+                    {onCreateCategory && (
+                        <button
+                            type="button"
+                            onClick={() => { setOpen(false); onCreateCategory(); }}
+                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors text-left"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Create class category
+                        </button>
+                    )}
                     {options.length === 0 ? (
                         <p className="px-4 py-3 text-[14px] text-[#667085]">No categories available.</p>
                     ) : (
@@ -679,7 +701,13 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     const updateStaff = useAppStore(s => s.updateStaff);
     const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
     const removeShiftAssignment = useAppStore(s => s.removeShiftAssignment);
-    const showToast   = useAppStore(s => s.showToast);
+    const showToast        = useAppStore(s => s.showToast);
+    const addClassCategory = useAppStore(s => s.addClassCategory);
+
+    // Client 2026-07-31 — inline "+ Create class category" modal reachable
+    // from the Categories multi-select dropdown when adding an Instructor.
+    // Admin never leaves the staff creation flow to add a missing category.
+    const [creatingCategory, setCreatingCategory] = useState(false);
 
     const existing = mode === "edit" && staffId ? allStaff.find(s => s.id === staffId) : undefined;
 
@@ -1141,6 +1169,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                         options={classCategories.filter(c => c.status === "active").map(c => ({ id: c.id, name: c.name }))}
                                         selectedIds={form.categoryIds}
                                         onChange={ids => set({ categoryIds: ids })}
+                                        onCreateCategory={() => setCreatingCategory(true)}
                                     />
                                     <p className="text-[14px] text-[#475467]">Instructors can only be assigned to classes whose category they hold.</p>
                                 </div>
@@ -1254,6 +1283,40 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
             </div>
 
             <Toast />
+
+            {/* Client 2026-07-31 — same CategoryModal the admin uses on
+                /admin/categories. Every consumer subscribing to the
+                classCategories slice sees the new row in the same
+                render cycle. Live duplicate check via `takenNames`
+                surfaces "already exists" inline. On success we auto-
+                add the fresh category id to this instructor's
+                `categoryIds` so it's immediately checked in the
+                multi-select. */}
+            {creatingCategory && (
+                <CategoryModal
+                    onClose={() => setCreatingCategory(false)}
+                    takenNames={classCategories.map(c => c.name)}
+                    onSubmit={({ name, image_url }) => {
+                        const cleanName = name.trim();
+                        if (!cleanName) return;
+                        const next: ClassCategory = {
+                            id: `cat_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                            name: cleanName,
+                            color_hex: "#f9fafb",
+                            status: "active",
+                            image_url: image_url || undefined,
+                        };
+                        addClassCategory(next);
+                        set({ categoryIds: [...form.categoryIds, next.id] });
+                        setCreatingCategory(false);
+                        showToast(
+                            "Category created",
+                            `"${cleanName}" has been added to your categories.`,
+                            "success", "check",
+                        );
+                    }}
+                />
+            )}
         </>
     );
 }

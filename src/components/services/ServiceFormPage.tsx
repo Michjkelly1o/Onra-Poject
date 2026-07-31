@@ -44,7 +44,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check,
+    XClose, Check, Plus,
     Lightbulb02, Grid01, ClockFastForward, MarkerPin01,
     BankNote01, UserCheck01, Feather,
 } from "@untitledui/icons";
@@ -54,7 +54,8 @@ import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { useAppStore, type Service, type ServiceType } from "@/lib/store";
+import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
+import { useAppStore, type Service, type ServiceType, type ClassCategory } from "@/lib/store";
 
 // ─── Stepper ─────────────────────────────────────────────────────────────────
 
@@ -247,7 +248,7 @@ interface Step1Data {
 }
 
 function ServiceDetailStep({
-    data, onChange, onContinue, categoryOptions, lockType,
+    data, onChange, onContinue, categoryOptions, lockType, onCreateCategory,
 }: {
     data: Step1Data;
     onChange: (d: Partial<Step1Data>) => void;
@@ -256,6 +257,9 @@ function ServiceDetailStep({
     /** When true the type is fixed (create scoped to a menu, or edit) — the
      *  Private/Recovery picker is hidden entirely (the menu already decided). */
     lockType: boolean;
+    /** Opens the parent's inline "Create class category" modal — a "+ Create
+     *  class category" button in the dropdown menuHeader triggers this. */
+    onCreateCategory: () => void;
 }) {
     // Required fields: name + category + duration always; capacity when the
     // recovery service is an open session.
@@ -308,6 +312,16 @@ function ServiceDetailStep({
                             onChange={v => onChange({ category: v })}
                             options={categoryOptions.map(o => ({ value: o, label: o }))}
                             width="w-full"
+                            menuHeader={({ close }) => (
+                                <button
+                                    type="button"
+                                    onClick={() => { close(); onCreateCategory(); }}
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors rounded-t-[8px]"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create class category
+                                </button>
+                            )}
                         />
                     </FormField>
                     <FormField label="Duration" hint="in minutes">
@@ -528,7 +542,13 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
     const classCategories  = useAppStore(s => s.classCategories);
     const addService       = useAppStore(s => s.addService);
     const updateService    = useAppStore(s => s.updateService);
+    const addClassCategory = useAppStore(s => s.addClassCategory);
     const showToast        = useAppStore(s => s.showToast);
+
+    // Client 2026-07-31 — "+ Create class category" inline modal, reachable
+    // from the Class-category dropdown header on Step 1. Admin never has
+    // to leave the service creation flow to add a missing category.
+    const [creatingCategory, setCreatingCategory] = useState(false);
 
     const existing: Service | undefined = mode === "edit" && serviceId
         ? services.find(s => s.id === serviceId)
@@ -713,6 +733,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
                                 onContinue={() => setStep(2)}
                                 categoryOptions={categoryOptions}
                                 lockType={typeLocked}
+                                onCreateCategory={() => setCreatingCategory(true)}
                             />
                         )}
                         {step === 2 && (
@@ -750,6 +771,43 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
                     </div>
                 </div>
             </div>
+
+            {/* Client 2026-07-31 — reuse the SAME CategoryModal the admin
+                uses on /admin/categories so the flow stays 1:1 (chrome,
+                validation, image upload). Submit calls the same
+                addClassCategory action → every consumer that subscribes
+                to the classCategories slice (schedule form, service
+                form, class-types form, staff form, AI-agent dataset)
+                sees the new row in the same render cycle. Live duplicate
+                check via `takenNames` shows the "already exists" error
+                inline in the modal — no submit-then-fail toast round
+                trip. On success we auto-select the fresh category by
+                name on this service so the form is ready to continue. */}
+            {creatingCategory && (
+                <CategoryModal
+                    onClose={() => setCreatingCategory(false)}
+                    takenNames={classCategories.map(c => c.name)}
+                    onSubmit={({ name, image_url }) => {
+                        const cleanName = name.trim();
+                        if (!cleanName) return;
+                        const next: ClassCategory = {
+                            id: `cat_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                            name: cleanName,
+                            color_hex: "#f9fafb",
+                            status: "active",
+                            image_url: image_url || undefined,
+                        };
+                        addClassCategory(next);
+                        setStep1(prev => ({ ...prev, category: cleanName }));
+                        setCreatingCategory(false);
+                        showToast(
+                            "Category created",
+                            `"${cleanName}" has been added to your categories.`,
+                            "success", "check",
+                        );
+                    }}
+                />
+            )}
         </div>
     );
 }

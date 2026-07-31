@@ -2,10 +2,10 @@
 
 import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppStore, type Membership, type Package } from "@/lib/store";
+import { useAppStore, type Membership, type Package, type ClassCategory } from "@/lib/store";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import {
-    XClose, Grid01,
+    XClose, Grid01, Plus,
     ClockFastForward, Users01,
     ChevronDown, ChevronUp, Check, Lightbulb02, FilterLines,
 } from "@untitledui/icons";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -257,6 +258,7 @@ function BasicInformationStep({
     onChange,
     onContinue,
     categoryOptions,
+    onCreateCategory,
 }: {
     data: Step1Data;
     onChange: (d: Partial<Step1Data>) => void;
@@ -264,6 +266,10 @@ function BasicInformationStep({
     /** Live category list — passed in so this step doesn't re-subscribe to
      *  the store. Phase 4 wiring (Booking Rules → class template). */
     categoryOptions: string[];
+    /** Opens the parent's inline "Create class category" modal — a
+     *  "+ Create class category" button in the dropdown menuHeader
+     *  triggers this so admins never have to leave the flow. */
+    onCreateCategory: () => void;
 }) {
     const canContinue =
         data.name.trim() &&
@@ -317,6 +323,16 @@ function BasicInformationStep({
                             onChange={v => onChange({ category: v })}
                             options={categoryOptions.map(o => ({ value: o, label: o }))}
                             width="w-full"
+                            menuHeader={({ close }) => (
+                                <button
+                                    type="button"
+                                    onClick={() => { close(); onCreateCategory(); }}
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors rounded-t-[8px]"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create class category
+                                </button>
+                            )}
                         />
                     </FormField>
 
@@ -504,7 +520,12 @@ function NewClassTemplatePageInner() {
     const membershipItems = buildMembershipItems(allMemberships, allPackages);
 
 
-    const { addClassTemplate, showToast } = useAppStore();
+    const { addClassTemplate, showToast, addClassCategory } = useAppStore();
+
+    // Client 2026-07-31 — inline "+ Create class category" modal reachable
+    // from the Class-category dropdown header on Step 1. Admin never has
+    // to leave the class-template creation flow to add a missing category.
+    const [creatingCategory, setCreatingCategory] = useState(false);
 
     function handleCreate() {
         const cat = classCategories.find(c => c.name === step1.category);
@@ -584,6 +605,7 @@ function NewClassTemplatePageInner() {
                                 onChange={d => setStep1(prev => ({ ...prev, ...d }))}
                                 onContinue={() => setStep(2)}
                                 categoryOptions={categoryOptions}
+                                onCreateCategory={() => setCreatingCategory(true)}
                             />
                         ) : (
                             <ApplicableMembershipsStep
@@ -609,6 +631,40 @@ function NewClassTemplatePageInner() {
                     </div>
                 </div>
             </div>
+
+            {/* Client 2026-07-31 — reuse the SAME CategoryModal the admin
+                uses on /admin/categories so the flow stays 1:1. Submit
+                calls addClassCategory → every consumer that subscribes
+                to the classCategories slice sees the new row in the
+                same render cycle. Live duplicate check via `takenNames`
+                surfaces the "already exists" error inline. On success
+                we auto-select the fresh category name on Step 1 so the
+                admin can continue immediately. */}
+            {creatingCategory && (
+                <CategoryModal
+                    onClose={() => setCreatingCategory(false)}
+                    takenNames={classCategories.map(c => c.name)}
+                    onSubmit={({ name, image_url }) => {
+                        const cleanName = name.trim();
+                        if (!cleanName) return;
+                        const next: ClassCategory = {
+                            id: `cat_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                            name: cleanName,
+                            color_hex: "#f9fafb",
+                            status: "active",
+                            image_url: image_url || undefined,
+                        };
+                        addClassCategory(next);
+                        setStep1(prev => ({ ...prev, category: cleanName }));
+                        setCreatingCategory(false);
+                        showToast(
+                            "Category created",
+                            `"${cleanName}" has been added to your categories.`,
+                            "success", "check",
+                        );
+                    }}
+                />
+            )}
         </div>
     );
 }
