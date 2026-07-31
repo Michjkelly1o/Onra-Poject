@@ -73,18 +73,43 @@ set (22–35) is this branch**, not private/recovery as first assumed.
 | B.3b | *(if `After`)* After how many occurrences? | Count | 394-184280, 394-174501, 394-174707, **394-171364**, **394-171779** |
 | B.3c | *(if `Never`)* — | goes straight to B.4 | 389-136815, **391-138124**, 391-143357 |
 | B.4 | Repeat every X week? | `1 week` (badged `Default`) / 2 / 3 / 4 + `Custom X` free-text | 389-136815 |
-| B.5 | **Which days + per-day time slots** | Per-day editor: `Set schedule for this day` with Start time / End time selects, **multiple slots per day**, delete-slot button, `Confirm`. User replies `Days confirmed` | **391-148046** |
+| B.5 | **Select days + per-day time slots** | See below | **391-157099**, 391-148046 |
 
 Bold frames are **NOT in the original 36-item list** — the real set is ~40.
 
-### Preview gains a session list when recurring
-Once a recurrence is defined, the preview card grows an extra expandable row:
+#### B.3b — `After` occurrence count
+Preset list + `Custom` free-text row, same shape as every other question
+(394-184280).
+
+#### B.5 — Select days (391-157099)
+> **Select days** — *Pick the days, then set a start time for each one. You can
+> add multiple slots per day.*
+
+- **Day pills**: `Mon Tue Wed Thu Fri Sat Sun` — **multi-select**, selected pill
+  goes mint/green.
+- **General schedule** section below. One card per SELECTED day:
+  - Header: day name + *"Set schedule for this day."*
+  - `Start time` / `End time` **dropdowns** + a delete (trash) button per slot
+  - `+ Add time slot` — multiple slots per day
+- `Confirm` button, bottom-right. User's echo reads `Days confirmed`.
+
+**This is the admin schedule form's recurrence editor.** Client: *"the logic is
+same like the admin side."* Reuse its day-select + time-slot components and its
+expansion logic rather than rebuilding.
+
+### Preview gains a session list when recurring (401-161117)
+Once a recurrence is defined the preview card grows an expandable row:
 
 > **Preview of scheduled classes** — Review all upcoming scheduled dates and time
-> slots. · `11 classes ▾`
+> slots. · `11 classes` ⌄
 
-Count reflects the expanded series (frames 391-148046 shows `3 classes`,
-394-173941 shows `11 classes`). Collapsed by default.
+Expanded, it is **read-only** and grouped by month:
+- Month heading (`February 2025`, `March 2025`)
+- Each date = a circular badge with the day number
+- Under each date, mint time-slot chips (`09:00 – 10:00 AM`, `03:30 – 04:30 PM`)
+- A date with two slots shows two chips
+
+Same presentation as the admin form's schedule preview — reuse it.
 
 ### Publish
 1. Preview card fully populated
@@ -254,12 +279,18 @@ half-configured rooms.
 
 ## 7. Still open
 
-1. **`After` occurrence input** — frames 394-171364 / 394-171779 need a read to
-   confirm whether it's a preset list (4 / 8 / 12) or a free-text count.
-2. **Per-day editor** (391-148046) — confirm how days are chosen before the
-   per-day time slots appear (day multi-select first, or slots-per-day inline?).
-3. **`Preview of scheduled classes`** — expanded state not yet read; confirm the
-   row shape (date + time per row? deletable?).
+**None.** Every question is answered and every referenced frame has been read.
+Ready to start Phase 1 on approval.
+
+### Recurring — reuse the admin form, don't rebuild
+The client was explicit that the recurrence editor and the session preview follow
+the admin schedule form's logic. Before writing anything in Phase 6, extract from
+`ScheduleFormPage`:
+- the day multi-select + per-day time-slot editor
+- the recurrence → `ClassSchedule[]` expansion
+- the month-grouped session preview
+
+Phase 6 should be mostly re-wiring existing pieces into the panel, not new logic.
 
 ---
 
