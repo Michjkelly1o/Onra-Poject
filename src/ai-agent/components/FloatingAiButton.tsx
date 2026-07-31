@@ -51,9 +51,12 @@ export function FloatingAiButton() {
     };
 
     return (
-        // Fixed bottom-right, 32px page padding per Figma spacing-4xl.
+        // Client 2026-07-31 — pinned to the BOTTOM CENTRE of the viewport
+        // (was bottom-right). `left-1/2` + `-translate-x-1/2` on the
+        // wrapper horizontally centres the pill regardless of its width;
+        // 32px bottom padding stays per Figma spacing-4xl.
         <div
-            className="fixed bottom-8 right-8 z-[60]"
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >

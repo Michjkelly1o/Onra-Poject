@@ -53,6 +53,12 @@ export interface SelectInputProps {
     searchable?: boolean;
     /** Placeholder inside the search input. */
     searchPlaceholder?: string;
+    /** Optional slot rendered at the TOP of the open menu (above the
+     *  search input + option list). Used by the retail form to inject a
+     *  "+ Create category" button so admins can add a new category
+     *  without leaving the form. The caller receives a `close()` callback
+     *  to shut the menu after their custom action completes. */
+    menuHeader?: (ctx: { close: () => void }) => React.ReactNode;
 }
 
 export function SelectInput({
@@ -67,6 +73,7 @@ export function SelectInput({
     disabled = false,
     searchable = false,
     searchPlaceholder = "Search...",
+    menuHeader,
 }: SelectInputProps) {
     const [open, setOpen] = React.useState(false);
     const [query, setQuery] = React.useState("");
@@ -211,6 +218,11 @@ export function SelectInput({
                         menuClassName,
                     )}
                 >
+                    {menuHeader && (
+                        <div className="border-b border-[#e4e7ec] shrink-0">
+                            {menuHeader({ close: () => setOpen(false) })}
+                        </div>
+                    )}
                     {searchable && (
                         <div className="p-2 border-b border-[#e4e7ec] shrink-0">
                             <div className="relative">

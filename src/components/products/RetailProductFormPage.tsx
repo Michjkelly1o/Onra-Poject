@@ -18,7 +18,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check, CoinsHand, Package,
+    XClose, Check, CoinsHand, Package, Plus,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -117,10 +117,16 @@ function FormField({ label, hint, error, children }: {
     );
 }
 
-const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS = "h-10 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS_VALID = "border-[#d0d5dd] focus:ring-[#aad4bd] focus:border-[#7ba08c]";
+const INPUT_CLS_INVALID = "border-[#fda29b] focus:ring-[#fecdca] focus:border-[#d92d20]";
 
-function TextInput({ value, onChange, placeholder }: {
+function TextInput({ value, onChange, placeholder, invalid = false }: {
     value: string; onChange: (v: string) => void; placeholder?: string;
+    /** When true, swaps the border/ring to the DS error tone (`#fda29b`
+     *  → `#d92d20`). Used by the SKU field's live-duplicate check so the
+     *  admin sees the error state as they type. */
+    invalid?: boolean;
 }) {
     return (
         <input
@@ -128,7 +134,8 @@ function TextInput({ value, onChange, placeholder }: {
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            className={INPUT_CLS}
+            aria-invalid={invalid || undefined}
+            className={cn(INPUT_CLS, invalid ? INPUT_CLS_INVALID : INPUT_CLS_VALID)}
         />
     );
 }
@@ -269,7 +276,7 @@ interface BasicInfo {
 }
 
 function BasicInformationStep({
-    data, onChange, categoryOptions, errors, onBack, onContinue,
+    data, onChange, categoryOptions, errors, onBack, onContinue, onCreateCategory,
 }: {
     data: BasicInfo;
     onChange: (patch: Partial<BasicInfo>) => void;
@@ -277,6 +284,9 @@ function BasicInformationStep({
     errors: Partial<Record<keyof BasicInfo, string>>;
     onBack: () => void;
     onContinue: () => void;
+    /** Opens the parent's inline "Create category" modal. Called from
+     *  the dropdown's menuHeader "+ Create category" button. */
+    onCreateCategory: () => void;
 }) {
     const canContinue = !!data.name.trim() && !!data.sku.trim() && !!data.categoryId;
     return (
@@ -300,12 +310,16 @@ function BasicInformationStep({
                     {/* Client 2026-07-31 — SKU FIRST, name second. SKU
                         auto-fills from the name below as the admin types;
                         admin can still override for legacy / supplier codes.
-                        See generateAutoSku + tracking flag in the parent. */}
-                    <FormField label="SKU" error={errors.sku} hint="Auto-generated from the product name and category (editable). Must be unique across every retail product.">
+                        See generateAutoSku + tracking flag in the parent.
+                        Hint text removed — live-duplicate check surfaces
+                        the "SKU must be unique" error inline in RED as the
+                        admin types. */}
+                    <FormField label="SKU" error={errors.sku}>
                         <TextInput
                             value={data.sku}
                             onChange={v => onChange({ sku: v.toUpperCase() })}
                             placeholder="APP-OST-001"
+                            invalid={!!errors.sku}
                         />
                     </FormField>
                     <FormField label="Product name" error={errors.name}>
@@ -322,6 +336,16 @@ function BasicInformationStep({
                             options={categoryOptions}
                             placeholder="Select a category"
                             width="w-full"
+                            menuHeader={({ close }) => (
+                                <button
+                                    type="button"
+                                    onClick={() => { close(); onCreateCategory(); }}
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors rounded-t-[8px]"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Create category
+                                </button>
+                            )}
                         />
                     </FormField>
                     <FormField label="Description">
@@ -510,8 +534,14 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
     const stockRows        = useAppStore(s => s.retailStock);
     const addRetailProduct = useAppStore(s => s.addRetailProduct);
     const updateRetailProduct = useAppStore(s => s.updateRetailProduct);
+    const addRetailCategory = useAppStore(s => s.addRetailCategory);
     const adjustRetailStock = useAppStore(s => s.adjustRetailStock);
     const showToast        = useAppStore(s => s.showToast);
+
+    // Client 2026-07-31 — inline "Create category" modal reachable from the
+    // Retail category dropdown header. Admin doesn't have to leave the form
+    // to add a missing category.
+    const [creatingCategory, setCreatingCategory] = useState(false);
 
     // Active branches only — archived branches shouldn't get seeded stock.
     const activeBranches = useMemo(
@@ -595,8 +625,30 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         if ("sku" in patch) {
             setSkuManuallyEdited(true);
         }
+        // Live-duplicate check on the SKU field. Fires when name / category /
+        // sku changes because auto-SKU can also produce a value the admin
+        // needs to see validated. Compares case-insensitively against every
+        // OTHER product's SKU (edit target excluded) and every ARCHIVED
+        // product too — archived rows don't block store-side saves per
+        // spec, but showing the error early stops the admin from clashing.
+        const nextSkuRaw = ("sku" in patch ? String(patch.sku ?? "") : basic.sku).trim();
         const keys = Object.keys(patch) as (keyof BasicInfo)[];
-        setErrors(e => ({ ...e, basic: Object.fromEntries(Object.entries(e.basic).filter(([k]) => !keys.includes(k as keyof BasicInfo))) }));
+        setErrors(e => {
+            const nextBasicErrors = Object.fromEntries(
+                Object.entries(e.basic).filter(([k]) => !keys.includes(k as keyof BasicInfo)),
+            ) as typeof e.basic;
+            if (nextSkuRaw) {
+                const dup = products.some(
+                    p => p.id !== productId
+                        && p.status !== "archived"
+                        && p.sku.toLowerCase() === nextSkuRaw.toLowerCase(),
+                );
+                if (dup) {
+                    nextBasicErrors.sku = "This SKU is already in use. Every product must have a unique SKU.";
+                }
+            }
+            return { ...e, basic: nextBasicErrors };
+        });
     }
     function updatePricing(patch: Partial<PricingInfo>) {
         setPricing(prev => ({ ...prev, ...patch }));
@@ -735,6 +787,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                             errors={errors.basic}
                             onBack={handleClose}
                             onContinue={() => setStep(2)}
+                            onCreateCategory={() => setCreatingCategory(true)}
                         />
                     )}
                     {step === 2 && (
@@ -758,7 +811,87 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 </div>
             </div>
 
+            {creatingCategory && (
+                <CreateCategoryModal
+                    onClose={() => setCreatingCategory(false)}
+                    onCreate={(label) => {
+                        const id = addRetailCategory({ label });
+                        if (!id) {
+                            // Store rejected — duplicate label. Return the
+                            // error to the modal so it can surface inline.
+                            return { ok: false, error: "A category with that name already exists." };
+                        }
+                        // Auto-select the fresh category so the form is
+                        // ready to continue.
+                        updateBasic({ categoryId: id });
+                        setCreatingCategory(false);
+                        showToast("Category created", `${label} is now available.`, "success", "check");
+                        return { ok: true };
+                    }}
+                />
+            )}
+
             <Toast />
+        </div>
+    );
+}
+
+/** Small inline modal for creating a new retail category from inside the
+ *  product form. Auto-focuses the input on open, submits on Enter, cancels
+ *  on Escape. Surfaces the store's duplicate-label error inline. */
+function CreateCategoryModal({ onClose, onCreate }: {
+    onClose: () => void;
+    onCreate: (label: string) => { ok: true } | { ok: false; error: string };
+}) {
+    const [label, setLabel] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const submit = () => {
+        const clean = label.trim();
+        if (!clean) {
+            setError("Please enter a category name.");
+            return;
+        }
+        const result = onCreate(clean);
+        if (!result.ok) setError(result.error);
+    };
+    return (
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+            onClick={onClose}
+        >
+            <div
+                className="w-full max-w-[420px] bg-white rounded-[16px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col gap-5 p-6"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[var(--brand-tertiary)] flex items-center justify-center">
+                        <Package className="w-5 h-5 text-[var(--brand-primary)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[16px] font-semibold text-[#101828] leading-6">Create category</p>
+                        <p className="text-[13px] text-[#667085] leading-5">Add a new retail category — it'll be selected on this product automatically.</p>
+                    </div>
+                </div>
+                <FormField label="Category name" error={error ?? undefined}>
+                    <input
+                        type="text"
+                        autoFocus
+                        value={label}
+                        onChange={e => { setLabel(e.target.value); if (error) setError(null); }}
+                        onKeyDown={e => {
+                            if (e.key === "Enter") { e.preventDefault(); submit(); }
+                            else if (e.key === "Escape") { e.preventDefault(); onClose(); }
+                        }}
+                        placeholder="e.g. Outerwear"
+                        aria-invalid={error ? true : undefined}
+                        className={cn(INPUT_CLS, error ? INPUT_CLS_INVALID : INPUT_CLS_VALID)}
+                    />
+                </FormField>
+                <div className="flex items-center justify-end gap-3">
+                    <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
+                    <Button variant="primary" size="md" onClick={submit} disabled={!label.trim()}>Create</Button>
+                </div>
+            </div>
         </div>
     );
 }
