@@ -111,6 +111,7 @@ function buildCatalog(
     giftCardDesigns: typeof GIFT_CARD_DESIGNS,
     retailProducts: import("@/lib/store").RetailProduct[],
     retailStock: import("@/lib/store").RetailStock[],
+    retailCategories: import("@/lib/store").RetailCategory[],
 ): PosProduct[] {
     const out: PosProduct[] = [];
 
@@ -183,15 +184,17 @@ function buildCatalog(
         const stockAggregate = rowsForProduct.reduce((sum, s) => sum + s.unitsOnHand, 0);
         const perBranchStock: Record<string, number> = {};
         for (const s of rowsForProduct) perBranchStock[s.branchId] = s.unitsOnHand;
+        // primaryMeta = the retail category label; secondaryMeta = the
+        // branch-aware stock label (computed at render time, see the
+        // ProductPosCard callsite below). SKU stays on the detail page /
+        // reports — the POS card leads with the two facts admins scan
+        // for at checkout (what kind + how much left).
+        const category = retailCategories.find(c => c.id === r.categoryId);
         out.push({
             id: r.id,
             kind: "retail",
             name: r.name,
-            primaryMeta: r.sku,
-            // secondaryMeta intentionally omitted for retail — the render
-            // site (below) computes the branch-aware label from
-            // perBranchStock. Leaving a value here would be dead code
-            // since the ternary always overrides for retail.
+            primaryMeta: category?.label ?? "—",
             priceAed: r.priceAed,
             priceDisplay: `AED ${r.priceAed.toLocaleString()}`,
             // Retail products are studio-global; per-branch scoping happens
@@ -265,6 +268,7 @@ function POSInner() {
     const giftCardDesigns = useAppStore(s => s.giftCardDesigns);
     const retailProducts = useAppStore(s => s.retailProducts);
     const retailStock = useAppStore(s => s.retailStock);
+    const retailCategories = useAppStore(s => s.retailCategories);
     const promoCodes = useAppStore(s => s.promoCodes);
     const branches = useAppStore(s => s.branches);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
@@ -407,8 +411,8 @@ function POSInner() {
 
     // Catalog filtered against the active tab, search box, and filter panel.
     const catalog = useMemo(
-        () => buildCatalog(memberships, packages, giftCardDesigns, retailProducts, retailStock),
-        [memberships, packages, giftCardDesigns, retailProducts, retailStock],
+        () => buildCatalog(memberships, packages, giftCardDesigns, retailProducts, retailStock, retailCategories),
+        [memberships, packages, giftCardDesigns, retailProducts, retailStock, retailCategories],
     );
     const filteredProducts = useMemo(() => {
         const kinds = TAB_FILTER[activeTab];
@@ -469,6 +473,9 @@ function POSInner() {
                 unitPrice: p.priceAed,
                 primaryMeta: p.primaryMeta,
                 quantity: 1,
+                // Retail cart lines carry the product image so the cart
+                // renders the same photo the POS card showed.
+                imageUrl: p.kind === "retail" ? p.bannerImageUrl : undefined,
             }];
         });
     }
@@ -673,6 +680,11 @@ function POSInner() {
             unitPrice:   l.unitPrice,
             quantity:    l.quantity,
             giftCard:    l.giftCard,
+            // Retail cart lines already carry the product image (see the
+            // buildCatalog step above where `bannerImageUrl` is threaded
+            // in). Passing it through here lets the checkout screen render
+            // the real photo instead of the category-tinted gift icon.
+            imageUrl:    l.imageUrl,
         }));
         // The checkout screen already lives at /schedule/[classId]/checkout.
         // We thread `returnTo: "/admin/pos"` so it bounces back here on
@@ -919,6 +931,10 @@ interface CartLine {
     primaryMeta?: string;
     quantity: number;
     giftCard?: PurchaseLineItem["giftCard"];
+    /** Retail only — the product's banner image URL, so the cart line
+     *  can show the same photo the POS card showed instead of the
+     *  membership/package/gift-card icon fallback. */
+    imageUrl?: string;
 }
 
 // ─── Cart panel ──────────────────────────────────────────────────────────────
@@ -1128,7 +1144,7 @@ function CartLineRow({ line, onQty, onRemove }: {
 }) {
     return (
         <div className="flex items-start gap-3">
-            <CartIcon kind={line.kind} />
+            <CartIcon kind={line.kind} imageUrl={line.imageUrl} />
             <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <p className="text-[14px] font-medium text-[#101828] line-clamp-2">{line.name}</p>
                 <div className="flex items-center gap-1.5 text-[14px] text-[#658774] flex-wrap">
@@ -1169,7 +1185,23 @@ function CartLineRow({ line, onQty, onRemove }: {
     );
 }
 
-function CartIcon({ kind }: { kind: PosProductKind }) {
+function CartIcon({ kind, imageUrl }: { kind: PosProductKind; imageUrl?: string }) {
+    // Retail cart rows render the product PHOTO (banner from the POS
+    // card) instead of a decorative icon — that's what admins recognise
+    // at a glance. Falls back to the sage gradient when the product has
+    // no image uploaded yet.
+    if (kind === "retail") {
+        return (
+            <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[#e4e7ec] bg-white">
+                {imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
+                )}
+            </div>
+        );
+    }
     // Tint matches the POS card chrome so the cart row visually reads as
     // "the same product" the buyer just clicked in the catalog.
     const tint =

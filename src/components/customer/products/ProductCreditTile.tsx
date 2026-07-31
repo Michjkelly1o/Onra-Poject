@@ -20,6 +20,10 @@ const THEME: Record<PlanKind, { from: string; to: string; text: string; ring: st
     membership: GREEN,
     package: GREEN,
     gift_card: GREEN,
+    // Retail rows use ProductArt (image tile) not the credit tile, but the
+    // union has to satisfy PlanKind — same green so any accidental render
+    // stays visually consistent with the rest of the catalogue.
+    retail: GREEN,
 };
 
 export function ProductCreditTile({

@@ -19,10 +19,13 @@ const THEME: Record<
     { Icon: ComponentType<SVGProps<SVGSVGElement>>; tileBg: string; iconColor: string; ring: string; ringOpacity: number }
 > = {
     // Unified brand-green theme for every product type (membership / package /
-    // gift card) — only the icon differs. Client Jul 2026.
+    // gift card) — only the icon differs. Client Jul 2026. Retail falls back
+    // to the Package icon when a product ships without a photo — every seeded
+    // retail row carries an image_url, so this branch is defensive only.
     membership: { Icon: CreditCard02, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
     package: { Icon: Package, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
     gift_card: { Icon: Gift01, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
+    retail: { Icon: Package, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
 };
 
 // DS ring sizes (px @ the 64px banner) — concentric rounded squares.
@@ -77,13 +80,42 @@ export function Rings({ color, opacity, scale }: { color: string; opacity: numbe
     );
 }
 
-export function ProductArt({ kind, variant }: { kind: PlanKind; variant: "card" | "sheet" }) {
+export function ProductArt({
+    kind,
+    variant,
+    imageUrl,
+}: {
+    kind: PlanKind;
+    variant: "card" | "sheet";
+    /** Real product photo — set for retail rows so the card + hero render an
+     *  actual image instead of the category-icon + rings decoration. Falls
+     *  through to the icon treatment when absent. */
+    imageUrl?: string;
+}) {
     const { Icon, tileBg, iconColor, ring, ringOpacity } = THEME[kind];
     const sheet = variant === "sheet";
     const scale = sheet ? 240 / 64 : 1;
     const tile = sheet ? 72 : 32;
     const radius = tile * (7.074 / 32);
     const iconSize = tile * (18.863 / 32);
+
+    // Retail products with a photo replace the icon+rings decoration with a
+    // real image tile. Same 64px card / 240px hero footprint so the layout
+    // sits inside every existing consumer (ProductCard, CheckoutCart,
+    // ProductDetailScreen) with no other changes.
+    if (kind === "retail" && imageUrl) {
+        return (
+            <div
+                className={`relative shrink-0 overflow-hidden border border-[#e4e7ec] bg-white ${
+                    sheet ? "h-[240px] w-full rounded-2xl" : "size-16 rounded-[10.67px]"
+                }`}
+            >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            </div>
+        );
+    }
+
     return (
         <div
             className={`relative flex shrink-0 items-center justify-center overflow-hidden border border-[#e4e7ec] bg-white ${

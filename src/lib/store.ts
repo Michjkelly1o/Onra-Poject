@@ -2351,6 +2351,11 @@ export interface PurchaseLineItem {
         senderName: string;
         message?: string;
     };
+    /** Product photo — only set for `productType: "retail"` today, so the
+     *  checkout screen's "Detail product" row can render the real image
+     *  instead of a category icon. Non-retail lines leave this undefined
+     *  and fall back to their category-tinted icon. */
+    imageUrl?: string;
 }
 
 export interface PendingPurchase {
@@ -3117,6 +3122,14 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         // ── Refund-request approval queue (Jul 2026) ────────────────
         refundRequestedAtISO:  t.refund_requested_at,
         refundRequestReason:   t.refund_request_reason,
+        // ── Retail line-item snapshot (Phase D, 2026-07-30) ─────────
+        retailProductId:              t.retail_product_id,
+        productSnapshotName:          t.product_snapshot_name,
+        productSnapshotSku:           t.product_snapshot_sku,
+        productSnapshotPriceAed:      t.product_snapshot_price_aed,
+        productSnapshotUnitCostAed:   t.product_snapshot_unit_cost_aed,
+        quantity:                     t.quantity,
+        branchIdAtSale:               t.branch_id_at_sale,
     };
 }
 
@@ -9290,13 +9303,22 @@ export const useAppStore = create<AppState>()(persist(
         );
     },
     canDeleteRetailProduct: (id) => {
-        // Hard delete blocked when ANY historical transaction referenced
-        // the product — the receipt-snapshot fields would otherwise dangle
-        // and break past receipts. Archive-only for products with history.
-        const txnCount = get().customerTransactions.filter(
+        // Hard delete blocked when the product carries ANY historical
+        // record — either a past receipt (customerTransactions with the
+        // retailProductId) OR any stock adjustment (receive / sale /
+        // adjust / loss / refund). Snapshot fields on past receipts and
+        // the audit-log rows would otherwise dangle. Archive-only for
+        // products with history; Deactivate is offered by the UI when
+        // the admin wants to hide-but-keep.
+        const state = get();
+        const txnCount = state.customerTransactions.filter(
             t => t.retailProductId === id,
         ).length;
-        if (txnCount > 0) return { deletable: false, reason: "has_history" as const, transactionCount: txnCount };
+        const adjCount = state.retailStockAdjustments.filter(
+            a => a.productId === id,
+        ).length;
+        const total = txnCount + adjCount;
+        if (total > 0) return { deletable: false, reason: "has_history" as const, transactionCount: total };
         return { deletable: true as const };
     },
     deleteRetailProducts: (ids) => {
@@ -11032,20 +11054,33 @@ export const useAppStore = create<AppState>()(persist(
             const membership = items.find(it => it.productType === "membership");
             const packages = items.filter(it => it.productType === "package");
             const giftCards = items.filter(it => it.productType === "gift_card");
+            const retails = items.filter(it => it.productType === "retail");
             if (membership) return `the ${membership.name}`;
             if (packages.length === 1) return `the ${packages[0].name}`;
             if (packages.length > 1) return `${packages.reduce((sum, p) => sum + p.quantity, 0)} credit packages`;
             if (giftCards.length > 0) return giftCards.length === 1
                 ? `a ${giftCards[0].name} gift card`
                 : `${giftCards.length} gift cards`;
+            if (retails.length > 0) {
+                const totalUnits = retails.reduce((sum, r) => sum + r.quantity, 0);
+                if (retails.length === 1) {
+                    return totalUnits === 1
+                        ? `a ${retails[0].name}`
+                        : `${totalUnits} × ${retails[0].name}`;
+                }
+                return `${totalUnits} retail items`;
+            }
             return "items at checkout";
         })();
         // Pre-compute the first transaction id so the notification record can
         // deep-link the click-through to the exact receipt on the customer
-        // profile (Payments tab → highlighted row).
+        // profile (Payments tab → highlighted row). Retail-only orders fall
+        // back to the first retail line so click-through still resolves.
         const txnStamp = Date.now();
         const firstSaleIdx = items.findIndex(it => it.productType === "membership" || it.productType === "package");
-        const firstTxnId = firstSaleIdx >= 0 ? `txn_sale_${txnStamp}_${firstSaleIdx}` : undefined;
+        const firstRetailIdx = items.findIndex(it => it.productType === "retail");
+        const resolvedFirstIdx = firstSaleIdx >= 0 ? firstSaleIdx : firstRetailIdx;
+        const firstTxnId = resolvedFirstIdx >= 0 ? `txn_sale_${txnStamp}_${resolvedFirstIdx}` : undefined;
         set((state) => {
             // Business rule (per CLAUDE.md): 1 membership OR multiple packages — never both.
             const membership = items.find(it => it.productType === "membership");
@@ -12086,20 +12121,36 @@ export const useAppStore = create<AppState>()(persist(
         //   retailStockAdjustments) + optional line-item snapshot fields on
         //   CustomerTransaction. onRehydrateStorage injects the seeds when a slice
         //   is missing or empty so every browser lands on the same inventory.
-        // v90 (2026-07-30) [customer-experience]: Ava Wright (customer demo persona)
+        // v90 (2026-07-29) [insights-kpi-ai-agent-polish]: Retail products gained
+        //   real photo assets under /public/images/retail/ (studio-tank, grip-socks,
+        //   pre-workout, resistance-bands, stainless-bottle, studio-towel). Pre-v90
+        //   snapshots persisted the OLD image-less products; the id-keyed backfill
+        //   only ADDS missing rows, so bumping is the cleanest way to reseed the 6
+        //   rows that gained an image_url.
+        // v91 (2026-07-30) [insights-kpi-ai-agent-polish]: Retail catalog trimmed
+        //   15 → 6 products (only those with real photos ship in the demo). Persisted
+        //   stock + adjustment rows referencing the 9 dropped products would dangle
+        //   otherwise; the id-keyed backfill above never REMOVES rows, so a version
+        //   bump is the only way to force a clean reseed. Also adds 20 retail-kind
+        //   customer_transactions so the Retail Sales report has real data on day one.
+        // v91 (2026-07-30) [customer-experience]: Ava Wright (customer demo persona)
         //   Past reshaped to exactly 5 across ALL booking types — 3 class
         //   (1 attended-rateable, 2 cancelled) + 2 appointment (private + recovery,
         //   both Attended + pre-rated). Empty Upcoming by default. Her generated
         //   class + appointment bookings/ratings are stripped and replaced with the
         //   curated set.
-        // v91 (2026-07-30): MERGE of the Retail (main) + customer-experience
-        //   branches — both independently reached v89 / v90 with different slices +
-        //   seeds. Bump to 91 so every persisted snapshot reseeds cleanly with the
-        //   UNION: the retail slices AND the curated Ava bookings (empty Upcoming).
-        // v92 (2026-07-31): Two live-demo classes TODAY at 1 PM + 2 PM (with
-        //   attendees) for the attendance-flow walkthrough. Bump so existing
-        //   snapshots reseed and pick up the new class schedules + bookings.
-        version: 92,
+        // v92 (2026-07-30) [main / merge]: BOTH branches independently reached v91
+        //   for different reasons (see the two v91 entries above). Bump to 92 forced
+        //   every persisted snapshot from either branch to reseed cleanly from the
+        //   merged INITIAL_* — guaranteeing BOTH the trimmed retail catalog (+ real
+        //   photos + 20 retail customer_transactions) AND Ava Wright's curated
+        //   Past = 5 / empty Upcoming / both appointment ratings.
+        // v93 (2026-07-31): Merge of origin/main (AI Agent phases + retail) into
+        //   customer-experience, PLUS two live-demo classes TODAY at 1 PM + 2 PM for
+        //   the attendance-flow walkthrough. Bump ABOVE both branches' v92 so every
+        //   persisted snapshot (from either side) reseeds with the union — retail +
+        //   curated Ava bookings + the new demo class schedules/bookings.
+        version: 93,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

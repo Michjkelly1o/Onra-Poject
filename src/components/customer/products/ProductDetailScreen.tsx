@@ -14,7 +14,7 @@
 import { useEffect, useReducer, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
-import { ChevronLeft, ChevronRight, Clock, CreditCard02, CurrencyDollarCircle, Gift01, Lightbulb02, MarkerPin01, Minus, Package, Plus } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, Clock, CreditCard02, CurrencyDollarCircle, Gift01, Lightbulb02, MarkerPin01, Minus, Package, Plus, Tag03, Box } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useCatalogProducts } from "@/lib/customer/products-catalog";
@@ -63,20 +63,23 @@ export function ProductDetailScreen({
     const giftCardDesigns = useAppStore((s) => s.giftCardDesigns);
     const branches = useAppStore((s) => s.branches);
     const customerPlans = useAppStore((s) => s.customerPlans);
+    const retailProducts = useAppStore((s) => s.retailProducts);
     const showToast = useAppStore((s) => s.showToast);
-    const { plans, giftCards } = useCatalogProducts();
+    const { plans, giftCards, retail } = useCatalogProducts();
     const purchasePlans = usePurchasePlans();
 
     // Look up the product in the catalog first (branch-scoped), falling back to the
-    // booking purchase list so this screen works in both flows.
+    // booking purchase list so this screen works in both flows. Retail rows only
+    // come through the catalogue path — the booking-flow purchasePlans list is
+    // memberships + packages, no retail there.
     const product: PlanRow | undefined =
-        [...plans, ...giftCards].find((p) => p.id === productId) ?? purchasePlans.find((p) => p.id === productId);
+        [...plans, ...giftCards, ...retail].find((p) => p.id === productId) ?? purchasePlans.find((p) => p.id === productId);
     ensurePurchaseCart(originId);
 
     const [qty, setQty] = useState(1);
     const [, bump] = useReducer((x) => x + 1, 0);
     useEffect(() => {
-        if (product?.kind === "package") {
+        if (product?.kind === "package" || product?.kind === "retail") {
             const inCart = purchaseCart.items.filter((i) => i.id === product.id).reduce((n, i) => n + i.quantity, 0);
             setQty(Math.max(1, inCart || 1));
         }
@@ -95,13 +98,16 @@ export function ProductDetailScreen({
 
     const isPackage = product.kind === "package";
     const isGift = product.kind === "gift_card";
+    const isRetail = product.kind === "retail";
     const isGuest = member == null;
 
     // ── Admin records (description + info rows per type) ──
     const membership = memberships.find((m) => m.id === product.id);
     const pkg = packages.find((p) => p.id === product.id);
     const gift = giftCardDesigns.find((g) => g.id === product.id);
-    const description = membership?.description ?? pkg?.description ?? gift?.description ?? "";
+    const retailProduct = isRetail ? retailProducts.find((p) => p.id === product.id) : undefined;
+    const description =
+        membership?.description ?? pkg?.description ?? gift?.description ?? retailProduct?.description ?? "";
     const branchNames = (ids?: string[]) =>
         (ids ?? []).map((id) => branches.find((b) => b.id === id)?.name).filter(Boolean).join(", ");
 
@@ -134,24 +140,36 @@ export function ProductDetailScreen({
                   currentName: currentMembership.name,
               }
             : null;
+    // Retail: only "sold out at the shopper's branch" gates the button — plans
+    // don't affect retail purchases (non-exclusive). The unitsOnHand figure
+    // comes from useCatalogProducts and is scoped to the shopper's home branch.
+    const retailOutOfStock = isRetail && (product.unitsOnHand ?? 0) <= 0;
     const addDisabled =
         product.kind === "membership"
             ? holdsActivePackage || product.id === ownedMembershipId
             : product.kind === "package"
               ? !!activeMembershipPlan
-              : false;
+              : product.kind === "retail"
+                ? retailOutOfStock
+                : false;
 
     function onAdd() {
         if (isGift) {
             router.push(`/customer/products/gift-card/${product!.id}`);
             return;
         }
-        const existing = isPackage ? purchaseCart.items.find((i) => i.id === product!.id && i.kind === "package") : null;
+        // Packages + retail both open at their current cart qty and let the
+        // shopper set an explicit total — so an existing line is OVERWRITTEN
+        // rather than added onto.
+        const existing =
+            isPackage || isRetail
+                ? purchaseCart.items.find((i) => i.id === product!.id && i.kind === product!.kind)
+                : null;
         if (existing) {
             existing.quantity = qty;
             showToast("Cart updated", `${product!.name} quantity set to ${qty}.`, "success", "check");
         } else {
-            addToCart(product!, isPackage ? qty : 1);
+            addToCart(product!, isPackage || isRetail ? qty : 1);
             showToast("Added to cart", `${product!.name} added to your cart.`, "success", "check");
         }
         bump();
@@ -161,41 +179,74 @@ export function ProductDetailScreen({
     // ── Hero content + type badge ──
     const heroBig = isGift ? String(gift?.fixed_value_aed ?? product.price) : product.creditBadge?.big ?? "";
     const heroSmall = isGift ? "AED" : product.creditBadge?.small ?? "credits";
-    const typeLabel = product.kind === "membership" ? "Membership" : isPackage ? "Credit package" : "Gift card";
-    const BadgeIcon = product.kind === "membership" ? CreditCard02 : isPackage ? Package : Gift01;
+    const typeLabel = product.kind === "membership"
+        ? "Membership"
+        : isPackage
+            ? "Credit package"
+            : isRetail
+                ? "Retail"
+                : "Gift card";
+    const BadgeIcon = product.kind === "membership"
+        ? CreditCard02
+        : isPackage || isRetail
+            ? Package
+            : Gift01;
 
     return (
         <div className="relative flex min-h-full flex-col">
-            {/* Hero — 200px brand-gradient banner; credit/value bottom-left, with the
-                back button + product-type badge over the top (Figma 4417-43481). */}
-            <div
-                className="relative flex h-[200px] w-full shrink-0 flex-col items-start justify-end overflow-hidden p-4"
-                style={{ background: `linear-gradient(180deg, ${HERO.from} 0%, ${HERO.to} 100%)` }}
-            >
-                <Rings color={HERO.ring} opacity={0.4} scale={5} />
-
-                {/* Top row — back + type badge */}
-                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4">
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        aria-label="Go back"
-                        className="flex size-10 items-center justify-center rounded-full bg-black/40 transition-colors active:bg-black/50"
-                    >
-                        <ChevronLeft className="size-5 text-white" aria-hidden />
-                    </button>
-                    <span className="flex items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2 text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
-                        <BadgeIcon className="size-3 shrink-0" aria-hidden />
-                        {typeLabel}
-                    </span>
+            {/* Hero — memberships/packages/gift cards render the 200px brand-
+                gradient banner with a big credit/value figure. Retail replaces
+                it with a real product photo (aspect-square, ~360px on the
+                phone-frame width) so shoppers see the item before buying. */}
+            {isRetail && product.imageUrl ? (
+                <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+                    <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4">
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            aria-label="Go back"
+                            className="flex size-10 items-center justify-center rounded-full bg-black/40 transition-colors active:bg-black/50"
+                        >
+                            <ChevronLeft className="size-5 text-white" aria-hidden />
+                        </button>
+                        <span className="flex items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2 text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
+                            <BadgeIcon className="size-3 shrink-0" aria-hidden />
+                            {typeLabel}
+                        </span>
+                    </div>
                 </div>
+            ) : (
+                <div
+                    className="relative flex h-[200px] w-full shrink-0 flex-col items-start justify-end overflow-hidden p-4"
+                    style={{ background: `linear-gradient(180deg, ${HERO.from} 0%, ${HERO.to} 100%)` }}
+                >
+                    <Rings color={HERO.ring} opacity={0.4} scale={5} />
 
-                {/* Credit / value — bottom-left, big number + unit on the baseline */}
-                <div className="relative flex items-end gap-2" style={{ color: HERO.text }}>
-                    <span className="text-6xl font-semibold leading-[72px] tracking-[-1.2px]">{heroBig}</span>
-                    <span className="text-3xl font-normal leading-[38px]">{heroSmall}</span>
+                    {/* Top row — back + type badge */}
+                    <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4">
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            aria-label="Go back"
+                            className="flex size-10 items-center justify-center rounded-full bg-black/40 transition-colors active:bg-black/50"
+                        >
+                            <ChevronLeft className="size-5 text-white" aria-hidden />
+                        </button>
+                        <span className="flex items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2 text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
+                            <BadgeIcon className="size-3 shrink-0" aria-hidden />
+                            {typeLabel}
+                        </span>
+                    </div>
+
+                    {/* Credit / value — bottom-left, big number + unit on the baseline */}
+                    <div className="relative flex items-end gap-2" style={{ color: HERO.text }}>
+                        <span className="text-6xl font-semibold leading-[72px] tracking-[-1.2px]">{heroBig}</span>
+                        <span className="text-3xl font-normal leading-[38px]">{heroSmall}</span>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Body */}
             <div className="flex flex-1 flex-col gap-8 px-4 pb-[120px] pt-6">
@@ -257,6 +308,29 @@ export function ProductDetailScreen({
                             </InfoRow>
                         </>
                     )}
+                    {isRetail && (
+                        <>
+                            <InfoRow icon={Tag03}>
+                                Category{" "}
+                                <span className="font-medium text-[var(--brand-text)]">
+                                    {product.categoryLabel ?? "Retail"}
+                                </span>
+                            </InfoRow>
+                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <InfoRow icon={Box}>
+                                {retailOutOfStock ? (
+                                    <span className="font-medium text-[#b42318]">Out of stock at your branch</span>
+                                ) : (
+                                    <>
+                                        <span className="font-medium text-[var(--brand-text)]">
+                                            {product.unitsOnHand} in stock
+                                        </span>
+                                        {" "}at your branch
+                                    </>
+                                )}
+                            </InfoRow>
+                        </>
+                    )}
                 </div>
 
                 {/* Membership upgrade / downgrade panel */}
@@ -284,27 +358,48 @@ export function ProductDetailScreen({
                 )}
             </div>
 
-            {/* Sticky footer — qty stepper (packages) + Add to cart */}
+            {/* Sticky footer — qty stepper (packages + retail) + Add to cart.
+                Retail rows clamp the max at units-in-stock so a shopper can't
+                push past what the branch has left. */}
             <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4">
                 {isGuest ? (
                     <Button variant="primary" size="xl" className="w-full rounded-full" onClick={() => router.push(loginHref(pathname))}>
                         Log in to purchase
                     </Button>
                 ) : (
-                    <>
-                        <div className="flex items-center gap-4">
-                            <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={addDisabled || !isPackage || qty <= 1} aria-label="Decrease quantity" className={STEP_BTN}>
-                                <Minus className="size-5 text-[#344054]" aria-hidden />
-                            </button>
-                            <span className="min-w-4 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{qty}</span>
-                            <button type="button" onClick={() => setQty((q) => q + 1)} disabled={addDisabled || !isPackage} aria-label="Increase quantity" className={STEP_BTN}>
-                                <Plus className="size-5 text-[#344054]" aria-hidden />
-                            </button>
-                        </div>
-                        <Button variant="primary" size="xl" className="shrink-0 rounded-full" disabled={addDisabled} onClick={onAdd}>
-                            {isGift ? "Buy gift card" : "Add to cart"}
-                        </Button>
-                    </>
+                    (() => {
+                        const qtyEditable = isPackage || isRetail;
+                        const maxQty = isRetail ? Math.max(1, product.unitsOnHand ?? 1) : Number.POSITIVE_INFINITY;
+                        const canIncrement = qtyEditable && qty < maxQty;
+                        return (
+                            <>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setQty((q) => Math.max(1, q - 1))}
+                                        disabled={addDisabled || !qtyEditable || qty <= 1}
+                                        aria-label="Decrease quantity"
+                                        className={STEP_BTN}
+                                    >
+                                        <Minus className="size-5 text-[#344054]" aria-hidden />
+                                    </button>
+                                    <span className="min-w-4 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{qty}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+                                        disabled={addDisabled || !canIncrement}
+                                        aria-label="Increase quantity"
+                                        className={STEP_BTN}
+                                    >
+                                        <Plus className="size-5 text-[#344054]" aria-hidden />
+                                    </button>
+                                </div>
+                                <Button variant="primary" size="xl" className="shrink-0 rounded-full" disabled={addDisabled} onClick={onAdd}>
+                                    {isGift ? "Buy gift card" : "Add to cart"}
+                                </Button>
+                            </>
+                        );
+                    })()
                 )}
             </div>
         </div>

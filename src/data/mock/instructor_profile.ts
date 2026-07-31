@@ -51,7 +51,7 @@ export const instructor_profile: User & { staff_profile_id: string } = {
     first_name: "Liam",
     last_name: "Chen",
     email: "liam@email.com",
-    phone: "+971 55 200 2001",
+    phone: "+971 55 200 2015",
     avatar_url: "/images/instructors/liam-chen.webp",
     // Demo password from CLAUDE.md — every demo persona uses `Demo1234!`.
     password: "Demo1234!",

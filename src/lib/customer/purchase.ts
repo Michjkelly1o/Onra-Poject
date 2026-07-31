@@ -12,7 +12,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { useAppStore } from "@/lib/store";
 
-export type PlanKind = "membership" | "package" | "gift_card";
+export type PlanKind = "membership" | "package" | "gift_card" | "retail";
 
 export interface GiftCardMeta {
     valueType: "fixed" | "custom";
@@ -51,6 +51,21 @@ export interface PlanRow {
     unitPriceLabel?: string;
     /** Gift-card metadata (set when kind === "gift_card"). */
     giftCard?: GiftCardMeta;
+    // ── Retail-only (2026-07-30, Phase F) ────────────────────────────────
+    /** Product photo for retail rows. The catalog + checkout render this
+     *  as a real image tile instead of the category-icon ProductArt. */
+    imageUrl?: string;
+    /** Category label ("Apparel", "Supplements", …) shown as the sub-line
+     *  for retail rows. Non-retail rows use `sub` for credit / duration
+     *  copy, so this only reads on retail. */
+    categoryLabel?: string;
+    /** SKU carried through to the detail screen so shoppers can see the
+     *  same identifier admins reference. Optional so non-retail rows can
+     *  ignore it. */
+    sku?: string;
+    /** Units on hand at the shopper's branch. Drives the "N in stock" line
+     *  + the sold-out add gate. Undefined on non-retail rows. */
+    unitsOnHand?: number;
 }
 
 export interface CartItem extends PlanRow {
@@ -151,26 +166,43 @@ export function cartTotal(): number {
 let _giftLineSeq = 0;
 
 /** Add to cart honouring the ownership invariant — one membership OR packages —
- *  while gift cards are NON-exclusive (coexist with either + stack as their own
- *  lines). A membership replaces any membership/package but keeps gift cards; a
- *  package drops any membership but keeps packages + gift cards. */
+ *  while gift cards and retail are NON-exclusive (coexist with either + stack as
+ *  their own lines). A membership replaces any membership/package but keeps
+ *  gift cards + retail; a package drops any membership but keeps packages +
+ *  gift cards + retail; retail stacks by id (like packages do among themselves)
+ *  and never touches the plan lines. */
 export function addToCart(item: PlanRow, quantity: number): void {
     const giftCards = purchaseCart.items.filter((i) => i.kind === "gift_card");
+    const retails = purchaseCart.items.filter((i) => i.kind === "retail");
     if (item.kind === "gift_card") {
         _giftLineSeq += 1;
         purchaseCart.items = [...purchaseCart.items, { ...item, quantity: 1, lineId: `${item.id}-${_giftLineSeq}` }];
         return;
     }
-    if (item.kind === "membership") {
-        purchaseCart.items = [{ ...item, quantity: 1, lineId: item.id }, ...giftCards];
+    if (item.kind === "retail") {
+        // Retail lines stack per product id — every branch buys one at a
+        // time from the shopper's home stock so quantity always folds into
+        // the same lineId. Never displaces plan lines.
+        const existingRetail = retails.find((i) => i.id === item.id);
+        if (existingRetail) {
+            existingRetail.quantity += quantity;
+        } else {
+            retails.push({ ...item, quantity, lineId: item.id });
+        }
+        const others = purchaseCart.items.filter((i) => i.kind !== "retail");
+        purchaseCart.items = [...others, ...retails];
         return;
     }
-    // package — stacks with packages, drops any membership, keeps gift cards
+    if (item.kind === "membership") {
+        purchaseCart.items = [{ ...item, quantity: 1, lineId: item.id }, ...giftCards, ...retails];
+        return;
+    }
+    // package — stacks with packages, drops any membership, keeps gift cards + retail
     const packages = purchaseCart.items.filter((i) => i.kind === "package");
     const existing = packages.find((i) => i.id === item.id);
     if (existing) existing.quantity += quantity;
     else packages.push({ ...item, quantity, lineId: item.id });
-    purchaseCart.items = [...packages, ...giftCards];
+    purchaseCart.items = [...packages, ...giftCards, ...retails];
 }
 
 /** Remove a single cart line (by its lineId). Used by the checkout (−) at qty 1. */

@@ -175,7 +175,7 @@ export const staff: StaffSeed[] = [
         // in `updateAccountProfile` operates against a consistent baseline
         // (Phase 4 centralization audit). Edits made on /instructor/account
         // propagate here through that cascade.
-        email: "liam@email.com", phone: "+971 55 200 2001",
+        email: "liam@email.com", phone: "+971 55 200 2015",
         initials: "LC", color_hex: "#4b8c9a",
         image_url: "/images/instructors/liam-chen.webp",
         role_id: "role_instructor",

@@ -29,8 +29,9 @@ import { runAnalyze, runList, runExport } from "@/ai-agent/data/engine";
 import { exportStore } from "@/ai-agent/data/export-store";
 import { branchFilter, ScopeError } from "@/ai-agent/data/scope";
 import type { Row } from "@/ai-agent/data/store-readers";
-import type { InsightCard } from "@/ai-agent/agent/cards";
+import { AED, type InsightCard } from "@/ai-agent/agent/cards";
 import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
+import { assertKnownRoute } from "@/ai-agent/data/known-routes";
 
 const DATASETS = [
     // Phase 2 — original 7:
@@ -47,6 +48,37 @@ const DATASETS = [
     "wallet_transactions",
     "payroll_entries",
     "promo_codes",
+    // AI-agent widening plan Phase 2 (2026-07-30) — retail catalog:
+    "retail_products",
+    "retail_stock",
+    "retail_stock_adjustments",
+    // AI-agent widening plan Phase 3 Batch A (2026-07-30) — Product catalog:
+    "memberships",
+    "packages",
+    "gift_card_designs",
+    "issued_gift_cards",
+    // AI-agent widening plan Phase 3 Batch B (2026-07-30) — Class + facility:
+    "class_templates",
+    "class_categories",
+    "class_ratings",
+    "rooms",
+    "branches",
+    // AI-agent widening plan Phase 3 Batch C (2026-07-30) — Staff catalog:
+    "staff",
+    "pay_rates",
+    "shifts",
+    "shift_assignments",
+    "blocked_times",
+    // AI-agent widening plan Phase 3 Batch D (2026-07-30) — Settings catalog:
+    "tax_rates",
+    "agreements",
+    "cancellation_policy",
+    "freeze_policy",
+    "referral_settings",
+    "notification_settings",
+    // AI-agent widening plan Phase 3 Batch E (2026-07-30) — Customer relations:
+    "customer_plans",
+    "customer_referrals",
 ] as const;
 
 const filter = z.object({
@@ -197,6 +229,20 @@ const CREATE_SHORTCUTS = [
 
 // ─── Phase 12: customer search ────────────────────────────────────────────────
 
+/** Normalize a name for substring matching: lowercase, strip diacritics,
+ *  fold hyphens/apostrophes/underscores to spaces, and collapse any
+ *  whitespace run to a single space. So "Al-Sayed" matches "Al Sayed"
+ *  and "O'Malley" matches "OMalley" / "O Malley" alike. */
+function normalizeName(s: string): string {
+    return s
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[̀-ͯ]/g, "")   // strip combining diacritics
+        .replace(/[-'_]/g, " ")            // fold hyphens / apostrophes to spaces
+        .replace(/\s+/g, " ")              // collapse whitespace
+        .trim();
+}
+
 function findCustomer(
     ctx: AuthContext,
     catalog: Catalog,
@@ -204,6 +250,7 @@ function findCustomer(
 ): InsightCard {
     const limit = q.limit ?? 12;
     const query = q.query.trim().toLowerCase();
+    const normalizedQuery = normalizeName(q.query);
     if (!query) {
         return {
             card: "empty",
@@ -222,10 +269,16 @@ function findCustomer(
         const last = ((c.last_name as string) ?? "").toLowerCase();
         const email = ((c.email as string) ?? "").toLowerCase();
         const phone = ((c.phone as string) ?? "").toLowerCase();
+        // Hyphen/apostrophe-tolerant name match so "Al Sayed" matches
+        // "Al-Sayed" and vice versa. Falls back to the raw lowercased
+        // compare for email/phone.
+        const firstNorm = normalizeName(first);
+        const lastNorm = normalizeName(last);
+        const fullNorm = `${firstNorm} ${lastNorm}`.trim();
         return (
-            first.includes(query) ||
-            last.includes(query) ||
-            `${first} ${last}`.includes(query) ||
+            firstNorm.includes(normalizedQuery) ||
+            lastNorm.includes(normalizedQuery) ||
+            fullNorm.includes(normalizedQuery) ||
             email.includes(query) ||
             (normalizedQueryDigits.length > 0 && phone.replace(/\D+/g, "").includes(normalizedQueryDigits))
         );
@@ -244,8 +297,9 @@ function findCustomer(
         const name = ((l.contact_name as string) ?? "").toLowerCase();
         const email = ((l.contact_email as string) ?? "").toLowerCase();
         const phone = ((l.phone as string) ?? "").toLowerCase();
+        const nameNorm = normalizeName(name);
         return (
-            name.includes(query) ||
+            nameNorm.includes(normalizedQuery) ||
             email.includes(query) ||
             (normalizedQueryDigits.length > 0 && phone.replace(/\D+/g, "").includes(normalizedQueryDigits))
         );
@@ -274,7 +328,10 @@ function findCustomer(
             title: `${first} ${last}`.trim() || email || "Unnamed customer",
             subtitle: email ? `${email} · ${planName}` : planName,
             right1: status,
-            href: `/customers/${c.id}`,
+            // Phase 6 (2026-07-30) — every href routes through the deadlink
+            // validator. `/customers/:id` is a known route, so this stays
+            // clickable in every case a legit customer row is returned.
+            href: assertKnownRoute(`/customers/${c.id}`),
             avatarImageUrl: imageUrl,
             avatarInitials: initials,
         };
@@ -365,6 +422,213 @@ function studioOverview(
                 : `Scoped to ${ctx.branchScope
                       .map((id) => snapshot.branches.find((b) => b.id === id)?.name ?? id)
                       .join(", ")}.`,
+    };
+}
+
+// ─── Phase 5 (empty-state pivot) — data_coverage ─────────────────────────────
+//
+// Returns a small object summarising how much live data the studio has.
+// The insight prompt tells the model to call this BEFORE running trend /
+// comparison analyses — if the studio is brand-new (all counts below the
+// threshold), the model pivots to guidance mode instead of showing bland
+// zero-value charts. Same snapshot the other tools use.
+function dataCoverage(
+    ctx: AuthContext,
+    catalog: Catalog,
+    snapshot: AiAgentStateSnapshot,
+): InsightCard {
+    // Branch-scope the counts so a Branch Admin's "is my branch new?" gets
+    // an honest yes/no even when other branches carry data.
+    const custRows      = branchFilter(ctx, (catalog.customers?.rows      ?? []) as { branch_id?: string | null }[]) as Row[];
+    const txnRows       = branchFilter(ctx, (catalog.transactions?.rows   ?? []) as { branch_id?: string | null }[]) as Row[];
+    const classRows     = branchFilter(ctx, (catalog.classes?.rows        ?? []) as { branch_id?: string | null }[]) as Row[];
+    const bookingRows   = branchFilter(ctx, (catalog.bookings?.rows       ?? []) as { branch_id?: string | null }[]) as Row[];
+    const staffRows     = branchFilter(ctx, (catalog.staff?.rows          ?? []) as { branch_id?: string | null }[]) as Row[];
+    const retailProds   = (catalog.retail_products?.rows ?? []) as Row[]; // studio-global
+    const memberships   = (catalog.memberships?.rows ?? []) as Row[]; // studio-global
+    const activePlans   = (branchFilter(ctx, (catalog.customer_plans?.rows ?? []) as { branch_id?: string | null }[]) as Row[])
+        .filter((p) => p.status === "active");
+
+    // "Days of history" — spread of transactions from earliest to today.
+    // Falls back to customers.created_at if no transactions yet.
+    const now = Date.now();
+    const parseIso = (v: unknown): number => {
+        const s = String(v ?? "").slice(0, 10);
+        const t = Date.parse(s);
+        return Number.isNaN(t) ? Infinity : t;
+    };
+    const earliestTxn = txnRows.reduce((min, t) => Math.min(min, parseIso(t.created_at)), Infinity);
+    const earliestCust = custRows.reduce((min, c) => Math.min(min, parseIso(c.created_at)), Infinity);
+    const earliest = Math.min(earliestTxn, earliestCust);
+    const daysOfHistory = earliest === Infinity ? 0 : Math.max(1, Math.floor((now - earliest) / 864e5));
+
+    // "Is new studio" threshold — genuinely sparse setup. Any studio hitting
+    // ALL of these is a first-day install with only seed defaults.
+    const isNewStudio =
+        custRows.length < 5 &&
+        txnRows.length < 5 &&
+        classRows.length < 3 &&
+        bookingRows.length < 5;
+
+    const tiles: Array<{ label: string; value: string }> = [
+        { label: "Customers",              value: String(custRows.length) },
+        { label: "Active plans",           value: String(activePlans.length) },
+        { label: "Transactions",           value: String(txnRows.length) },
+        { label: "Classes on the calendar",value: String(classRows.length) },
+        { label: "Bookings recorded",      value: String(bookingRows.length) },
+        { label: "Staff on the team",      value: String(staffRows.length) },
+        { label: "Retail products",        value: String(retailProds.length) },
+        { label: "Memberships offered",    value: String(memberships.length) },
+        { label: "Days of history",        value: String(daysOfHistory) },
+    ];
+
+    return {
+        card: "metric_group",
+        title: isNewStudio ? "This studio is just getting started" : "Data coverage",
+        tiles,
+        note: isNewStudio
+            ? "Not enough activity yet to spot trends — head to the Studio setup thread to finish configuring, or come back once a few sales / bookings have landed."
+            : `${daysOfHistory} day${daysOfHistory === 1 ? "" : "s"} of history to draw on.`,
+    };
+}
+
+// ─── Phase 4 (insight variety) — whats_interesting ───────────────────────────
+//
+// Server-side "what's happening" scan. Runs a handful of cheap checks over
+// the live catalog + snapshot and returns the 2-3 loudest signals right
+// now — top movers, retail low-stock, at-risk customers, upcoming class
+// load, expired-plan renewals. The LLM narrates the returned metric_group
+// and can then decide which lens to drill into with `analyze`.
+//
+// Everything is deterministic on the current snapshot — same query on the
+// same state returns the same tiles. No randomness, no template rotation.
+// Freshness comes from data changing, not from the tool inventing variety.
+function whatsInteresting(
+    ctx: AuthContext,
+    catalog: Catalog,
+    snapshot: AiAgentStateSnapshot,
+): InsightCard {
+    const tiles: Array<{ label: string; value: string }> = [];
+    const now = Date.now();
+    const day = 864e5;
+    const isoDay = (offset = 0) => new Date(now + offset * day).toISOString().slice(0, 10);
+
+    // 1. Retail low stock — how many product×branch pairs are at/below reorder
+    const stockRows = branchFilter(
+        ctx,
+        (catalog.retail_stock?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const lowStock = stockRows.filter((s) => s.below_reorder === "true").length;
+    if (lowStock > 0) {
+        tiles.push({ label: "Retail SKUs below reorder threshold", value: String(lowStock) });
+    }
+
+    // 2. Plans expiring in the next 14 days
+    const plans = branchFilter(
+        ctx,
+        (catalog.customer_plans?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const soonCutoff = isoDay(14);
+    const expiringSoon = plans.filter((p) => {
+        if (p.status !== "active") return false;
+        const exp = String(p.expiry_iso ?? "").slice(0, 10);
+        return exp && exp <= soonCutoff && exp >= isoDay(0);
+    }).length;
+    if (expiringSoon > 0) {
+        tiles.push({ label: "Plans expiring in the next 14 days", value: String(expiringSoon) });
+    }
+
+    // 3. Upcoming class load — classes scheduled in next 7 days
+    const classRows = branchFilter(
+        ctx,
+        (catalog.classes?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const weekCutoff = isoDay(7);
+    const upcoming = classRows.filter((c) => {
+        const iso = String(c.date_iso ?? c.date ?? "").slice(0, 10);
+        return iso && iso >= isoDay(0) && iso <= weekCutoff;
+    }).length;
+    if (upcoming > 0) {
+        tiles.push({ label: "Classes scheduled in the next 7 days", value: String(upcoming) });
+    }
+
+    // 4. Revenue this month (transactions kind ≠ retail, status complete)
+    const txnRows = branchFilter(
+        ctx,
+        (catalog.transactions?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const monthStart = new Date(now).toISOString().slice(0, 7) + "-01";
+    const revenueThisMonth = txnRows
+        .filter((t) => t.status === "complete" && t.kind !== "retail")
+        .filter((t) => String(t.created_at ?? "").slice(0, 10) >= monthStart)
+        .reduce((sum, t) => sum + (typeof t.amount_aed === "number" ? t.amount_aed : 0), 0);
+    if (revenueThisMonth > 0) {
+        tiles.push({ label: "Revenue this month (memberships + packages)", value: AED(revenueThisMonth) });
+    }
+
+    // 5. Retail revenue this month
+    const retailRevMonth = txnRows
+        .filter((t) => t.status === "complete" && t.kind === "retail")
+        .filter((t) => String(t.created_at ?? "").slice(0, 10) >= monthStart)
+        .reduce((sum, t) => sum + (typeof t.amount_aed === "number" ? t.amount_aed : 0), 0);
+    if (retailRevMonth > 0) {
+        tiles.push({ label: "Retail revenue this month", value: AED(retailRevMonth) });
+    }
+
+    // 6. At-risk customers (active plan expiring soon OR no visit in 30+ days)
+    const custRows = branchFilter(
+        ctx,
+        (catalog.customers?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const soonMs = now + 21 * day;
+    const staleCutoff = now - 30 * day;
+    const atRisk = custRows.filter((c) => c.status === "active").filter((c) => {
+        const expIso = c.plan_expiry_iso as string | undefined;
+        const lastIso = c.last_visit_iso as string | undefined;
+        const exp = expIso ? Date.parse(expIso) : NaN;
+        const expiring = !Number.isNaN(exp) && exp <= soonMs;
+        const stale = !!lastIso && Date.parse(lastIso) < staleCutoff;
+        return expiring || stale;
+    }).length;
+    if (atRisk > 0) {
+        tiles.push({ label: "Active customers at churn risk", value: String(atRisk) });
+    }
+
+    // 7. Waitlist backlog — bookings with status waitlisted
+    const bookingRows = branchFilter(
+        ctx,
+        (catalog.bookings?.rows ?? []) as { branch_id?: string | null }[],
+    ) as Row[];
+    const waitlisted = bookingRows.filter((b) => b.status === "waitlisted").length;
+    if (waitlisted > 0) {
+        tiles.push({ label: "Bookings on the waitlist right now", value: String(waitlisted) });
+    }
+
+    // 8. Frozen plans currently (customers who paused)
+    const frozen = plans.filter((p) => p.status === "frozen" || p.status === "freeze_requested").length;
+    if (frozen > 0) {
+        tiles.push({ label: "Currently frozen / freeze-requested plans", value: String(frozen) });
+    }
+
+    // Fall-through when the studio has zero data — never return "no data"
+    // as the whole answer. Nudge toward the setup thread instead.
+    if (tiles.length === 0) {
+        return {
+            card: "empty",
+            message: "No live signals to surface yet — the studio needs a bit more activity. If you're just getting started, head to Studio setup and the studio will start telling us its story.",
+        };
+    }
+
+    // Cap at 6 tiles so the card stays scannable — order above puts the
+    // operationally-most-actionable signals first.
+    return {
+        card: "metric_group",
+        title: "What's alive right now",
+        tiles: tiles.slice(0, 6),
+        note:
+            ctx.branchScope === "all"
+                ? "Signals across all active branches."
+                : `Signals for your branches only (${ctx.branchScope.length}).`,
     };
 }
 
@@ -527,6 +791,29 @@ export function insightTools(
             execute: async () => guard(() => studioOverview(ctx, catalog, snapshot)),
         }),
 
+        // Phase 5 (2026-07-30) — empty-state pivot. Call BEFORE any
+        // trend / comparison analysis on a fresh thread — if the studio
+        // is genuinely new (all counts sparse), pivot to guidance mode
+        // instead of showing zero-value charts.
+        data_coverage: tool({
+            description:
+                "Read-only snapshot of how much live data the studio has right now — customers / plans / transactions / classes / bookings / staff / retail products / memberships / days of history. Call this at the START of a fresh insight thread, especially before running any trend or comparison analysis. If the returned `note` mentions 'just getting started', DO NOT try to render trends — respond in guidance mode ('You're just getting started. Once a few sales and bookings land I can start showing patterns.') and point the user at the Studio setup thread.",
+            parameters: z.object({}),
+            execute: async () => guard(() => dataCoverage(ctx, catalog, snapshot)),
+        }),
+
+        // Phase 4 (2026-07-30) — insight variety. When the user asks broadly
+        // ("give me insights", "what's happening"), call this FIRST — it
+        // returns the loudest 2-6 signals across finance / retail / plan
+        // health / class load / at-risk / waitlist right now. Then render
+        // one supporting chart via `analyze` on the strongest signal.
+        whats_interesting: tool({
+            description:
+                "Server-side scan for what's alive in the studio RIGHT NOW — top signals across finance, retail, membership health, at-risk customers, upcoming class load, waitlist, frozen plans. Returns a metric_group card with 2-6 tiles the model can narrate. Use whenever the user's question is broad ('give me insights', 'how is the studio doing', 'what's happening this week', 'surprise me') — do NOT default to revenue-by-branch every time. After this returns, render ONE supporting analyze chart on the strongest signal for depth.",
+            parameters: z.object({}),
+            execute: async () => guard(() => whatsInteresting(ctx, catalog, snapshot)),
+        }),
+
         find_at_risk_members: tool({
             description:
                 "Customers at churn risk (active plan expiring soon, or no visit in 30+ days) or plans expiring soon. Returns a people list. Use for retention/churn/at-risk questions.",
@@ -558,7 +845,14 @@ export function insightTools(
                     // The CREATE_SHORTCUTS constant is declared as
                     // `as const`; strip the readonly modifier so it fits
                     // the mutable RankedRow[] the card contract expects.
-                    rows: CREATE_SHORTCUTS.map((s) => ({ ...s })),
+                    // Phase 6 (2026-07-30) — every href passes through
+                    // the deadlink validator so a bad shortcut can't ship
+                    // silently. Unknown routes drop the href, keeping the
+                    // row visible but non-clickable.
+                    rows: CREATE_SHORTCUTS.map((s) => ({
+                        ...s,
+                        href: assertKnownRoute(s.href),
+                    })).filter((s) => s.href !== undefined),
                     note: "Click any row to open the form pre-scoped for a new record.",
                 })),
         }),

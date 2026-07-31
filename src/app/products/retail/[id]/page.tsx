@@ -15,11 +15,11 @@
 // re-learn either. Actions (Configure stock · Edit · Archive/Reactivate/
 // Recover · Delete) live in the sidebar action footer, not the header.
 
-import { useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     Edit02, Archive, RefreshCcw01, Trash01, Trash02, Check, XClose,
-    Image01, Package, CoinsHand, Tag01, CalendarPlus02, Building03,
+    Package, CoinsHand, Tag01, CalendarPlus02, SlashCircle01,
     BankNote01, ShoppingBag01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -28,17 +28,13 @@ import { Toast } from "@/components/ui/Toast";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
-import { SlidePanel } from "@/components/ui/SlidePanel";
-import { SelectInput } from "@/components/ui/select-input";
-import { NumericStringInput } from "@/components/ui/NumericInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { ConfigureStockPanel } from "@/components/retail/ConfigureStockPanel";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import {
     useAppStore,
-    RETAIL_ADJUST_REASONS,
     type RetailProduct,
-    type RetailAdjustReason,
     type RetailStockAdjustment,
 } from "@/lib/store";
 
@@ -91,7 +87,7 @@ const MODAL_CONFIG: Record<ModalAction, {
         confirmLabel: "Archive",
     },
     deactivate: {
-        IconComp: XClose,
+        IconComp: SlashCircle01,
         title: "Deactivate this retail product?",
         description: "This product will be hidden from new POS sales. Existing stock stays where it is.",
         confirmLabel: "Deactivate",
@@ -159,9 +155,7 @@ function ProductBanner({ imageUrl, name, status }: {
                     onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
             ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-[#e9fff3] to-[#f5fffa] flex items-center justify-center">
-                    <Image01 className="w-10 h-10 text-[#7ba08c]" />
-                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
             )}
             <div className="absolute top-3 right-3">
                 <StatusBadge type="product" status={status} size="lg" />
@@ -187,8 +181,14 @@ function LeftSidebar({
     const status = product.status;
 
     const actions = (() => {
-        // Archived products must be Recovered before they can be edited /
-        // deleted. Inactive products can be Reactivated OR Archived.
+        // Same status-aware ladder as memberships/packages:
+        //  · archived → Recover only (Delete surfaces when no history).
+        //  · inactive → Configure stock + Reactivate + Archive (+ Delete
+        //               only when no history).
+        //  · active   → Configure stock + Edit + Archive + terminal
+        //               swap: Delete (no history) OR Deactivate (has
+        //               history — hides the product from POS but keeps
+        //               stock intact).
         if (status === "archived") {
             return (
                 <>
@@ -217,7 +217,9 @@ function LeftSidebar({
                 <ActionBtn icon={<Package className="w-5 h-5" />} label="Configure stock" onClick={onConfigureStock} />
                 <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit product" onClick={() => onAction("edit")} />
                 <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive product" onClick={() => onAction("archive")} />
-                {!hasHistory && (
+                {hasHistory ? (
+                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate product" danger onClick={() => onAction("deactivate")} />
+                ) : (
                     <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete product" danger onClick={() => onAction("delete")} />
                 )}
             </>
@@ -412,9 +414,6 @@ function StockByBranchTab({ product, stockRows, branches }: {
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-4">
-            <p className="text-[14px] text-[#475467] leading-5">
-                Per-branch units on hand. Anything at or below the reorder threshold ({product.reorderThreshold} units) reads amber; zero reads red.
-            </p>
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
@@ -486,9 +485,6 @@ function ActivityTab({ product, adjRows, branches }: {
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-4">
-            <p className="text-[14px] text-[#475467] leading-5">
-                Last 50 stock movements — every sale, receive, adjustment, or refund writes a row here.
-            </p>
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
@@ -531,148 +527,12 @@ function ActivityTab({ product, adjRows, branches }: {
  *  `kind: "receive"` row, which reads as nonsense in the audit log.
  *  Now: "Lost" / "Damaged" are always loss (negative deltas), and
  *  positive/negative for the other reasons picks kind by sign. */
-function resolveAdjustKind(reason: RetailAdjustReason, delta: number): RetailStockAdjustment["kind"] {
-    if (reason === "Lost" || reason === "Damaged") return "loss";
-    if (reason === "Received shipment") return delta > 0 ? "receive" : "adjust";
-    // "Manual adjustment" + "Reconciliation" — either sign is honest as
-    // an admin edit; both map to `adjust` regardless of direction.
-    return "adjust";
-}
-
-function ConfigureStockPanel({ open, onClose, product }: {
-    open: boolean;
-    onClose: () => void;
-    product: RetailProduct;
-}) {
-    const branches   = useAppStore(s => s.branches);
-    const stockRows  = useAppStore(s => s.retailStock);
-    const adjustRetailStock = useAppStore(s => s.adjustRetailStock);
-    const showToast  = useAppStore(s => s.showToast);
-
-    const activeBranches = branches.filter(b => b.status !== "archive");
-
-    const currentByBranch = useMemo(() => {
-        const map = new Map<string, number>();
-        stockRows
-            .filter(s => s.productId === product.id)
-            .forEach(s => map.set(s.branchId, s.unitsOnHand));
-        return map;
-    }, [stockRows, product.id]);
-
-    const [drafts, setDrafts] = useState<Record<string, string>>({});
-    const [reason, setReason] = useState<RetailAdjustReason>("Received shipment");
-
-    useMemo(() => {
-        if (open) {
-            const next: Record<string, string> = {};
-            for (const b of activeBranches) {
-                next[b.id] = String(currentByBranch.get(b.id) ?? 0);
-            }
-            setDrafts(next);
-            setReason("Received shipment");
-        }
-        return null;
-    }, [open, activeBranches, currentByBranch]);
-
-    function handleSave() {
-        let changed = 0;
-        for (const b of activeBranches) {
-            const raw = drafts[b.id] ?? "0";
-            const next = Number(raw);
-            if (Number.isNaN(next) || next < 0 || !Number.isInteger(next)) continue;
-            const current = currentByBranch.get(b.id) ?? 0;
-            const delta = next - current;
-            if (delta === 0) continue;
-            const kind = resolveAdjustKind(reason, delta);
-            adjustRetailStock({
-                productId: product.id,
-                branchId: b.id,
-                delta,
-                kind,
-                reason,
-            });
-            changed += 1;
-        }
-        if (changed === 0) {
-            showToast("No changes", "None of the branch counts were changed.", "warning", "check");
-        } else {
-            showToast(
-                "Stock updated",
-                `${product.name} — ${changed} ${changed === 1 ? "branch" : "branches"} adjusted.`,
-                "success",
-                "check",
-            );
-        }
-        onClose();
-    }
-
-    return (
-        <SlidePanel open={open} onClose={onClose} width={480}>
-            <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                <p className="flex-1 font-semibold text-[18px] text-[#101828]">Configure stock</p>
-                <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors" aria-label="Close">
-                    <XClose className="w-5 h-5 text-[#667085]" />
-                </button>
-            </div>
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[14px] text-[#667085]">Product</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{product.name}</p>
-                    <p className="text-[13px] text-[#667085]">{product.sku}</p>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <label className="text-[14px] font-medium text-[#344054]">Reason</label>
-                    <SelectInput
-                        value={reason}
-                        onChange={(v) => setReason(v as RetailAdjustReason)}
-                        options={RETAIL_ADJUST_REASONS.map(r => ({ value: r, label: r }))}
-                        width="w-full"
-                    />
-                    <p className="text-[13px] text-[#667085]">
-                        Every changed branch will get an audit-log entry with this reason.
-                    </p>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                    <p className="text-[14px] font-medium text-[#344054]">Units on hand — per branch</p>
-                    <div className="flex flex-col gap-3">
-                        {activeBranches.map(b => (
-                            <div key={b.id} className="flex items-center justify-between gap-3">
-                                <div className="flex flex-col min-w-0">
-                                    <p className="text-[14px] text-[#101828] truncate">{b.name}</p>
-                                    <p className="text-[12px] text-[#667085]">Current: {currentByBranch.get(b.id) ?? 0}</p>
-                                </div>
-                                <div className="w-[120px]">
-                                    <NumericStringInput
-                                        value={drafts[b.id] ?? "0"}
-                                        onChange={v => setDrafts(d => ({ ...d, [b.id]: v }))}
-                                        placeholder="0"
-                                        className={cn(
-                                            "w-full rounded-[8px] border-1 border-[#d0d5dd] px-3 py-2",
-                                            "text-[16px] text-[#101828] bg-white",
-                                            "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]",
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
-                <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
-            </div>
-        </SlidePanel>
-    );
-}
-
 // ─── Detail page ────────────────────────────────────────────────────────────
 
-export default function RetailProductDetailPage() {
+function RetailProductDetailPageInner() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const id = typeof params.id === "string" ? params.id : Array.isArray(params.id) ? params.id[0] : "";
 
     const product      = useAppStore(s => s.retailProducts.find(p => p.id === id));
@@ -685,8 +545,23 @@ export default function RetailProductDetailPage() {
     const deleteRetailProducts   = useAppStore(s => s.deleteRetailProducts);
     const showToast    = useAppStore(s => s.showToast);
 
-    const [configureOpen, setConfigureOpen] = useState(false);
+    // Configure-stock panel is opened either from the sidebar action here
+    // OR from the retail list's row action (`?configureStock=1` deep link).
+    // The list route pushes here with the query param so admins don't need
+    // to click through the detail page first.
+    const [configureOpen, setConfigureOpen] = useState(() => searchParams.get("configureStock") === "1");
     const [pending, setPending] = useState<ModalAction | null>(null);
+
+    // Clean the query param once the panel state has taken effect so a
+    // back-nav doesn't re-open it. Runs once per mount, matches the
+    // returnTo cleanup pattern other detail pages use.
+    useEffect(() => {
+        if (searchParams.get("configureStock") === "1") {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("configureStock");
+            window.history.replaceState({}, "", url.toString());
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!product) {
         return (
@@ -708,7 +583,13 @@ export default function RetailProductDetailPage() {
     const rowsForProduct = stockRows.filter(s => s.productId === product.id);
     const stockAggregate = rowsForProduct.reduce((sum, r) => sum + r.unitsOnHand, 0);
     const stockValue = stockAggregate * product.unitCostAed;
-    const hasHistory = transactions.some(t => t.retailProductId === product.id);
+    // hasHistory mirrors the store's canDeleteRetailProduct guard —
+    // past receipts (customerTransactions with retailProductId) OR any
+    // stock-adjustment audit row (receive / sale / adjust / loss /
+    // refund). Products with any history are Archive/Deactivate only.
+    const hasHistory =
+        transactions.some(t => t.retailProductId === product.id)
+        || adjRows.some(a => a.productId === product.id);
 
     function handleAction(a: "edit" | ModalAction) {
         if (a === "edit") {
@@ -814,5 +695,17 @@ export default function RetailProductDetailPage() {
 
             <Toast />
         </div>
+    );
+}
+
+// Suspense wrapper — Next.js 14 requires useSearchParams (read for the
+// ?configureStock=1 deep-link auto-open) to sit inside a Suspense
+// boundary; without it the page throws during static prerender + on
+// hydration. Same pattern as /products/gift-cards/[id].
+export default function RetailProductDetailPage() {
+    return (
+        <Suspense fallback={null}>
+            <RetailProductDetailPageInner />
+        </Suspense>
     );
 }

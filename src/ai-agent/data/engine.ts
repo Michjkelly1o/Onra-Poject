@@ -146,7 +146,18 @@ function applyScopeFilterDate(
                 }
             }
             const v = val.toLowerCase();
-            return f.op === "contains" ? v.includes(target) : f.op === "ne" ? v !== target : v === target;
+            if (f.op === "contains") {
+                // Word-tokenised match — "Forma East" matches "Forma Studio (East)",
+                // "Al Sayed" matches "Al-Sayed", etc. Fold hyphens / parens /
+                // apostrophes / underscores to spaces, then require every query
+                // token to appear as a substring of the target. Order-insensitive.
+                const fold = (s: string) => s.replace(/[-_'()[\]{}]/g, " ").replace(/\s+/g, " ").trim();
+                const foldedV = fold(v);
+                const tokens = fold(target).split(" ").filter(Boolean);
+                if (tokens.length === 0) return true;
+                return tokens.every(t => foldedV.includes(t));
+            }
+            return f.op === "ne" ? v !== target : v === target;
         });
     }
     return rows;

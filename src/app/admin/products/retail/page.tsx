@@ -17,7 +17,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
     Plus, Eye, Edit02, Archive, Trash01, Trash02, Image01,
-    Check, RefreshCcw01, SlashCircle01, XClose,
+    Check, RefreshCcw01, SlashCircle01, XClose, Package,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfigureStockPanel } from "@/components/retail/ConfigureStockPanel";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { useAppStore, type RetailProduct } from "@/lib/store";
 
@@ -43,7 +44,7 @@ import { useAppStore, type RetailProduct } from "@/lib/store";
 
 type RetailStatus = RetailProduct["status"];
 type StockBucket = "in_stock" | "low" | "out";
-type RowActionKind = "archive" | "reactivate" | "recover" | "delete";
+type RowActionKind = "archive" | "reactivate" | "recover" | "deactivate" | "delete";
 
 interface FilterState {
     categoryIds: string[];
@@ -168,6 +169,14 @@ const MODAL_CONFIG: Record<RowActionKind, {
         confirmLabel: "Recover",
         tone: "primary",
     },
+    deactivate: {
+        IconComp: SlashCircle01,
+        titleSingle: "Deactivate this product?",
+        titleBulk:   n => `Deactivate ${n} products?`,
+        description: subject => <>{subject} will be hidden from new POS sales and the customer shop. Existing per-branch stock stays where it is.</>,
+        confirmLabel: "Deactivate",
+        tone: "destructive",
+    },
     delete: {
         IconComp: Trash02,
         titleSingle: "Delete this product?",
@@ -217,16 +226,34 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                             Recover
                         </Button>
                     )}
-                    {hasDeletable && (
-                        <Button
-                            variant="secondary-gray"
-                            size="sm"
-                            className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
-                            leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
-                            onClick={() => onAction("delete")}
-                        >
-                            Delete
-                        </Button>
+                    {/* Delete ↔ Deactivate swap rule (matches Memberships &
+                        Packages bulk pill). When every selected active row
+                        has zero transaction history we expose Delete (red);
+                        otherwise we expose Deactivate (red). Gated on
+                        hasArchivable so it never shows alongside a
+                        pure-archived selection. */}
+                    {hasArchivable && (
+                        hasDeletable ? (
+                            <Button
+                                variant="secondary-gray"
+                                size="sm"
+                                className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
+                                leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
+                                onClick={() => onAction("delete")}
+                            >
+                                Delete
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="secondary-gray"
+                                size="sm"
+                                className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
+                                leftIcon={<SlashCircle01 className="w-5 h-5 text-[#b42318]" />}
+                                onClick={() => onAction("deactivate")}
+                            >
+                                Deactivate
+                            </Button>
+                        )
                     )}
                 </div>
             </div>
@@ -334,6 +361,7 @@ export default function RetailPage() {
     const stock                = useAppStore(s => s.retailStock);
     const categories           = useAppStore(s => s.retailCategories);
     const transactions         = useAppStore(s => s.customerTransactions);
+    const adjustments          = useAppStore(s => s.retailStockAdjustments);
     const setRetailProductStatus = useAppStore(s => s.setRetailProductStatus);
     const deleteRetailProducts   = useAppStore(s => s.deleteRetailProducts);
     const showToast              = useAppStore(s => s.showToast);
@@ -345,6 +373,13 @@ export default function RetailPage() {
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+    // Configure-stock side panel — opened directly from the row action so
+    // admins don't need to jump into the detail page just to adjust units.
+    const [configureId, setConfigureId] = useState<string | null>(null);
+    const configureProduct = useMemo(
+        () => (configureId ? products.find(p => p.id === configureId) ?? null : null),
+        [configureId, products],
+    );
 
     // ─── Row VM ────────────────────────────────────────────────────────────
     const allRows = useMemo<RetailRow[]>(() => {
@@ -356,9 +391,16 @@ export default function RetailPage() {
             if (arr) arr.push(s);
             else stockByProduct.set(s.productId, [s]);
         }
-        const historyIds = new Set(
-            transactions.filter(t => !!t.retailProductId).map(t => t.retailProductId as string),
-        );
+        // hasHistory covers BOTH past receipts (transactions) AND stock
+        // movements (adjustments). A product with any receive / sale /
+        // adjust / loss / refund row on the audit log can't be hard-
+        // deleted — the audit rows would dangle. Matches the store's
+        // canDeleteRetailProduct guard exactly.
+        const historyIds = new Set<string>();
+        for (const t of transactions) {
+            if (t.retailProductId) historyIds.add(t.retailProductId);
+        }
+        for (const a of adjustments) historyIds.add(a.productId);
         return products.map(p => {
             const rows = stockByProduct.get(p.id) ?? [];
             const stockAggregate = rows.reduce((sum, r) => sum + (r.unitsOnHand ?? 0), 0);
@@ -380,7 +422,7 @@ export default function RetailPage() {
                 hasHistory: historyIds.has(p.id),
             };
         });
-    }, [products, stock, categories, transactions]);
+    }, [products, stock, categories, transactions, adjustments]);
 
     // ─── Search + filter ───────────────────────────────────────────────────
     const filteredRows = useMemo(() => {
@@ -439,7 +481,12 @@ export default function RetailPage() {
     const hasArchivable    = selectedRows.some(r => r.status === "active" || r.status === "inactive");
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
     const hasRecoverable   = selectedRows.some(r => r.status === "archived");
-    const hasDeletable     = selectedRows.some(r => !r.hasHistory);
+    // hasDeletable is TRUE only when EVERY selected row is deletable
+    // (active + zero transaction history). Otherwise the swap rule in
+    // the bulk pill flips to Deactivate. Matches the memberships /
+    // packages bulk pill exactly.
+    const hasDeletable     = selectedRows.length > 0
+        && selectedRows.every(r => r.status === "active" && !r.hasHistory);
 
     const allOnPageChecked  = pagedRows.length > 0 && pagedRows.every(r => selectedIds.has(r.id));
     const someOnPageChecked = !allOnPageChecked && pagedRows.some(r => selectedIds.has(r.id));
@@ -460,7 +507,8 @@ export default function RetailPage() {
                 case "archive":    return selectedRows.filter(r => r.status === "active" || r.status === "inactive");
                 case "reactivate": return selectedRows.filter(r => r.status === "inactive");
                 case "recover":    return selectedRows.filter(r => r.status === "archived");
-                case "delete":     return selectedRows.filter(r => !r.hasHistory);
+                case "deactivate": return selectedRows.filter(r => r.status === "active");
+                case "delete":     return selectedRows.filter(r => r.status === "active" && !r.hasHistory);
             }
         })();
         if (rows.length === 0) return;
@@ -489,6 +537,13 @@ export default function RetailPage() {
             showToast(
                 ids.length === 1 ? "Product recovered" : `${ids.length} products recovered`,
                 ids.length === 1 ? `${rows[0].name} moved from Archive to Active.` : "",
+                "success", "check",
+            );
+        } else if (p.kind === "deactivate") {
+            setRetailProductStatus(ids, "inactive");
+            showToast(
+                ids.length === 1 ? "Product deactivated" : `${ids.length} products deactivated`,
+                ids.length === 1 ? `${rows[0].name} is now Inactive.` : "",
                 "success", "check",
             );
         } else if (p.kind === "delete") {
@@ -657,13 +712,20 @@ export default function RetailPage() {
                                                 <StatusBadge type="product" status={r.status} />
                                             </td>
                                             <td className={TD} onClick={e => e.stopPropagation()}>
+                                                {/* Same action ladder as memberships/packages,
+                                                    plus the retail-specific "Configure stock"
+                                                    entry. Deactivate ↔ Delete swap by history:
+                                                    active + no history → Delete; active + has
+                                                    history → Deactivate. */}
                                                 <RowActions items={[
-                                                    { label: "View details", icon: Eye,         onClick: () => router.push(`/products/retail/${r.id}`) },
-                                                    { label: "Edit",         icon: Edit02,      onClick: () => router.push(`/products/retail/${r.id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`), hidden: r.status === "archived" },
-                                                    { label: "Archive",      icon: Archive,     onClick: () => openRowConfirm(r, "archive"),    hidden: r.status === "archived" },
-                                                    { label: "Reactivate",   icon: Check,       onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
-                                                    { label: "Recover",      icon: RefreshCcw01,onClick: () => openRowConfirm(r, "recover"),    hidden: r.status !== "archived" },
-                                                    { label: "Delete",       icon: Trash01,     onClick: () => openRowConfirm(r, "delete"),     danger: true, hidden: r.hasHistory },
+                                                    { label: "View details",    icon: Eye,          onClick: () => router.push(`/products/retail/${r.id}`) },
+                                                    { label: "Configure stock", icon: Package,      onClick: () => setConfigureId(r.id), hidden: r.status === "archived" },
+                                                    { label: "Edit",            icon: Edit02,       onClick: () => router.push(`/products/retail/${r.id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`), hidden: r.status !== "active" },
+                                                    { label: "Archive",         icon: Archive,      onClick: () => openRowConfirm(r, "archive"),    hidden: r.status !== "active" && r.status !== "inactive" },
+                                                    { label: "Reactivate",      icon: Check,        onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
+                                                    { label: "Recover",         icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"),    hidden: r.status !== "archived" },
+                                                    { label: "Deactivate",      icon: SlashCircle01,onClick: () => openRowConfirm(r, "deactivate"), danger: true, hidden: !(r.status === "active" && r.hasHistory) },
+                                                    { label: "Delete",          icon: Trash01,      onClick: () => openRowConfirm(r, "delete"),     danger: true, hidden: !(r.status === "active" && !r.hasHistory) },
                                                 ]} />
                                             </td>
                                         </tr>
@@ -697,6 +759,14 @@ export default function RetailPage() {
                 onApply={f => { setApplied(f); setPage(1); }}
                 categories={categories.filter(c => c.status === "active").map(c => ({ id: c.id, label: c.label }))}
             />
+
+            {configureProduct && (
+                <ConfigureStockPanel
+                    open={configureId !== null}
+                    onClose={() => setConfigureId(null)}
+                    product={configureProduct}
+                />
+            )}
 
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);

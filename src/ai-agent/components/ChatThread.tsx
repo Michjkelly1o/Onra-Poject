@@ -150,6 +150,24 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
         // Missing this slice crashed every AI Agent request with
         // TypeError: undefined.filter.
         customerPlans:           state.customerPlans,
+        // Phase 2 (2026-07-30) — retail catalog for the AI Agent.
+        retailCategories:        state.retailCategories,
+        retailProducts:          state.retailProducts,
+        retailStock:             state.retailStock,
+        retailStockAdjustments:  state.retailStockAdjustments,
+        // Phase 3 Batch A + B + C (2026-07-30) — product / class / staff
+        // catalog slices. Every one has a matching reader in store-readers.ts
+        // and a dataset in catalog.ts.
+        giftCardDesigns:         state.giftCardDesigns,
+        issuedGiftCards:         state.issuedGiftCards,
+        classRatings:            state.classRatings,
+        staff:                   state.staff,
+        payRates:                state.payRates,
+        shifts:                  state.shifts,
+        shiftAssignments:        state.shiftAssignments,
+        blockedTimes:            state.blockedTimes,
+        customerReferrals:       state.customerReferrals,
+        roles:                   state.roles,
     };
 }
 

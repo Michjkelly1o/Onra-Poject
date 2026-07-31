@@ -73,7 +73,7 @@ export const agreements: AgreementSeed[] = [
     // ── Row 3 — Archived · Specific branch (South) · v1 · Ongoing ──────
     {
         id: "agr_liability_east",
-        name: "Liability Waiver",
+        name: "Liability Waiver (Legacy)",
         type: "liability_waiver",
         description: "Superseded by the multi-branch Waiver booking, archived.",
         required: false,

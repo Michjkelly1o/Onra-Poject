@@ -46,7 +46,7 @@ export const account_profile: User = {
     first_name: "Jonathan",
     last_name: "Miles",
     email: "jonathan@email.com",
-    phone: "+971 55 200 2001",
+    phone: "+971 55 200 2016",
     avatar_url: "",
     // Demo password from CLAUDE.md — every demo persona uses `Demo1234!`. The
     // Account page Password row reveals this via the eye-toggle; the Change

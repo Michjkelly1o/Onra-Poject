@@ -67,7 +67,9 @@ export function ProductCard({
             }}
             className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4 text-left transition-shadow active:shadow-sm"
         >
-            {product.creditBadge ? (
+            {product.kind === "retail" ? (
+                <ProductArt kind={product.kind} variant="card" imageUrl={product.imageUrl} />
+            ) : product.creditBadge ? (
                 <ProductCreditTile kind={product.kind} big={product.creditBadge.big} small={product.creditBadge.small} />
             ) : (
                 <ProductArt kind={product.kind} variant="card" />

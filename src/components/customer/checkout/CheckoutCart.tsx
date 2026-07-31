@@ -227,41 +227,52 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                 {summary ?? (
                 <section className="flex flex-col gap-3">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail product</p>
-                    {purchaseCart.items.map((it) => (
-                        <div key={it.lineId} className="flex w-full items-end gap-6">
-                            <div className="flex min-w-0 flex-1 items-center gap-3">
-                                {it.creditBadge ? (
-                                    <ProductCreditTile kind={it.kind} big={it.creditBadge.big} small={it.creditBadge.small} />
-                                ) : (
-                                    <ProductArt kind={it.kind} variant="card" />
-                                )}
-                                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                    <div className="flex flex-col">
-                                        <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{it.name}</span>
-                                        <span className="truncate text-sm font-normal leading-5 text-[#475467]">
-                                            {it.kind === "gift_card" && it.recipientName
-                                                ? `${titleCase(it.recipientName)} • ${it.sub.replace("Valid until ", "")}`
-                                                : it.sub}
-                                        </span>
+                    {purchaseCart.items.map((it) => {
+                        // Retail + packages both allow qty adjustments in the cart.
+                        // Retail lines clamp at the shopper's on-hand at the branch
+                        // read on the catalogue — a stock refresh happens on every
+                        // catalogue render so the number is live.
+                        const qtyEditable = it.kind === "package" || it.kind === "retail";
+                        const stockCap = it.kind === "retail" ? Math.max(1, it.unitsOnHand ?? 1) : Number.POSITIVE_INFINITY;
+                        const canIncrement = qtyEditable && it.quantity < stockCap;
+                        return (
+                            <div key={it.lineId} className="flex w-full items-end gap-6">
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                    {it.kind === "retail" ? (
+                                        <ProductArt kind={it.kind} variant="card" imageUrl={it.imageUrl} />
+                                    ) : it.creditBadge ? (
+                                        <ProductCreditTile kind={it.kind} big={it.creditBadge.big} small={it.creditBadge.small} />
+                                    ) : (
+                                        <ProductArt kind={it.kind} variant="card" />
+                                    )}
+                                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                        <div className="flex flex-col">
+                                            <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{it.name}</span>
+                                            <span className="truncate text-sm font-normal leading-5 text-[#475467]">
+                                                {it.kind === "gift_card" && it.recipientName
+                                                    ? `${titleCase(it.recipientName)} • ${it.sub.replace("Valid until ", "")}`
+                                                    : it.sub}
+                                            </span>
+                                        </div>
+                                        <span className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">AED {it.price}</span>
                                     </div>
-                                    <span className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">AED {it.price}</span>
+                                </div>
+                                <div className="flex w-[72px] shrink-0 items-center justify-between">
+                                    <StepBtn onClick={() => decrement(it.lineId)} disabled={false} label="Decrease quantity">
+                                        <Minus className="size-3 text-[#344054]" aria-hidden />
+                                    </StepBtn>
+                                    <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{it.quantity}</span>
+                                    <StepBtn
+                                        onClick={() => setQty(it.lineId, it.quantity + 1)}
+                                        disabled={!canIncrement}
+                                        label="Increase quantity"
+                                    >
+                                        <Plus className={`size-3 ${canIncrement ? "text-[#344054]" : "text-[#d0d5dd]"}`} aria-hidden />
+                                    </StepBtn>
                                 </div>
                             </div>
-                            <div className="flex w-[72px] shrink-0 items-center justify-between">
-                                <StepBtn onClick={() => decrement(it.lineId)} disabled={false} label="Decrease quantity">
-                                    <Minus className="size-3 text-[#344054]" aria-hidden />
-                                </StepBtn>
-                                <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{it.quantity}</span>
-                                <StepBtn
-                                    onClick={() => setQty(it.lineId, it.quantity + 1)}
-                                    disabled={it.kind !== "package"}
-                                    label="Increase quantity"
-                                >
-                                    <Plus className={`size-3 ${it.kind !== "package" ? "text-[#d0d5dd]" : "text-[#344054]"}`} aria-hidden />
-                                </StepBtn>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </section>
                 )}
 

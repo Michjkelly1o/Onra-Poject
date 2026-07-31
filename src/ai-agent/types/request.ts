@@ -64,6 +64,31 @@ export type AiAgentStateSnapshot = Pick<
     // undefined.filter. classBookings + customerTransactions are already
     // present above.
     | "customerPlans"
+    // Phase 2 (2026-07-30) — Retail catalog. Feeds three new AI Agent
+    // datasets (retail_products / retail_stock / retail_stock_adjustments)
+    // so "which items are low on stock?" / "what did we sell in retail?"
+    // resolve against real data. retailCategories is a ref lookup for
+    // product category labels.
+    | "retailCategories"
+    | "retailProducts"
+    | "retailStock"
+    | "retailStockAdjustments"
+    // Phase 3 Batch A + B + C (2026-07-30) — Product / class / staff
+    // catalogs. Each slice feeds a new AI Agent dataset registered in
+    // catalog.ts. Every one is READ-ONLY on the server; the pickStoreSnapshot
+    // helper in ChatThread.tsx forwards them from the live Zustand store
+    // once per request so the AI answers against the current state.
+    | "giftCardDesigns"
+    | "issuedGiftCards"
+    | "classRatings"
+    | "staff"
+    | "payRates"
+    | "shifts"
+    | "shiftAssignments"
+    | "blockedTimes"
+    | "customerReferrals"
+    // roles is needed for readStaff to resolve role_id → role name
+    | "roles"
 >;
 
 /** Thread mode. Insight = analytics chat; migration = 4-step CSV wizard;

@@ -328,7 +328,7 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
             <div className="flex flex-col gap-3">
                 {items.map(it => (
                     <div key={it.productId} className="flex items-center gap-3">
-                        <ProductIcon type={it.productType} />
+                        <ProductIcon type={it.productType} imageUrl={it.imageUrl} />
                         <div className="flex-1 flex flex-col gap-1">
                             <p className="text-[14px] font-medium text-[#101828]">{it.name}</p>
                             <p className="text-[14px] text-[#658774]">AED {it.unitPrice.toLocaleString()}</p>
@@ -390,12 +390,32 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
     );
 }
 
-function ProductIcon({ type }: { type: PurchaseLineItem["productType"] }) {
+function ProductIcon({ type, imageUrl }: {
+    type: PurchaseLineItem["productType"];
+    imageUrl?: string;
+}) {
+    // Retail lines render their real product photo (matches the POS cart
+    // + product card treatment). Non-retail lines keep the category-tinted
+    // icon — memberships, packages, and gift cards don't have a "photo"
+    // concept, so the icon still reads as a category cue there.
+    if (type === "retail" && imageUrl) {
+        return (
+            <div className="w-10 h-10 rounded-[8px] shrink-0 overflow-hidden border-1 border-[#e4e7ec] bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+            </div>
+        );
+    }
     const tint =
         type === "membership" ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
         type === "package"    ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
+        type === "retail"     ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
                                  { bg: "bg-[#e0f9f4]", color: "text-[#4b8c9a]" };
-    const Icon = type === "membership" ? CreditCard02 : type === "package" ? Package : Gift01;
+    const Icon = type === "membership"
+        ? CreditCard02
+        : type === "package" || type === "retail"
+            ? Package
+            : Gift01;
     return (
         <div className={cn("w-10 h-10 rounded-[8px] flex items-center justify-center shrink-0", tint.bg)}>
             <Icon className={cn("w-5 h-5", tint.color)} />
@@ -741,7 +761,7 @@ export function ReceiptStep(p: ReceiptStepProps) {
                         <p className="text-[14px] font-medium text-[#101828]">Detail product</p>
                         {p.items.map(it => (
                             <div key={it.productId} className="flex items-center gap-3">
-                                <ProductIcon type={it.productType} />
+                                <ProductIcon type={it.productType} imageUrl={it.imageUrl} />
                                 <div className="flex-1 flex flex-col gap-1">
                                     <p className="text-[14px] font-medium text-[#101828]">{it.name}</p>
                                     <p className="text-[14px] text-[#658774]">AED {it.unitPrice.toLocaleString()}</p>

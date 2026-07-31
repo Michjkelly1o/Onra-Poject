@@ -44,13 +44,19 @@ export interface CatalogProducts {
     plans: PlanRow[];
     /** Gift-card designs (the "Gift card" tab + the bottom section of "All"). */
     giftCards: PlanRow[];
+    /** Retail products — active, image-backed rows scoped to the shopper's
+     *  home-branch stock so out-of-stock lines gate their own add button. */
+    retail: PlanRow[];
 }
 
 export function useCatalogProducts(): CatalogProducts {
-    const { selectedBranchId } = useCurrentCustomerContext();
+    const { selectedBranchId, member } = useCurrentCustomerContext();
     const memberships = useAppStore((s) => s.memberships);
     const packages = useAppStore((s) => s.packages);
     const giftCardDesigns = useAppStore((s) => s.giftCardDesigns);
+    const retailProducts = useAppStore((s) => s.retailProducts);
+    const retailCategories = useAppStore((s) => s.retailCategories);
+    const retailStock = useAppStore((s) => s.retailStock);
 
     return useMemo(() => {
         const isAll = selectedBranchId === ALL_BRANCHES;
@@ -103,8 +109,55 @@ export function useCatalogProducts(): CatalogProducts {
                 };
             });
 
-        return { plans: [...membershipRows, ...packageRows], giftCards };
-    }, [selectedBranchId, memberships, packages, giftCardDesigns]);
+        // ── Retail products (Phase F, 2026-07-30) ─────────────────────────
+        // Retail is studio-global (no `branch_ids` scoping on the product
+        // record) so every branch surfaces the same catalogue. Stock IS
+        // per-branch — the shopper's home branch drives the "N in stock" +
+        // out-of-stock gate. A guest (no `member`) sees stock at the
+        // header-selected branch; falling back to a total-count for
+        // "All branches" so the row still displays a plausible number.
+        const categoryLabelById = new Map(retailCategories.map((c) => [c.id, c.label] as const));
+        const shopperBranchId =
+            member?.branchId ?? (isAll ? undefined : selectedBranchId);
+        const stockAt = (productId: string): number => {
+            if (shopperBranchId) {
+                return retailStock
+                    .filter((s) => s.productId === productId && s.branchId === shopperBranchId)
+                    .reduce((n, s) => n + (s.unitsOnHand ?? 0), 0);
+            }
+            return retailStock
+                .filter((s) => s.productId === productId)
+                .reduce((n, s) => n + (s.unitsOnHand ?? 0), 0);
+        };
+        const retail: PlanRow[] = retailProducts
+            .filter((p) => p.status === "active")
+            .map((p) => {
+                const label = categoryLabelById.get(p.categoryId) ?? "Retail";
+                const units = stockAt(p.id);
+                return {
+                    id: p.id,
+                    kind: "retail" as const,
+                    name: p.name,
+                    sub: units > 0 ? `${label} • ${units} in stock` : `${label} • Out of stock`,
+                    price: p.priceAed,
+                    imageUrl: p.imageUrl,
+                    categoryLabel: label,
+                    sku: p.sku,
+                    unitsOnHand: units,
+                };
+            });
+
+        return { plans: [...membershipRows, ...packageRows], giftCards, retail };
+    }, [
+        selectedBranchId,
+        memberships,
+        packages,
+        giftCardDesigns,
+        retailProducts,
+        retailCategories,
+        retailStock,
+        member,
+    ]);
 }
 
 export interface ActivePlanVM {

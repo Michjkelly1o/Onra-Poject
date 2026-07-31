@@ -41,7 +41,7 @@ export const gift_card_designs: GiftCardDesign[] = [
     },
     {
         id: "gc_design_aed_250_no_expiry",
-        name: "AED 250 Gift Card",
+        name: "AED 250 Gift Card (No Expiry)",
         value_type: "fixed",
         fixed_value_aed: 250,
         price_aed: 250,
