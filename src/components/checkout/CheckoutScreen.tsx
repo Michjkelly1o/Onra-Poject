@@ -957,9 +957,11 @@ export function computeTotals(
         const roundingMode = taxContext.roundingMode ?? "per_line";
         const lineTaxes: number[] = [];
         for (const item of items) {
-            // Retail sits outside the tax-category union — no tax rule wired
-            // yet (Phase D.2 scope). Push 0 tax for retail lines.
-            if (item.productType === "retail") { lineTaxes.push(0); continue; }
+            // Retail is taxed via its own `TaxRuleCategory` as of client
+            // 2026-07-31 (was skipped during Phase D.2, before Tax gained
+            // a retail category). `categoryForProductType` maps it now, so
+            // the lookup below finds the studio's configured retail rule
+            // exactly like it does for memberships / packages.
             const category = categoryForProductType(item.productType);
             if (!category) { lineTaxes.push(0); continue; }
             const match = findActiveTaxRuleFor(
