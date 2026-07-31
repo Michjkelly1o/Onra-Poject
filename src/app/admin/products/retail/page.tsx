@@ -674,7 +674,7 @@ export default function RetailPage() {
                         size="icon"
                         aria-label="Import"
                         onClick={() => router.push(
-                            `/ai-agent?mode=migrate_data&entity=retail_products&returnTo=${encodeURIComponent("/admin/products/retail")}`,
+                            `/ai-agent?thread=migrate_data&returnTo=${encodeURIComponent("/admin/products/retail")}`,
                         )}
                     >
                         <Upload01 className="w-5 h-5" />
@@ -823,9 +823,15 @@ export default function RetailPage() {
                                                 </td>
                                             </tr>
                                             {isExpanded && (
-                                                <tr className="bg-[#fafbfc]">
+                                                // Client 2026-07-31 — nested table matches the row
+                                                // rhythm: transparent bg, no extra top/bottom
+                                                // padding, but a 48px left indent (pl-12) so the
+                                                // branch rows visually hang under the parent
+                                                // Product-name column instead of starting flush
+                                                // with the checkbox.
+                                                <tr>
                                                     <td colSpan={9} className="px-0 py-0 border-b border-[#e4e7ec]">
-                                                        <div className="px-6 py-4">
+                                                        <div className="pl-12 pr-6">
                                                             <table className="w-full border-collapse">
                                                                 <thead>
                                                                     <tr>

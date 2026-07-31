@@ -2,13 +2,16 @@
 // Onra AI Agent · Floating trigger button (fixed bottom-right)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Client 2026-07-30 (Figma 667:650314) — hover-reveal chat bubble.
-// The logomark tile stays as the always-visible fixed trigger; hovering
-// the entry area slides in a "Talk to agent" chat bubble to its LEFT,
-// styled per the Figma reference (white card, 16/16/16/4 radii — the
-// bottom-right corner is small so the shape reads as a chat bubble
-// pointing at the logo, subtle brand-green tinted shadow). Both halves
-// (bubble + logo) navigate to /ai-agent on click.
+// Client 2026-07-31 (Figma 822:51966 default · 822:52630 hover) — the
+// floating entry point is now a horizontal PILL:
+//
+//   Default state — a soft brand-tinted gradient pill containing the
+//   Onra logomark (36px white circle) + "How can I help today?" text.
+//   Always visible; the whole pill is clickable.
+//
+//   Hover state — the pill grows to the right and reveals a "Talk to Agent"
+//   DS-primary button. Both the pill background AND the inline button
+//   remain clickable — same click handler.
 //
 // Three gates stack — every one MUST pass, or the button renders null:
 //
@@ -25,7 +28,6 @@
 import Image from "next/image";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Stars02 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
 import {
@@ -49,84 +51,84 @@ export function FloatingAiButton() {
     };
 
     return (
-        // Wrapper is anchored to bottom-right with 32px page padding
-        // (Figma spacing-4xl). Bubble sits absolutely to the LEFT of the
-        // logo tile so its shadow can extend beyond the visible chrome
-        // without being clipped — a `max-w-0 + overflow-hidden` layout
-        // would swallow the drop shadow when the bubble collapses.
+        // Fixed bottom-right, 32px page padding per Figma spacing-4xl.
         <div
             className="fixed bottom-8 right-8 z-[60]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            <div className="relative flex items-center">
-                {/* Hover chat bubble — absolute + right-full so it hangs off
-                    the LEFT of the logo tile without consuming layout space
-                    when hidden. `visibility` toggles off hit-testing when
-                    the bubble is fully transparent; scale/translate + opacity
-                    drive the slide-in. Because there's no overflow wrapper,
-                    the shadow renders in full every direction. */}
-                <button
-                    type="button"
-                    onClick={handleClick}
-                    aria-label="Talk to Onra AI Agent"
-                    tabIndex={hovered ? 0 : -1}
-                    className={cn(
-                        // Position: floats to the left of the logo (right-full)
-                        // with a 16px gap. Vertically centred against the tile.
-                        "absolute right-full top-1/2 -translate-y-1/2 mr-4",
-                        "flex items-center gap-2 whitespace-nowrap",
-                        // Figma chrome — brand primary background (matches DS
-                        // Button variant="primary": brand-tertiary bg with
-                        // brand-primary text). Bottom-right corner cuts to
-                        // 4px so the shape reads as a chat pointer aimed at
-                        // the logo.
-                        "bg-[var(--brand-tertiary)] px-4 py-4",
-                        "border-1 border-white/[0.12]",
-                        "rounded-tl-[16px] rounded-tr-[16px] rounded-bl-[16px] rounded-br-[4px]",
-                        // Two-layer shadow per Figma — the second layer
-                        // carries the brand-green tint (#e9fff3) so the
-                        // bubble feels "warm" against the page bg. Inset
-                        // rings mirror the DS Button primary spec.
-                        "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),0px_2.4px_2.4px_0px_rgba(0,0,0,0.04),0px_6.4px_6.4px_0px_rgba(0,0,0,0.03),0px_4px_24px_0px_#e9fff3,inset_0px_0px_0px_1px_rgba(16,24,40,0.10),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                        "hover:bg-[#aad4bd] active:bg-[#92baa4]",
-                        "transition-all duration-200 ease-out",
-                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#84c393]",
-                        hovered
-                            ? "opacity-100 translate-x-0 scale-100 visible"
-                            : "opacity-0 translate-x-2 scale-95 invisible",
-                    )}
-                >
-                    <Stars02 className="w-6 h-6 shrink-0 text-[var(--brand-primary)]" aria-hidden />
-                    <span className="text-[14px] font-medium leading-[20px] text-[#0c2d34]">
-                        Talk to agent
-                    </span>
-                </button>
-
-                {/* Logomark trigger — always visible, always clickable. */}
-                <button
-                    type="button"
-                    aria-label="Open Onra AI Agent"
-                    onClick={handleClick}
-                    className={cn(
-                        "shrink-0 w-14 h-14 rounded-[14px] bg-white",
-                        "border-[0.35px] border-[#d0d5dd] overflow-hidden",
-                        "flex items-center justify-center",
-                        "shadow-[0px_4px_14px_0px_rgba(16,24,40,0.12),0px_1.75px_1.75px_rgba(16,24,40,0.06)]",
-                        "hover:bg-[#f9fafb] transition-colors",
-                        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#84c393]",
-                    )}
-                >
+            <button
+                type="button"
+                aria-label="Open Onra AI Agent"
+                onClick={handleClick}
+                className={cn(
+                    // Pill chrome — full-radius, 1px brand-utility-200 border,
+                    // 8px padding around the logo + text; right padding grows
+                    // to 8px when the Talk-to-Agent button appears on hover
+                    // so both segments have equal breathing room.
+                    "flex items-center gap-2 rounded-full",
+                    "border-1 border-[#c4edd6]",
+                    hovered ? "pl-2 pr-2 py-2" : "pl-2 pr-3 py-2",
+                    // Brand gradient bg — utility-brand-200 → utility-brand-50
+                    // at ~114° (default) / ~126° (hover). Kept a single
+                    // linear-gradient here because the shift between angles
+                    // is imperceptible next to the pill's shadow bloom.
+                    "bg-[linear-gradient(114deg,#c4edd6_3%,#e9fff3_63%)]",
+                    // Multi-layer shadow with brand-green (#7ba08c) tint —
+                    // stack matches the Figma drop-shadow spec.
+                    "shadow-[0px_7px_7.5px_rgba(123,160,140,0.10),0px_28px_14px_rgba(123,160,140,0.09),0px_63px_19px_rgba(123,160,140,0.05)]",
+                    "transition-all duration-200 ease-out",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#84c393]",
+                )}
+            >
+                {/* Logomark tile — 36px white circle, 1.125px border. */}
+                <span className="w-9 h-9 rounded-full bg-white border-[1.125px] border-[#e4e7ec] overflow-hidden flex items-center justify-center shrink-0">
                     <Image
                         src="/Logomark.webp"
                         alt=""
-                        width={42}
-                        height={42}
-                        className="w-[42px] h-[42px] object-contain"
+                        width={27}
+                        height={27}
+                        className="w-[27px] h-[27px] object-contain"
                         unoptimized
                     />
-                </button>
-            </div>
+                </span>
+
+                {/* Prompt text — always visible in both states. */}
+                <span className="text-[14px] font-medium leading-[20px] text-[#101828] whitespace-nowrap">
+                    How can I help today?
+                </span>
+
+                {/* "Talk to Agent" DS-primary pill — collapses to zero
+                    width when not hovered so the outer pill's shape
+                    changes smoothly. Uses the same skeuomorphic inset-
+                    shadow stack as Button variant="primary" so it
+                    reads as a real button when it appears. */}
+                <span
+                    className={cn(
+                        "grid items-center overflow-hidden transition-[grid-template-columns,opacity,margin] duration-200 ease-out",
+                        hovered
+                            ? "opacity-100 ml-1 grid-cols-[1fr]"
+                            : "opacity-0 ml-0 grid-cols-[0fr]",
+                    )}
+                    aria-hidden={!hovered}
+                >
+                    <span className="min-w-0 overflow-hidden">
+                        <span
+                            className={cn(
+                                // Match Button variant="primary" chrome exactly
+                                // so it reads as a real DS button.
+                                "inline-flex items-center justify-center rounded-full",
+                                "px-3 py-2 whitespace-nowrap",
+                                "bg-[#c4edd6] border-2 border-white/[0.12]",
+                                "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
+                                "text-[14px] font-semibold leading-[20px] text-[#0c2d34]",
+                            )}
+                        >
+                            Talk to Agent
+                        </span>
+                    </span>
+                </span>
+            </button>
         </div>
     );
 }
