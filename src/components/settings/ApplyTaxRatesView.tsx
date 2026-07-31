@@ -886,6 +886,27 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                             ))}
                         </ServicesParentCard>
 
+                        {/* Retail — client 2026-07-31. Physical merchandise
+                            sold at POS is taxed at PURCHASE time (unlike
+                            gift cards below, which tax on redemption), so
+                            it gets its own top-level accordion rather than
+                            sitting inside the Services parent — merchandise
+                            isn't a service. Same editable shape as every
+                            other category. */}
+                        <CategoryAccordion
+                            category="retail"
+                            rules={rulesByCategory.retail}
+                            rates={ratesForCategory("retail")}
+                            branchOptions={branchOptions}
+                            open={openCats.retail}
+                            onToggleOpen={() => setOpenCats(p => ({ ...p, retail: !p.retail }))}
+                            onAddRule={() => handleAddRule("retail")}
+                            onUpdateRule={updateTaxRule}
+                            onToggleRule={handleToggleRule}
+                            onDeleteRule={rule => setPendingDelete(rule)}
+                            onCreateRate={() => onCreateRate(kindForCategory("retail"))}
+                        />
+
                         {/* Gift card (redeemed tax) — same editable accordion
                             shape as the Services sub-categories. The "Tax
                             at redemption" pill + tooltip on the header

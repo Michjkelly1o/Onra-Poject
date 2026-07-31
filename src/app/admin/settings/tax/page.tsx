@@ -904,7 +904,7 @@ export default function TaxPage() {
                             <EmptyState
                                 title={isTrulyEmpty ? "No tax rates yet" : "No tax rates found"}
                                 subtitle={isTrulyEmpty
-                                    ? "Add your first tax rate to apply tax to memberships, packages, gift cards, or pay rates."
+                                    ? "Add your first tax rate to apply tax to memberships, packages, retail, gift cards, or pay rates."
                                     : hasActiveFilter
                                         ? "Try clearing the filter to see all tax rates."
                                         : "Try adjusting your search or filter."}
