@@ -13,6 +13,7 @@
 // Route: /admin/dev/class-wizard-widgets
 
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
     AiQuestionPrompt,
     type AiQuestionSpec,
@@ -22,6 +23,18 @@ import {
     SchedulePreviewCard,
     type SchedulePreviewData,
 } from "@/ai-agent/components/SchedulePreviewCard";
+import {
+    createMachine,
+    applyAnswer,
+    nextQuestion,
+    isComplete,
+    toPreview,
+    toDraft,
+    type WizardConfig,
+    type WizardAnswers,
+    type WizardLookups,
+    type WizardMachine,
+} from "@/ai-agent/schedule/schedule-wizard";
 
 interface Demo {
     id: string;
@@ -235,6 +248,116 @@ const PREVIEW_LEVELS: { caption: string; frame: string; data: SchedulePreviewDat
     { caption: "Preview · fully populated", frame: "frame 15 / 16", data: PREVIEW_FULL },
 ];
 
+// ── Phase 3 · headless state-machine trace ───────────────────────────────────
+//
+// Replays a scripted answer sequence step-by-step, asserting the plan advances
+// through nextQuestion() until complete, then renders the projected preview +
+// final draft. Proves the Phase 3 exit criterion for BOTH single and recurring.
+
+const TEMPLATE: NonNullable<WizardConfig["template"]> = {
+    id: "tpl_mat_pilates",
+    name: "Mat Pilates",
+    description: "Classic mat-based Pilates focusing on core strength and controlled movements.",
+    category: "Pilates",
+    classType: "Group",
+    typeLabel: "Group class",
+    durationMinutes: 60,
+    capacity: 8,
+    coverColor: "#f1f2ed",
+    coverImage: "/images/class-template/reformer-pilates.webp",
+    applicableMembershipIds: ["m-unlimited"],
+    applicablePackageIds: [],
+};
+
+const LOOKUPS: WizardLookups = {
+    roomLabel: (id) => (id === "mat" ? "Mat Studio" : id),
+    instructorName: (id) => (id === "liam" ? "Liam C." : id),
+    instructorInitials: () => "LC",
+    instructorAvatarUrl: () => "/images/instructors/liam-chen.webp",
+};
+
+/** Drive a machine through a list of patches, collecting the question visited
+ *  before each. Returns the trace + the final machine. */
+function runScript(config: WizardConfig, patches: Partial<WizardAnswers>[]): {
+    steps: { q: string; total: number }[];
+    machine: WizardMachine;
+} {
+    let m = createMachine(config);
+    const steps: { q: string; total: number }[] = [];
+    for (const patch of patches) {
+        const nq = nextQuestion(m.config, m.answers);
+        steps.push({ q: nq?.id ?? "(complete)", total: 0 });
+        m = applyAnswer(m, patch);
+    }
+    return { steps, machine: m };
+}
+
+const SINGLE_CONFIG: WizardConfig = {
+    sessionType: "class",
+    isScratch: false,
+    template: TEMPLATE,
+    canSeePayRate: true,
+    canAddRoom: true,
+};
+
+const SINGLE_SCRIPT: Partial<WizardAnswers>[] = [
+    { genderAccess: "all" },
+    { roomId: "mat" },
+    { equipment: "Mat, resistance bands" },
+    { spotSelectionEnabled: true },
+    { spotLayout: { cols: 4, rows: 2, blockedSpots: [] } },
+    { instructorId: "liam" },
+    { payRateId: "standard" },
+    { recurring: false },
+    { dateISO: "2026-02-26" },
+    { startTime: "09:00" },
+];
+
+const RECUR_SCRIPT: Partial<WizardAnswers>[] = [
+    { genderAccess: "all" },
+    { roomId: "mat" },
+    { equipment: "Mat, resistance bands" },
+    { spotSelectionEnabled: false },
+    { instructorId: "liam" },
+    { payRateId: "standard" },
+    { recurring: true },
+    { recurStartISO: "2026-02-26" },
+    { recurEndRule: "after" },
+    { recurEndAfterCount: 11 },
+    { recurEveryWeeks: 1 },
+    { recurDays: [{ day: "Fri", slots: [{ startTime: "09:00", endTime: "10:00" }] }] },
+];
+
+function TraceBlock({ title, script }: { title: string; script: Partial<WizardAnswers>[] }) {
+    const { steps, machine } = runScript(SINGLE_CONFIG, script);
+    const done = isComplete(machine.config, machine.answers);
+    const preview = toPreview(machine.config, machine.answers, LOOKUPS);
+    const draft = done ? toDraft(machine.config, machine.answers) : null;
+    return (
+        <div>
+            <div className="mb-2 flex items-baseline justify-between gap-3">
+                <h3 className="text-[13px] font-medium text-[#475467]">{title}</h3>
+                <span className={cn("text-[12px] font-medium shrink-0", done ? "text-[#067647]" : "text-[#b42318]")}>
+                    {done ? "✓ complete" : "✗ incomplete"}
+                </span>
+            </div>
+            <div className="mb-3 flex flex-wrap gap-1.5">
+                {steps.map((s, i) => (
+                    <span key={i} className="inline-flex items-center rounded-[4px] bg-[#f2f4f7] px-1.5 py-0.5 text-[11px] font-medium text-[#475467]">
+                        {i + 1}. {s.q}
+                    </span>
+                ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                <SchedulePreviewCard data={preview} />
+                <pre className="text-[11px] leading-[16px] text-[#344054] bg-white border border-[#e4e7ec] rounded-[8px] p-3 overflow-x-auto">
+                    {JSON.stringify(draft, null, 2)}
+                </pre>
+            </div>
+        </div>
+    );
+}
+
 export default function ClassWizardWidgetsDevPage() {
     const [log, setLog] = useState<Record<string, string>>({});
 
@@ -255,6 +378,16 @@ export default function ClassWizardWidgetsDevPage() {
                 </header>
 
                 <div className="flex flex-col gap-10">
+                    <div>
+                        <h2 className="mb-3 text-[15px] font-semibold text-[#101828]">
+                            Phase 3 — headless state machine (scripted trace)
+                        </h2>
+                        <div className="flex flex-col gap-8">
+                            <TraceBlock title="Single class — template path" script={SINGLE_SCRIPT} />
+                            <TraceBlock title="Recurring — After 11 sessions, weekly, Fri" script={RECUR_SCRIPT} />
+                        </div>
+                    </div>
+
                     <div>
                         <h2 className="mb-3 text-[15px] font-semibold text-[#101828]">
                             Live preview card — fill levels
