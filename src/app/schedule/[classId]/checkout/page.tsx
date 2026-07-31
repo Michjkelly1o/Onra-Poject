@@ -88,6 +88,13 @@ function ScheduleCheckoutInner() {
     // "Use account credit" toggle — when on, the customer's balance is
     // applied as a reduction (capped at the post-discount total).
     const [useAccountCredit, setUseAccountCredit] = useState<boolean>(false);
+    // Gift card — client 2026-07-31. Same reduction-toggle model as account
+    // credit; parity with the main POS checkout so both entry points behave
+    // identically for every product type.
+    const [useGiftCard, setUseGiftCard] = useState<boolean>(false);
+    const issuedGiftCards    = useAppStore(s => s.issuedGiftCards);
+    const giftCardBalanceFor = useAppStore(s => s.giftCardBalanceFor);
+    const redeemGiftCards    = useAppStore(s => s.redeemGiftCards);
     const [loading, setLoading] = useState(false);
     const [receiptNumber] = useState(() => `R-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(6, "0")}`);
     const [transactionId] = useState(() => Math.random().toString(36).slice(2, 10));
@@ -122,12 +129,17 @@ function ScheduleCheckoutInner() {
 
     if (!pendingPurchase || !customer) return null;
     const walletBalance = walletBalanceAed(walletTransactions, customer.id);
-    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, accountCreditApplied, total } = computeTotals(
+    // Subscribing to `issuedGiftCards` keeps this recomputing as cards are
+    // spent/refunded elsewhere; the selector itself reads from get().
+    void issuedGiftCards;
+    const giftCardBalance = giftCardBalanceFor(customer.id);
+    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, accountCreditApplied, giftCardApplied, total } = computeTotals(
         pendingPurchase.items,
         pendingPurchase.discountPercent,
         pendingPurchase.promoDiscountAed,
         { taxRules, taxRates, pricesIncludeTax, roundingMode, branchId },
         useAccountCredit ? walletBalance : 0,
+        useGiftCard ? giftCardBalance : 0,
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
@@ -169,10 +181,17 @@ function ScheduleCheckoutInner() {
         // memberships/packages/gift-cards, so the omission is safe — the
         // fallback to buyer.branchId inside applyPurchase does the right
         // thing for non-retail lines.
+        // Gift-card debit first so the per-card breakdown can be stamped on
+        // the transaction — same order as the main POS checkout.
+        const giftDebits = giftCardApplied > 0
+            ? redeemGiftCards(customer.id, giftCardApplied).debits
+            : undefined;
         applyPurchase(
             customer.id, pendingPurchase.items, "pos",
             sellerStaffId ?? undefined,
             accountCreditApplied > 0 ? accountCreditApplied : undefined,
+            undefined,
+            giftDebits,
         );
         router.replace(`/schedule/${classId}?paymentSuccess=1&customerId=${customer.id}`);
     }
@@ -207,6 +226,10 @@ function ScheduleCheckoutInner() {
                 canConfirm={canConfirm()}
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
+                giftCardBalance={giftCardBalance}
+                giftCardApplied={giftCardApplied}
+                useGiftCard={useGiftCard}
+                setUseGiftCard={setUseGiftCard}
                 walletBalance={walletBalance}
                 useAccountCredit={useAccountCredit}
                 setUseAccountCredit={setUseAccountCredit}

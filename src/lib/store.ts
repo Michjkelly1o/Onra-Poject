@@ -2176,6 +2176,13 @@ export interface CustomerTransaction {
      *  the credit to the customer's wallet. Absent / 0 = no credit was
      *  used and refunds don't touch the wallet. */
     accountCreditAppliedAed?: number;
+    /** Gift-card AED applied to this sale, broken down per card (client
+     *  2026-07-31). Stored as a list rather than a single number because
+     *  a sale can spend across MULTIPLE cards (partial redemption walks
+     *  oldest-expiry first), and a refund has to put each amount back on
+     *  the card it came from. Absent / empty = no gift card was used and
+     *  refunds don't touch any card balance. */
+    giftCardDebits?: { cardId: string; amountAed: number }[];
     // ── Retail line-item snapshot (Phase A groundwork, 2026-07-29) ──────
     // Populated for the retail line items at sale time so past receipts
     // render exactly as sold even after product edits / archives (client
@@ -4739,6 +4746,31 @@ export interface AppState {
     /** Append a new issued gift card (a real card sold to a customer).
      *  Auto-generates id + issued_at when not supplied. Returns the id. */
     addIssuedGiftCard: (input: Omit<IssuedGiftCard, "id"> & { id?: string }) => string;
+    /** Spendable balance a customer holds across every ACTIVE, unexpired
+     *  card they own. Drives the "Gift card" payment method's availability
+     *  + the balance label at both admin POS and customer checkout. */
+    giftCardBalanceFor: (customerId: string) => number;
+    /** Redeem `amountAed` against a customer's gift cards, oldest-expiry
+     *  first so cards closest to expiring get spent before they lapse.
+     *  Partial redemption supported — a card that can't cover the whole
+     *  amount contributes its remaining balance and the next card picks up
+     *  the rest.
+     *
+     *  Returns the per-card breakdown actually debited (so callers can
+     *  store it on the transaction for a later refund-restore) plus the
+     *  total applied. `applied` is capped at the customer's available
+     *  balance, so over-requesting is safe — it simply spends everything.
+     *
+     *  A card whose balance hits 0 flips `status` to "redeemed".
+     *  `last_redeemed_at` is stamped on every touched card. */
+    redeemGiftCards: (customerId: string, amountAed: number) => {
+        applied: number;
+        debits: { cardId: string; amountAed: number }[];
+    };
+    /** Reverse a redemption — used by the refund path. Adds each amount
+     *  back onto its card and flips "redeemed" cards back to "active"
+     *  when the restored balance is > 0 (expired cards stay expired). */
+    restoreGiftCards: (debits: { cardId: string; amountAed: number }[]) => void;
 
     // ── Import history (Migration & imports audit trail) ────────────────────
     /** Append a completed-import row. Fires when the AI Agent's Migration
@@ -5093,6 +5125,11 @@ export interface AppState {
          *  falls back to `buyer.branchId ?? DEFAULT_BRANCH_ID`. Only the
          *  retail-line stock loop reads this. */
         saleBranchIdOverride?: string,
+        /** Gift-card debits (client 2026-07-31) — the per-card breakdown the
+         *  caller got back from `redeemGiftCards`. Stamped onto the first
+         *  sale transaction so `refundTransaction` can put each amount back
+         *  on the exact card it came from. Omit when no gift card was used. */
+        giftCardDebits?: { cardId: string; amountAed: number }[],
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -8642,6 +8679,13 @@ export const useAppStore = create<AppState>()(persist(
                     silent: true,
                 });
             }
+            // Gift-card restore (client 2026-07-31) — put each debited amount
+            // back on the exact card it came from, and flip fully-spent cards
+            // back to "active" when they still have runway. Mirrors the
+            // account-credit restore directly above.
+            if (target.giftCardDebits && target.giftCardDebits.length > 0) {
+                get().restoreGiftCards(target.giftCardDebits);
+            }
             // Retail refund (Phase D.2, 2026-07-29) — restore units to the
             // branch that sold them, and append a matching "refund" audit-log
             // row keyed to the original transaction so the Stock on Hand
@@ -9503,6 +9547,92 @@ export const useAppStore = create<AppState>()(persist(
         };
         set(state => ({ issuedGiftCards: [...state.issuedGiftCards, next] }));
         return id;
+    },
+
+    giftCardBalanceFor: (customerId) => {
+        const todayISO = new Date().toISOString();
+        return get().issuedGiftCards
+            .filter(c =>
+                c.customer_id === customerId &&
+                c.status === "active" &&
+                c.expires_at > todayISO &&
+                c.current_balance_aed > 0)
+            .reduce((sum, c) => sum + c.current_balance_aed, 0);
+    },
+
+    redeemGiftCards: (customerId, amountAed) => {
+        const want = Math.max(0, Math.round(amountAed));
+        if (want <= 0) return { applied: 0, debits: [] };
+        const nowISO = new Date().toISOString();
+        // Oldest expiry FIRST — spend the card closest to lapsing before
+        // one with runway, so the customer loses as little value as
+        // possible to expiry.
+        const spendable = get().issuedGiftCards
+            .filter(c =>
+                c.customer_id === customerId &&
+                c.status === "active" &&
+                c.expires_at > nowISO &&
+                c.current_balance_aed > 0)
+            .sort((a, b) => a.expires_at.localeCompare(b.expires_at));
+
+        const debits: { cardId: string; amountAed: number }[] = [];
+        let remaining = want;
+        for (const card of spendable) {
+            if (remaining <= 0) break;
+            const take = Math.min(card.current_balance_aed, remaining);
+            debits.push({ cardId: card.id, amountAed: take });
+            remaining -= take;
+        }
+        const applied = want - remaining;
+        if (applied <= 0) return { applied: 0, debits: [] };
+
+        const byId = new Map(debits.map(d => [d.cardId, d.amountAed]));
+        set(state => ({
+            issuedGiftCards: state.issuedGiftCards.map(c => {
+                const take = byId.get(c.id);
+                if (take === undefined) return c;
+                const nextBalance = Math.max(0, c.current_balance_aed - take);
+                return {
+                    ...c,
+                    current_balance_aed: nextBalance,
+                    // Fully-spent cards flip to "redeemed" so they drop out
+                    // of the spendable pool + read correctly in the Gift
+                    // Card report's status column.
+                    status: nextBalance === 0 ? "redeemed" as const : c.status,
+                    last_redeemed_at: nowISO,
+                };
+            }),
+        }));
+        get().recordAudit(
+            "Redeemed gift card",
+            "customer",
+            customerId,
+            `AED ${applied} across ${debits.length} card${debits.length === 1 ? "" : "s"}`,
+        );
+        return { applied, debits };
+    },
+
+    restoreGiftCards: (debits) => {
+        if (debits.length === 0) return;
+        const nowISO = new Date().toISOString();
+        const byId = new Map(debits.map(d => [d.cardId, d.amountAed]));
+        set(state => ({
+            issuedGiftCards: state.issuedGiftCards.map(c => {
+                const give = byId.get(c.id);
+                if (give === undefined) return c;
+                const nextBalance = c.current_balance_aed + give;
+                return {
+                    ...c,
+                    current_balance_aed: nextBalance,
+                    // A card that was fully spent becomes redeemable again.
+                    // Expired cards stay expired — restoring value doesn't
+                    // un-expire a card whose date has passed.
+                    status: c.status === "redeemed" && nextBalance > 0
+                        ? (c.expires_at > nowISO ? "active" as const : "expired" as const)
+                        : c.status,
+                };
+            }),
+        }));
     },
 
     // ── Promo codes ────────────────────────────────────────────────────────
@@ -11065,7 +11195,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
-    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride, giftCardDebits) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -11308,6 +11438,12 @@ export const useAppStore = create<AppState>()(persist(
                     createdAtISO: nowISO,
                     ...(isFirstSaleLine && accountCreditAppliedAed && accountCreditAppliedAed > 0
                         ? { accountCreditAppliedAed }
+                        : {}),
+                    // Gift-card debits ride the FIRST sale line only (same
+                    // rule as account credit) so a refund restores each
+                    // card exactly once, never per-line.
+                    ...(isFirstSaleLine && giftCardDebits && giftCardDebits.length > 0
+                        ? { giftCardDebits }
                         : {}),
                 });
             });

@@ -126,6 +126,57 @@ export function redeemGift(g: RedeemableGift): string {
     return id;
 }
 
+/** Spend `amountAed` across the customer's redeemed cards, oldest-expiry
+ *  first so a card closest to lapsing gets used before one with runway.
+ *  Client 2026-07-31 — before this, the checkout's "Forma gift card"
+ *  payment chip selected fine and the order completed, but NOTHING ever
+ *  debited the balance, so a card could be "spent" forever.
+ *
+ *  Partial redemption falls out naturally: a card that can't cover the
+ *  whole amount contributes what it has and the next card picks up the
+ *  rest. Returns the total actually applied (capped at the available
+ *  balance, so over-requesting is safe).
+ *
+ *  Fully-spent cards stay in the list with `balance: 0` so the customer's
+ *  Gift cards page can still show them as used history rather than having
+ *  them silently vanish. */
+export function spendGiftCards(amountAed: number): number {
+    hydrate();
+    const want = Math.max(0, Math.round(amountAed));
+    if (want <= 0) return 0;
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const order = [...redeemed]
+        .filter((r) => r.balance > 0 && r.expiresISO >= todayISO)
+        .sort((a, b) => a.expiresISO.localeCompare(b.expiresISO));
+
+    const debits = new Map<string, number>();
+    let remaining = want;
+    for (const card of order) {
+        if (remaining <= 0) break;
+        const take = Math.min(card.balance, remaining);
+        debits.set(card.id, take);
+        remaining -= take;
+    }
+    const applied = want - remaining;
+    if (applied <= 0) return 0;
+
+    redeemed = redeemed.map((r) => {
+        const take = debits.get(r.id);
+        return take === undefined ? r : { ...r, balance: Math.max(0, r.balance - take) };
+    });
+    emit();
+    return applied;
+}
+
+/** Combined spendable balance across every unexpired card with value left. */
+export function giftCardBalance(): number {
+    hydrate();
+    const todayISO = new Date().toISOString().slice(0, 10);
+    return redeemed
+        .filter((r) => r.balance > 0 && r.expiresISO >= todayISO)
+        .reduce((sum, r) => sum + r.balance, 0);
+}
+
 function subscribe(cb: () => void) {
     listeners.add(cb);
     return () => {

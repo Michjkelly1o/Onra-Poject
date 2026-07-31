@@ -93,6 +93,15 @@ function POSCheckoutInner() {
     // "Use account credit" toggle — when on, the customer's balance is
     // applied as a reduction (capped at the post-discount total).
     const [useAccountCredit, setUseAccountCredit] = useState<boolean>(false);
+    // Gift card — client 2026-07-31. Same reduction-toggle model as account
+    // credit: the customer's combined balance across every active, unexpired
+    // card reduces the total, and whatever remains is paid by a real method.
+    // Works on ANY cart (membership / package / gift card / retail) because
+    // it applies to the total, not per-line.
+    const [useGiftCard, setUseGiftCard] = useState<boolean>(false);
+    const issuedGiftCards    = useAppStore(s => s.issuedGiftCards);
+    const giftCardBalanceFor = useAppStore(s => s.giftCardBalanceFor);
+    const redeemGiftCards    = useAppStore(s => s.redeemGiftCards);
     const [loading, setLoading] = useState(false);
     const [receiptNumber] = useState(() => `R-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(6, "0")}`);
     const [transactionId] = useState(() => Math.random().toString(36).slice(2, 10));
@@ -120,10 +129,15 @@ function POSCheckoutInner() {
     // resolved figure alongside the new total. `taxContext` was previously
     // `undefined` (Jul 2026 fix) — the receipt showed no tax while the
     // transaction record stored real tax; both surfaces now agree.
-    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, accountCreditApplied, total } = computeTotals(
+    // Subscribing to `issuedGiftCards` above keeps this recomputing as cards
+    // are spent/refunded elsewhere; the selector itself reads from get().
+    void issuedGiftCards;
+    const giftCardBalance = giftCardBalanceFor(customer.id);
+    const { subtotal, discountAmount, taxRate, taxAmount, taxIncluded, accountCreditApplied, giftCardApplied, total } = computeTotals(
         pendingPurchase.items, pendingPurchase.discountPercent, pendingPurchase.promoDiscountAed ?? 0,
         { taxRules, taxRates, pricesIncludeTax, roundingMode },
         useAccountCredit ? walletBalance : 0,
+        useGiftCard ? giftCardBalance : 0,
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
@@ -161,11 +175,21 @@ function POSCheckoutInner() {
         // Account credit debit rides inside `applyPurchase` now — the store
         // debits the wallet in the same tick, so the ledger + balance stay in
         // sync with what the receipt shows. No separate `debitWallet` call.
+        // Gift-card debit runs FIRST so the resulting per-card breakdown can
+        // be stamped onto the transaction below — that's what lets a later
+        // refund put each amount back on the exact card it came from.
+        // `redeemGiftCards` spends oldest-expiry first and flips fully-spent
+        // cards to "redeemed" in the same tick, so the customer's Gift cards
+        // tab + the Gift Card report reflect the new balance immediately.
+        const giftDebits = giftCardApplied > 0
+            ? redeemGiftCards(customer.id, giftCardApplied).debits
+            : undefined;
         applyPurchase(
             customer.id, pendingPurchase.items, "pos",
             sellerStaffId ?? undefined,
             accountCreditApplied > 0 ? accountCreditApplied : undefined,
             pendingPurchase.saleBranchId,
+            giftDebits,
         );
         setPendingPurchase(null);
         showToast(
@@ -206,6 +230,10 @@ function POSCheckoutInner() {
                 canConfirm={canConfirm()}
                 onConfirm={handleConfirmPurchase}
                 enabledMethods={enabledMethods}
+                giftCardBalance={giftCardBalance}
+                giftCardApplied={giftCardApplied}
+                useGiftCard={useGiftCard}
+                setUseGiftCard={setUseGiftCard}
                 walletBalance={walletBalance}
                 useAccountCredit={useAccountCredit}
                 setUseAccountCredit={setUseAccountCredit}

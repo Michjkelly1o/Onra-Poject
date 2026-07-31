@@ -24,6 +24,7 @@ import {
     usePromo,
 } from "@/lib/customer/purchase";
 import { addPaymentRecord, methodKind } from "@/lib/customer/payment-history";
+import { spendGiftCards } from "@/lib/customer/gift-cards";
 
 const STEPS = ["Processing payment", "Securing your payment", "Confirming your purchase"];
 const STEP_MS = 900;
@@ -103,6 +104,17 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
                 dateLabel: now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
                 timeLabel: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
             };
+
+            // Gift card — client 2026-07-31. The "Forma gift card" payment
+            // method used to select fine and complete the order while
+            // NOTHING debited the balance, so a card could be spent
+            // forever. Now the paid total is deducted from the customer's
+            // redeemed cards (oldest-expiry first, partial redemption
+            // supported). Only fires when the customer actually chose the
+            // gift-card method — any other method leaves the balance alone.
+            if (method.toLowerCase().includes("gift") && totals.total > 0) {
+                spendGiftCards(totals.total);
+            }
 
             // NOTE: `applyPurchase` above already debited the wallet ledger
             // (with `referenceType: "pos_sale"` on the same tick) and stamped

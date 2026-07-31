@@ -162,6 +162,17 @@ export interface PaymentConfirmationStepProps {
      *  parent computed via `computeTotals` (capped at post-discount total).
      *  Renders as a reduction line in the payment summary. */
     accountCreditApplied?: number;
+    /** Gift-card balance the customer holds across every active, unexpired
+     *  card (client 2026-07-31). Mirrors the account-credit trio below —
+     *  when > 0 the "Gift card" toggle can be switched on to reduce the
+     *  total. Applies to every product type since it works on the cart
+     *  total, not per-line. */
+    giftCardBalance?: number;
+    useGiftCard?: boolean;
+    setUseGiftCard?: (next: boolean) => void;
+    /** AED gift-card value actually applied — resolved by `computeTotals`
+     *  after account credit, capped at whatever total remains. */
+    giftCardApplied?: number;
 }
 export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     const enabled = p.enabledMethods ?? ALL_PAYMENT_METHODS;
@@ -214,6 +225,21 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                     enabled={!!p.useAccountCredit}
                     onToggle={(next) => p.setUseAccountCredit?.(next)}
                 />
+
+                {/* Gift card — client 2026-07-31. Only rendered when the
+                    caller wires the trio (balance + toggle + setter), so
+                    checkout entry points that haven't opted in are
+                    unaffected. Sits directly under Account credit since
+                    both are "reduce the total before choosing a payment
+                    method" controls. */}
+                {p.setUseGiftCard && (
+                    <GiftCardSection
+                        balance={p.giftCardBalance ?? 0}
+                        applied={p.giftCardApplied ?? 0}
+                        enabled={!!p.useGiftCard}
+                        onToggle={(next) => p.setUseGiftCard?.(next)}
+                    />
+                )}
 
                 <div className="flex flex-col gap-4">
                     <p className="text-[18px] font-semibold text-[#101828]">Payment method</p>
@@ -460,6 +486,65 @@ function PaymentMethodCard({ selected, onSelect, title, subtitle, icon }: {
  *  computes the resolved figure via `computeTotals`). Toggle OFF: no
  *  reduction. Balance = the customer's wallet balance (referral rewards +
  *  refunds + grants — same slice the removed Wallet tab used to render). */
+/** Gift-card redemption toggle — client 2026-07-31. Structurally a twin of
+ *  `AccountCreditSection` (same chrome, same toggle) because gift cards
+ *  behave identically at checkout: a stored balance that REDUCES the total,
+ *  with whatever remains paid by a real payment method. Modelling it as a
+ *  reduction rather than a payment method is what makes partial redemption
+ *  work for free — a card covering AED 80 of a AED 120 sale leaves AED 40
+ *  on cash/card without any split-payment plumbing.
+ *
+ *  Applies to EVERY product type (membership / package / gift card / retail)
+ *  because it operates on the cart total, not per-line. */
+function GiftCardSection({ balance, applied, enabled, onToggle }: {
+    balance: number;
+    applied: number;
+    enabled: boolean;
+    onToggle: (next: boolean) => void;
+}) {
+    const hasBalance = balance > 0;
+    return (
+        <div className="flex flex-col gap-3">
+            <p className="text-[18px] font-semibold text-[#101828]">Gift card</p>
+            <div className={cn(
+                "flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]",
+                !hasBalance && "opacity-70",
+            )}>
+                <div className="w-8 h-8 rounded-[6px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
+                    <Gift01 className="w-4 h-4 text-[#475467]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#344054]">Gift card balance</p>
+                    <p className="text-[14px] text-[#475467]">
+                        {enabled && applied > 0
+                            ? <>Applying <span className="text-[#067647] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
+                            : <>AED {balance.toLocaleString()} available to redeem</>
+                        }
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabled}
+                    disabled={!hasBalance}
+                    onClick={() => hasBalance && onToggle(!enabled)}
+                    className={cn(
+                        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                        hasBalance ? (enabled ? "bg-[#658774]" : "bg-[#e4e7ec]") : "bg-[#e4e7ec] cursor-not-allowed",
+                    )}
+                >
+                    <span
+                        className={cn(
+                            "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+                            enabled && hasBalance ? "translate-x-[22px]" : "translate-x-[2px]",
+                        )}
+                    />
+                </button>
+            </div>
+        </div>
+    );
+}
+
 function AccountCreditSection({ balance, applied, enabled, onToggle }: {
     balance: number;
     applied: number;
@@ -941,6 +1026,12 @@ export function computeTotals(
      *  Existing callers who don't pass it get zero credit applied (no
      *  behaviour change). */
     accountCreditRequestedAed: number = 0,
+    /** Gift-card AED requested at checkout (client 2026-07-31). Applied
+     *  AFTER account credit, capped at whatever total remains. Callers cap
+     *  by the customer's live gift-card balance before passing it in; the
+     *  store's `redeemGiftCards` re-caps at debit time. Defaults to 0 so
+     *  existing callers are unaffected. */
+    giftCardRequestedAed: number = 0,
 ) {
     const subtotal = items.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
 
@@ -1002,12 +1093,23 @@ export function computeTotals(
     // in; the store's applyPurchase re-caps at debit time as a belt-and-braces.
     const requestedCredit = Math.max(0, Math.round(accountCreditRequestedAed));
     const accountCreditApplied = Math.min(postDiscount, requestedCredit);
-    const total = Math.max(0, postDiscount - accountCreditApplied);
+    const postCredit = Math.max(0, postDiscount - accountCreditApplied);
+
+    // Gift card — applied AFTER account credit (client 2026-07-31). Order
+    // matters: account credit is studio-issued and has no cash value to the
+    // customer, whereas a gift card was PAID for. Spending the studio's
+    // credit first preserves the customer's paid-for balance for longer.
+    // Capped at whatever total remains, so a card bigger than the sale only
+    // spends what's needed and the rest stays on the card.
+    const requestedGift = Math.max(0, Math.round(giftCardRequestedAed));
+    const giftCardApplied = Math.min(postCredit, requestedGift);
+    const total = Math.max(0, postCredit - giftCardApplied);
 
     return {
         subtotal,
         discountAmount,
         accountCreditApplied,
+        giftCardApplied,
         taxRate: firstRate,
         taxAmount: totalTax,
         taxIncluded,
