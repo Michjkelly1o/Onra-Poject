@@ -62,15 +62,29 @@ Question 3.1 branches. **Both branches are fully specified in Figma.**
 | A.2 | When is the session? | Date list + `Pick a custom date` + Next | 387-124675 |
 | A.3 | When does the class start? | Time picker | 387-129597 |
 
-**Branch B — recurring** (pager `N of 4` — one extra question)
+**Branch B — recurring** — much bigger than the single path. **Most of the frame
+set (22–35) is this branch**, not private/recovery as first assumed.
+
 | # | Question | Widget | Frame |
 |---|---|---|---|
-| B.2 | When should the recurring schedule start? | Date list, first row badged `Tomorrow`, + `Pick a custom date` | **387-135510** |
-| B.3 | How should this recurring schedule end? | `Never` / `On` / `After` | **389-136165** |
-| B.4 | Repeat every X week? | `1 week` (badged `Default`) / 2 / 3 / 4 + `Custom X` free-text | **389-136815** |
+| B.2 | When should the recurring schedule start? | Date list, first row badged `Tomorrow`, + `Pick a custom date` | 387-135510 |
+| B.3 | How should this recurring schedule end? | `Never` / `On` / `After` | 389-136165 |
+| B.3a | *(if `On`)* When should this recurring schedule end? | Date list + custom date | 391-137469, 391-141688, **391-156601**, 391-157016 |
+| B.3b | *(if `After`)* After how many occurrences? | Count | 394-184280, 394-174501, 394-174707, **394-171364**, **394-171779** |
+| B.3c | *(if `Never`)* — | goes straight to B.4 | 389-136815, **391-138124**, 391-143357 |
+| B.4 | Repeat every X week? | `1 week` (badged `Default`) / 2 / 3 / 4 + `Custom X` free-text | 389-136815 |
+| B.5 | **Which days + per-day time slots** | Per-day editor: `Set schedule for this day` with Start time / End time selects, **multiple slots per day**, delete-slot button, `Confirm`. User replies `Days confirmed` | **391-148046** |
 
-`On` → date picker for the end date. `After` → occurrence count. Both follow the
-same free-text/secondary-input pattern as `Custom X`.
+Bold frames are **NOT in the original 36-item list** — the real set is ~40.
+
+### Preview gains a session list when recurring
+Once a recurrence is defined, the preview card grows an extra expandable row:
+
+> **Preview of scheduled classes** — Review all upcoming scheduled dates and time
+> slots. · `11 classes ▾`
+
+Count reflects the expanded series (frames 391-148046 shows `3 classes`,
+394-173941 shows `11 classes`). Collapsed by default.
 
 ### Publish
 1. Preview card fully populated
@@ -84,6 +98,11 @@ it, and returns to the publish prompt — frames 17–19 confirm this.
 ---
 
 ## 3. Private sessions + Recovery
+
+**There are NO Figma frames for these.** Every frame in the set is the class
+flow — confirmed by the source doc's own opening note ("SO FAR WE ONLY HAVE FOR
+THE CLASS SCHEDULE THE NORMAL ONE, BUT WE CAN REUSE IT FOR THE PRIVATE AND
+RECOVERY"). We reuse the class wizard verbatim and swap the data source.
 
 Same wizard, one substitution: **step 1.1 picks a SERVICE, not a class template.**
 
@@ -212,20 +231,35 @@ and the AI's next message states it plainly ("Capacity trimmed to 6 to fit
 Reformer Studio"). No extra question.
 
 ### Recurring → FULLY SPECIFIED, build it
-See Step 3 Branch B above. Frames 387-135510, 389-136165, 389-136815.
+See Step 3 Branch B. All three end-rule branches (`Never` / `On` / `After`) have
+their own frames, plus a per-day time-slot editor and a session-list preview.
+
+### Instructor ratings → REAL aggregate
+Compute average score + review count per instructor from the live `class_ratings`
+slice. Instructors with no ratings render without stars rather than a fake 5.0.
+
+### Custom date → INLINE calendar, and BACK must work
+The panel swaps its option list for a calendar. **Critical:** the panel's
+top-right `‹ N of M ›` pager must let the admin go BACK out of the calendar to
+re-pick a listed option. Back/next navigation is a first-class requirement of the
+question panel, not just a decoration — it applies to every question, not only the
+calendar.
+
+### Create-room sub-flow → MIRROR Settings exactly
+Ask for every field the real create-room form in Settings → Business & locations
+requires, so a room made here is indistinguishable from one made there. No
+half-configured rooms.
 
 ---
 
 ## 7. Still open
 
-1. **Instructor ratings** (frame 8) — real aggregate from `class_ratings`, or
-   display-only? Data exists; confirm whether a per-instructor average is wanted.
-2. **Custom date picker** — inline calendar in the panel, or the existing
-   `DatePicker` in a popover?
-3. **`On` / `After` recurrence end** (frame 389-136165) — confirm the secondary
-   input for each: `On` → date picker, `After` → occurrence count?
-4. **Create-room sub-flow fields** — mirror Settings → Business & locations
-   exactly, or a trimmed set for speed?
+1. **`After` occurrence input** — frames 394-171364 / 394-171779 need a read to
+   confirm whether it's a preset list (4 / 8 / 12) or a free-text count.
+2. **Per-day editor** (391-148046) — confirm how days are chosen before the
+   per-day time slots appear (day multi-select first, or slots-per-day inline?).
+3. **`Preview of scheduled classes`** — expanded state not yet read; confirm the
+   row shape (date + time per row? deletable?).
 
 ---
 

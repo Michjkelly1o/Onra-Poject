@@ -30,15 +30,30 @@ Quick map of which frame belongs to which part of the flow:
 | Step 2 · instructor picker | 8 |
 | Step 3 · repeat? + single-class date | 12, 13 |
 | Step 3 · single-class start time | 14 |
-| **Step 3 · RECURRING — start date** | **19** (387-135510) |
-| **Step 3 · RECURRING — end rule** | **20** (389-136165) |
-| **Step 3 · RECURRING — repeat interval** | **21** (389-136815) |
 | Publish confirm / edit-a-field | 16, 17, 18 |
-| Private + Recovery variants | 22–35 |
+| **Step 3 · RECURRING — start date** | **19** (387-135510) |
+| **Step 3 · RECURRING — end rule (Never/On/After)** | **20** (389-136165) |
+| **Step 3 · RECURRING — repeat interval** | **21** (389-136815) |
+| **RECURRING · `Never` branch** | 21, 22 + `391-138124` † |
+| **RECURRING · `On` branch** | 24, 25, 26 + `391-156601` † |
+| **RECURRING · `After` branch** | 29, 30, 31 + `394-171364` †, `394-171779` † |
+| **RECURRING · per-day time slots** | 23 (391-148046) |
+| **RECURRING · session-list preview + publish** | 32–35 |
 | Validating loader | 36 |
 
-**Recurring IS fully specified** — frames 19, 20, 21 cover start date, end rule
-(Never / On / After) and repeat interval (1–4 weeks + Custom X).
+† **Four frames are NOT in the numbered list below** — the real set is ~40, not 36.
+
+### Two corrections to the first reading
+1. **Frames 22–35 are the RECURRENCE branches, not private/recovery.** They cover
+   the Never / On / After end rules, the per-day time-slot editor, and the
+   session-list preview.
+2. **Private + Recovery have NO frames at all** — consistent with the note at the
+   top of this doc. We reuse the class wizard and swap the data source.
+
+### Recurring is bigger than a single extra question
+Start date → end rule (with a follow-up for `On` and `After`) → repeat interval →
+**per-day time slots** (multiple start/end pairs per day, deletable, `Confirm`) →
+preview grows a **`Preview of scheduled classes · N classes ▾`** expandable row.
 
 ### Client decisions (2026-07-31)
 - **`+ Add room`** → opens its OWN nested question flow in the panel (same
