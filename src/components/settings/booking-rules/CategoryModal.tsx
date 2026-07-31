@@ -1,20 +1,28 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Service category modal (Booking Rules Phase 3)
+// Onra Studio — Category modal (shared: class + retail)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Figma 4580:40094 (create — no image) + 4580:40351 (create — image
-// uploaded) used for ADD mode. Same modal shell drives EDIT mode (title
-// switches to "Edit service category" + button reads "Save changes").
+// uploaded) used for ADD mode. Same modal shell drives EDIT mode
+// (title flips to "Edit …" + button reads "Save changes").
 //
-// Single 400px modal shell:
+// Client 2026-07-31 — the modal used to hard-code "service category"
+// in the title (leftover from the Booking Rules phase where class
+// categories were called "service categories"). Every consumer picks
+// what it means via the new `entityLabel` prop — "class category" on
+// schedule / service / class-template / staff / admin categories, and
+// "retail category" on retail-products / retail-categories admin. If
+// omitted, defaults to "class category" so old call sites keep working.
+//
+// Single 440px modal shell:
 //   • Header: title + close X (top-right)
 //   • Body:
 //       Row: 96×96 avatar (image-01 placeholder OR uploaded preview)
 //            + "Upload image" / "Change image" secondary-gray button
 //            + "Remove" tertiary-error link (only when an image exists)
-//       Field: "Category name" — TextInput with placeholder
+//       Field: "<EntityLabel> name" — TextInput with placeholder
 //   • Footer: Cancel + primary submit (disabled until name has content)
 //
 // Image upload is simulated — the file's data-URL is persisted on the
@@ -44,9 +52,16 @@ export interface CategoryModalProps {
      *  admins get the collision hint the moment they type it — no
      *  toast, error stays anchored to the field. */
     takenNames?: string[];
+    /** Entity noun in lowercase — e.g. "class category" (default) or
+     *  "retail category". Flows into the title ("Create new <entity>"
+     *  / "Edit <entity>"), the field label ("<Entity> name"), the
+     *  submit button ("Add <entity>"), the duplicate-error copy, and
+     *  the placeholder. Client 2026-07-31 — parameterised so retail
+     *  and class contexts stop mislabelling each other. */
+    entityLabel?: string;
 }
 
-export function CategoryModal({ existing, onClose, onSubmit, takenNames }: CategoryModalProps) {
+export function CategoryModal({ existing, onClose, onSubmit, takenNames, entityLabel = "class category" }: CategoryModalProps) {
     const isEditing = !!existing;
     const [name,     setName]     = useState<string>(existing?.name ?? "");
     const [imageUrl, setImageUrl] = useState<string>(existing?.image_url ?? "");
@@ -84,8 +99,17 @@ export function CategoryModal({ existing, onClose, onSubmit, takenNames }: Categ
         onSubmit({ name: name.trim(), image_url: imageUrl });
     }
 
-    const title       = isEditing ? "Edit service category" : "Create new service category";
-    const submitLabel = isEditing ? "Save changes"          : "Add category";
+    // Human-readable copy derived from `entityLabel` — "class category"
+    // (default) → "Create new class category" / "Edit class category" /
+    // "Class category name" / "Add class category". "retail category" →
+    // "Create new retail category" / etc. Title case only on the FIRST
+    // word for the field label so "Retail category name" reads naturally.
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    const title       = isEditing ? `Edit ${entityLabel}` : `Create new ${entityLabel}`;
+    const submitLabel = isEditing ? "Save changes"        : `Add ${entityLabel}`;
+    const fieldLabel  = `${cap(entityLabel)} name`;
+    const placeholder = `Enter ${entityLabel} name`;
+    const dupeError   = `A ${entityLabel} called "${trimmedName}" already exists.`;
 
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
@@ -138,13 +162,13 @@ export function CategoryModal({ existing, onClose, onSubmit, takenNames }: Categ
                     </div>
 
                     <Field
-                        label="Category name"
-                        error={isDuplicate ? `A category called "${trimmedName}" already exists.` : undefined}
+                        label={fieldLabel}
+                        error={isDuplicate ? dupeError : undefined}
                     >
                         <TextInput
                             value={name}
                             onChange={setName}
-                            placeholder="Enter category name"
+                            placeholder={placeholder}
                             invalid={isDuplicate}
                         />
                     </Field>

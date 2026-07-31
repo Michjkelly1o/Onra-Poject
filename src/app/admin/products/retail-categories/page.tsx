@@ -370,6 +370,7 @@ export default function RetailCategoriesPage() {
 
             {categoryModal && (
                 <CategoryModal
+                    entityLabel="retail category"
                     existing={categoryModalExisting()}
                     onClose={() => setCategoryModal(null)}
                     onSubmit={handleCategorySubmit}

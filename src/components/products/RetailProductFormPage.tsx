@@ -845,6 +845,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 type it — no toast, no submit-then-fail flow. */}
             {creatingCategory && (
                 <CategoryModal
+                    entityLabel="retail category"
                     onClose={() => setCreatingCategory(false)}
                     takenNames={categories.map(c => c.label)}
                     onSubmit={({ name, image_url }) => {
