@@ -27,6 +27,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
+import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { useAppStore, type RetailProduct } from "@/lib/store";
 
 // ─── Steps ─────────────────────────────────────────────────────────────────
@@ -811,87 +812,47 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 </div>
             </div>
 
+            {/* Client 2026-07-31 — reuse the SAME CategoryModal the
+                admin uses on /admin/settings/retail-categories so both
+                surfaces stay 1:1 (chrome, validation, image upload).
+                Submit calls the same addRetailCategory action → the
+                Retail Categories module + POS filter chips + AI-agent
+                dataset all see the new row in the same render cycle
+                (Zustand subscription). On duplicate the store returns
+                null and we fire the same "Duplicate name" toast the
+                admin module uses. */}
             {creatingCategory && (
-                <CreateCategoryModal
+                <CategoryModal
                     onClose={() => setCreatingCategory(false)}
-                    onCreate={(label) => {
-                        const id = addRetailCategory({ label });
+                    onSubmit={({ name, image_url }) => {
+                        const label = name.trim();
+                        if (!label) return;
+                        const id = addRetailCategory({
+                            label,
+                            imageUrl: image_url || undefined,
+                        });
                         if (!id) {
-                            // Store rejected — duplicate label. Return the
-                            // error to the modal so it can surface inline.
-                            return { ok: false, error: "A category with that name already exists." };
+                            showToast(
+                                "Duplicate name",
+                                `A category called "${label}" already exists.`,
+                                "error", "slash",
+                            );
+                            return;
                         }
-                        // Auto-select the fresh category so the form is
-                        // ready to continue.
+                        // Auto-select the fresh category on this product so
+                        // the form is ready to continue.
                         updateBasic({ categoryId: id });
                         setCreatingCategory(false);
-                        showToast("Category created", `${label} is now available.`, "success", "check");
-                        return { ok: true };
+                        showToast(
+                            "Category created",
+                            `"${label}" has been added to your retail catalog.`,
+                            "success", "check",
+                        );
                     }}
                 />
             )}
 
             <Toast />
-        </div>
-    );
-}
-
-/** Small inline modal for creating a new retail category from inside the
- *  product form. Auto-focuses the input on open, submits on Enter, cancels
- *  on Escape. Surfaces the store's duplicate-label error inline. */
-function CreateCategoryModal({ onClose, onCreate }: {
-    onClose: () => void;
-    onCreate: (label: string) => { ok: true } | { ok: false; error: string };
-}) {
-    const [label, setLabel] = useState("");
-    const [error, setError] = useState<string | null>(null);
-    const submit = () => {
-        const clean = label.trim();
-        if (!clean) {
-            setError("Please enter a category name.");
-            return;
-        }
-        const result = onCreate(clean);
-        if (!result.ok) setError(result.error);
-    };
-    return (
-        <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
-            onClick={onClose}
-        >
-            <div
-                className="w-full max-w-[420px] bg-white rounded-[16px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col gap-5 p-6"
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--brand-tertiary)] flex items-center justify-center">
-                        <Package className="w-5 h-5 text-[var(--brand-primary)]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[16px] font-semibold text-[#101828] leading-6">Create category</p>
-                        <p className="text-[13px] text-[#667085] leading-5">Add a new retail category — it'll be selected on this product automatically.</p>
-                    </div>
-                </div>
-                <FormField label="Category name" error={error ?? undefined}>
-                    <input
-                        type="text"
-                        autoFocus
-                        value={label}
-                        onChange={e => { setLabel(e.target.value); if (error) setError(null); }}
-                        onKeyDown={e => {
-                            if (e.key === "Enter") { e.preventDefault(); submit(); }
-                            else if (e.key === "Escape") { e.preventDefault(); onClose(); }
-                        }}
-                        placeholder="e.g. Outerwear"
-                        aria-invalid={error ? true : undefined}
-                        className={cn(INPUT_CLS, error ? INPUT_CLS_INVALID : INPUT_CLS_VALID)}
-                    />
-                </FormField>
-                <div className="flex items-center justify-end gap-3">
-                    <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
-                    <Button variant="primary" size="md" onClick={submit} disabled={!label.trim()}>Create</Button>
-                </div>
-            </div>
         </div>
     );
 }
