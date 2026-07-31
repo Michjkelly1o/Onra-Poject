@@ -46,6 +46,7 @@ import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
@@ -1187,6 +1188,17 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 {forceTab !== "roles" &&
                  (forceTab !== "staff" || staffSubTab === "staff" || staffSubTab === "shift-management") && (
                     <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                )}
+                {/* Import — empty-state only (client 2026-07-31). Only
+                    surfaces on the STAFF sub-tab of the Staff & shift
+                    route, gated on staff-list truly-empty + no active
+                    search + no active filter. Skipped on Shifts / Time
+                    off / Roles because those don't have a matching AI
+                    Agent migration entity (shifts + blocked-time are
+                    per-branch operational data, not a bulk import;
+                    roles ship pre-seeded). */}
+                {forceTab === "staff" && staffSubTab === "staff" && (
+                    <ToolbarImportButton visible={totalCount === 0 && !search.trim() && !hasActiveFilter} />
                 )}
                 <AddNewMenu
                     variant={forceTab === "roles" ? "role-only" : forceTab === "staff" ? "staff-only" : "combined"}
