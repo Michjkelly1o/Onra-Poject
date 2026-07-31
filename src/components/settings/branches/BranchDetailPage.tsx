@@ -161,7 +161,7 @@ function Sidebar({
 
     return (
         <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
-            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-6 flex-1">
                     {/* Avatar + status badge overlap */}
                     <div className="relative">
@@ -630,7 +630,7 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
                                 onChange={(k) => setTab(k as typeof tab)}
                             />
                         </div>
-                        <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
+                        <div className="flex-1 pt-6">
                             <DetailsTab
                                 branch={branch}
                                 hours={hours}

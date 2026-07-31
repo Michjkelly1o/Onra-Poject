@@ -274,7 +274,7 @@ function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
             </div>
 
             {/* Content — admin's exact field-row pattern */}
-            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     {/* Name + description */}
                     <div>
@@ -677,7 +677,7 @@ export default function InstructorClassDetailPage() {
                             horizontal padding the canonical earnings detail
                             uses. Keeps table edges aligned with the toolbar
                             + pagination above and below. */}
-                        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 pb-2 relative">
+                        <div className="flex-1 px-6 pb-2 relative">
                             {totalRows === 0 ? (
                                 <div className="relative" style={{ minHeight: 360 }}>
                                     <EmptyState

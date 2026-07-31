@@ -998,7 +998,7 @@ export default function PayrollInstructorDetailPage({
                             </div>
                         </div>
 
-                        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+                        <div className="flex flex-col flex-1">
                             <div className="px-6 pb-6 flex flex-col gap-5">
                                 <SidebarEarningsCard
                                     totalThisMonth={sidebarMonthly}
@@ -1051,7 +1051,7 @@ export default function PayrollInstructorDetailPage({
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col">
+                        <div className="flex-1 flex flex-col">
                             {/* Metric cards */}
                             <div className="px-6 pt-4 flex items-stretch gap-4">
                                 <PayRateSnapshotCard payRate={payRate} />

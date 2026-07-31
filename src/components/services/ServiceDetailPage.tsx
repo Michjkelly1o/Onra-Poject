@@ -181,7 +181,7 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                 </div>
             </div>
 
-            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     {/* Name + description */}
                     <div>
@@ -234,7 +234,7 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                 </div>
 
                 {/* Actions */}
-                <div className="px-6 pb-6 shrink-0">
+                <div className="px-6 pb-6 mt-auto">
                     <div className="h-px w-full bg-[#e4e7ec] mb-5" />
                     <p className="text-[14px] text-[#667085] mb-4">Service actions</p>
                     <div className="flex flex-col gap-4">
@@ -308,7 +308,7 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
+                <div className="flex-1 px-6 py-5 flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
@@ -827,7 +827,7 @@ function RightPanel({ service }: { service: Service }) {
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                <div className="flex-1 relative">
                     {tab === "appointments" && (
                         pagedAppointments.length > 0 ? (
                             <div className="px-6">

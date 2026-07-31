@@ -174,7 +174,7 @@ function Sidebar({ role, totalStaffs, onAction }: {
                 </div>
             </div>
 
-            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div className="flex flex-col gap-1">
                         <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{role.name}</h2>
@@ -195,7 +195,7 @@ function Sidebar({ role, totalStaffs, onAction }: {
                 </div>
 
                 {/* Actions footer */}
-                <div className="px-6 pb-6 shrink-0">
+                <div className="px-6 pb-6 mt-auto">
                     <div className="h-px w-full bg-[#e4e7ec] mb-5" />
                     <p className="text-[14px] text-[#667085] mb-4">Role actions</p>
                     <div className="flex flex-col gap-4">
@@ -974,7 +974,7 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
                                 onChange={(k) => setTab(k as typeof tab)}
                             />
                         </div>
-                        <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
+                        <div className="flex-1 pt-6">
                             {tab === "permissions"
                                 ? <PermissionsTab role={role} />
                                 : <StaffListTab role={role} onChangeRoleFor={setChangingRoleFor} />

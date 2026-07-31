@@ -243,7 +243,7 @@ function LeftSidebar({ vm, onAction, branches }: {
         <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
             <PromoSidebarBanner vm={vm} />
 
-            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div className="flex flex-col gap-1">
                         <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{vm.name}</h2>
@@ -262,7 +262,7 @@ function LeftSidebar({ vm, onAction, branches }: {
                     </div>
                 </div>
 
-                <div className="px-6 pb-6 shrink-0">
+                <div className="px-6 pb-6 mt-auto">
                     <div className="h-px w-full bg-[#e4e7ec] mb-5" />
                     <p className="text-[14px] text-[#667085] mb-4">Promotion actions</p>
                     <div className="flex flex-col gap-4">{actions}</div>
@@ -384,7 +384,7 @@ function CheckRow({ label, trailing }: { label: string; trailing?: string }) {
 function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] }) {
     return (
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
+            <div className="flex-1 px-6 py-6 flex flex-col gap-6">
                 {/* ── Promo configuration ── */}
                 <SectionHeading>Promotion configuration</SectionHeading>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">

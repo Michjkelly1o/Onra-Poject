@@ -227,11 +227,22 @@ function LeftSidebar({
     })();
 
     return (
+        // Client 2026-07-31 — the inner `overflow-y-auto` wrapper is GONE.
+        // With the shell now growing to fit its tallest column, the sidebar
+        // renders its full content (info fields + every action button) and
+        // the page scrolls as a whole. Previously the fixed 832px row forced
+        // this column to scroll internally, which buried the action buttons
+        // below a nested scroll line.
+        //
+        // `h-full` stays so a SHORT sidebar still stretches to match the
+        // main panel's height — the two card edges stay aligned. The
+        // actions block keeps `mt-auto` so it pins to the bottom in that
+        // stretched case instead of floating mid-card.
         <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
             <ProductBanner imageUrl={product.imageUrl} name={product.name} status={status} />
 
-            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-                <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
+            <div className="flex flex-col flex-1">
+                <div className="flex flex-col gap-5 px-6 pt-5 pb-6">
                     <div>
                         <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{product.name}</h2>
                         {product.description && (
@@ -249,7 +260,7 @@ function LeftSidebar({
                     </div>
                 </div>
 
-                <div className="px-6 pb-6 shrink-0">
+                <div className="px-6 pb-6 mt-auto">
                     <div className="h-px w-full bg-[#e4e7ec] mb-5" />
                     <p className="text-[14px] text-[#667085] mb-4">Retail product actions</p>
                     <div className="flex flex-col gap-4">{actions}</div>
@@ -360,7 +371,7 @@ function ProductDetailsTab({ product, categoryLabel }: {
     categoryLabel: string;
 }) {
     return (
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
+        <div className="flex-1 px-6 py-6 flex flex-col gap-6">
             <SectionHeading>Basic information</SectionHeading>
             <DescriptionCard label="Description" body={product.description ?? ""} />
             <InlineStatRow>
@@ -437,7 +448,7 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
     }, [adjRows, product.id]);
 
     return (
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-4">
+        <div className="flex-1 px-6 py-6 flex flex-col gap-4">
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
@@ -504,7 +515,7 @@ function ActivityTab({ product, adjRows, branches }: {
 
     if (historyForProduct.length === 0) {
         return (
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6">
+            <div className="flex-1 px-6 py-6">
                 <div className="relative" style={{ minHeight: 300 }}>
                     <EmptyState title="No activity yet" subtitle="Stock changes and POS sales will show up here." />
                 </div>
@@ -513,7 +524,7 @@ function ActivityTab({ product, adjRows, branches }: {
     }
 
     return (
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-4">
+        <div className="flex-1 px-6 py-6 flex flex-col gap-4">
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>

@@ -148,7 +148,7 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory }: {
 
     return (
         <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
-            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+            <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-6 flex-1">
                     {/* Avatar + status */}
                     <div className="relative">
@@ -999,7 +999,7 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                                     onChange={(k) => setTab(k as typeof tab)}
                                 />
                             </div>
-                            <div className="flex-1 overflow-y-auto scrollbar-hide pt-6">
+                            <div className="flex-1 pt-6">
                                 {!role ? (
                                     <div className="px-6 pb-6 relative" style={{ minHeight: 320 }}>
                                         <EmptyState title="Role missing" subtitle="The role assigned to this staff member is no longer available." />
