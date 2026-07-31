@@ -67,8 +67,10 @@ preview grows a **`Preview of scheduled classes · N classes ▾`** expandable r
 - **Intent detection** → **General chat only**. Asking the AI to create a class
   schedule / private / recovery runs the wizard **inline in that thread**. It is
   NOT a 4th chat type, and Migration/Setup modes don't get it.
-- **RBAC** → gated on `manage_schedule`, the same permission the Schedule nav
-  item uses. Developer spec: [`docs/ai-agent-rbac.md`](../docs/ai-agent-rbac.md).
+- **RBAC** → gated on the **permission matrix** (`classes.schedule.create`), not
+  the coarse nav strings. Front Desk can view the schedule but not create one, so
+  they're declined at the wizard entry; only Owner gets `+ Add room`. Developer
+  spec: [`docs/ai-agent-rbac.md`](../docs/ai-agent-rbac.md).
 - **Private + Recovery** → reuse the class-schedule components, but the LOGIC
   follows the admin private/recovery creation modules (they write `Appointment`,
   not `ClassSchedule` — audited in §3 of the plan).

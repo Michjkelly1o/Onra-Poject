@@ -489,19 +489,37 @@ Rules:
 Full spec: **[`docs/ai-agent-rbac.md`](../docs/ai-agent-rbac.md)** — written for
 the implementing developer.
 
-Summary: the agent has two existing gates (`AI_AGENT_UI_VISIBLE`,
-`isAiAgentEnabled(role)`), and both are persona-level (`admin` yes, instructor
-and customer no). Neither distinguishes the five studio roles, which was fine
-while the agent was read-only and stops being fine now that it writes.
+The agent's two existing gates (`AI_AGENT_UI_VISIBLE`, `isAiAgentEnabled(role)`)
+are persona-level — admin yes, instructor and customer no. Neither distinguishes
+the five studio roles, which was fine while the agent was read-only and stops
+being fine now that it writes.
 
-Governing rule: **the agent may never exceed the sidebar.** An action is allowed
-iff the same user could do it through admin. Schedule creation therefore gates on
-`manage_schedule` — the same key `Sidebar.tsx:65`/`:108` uses. Enforcement is at
-tool registration in `/api/ai-agent/route.ts` (an unregistered tool can't be
-prompt-coaxed into firing); prompt and client render are UX layers on top.
-Missing permissions **degrade** the flow (hide `+ Add room`, skip the pay-rate
-question and use the instructor's default rate) rather than dead-ending it. A
-user with no `manage_schedule` is declined up front, never mid-wizard.
+**Correction to an earlier draft of this plan:** it named `manage_settings` and
+`manage_payroll`. **Neither permission exists.** The nav-string set is exactly
+seven (`manage_instructors`, `manage_marketing`, `manage_members`,
+`manage_products`, `manage_schedule`, `process_sales`, `view_reports`) and is
+too coarse for this wizard — Settings isn't even in the nav array.
+
+The right source is the **permission matrix** in
+`src/data/mock/permission_templates.ts` —
+`Record<section, Record<module, {create, edit, delete, view}>>`, the same data
+the Staff → Roles & permissions module edits.
+
+| Capability | Cell | Owner | Br.Admin | Operator | Front Desk |
+|---|---|---|---|---|---|
+| Run the wizard | `classes.schedule.create` | ✅ | ✅ | ✅ | ❌ |
+| `+ Add room` | `settings.locations_rooms.create` | ✅ | ❌ | ❌ | ❌ |
+| Pay-rate Q 2.5 | `staff.pay_rates_payroll.view` | ✅ | ✅ | ❌ | ❌ |
+
+Two non-obvious consequences: **Front Desk can view the schedule but not create
+one** (declined at entry — this is the case that makes the gate necessary), and
+**only Owner gets `+ Add room`**. When Q 2.5 is skipped, Step 2 becomes 4
+questions and the pager must renumber to `N of 4`.
+
+Enforcement is at tool registration in `/api/ai-agent/route.ts` — an unregistered
+tool can't be prompt-coaxed into firing. Prompt and client render are UX layers
+on top. Never branch on `role.type`; always read the cell, so a studio editing
+its own roles gets the right behaviour for free.
 
 ### RESOLVED — intent detection lives in General chat
 Not a 4th chat type. In **General chat only**, the user can say *"create a class

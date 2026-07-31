@@ -67,42 +67,77 @@ not be able to create a class by asking the agent nicely.
 
 The agent is an alternate interface to admin, never an escalation path.
 
-### How admin already decides
-`Sidebar.tsx:353` is the canonical check:
+### There are TWO permission systems — use the right one
+
+This trips people up, so be explicit.
+
+**System A — coarse nav strings (`currentUser.permissions: string[]`).**
+Drives sidebar visibility only. `Sidebar.tsx:353`:
 
 ```ts
 if (currentUser.permissions?.includes("all")) return true;
 return currentUser.permissions?.includes(item.permission ?? "");
 ```
 
-Permission strings are per-user (`currentUser.permissions`), with `"all"` as the
-super-grant. The schedule module is gated on **`manage_schedule`**
-(`Sidebar.tsx:65` and `:108`).
+The complete set is **seven strings, nothing else**:
+`manage_instructors` · `manage_marketing` · `manage_members` ·
+`manage_products` · `manage_schedule` · `process_sales` · `view_reports`.
+
+There is **no** `manage_settings` and **no** `manage_payroll`. Settings isn't in
+the nav array at all — it's a footer chip (`SidebarSettingsChip`) with no
+permission key. Payroll is a child of the Staff group under
+`manage_instructors`. So System A cannot express "may create a room" or "may
+read pay rates" — it's too coarse for this wizard.
+
+**System B — the real matrix (`Role.permissions: PermissionsMap`).**
+Defined in [`src/data/mock/permission_templates.ts`](../src/data/mock/permission_templates.ts),
+shaped `Record<section, Record<module, { create, edit, delete, view }>>` where
+each cell is `boolean | "na"`. This is what the Staff → Roles & permissions
+module edits, and it has exactly the granularity the wizard needs.
+
+**Gate the wizard on System B.** System A stays what it is: nav visibility.
 
 ### What the class-creation wizard must check
 
-| Capability | Permission | Why |
-|---|---|---|
-| Create class schedule | `manage_schedule` | Same key the Schedule nav item uses |
-| Create private / recovery appointment | `manage_schedule` | Services live under the same Classes group |
-| `+ Add room` sub-flow | `manage_settings` * | Rooms are a Settings → Locations concern |
-| Pick a pay rate (question 2.5) | `manage_payroll` * | Pay rates are a Staff/payroll concern |
+| Capability | Matrix cell |
+|---|---|
+| Create class schedule | `classes.schedule.create` |
+| Create private / recovery appointment | `classes.schedule.create` |
+| `+ Add room` sub-flow | `settings.locations_rooms.create` |
+| Pick a pay rate (question 2.5) | `staff.pay_rates_payroll.view` — **`view`, not `create`**. The wizard only reads the rate list to attach one to a class; it never defines a rate. |
 
-\* Confirm the exact permission strings against `roles.ts` seed data during
-implementation — the two starred rows are inferred from module placement, not
-yet read off a nav item.
+Resolved against the seeded role templates — these are read values, not
+inferences:
+
+| Role | `classes.schedule.create` | `settings.locations_rooms.create` | `staff.pay_rates_payroll.view` |
+|---|---|---|---|
+| Owner | ✅ | ✅ | ✅ |
+| Branch Admin | ✅ (inherits `PERM_OWNER.classes`) | ❌ `NONE()` | ✅ `VIEW_ONLY()` |
+| Operator | ✅ | ❌ `NONE()` | ❌ `NONE()` |
+| Front Desk | ❌ `create: false, view: true` | ❌ | ❌ |
+| Instructor | — agent disabled entirely | — | — |
+
+Two consequences worth calling out, because neither is obvious:
+
+1. **Front Desk can view the schedule but not create one.** They must be
+   declined at the wizard entry point. This is the case that makes the whole
+   gate necessary.
+2. **Only Owner gets `+ Add room`.** Branch Admin and Operator can run the
+   wizard but must pick an existing room — `locations_rooms` is `NONE()` for
+   everyone but Owner.
 
 ### Degrade, don't crash
 A user lacking a permission should get a **helpful refusal**, not a broken flow:
 
-- **No `manage_schedule`** → the agent declines the whole wizard up front:
-  *"Creating class schedules isn't part of your access. Ask an Owner or Branch
-  Admin to set this one up."* Never start step 1 and fail at publish.
-- **Has `manage_schedule`, lacks the room permission** → the wizard runs, but
-  `+ Add room` is hidden from the room picker. The admin picks an existing room.
-- **Lacks the pay-rate permission** → question 2.5 is skipped and the
-  instructor's default assigned rate is used, matching what the admin schedule
-  form does for a user who can't see pay rates.
+- **No `classes.schedule.create`** (Front Desk) → the agent declines the whole
+  wizard up front: *"Creating class schedules isn't part of your access. Ask an
+  Owner or Branch Admin to set this one up."* Never start step 1 and fail at
+  publish.
+- **No `settings.locations_rooms.create`** (Branch Admin, Operator) → the wizard
+  runs normally, `+ Add room` is simply absent from the room picker.
+- **No `staff.pay_rates_payroll.view`** (Operator) → question 2.5 is skipped and
+  the instructor's default assigned rate is used. Step 2 becomes 4 questions and
+  the pager must read `N of 4`, not `N of 5` — don't leave a gap in the count.
 
 Partial capability degrades the flow; it never dead-ends it.
 
@@ -122,8 +157,12 @@ if (!ctx.canWrite) return notAuthorisedResult();
 ```
 
 The schedule tools should not even be REGISTERED for a user without
-`manage_schedule` — an unavailable tool can't be coaxed into firing by a clever
-prompt. This is the real boundary.
+`classes.schedule.create` — an unavailable tool can't be coaxed into firing by a
+clever prompt. This is the real boundary.
+
+Resolving the matrix server-side means the request needs the caller's `Role`, not
+just their persona. Confirm `AuthContext` can reach it; if it can't today, adding
+that lookup is the first task of the phase.
 
 ### Layer 2 — prompt (server)
 Tell the model what the user can do, so it explains rather than silently failing.
@@ -138,13 +177,14 @@ security** — Layer 1 is.
 
 ## 5. Implementation checklist
 
+- [ ] Confirm `AuthContext` can resolve the caller's `Role` (matrix lookup), not
+      just the persona — prerequisite for everything below
 - [ ] Extend `AuthContext` with a resolved capability set, not just `canWrite`
-- [ ] Register schedule tools only when `manage_schedule` is present
-- [ ] Add the up-front refusal message for users without it
-- [ ] Gate `+ Add room` behind the rooms permission (client + tool)
-- [ ] Gate question 2.5 behind the pay-rate permission; fall back to the
-      instructor's default assigned rate
-- [ ] Confirm the two starred permission strings in §3 against `roles.ts`
+- [ ] Register schedule tools only when `classes.schedule.create` is true
+- [ ] Add the up-front refusal message for users without it (hits Front Desk)
+- [ ] Gate `+ Add room` on `settings.locations_rooms.create` (client + tool)
+- [ ] Gate question 2.5 on `staff.pay_rates_payroll.view`; fall back to the
+      instructor's default assigned rate **and renumber the Step 2 pager to 4**
 - [ ] Verify each of the 5 studio roles end-to-end via the demo persona switcher
 - [ ] Confirm the `/api/ai-agent` 403 still fires for instructor + customer
 
@@ -154,17 +194,19 @@ security** — Layer 1 is.
 
 Switch personas and confirm:
 
-| Role | Agent opens? | Wizard starts? | `+ Add room`? | Pay-rate question? |
-|---|---|---|---|---|
-| Owner | yes | yes | yes | yes |
-| Branch Admin | yes | yes | yes | yes |
-| Operator | yes | *confirm* | *confirm* | *confirm* |
-| Front Desk | yes | *confirm* | no | no |
-| Instructor | **no** | — | — | — |
-| Customer | **no** | — | — | — |
+| Role | Agent opens? | Wizard starts? | `+ Add room`? | Pay-rate question? | Step 2 pager |
+|---|---|---|---|---|---|
+| Owner | yes | yes | yes | yes | `N of 5` |
+| Branch Admin | yes | yes | **no** | yes | `N of 5` |
+| Operator | yes | yes | **no** | **no** | `N of 4` |
+| Front Desk | yes | **no — declined up front** | — | — | — |
+| Instructor | **no** | — | — | — | — |
+| Customer | **no** | — | — | — | — |
 
-Rows marked *confirm* depend on the seeded permission arrays for those roles —
-read them rather than assuming, and update this table once verified.
+Derived from the seeded matrices in `permission_templates.ts`. If a studio edits
+a role's permissions through Staff → Roles & permissions, these rows change with
+it — that's the point of gating on the matrix rather than hard-coding role names.
+**Never branch on `role.type` in wizard code; always read the cell.**
 
 ---
 
