@@ -39,6 +39,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { Toast } from "@/components/ui/Toast";
@@ -276,30 +277,30 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                 </button>
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
                     {hasReactivatable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
+                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
                         </Button>
                     )}
                     {hasRecoverable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
                     {hasArchivable && (
                         hasDeletable ? (
-                            <Button variant="secondary-gray" size="sm"
+                            <Button variant="secondary-gray"
                                 className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                                 leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
                                 onClick={() => onAction("delete")}>
                                 Delete
                             </Button>
                         ) : (
-                            <Button variant="secondary-gray" size="sm"
+                            <Button variant="secondary-gray"
                                 className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                                 leftIcon={<SlashCircle01 className="w-5 h-5 text-[#b42318]" />}
                                 onClick={() => onAction("deactivate")}>
@@ -687,7 +688,12 @@ export default function GiftCardsPage() {
                         );
                     }}
                 />
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
+                {/* Import — empty-state only (client 2026-07-31). Hidden
+                    once real gift cards exist so admins default to
+                    "Add new". No filter panel on this page, so gate on
+                    truly-empty + no active search only. */}
+                <ToolbarImportButton visible={giftCardDesigns.length === 0 && !search.trim()} />
+                <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/gift-cards/new?returnTo=${encodeURIComponent("/admin/products/gift-cards")}`)}>
                     Add new
                 </Button>

@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import {
     Plus, Eye, Edit02, Archive, Trash01, Trash02, Image01,
     Check, RefreshCcw01, SlashCircle01, XClose, Package,
-    Upload01, ChevronDown, ChevronRight,
+    ChevronDown, ChevronRight,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { Sliders } from "@/components/icons/Sliders";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -226,17 +227,17 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                 </button>
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
                     {hasReactivatable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
+                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
                         </Button>
                     )}
                     {hasRecoverable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
@@ -250,7 +251,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                         hasDeletable ? (
                             <Button
                                 variant="secondary-gray"
-                                size="sm"
+                               
                                 className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                                 leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
                                 onClick={() => onAction("delete")}
@@ -260,7 +261,7 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                         ) : (
                             <Button
                                 variant="secondary-gray"
-                                size="sm"
+                               
                                 className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                                 leftIcon={<SlashCircle01 className="w-5 h-5 text-[#b42318]" />}
                                 onClick={() => onAction("deactivate")}
@@ -341,10 +342,10 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                 </div>
             </div>
             <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                <Button variant="secondary-gray" size="md" onClick={() => setPending(EMPTY_FILTER)} disabled={!hasAny}>
+                <Button variant="secondary-gray" onClick={() => setPending(EMPTY_FILTER)} disabled={!hasAny}>
                     Reset
                 </Button>
-                <Button variant="primary" size="md" onClick={() => { onApply(pending); onClose(); }}>
+                <Button variant="primary" onClick={() => { onApply(pending); onClose(); }}>
                     Apply
                 </Button>
             </div>
@@ -668,24 +669,16 @@ export default function RetailPage() {
                     </Button>
                 </IconTooltip>
                 {/* Import — always immediately after Filter (memory rule
-                    feedback_toolbar_import_order). Routes to the AI Agent
-                    Migrate Data thread scoped to retail_products so the
-                    admin lands on the file-upload step for this entity. */}
-                <IconTooltip label="Import">
-                    <Button
-                        variant="secondary-gray"
-                        size="icon"
-                        aria-label="Import"
-                        onClick={() => router.push(
-                            `/ai-agent?thread=migrate_data&returnTo=${encodeURIComponent("/admin/products/retail")}`,
-                        )}
-                    >
-                        <Upload01 className="w-5 h-5" />
-                    </Button>
-                </IconTooltip>
+                    feedback_toolbar_import_order). Retail is the ONLY
+                    module that always shows Import; every other list
+                    passes `visible={empty && !filter}`. Routes to the
+                    AI Agent Migrate Data thread scoped to retail_products
+                    so the admin lands on the file-upload step for this
+                    entity. */}
+                <ToolbarImportButton />
                 <Button
                     variant="primary"
-                    size="md"
+                   
                     leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/retail/new?returnTo=${encodeURIComponent("/admin/products/retail")}`)}
                 >

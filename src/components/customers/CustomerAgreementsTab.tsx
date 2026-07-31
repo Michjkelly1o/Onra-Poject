@@ -182,9 +182,9 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
                     </div>
                 </div>
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_AGREEMENT_FILTER); onApply(EMPTY_AGREEMENT_FILTER); onClose(); }}>Clear filter</Button>
-                    <Button variant="primary" size="md" disabled={!hasAny}
+                    <Button variant="primary" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
                 </div>
         </SlidePanel>
@@ -356,14 +356,14 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
         <div className="flex-1 flex flex-col overflow-hidden">
             {/* Toolbar */}
             <div className="shrink-0 flex items-center gap-3 px-6 pt-5 pb-4">
-                <ToolbarTotal count={filtered.length} entitySingular="agreement" size="sm" />
+                <ToolbarTotal count={filtered.length} entitySingular="agreement" />
                 <ToolbarSearch
                     value={search}
                     onChange={setSearch}
                     placeholder="Search agreement..."
-                    size="sm"
+                   
                 />
-                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} size="sm" />
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
             </div>
 
             {/* Table */}

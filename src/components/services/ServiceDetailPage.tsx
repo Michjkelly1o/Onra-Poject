@@ -386,7 +386,7 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
                     <Button
                         variant="secondary-gray"
-                        size="md"
+                       
                         disabled={!hasSelection}
                         onClick={() => {
                             setPending(EMPTY_FILTER);
@@ -398,7 +398,7 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
                     </Button>
                     <Button
                         variant="primary"
-                        size="md"
+                       
                         disabled={!hasSelection}
                         onClick={() => { onApply(pending); onClose(); }}
                     >
@@ -812,17 +812,17 @@ function RightPanel({ service }: { service: Service }) {
                         count={total}
                         entitySingular={subjectLabel}
                         entityPlural={subjectLabel}
-                        size="sm"
+                       
                     />
                     <ToolbarSearch
                         value={search}
                         onChange={v => { setSearch(v); setPage(1); }}
                         placeholder={tab === "appointments" ? "Search appointment..." : "Search..."}
-                        size="sm"
+                       
                         widthClass="w-[220px]"
                     />
                     {tab === "appointments" && (
-                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={!!hasActiveAppointmentFilter} size="sm" />
+                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={!!hasActiveAppointmentFilter} />
                     )}
                 </div>
 

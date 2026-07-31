@@ -408,11 +408,11 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
                 </div>
 
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_INSTRUCTOR_FILTER); onApply(EMPTY_INSTRUCTOR_FILTER); onClose(); }}>
                         Clear filter
                     </Button>
-                    <Button variant="primary" size="md" onClick={() => { onApply(pending); onClose(); }}>
+                    <Button variant="primary" onClick={() => { onApply(pending); onClose(); }}>
                         Apply
                     </Button>
                 </div>
@@ -582,7 +582,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
         <div className="flex flex-col gap-6 px-6 pb-6">
             {/* Toolbar */}
             <div className="flex items-center gap-3 w-full">
-                <ToolbarTotal count={filtered.length} entitySingular="staff" entityPlural="staff" size="sm" />
+                <ToolbarTotal count={filtered.length} entitySingular="staff" entityPlural="staff" />
                 <ToolbarSearch
                     value={search}
                     onChange={setSearch}

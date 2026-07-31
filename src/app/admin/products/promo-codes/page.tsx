@@ -34,6 +34,8 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
 // Card-embedded kebab menu actions — mirrors the detail-page action set so
@@ -414,11 +416,11 @@ function FilterPanel({ open, applied, onClose, onApply }: {
                 </div>
 
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
                     </Button>
-                    <Button variant="primary" size="md" disabled={!hasAny}
+                    <Button variant="primary" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>
                         Apply
                     </Button>
@@ -479,12 +481,7 @@ export default function PromoListPage() {
         <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <div className="flex-1">
-                    <p className="text-[16px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
-                        {visible.length} {visible.length === 1 ? "promotion" : "promotions"}
-                    </p>
-                </div>
+                <ToolbarTotal count={visible.length} entitySingular="promotion" />
 
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-5 h-5" />}
@@ -499,7 +496,12 @@ export default function PromoListPage() {
 
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
 
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
+                {/* Import — empty-state only (client 2026-07-31). Hidden
+                    once real promotions exist so admins default to
+                    "Add promotion". */}
+                <ToolbarImportButton visible={promoCodes.length === 0 && !search.trim() && !hasActiveFilter} />
+
+                <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/promo-codes/new?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)}>
                     Add promotion
                 </Button>

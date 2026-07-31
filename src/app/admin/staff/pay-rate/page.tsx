@@ -35,6 +35,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { RowActions } from "@/components/patterns/RowActions";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import {
@@ -207,17 +208,17 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
                 </button>
                 <div className="flex items-center gap-3">
                     {flags.hasActive && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
                     {flags.hasArchive && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
                     {flags.allZeroUsage && (
-                        <Button variant="secondary-gray" size="sm"
+                        <Button variant="secondary-gray"
                             className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                             leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
                             onClick={() => onAction("delete")}>
@@ -474,7 +475,10 @@ export default function PayRatePage() {
                 />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search pay rate..." />
                 <StatusFilterDropdown value={filter} onChange={setFilter} />
-                <Button variant="primary" size="md"
+                {/* Import — empty-state only (client 2026-07-31). Hidden
+                    once pay rates exist so admins default to "Add pay rate". */}
+                <ToolbarImportButton visible={payRates.length === 0 && !search.trim() && filter === null} />
+                <Button variant="primary"
                     leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push("/staff/pay-rate/new?returnTo=/admin/staff/pay-rate")}>
                     Add pay rate

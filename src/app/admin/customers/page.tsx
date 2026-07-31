@@ -47,6 +47,7 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 
@@ -321,11 +322,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
                     </Button>
-                    <Button variant="primary" size="md" disabled={!hasAny}
+                    <Button variant="primary" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>
                         Apply
                     </Button>
@@ -376,22 +377,22 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
                 </button>
                 <div className="flex items-center gap-3">
                     {flags.archive && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
                     {flags.reactivate && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
+                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
                         </Button>
                     )}
                     {flags.recover && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
                     {flags.deactivate && (
-                        <Button variant="secondary-gray" size="sm"
+                        <Button variant="secondary-gray"
                             className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                             leftIcon={<SlashCircle01 className="w-5 h-5 text-[#b42318]" />}
                             onClick={() => onAction("deactivate")}>
@@ -399,7 +400,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
                         </Button>
                     )}
                     {flags.delete && (
-                        <Button variant="secondary-gray" size="sm"
+                        <Button variant="secondary-gray"
                             className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                             leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
                             onClick={() => onAction("delete")}>
@@ -843,6 +844,8 @@ export default function CustomersPage() {
                     }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                {/* Import — empty-state only (client 2026-07-31). Hidden once the table has real data so admins default to "Add new". */}
+                <ToolbarImportButton visible={customers.length === 0 && !search.trim() && !hasActiveFilter} />
             </div>
 
             {/* ── View card — rounded container hosting the SegmentedTabs
@@ -863,7 +866,7 @@ export default function CustomersPage() {
                     {currentUser?.id && (
                         <Button
                             variant="secondary-gray"
-                            size="sm"
+                           
                             onClick={() => setMineOnly(v => !v)}
                             className={mineOnly ? "bg-[#f2f4f7] text-[#101828]" : undefined}
                         >

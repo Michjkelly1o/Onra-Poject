@@ -5,16 +5,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // The "Total / N customers" left-aligned block that appears on every list-page
-// toolbar across admin pages + customer-profile inner tabs. Replaces ~5 lines
-// of boilerplate (`<div className="flex-1"><p>Total</p><p>N customers</p></div>`)
-// duplicated in 13+ files.
+// toolbar across admin + instructor + detail-page inner tabs.
 //
-// Two visual variants captured from the audit (2026-06-25):
-//   • Default (size="md") — 16px, used on admin list pages
-//   • Compact (size="sm") — 14px, used on customer-profile inner tabs
+// Canonical style (client 2026-07-31 audit) — one look everywhere:
+//   • Label "Total"     — 14px, #667085, leading-5
+//   • Value "N entity"  — 16px, #101828, font-medium, leading-6
 //
-// Both stretch to flex-1 so the rest of the toolbar (search, filter, action)
-// pins to the right.
+// Rationale: an admin-wide "Total" font-size audit found this stacked-two-size
+// pattern already in use on the Retail categories + Class categories pages
+// (and shown in the client screenshot). The old ToolbarTotal rendered both
+// lines at 16px, and roughly a dozen list pages hand-rolled variants at 16px
+// or 12px. This single component is now the source of truth — every page that
+// imports it inherits the canonical look, and the `size` prop was removed so
+// there's exactly one thing to grep for on future audits.
+//
+// Both lines stretch to flex-1 by default so the rest of the toolbar (search,
+// filter, action buttons) pins to the right.
 
 import { cn } from "@/lib/utils";
 
@@ -25,21 +31,16 @@ export interface ToolbarTotalProps {
     entitySingular: string;
     /** Plural entity name, e.g. "customers". Defaults to `${entitySingular}s`. */
     entityPlural?: string;
-    /** Visual size:
-     *  • "md" (default)  — 16px, admin list pages
-     *  • "sm" (compact)  — 14px, customer-profile inner tabs */
-    size?: "md" | "sm";
     /** Extra classes for the wrapper. Default is `flex-1` so siblings pin right. */
     className?: string;
 }
 
-export function ToolbarTotal({ count, entitySingular, entityPlural, size = "md", className }: ToolbarTotalProps) {
+export function ToolbarTotal({ count, entitySingular, entityPlural, className }: ToolbarTotalProps) {
     const entity = count === 1 ? entitySingular : (entityPlural ?? `${entitySingular}s`);
-    const cls = size === "md" ? "text-[16px]" : "text-[14px]";
     return (
-        <div className={cn("flex-1", className)}>
-            <p className={cn(cls, "text-[#667085]")}>Total</p>
-            <p className={cn(cls, "font-medium text-[#101828]")}>
+        <div className={cn("flex flex-col gap-1 flex-1 min-w-0", className)}>
+            <p className="text-[14px] text-[#667085] leading-5">Total</p>
+            <p className="text-[16px] font-medium text-[#101828] leading-6">
                 {count} {entity}
             </p>
         </div>

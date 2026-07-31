@@ -63,6 +63,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
@@ -285,11 +286,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
                     </Button>
-                    <Button variant="primary" size="md" disabled={!hasAny}
+                    <Button variant="primary" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>
                         Apply
                     </Button>
@@ -318,12 +319,12 @@ function BulkActionBar({ count, hasArchivable, hasRecoverable, onClear, onAction
                 </button>
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
                     {hasRecoverable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
@@ -647,7 +648,7 @@ export default function AgreementsPage() {
             <div className="flex-1 min-h-0 flex flex-col">
                 {/* Toolbar — Figma 4232-52279 */}
                 <div className="shrink-0 flex items-center gap-3">
-                    <ToolbarTotal count={filtered.length} entitySingular="agreement" size="sm" />
+                    <ToolbarTotal count={filtered.length} entitySingular="agreement" />
 
                     {/* Branch picker (220px) */}
                     <SelectInput
@@ -678,7 +679,11 @@ export default function AgreementsPage() {
                         active={hasActiveFilter && (applied.statuses.length > 0 || applied.scopes.length > 0 || applied.effectiveStart !== "" || applied.effectiveEnd !== "")}
                     />
 
-                    <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={handleAddNew}>
+                    {/* Import — empty-state only (client 2026-07-31). Hidden
+                        once agreements exist so admins default to "Add new". */}
+                    <ToolbarImportButton visible={agreements.length === 0 && !search.trim() && !hasActiveFilter} />
+
+                    <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={handleAddNew}>
                         Add new
                     </Button>
                 </div>

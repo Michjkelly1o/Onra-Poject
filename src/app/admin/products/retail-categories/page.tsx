@@ -35,6 +35,8 @@ import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal
 import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
@@ -242,16 +244,16 @@ export default function RetailCategoriesPage() {
         <div className="flex flex-col gap-5 w-full">
             {/* Toolbar — Total + count on the left, search + Add new on the right */}
             <div className="flex items-end gap-3 w-full">
-                <div className="flex flex-col gap-1 flex-1 min-w-0">
-                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828] leading-6">
-                        {categories.length} {categories.length === 1 ? "category" : "categories"}
-                    </p>
-                </div>
+                <ToolbarTotal count={categories.length} entitySingular="category" entityPlural="categories" />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search category..." />
+                {/* Import — empty-state only (client 2026-07-31). Hidden
+                    once the table has real data so admins default to
+                    "Add new". No filter panel on this page, so we gate
+                    on truly-empty + no active search only. */}
+                <ToolbarImportButton visible={categories.length === 0 && !search.trim()} />
                 <Button
                     variant="primary"
-                    size="md"
+                   
                     leftIcon={<Plus className="w-5 h-5" />}
                     onClick={handleAddCategory}
                 >
@@ -356,7 +358,7 @@ export default function RetailCategoriesPage() {
                             {selectedRows.length} selected
                             <XClose className="w-5 h-5 text-[#667085]" />
                         </button>
-                        <Button variant="secondary-gray" size="sm"
+                        <Button variant="secondary-gray"
                             className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                             leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
                             onClick={() => requestBulkDelete(selectedRows)}>

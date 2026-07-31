@@ -252,11 +252,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                 the edges via justify-between, matching the customer-module
                 filter (client 2026-07-20). */}
             <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                <Button variant="secondary-gray" disabled={!hasAny}
                     onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                     Clear filter
                 </Button>
-                <Button variant="primary" size="md" disabled={!hasAny}
+                <Button variant="primary" disabled={!hasAny}
                     onClick={() => { onApply(pending); onClose(); }}>
                     Apply
                 </Button>
@@ -355,7 +355,7 @@ export default function MigrationsImportsPage() {
                     agent runs adds a new row to importHistory (via
                     store.addImportHistory) so the admin lands back on
                     this page with the fresh row already at the top. */}
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
+                <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() =>
                         router.push(
                             "/ai-agent?thread=migrate_data&returnTo=" +

@@ -269,11 +269,11 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                 Follow-up status and Source moved from the Details tab
                 to a slide-in panel here; the user-icon button opens it. */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
-                <ToolbarTotal count={rows.length} entitySingular="task" size="sm" />
+                <ToolbarTotal count={rows.length} entitySingular="task" />
                 <div className="flex items-center gap-3">
                     <Button
                         variant="secondary-gray"
-                        size="md"
+                       
                         leftIcon={<MessageChatSquare className="w-4 h-4" />}
                         onClick={openEnquiryPanel}
                     >
@@ -467,12 +467,12 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                     )}
                 </div>
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" onClick={() => setEnquiryOpen(false)}>
+                    <Button variant="secondary-gray" onClick={() => setEnquiryOpen(false)}>
                         Cancel
                     </Button>
                     <Button
                         variant="primary"
-                        size="md"
+                       
                         onClick={handleLogEnquiry}
                         disabled={!canSubmitEnquiry}
                     >
@@ -560,7 +560,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                     </div>
                 </div>
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end">
-                    <Button variant="secondary-gray" size="md" onClick={() => setSettingsOpen(false)}>
+                    <Button variant="secondary-gray" onClick={() => setSettingsOpen(false)}>
                         Close
                     </Button>
                 </div>

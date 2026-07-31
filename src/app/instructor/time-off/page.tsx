@@ -443,7 +443,7 @@ export default function InstructorTimeOffPage() {
                 audit. */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
-                    <p className="text-[16px] text-[#667085]">Total</p>
+                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
                     <p className="text-[16px] font-medium text-[#101828]">
                         {myEntries.length} time off
                     </p>

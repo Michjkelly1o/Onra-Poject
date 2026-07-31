@@ -482,11 +482,11 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 
                 {/* Footer */}
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
                     </Button>
-                    <Button variant="primary" size="md" disabled={!hasAny}
+                    <Button variant="primary" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>
                         Apply
                     </Button>
@@ -577,7 +577,7 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                             </td>
                             <td className={TD}>
                                 <div className="flex flex-col items-start gap-1.5">
-                                    <SessionTypeTag type={c.type} size="md" />
+                                    <SessionTypeTag type={c.type} />
                                     {/* Flexible badge — appointment booked with the
                                         "Preference: Flexible" instructor preference
                                         (studio auto-assigned). Client 2026-07-24. */}
@@ -796,7 +796,7 @@ function DayClassListPopup({ dateISO, classes, anchor, onClose, onClassClick }: 
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                    <SessionTypeTag type={cls.type} size="sm" />
+                                    <SessionTypeTag type={cls.type} />
                                     <span className="text-[12px] text-[#98a2b3] shrink-0">·</span>
                                     <span className="text-[12px] text-[#667085] truncate">{cls.instructorName}</span>
                                     <span className="text-[12px] text-[#98a2b3] shrink-0">·</span>
@@ -942,7 +942,7 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
 
             {/* Footer */}
             <div className="px-6 py-4 flex justify-end">
-                <Button variant="secondary-gray" size="md" onClick={() => { onClose(); onViewDetails(cls.id); }}>
+                <Button variant="secondary-gray" onClick={() => { onClose(); onViewDetails(cls.id); }}>
                     See details
                 </Button>
             </div>
@@ -981,7 +981,7 @@ function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
     ];
     return (
         <div ref={ref} className="relative">
-            <Button variant="primary" size="md"
+            <Button variant="primary"
                 leftIcon={<Plus className="w-4 h-4" />}
                 onClick={() => setOpen(p => !p)}>
                 Add

@@ -1367,7 +1367,7 @@ export default function InstructorSchedulePage() {
             {/* ── Top row: Total counter + Search — admin pattern ──────── */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
-                    <p className="text-[16px] text-[#667085]">Total</p>
+                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
                     <p className="text-[16px] font-medium text-[#101828]">
                         {periodCount} class {periodCount === 1 ? "schedule" : "schedules"}
                     </p>

@@ -44,6 +44,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { Toast } from "@/components/ui/Toast";
@@ -337,11 +338,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
                     </Button>
-                    <Button variant="primary" size="md" disabled={!hasAny}
+                    <Button variant="primary" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>
                         Apply
                     </Button>
@@ -472,17 +473,17 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                 {/* Actions */}
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
                     {hasReactivatable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
+                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
                         </Button>
                     )}
                     {hasRecoverable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
@@ -491,14 +492,14 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                         otherwise we expose Deactivate (red). */}
                     {hasArchivable && (
                         hasDeletable ? (
-                            <Button variant="secondary-gray" size="sm"
+                            <Button variant="secondary-gray"
                                 className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                                 leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
                                 onClick={() => onAction("delete")}>
                                 Delete
                             </Button>
                         ) : (
-                            <Button variant="secondary-gray" size="sm"
+                            <Button variant="secondary-gray"
                                 className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                                 leftIcon={<SlashCircle01 className="w-5 h-5 text-[#b42318]" />}
                                 onClick={() => onAction("deactivate")}>
@@ -969,7 +970,13 @@ export default function ProductsPage() {
                         );
                     }}
                 />
-                <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
+                {/* Import — empty-state only (client 2026-07-31). Hidden
+                    once memberships OR packages exist so admins default
+                    to "Add new". Both tables live on this one page so we
+                    gate on BOTH slices being empty. No filter panel here,
+                    so gate on truly-empty + no active search only. */}
+                <ToolbarImportButton visible={memberships.length === 0 && packages.length === 0 && !search.trim()} />
+                <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push("/products/new")}>
                     Add new
                 </Button>

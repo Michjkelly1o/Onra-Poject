@@ -258,9 +258,9 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                     </div>
                 </div>
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_BOOKING_FILTER); onApply(EMPTY_BOOKING_FILTER); onClose(); }}>Clear filter</Button>
-                    <Button variant="primary" size="md" disabled={!hasAny}
+                    <Button variant="primary" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
                 </div>
         </SlidePanel>
@@ -644,15 +644,15 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                             count={filteredHistory.length}
                             entitySingular="booking history"
                             entityPlural="booking history"
-                            size="sm"
+                           
                         />
                         <ToolbarSearch
                             value={search}
                             onChange={setSearch}
                             placeholder="Search booking..."
-                            size="sm"
+                           
                         />
-                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} size="sm" />
+                        <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
                     </div>
 
                     {/* Table */}

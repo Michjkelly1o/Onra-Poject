@@ -99,9 +99,9 @@ function ReferralFilterPanel({ open, onClose, applied, onApply }: {
                     </div>
                 </div>
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" size="md" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_REFERRAL_FILTER); onApply(EMPTY_REFERRAL_FILTER); onClose(); }}>Clear filter</Button>
-                    <Button variant="primary" size="md" disabled={!hasAny}
+                    <Button variant="primary" disabled={!hasAny}
                         onClick={() => { onApply(pending); onClose(); }}>Apply</Button>
                 </div>
         </SlidePanel>
@@ -320,14 +320,14 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
 
             {/* Toolbar */}
             <div className="shrink-0 flex items-center gap-3 px-6 pb-4">
-                <ToolbarTotal count={filtered.length} entitySingular="customer" size="sm" />
+                <ToolbarTotal count={filtered.length} entitySingular="customer" />
                 <ToolbarSearch
                     value={search}
                     onChange={setSearch}
                     placeholder="Search customer..."
-                    size="sm"
+                   
                 />
-                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} size="sm" />
+                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
             </div>
 
             {/* Table */}
