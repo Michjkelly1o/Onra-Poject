@@ -197,11 +197,20 @@ export function proposeMapping(
  *  Mapping resolution — auto-map FIRST, user overrides second. Passing
  *  a partial `mapping` (only the columns the user edited) merges cleanly
  *  on top of the entity dict's suggestions, so callers never need to send
- *  a complete mapping. `null` values are respected as an explicit "skip". */
+ *  a complete mapping. `null` values are respected as an explicit "skip".
+ *
+ *  `existingKeys` — keys already in the LIVE store (SKUs for retail
+ *  products, category names for retail categories, etc). Rows whose
+ *  `dedupeKey()` matches one of these are counted as `duplicate` — the
+ *  same category `seen` set gets pre-populated with them. Without this,
+ *  preview would report "6 valid" for a CSV whose SKUs already exist in
+ *  the catalog, and the commit would silently fail every row. Format
+ *  must match the entity's `dedupeKey` output (typically lowercased). */
 export function preview(
     entity: EntityKey,
     file: ParsedFile,
     mapping?: Record<string, string | null>,
+    existingKeys?: readonly string[],
 ): MappingPreview {
     const def = ENTITIES[entity];
     const auto = proposeMapping(entity, file).mapping;
@@ -211,7 +220,11 @@ export function preview(
         if (tgt) inv[tgt] = src;
     }
 
-    const seen = new Set<string>();
+    // Seed `seen` with existing live keys so a CSV row that duplicates
+    // an already-stored record is counted as `duplicate` (not `valid`).
+    // The AI's Step-4 summary then reads correctly and the commit's
+    // "created" count matches what the applier actually writes.
+    const seen = new Set<string>(existingKeys ?? []);
     let valid = 0;
     let invalid = 0;
     let duplicate = 0;
@@ -261,8 +274,9 @@ export function commit(
     entity: EntityKey,
     file: ParsedFile,
     mapping?: Record<string, string | null>,
+    existingKeys?: readonly string[],
 ): { created: number; skipped: number; failed: number } {
-    const p = preview(entity, file, mapping);
+    const p = preview(entity, file, mapping, existingKeys);
     return {
         created: p.totals.valid,
         skipped: p.totals.duplicate,
@@ -280,6 +294,7 @@ export function materialize(
     entity: EntityKey,
     file: ParsedFile,
     mapping?: Record<string, string | null>,
+    existingKeys?: readonly string[],
 ): Record<string, string>[] {
     const def = ENTITIES[entity];
     const auto = proposeMapping(entity, file).mapping;
@@ -288,7 +303,12 @@ export function materialize(
     for (const [src, tgt] of Object.entries(effectiveMapping)) {
         if (tgt) inv[tgt] = src;
     }
-    const seen = new Set<string>();
+    // Seed `seen` with existing live keys so a row that would collide
+    // with a stored record is dropped here — the applier then never
+    // even tries to write it. Keeps materialize().length in step with
+    // the preview's `valid` count when the caller passes the same
+    // `existingKeys` to both.
+    const seen = new Set<string>(existingKeys ?? []);
     const out: Record<string, string>[] = [];
     for (const r of file.rows) {
         if (!def.validate(r, inv)) continue;

@@ -106,6 +106,21 @@ export async function POST(req: Request) {
             ctx,
             parsedFile ?? null,
             storeSnapshot.branches,
+            // Live-store keys — extract the retail slices' natural keys
+            // (SKUs for products, labels for categories) so preview /
+            // commit correctly count rows that would collide with an
+            // already-stored record. Lowercased to match the entity
+            // dedupe key format. Missing slices (older snapshot shape)
+            // fall through to undefined and the tool skips live-dedupe
+            // for that entity — pure defence, current shape includes both.
+            {
+                retail_products: (storeSnapshot.retailProducts ?? [])
+                    .map((p) => p.sku.trim().toLowerCase())
+                    .filter(Boolean),
+                retail_categories: (storeSnapshot.retailCategories ?? [])
+                    .map((c) => c.label.trim().toLowerCase())
+                    .filter(Boolean),
+            },
         );
         // Client 2026-07-23 — the migration prompt needs to know about the
         // attached file so the model stops asking the user to upload one

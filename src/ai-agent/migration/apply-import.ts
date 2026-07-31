@@ -1654,26 +1654,27 @@ export function applyImportToStore(
     }
 
     if (entity === "retail_categories") {
-        // Dedupe against LIVE categories too — never duplicate an existing
-        // category by name (Apparel/Supplements/Equipment etc. ship in the
-        // seed). Store also rejects duplicates via addRetailCategory
-        // returning null; we short-circuit here so the failed count in the
-        // history row stays precise instead of double-counting.
-        const existing = new Set(
-            deps.retailCategories.map((c) => c.label.trim().toLowerCase()),
-        );
-        const records = materialize("retail_categories", file);
+        // Pass live category names to materialize as `existingKeys` so
+        // the applier's write plan matches EXACTLY what the AI's Step-4
+        // summary counted as `valid`. Without this alignment the AI
+        // would report "6 imported" while the applier silently drops
+        // rows that collide with the seeded categories.
+        const existingKeys = deps.retailCategories
+            .map((c) => c.label.trim().toLowerCase())
+            .filter(Boolean);
+        const records = materialize("retail_categories", file, file.mapping, existingKeys);
+        // Store-side rejection is now unreachable in normal flow (materialize
+        // already dropped every dupe), but keep the null guard as a defensive
+        // no-op so a race between snapshot capture and write never crashes.
         let created = 0;
         for (const rec of records) {
             const label = rec.name?.trim();
             if (!label) continue;
-            if (existing.has(label.toLowerCase())) continue;
             const id = deps.addRetailCategory({
                 label,
                 imageUrl: rec.image_url?.trim() || undefined,
             });
             if (!id) continue;
-            existing.add(label.toLowerCase());
             created++;
         }
         const total = file.rows.length;
@@ -1701,7 +1702,13 @@ export function applyImportToStore(
         // Also track SKUs used earlier in THIS batch so blank-SKU rows
         // auto-generate a unique code even when they share a category.
         const usedSkus = new Set(skuPool.map((s) => s.toLowerCase()));
-        const records = materialize("retail_products", file);
+        // Pass live SKUs to materialize as `existingKeys` so the applier's
+        // write plan matches EXACTLY what the AI's Step-4 summary counted
+        // as `valid`. Without this alignment the AI would report "6
+        // imported" while every row silently failed the store's dup-SKU
+        // check. Also thread file.mapping so user overrides from Step 3
+        // are honoured on the client side too.
+        const records = materialize("retail_products", file, file.mapping, Array.from(usedSkus));
         let created = 0;
         for (const rec of records) {
             const name = rec.name?.trim();

@@ -105,7 +105,25 @@ export function migrationTools(
     ctx: AuthContext,
     parsedFile: ParsedFile | null,
     knownBranches: { id: string; name: string; status: string }[],
+    // Live-store slices used to pre-populate the dedupe key set so
+    // preview / commit correctly count rows that would collide with an
+    // already-stored record. Without this, a CSV whose SKUs already
+    // exist in the retail catalog reads as "6 valid, 0 duplicates" at
+    // step 4 and every row silently fails at commit. Snake-case keys
+    // match the entity keys they seed.
+    liveKeys: {
+        retail_products?: string[];
+        retail_categories?: string[];
+    } = {},
 ) {
+    // Return the live-key bag for one entity, or undefined if we don't
+    // seed against live state for it. Only retail wires this today —
+    // extend the switch when a new entity needs it.
+    const existingKeysFor = (entity: (typeof ENTITY_ENUM)["options"][number]): string[] | undefined => {
+        if (entity === "retail_products") return liveKeys.retail_products;
+        if (entity === "retail_categories") return liveKeys.retail_categories;
+        return undefined;
+    };
     return {
         start_migration: tool({
             description:
@@ -192,7 +210,7 @@ export function migrationTools(
             }),
             execute: async ({ entity }) => {
                 if (!parsedFile) return noFileResult();
-                const p = preview(entity, parsedFile, parsedFile.mapping);
+                const p = preview(entity, parsedFile, parsedFile.mapping, existingKeysFor(entity));
                 return {
                     card: "mapping_summary" as const,
                     step: 4,
@@ -219,7 +237,7 @@ export function migrationTools(
                 if (!ctx.canWrite) return notAuthorisedResult();
                 if (!confirmed) return notConfirmedResult();
                 if (!parsedFile) return noFileResult();
-                const r = commit(entity, parsedFile, parsedFile.mapping);
+                const r = commit(entity, parsedFile, parsedFile.mapping, existingKeysFor(entity));
                 return {
                     card: "import_result" as const,
                     entity,

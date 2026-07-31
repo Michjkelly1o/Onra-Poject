@@ -176,23 +176,32 @@ export function AiAgentPage() {
     // hydrate from localStorage in a client-only effect. One extra render on
     // first paint, but React reconciles cleanly because the DOM matches
     // during hydration.
+    //
+    // Save-back guard (client 2026-07-31 fix): `hydrated` MUST be a state
+    // value, not a ref. When it was a ref the mount effect flipped
+    // ref.current = true SYNCHRONOUSLY, then the persist effect right
+    // below fired on the SAME commit with the still-empty [] closure and
+    // wrote [] to localStorage — momentarily wiping every saved chat.
+    // (Restored on the next render, but any read in between saw an empty
+    // list — including the ChatThread's `firstMsgFiredRef` adoption path
+    // if it dispatched during that window, which is why fresh chats
+    // occasionally never landed in Recents.) A state variable defers the
+    // persist effect until it runs with the loaded list, so the empty
+    // initial state never reaches localStorage.
     const [conversations, setConversations] = useState<ConvMeta[]>([]);
-    const hydratedRef = useRef(false);
+    const [hydrated, setHydrated] = useState(false);
     useEffect(() => {
-        // First tick: pull the persisted list into state. Guarded so the
-        // save-back effect below doesn't overwrite the empty [] with the
-        // initial state before we've had a chance to load.
         setConversations(loadRecents());
-        hydratedRef.current = true;
+        setHydrated(true);
     }, []);
     useEffect(() => {
-        if (!hydratedRef.current) return;
+        if (!hydrated) return;
         try {
             window.localStorage.setItem(RECENTS_KEY, JSON.stringify(conversations));
         } catch {
             /* best-effort */
         }
-    }, [conversations]);
+    }, [conversations, hydrated]);
 
     // Phase 12: honour ?thread= for deep links (Migration & imports "+ Import").
     // A fresh, EMPTY entry every mount — the entry points are never resumed.
