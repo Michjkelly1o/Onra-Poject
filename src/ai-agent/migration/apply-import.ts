@@ -1722,17 +1722,28 @@ export function applyImportToStore(
         const records = materialize("retail_products", file, file.mapping, Array.from(usedSkus));
         // Per-branch stock columns — CSVs can carry a column named
         // `stock_<branch>` (or `stock <branch>` / `stock-<branch>`) for
-        // EACH active branch. Applier scans the raw file.columns once,
-        // pre-resolves each `stock_*` column to a live branch id (case-
-        // insensitive, punctuation-agnostic name match), and later
-        // per-product looks up the units to seed. Falls back to the
-        // legacy single-branch `initial_stock` column when no per-branch
-        // columns are found — that path still seeds into deps.branchId.
+        // EACH non-archived branch. Applier scans the raw file.columns
+        // once, pre-resolves each `stock_*` column to a live branch id
+        // (case-insensitive, punctuation-agnostic name match), and
+        // later per-product looks up the units to seed. Falls back to
+        // the legacy single-branch `initial_stock` column when no
+        // per-branch columns are found — that path still seeds into
+        // deps.branchId.
+        //
+        // Client 2026-07-31 bug fix — this used to filter branches with
+        // `status === "active"` only, so any stock column pointing at
+        // an INACTIVE (but not archived) branch was silently dropped.
+        // Meanwhile the retail EXPORT + list-view use `!== "archive"`,
+        // so an exported CSV round-trip lost stock on every inactive
+        // branch (e.g. seed's "Forma Studio (West)" which ships
+        // inactive). Now consistent with the export — inactive
+        // branches are still valid targets; only archived branches
+        // (the tombstone state) are excluded.
         const normBranchName = (s: string) =>
             s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
         const branchByNorm = new Map(
             deps.branches
-                .filter(b => b.status === "active")
+                .filter(b => b.status !== "archive")
                 .map(b => [normBranchName(b.name), b] as const),
         );
         const perBranchStockCols: { column: string; branchId: string; branchName: string }[] = [];
