@@ -18,6 +18,10 @@ import {
     type AiQuestionSpec,
     type AiQuestionAnswer,
 } from "@/ai-agent/components/AiQuestionPrompt";
+import {
+    SchedulePreviewCard,
+    type SchedulePreviewData,
+} from "@/ai-agent/components/SchedulePreviewCard";
 
 interface Demo {
     id: string;
@@ -200,6 +204,37 @@ const DEMOS: Demo[] = [
 // Multi-step proof — exercises the pager + Q/A accumulation across kinds.
 const MULTI_STEP: AiQuestionSpec[] = [TEMPLATE_PICKER, GENDER_ACCESS, EQUIPMENT];
 
+// ── Preview card fill levels — frames 4 / 14 / 15 / 16 ───────────────────────
+const PREVIEW_EMPTY: SchedulePreviewData = {};
+
+const PREVIEW_PARTIAL: SchedulePreviewData = {
+    templateName: "Mat Pilates",
+    templateDescription: "Classic mat-based Pilates focusing on core strength and controlled movements.",
+    coverImageUrl: "/images/class-template/reformer-pilates.webp",
+    classType: "Group class",
+    classCategory: "Pilates",
+    duration: "60 minutes",
+    capacity: "8 participants",
+    genderAccess: "All gender",
+    location: "Mat Studio",
+    // equipment / spotSelection / instructor / dateTime still awaiting
+};
+
+const PREVIEW_FULL: SchedulePreviewData = {
+    ...PREVIEW_PARTIAL,
+    equipment: "Mat, resistance bands",
+    spotSelection: "On · 4 x 2 layout",
+    instructorName: "Liam C.",
+    instructorAvatarUrl: "/images/instructors/liam-chen.webp",
+    dateTime: "Fri, 26 Feb 2025 · 9:00 – 10:00 AM",
+};
+
+const PREVIEW_LEVELS: { caption: string; frame: string; data: SchedulePreviewData }[] = [
+    { caption: "Preview · empty (all awaiting)", frame: "frame 4", data: PREVIEW_EMPTY },
+    { caption: "Preview · partially filled", frame: "frame 14", data: PREVIEW_PARTIAL },
+    { caption: "Preview · fully populated", frame: "frame 15 / 16", data: PREVIEW_FULL },
+];
+
 export default function ClassWizardWidgetsDevPage() {
     const [log, setLog] = useState<Record<string, string>>({});
 
@@ -220,6 +255,23 @@ export default function ClassWizardWidgetsDevPage() {
                 </header>
 
                 <div className="flex flex-col gap-10">
+                    <div>
+                        <h2 className="mb-3 text-[15px] font-semibold text-[#101828]">
+                            Live preview card — fill levels
+                        </h2>
+                        <div className="flex flex-col gap-6">
+                            {PREVIEW_LEVELS.map((p) => (
+                                <div key={p.caption}>
+                                    <div className="mb-2 flex items-baseline justify-between gap-3">
+                                        <h3 className="text-[13px] font-medium text-[#475467]">{p.caption}</h3>
+                                        <span className="text-[12px] text-[#98a2b3] shrink-0">{p.frame}</span>
+                                    </div>
+                                    <SchedulePreviewCard data={p.data} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     {DEMOS.map((d) => (
                         <section key={d.id}>
                             <div className="mb-2 flex items-baseline justify-between gap-3">
