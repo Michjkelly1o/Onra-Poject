@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronDown, ChevronUp, ChevronRight, Check, SearchMd,
@@ -203,12 +203,49 @@ function SimpleSelect({ label, value, options, onChange, disabled = false, menuH
     menuHeader?: (ctx: { close: () => void }) => React.ReactNode;
 }) {
     const [open, setOpen] = useState(false);
+    const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({ position: "fixed", visibility: "hidden" });
     const ref = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
     }, []);
+    // Position the menu with `position: fixed` (computed from the trigger
+    // rect) so it escapes the schedule form's scrollable card overflow.
+    // Same pattern as the shared SelectInput — client 2026-07-31 clip fix.
+    // Without this, opening the category dropdown near the bottom of the
+    // form clipped every option below the card's boundary.
+    useLayoutEffect(() => {
+        if (!open || !ref.current) return;
+        const r = ref.current.getBoundingClientRect();
+        const headerExtra = menuHeader ? 44 : 0;
+        const optionListH = Math.min(200, options.length * 38 + 8);
+        const menuH = optionListH + headerExtra;
+        const spaceBelow = window.innerHeight - r.bottom;
+        const flipUp = spaceBelow < menuH + 8 && r.top > menuH + 8;
+        setMenuStyle({
+            position: "fixed",
+            left: r.left,
+            width: r.width,
+            zIndex: 9999,
+            maxHeight: Math.max(120, (flipUp ? r.top : spaceBelow) - 12),
+            ...(flipUp ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+        });
+    }, [open, options.length, menuHeader]);
+    // Close on any scroll originating OUTSIDE the menu — a fixed box
+    // can't track its trigger through page scrolls, so we close instead
+    // of chasing.
+    useEffect(() => {
+        if (!open) return;
+        function onScroll(e: Event) {
+            const target = e.target as Node | null;
+            if (menuRef.current && target && menuRef.current.contains(target)) return;
+            setOpen(false);
+        }
+        window.addEventListener("scroll", onScroll, true);
+        return () => window.removeEventListener("scroll", onScroll, true);
+    }, [open]);
     return (
         <div ref={ref} className="relative">
             <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(p => !p)}
@@ -219,19 +256,22 @@ function SimpleSelect({ label, value, options, onChange, disabled = false, menuH
                 <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[200px] overflow-y-auto">
+                <div ref={menuRef} style={menuStyle}
+                    className="bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] flex flex-col overflow-hidden">
                     {menuHeader && (
-                        <div className="border-b border-[#e4e7ec] mb-1">
+                        <div className="border-b border-[#e4e7ec] shrink-0">
                             {menuHeader({ close: () => setOpen(false) })}
                         </div>
                     )}
-                    {options.map(o => (
-                        <button key={o} type="button" onClick={() => { onChange(o); setOpen(false); }}
-                            className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium transition-colors text-left",
-                                value === o ? "text-[#101828] bg-[#f9fafb] font-semibold" : "text-[#344054] hover:bg-[#f9fafb]")}>
-                            {o}
-                        </button>
-                    ))}
+                    <div className="py-1 overflow-y-auto flex-1">
+                        {options.map(o => (
+                            <button key={o} type="button" onClick={() => { onChange(o); setOpen(false); }}
+                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium transition-colors text-left",
+                                    value === o ? "text-[#101828] bg-[#f9fafb] font-semibold" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                                {o}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

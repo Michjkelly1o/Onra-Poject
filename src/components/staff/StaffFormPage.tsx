@@ -17,7 +17,7 @@
 // owns role mutation), default pay rate dropdown.
 // On create, status is forced to "pending" + inviteSentAt stamped.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, User01, Upload01, MarkerPin01, Lightbulb02,
@@ -256,7 +256,9 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
     onCreateCategory?: () => void;
 }) {
     const [open, setOpen] = useState(false);
+    const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({ position: "fixed", visibility: "hidden" });
     const ref = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function clickAway(e: MouseEvent) {
@@ -270,6 +272,41 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
             document.removeEventListener("keydown", escape);
         };
     }, []);
+
+    // Position the menu with `position: fixed` computed from the trigger
+    // rect so it escapes the staff form's scrollable panel overflow
+    // (client 2026-07-31 clip fix). Without this the multi-select popup
+    // clipped at the panel's overflow boundary when opened near the
+    // bottom of a long form.
+    useLayoutEffect(() => {
+        if (!open || !ref.current) return;
+        const r = ref.current.getBoundingClientRect();
+        const headerExtra = onCreateCategory ? 44 : 0;
+        const optionListH = Math.min(260, Math.max(1, options.length) * 40 + 12);
+        const menuH = optionListH + headerExtra;
+        const spaceBelow = window.innerHeight - r.bottom;
+        const flipUp = spaceBelow < menuH + 8 && r.top > menuH + 8;
+        setMenuStyle({
+            position: "fixed",
+            left: r.left,
+            width: r.width,
+            zIndex: 9999,
+            maxHeight: Math.max(120, (flipUp ? r.top : spaceBelow) - 12),
+            ...(flipUp ? { bottom: window.innerHeight - r.top + 6 } : { top: r.bottom + 6 }),
+        });
+    }, [open, options.length, onCreateCategory]);
+    // Fixed box can't track its trigger through page scrolls — close it
+    // on any scroll originating OUTSIDE the menu.
+    useEffect(() => {
+        if (!open) return;
+        function onScroll(e: Event) {
+            const target = e.target as Node | null;
+            if (menuRef.current && target && menuRef.current.contains(target)) return;
+            setOpen(false);
+        }
+        window.addEventListener("scroll", onScroll, true);
+        return () => window.removeEventListener("scroll", onScroll, true);
+    }, [open]);
 
     function toggle(id: string) {
         onChange(selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]);
@@ -306,7 +343,8 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
                 <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
             </button>
             {open && (
-                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 max-h-[260px] overflow-y-auto">
+                <div ref={menuRef} style={menuStyle}
+                    className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                     {/* Client 2026-07-31 — "+ Create class category" is
                         always the first row so admins can add a missing
                         category without leaving the staff form. Mirrors
@@ -317,31 +355,33 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
                         <button
                             type="button"
                             onClick={() => { setOpen(false); onCreateCategory(); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors text-left"
+                            className="shrink-0 flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors text-left"
                         >
                             <Plus className="w-4 h-4" />
                             Create class category
                         </button>
                     )}
-                    {options.length === 0 ? (
-                        <p className="px-4 py-3 text-[14px] text-[#667085]">No categories available.</p>
-                    ) : (
-                        options.map(opt => {
-                            const selected = selectedIds.includes(opt.id);
-                            return (
-                                <button key={opt.id} type="button" onClick={() => toggle(opt.id)}
-                                    className="flex items-center gap-3 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors text-left">
-                                    <span className={cn(
-                                        "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                                        selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
-                                    )}>
-                                        {selected && <Check className="w-3 h-3 text-white" />}
-                                    </span>
-                                    {opt.name}
-                                </button>
-                            );
-                        })
-                    )}
+                    <div className="py-1.5 overflow-y-auto flex-1">
+                        {options.length === 0 ? (
+                            <p className="px-4 py-3 text-[14px] text-[#667085]">No categories available.</p>
+                        ) : (
+                            options.map(opt => {
+                                const selected = selectedIds.includes(opt.id);
+                                return (
+                                    <button key={opt.id} type="button" onClick={() => toggle(opt.id)}
+                                        className="flex items-center gap-3 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors text-left">
+                                        <span className={cn(
+                                            "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
+                                            selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                        )}>
+                                            {selected && <Check className="w-3 h-3 text-white" />}
+                                        </span>
+                                        {opt.name}
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
             )}
         </div>

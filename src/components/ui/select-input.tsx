@@ -117,13 +117,30 @@ export function SelectInput({
 
     // Position the menu with `position: fixed` (computed from the trigger
     // rect) so it escapes any modal / scroll-container `overflow` clipping,
-    // and flip it above the trigger when there isn't room below. The
-    // search input adds ~44px to the menu when `searchable` is on.
+    // and flip it above the trigger when there isn't room below.
+    //
+    // Height budget for the flip-up decision (client 2026-07-31 clip fix):
+    //   • Search input adds ~44px when `searchable` is on.
+    //   • `menuHeader` slot adds ~44px when a caller passes one (e.g. the
+    //     "+ Create class/retail category" button injected by every form).
+    //     Without this, forms whose Class-category dropdown sits near
+    //     the viewport bottom saw the menu overflow the viewport because
+    //     the calc underestimated the total height and picked "don't
+    //     flip" incorrectly.
+    //   • The option-list itself is capped at 264px via max-h below;
+    //     bounded by the actual option count so a 3-option dropdown
+    //     doesn't reserve a full 264px chunk.
+    // Menu header is a function callback that callers re-create on every
+    // render — bind to its BOOLEAN presence (stable) so the layout effect
+    // doesn't loop.
+    const hasMenuHeader = !!menuHeader;
     React.useLayoutEffect(() => {
         if (!open || !ref.current) return;
         const r = ref.current.getBoundingClientRect();
         const searchExtra = searchable ? 44 : 0;
-        const menuH = Math.min(264 + searchExtra, options.length * 38 + 8 + searchExtra);
+        const headerExtra = hasMenuHeader ? 44 : 0;
+        const optionListH = Math.min(264, options.length * 38 + 8);
+        const menuH = optionListH + searchExtra + headerExtra;
         const spaceBelow = window.innerHeight - r.bottom;
         const flipUp = spaceBelow < menuH + 8 && r.top > menuH + 8;
         setMenuStyle({
@@ -131,9 +148,16 @@ export function SelectInput({
             left: r.left,
             width: r.width,
             zIndex: 9999,
+            // Cap the menu at what fits in the smaller of the two half-
+            // viewports (above or below the trigger, minus 12px gutter)
+            // so a huge menu at a mid-viewport trigger never runs off
+            // either edge. `menuH` is our IDEAL height; maxHeight is the
+            // ceiling the browser enforces on the fixed box, and the
+            // inner scroll container handles the overflow gracefully.
+            maxHeight: Math.max(120, (flipUp ? r.top : spaceBelow) - 12),
             ...(flipUp ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
         });
-    }, [open, options.length, searchable]);
+    }, [open, options.length, searchable, hasMenuHeader]);
 
     // A fixed-positioned menu can't track scrolling — close it on any scroll
     // that ORIGINATES OUTSIDE the menu. Scrolls inside the menu (the user
@@ -214,7 +238,14 @@ export function SelectInput({
                         // when the menu floats over a modal.
                         "bg-white border-1 border-[#e4e7ec] rounded-[8px]",
                         "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
-                        "flex flex-col",
+                        // `overflow-hidden` clips the sticky menuHeader +
+                        // search input to the rounded corners AND enforces
+                        // the maxHeight cap set by the layout effect —
+                        // otherwise the option list's own scroll would
+                        // overflow the outer chrome (client 2026-07-31
+                        // clip fix). flex-col lets the sticky header
+                        // stay put while the option list scrolls.
+                        "flex flex-col overflow-hidden",
                         menuClassName,
                     )}
                 >
