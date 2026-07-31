@@ -263,6 +263,32 @@ export const notification_settings: NotificationSettingSeed[] = [
         send_offsets: [],
     },
 
+    // Retail purchase — client 2026-07-31. Retail shipped after this
+    // module, so merchandise buyers were getting no confirmation at all
+    // (only the generic `ns_receipt` fired). Sits under `payment`
+    // alongside gift-card purchase since it's a one-off transaction
+    // rather than a recurring plan. NOT critical — a missing retail
+    // receipt is an inconvenience, not a blocker (unlike a gift card
+    // where the code IS the product), so admins can turn it off.
+    {
+        id: "ns_retail_purchase",
+        category: "payment",
+        notification_type: "retail_purchase",
+        label: "Retail purchase",
+        recipient_source: "customer",
+        email_enabled: true,
+        whatsapp_enabled: true,
+        sms_enabled: false,
+        email_subject: "Your {studio_name} purchase",
+        email_template: "Hi {customer_name},\n\nThanks for your purchase at {studio_name}.\n\n{items_list}\n\nTotal paid: AED {total_amount}\nPaid with: {payment_method}\nBranch: {branch_name}\n\nKeep this email as your receipt.\n\n— {studio_name}",
+        whatsapp_template: "Hi {customer_name}! Thanks for shopping at {studio_name}. You paid AED {total_amount} for {items_summary}. Keep this as your receipt.",
+        sms_template: "{studio_name}: Purchase confirmed — AED {total_amount}. Thanks!",
+        whatsapp_approval_status: "approved",
+        is_critical: false,
+        send_mode: "immediately",
+        send_offsets: [],
+    },
+
     // ── Package & membership (7) ───────────────────────────────────────────
     {
         id: "ns_package_purchase",
