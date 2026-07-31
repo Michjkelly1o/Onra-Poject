@@ -27,7 +27,7 @@ export function DiscoverCard({
 }) {
     return (
         <button type="button" onClick={onClick} className="flex w-[188px] shrink-0 flex-col gap-3 text-left">
-            <div className="relative h-[120px] w-[188px] overflow-hidden rounded-2xl bg-[#f9fafb]">
+            <div className="relative h-[120px] w-[188px] overflow-hidden rounded-xl bg-[#f9fafb]">
                 {coverImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={coverImage} alt="" className="absolute inset-0 size-full object-cover" />

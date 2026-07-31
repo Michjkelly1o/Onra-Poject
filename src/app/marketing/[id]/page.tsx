@@ -27,7 +27,7 @@ import {
     ChevronUp, ChevronDown, HelpCircle,
     Grid01, CursorBox, Calendar, Ticket01, Link01, CheckVerified02,
 } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, to12h } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
@@ -540,7 +540,7 @@ function MarketingDetailPageInner() {
         ? classSchedules.find(c => c.id === item.cta_class_id)
         : undefined;
     const ctaClassLabel = ctaClass
-        ? `${ctaClass.name} · ${ctaClass.date} · ${ctaClass.displayTime || ctaClass.startTime}`
+        ? `${ctaClass.name} · ${ctaClass.date} · ${ctaClass.displayTime || to12h(ctaClass.startTime)}`
         : undefined;
 
     const vm: MarketingDetailVM = {

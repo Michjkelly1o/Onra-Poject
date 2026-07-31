@@ -36,10 +36,12 @@
 //   plan_id_used      → memberships.id | packages.id (matches plan_kind_used)
 
 import type { ClassBooking } from "./_types";
-import { DEMO_NOW_BOOKINGS, DEMO_NOW_LIAM_BOOKINGS, DEMO_NOW_WAITLIST_BOOKINGS } from "./prototype_demo_data";
+import { DEMO_NOW_BOOKINGS, DEMO_NOW_LIAM_BOOKINGS, DEMO_NOW_WAITLIST_BOOKINGS, DEMO_TODAY_MEETING_BOOKINGS } from "./prototype_demo_data";
 
 export const class_bookings: ClassBooking[] = [
     ...DEMO_NOW_BOOKINGS,
+    // Attendees for the live-demo 1 PM + 2 PM classes today.
+    ...DEMO_TODAY_MEETING_BOOKINGS,
     ...DEMO_NOW_LIAM_BOOKINGS,
     // Dashboard "Waitlist spots opened today" — waitlisted members on the
     // DEMO_NOW_WAITLIST_SCHEDULES awaiting confirmation.

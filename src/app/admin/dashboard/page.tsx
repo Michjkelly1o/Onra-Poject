@@ -23,10 +23,11 @@ import {
     UserCheck01,
     ClockFastForward,
     InfoCircle,
+    ArrowUpRight,
 } from "@untitledui/icons";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, to12hParts } from "@/lib/utils";
 import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
 import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
 import { format } from "date-fns";
@@ -1399,11 +1400,12 @@ export default function AdminDashboard() {
         }
         return Array.from(slotMap.entries())
             .sort(([a], [b]) => a.localeCompare(b))
-            .map(([time, classes]) => ({
-                time,
-                meridiem: (Number(time.split(":")[0]) >= 12 ? "PM" : "AM") as "AM" | "PM",
-                classes,
-            }));
+            .map(([time, classes]) => {
+                // Display the slot in 12-hour form ("17:00" → "5:00" + "PM") so the
+                // timeline reads consistently with the rest of the app.
+                const { clock, meridiem } = to12hParts(time);
+                return { time: clock, meridiem, classes };
+            });
     }, [todayClasses]);
 
     // ── "Needs attention today" — derived operational buckets ───────
@@ -1799,6 +1801,14 @@ export default function AdminDashboard() {
                         <Button
                             variant="secondary-gray"
                             size="sm"
+                            rightIcon={<ArrowUpRight className="w-4 h-4" />}
+                            onClick={() => window.open("/attendee", "_blank", "noopener")}
+                        >
+                            Attendee
+                        </Button>
+                        <Button
+                            variant="secondary-gray"
+                            size="sm"
                             onClick={() => router.push("/admin/schedule")}
                         >
                             See all
@@ -1812,7 +1822,7 @@ export default function AdminDashboard() {
                             const multi = slot.classes.length > 1;
                             return (
                                 <div
-                                    key={slot.time}
+                                    key={`${slot.time} ${slot.meridiem}`}
                                     className={cn(
                                         "flex items-stretch w-full flex-shrink-0",
                                         !isLast && "border-b border-[#e4e7ec]"

@@ -35,10 +35,12 @@
 //   instructor_id → staff_profiles.id
 
 import type { ClassSchedule } from "./_types";
-import { DEMO_NOW_SCHEDULES, DEMO_NOW_LIAM_SCHEDULES, DEMO_NOW_WAITLIST_SCHEDULES } from "./prototype_demo_data";
+import { DEMO_NOW_SCHEDULES, DEMO_NOW_LIAM_SCHEDULES, DEMO_NOW_WAITLIST_SCHEDULES, DEMO_TODAY_MEETING_SCHEDULES } from "./prototype_demo_data";
 
 export const class_schedule: ClassSchedule[] = [
     ...DEMO_NOW_SCHEDULES,
+    // Live-demo classes today at 1 PM + 2 PM (attendance-flow walkthrough).
+    ...DEMO_TODAY_MEETING_SCHEDULES,
     ...DEMO_NOW_LIAM_SCHEDULES,
     // Dashboard "Waitlist spots opened today" — today-dated under-capacity
     // classes carrying a waitlisted member awaiting confirmation.

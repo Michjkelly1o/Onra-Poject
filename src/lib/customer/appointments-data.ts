@@ -64,6 +64,27 @@ function toVM(s: Service): AppointmentVM {
     };
 }
 
+/** Services for the home "Recommended services" discovery rail — the selected
+ *  branch's active, bookable services, FALLING BACK to every branch's services
+ *  when the current branch offers none (the demo seeds services under one branch,
+ *  so a branch-scoped rail would otherwise render empty). A discovery rail should
+ *  never be blank, so guests always see something to explore. */
+export function useRecommendedServices(limit = 8): AppointmentVM[] {
+    const { selectedBranchId } = useCurrentCustomerContext();
+    const services = useAppStore((s) => s.services);
+    return useMemo(() => {
+        // Bookable = active + (open sessions only exist for recovery).
+        const bookable = services.filter(
+            (s) => s.status === "Active" && (s.type === "recovery" || !s.openSession),
+        );
+        const isAll = selectedBranchId === ALL_BRANCHES;
+        const scoped = bookable.filter((s) => isAll || s.branchId === selectedBranchId);
+        // Prefer the branch's own services; fall back to all branches when empty.
+        const pick = scoped.length > 0 ? scoped : bookable;
+        return pick.slice(0, limit).map(toVM);
+    }, [services, selectedBranchId, limit]);
+}
+
 /** A single appointment (service) by id. */
 export function useAppointment(id: string): AppointmentVM | null {
     const services = useAppStore((s) => s.services);

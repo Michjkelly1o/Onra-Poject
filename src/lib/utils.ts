@@ -79,6 +79,53 @@ export function formatTime(dateStr: string): string {
   });
 }
 
+/**
+ * Canonical 12-hour clock formatter for the ADMIN + shared surfaces.
+ * Converts a 24-hour "HH:MM" wall-clock string into "h:mm AM/PM"
+ * (e.g. "17:00" → "5:00 PM", "09:30" → "9:30 AM", "00:15" → "12:15 AM").
+ * Mirrors the customer app's `to12h` (src/lib/customer/dates.ts) so both
+ * apps read times the same way. Passes odd/empty input straight through.
+ */
+export function to12h(time: string): string {
+  if (!time || !time.includes(":")) return time || "";
+  const [h, m] = time.split(":").map(Number);
+  if (Number.isNaN(h)) return time;
+  const period = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(Number.isNaN(m) ? 0 : m).padStart(2, "0")} ${period}`;
+}
+
+/**
+ * Same conversion as {@link to12h} but returns the clock and meridiem as
+ * separate parts — for layouts that stack the AM/PM under the time
+ * (e.g. the dashboard schedule timeline). "17:00" → { clock: "5:00", meridiem: "PM" }.
+ */
+export function to12hParts(time: string): { clock: string; meridiem: "AM" | "PM" } {
+  if (!time || !time.includes(":")) return { clock: time || "", meridiem: "AM" };
+  const [h, m] = time.split(":").map(Number);
+  const meridiem: "AM" | "PM" = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return { clock: `${h12}:${String(Number.isNaN(m) ? 0 : m).padStart(2, "0")}`, meridiem };
+}
+
+/**
+ * Canonical 12-hour "start - end" range used for every `displayTime` string
+ * (class schedules, appointments, forms). Collapses a shared meridiem onto the
+ * end only — "17:00","18:00" → "5:00 - 6:00 PM"; a range that crosses noon/
+ * midnight keeps both — "11:30","13:00" → "11:30 AM - 1:00 PM". Mirrors the
+ * old inline `fmt12` collapse in the store so output is identical everywhere.
+ */
+export function formatTimeRange12(start: string, end: string): string {
+  if (!start) return end ? to12h(end) : "";
+  if (!end) return to12h(start);
+  const sh = Number(start.split(":")[0]);
+  const eh = Number(end.split(":")[0]);
+  const sameMeridiem = (sh < 12) === (eh < 12);
+  return sameMeridiem
+    ? `${to12h(start).replace(/\s(AM|PM)$/, "")} - ${to12h(end)}`
+    : `${to12h(start)} - ${to12h(end)}`;
+}
+
 export function getInitials(firstName?: string, lastName?: string): string {
   const first = firstName?.charAt(0) || "";
   const last = lastName?.charAt(0) || "";

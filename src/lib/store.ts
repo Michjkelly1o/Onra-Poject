@@ -80,6 +80,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { account_profile as adminUser } from "@/data/mock/account_profile";
 import { capitalizeName } from "./format-name";
+import { formatTimeRange12 } from "./utils";
 import { commissionForPeriod } from "./payroll-calc";
 import { getFrozenActiveMembership } from "./customer/freeze-eligibility";
 import {
@@ -2609,7 +2610,9 @@ function appointmentFromSeed(a: SeedAppointment, services: Service[]): Appointme
         date: dateLabelFromISO(a.date_iso),
         startTime: a.start_time,
         endTime: a.end_time,
-        displayTime: a.display_time,
+        // Same canonical 12-hour range as class schedules — derive from the raw
+        // times rather than trusting the seed string. client 2026-07-31.
+        displayTime: formatTimeRange12(a.start_time, a.end_time),
         capacity: a.capacity,
         booked: a.booked,
         status: a.status,
@@ -2721,7 +2724,11 @@ function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): Cla
         dayOfWeek: dayOfWeekFromISO(s.date_iso),
         startTime: s.start_time,
         endTime: s.end_time,
-        displayTime: s.display_time,
+        // Re-derive the display string from the raw 24h times so every schedule
+        // (seed, demo, imported) renders in ONE canonical 12-hour format —
+        // ignores whatever the seed's `display_time` happened to be (padded or
+        // 24-hour). client 2026-07-31.
+        displayTime: formatTimeRange12(s.start_time, s.end_time),
         booked: s.booked,
         capacity: s.capacity,
         classType: s.class_type ?? "Group",
@@ -6289,19 +6296,12 @@ export const useAppStore = create<AppState>()(persist(
         const branch = state.branches.find(b => b.id === (service?.branchId ?? ""));
         const room = service?.roomId ? state.rooms.find(r => r.id === service.roomId) : undefined;
         const inst = input.instructorId ? state.instructors.find(i => i.id === input.instructorId) : undefined;
-        // endTime = start + duration; displayTime mirrors the seed's fmtDisplay.
+        // endTime = start + duration; displayTime uses the same canonical 12-hour
+        // range helper as the seed/schedule adapters so every surface matches.
         const [sh, sm] = input.startTime.split(":").map(Number);
         const totalMin = sh * 60 + sm + input.durationMins;
         const endTime = `${String(Math.floor(totalMin / 60) % 24).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
-        const fmt12 = (t: string): string => {
-            const [h, m] = t.split(":").map(Number);
-            const hh = h === 0 ? 12 : h > 12 ? h - 12 : h;
-            return `${hh}:${String(m ?? 0).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
-        };
-        const [eh] = endTime.split(":").map(Number);
-        const displayTime = (sh < 12) === (eh < 12)
-            ? `${fmt12(input.startTime).replace(/\s(AM|PM)$/, "")} - ${fmt12(endTime)}`
-            : `${fmt12(input.startTime)} - ${fmt12(endTime)}`;
+        const displayTime = formatTimeRange12(input.startTime, endTime);
         const nowISO = new Date().toISOString();
         const rand = Math.floor(Math.random() * 1e6).toString(36);
         // Open (recovery) sessions are multi-customer: several bookings for the
@@ -12160,19 +12160,22 @@ export const useAppStore = create<AppState>()(persist(
         //   both Attended + pre-rated). Empty Upcoming by default. Her generated
         //   class + appointment bookings/ratings are stripped and replaced with the
         //   curated set.
-        // v92 (2026-07-30) [merge]: BOTH branches independently reached v91 for
-        //   different reasons (see the two v91 entries above). Bump to 92 forces
-        //   every persisted snapshot from either branch to reseed cleanly from
-        //   the merged INITIAL_* — this is the only path that guarantees BOTH:
-        //     • the trimmed retail catalog + real photos + 20 retail
-        //       customer_transactions (only in this branch's INITIAL_*), AND
-        //     • Ava Wright's curated Past = 5, empty Upcoming, both appointment
-        //       ratings baked in (only in the customer-experience branch's
-        //       INITIAL_APPOINTMENT_* + INITIAL_BOOKINGS filters).
-        //   The onRehydrateStorage id-keyed backfill only ADDS retail rows —
-        //   it can't reshape existing Ava bookings, so a version bump is the
-        //   correct forcing function.
-        version: 92,
+        // v92 (2026-07-30) [main / merge]: BOTH branches independently reached v91
+        //   for different reasons (see the two v91 entries above). Bump to 92 forced
+        //   every persisted snapshot from either branch to reseed cleanly from the
+        //   merged INITIAL_* — guaranteeing BOTH the trimmed retail catalog (+ real
+        //   photos + 20 retail customer_transactions) AND Ava Wright's curated
+        //   Past = 5 / empty Upcoming / both appointment ratings.
+        // v93 (2026-07-31): Merge of origin/main (AI Agent phases + retail) into
+        //   customer-experience, PLUS two live-demo classes TODAY at 1 PM + 2 PM for
+        //   the attendance-flow walkthrough. Bump ABOVE both branches' v92 so every
+        //   persisted snapshot (from either side) reseeds with the union — retail +
+        //   curated Ava bookings + the new demo class schedules/bookings.
+        // v94 (2026-07-31): App-wide 12-hour time standardization. Class + appointment
+        //   `displayTime` is now RE-DERIVED at boot from the raw 24h start/end via the
+        //   canonical `formatTimeRange12` (e.g. "5:00 - 6:00 PM"), so persisted
+        //   snapshots carrying the old 24h / zero-padded strings must reseed.
+        version: 94,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

@@ -25,7 +25,7 @@ import {
     CheckCircleBroken, Ticket01, Link01, SlashCircle01, FilterLines,
     MarkerPin01, CursorBox,
 } from "@untitledui/icons";
-import { cn } from "@/lib/utils";
+import { cn, to12h } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
@@ -694,7 +694,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
             .map(c => ({
                 value: c.id,
                 label: c.name,
-                sub: `${c.date} · ${c.displayTime || c.startTime} · ${c.instructorName}`,
+                sub: `${c.date} · ${c.displayTime || to12h(c.startTime)} · ${c.instructorName}`,
             }));
     }, [classSchedules, form.type]);
 

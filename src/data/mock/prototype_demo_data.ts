@@ -294,6 +294,73 @@ export const DEMO_NOW_SCHEDULES: ClassSchedule[] = SCHEDULE_SPECS.map((s, idx) =
     };
 });
 
+// ── Live-demo classes — TODAY at 1 PM and 2 PM ───────────────────────────────
+//
+// Two classes anchored to TODAY (13:00–14:00 and 14:00–15:00, Forma South) so the
+// attendance flow can be walked through live — the 1 PM class becomes Ongoing at
+// 13:00 and the 2 PM class at 14:00 (client 2026-07-31). `liveScheduleStatus`
+// re-derives Upcoming → Ongoing → Completed off the device clock, so they demo
+// correctly whatever the hour. Each carries 5 booked attendees (well under
+// capacity) so the roster shows a checkable list. Customer offsets deliberately
+// exclude Ava (idx 1) since her bookings are curated separately.
+const MEETING_TODAY_ISO = isoDay(NOW);
+export const DEMO_TODAY_MEETING_SCHEDULES: ClassSchedule[] = [
+    {
+        id: "class_sched_demo_meeting_1pm",
+        template_id: "tpl_reformer_pilates",
+        branch_id: SOUTH,
+        room_id: "room_south_reformer",
+        instructor_id: "staff_maya_johnson",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "13:00",
+        end_time: "14:00",
+        display_time: "13:00 – 14:00",
+        capacity: 8,
+        booked: 5,
+        rating: 0,
+        rating_count: 0,
+        status: "Upcoming",
+        gender_access: "all",
+        class_type: "Group",
+        waitlist_enabled: true,
+    },
+    {
+        id: "class_sched_demo_meeting_2pm",
+        template_id: "tpl_barre",
+        branch_id: SOUTH,
+        room_id: "room_south_barre",
+        instructor_id: "staff_sara_al_rashid",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "14:00",
+        end_time: "15:00",
+        display_time: "14:00 – 15:00",
+        capacity: 8,
+        booked: 5,
+        rating: 0,
+        rating_count: 0,
+        status: "Upcoming",
+        gender_access: "all",
+        class_type: "Group",
+        waitlist_enabled: true,
+    },
+];
+
+export const DEMO_TODAY_MEETING_BOOKINGS: ClassBooking[] = DEMO_TODAY_MEETING_SCHEDULES.flatMap((sched, sIdx) => {
+    const offset = sIdx === 0 ? 2 : 4; // varied customers, both windows skip Ava (idx 1)
+    return pickCustomers(sched.booked, offset).map((customerId, i): ClassBooking => ({
+        id: `bk_demo_meeting_${sIdx + 1}_${i + 1}`,
+        class_schedule_id: sched.id,
+        customer_id: customerId,
+        branch_id: sched.branch_id,
+        status: "booked",
+        attendance_status: "pending",
+        booked_at: isoStamp(daysAgo(1)),
+        plan_kind_used: "membership",
+        plan_id_used: "mem_unlimited_monthly",
+        booking_source: "customer_portal",
+    }));
+});
+
 // ─── Bookings ───────────────────────────────────────────────────────────────
 //
 // Generated to satisfy each schedule's `booked` count. For completed
