@@ -986,7 +986,7 @@ export default function PayrollInstructorDetailPage({
             <DetailPageShell
                 sidebar={
                     /* LEFT — sidebar */
-                    <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                    <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                         <div className="px-6 pt-6 pb-4 flex flex-col gap-3">
                             <div className="flex items-start justify-between gap-3">
                                 <InstructorAvatar instructor={instructor} size={64} />

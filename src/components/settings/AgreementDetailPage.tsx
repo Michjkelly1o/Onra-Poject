@@ -167,7 +167,7 @@ function LeftSidebar({ agreement, onAddVersion, onEdit, onArchive, onRecover }: 
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner with floating status badge top-right */}
             <div className="relative shrink-0">
                 <PatternBanner />

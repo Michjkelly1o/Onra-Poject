@@ -275,7 +275,7 @@ function Sidebar({ payRate, onAction, branches }: {
     const canDelete  = isActive && payRate.usageCount === 0;
 
     return (
-        <aside className="w-[320px] shrink-0 h-full bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner — same DecorativeBanner pattern as gift-card detail, tinted
                 with the pay rate brand-sage palette (BANNER_TINTS.payRate). */}
             <div className="relative shrink-0">

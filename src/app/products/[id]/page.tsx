@@ -260,7 +260,7 @@ function LeftSidebar({
     const actionsLabel = kind === "package" ? "Credit package actions" : "Membership actions";
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
             <div className="relative shrink-0">
                 <PatternBanner kind={kind} />

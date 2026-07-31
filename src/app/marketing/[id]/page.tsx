@@ -229,7 +229,7 @@ function LeftSidebar({ vm, onAction, branches }: {
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             <MarketingSidebarBanner vm={vm} />
 
             <div className="flex flex-col flex-1">

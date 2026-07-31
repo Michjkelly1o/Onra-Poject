@@ -575,7 +575,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
     }, [canReassign]);
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+        <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
             <div className="relative h-[200px] shrink-0 overflow-hidden" style={{ backgroundColor: appointment.coverColor || "#f1f2ed" }}>
                 {appointment.coverImage && (

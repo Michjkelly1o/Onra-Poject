@@ -205,7 +205,7 @@ function LeftSidebar({ design, customerCount, onAction }: {
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             <DecorativeBanner bannerHeight={156} iconBox={72} icon={Gift01} {...BANNER_TINTS.giftCard} />
 
             <div className="flex flex-col flex-1">

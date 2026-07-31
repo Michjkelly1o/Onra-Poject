@@ -261,7 +261,7 @@ function LeftPanel({
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
             <div className="relative h-[155px] shrink-0 overflow-hidden"
                 style={{ backgroundColor: template.coverColor }}>

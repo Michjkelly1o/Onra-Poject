@@ -767,7 +767,7 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
     const canDelete  = !isArchive && totalStaffs === 0;
 
     return (
-        <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             <div className="relative shrink-0">
                 <DecorativeBanner bannerHeight={156} iconBox={72} icon={Clock} {...BANNER_TINTS.package} />
                 <div className="absolute top-3 right-3">

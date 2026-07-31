@@ -227,7 +227,7 @@ function LeftSidebar({
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             <ProductBanner imageUrl={product.imageUrl} name={product.name} status={status} />
 
             <div className="flex flex-col flex-1">

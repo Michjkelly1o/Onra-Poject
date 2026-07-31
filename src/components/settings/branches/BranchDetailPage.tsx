@@ -160,7 +160,7 @@ function Sidebar({
     const isArchive  = branch.status === "archive";
 
     return (
-        <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-6 flex-1">
                     {/* Avatar + status badge overlap */}

@@ -1251,7 +1251,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
             <DetailPageShell
                 sidebar={
                     /* ── Left panel ── */
-                    <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+                    <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                         <div className="flex flex-col flex-1">
                             <div className="flex flex-col gap-5 px-6 pt-6 pb-6 flex-1">
                                 {/* Avatar + status */}

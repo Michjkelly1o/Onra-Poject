@@ -162,7 +162,7 @@ function Sidebar({ role, totalStaffs, onAction }: {
     const canDelete = !isLocked && !isArchive && totalStaffs === 0;
 
     return (
-        <aside className="w-[320px] shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner — sage tint matches the role avatar chrome used everywhere
                 else in this module (form preview, list cells). */}
             <div className="relative shrink-0">
