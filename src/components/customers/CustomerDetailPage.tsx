@@ -1428,8 +1428,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 {/* Toolbar */}
                                 <div className="shrink-0 flex items-center gap-3 px-6 py-4">
                                     <div className="flex-1">
-                                        <p className="text-[14px] text-[#667085]">Total</p>
-                                        <p className="text-[14px] font-medium text-[#101828]">
+                                        <p className="text-[14px] text-[#667085] leading-5">Total</p>
+                                        <p className="text-[16px] font-medium text-[#101828] leading-6">
                                             {filteredPlans.length} purchased {filteredPlans.length === 1 ? "plan" : "plans"}
                                         </p>
                                     </div>

@@ -771,9 +771,9 @@ function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
 
             {/* Toolbar row — Total + Search */}
             <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-col">
-                    <p className="text-[12px] text-[#667085]">Total</p>
-                    <p className="text-[14px] font-semibold text-[#101828]">
+                <div className="flex flex-col gap-1">
+                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
+                    <p className="text-[16px] font-medium text-[#101828] leading-6">
                         {filtered.length} {filtered.length === 1 ? "customer" : "customers"}
                     </p>
                 </div>
