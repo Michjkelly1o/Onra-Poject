@@ -300,7 +300,12 @@ function RightPanel({ product, categoryLabel, stockRows, adjRows, branches }: {
                 <ProductDetailsTab product={product} categoryLabel={categoryLabel} />
             )}
             {tab === "stock" && (
-                <StockByBranchTab product={product} stockRows={stockRows} branches={branches} />
+                <StockByBranchTab
+                    product={product}
+                    stockRows={stockRows}
+                    adjRows={adjRows}
+                    branches={branches}
+                />
             )}
             {tab === "activity" && (
                 <ActivityTab product={product} adjRows={adjRows} branches={branches} />
@@ -404,13 +409,32 @@ function ProductDetailsTab({ product, categoryLabel }: {
 
 // ─── Tab 2: Stock by branch ─────────────────────────────────────────────────
 
-function StockByBranchTab({ product, stockRows, branches }: {
+function StockByBranchTab({ product, stockRows, adjRows, branches }: {
     product: RetailProduct;
     stockRows: import("@/lib/store").RetailStock[];
+    adjRows: RetailStockAdjustment[];
     branches: import("@/lib/store").Branch[];
 }) {
     const rowsForProduct = stockRows.filter(s => s.productId === product.id);
     const activeBranches = branches.filter(b => b.status !== "archive");
+
+    // Client 2026-07-31 — "Sold" column shows the ALL-TIME total units sold
+    // for this product at each branch. Reads from retail_stock_adjustments
+    // filtered to kind = "sale" (deltas are negative on sales; taking abs
+    // to display a positive unit count that reads naturally as "sold N").
+    // Refunds NOT netted here — refunds have their own kind and belong on
+    // the Activity tab; if the client asks for a net figure later, subtract
+    // kind === "refund" deltas.
+    const soldByBranch = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const a of adjRows) {
+            if (a.productId !== product.id) continue;
+            if (a.kind !== "sale") continue;
+            const prev = map.get(a.branchId) ?? 0;
+            map.set(a.branchId, prev + Math.abs(a.delta));
+        }
+        return map;
+    }, [adjRows, product.id]);
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-4">
@@ -420,6 +444,7 @@ function StockByBranchTab({ product, stockRows, branches }: {
                         <tr>
                             <th className={cn(TH, "min-w-[220px]")}>Branch</th>
                             <th className={cn(TH, "w-[160px]")}>Units on hand</th>
+                            <th className={cn(TH, "w-[120px]")}>Sold</th>
                             <th className={cn(TH, "w-[140px]")}>Reorder at</th>
                             <th className={cn(TH, "w-[180px]")}>Last updated</th>
                         </tr>
@@ -428,6 +453,7 @@ function StockByBranchTab({ product, stockRows, branches }: {
                         {activeBranches.map(b => {
                             const row = rowsForProduct.find(s => s.branchId === b.id);
                             const units = row?.unitsOnHand ?? 0;
+                            const sold = soldByBranch.get(b.id) ?? 0;
                             const isLow = units <= product.reorderThreshold;
                             const isOut = units === 0;
                             return (
@@ -436,10 +462,13 @@ function StockByBranchTab({ product, stockRows, branches }: {
                                     <td className={cn(TD, "whitespace-nowrap")}>
                                         <span className={cn(
                                             isOut && "text-[#b42318] font-medium",
-                                            !isOut && isLow && "text-[#b54708] font-medium",
+                                            !isOut && isLow && "text-[#dc6803] font-medium",
                                         )}>
                                             {isOut ? "Out of stock" : `${units} units`}
                                         </span>
+                                    </td>
+                                    <td className={cn(TD, "whitespace-nowrap tabular-nums")}>
+                                        {sold > 0 ? `${sold} units` : "—"}
                                     </td>
                                     <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
                                         {product.reorderThreshold}

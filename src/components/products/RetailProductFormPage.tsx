@@ -186,6 +186,80 @@ function IntegerInput({ value, onChange, placeholder }: {
 
 // ─── Step 1 — Basic information ────────────────────────────────────────────
 
+// ─── Auto-SKU helpers ───────────────────────────────────────────────────────
+//
+// Client 2026-07-31 — SKU auto-generates from (category, product name)
+// as the admin types. Format: `{CAT}-{NAME_INITIALS}-{NNN}`.
+//
+//   • Category → 3-letter prefix. The 5 seeded categories have curated
+//     prefixes (Apparel → APP, Supplements → SUP, Equipment → EQP,
+//     Accessories → ACC, Recovery → REC). Any new category falls back
+//     to the first 3 letters of its label uppercased.
+//   • Name initials → first letter of every significant word (words < 2
+//     chars are skipped). "Onra Studio Tank" → OST. If < 2 chars result,
+//     pad from the first word so we always land on 2+ chars.
+//   • Number → next available 3-digit ordinal for the {CAT}-{INITIALS}
+//     stem, checked against existing SKUs so we never emit a duplicate.
+
+const CURATED_CATEGORY_PREFIX: Record<string, string> = {
+    apparel: "APP",
+    supplements: "SUP",
+    equipment: "EQP",
+    accessories: "ACC",
+    recovery: "REC",
+};
+
+function categoryPrefixFromLabel(label: string): string {
+    const key = label.trim().toLowerCase();
+    if (key in CURATED_CATEGORY_PREFIX) return CURATED_CATEGORY_PREFIX[key];
+    // Fallback — first 3 letters of the label, uppercased, padded with X.
+    const letters = key.replace(/[^a-z]/g, "").slice(0, 3).toUpperCase();
+    return (letters + "XXX").slice(0, 3);
+}
+
+function nameInitials(name: string): string {
+    const words = name.trim().split(/\s+/).filter(w => w.length >= 2);
+    let init = words.map(w => w[0]!.toUpperCase()).join("");
+    if (init.length < 2) {
+        // Pad from the first word so a one-word product like "Socks"
+        // becomes "SO" and still slots into the {CAT}-{XX}-{NNN} shape.
+        const first = (name.trim().split(/\s+/)[0] ?? "").toUpperCase();
+        init = (init + first).slice(0, Math.max(2, init.length + 1));
+    }
+    return init.slice(0, 4); // cap to 4 letters to keep SKU compact
+}
+
+function nextOrdinalForStem(stem: string, existingSkus: readonly string[]): string {
+    // Scan every existing SKU whose stem matches ours, extract the
+    // 3-digit trailing number, and return next-max padded to 3 digits.
+    let maxN = 0;
+    const rx = new RegExp(`^${stem.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}-(\\d{3,})$`);
+    for (const sku of existingSkus) {
+        const m = sku.toUpperCase().match(rx);
+        if (!m) continue;
+        const n = Number(m[1]);
+        if (Number.isFinite(n) && n > maxN) maxN = n;
+    }
+    return String(maxN + 1).padStart(3, "0");
+}
+
+/** Compose the auto-SKU. Returns "" when we can't (missing name or
+ *  category) so the caller can leave the field empty. */
+function generateAutoSku(
+    name: string,
+    categoryLabel: string,
+    existingSkus: readonly string[],
+): string {
+    const trimmedName = name.trim();
+    if (!trimmedName || !categoryLabel) return "";
+    const cat = categoryPrefixFromLabel(categoryLabel);
+    const init = nameInitials(trimmedName);
+    if (!cat || !init) return "";
+    const stem = `${cat}-${init}`;
+    const ordinal = nextOrdinalForStem(stem, existingSkus);
+    return `${stem}-${ordinal}`;
+}
+
 interface BasicInfo {
     imageUrl: string;
     name: string;
@@ -223,18 +297,22 @@ function BasicInformationStep({
                         preview={data.imageUrl || null}
                         onChange={(url) => onChange({ imageUrl: url ?? "" })}
                     />
+                    {/* Client 2026-07-31 — SKU FIRST, name second. SKU
+                        auto-fills from the name below as the admin types;
+                        admin can still override for legacy / supplier codes.
+                        See generateAutoSku + tracking flag in the parent. */}
+                    <FormField label="SKU" error={errors.sku} hint="Auto-generated from the product name and category (editable). Must be unique across every retail product.">
+                        <TextInput
+                            value={data.sku}
+                            onChange={v => onChange({ sku: v.toUpperCase() })}
+                            placeholder="APP-OST-001"
+                        />
+                    </FormField>
                     <FormField label="Product name" error={errors.name}>
                         <TextInput
                             value={data.name}
                             onChange={v => onChange({ name: v })}
                             placeholder="e.g. Onra Studio Tank"
-                        />
-                    </FormField>
-                    <FormField label="SKU" error={errors.sku} hint="Unique alphanumeric code used on receipts and reports.">
-                        <TextInput
-                            value={data.sku}
-                            onChange={v => onChange({ sku: v.toUpperCase() })}
-                            placeholder="APP-TNK-001"
                         />
                     </FormField>
                     <FormField label="Retail category" error={errors.categoryId}>
@@ -453,6 +531,11 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         categoryId:  target?.categoryId ?? "",
         description: target?.description ?? "",
     }));
+    // Track whether the SKU field has been manually edited. In edit mode
+    // the seed SKU is treated as "manual" so we don't overwrite it when the
+    // admin tweaks the name. In create mode we auto-sync SKU until the
+    // admin edits it directly, then we stop.
+    const [skuManuallyEdited, setSkuManuallyEdited] = useState<boolean>(mode === "edit");
     const [pricing, setPricing] = useState<PricingInfo>(() => ({
         priceAed:         target ? String(target.priceAed) : "",
         unitCostAed:      target ? String(target.unitCostAed) : "",
@@ -490,7 +573,28 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
     const categoryLabel = categories.find(c => c.id === basic.categoryId)?.label ?? "";
 
     function updateBasic(patch: Partial<BasicInfo>) {
-        setBasic(prev => ({ ...prev, ...patch }));
+        setBasic(prev => {
+            const next = { ...prev, ...patch };
+            // Auto-SKU: fire when name / category changed AND admin hasn't
+            // hand-edited the SKU field. Uses the LATEST name + category and
+            // scans OTHER products' SKUs so the ordinal never collides.
+            const nameOrCategoryChanged = "name" in patch || "categoryId" in patch;
+            if (nameOrCategoryChanged && !skuManuallyEdited) {
+                const nextCategoryLabel = categories.find(c => c.id === next.categoryId)?.label ?? "";
+                const otherSkus = products
+                    .filter(p => p.id !== productId) // ignore the edit target's own SKU
+                    .map(p => p.sku);
+                const auto = generateAutoSku(next.name, nextCategoryLabel, otherSkus);
+                if (auto) next.sku = auto;
+            }
+            return next;
+        });
+        // Detect a direct SKU edit — if the admin typed in the SKU field
+        // itself, flip the manual flag so subsequent name/category changes
+        // stop overwriting their code.
+        if ("sku" in patch) {
+            setSkuManuallyEdited(true);
+        }
         const keys = Object.keys(patch) as (keyof BasicInfo)[];
         setErrors(e => ({ ...e, basic: Object.fromEntries(Object.entries(e.basic).filter(([k]) => !keys.includes(k as keyof BasicInfo))) }));
     }

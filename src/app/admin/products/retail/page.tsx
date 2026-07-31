@@ -12,12 +12,13 @@
 // Chrome mirrors Gift cards exactly so admins move between the two lists
 // without re-learning where things are.
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
     Plus, Eye, Edit02, Archive, Trash01, Trash02, Image01,
     Check, RefreshCcw01, SlashCircle01, XClose, Package,
+    Upload01, ChevronDown, ChevronRight,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,14 @@ const EMPTY_FILTER: FilterState = {
     stockBuckets: [],
 };
 
+/** Per-branch row shown inside the accordion drawer under each product. */
+interface RetailBranchRow {
+    branchId: string;
+    branchName: string;
+    unitsOnHand: number;
+    sold: number;
+}
+
 interface RetailRow {
     id: string;
     name: string;
@@ -71,6 +80,10 @@ interface RetailRow {
     status: RetailStatus;
     imageUrl?: string;
     hasHistory: boolean;
+    /** Per-branch breakdown for the accordion nested rows. Active branches
+     *  only — archived branches skipped so admins see the same set the
+     *  Configure-stock panel + Stock by branch tab show. */
+    branchBreakdown: RetailBranchRow[];
 }
 
 // ─── Small pieces ────────────────────────────────────────────────────────────
@@ -360,6 +373,7 @@ export default function RetailPage() {
     const products             = useAppStore(s => s.retailProducts);
     const stock                = useAppStore(s => s.retailStock);
     const categories           = useAppStore(s => s.retailCategories);
+    const branches             = useAppStore(s => s.branches);
     const transactions         = useAppStore(s => s.customerTransactions);
     const adjustments          = useAppStore(s => s.retailStockAdjustments);
     const setRetailProductStatus = useAppStore(s => s.setRetailProductStatus);
@@ -373,6 +387,18 @@ export default function RetailPage() {
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+    // Client 2026-07-31 — accordion state. Chevron on the LEFT of each row
+    // toggles a nested per-branch table (Branch / Stock / Sold). Multi-open
+    // — Set lets admin drill into several products side-by-side.
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    const toggleExpanded = (id: string) => {
+        setExpandedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
     // Configure-stock side panel — opened directly from the row action so
     // admins don't need to jump into the detail page just to adjust units.
     const [configureId, setConfigureId] = useState<string | null>(null);
@@ -391,6 +417,16 @@ export default function RetailPage() {
             if (arr) arr.push(s);
             else stockByProduct.set(s.productId, [s]);
         }
+        // Index sold units by (productId × branchId) so the accordion's
+        // per-branch subrows show a "Sold" figure without an inner scan.
+        // Sold = absolute delta of every `kind === "sale"` adjustment at
+        // that pair. Matches the Stock by branch tab on the detail page.
+        const soldByPair = new Map<string, number>();
+        for (const a of adjustments) {
+            if (a.kind !== "sale") continue;
+            const key = `${a.productId}|${a.branchId}`;
+            soldByPair.set(key, (soldByPair.get(key) ?? 0) + Math.abs(a.delta));
+        }
         // hasHistory covers BOTH past receipts (transactions) AND stock
         // movements (adjustments). A product with any receive / sale /
         // adjust / loss / refund row on the audit log can't be hard-
@@ -401,11 +437,23 @@ export default function RetailPage() {
             if (t.retailProductId) historyIds.add(t.retailProductId);
         }
         for (const a of adjustments) historyIds.add(a.productId);
+        // Active branches only — archived branches skipped so the accordion
+        // matches the Configure-stock panel + Stock by branch tab.
+        const activeBranches = branches.filter(b => b.status !== "archive");
         return products.map(p => {
             const rows = stockByProduct.get(p.id) ?? [];
             const stockAggregate = rows.reduce((sum, r) => sum + (r.unitsOnHand ?? 0), 0);
             const hasZeroBranch  = rows.some(r => r.unitsOnHand === 0);
             const hasLowBranch   = rows.some(r => r.unitsOnHand <= p.reorderThreshold);
+            const branchBreakdown: RetailBranchRow[] = activeBranches.map(b => {
+                const row = rows.find(r => r.branchId === b.id);
+                return {
+                    branchId: b.id,
+                    branchName: b.name,
+                    unitsOnHand: row?.unitsOnHand ?? 0,
+                    sold: soldByPair.get(`${p.id}|${b.id}`) ?? 0,
+                };
+            });
             return {
                 id: p.id,
                 name: p.name,
@@ -420,9 +468,10 @@ export default function RetailPage() {
                 status: p.status,
                 imageUrl: p.imageUrl,
                 hasHistory: historyIds.has(p.id),
+                branchBreakdown,
             };
         });
-    }, [products, stock, categories, transactions, adjustments]);
+    }, [products, stock, categories, branches, transactions, adjustments]);
 
     // ─── Search + filter ───────────────────────────────────────────────────
     const filteredRows = useMemo(() => {
@@ -615,6 +664,22 @@ export default function RetailPage() {
                         </span>
                     </Button>
                 </IconTooltip>
+                {/* Import — always immediately after Filter (memory rule
+                    feedback_toolbar_import_order). Routes to the AI Agent
+                    Migrate Data thread scoped to retail_products so the
+                    admin lands on the file-upload step for this entity. */}
+                <IconTooltip label="Import">
+                    <Button
+                        variant="secondary-gray"
+                        size="icon"
+                        aria-label="Import"
+                        onClick={() => router.push(
+                            `/ai-agent?mode=migrate_data&entity=retail_products&returnTo=${encodeURIComponent("/admin/products/retail")}`,
+                        )}
+                    >
+                        <Upload01 className="w-5 h-5" />
+                    </Button>
+                </IconTooltip>
                 <Button
                     variant="primary"
                     size="md"
@@ -647,6 +712,8 @@ export default function RetailPage() {
                                             ariaLabel="Select all products"
                                         />
                                     </th>
+                                    {/* Chevron column — expands per-branch subrows. */}
+                                    <th className={cn(TH, "w-[36px]")} aria-hidden />
                                     <th className={cn(TH, "w-[340px]")}>
                                         <SortableHeader sortKey="name" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Product name</SortableHeader>
                                     </th>
@@ -675,60 +742,126 @@ export default function RetailPage() {
                                         r.stockAggregate === 0
                                             ? "Out of stock"
                                             : `${r.stockAggregate} units`;
+                                    // Client 2026-07-31 — split the low-stock
+                                    // tone away from the out-of-stock red.
+                                    // Previous `#b54708` amber read too close
+                                    // to `#b42318` red on the row; swapped for
+                                    // `#dc6803` (Untitled DS warning/500) —
+                                    // clearly yellower, still readable on
+                                    // white, WCAG AA vs #101828 background.
                                     const stockTone = r.stockAggregate === 0
                                         ? "text-[#b42318] font-medium"
                                         : r.hasLowBranch
-                                            ? "text-[#b54708] font-medium"
+                                            ? "text-[#dc6803] font-medium"
                                             : "";
+                                    const isExpanded = expandedIds.has(r.id);
                                     return (
-                                        <tr
-                                            key={r.id}
-                                            onClick={() => router.push(`/products/retail/${r.id}`)}
-                                            className={cn(
-                                                "transition-colors cursor-pointer",
-                                                isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                        <React.Fragment key={r.id}>
+                                            <tr
+                                                onClick={() => router.push(`/products/retail/${r.id}`)}
+                                                className={cn(
+                                                    "transition-colors cursor-pointer",
+                                                    isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                                )}
+                                            >
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                                    <CheckboxCell
+                                                        checked={isSelected}
+                                                        onChange={() => toggleOne(r.id)}
+                                                        ariaLabel={`Select ${r.name}`}
+                                                    />
+                                                </td>
+                                                {/* Chevron — toggles per-branch nested rows.
+                                                    stopPropagation so it doesn't also fire the
+                                                    row's navigate-to-detail click. */}
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleExpanded(r.id)}
+                                                        aria-label={isExpanded ? `Collapse ${r.name}` : `Expand ${r.name}`}
+                                                        aria-expanded={isExpanded}
+                                                        className="w-6 h-6 flex items-center justify-center rounded-[6px] hover:bg-[#eaecf0] transition-colors text-[#667085]"
+                                                    >
+                                                        {isExpanded ? (
+                                                            <ChevronDown className="w-4 h-4" />
+                                                        ) : (
+                                                            <ChevronRight className="w-4 h-4" />
+                                                        )}
+                                                    </button>
+                                                </td>
+                                                <td className={TD}>
+                                                    <div className="flex items-center gap-3">
+                                                        <ProductThumb imageUrl={r.imageUrl} alt={r.name} />
+                                                        <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{r.sku}</td>
+                                                <td className={cn(TD, "whitespace-nowrap")}>{r.categoryLabel}</td>
+                                                <td className={cn(TD, "whitespace-nowrap")}>{formatAed(r.priceAed)}</td>
+                                                <td className={cn(TD, "whitespace-nowrap")}>
+                                                    <span className={stockTone}>{stockLabel}</span>
+                                                </td>
+                                                <td className={TD}>
+                                                    <StatusBadge type="product" status={r.status} />
+                                                </td>
+                                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                                    {/* Same action ladder as memberships/packages,
+                                                        plus the retail-specific "Configure stock"
+                                                        entry. Deactivate ↔ Delete swap by history:
+                                                        active + no history → Delete; active + has
+                                                        history → Deactivate. */}
+                                                    <RowActions items={[
+                                                        { label: "View details",    icon: Eye,          onClick: () => router.push(`/products/retail/${r.id}`) },
+                                                        { label: "Configure stock", icon: Package,      onClick: () => setConfigureId(r.id), hidden: r.status === "archived" },
+                                                        { label: "Edit",            icon: Edit02,       onClick: () => router.push(`/products/retail/${r.id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`), hidden: r.status !== "active" },
+                                                        { label: "Archive",         icon: Archive,      onClick: () => openRowConfirm(r, "archive"),    hidden: r.status !== "active" && r.status !== "inactive" },
+                                                        { label: "Reactivate",      icon: Check,        onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
+                                                        { label: "Recover",         icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"),    hidden: r.status !== "archived" },
+                                                        { label: "Deactivate",      icon: SlashCircle01,onClick: () => openRowConfirm(r, "deactivate"), danger: true, hidden: !(r.status === "active" && r.hasHistory) },
+                                                        { label: "Delete",          icon: Trash01,      onClick: () => openRowConfirm(r, "delete"),     danger: true, hidden: !(r.status === "active" && !r.hasHistory) },
+                                                    ]} />
+                                                </td>
+                                            </tr>
+                                            {isExpanded && (
+                                                <tr className="bg-[#fafbfc]">
+                                                    <td colSpan={9} className="px-0 py-0 border-b border-[#e4e7ec]">
+                                                        <div className="px-6 py-4">
+                                                            <table className="w-full border-collapse">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th className={cn(TH, "min-w-[220px]")}>Branch</th>
+                                                                        <th className={cn(TH, "w-[160px]")}>Stock on hand</th>
+                                                                        <th className={cn(TH, "w-[120px]")}>Sold</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {r.branchBreakdown.map(b => {
+                                                                        const isOut = b.unitsOnHand === 0;
+                                                                        const isLow = !isOut && b.unitsOnHand <= r.reorderThreshold;
+                                                                        return (
+                                                                            <tr key={b.branchId}>
+                                                                                <td className={TD}>{b.branchName}</td>
+                                                                                <td className={cn(TD, "whitespace-nowrap")}>
+                                                                                    <span className={cn(
+                                                                                        isOut && "text-[#b42318] font-medium",
+                                                                                        isLow && "text-[#dc6803] font-medium",
+                                                                                    )}>
+                                                                                        {isOut ? "Out of stock" : `${b.unitsOnHand} units`}
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td className={cn(TD, "whitespace-nowrap tabular-nums")}>
+                                                                                    {b.sold > 0 ? `${b.sold} units` : "—"}
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    })}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </td>
+                                                </tr>
                                             )}
-                                        >
-                                            <td className={TD} onClick={e => e.stopPropagation()}>
-                                                <CheckboxCell
-                                                    checked={isSelected}
-                                                    onChange={() => toggleOne(r.id)}
-                                                    ariaLabel={`Select ${r.name}`}
-                                                />
-                                            </td>
-                                            <td className={TD}>
-                                                <div className="flex items-center gap-3">
-                                                    <ProductThumb imageUrl={r.imageUrl} alt={r.name} />
-                                                    <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                </div>
-                                            </td>
-                                            <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{r.sku}</td>
-                                            <td className={cn(TD, "whitespace-nowrap")}>{r.categoryLabel}</td>
-                                            <td className={cn(TD, "whitespace-nowrap")}>{formatAed(r.priceAed)}</td>
-                                            <td className={cn(TD, "whitespace-nowrap")}>
-                                                <span className={stockTone}>{stockLabel}</span>
-                                            </td>
-                                            <td className={TD}>
-                                                <StatusBadge type="product" status={r.status} />
-                                            </td>
-                                            <td className={TD} onClick={e => e.stopPropagation()}>
-                                                {/* Same action ladder as memberships/packages,
-                                                    plus the retail-specific "Configure stock"
-                                                    entry. Deactivate ↔ Delete swap by history:
-                                                    active + no history → Delete; active + has
-                                                    history → Deactivate. */}
-                                                <RowActions items={[
-                                                    { label: "View details",    icon: Eye,          onClick: () => router.push(`/products/retail/${r.id}`) },
-                                                    { label: "Configure stock", icon: Package,      onClick: () => setConfigureId(r.id), hidden: r.status === "archived" },
-                                                    { label: "Edit",            icon: Edit02,       onClick: () => router.push(`/products/retail/${r.id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`), hidden: r.status !== "active" },
-                                                    { label: "Archive",         icon: Archive,      onClick: () => openRowConfirm(r, "archive"),    hidden: r.status !== "active" && r.status !== "inactive" },
-                                                    { label: "Reactivate",      icon: Check,        onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
-                                                    { label: "Recover",         icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"),    hidden: r.status !== "archived" },
-                                                    { label: "Deactivate",      icon: SlashCircle01,onClick: () => openRowConfirm(r, "deactivate"), danger: true, hidden: !(r.status === "active" && r.hasHistory) },
-                                                    { label: "Delete",          icon: Trash01,      onClick: () => openRowConfirm(r, "delete"),     danger: true, hidden: !(r.status === "active" && !r.hasHistory) },
-                                                ]} />
-                                            </td>
-                                        </tr>
+                                        </React.Fragment>
                                     );
                                 })}
                             </tbody>
