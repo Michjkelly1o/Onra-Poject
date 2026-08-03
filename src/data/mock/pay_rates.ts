@@ -89,6 +89,7 @@ export const pay_rates: PayRateSeed[] = [
             { id: "pr_monthly_c1", category: "membership",     value_type: "percent", value: 2 },
             { id: "pr_monthly_c2", category: "credit_package", value_type: "percent", value: 2 },
             { id: "pr_monthly_c3", category: "gift_card",      value_type: "percent", value: 3 },
+            { id: "pr_monthly_c4", category: "retail",         value_type: "percent", value: 4 },
         ],
         bonuses: [
             { id: "pr_monthly_b1", category: "membership", value_type: "fixed", value: 500, threshold: 20 },

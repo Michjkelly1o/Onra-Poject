@@ -140,6 +140,7 @@ export default function InstructorEarningsPage() {
     const classBookings        = useAppStore(s => s.classBookings);
     const appointmentBookings  = useAppStore(s => s.appointmentBookings);
     const appointments         = useAppStore(s => s.appointments);
+    const issuedGiftCards      = useAppStore(s => s.issuedGiftCards);
     // Live category list — drives the Filter panel's Categories pills.
     const classCategories = useAppStore(s => s.classCategories);
     const categoryNames = useMemo(
@@ -187,7 +188,7 @@ export default function InstructorEarningsPage() {
     // resolves to the fixed salary, per-class / per-appointment come from the
     // live schedule, so no payroll-entry snapshot is needed.
     const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const commissionSources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+    const commissionSources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards };
     const totalsFor = (range: { from: Date; to: Date }) => {
         const myStaff = staff.find(s => s.id === staffId);
         const fromISO = iso(range.from), toISO = iso(range.to);

@@ -1099,6 +1099,11 @@ export interface IssuedGiftCard {
     transaction_id?: string;
     /** ISO — most recent redemption date. Feeds "Last redeemed date". */
     last_redeemed_at?: string;
+    /** FK → staff_profiles.id — the seller credited for this card's commission
+     *  (the POS "Credited to" pick at sale). Undefined for self-service portal
+     *  purchases. Gift-card commission is computed off this at sale time — see
+     *  `payroll-calc.categoryStats`. */
+    sold_by_staff_id?: string;
     // +later: branch_id
 }
 

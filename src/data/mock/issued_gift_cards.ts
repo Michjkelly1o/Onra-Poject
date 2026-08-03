@@ -36,6 +36,8 @@ export const issued_gift_cards: IssuedGiftCard[] = [
         recipient_email: "ahmed.zayn@email.com",
         sender_name: "Ahmed Zayn",
         message: "Treat yourself to a great year of classes.",
+        // Seller credited for gift-card commission (at sale).
+        sold_by_staff_id: "user_casey_desk",
     },
     {
         id: "issued_gc_0002",
@@ -51,6 +53,7 @@ export const issued_gift_cards: IssuedGiftCard[] = [
         recipient_email: "ava.wright@email.com",
         sender_name: "Daniel Wright",
         message: "Happy birthday, sis! Enjoy some Pilates.",
+        sold_by_staff_id: "user_jordan_ops",
     },
     {
         id: "issued_gc_0003",
@@ -66,6 +69,7 @@ export const issued_gift_cards: IssuedGiftCard[] = [
         recipient_email: "bosa.ahmed@email.com",
         sender_name: "Bosa Ahmed",
         message: "",
+        sold_by_staff_id: "user_sam_admin",
     },
     {
         id: "issued_gc_0004",

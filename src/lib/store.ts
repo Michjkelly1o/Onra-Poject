@@ -9975,6 +9975,7 @@ export const useAppStore = create<AppState>()(persist(
                             classSchedules:      state.classSchedules,
                             appointmentBookings: state.appointmentBookings,
                             appointments:        state.appointments,
+                            issuedGiftCards:     state.issuedGiftCards,
                         },
                         e.periodStart,
                         e.periodEnd,
@@ -11365,6 +11366,13 @@ export const useAppStore = create<AppState>()(persist(
             // unit — a fresh full-balance card carrying the buyer's
             // recipient / sender / message captured at POS.
             const newIssued: IssuedGiftCard[] = [];
+            // Sales-commission attribution for gift cards (client Aug 2026) —
+            // the cashier's "Credited to" pick earns commission at SALE. Portal
+            // (self-service) purchases stay unattributed. Commission reads this
+            // off the issued card, not a transaction (a gift-card sale isn't a
+            // revenue transaction — see payroll-calc.categoryStats).
+            const giftCardSeller =
+                (paymentSource ?? "pos") === "customer_portal" ? undefined : sellerStaffId;
             for (const it of giftCardItems) {
                 const design = state.giftCardDesigns.find(g => g.id === it.productId);
                 for (let q = 0; q < Math.max(1, it.quantity); q++) {
@@ -11386,6 +11394,7 @@ export const useAppStore = create<AppState>()(persist(
                         recipient_email: it.giftCard?.recipientEmail,
                         sender_name: it.giftCard?.senderName,
                         message: it.giftCard?.message,
+                        ...(giftCardSeller ? { sold_by_staff_id: giftCardSeller } : {}),
                     });
                 }
             }
@@ -12489,7 +12498,12 @@ export const useAppStore = create<AppState>()(persist(
         //   are backfilled as already-issued at boot so the new engine can't
         //   re-pay historical rows — persisted v95 payloads predate the field
         //   and would look "pending", double-paying every seeded referrer.
-        version: 96,
+        // v97 — commission now covers retail + gift-card sales. IssuedGiftCard
+        //   gains `sold_by_staff_id` (seller credited at sale); the `pr_monthly`
+        //   seed gains a `retail` commission row; a few seeded gift cards get a
+        //   seller. Bump so persisted v96 payloads (no seller ids, old rate)
+        //   reseed and surface the new commission categories in the demo.
+        version: 97,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

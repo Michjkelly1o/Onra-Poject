@@ -636,6 +636,7 @@ export default function PayrollInstructorDetailPage({
     const classBookings          = useAppStore(s => s.classBookings);
     const appointmentBookings    = useAppStore(s => s.appointmentBookings);
     const appointments           = useAppStore(s => s.appointments);
+    const issuedGiftCards        = useAppStore(s => s.issuedGiftCards);
     // Payroll reopened to all staff (Phase 3B) — non-instructor rows resolve
     // to a synthetic Instructor built from their staff record.
     const staff                  = useAppStore(s => s.staff);
@@ -728,7 +729,7 @@ export default function PayrollInstructorDetailPage({
         const tracks = buildPayConfigTracks(staffRow ?? { id: instructorId }, payRates, classSchedules, appointments, fromISO, toISO);
         return totalEarningsForStaff(
             instructorId, payRate, isRealInstructor ? periodEntryEarnings : undefined,
-            { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments },
+            { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards },
             fromISO, toISO, tracks,
         );
     }, [instructorId, payRate, payRates, staff, isRealInstructor, periodEntryEarnings, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, range]);
@@ -872,7 +873,7 @@ export default function PayrollInstructorDetailPage({
         const tracks = buildPayConfigTracks(staffRow ?? { id: instructorId }, payRates, classSchedules, appointments, fromISO, toISO);
         return totalEarningsForStaff(
             instructorId, payRate, isRealInstructor ? sidebarThisMonth.entryEarnings : undefined,
-            { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments },
+            { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards },
             fromISO, toISO, tracks,
         ).total;
     }, [instructorId, payRate, payRates, staff, isRealInstructor, sidebarThisMonth.entryEarnings, customerTransactions, classBookings, classSchedules, appointmentBookings, appointments]);

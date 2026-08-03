@@ -50,7 +50,7 @@
 
 import type {
     ClassSchedule, CustomerTransaction, PayRate, CommissionCategory, CommissionValueType,
-    ClassBooking, AppointmentBooking, Appointment, StaffPayConfig,
+    ClassBooking, AppointmentBooking, Appointment, StaffPayConfig, IssuedGiftCard,
 } from "@/lib/store";
 
 /** Earnings for a single class.
@@ -560,6 +560,10 @@ export interface CommissionSources {
     classSchedules: ClassSchedule[];
     appointmentBookings: AppointmentBooking[];
     appointments: Appointment[];
+    /** Gift-card commission source. Gift-card SALES don't create a transaction
+     *  (they'd double-count revenue on redemption), so commission reads the
+     *  issued cards directly — credited to `sold_by_staff_id`, at sale. */
+    issuedGiftCards: IssuedGiftCard[];
 }
 
 /** One evaluated commission row. */
@@ -615,11 +619,13 @@ interface CategoryStats {
     refundIds: string[];
 }
 
-/** Transaction kind backing each product commission category. gift_card +
- *  retail have no transaction source in the prototype yet. */
+/** Transaction kind backing each product commission category. `gift_card` is
+ *  sourced from issued cards instead (see categoryStats) — a gift-card sale is
+ *  not a revenue transaction. */
 const TXN_KIND_FOR: Partial<Record<CommissionCategory, CustomerTransaction["kind"]>> = {
     membership:     "membership",
     credit_package: "package",
+    retail:         "retail",
 };
 
 /** Resolve the (base AED, count) for one category credited to one staff over
@@ -682,7 +688,24 @@ function categoryStats(
         return { base: count * SERVICE_PROXY_AED, count, saleIds, refundIds };
     }
 
-    // gift_card, retail — no source yet.
+    // ── Gift cards (credited to the seller, at sale) ────────────────────────
+    // No transaction is created for a gift-card sale (crediting it as revenue
+    // would double-count when the card is later redeemed on another product),
+    // so commission reads the issued cards directly. There's no card-refund
+    // flow, so no clawback branch.
+    if (category === "gift_card") {
+        let net = 0, count = 0;
+        for (const gc of s.issuedGiftCards) {
+            if (gc.sold_by_staff_id !== staffId) continue;
+            const day = gc.issued_at.slice(0, 10);
+            if (day < startDay || day > endDay) continue;
+            net += gc.face_value_aed;
+            count++;
+            saleIds.push(gc.id);
+        }
+        return { base: net, count, saleIds, refundIds };
+    }
+
     return { base: 0, count: 0, saleIds, refundIds };
 }
 

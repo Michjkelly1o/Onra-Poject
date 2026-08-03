@@ -469,6 +469,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const customerTransactions  = useAppStore(s => s.customerTransactions);
     const appointmentBookings   = useAppStore(s => s.appointmentBookings);
     const appointments          = useAppStore(s => s.appointments);
+    const issuedGiftCards       = useAppStore(s => s.issuedGiftCards);
     // v27 client-feedback fix — Process Payroll modal reads the
     // withholding rate LIVE from the Tax module's "pay_rate" category
     // rule so an owner editing tax in Settings sees the payroll modal
@@ -530,7 +531,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
 
         // Shared inputs for the canonical earnings formula (base + commission).
         const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards };
         const fromISO = iso(range.from);
         const toISO   = iso(range.to);
         // Multi-track pay config lives on the STAFF row (the instructors mirror

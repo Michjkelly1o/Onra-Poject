@@ -182,6 +182,7 @@ export default function CompensationPage() {
     const classSchedules       = useAppStore(s => s.classSchedules);
     const appointmentBookings  = useAppStore(s => s.appointmentBookings);
     const appointments         = useAppStore(s => s.appointments);
+    const issuedGiftCards      = useAppStore(s => s.issuedGiftCards);
 
     const [branchId, setBranchId] = usePersistedListState<string>("compensation:branchId", "");
     const [search, setSearch]     = usePersistedListState("compensation:search", "");
@@ -214,7 +215,7 @@ export default function CompensationPage() {
     const allRows = useMemo<CompRow[]>(() => {
         // Shared inputs for the canonical earnings formula (base + commission).
         const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments };
+        const sources = { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards };
         // Multi-track pay config lives on the staff row — map by shared id so
         // instructor rows (whose mirror lacks payConfig) can find it.
         const staffById = new Map(staff.map(s => [s.id, s] as const));
