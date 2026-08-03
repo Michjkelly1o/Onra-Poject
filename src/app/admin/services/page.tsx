@@ -521,6 +521,10 @@ function ServicesPageInner() {
     // Type deep-link — "private" | "recovery" | null (all). Drives the list
     // scope + the page's contextual title.
     const typeScope = useSearchParams().get("type");
+    // Client 2026-08-03 — Private sessions & Recovery drop the status/category
+    // Filter (kept only on the umbrella /admin/services list). Any persisted
+    // filter is also ignored on those scopes so it can't silently narrow them.
+    const filtersEnabled = !(typeScope === "private" || typeScope === "recovery");
 
     // ─── Store subscriptions ───────────────────────────────────────────────
     const services         = useAppStore(s => s.services);
@@ -579,12 +583,17 @@ function ServicesPageInner() {
             // Type deep-link scope — "private" / "recovery" nav entries.
             if (typeScope && r.type !== typeScope) return false;
             if (branchId && r.branchId !== branchId) return false;
-            if (applied.statuses.length   && !applied.statuses.includes(r.status))     return false;
-            if (applied.categories.length && !applied.categories.includes(r.category)) return false;
+            // Status/category filter is disabled on the Private/Recovery scopes
+            // (client 2026-08-03) — skip it there so a persisted filter from the
+            // umbrella list can't silently narrow them. Search + location stay.
+            if (filtersEnabled) {
+                if (applied.statuses.length   && !applied.statuses.includes(r.status))     return false;
+                if (applied.categories.length && !applied.categories.includes(r.category)) return false;
+            }
             if (q && !`${r.name} ${r.category}`.toLowerCase().includes(q))             return false;
             return true;
         });
-    }, [allRows, search, applied, branchId, typeScope]);
+    }, [allRows, search, applied, branchId, typeScope, filtersEnabled]);
 
     // ─── Sort (gift-cards twin) ────────────────────────────────────────────
     const comparators: Record<string, (a: ServiceRow, b: ServiceRow) => number> = {
@@ -737,7 +746,7 @@ function ServicesPageInner() {
         router.push(`/services/${row.id}/edit?returnTo=${encodeURIComponent(listPath)}`);
     }
 
-    const hasActiveFilter = applied.statuses.length > 0 || applied.categories.length > 0;
+    const hasActiveFilter = filtersEnabled && (applied.statuses.length > 0 || applied.categories.length > 0);
 
     return (
         <div className="flex flex-col gap-6">
@@ -772,7 +781,9 @@ function ServicesPageInner() {
 
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search service..." />
 
-                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                {filtersEnabled && (
+                    <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
+                )}
 
                 {/* Import — empty-state only (client 2026-07-31). Hidden
                     once services exist so admins default to "Add new". */}
@@ -787,7 +798,7 @@ function ServicesPageInner() {
                     tester lands on the right shape. */}
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={handleAdd}>
-                    Add new
+                    Add
                 </Button>
             </div>
 
@@ -833,14 +844,16 @@ function ServicesPageInner() {
                 />
             </div>
 
-            {/* ── Filter side panel ── */}
-            <FilterPanel
-                open={filterOpen}
-                onClose={() => setFilterOpen(false)}
-                applied={applied}
-                onApply={setApplied}
-                allCategories={allCategoryNames}
-            />
+            {/* ── Filter side panel (disabled on Private/Recovery scopes) ── */}
+            {filtersEnabled && (
+                <FilterPanel
+                    open={filterOpen}
+                    onClose={() => setFilterOpen(false)}
+                    applied={applied}
+                    onApply={setApplied}
+                    allCategories={allCategoryNames}
+                />
+            )}
 
             {pendingConfirm && (() => {
                 const { count, subject } = modalSubject(pendingConfirm);

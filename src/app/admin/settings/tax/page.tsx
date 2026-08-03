@@ -894,7 +894,7 @@ export default function TaxPage() {
                             gate on truly-empty + no status filter only. */}
                         <ToolbarImportButton visible={taxRates.length === 0 && !hasActiveFilter} />
                         <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={handleAddNew}>
-                            Add new
+                            Add
                         </Button>
                     </div>
 

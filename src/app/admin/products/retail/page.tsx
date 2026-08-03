@@ -18,10 +18,13 @@ import { useRouter } from "next/navigation";
 import {
     Plus, Eye, Edit02, Archive, Trash01, Trash02, Image01,
     Check, RefreshCcw01, SlashCircle01, XClose, Package,
-    ChevronDown, ChevronRight,
+    ChevronDown, ChevronRight, MarkerPin01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SelectInput } from "@/components/ui/select-input";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { RetailCategoriesView } from "@/components/retail/RetailCategoriesView";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -382,9 +385,24 @@ export default function RetailPage() {
     const deleteRetailProducts   = useAppStore(s => s.deleteRetailProducts);
     const showToast              = useAppStore(s => s.showToast);
 
+    // Client 2026-08-03 — Retail + Categories merged into one page with tabs
+    // (mirrors Memberships & Packages). "products" shows the stock list;
+    // "categories" renders the shared RetailCategoriesView.
+    const [tab, setTab] = useState<"products" | "categories">("products");
+    // Location filter — scopes the stock figures to a single branch. "" = all.
+    const [branchId, setBranchId] = useState("");
     const [search, setSearch] = useState("");
     const [applied, setApplied] = useState<FilterState>(EMPTY_FILTER);
     const [filterOpen, setFilterOpen] = useState(false);
+
+    const branchOptions = useMemo(
+        () => branches.filter(b => b.status === "active").map(b => ({
+            value: b.id,
+            label: b.name,
+            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+        })),
+        [branches],
+    );
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -442,14 +460,22 @@ export default function RetailPage() {
         }
         for (const a of adjustments) historyIds.add(a.productId);
         // Active branches only — archived branches skipped so the accordion
-        // matches the Configure-stock panel + Stock by branch tab.
+        // matches the Configure-stock panel + Stock by branch tab. When a
+        // location filter is active, scope everything (stock total, low/out
+        // flags, accordion breakdown) to that single branch.
         const activeBranches = branches.filter(b => b.status !== "archive");
+        const scopedBranches = branchId ? activeBranches.filter(b => b.id === branchId) : activeBranches;
         return products.map(p => {
-            const rows = stockByProduct.get(p.id) ?? [];
+            const allProductRows = stockByProduct.get(p.id) ?? [];
+            const rows = branchId ? allProductRows.filter(r => r.branchId === branchId) : allProductRows;
             const stockAggregate = rows.reduce((sum, r) => sum + (r.unitsOnHand ?? 0), 0);
-            const hasZeroBranch  = rows.some(r => r.unitsOnHand === 0);
-            const hasLowBranch   = rows.some(r => r.unitsOnHand <= p.reorderThreshold);
-            const branchBreakdown: RetailBranchRow[] = activeBranches.map(b => {
+            const hasZeroBranch  = branchId
+                ? (rows[0]?.unitsOnHand ?? 0) === 0
+                : rows.some(r => r.unitsOnHand === 0);
+            const hasLowBranch   = branchId
+                ? (rows[0]?.unitsOnHand ?? 0) <= p.reorderThreshold
+                : rows.some(r => r.unitsOnHand <= p.reorderThreshold);
+            const branchBreakdown: RetailBranchRow[] = scopedBranches.map(b => {
                 const row = rows.find(r => r.branchId === b.id);
                 return {
                     branchId: b.id,
@@ -475,7 +501,7 @@ export default function RetailPage() {
                 branchBreakdown,
             };
         });
-    }, [products, stock, categories, branches, transactions, adjustments]);
+    }, [products, stock, categories, branches, transactions, adjustments, branchId]);
 
     // ─── Search + filter ───────────────────────────────────────────────────
     const filteredRows = useMemo(() => {
@@ -688,9 +714,31 @@ export default function RetailPage() {
 
     return (
         <div className="flex flex-col gap-6">
+            {/* ── Tabs — Retail products vs categories (client 2026-08-03) ── */}
+            <SegmentedTabs
+                tabs={[
+                    { key: "products",   label: `Products (${products.length})` },
+                    { key: "categories", label: `Categories (${categories.length})` },
+                ]}
+                activeKey={tab}
+                onChange={(k) => setTab(k as "products" | "categories")}
+            />
+
+            {tab === "categories" ? (
+                <RetailCategoriesView />
+            ) : (
+            <>
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={filteredRows.length} entitySingular="product" />
+                <SelectInput
+                    triggerIcon={<MarkerPin01 className="w-4 h-4" />}
+                    placeholder="Select location"
+                    options={[{ value: "", label: "All locations" }, ...branchOptions]}
+                    value={branchId}
+                    onChange={setBranchId}
+                    width="w-[220px]"
+                />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search product..." />
                 <ToolbarExport onExportCsv={exportCsv} />
                 <IconTooltip label="Filter">
@@ -722,7 +770,7 @@ export default function RetailPage() {
                     leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/retail/new?returnTo=${encodeURIComponent("/admin/products/retail")}`)}
                 >
-                    Add new
+                    Add
                 </Button>
             </div>
 
@@ -960,6 +1008,8 @@ export default function RetailPage() {
                     />
                 );
             })()}
+            </>
+            )}
 
             <Toast />
         </div>

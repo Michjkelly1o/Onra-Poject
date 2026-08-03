@@ -978,7 +978,7 @@ export default function ProductsPage() {
                 <ToolbarImportButton visible={memberships.length === 0 && packages.length === 0 && !search.trim()} />
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push("/products/new")}>
-                    Add new
+                    Add
                 </Button>
             </div>
 

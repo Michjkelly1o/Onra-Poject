@@ -684,7 +684,7 @@ export default function AgreementsPage() {
                     <ToolbarImportButton visible={agreements.length === 0 && !search.trim() && !hasActiveFilter} />
 
                     <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={handleAddNew}>
-                        Add new
+                        Add
                     </Button>
                 </div>
 

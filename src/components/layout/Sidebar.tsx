@@ -90,17 +90,15 @@ const NAV_ITEMS: NavItemDef[] = [
         // wellness are type-filtered views of the shared /admin/services list.
         label: "Products & pricing", icon: ShoppingBag01, permission: "manage_products",
         sectionLabel: "Studio",
+        // Client 2026-08-03 — order set by client, and "Retail categories" is
+        // no longer a standalone entry: Retail + Categories are now tabs on
+        // the one /admin/products/retail page (mirrors Memberships & Packages).
         children: [
-            { label: "Memberships & packages", href: "/admin/products"                    },
-            { label: "Gift cards",             href: "/admin/products/gift-cards"         },
-            { label: "Retail",                 href: "/admin/products/retail"             },
-            // Client 2026-07-31 — retail categories was under Settings →
-            // Operations; moved here directly under Retail so admins see
-            // Retail + its Categories together (mirrors Templates +
-            // Categories under Classes).
-            { label: "Retail categories",      href: "/admin/products/retail-categories"  },
-            { label: "Private sessions",       href: "/admin/services?type=private"       },
-            { label: "Recovery & wellness",    href: "/admin/services?type=recovery"      },
+            { label: "Memberships & packages", href: "/admin/products"              },
+            { label: "Private sessions",       href: "/admin/services?type=private" },
+            { label: "Recovery & wellness",    href: "/admin/services?type=recovery" },
+            { label: "Retail",                 href: "/admin/products/retail"        },
+            { label: "Gift cards",             href: "/admin/products/gift-cards"    },
         ],
     },
     {

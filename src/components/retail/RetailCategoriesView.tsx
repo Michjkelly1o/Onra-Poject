@@ -1,40 +1,28 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Categories module (/admin/categories)
+// Onra Studio — Retail categories VIEW (shared)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Table-based module view (Figma 7487:99949). Lives under the Classes
-// sidebar group, just below Services.
+// Extracted from the old /admin/products/retail-categories page so it can be
+// rendered BOTH as the "Categories" tab of the merged Retail page AND from the
+// legacy standalone route (kept alive for deep links). Behaviour is unchanged —
+// same table + CRUD chrome as /admin/categories, same store guards.
 //
-// Layout:
-//   • Toolbar (no card): Total + count on the left, Search + Add new on
-//     the right.
-//   • Table card: Checkbox · Name (avatar + label) · Status · Actions ⋮.
-//     Row dropdown → Edit · Delete.
-//   • Bulk select scoped to the current page (matches every other admin
-//     table — Staff & shift, Pay rate, Customers, etc.).
-//   • Floating bulk-delete pill bar when ≥1 row is selected.
-//   • Pagination row inside the card chrome.
-//
-// Data layer is UNCHANGED — same `classCategories` slice + the same
-// `addClassCategory` / `updateClassCategory` / `deleteClassCategory`
-// mutators + the same `canDeleteClassCategory` cross-module guard.
-// Every downstream consumer (class template form, schedule form, schedule
-// filter, staff form) reads via `useAppStore(s => s.classCategories)` so
-// they see this page's edits in the same render cycle.
+// Delete is blocked when any non-archived retail product still references the
+// category — `canDeleteRetailCategory` enforces this at the store layer, and
+// this view surfaces a friendly toast when the gate fires.
 
 import { useEffect, useMemo, useState } from "react";
 import {
-    Plus, Trash04, XClose, Image01, SearchMd,
-    Edit02, Trash01, Check, ChevronDown, Trash02,
+    Plus, Trash04, XClose, Image01,
+    Edit02, Trash01, Check, Trash02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
-import { useAppStore } from "@/lib/store";
-import type { ClassCategory } from "@/lib/store";
+import { useAppStore, type RetailCategory } from "@/lib/store";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { Pagination } from "@/components/ui/Pagination";
@@ -45,30 +33,30 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
-const STATUS_BADGE: Record<ClassCategory["status"], string> = {
+const STATUS_BADGE: Record<RetailCategory["status"], string> = {
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
 };
-const STATUS_LABEL: Record<ClassCategory["status"], string> = {
+const STATUS_LABEL: Record<RetailCategory["status"], string> = {
     active: "Active", inactive: "Inactive",
 };
-const STATUS_ORDER: Record<ClassCategory["status"], number> = {
+const STATUS_ORDER: Record<RetailCategory["status"], number> = {
     active: 0, inactive: 1,
 };
 
-export default function CategoriesPage() {
-    const categories               = useAppStore(s => s.classCategories);
-    const addCategory              = useAppStore(s => s.addClassCategory);
-    const updateCategory           = useAppStore(s => s.updateClassCategory);
-    const deleteCategory           = useAppStore(s => s.deleteClassCategory);
-    const canDeleteClassCategoryFn = useAppStore(s => s.canDeleteClassCategory);
-    const showToast                = useAppStore(s => s.showToast);
+export function RetailCategoriesView() {
+    const categories             = useAppStore(s => s.retailCategories);
+    const addRetailCategory      = useAppStore(s => s.addRetailCategory);
+    const updateRetailCategory   = useAppStore(s => s.updateRetailCategory);
+    const deleteRetailCategory   = useAppStore(s => s.deleteRetailCategory);
+    const canDeleteRetailCategory = useAppStore(s => s.canDeleteRetailCategory);
+    const showToast              = useAppStore(s => s.showToast);
 
     // ── Modal + delete state ──────────────────────────────────────────────
-    const [categoryModal, setCategoryModal] = useState<"new" | ClassCategory | null>(null);
+    const [categoryModal, setCategoryModal] = useState<"new" | RetailCategory | null>(null);
     const [pendingDelete, setPendingDelete] = useState<
-        | { kind: "row"; row: ClassCategory }
-        | { kind: "bulk"; rows: ClassCategory[] }
+        | { kind: "row"; row: RetailCategory }
+        | { kind: "bulk"; rows: RetailCategory[] }
         | null
     >(null);
 
@@ -83,16 +71,17 @@ export default function CategoriesPage() {
     const [pageSize, setPageSize] = useState(10);
     useEffect(() => { setPage(1); }, [search]);
 
-    function handleAddCategory()                  { setCategoryModal("new"); }
-    function handleEditCategory(c: ClassCategory) { setCategoryModal(c); }
+    function handleAddCategory()                     { setCategoryModal("new"); }
+    function handleEditCategory(c: RetailCategory)   { setCategoryModal(c); }
 
-    /** Category-delete request — refuses with a friendly toast when the
-     *  category is still referenced by any class template. */
-    function requestDeleteCategory(c: ClassCategory) {
-        if (!canDeleteClassCategoryFn(c.id)) {
+    /** Row delete — refuses with a friendly toast when the category is still
+     *  referenced by any non-archived retail product. */
+    function requestDeleteCategory(c: RetailCategory) {
+        const gate = canDeleteRetailCategory(c.id);
+        if (!gate.deletable) {
             showToast(
-                "Can’t delete this category",
-                `"${c.name}" is in use by one or more class templates. Reassign them before deleting.`,
+                "Can't delete this category",
+                `"${c.label}" is used by ${gate.usageCount} ${gate.usageCount === 1 ? "product" : "products"}. Reassign or archive them first.`,
                 "error", "slash",
             );
             return;
@@ -100,17 +89,15 @@ export default function CategoriesPage() {
         setPendingDelete({ kind: "row", row: c });
     }
 
-    /** Bulk-delete request — gates per-row through the same usage check.
-     *  Drops any rows that fail the gate and surfaces a single
-     *  consolidated toast at delete time so the admin understands why
-     *  the count is smaller than the selection. */
-    function requestBulkDelete(rows: ClassCategory[]) {
-        const deletable = rows.filter(r => canDeleteClassCategoryFn(r.id));
-        const blocked = rows.filter(r => !deletable.includes(r));
+    /** Bulk delete — gates each row through the same guard; blocked rows are
+     *  excluded from the delete and reported via toast. */
+    function requestBulkDelete(rows: RetailCategory[]) {
+        const deletable = rows.filter(r => canDeleteRetailCategory(r.id).deletable);
+        const blocked   = rows.filter(r => !deletable.includes(r));
         if (deletable.length === 0) {
             showToast(
-                "Can’t delete these categories",
-                "Every selected category is in use by one or more class templates.",
+                "Can't delete these categories",
+                "Every selected category is still in use by one or more retail products.",
                 "error", "slash",
             );
             return;
@@ -127,24 +114,33 @@ export default function CategoriesPage() {
 
     function handleCategorySubmit({ name, image_url }: { name: string; image_url: string }) {
         if (categoryModal === "new") {
-            const newCategory: ClassCategory = {
-                id: `cat_new_${Date.now()}`,
-                name,
-                color_hex: "#f9fafb",
-                status: "active",
-                image_url: image_url || undefined,
-            };
-            addCategory(newCategory);
+            const id = addRetailCategory({ label: name, imageUrl: image_url || undefined });
+            if (!id) {
+                showToast(
+                    "Duplicate name",
+                    `A category called "${name}" already exists.`,
+                    "error", "slash",
+                );
+                return;
+            }
             showToast(
                 "Category created",
-                `"${name}" has been added to your categories.`,
+                `"${name}" has been added to your retail catalog.`,
                 "success", "check",
             );
         } else if (categoryModal) {
-            updateCategory(categoryModal.id, {
-                name,
-                image_url: image_url || undefined,
+            const ok = updateRetailCategory(categoryModal.id, {
+                label: name,
+                imageUrl: image_url || undefined,
             });
+            if (!ok) {
+                showToast(
+                    "Couldn't save changes",
+                    `A category called "${name}" already exists.`,
+                    "error", "slash",
+                );
+                return;
+            }
             showToast(
                 "Category updated",
                 `"${name}" has been saved.`,
@@ -159,14 +155,12 @@ export default function CategoriesPage() {
         const rows = pendingDelete.kind === "row"
             ? [pendingDelete.row]
             : pendingDelete.rows;
-        for (const c of rows) deleteCategory(c.id);
+        for (const c of rows) deleteRetailCategory(c.id);
         showToast(
             rows.length === 1 ? "Category deleted" : `${rows.length} categories deleted`,
-            rows.length === 1 ? `"${rows[0].name}" has been removed.` : "The selected categories have been removed.",
+            rows.length === 1 ? `"${rows[0].label}" has been removed.` : "The selected categories have been removed.",
             "success", "trash",
         );
-        // Drop any deleted ids out of the selection set so the bulk bar
-        // updates immediately.
         const removedIds = rows.map(c => c.id);
         setSelectedIds(prev => {
             const next = new Set(prev);
@@ -180,12 +174,12 @@ export default function CategoriesPage() {
     const filteredCategories = useMemo(() => {
         const q = search.trim().toLowerCase();
         return q
-            ? categories.filter(c => c.name.toLowerCase().includes(q))
+            ? categories.filter(c => c.label.toLowerCase().includes(q))
             : categories;
     }, [categories, search]);
 
-    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<ClassCategory>(filteredCategories, {
-        name:   (a, b) => a.name.localeCompare(b.name),
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<RetailCategory>(filteredCategories, {
+        name:   (a, b) => a.label.localeCompare(b.label),
         status: (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
     });
 
@@ -219,25 +213,39 @@ export default function CategoriesPage() {
     }
     function clearSelection() { setSelectedIds(new Set()); }
 
-    const isTrulyEmpty   = categories.length === 0;
+    const isTrulyEmpty    = categories.length === 0;
     const isFilteredEmpty = !isTrulyEmpty && sortedRows.length === 0;
+
+    // CategoryModal accepts a ClassCategory-shape via `existing`. We pass a
+    // thin adapter object (name / image_url) so we can reuse the modal as-is
+    // — the modal only reads those two fields, so the shape mismatch is
+    // safe. Kept behind a small helper so future readers see the intent.
+    function categoryModalExisting() {
+        if (!categoryModal || categoryModal === "new") return undefined;
+        return {
+            id: categoryModal.id,
+            name: categoryModal.label,
+            image_url: categoryModal.imageUrl ?? "",
+            // Fields below are unused by CategoryModal — declared so the
+            // ClassCategory shape typechecks.
+            color_hex: "#f9fafb",
+            status: "active" as const,
+        };
+    }
 
     return (
         <div className="flex flex-col gap-5 w-full">
-            {/* Toolbar — Total + count on the left, search + Add new on the
-                right. Same pattern as the rest of the Classes group
-                pages. */}
+            {/* Toolbar — Total + count on the left, search + Add on the right */}
             <div className="flex items-end gap-3 w-full">
                 <ToolbarTotal count={categories.length} entitySingular="category" entityPlural="categories" />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search category..." />
                 {/* Import — empty-state only (client 2026-07-31). Hidden
                     once the table has real data so admins default to
-                    "Add new". No filter panel on this page, so gate on
-                    truly-empty + no active search only. */}
+                    "Add". No filter panel on this view, so we gate
+                    on truly-empty + no active search only. */}
                 <ToolbarImportButton visible={categories.length === 0 && !search.trim()} />
                 <Button
                     variant="primary"
-                   
                     leftIcon={<Plus className="w-5 h-5" />}
                     onClick={handleAddCategory}
                 >
@@ -245,9 +253,7 @@ export default function CategoriesPage() {
                 </Button>
             </div>
 
-            {/* Table — flush, no bordered card per Figma. Internal row
-                dividers stay (the `border-b` on each <td>). Pagination
-                keeps its top border so it reads as a footer separator. */}
+            {/* Table */}
             <div className="flex flex-col">
                 {isTrulyEmpty || isFilteredEmpty ? (
                     <div className="relative" style={{ minHeight: 360 }}>
@@ -255,7 +261,7 @@ export default function CategoriesPage() {
                             title={isFilteredEmpty ? "No matches found" : "No categories yet"}
                             subtitle={isFilteredEmpty
                                 ? "Try a different search term."
-                                : "You haven’t created any category yet. Click Add new to get started."}
+                                : "You haven't created any category yet. Click Add to get started."}
                         />
                     </div>
                 ) : (
@@ -291,13 +297,13 @@ export default function CategoriesPage() {
                                                     <CheckboxCell
                                                         checked={isSelected}
                                                         onChange={() => toggleOne(c.id)}
-                                                        ariaLabel={`Select ${c.name}`}
+                                                        ariaLabel={`Select ${c.label}`}
                                                     />
                                                 </td>
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3 min-w-0">
-                                                        <CategoryAvatar src={c.image_url} />
-                                                        <span className="text-[14px] font-medium text-[#101828] truncate">{c.name}</span>
+                                                        <CategoryAvatar src={c.imageUrl} />
+                                                        <span className="text-[14px] font-medium text-[#101828] truncate">{c.label}</span>
                                                     </div>
                                                 </td>
                                                 <td className={TD}>
@@ -335,7 +341,7 @@ export default function CategoriesPage() {
                 )}
             </div>
 
-            {/* Floating bulk-delete bar */}
+            {/* Floating bulk-delete pill */}
             {selectedRows.length > 0 && (
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
                     <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
@@ -356,20 +362,28 @@ export default function CategoriesPage() {
 
             {categoryModal && (
                 <CategoryModal
-                    existing={categoryModal === "new" ? undefined : categoryModal}
+                    entityLabel="retail category"
+                    existing={categoryModalExisting()}
                     onClose={() => setCategoryModal(null)}
                     onSubmit={handleCategorySubmit}
+                    // Client 2026-07-31 — pass every OTHER category's label so
+                    // the modal shows the duplicate-name error INLINE below
+                    // the input as the admin types. Editing a row excludes
+                    // its own label so re-saving without renaming is legal.
+                    takenNames={categories
+                        .filter(c => categoryModal === "new" || c.id !== categoryModal.id)
+                        .map(c => c.label)}
                 />
             )}
 
             {pendingDelete && (
                 <DeleteConfirmModal
                     name={pendingDelete.kind === "row"
-                        ? `"${pendingDelete.row.name}"`
+                        ? `"${pendingDelete.row.label}"`
                         : `${pendingDelete.rows.length} ${pendingDelete.rows.length === 1 ? "category" : "categories"}`}
                     description={pendingDelete.kind === "row"
-                        ? "This category will be permanently removed. This can’t be undone."
-                        : "These categories will be permanently removed. This can’t be undone."}
+                        ? "This category will be permanently removed. This can't be undone."
+                        : "These categories will be permanently removed. This can't be undone."}
                     onCancel={() => setPendingDelete(null)}
                     onConfirm={confirmDelete}
                 />
@@ -378,11 +392,7 @@ export default function CategoriesPage() {
     );
 }
 
-// ─── Row action menu ──────────────────────────────────────────────────────
-
-// Local RowActions removed — uses canonical `@/components/patterns/RowActions`.
-
-// ─── Checkbox cell — matches every other admin table ───────────────────────
+// ─── Checkbox cell ──────────────────────────────────────────────────────────
 
 function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     checked: boolean; onChange: () => void; indeterminate?: boolean; ariaLabel: string;
@@ -402,9 +412,7 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     );
 }
 
-// Local Pagination removed — uses canonical `@/components/ui/Pagination`.
-
-// ─── Category row avatar ──────────────────────────────────────────────────
+// ─── Row avatar ─────────────────────────────────────────────────────────────
 
 function CategoryAvatar({ src }: { src?: string }) {
     return (
@@ -419,7 +427,7 @@ function CategoryAvatar({ src }: { src?: string }) {
     );
 }
 
-// ─── Destructive confirm modal — matches every other admin destroy flow ───
+// ─── Destructive confirm modal ──────────────────────────────────────────────
 
 function DeleteConfirmModal({ name, description, onCancel, onConfirm }: {
     name: string;

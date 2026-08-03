@@ -695,7 +695,7 @@ export default function GiftCardsPage() {
                 <ToolbarImportButton visible={giftCardDesigns.length === 0 && !search.trim()} />
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/gift-cards/new?returnTo=${encodeURIComponent("/admin/products/gift-cards")}`)}>
-                    Add new
+                    Add
                 </Button>
             </div>
 
