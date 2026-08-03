@@ -41,6 +41,8 @@ export interface SchedulePreviewData {
     instructorAvatarUrl?: string;
     instructorInitials?: string;
     dateTime?: string; // "Fri, 26 Feb 2025 · 9:00 – 10:00 AM"
+    /** Appointment variant only — who the session is booked for. */
+    customerName?: string;
 }
 
 /** One expanded occurrence for the recurring session list. */
@@ -55,6 +57,10 @@ export interface SchedulePreviewCardProps {
     /** Header copy override (private / recovery flows swap the noun). */
     title?: string;
     subtitle?: string;
+    /** "class" (default) shows the full class grid. "appointment" hides the
+     *  class-only fields (gender / equipment / spot selection) and shows a
+     *  Customer field — private & recovery sessions don't have those. */
+    variant?: "class" | "appointment";
     /** Recurring only — the generated occurrences. When present, an expandable
      *  "Preview of scheduled classes · N classes" row renders, grouped by month. */
     sessions?: PreviewSession[];
@@ -176,6 +182,7 @@ export function SchedulePreviewCard({
     data,
     title = "Class preview",
     subtitle = "This is how your class schedule will look like.",
+    variant = "class",
     sessions,
     className,
 }: SchedulePreviewCardProps) {
@@ -195,7 +202,28 @@ export function SchedulePreviewCard({
         instructorAvatarUrl,
         instructorInitials,
         dateTime,
+        customerName,
     } = data;
+    const isAppt = variant === "appointment";
+
+    const instructorField = (
+        <Field label="Instructor" value={instructorName}>
+            {hasValue(instructorName) && (
+                <div className="flex items-center gap-2 min-w-0">
+                    {hasValue(instructorAvatarUrl) ? (
+                        <span className="shrink-0 size-6 rounded-full overflow-hidden bg-[#f2f4f7] relative">
+                            <Image src={instructorAvatarUrl} alt="" fill sizes="24px" className="object-cover" />
+                        </span>
+                    ) : (
+                        <span className="shrink-0 size-6 rounded-full bg-[#f2f4f7] flex items-center justify-center text-[10px] font-semibold text-[#475467]">
+                            {instructorInitials ?? instructorName.slice(0, 1)}
+                        </span>
+                    )}
+                    <span className="text-[14px] leading-5 font-medium text-[#101828] truncate">{instructorName}</span>
+                </div>
+            )}
+        </Field>
+    );
 
     const templateFilled = hasValue(templateName);
 
@@ -236,35 +264,31 @@ export function SchedulePreviewCard({
                 </div>
             </div>
 
-            {/* 2-col field grid. Left column then right column, row by row. */}
+            {/* 2-col field grid. Left column then right column, row by row.
+                Appointment variant hides class-only fields (gender / equipment /
+                spot selection) and shows a Customer field instead. */}
             <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4">
-                <Field label="Class type" value={classType} />
-                <Field label="Class category" value={classCategory} />
+                <Field label={isAppt ? "Session type" : "Class type"} value={classType} />
+                <Field label={isAppt ? "Category" : "Class category"} value={classCategory} />
                 <Field label="Duration" value={duration} />
-                <Field label="Class capacity" value={capacity} />
-                <Field label="Gender access" value={genderAccess} />
-                <Field label="Location" value={location} />
-                <Field label="Equipment" value={equipment} />
-                <Field label="Spot selection" value={spotSelection} />
-                <Field label="Instructor" value={instructorName}>
-                    {hasValue(instructorName) && (
-                        <div className="flex items-center gap-2 min-w-0">
-                            {hasValue(instructorAvatarUrl) ? (
-                                <span className="shrink-0 size-6 rounded-full overflow-hidden bg-[#f2f4f7] relative">
-                                    <Image src={instructorAvatarUrl} alt="" fill sizes="24px" className="object-cover" />
-                                </span>
-                            ) : (
-                                <span className="shrink-0 size-6 rounded-full bg-[#f2f4f7] flex items-center justify-center text-[10px] font-semibold text-[#475467]">
-                                    {instructorInitials ?? instructorName.slice(0, 1)}
-                                </span>
-                            )}
-                            <span className="text-[14px] leading-5 font-medium text-[#101828] truncate">
-                                {instructorName}
-                            </span>
-                        </div>
-                    )}
-                </Field>
-                <Field label="Date & time" value={dateTime} />
+                <Field label={isAppt ? "Capacity" : "Class capacity"} value={capacity} />
+                {isAppt ? (
+                    <>
+                        <Field label="Location" value={location} />
+                        <Field label="Customer" value={customerName} />
+                        {instructorField}
+                        <Field label="Date & time" value={dateTime} />
+                    </>
+                ) : (
+                    <>
+                        <Field label="Gender access" value={genderAccess} />
+                        <Field label="Location" value={location} />
+                        <Field label="Equipment" value={equipment} />
+                        <Field label="Spot selection" value={spotSelection} />
+                        {instructorField}
+                        <Field label="Date & time" value={dateTime} />
+                    </>
+                )}
             </div>
 
             {sessions && sessions.length > 0 && <SessionList sessions={sessions} />}

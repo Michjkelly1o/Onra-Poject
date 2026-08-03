@@ -11,7 +11,7 @@
 // JSON — no functions, no class instances.
 
 import type { SchedulePreviewData } from "@/ai-agent/components/SchedulePreviewCard";
-import type { ClassScheduleDraft, SessionType } from "@/ai-agent/schedule/schedule-wizard";
+import type { ClassScheduleDraft, AppointmentDraft, SessionType } from "@/ai-agent/schedule/schedule-wizard";
 
 /** Live preview of the class so far. `readyToPublish` flips true once every
  *  required field is present — the client then shows the publish prompt
@@ -28,9 +28,10 @@ export interface ClassPreviewCard {
     sessionType: SessionType;
     preview: SchedulePreviewData;
     readyToPublish: boolean;
-    /** The draft to commit, present only when `readyToPublish`. Carries ids +
-     *  times; the client expands ids → display fields against the live store. */
+    /** The class draft to commit (class flow), present only when ready. */
     draft?: ClassScheduleDraft;
+    /** The appointment draft to commit (private / recovery flow), when ready. */
+    appointmentDraft?: AppointmentDraft;
     /** Recurring only — the expanded occurrences, so the preview can show the
      *  "Preview of scheduled classes · N classes" month-grouped list. */
     sessions?: PreviewSession[];
@@ -43,7 +44,10 @@ export interface ClassResultCard {
     sessionType: SessionType;
     /** Human summary echoed in the bubble, e.g. "Mat Pilates · Fri, 26 Feb". */
     summary: string;
-    draft: ClassScheduleDraft;
+    /** Exactly one of these is set: class flow → draft; private/recovery →
+     *  appointmentDraft. ChatThread branches the store write on which is present. */
+    draft?: ClassScheduleDraft;
+    appointmentDraft?: AppointmentDraft;
 }
 
 /** RBAC / precondition refusal — rendered as a plain message, no actions. */
@@ -71,6 +75,26 @@ export interface ClassOptionsCard {
     /** Active branches — so the model can offer a parent-location choice in the
      *  `+ Add room` sub-flow even for a branch with no rooms yet. */
     branches: { id: string; name: string }[];
+}
+
+/** Data-only card for the private/recovery flow: the studio's real services
+ *  (of the requested type) + instructors, so the model offers accurate options.
+ *  Renders nothing. */
+export interface ClassServiceOptionsCard {
+    card: "class_service_options";
+    services: {
+        id: string;
+        name: string;
+        category: string;
+        type: "private" | "recovery";
+        durationMin: number;
+        capacity: number;
+        openSession: boolean;
+        roomName: string;
+        coverImage?: string;
+        coverColor: string;
+    }[];
+    instructors: { id: string; name: string; initials: string; imageUrl?: string }[];
 }
 
 /** Confirmation that a room was created mid-wizard (the `+ Add room` sub-flow).
@@ -103,6 +127,7 @@ export type ClassCardData =
     | ClassDeniedCard
     | ClassEmptyCard
     | ClassOptionsCard
+    | ClassServiceOptionsCard
     | ClassSpotEditorCard
     | ClassDaysEditorCard
     | ClassRoomCreatedCard;

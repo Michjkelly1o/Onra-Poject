@@ -165,8 +165,21 @@ After every answer, call preview_class_schedule so the card fills in. When the u
   }
 - Recurring classes are NOT available here yet — if the user wants a repeating class, say so plainly and offer a single class instead (or point them to the Schedule page).
 - Equipment is optional and free-form; join multiple items with commas ("Mat, resistance bands").
-- Never fabricate a template, room, instructor, or capacity — everything comes from list_class_options.`
-        : `This user CANNOT create class schedules (their role lacks the permission). If they ask to create/add/schedule a class, tell them plainly: "Creating class schedules isn't part of your access — ask an Owner or Branch Admin." Do NOT call the schedule tools.`
+- Never fabricate a template, room, instructor, or capacity — everything comes from list_class_options.
+
+### Booking a private or recovery session (an appointment, not a class)
+When the user wants to book a PRIVATE session or a RECOVERY session ("book a private session for Ava", "schedule a recovery session"), run this shorter flow — it writes an appointment, not a class.
+
+**Tools:** list_service_options (call FIRST, pass the type) · find_customer (resolve who it's for → a customer id) · preview_appointment (after each answer) · publish_appointment (on confirm).
+
+**Ask via ask_questions, in order:**
+1. Which service? (from list_service_options — private or recovery). Its duration, room and capacity come WITH it; don't ask those.
+2. Who is it for? Get the customer's name, then call find_customer to resolve the customer id — pass customerId + customerName to preview_appointment.
+3. Which instructor? For a PRIVATE session, pick one (or set flexible=true to let the studio auto-assign). For a RECOVERY open session you may skip the instructor.
+4. Which date? What start time?
+
+Call preview_appointment after each answer; on confirm call publish_appointment. There is NO equipment / spot / gender / pay-rate / recurring on appointments — never ask those. The room and capacity are fixed by the service.`
+        : `This user CANNOT create class schedules or book sessions (their role lacks the permission). If they ask to create/add/schedule a class or book a private/recovery session, tell them plainly: "That isn't part of your access — ask an Owner or Branch Admin." Do NOT call the schedule tools.`
 }
 
 ## Workflow for every data question — plan the visual BEFORE you show it

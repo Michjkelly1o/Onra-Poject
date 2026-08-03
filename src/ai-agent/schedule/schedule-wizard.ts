@@ -403,6 +403,21 @@ export interface ClassScheduleDraft {
     };
 }
 
+/** Private / recovery appointment payload. Unlike a class, an appointment is
+ *  minted from a customer booking (`addCustomerAppointment`), which derives
+ *  every denormalized field from the service — so this carries only the ids +
+ *  slot. `instructorId: null` + `flexible: true` = studio auto-assigns. */
+export interface AppointmentDraft {
+    sessionType: "private" | "recovery";
+    serviceId: string;
+    durationMins: number;
+    instructorId: string | null;
+    flexible: boolean;
+    customerId: string;
+    dateISO: string;
+    startTime: string;
+}
+
 /** Build the draft. Throws if the flow isn't complete — callers gate on
  *  `isComplete` first. `status` is "Upcoming"; the insert path applies
  *  `liveScheduleStatus` against the real date (kept out of this pure module). */

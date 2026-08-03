@@ -251,6 +251,20 @@ const PREVIEW_LEVELS: { caption: string; frame: string; data: SchedulePreviewDat
     { caption: "Preview · fully populated", frame: "frame 15 / 16", data: PREVIEW_FULL },
 ];
 
+// Appointment variant — private/recovery (hides gender/equipment/spots, adds Customer).
+const PREVIEW_APPOINTMENT: SchedulePreviewData = {
+    templateName: "60-min Private Training",
+    classType: "Private session",
+    classCategory: "Personal Training",
+    duration: "60 minutes",
+    capacity: "1 participant",
+    location: "Reformer Room",
+    customerName: "Ava Wright",
+    instructorName: "Liam C.",
+    instructorAvatarUrl: "/images/instructors/liam-chen.webp",
+    dateTime: "Fri, 26 Feb 2026 · 9:00 – 10:00 AM",
+};
+
 // ── Phase 3 · headless state-machine trace ───────────────────────────────────
 //
 // Replays a scripted answer sequence step-by-step, asserting the plan advances
@@ -389,6 +403,21 @@ export default function ClassWizardWidgetsDevPage() {
                             <TraceBlock title="Single class — template path" script={SINGLE_SCRIPT} />
                             <TraceBlock title="Recurring — After 11 sessions, weekly, Fri" script={RECUR_SCRIPT} />
                         </div>
+                    </div>
+
+                    <div>
+                        <div className="mb-2 flex items-baseline justify-between gap-3">
+                            <h2 className="text-[15px] font-semibold text-[#101828]">
+                                Appointment preview (private / recovery variant)
+                            </h2>
+                            <span className="text-[12px] text-[#98a2b3] shrink-0">Phase 8</span>
+                        </div>
+                        <SchedulePreviewCard
+                            data={PREVIEW_APPOINTMENT}
+                            variant="appointment"
+                            title="Private session preview"
+                            subtitle="This is how your session will look."
+                        />
                     </div>
 
                     <div>

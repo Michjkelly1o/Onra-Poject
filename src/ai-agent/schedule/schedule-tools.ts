@@ -26,6 +26,7 @@ import { z } from "zod";
 import type { AuthContext } from "@/ai-agent/agent/auth";
 import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
+import type { SchedulePreviewData } from "@/ai-agent/components/SchedulePreviewCard";
 import {
     toPreview,
     toDraft,
@@ -34,6 +35,7 @@ import {
     type WizardAnswers,
     type WizardTemplate,
     type WizardLookups,
+    type AppointmentDraft,
 } from "@/ai-agent/schedule/schedule-wizard";
 import { expandRecurrence } from "@/ai-agent/schedule/apply-class-schedule";
 
@@ -169,6 +171,67 @@ function inScope(ctx: AuthContext, branchId: string | null | undefined): boolean
     if (ctx.branchScope === "all") return true;
     if (!branchId) return true; // studio-wide row (e.g. cross-branch instructor)
     return ctx.branchScope.includes(branchId);
+}
+
+// ── Private / recovery appointment args + projections ────────────────────────
+
+const APPOINTMENT_ARGS = z.object({
+    sessionType: z.enum(["private", "recovery"]).describe("Which flow."),
+    serviceId: z.string().optional(),
+    serviceName: z.string().optional(),
+    serviceCategory: z.string().optional(),
+    coverImage: z.string().optional(),
+    coverColor: z.string().optional(),
+    durationMinutes: z.number().optional().describe("From the service."),
+    capacity: z.number().optional().describe("From the service (1 for private)."),
+    roomLabel: z.string().optional().describe("Room name from the service, for the preview."),
+    customerId: z.string().optional().describe("Resolved customer id (use find_customer to look one up)."),
+    customerName: z.string().optional(),
+    instructorId: z.string().optional(),
+    instructorName: z.string().optional(),
+    instructorInitials: z.string().optional(),
+    instructorAvatarUrl: z.string().optional(),
+    flexible: z.boolean().optional().describe("True = let the studio auto-assign the instructor."),
+    dateISO: z.string().optional().describe("'YYYY-MM-DD'."),
+    startTime: z.string().optional().describe("'HH:MM' 24h."),
+});
+
+type AppointmentArgs = z.infer<typeof APPOINTMENT_ARGS>;
+
+/** Required fields for a bookable appointment: service, customer, date, time. */
+function apptComplete(a: AppointmentArgs): boolean {
+    return !!(a.serviceId && a.customerId && a.dateISO && a.startTime);
+}
+
+function apptPreview(a: AppointmentArgs): SchedulePreviewData {
+    const typeLabel = a.sessionType === "recovery" ? "Recovery session" : "Private session";
+    return {
+        templateName: a.serviceName,
+        coverImageUrl: a.coverImage,
+        classType: typeLabel,
+        classCategory: a.serviceCategory,
+        duration: a.durationMinutes ? `${a.durationMinutes} minutes` : undefined,
+        capacity: a.capacity ? `${a.capacity} ${a.capacity === 1 ? "participant" : "participants"}` : undefined,
+        location: a.roomLabel,
+        customerName: a.customerName,
+        instructorName: a.flexible ? "Auto-assigned (flexible)" : a.instructorName,
+        instructorAvatarUrl: a.flexible ? undefined : a.instructorAvatarUrl,
+        instructorInitials: a.instructorInitials,
+        dateTime: a.dateISO && a.startTime ? `${a.dateISO} · ${a.startTime}` : undefined,
+    };
+}
+
+function apptDraft(a: AppointmentArgs): AppointmentDraft {
+    return {
+        sessionType: a.sessionType,
+        serviceId: a.serviceId!,
+        durationMins: a.durationMinutes ?? 60,
+        instructorId: a.flexible ? null : a.instructorId ?? null,
+        flexible: !!a.flexible,
+        customerId: a.customerId!,
+        dateISO: a.dateISO!,
+        startTime: a.startTime!,
+    };
 }
 
 export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) {
@@ -337,6 +400,87 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     summary = draft.name;
                 }
                 return { card: "class_result", sessionType: config.sessionType, summary, draft };
+            },
+        }),
+
+        // ── Private / recovery APPOINTMENTS (Phase 8) ──────────────────────
+        // Reuse the wizard components but write an Appointment, not a class.
+        // The flow is shorter: service (not template), a required CUSTOMER,
+        // instructor, date/time. Room + capacity + duration come from the
+        // service; no equipment / spots / gender / pay-rate / recurring.
+
+        list_service_options: tool({
+            description:
+                "Fetch the studio's REAL private or recovery SERVICES + instructors for a private/recovery booking. Call FIRST when the user wants to book a private session or a recovery session. Pass the type. Never invent service/instructor names.",
+            parameters: z.object({ sessionType: z.enum(["private", "recovery"]) }),
+            execute: async ({ sessionType }): Promise<ClassCardData> => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied", reason: "Booking sessions isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const roomName = (id: string) => snapshot.rooms.find((r) => r.id === id)?.name ?? "";
+                return {
+                    card: "class_service_options",
+                    services: snapshot.services
+                        .filter((s) => s.type === sessionType && s.status === "Active")
+                        .map((s) => ({
+                            id: s.id,
+                            name: s.name,
+                            category: s.category,
+                            type: s.type as "private" | "recovery",
+                            durationMin: s.durationMin,
+                            capacity: s.openSession ? s.capacity : 1,
+                            openSession: s.openSession,
+                            roomName: roomName(s.roomId),
+                            coverImage: s.coverImage,
+                            coverColor: s.coverColor,
+                        })),
+                    instructors: snapshot.instructors
+                        .filter((i) => inScope(ctx, i.branchId))
+                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl })),
+                };
+            },
+        }),
+
+        preview_appointment: tool({
+            description:
+                "Show a LIVE preview of a private/recovery session being booked. Call after each answer. Pass every field known so far. Required to publish: service, customer, date, start time (and an instructor for a private session, unless the studio auto-assigns).",
+            parameters: APPOINTMENT_ARGS,
+            execute: async (args): Promise<ClassCardData> => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied", reason: "Booking sessions isn't part of your access." };
+                }
+                const preview = apptPreview(args);
+                const ready = apptComplete(args);
+                const draft = ready ? apptDraft(args) : undefined;
+                return {
+                    card: "class_preview",
+                    sessionType: args.sessionType,
+                    preview,
+                    readyToPublish: ready,
+                    ...(draft ? { appointmentDraft: draft } : {}),
+                };
+            },
+        }),
+
+        publish_appointment: tool({
+            description:
+                "Book the finished private/recovery session. Call ONLY after the user confirms. Pass every resolved field. Refused without create access.",
+            parameters: APPOINTMENT_ARGS,
+            execute: async (args): Promise<ClassCardData> => {
+                if (!caps.createSchedule || !ctx.canWrite) {
+                    return { card: "class_denied", reason: "You don't have permission to book sessions." };
+                }
+                if (!apptComplete(args)) {
+                    return { card: "class_empty", message: "Some details are still missing — let's finish the preview first." };
+                }
+                const draft = apptDraft(args);
+                const noun = args.sessionType === "recovery" ? "Recovery session" : "Private session";
+                return {
+                    card: "class_result",
+                    sessionType: args.sessionType,
+                    summary: `${noun} · ${args.serviceName ?? ""} · ${args.dateISO} ${args.startTime}`.replace(/\s+·\s+·/g, " ·"),
+                    appointmentDraft: draft,
+                };
             },
         }),
     };

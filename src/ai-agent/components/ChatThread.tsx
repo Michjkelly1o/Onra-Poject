@@ -435,12 +435,40 @@ export function ChatThread({
             if (mm.role !== "assistant" || !mm.toolInvocations) continue;
             for (const ti of mm.toolInvocations) {
                 if (ti.state !== "result") continue;
-                const res = ti.result as { card?: string; draft?: unknown } | undefined;
-                if (res?.card !== "class_result" || !res.draft) continue;
+                const res = ti.result as { card?: string; draft?: unknown; appointmentDraft?: unknown } | undefined;
+                if (res?.card !== "class_result" || (!res.draft && !res.appointmentDraft)) continue;
                 if (appliedClassRef.current.has(ti.toolCallId)) continue;
                 appliedClassRef.current.add(ti.toolCallId);
                 const st = useAppStore.getState();
                 try {
+                    if (res.appointmentDraft) {
+                        // Private / recovery (Phase 8) → addCustomerAppointment,
+                        // which derives every denormalized field from the service.
+                        const a = res.appointmentDraft as {
+                            sessionType: "private" | "recovery"; serviceId: string; durationMins: number;
+                            instructorId: string | null; flexible: boolean; customerId: string;
+                            dateISO: string; startTime: string;
+                        };
+                        const cust = st.customers.find((c) => c.id === a.customerId);
+                        if (!cust) throw new Error("That customer couldn't be found.");
+                        st.addCustomerAppointment({
+                            serviceId: a.serviceId,
+                            dateISO: a.dateISO,
+                            startTime: a.startTime,
+                            durationMins: a.durationMins,
+                            instructorId: a.flexible ? null : a.instructorId,
+                            flexible: a.flexible,
+                            customer: {
+                                id: cust.id,
+                                name: `${cust.firstName} ${cust.lastName}`.trim(),
+                                initials: cust.initials,
+                                imageUrl: cust.imageUrl,
+                            },
+                        });
+                        const noun = a.sessionType === "recovery" ? "Recovery session" : "Private session";
+                        st.showToast(`${noun} booked`, `${cust.firstName} ${cust.lastName} · ${a.dateISO} ${a.startTime}`, "success", "check");
+                        continue;
+                    }
                     const draft = res.draft as Parameters<typeof expandDraftToRows>[0];
                     const rows = expandDraftToRows(draft, {
                         instructors: st.instructors,
@@ -455,7 +483,7 @@ export function ChatThread({
                             : summariseDraft(draft);
                     st.showToast(rows.length > 1 ? "Recurring class scheduled" : "Class scheduled", label, "success", "check");
                 } catch (e) {
-                    st.showToast("Couldn't publish class", e instanceof Error ? e.message : "Please try again.", "error");
+                    st.showToast("Couldn't publish", e instanceof Error ? e.message : "Please try again.", "error");
                 }
             }
         }

@@ -65,7 +65,7 @@ function DaysEditorCard({ send }: { send: (text: string) => void }) {
 /** Terminal card — plays a brief "Validating…" sparkle (frame 36) then flips to
  *  the published confirmation (the class is already written; this is the
  *  optimistic-UI flourish the Figma shows between publish and success). */
-function ResultCard({ noun, summary }: { noun: string; summary: string }) {
+function ResultCard({ noun, summary, verb }: { noun: string; summary: string; verb: string }) {
     const [done, setDone] = useState(false);
     useEffect(() => {
         const t = setTimeout(() => setDone(true), 1300);
@@ -87,7 +87,7 @@ function ResultCard({ noun, summary }: { noun: string; summary: string }) {
             <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
             <div className="min-w-0">
                 <p className="text-[14px] font-medium text-[#101828] leading-5">
-                    Your {noun} has been published.
+                    Your {noun} has been {verb}.
                 </p>
                 <p className="text-[13px] text-[#475467] leading-5 mt-0.5">{summary}</p>
             </div>
@@ -96,7 +96,7 @@ function ResultCard({ noun, summary }: { noun: string; summary: string }) {
 }
 
 export function ClassCard({ data, send }: { data: ClassCardData; send: (text: string) => void }) {
-    if (data.card === "class_options") return null;
+    if (data.card === "class_options" || data.card === "class_service_options") return null;
 
     if (data.card === "class_spot_editor") {
         return <SpotEditorCard capacity={data.capacity} send={send} />;
@@ -137,22 +137,26 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
     }
 
     if (data.card === "class_result") {
-        return <ResultCard noun={NOUN[data.sessionType] ?? "class schedule"} summary={data.summary} />;
+        const appt = data.sessionType === "private" || data.sessionType === "recovery";
+        return <ResultCard noun={NOUN[data.sessionType] ?? "class schedule"} summary={data.summary} verb={appt ? "booked" : "published"} />;
     }
 
     // class_preview
+    const isAppt = data.sessionType === "private" || data.sessionType === "recovery";
     return (
         <div className="w-full flex flex-col gap-3">
             <SchedulePreviewCard
                 data={data.preview}
+                variant={isAppt ? "appointment" : "class"}
                 title={`${(NOUN[data.sessionType] ?? "class schedule").replace(/^\w/, (c) => c.toUpperCase())} preview`}
+                subtitle={isAppt ? "This is how your session will look." : undefined}
                 sessions={data.sessions}
             />
 
             {data.readyToPublish && (
                 <div className="w-full rounded-[12px] border border-[#e4e7ec] bg-white overflow-hidden">
                     <p className="px-4 py-3 text-[16px] font-semibold text-[#101828] leading-6 border-b border-[#e4e7ec]">
-                        Are you ready to publish this schedule?
+                        {isAppt ? "Are you ready to book this session?" : "Are you ready to publish this schedule?"}
                     </p>
                     <div className="flex flex-col p-1.5 gap-1">
                         <button
