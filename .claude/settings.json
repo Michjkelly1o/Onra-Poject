@@ -99,7 +99,17 @@
       "Bash(awk -F: '{if\\($1+0>=11200 && $1+0<=11820\\) print}')",
       "Bash(sed -n '/interface CommissionSources/,/^}/p' src/lib/payroll-calc.ts)",
       "Bash(sed -n '/export interface IssuedGiftCard /,/^}/p' src/data/mock/_types.ts)",
-      "Bash(perl -0pi -e 's/\\\\{ transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments \\\\}/{ transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards }/g' src/app/admin/compensation/page.tsx src/app/instructor/earnings/page.tsx src/components/staff/PayrollRunPage.tsx src/components/staff/PayrollInstructorDetailPage.tsx)"
+      "Bash(perl -0pi -e 's/\\\\{ transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments \\\\}/{ transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards }/g' src/app/admin/compensation/page.tsx src/app/instructor/earnings/page.tsx src/components/staff/PayrollRunPage.tsx src/components/staff/PayrollInstructorDetailPage.tsx)",
+      "Bash(sed -n '/^### Phase 7/,/^### Phase 8/p' new-prd/class-creation-in-agent-implementation-plan.md)",
+      "Bash(sed -n '/^### Publish/,/^### Step 19\\\\|^## 3\\\\./p' new-prd/class-creation-in-agent-implementation-plan.md)",
+      "Bash(node -e \"const i=require\\('@untitledui/icons'\\); ['Stars01','Stars02','Stars03','Zap','MagicWand01','MagicWand02'].forEach\\(n=>console.log\\(n, typeof i[n]\\)\\)\")",
+      "Bash(sed -n '/data.card === \"class_result\"/,/^    }/p' src/ai-agent/components/cards/ClassCard.tsx)",
+      "Bash(awk 'NR>=137 && NR<=183' src/ai-agent/agent/prompt.ts)",
+      "Bash(awk 'NR>=58 && NR<=270' src/ai-agent/agent/prompt.ts)",
+      "Bash(perl -0pi -e 's/hydrate\\\\\\(args\\\\\\)/hydrate\\(args, caps.seePayRate\\)/g' src/ai-agent/schedule/schedule-tools.ts)",
+      "Bash(perl -0pi -e 's/if \\\\\\(!caps\\\\.createSchedule \\\\|\\\\| !ctx\\\\.canWrite\\\\\\) \\\\{/if \\(!caps.createSchedule\\) {/g' src/ai-agent/schedule/schedule-tools.ts)",
+      "Bash(node -e \"const i=require\\('@untitledui/icons'\\); ['Gift01','Gift02','GiftCard'].forEach\\(n=>console.log\\(n, typeof i[n]\\)\\)\")",
+      "Bash(curl -sL -o template.png \"https://www.figma.com/api/mcp/asset/2d57bc48-4a48-4008-b790-3df99cd69b94\")"
     ],
     "additionalDirectories": [
       "/Users/hizkiast/Desktop/Syncfit/src/app/admin/products/retail/[id]",

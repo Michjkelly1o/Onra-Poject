@@ -134,8 +134,8 @@ const BADGE_TONE: Record<AiOptionBadgeTone, string> = {
 function OptionMedia({ opt }: { opt: AiQuestionOption }) {
     if (opt.thumbnailUrl) {
         return (
-            <span className="shrink-0 size-10 rounded-[8px] overflow-hidden bg-[#f2f4f7] relative">
-                <Image src={opt.thumbnailUrl} alt="" fill sizes="40px" className="object-cover" />
+            <span className="shrink-0 size-14 rounded-[8px] overflow-hidden bg-[#f2f4f7] relative">
+                <Image src={opt.thumbnailUrl} alt="" fill sizes="56px" className="object-cover" />
             </span>
         );
     }
@@ -267,15 +267,14 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className, com
         }
     };
 
-    // Forward chevron: inline advances the working selection; compact only
-    // walks forward through steps already answered.
-    const canGoNext = compact ? !!answers[step] && step + 1 < total : canAdvance;
+    // Pager chevrons are free NAVIGATION, both directions — the user can page
+    // ahead to read question 2 (or back to review/change an earlier one)
+    // without having answered the current one. (Answering still happens by
+    // picking an option, which commits + auto-advances in compact mode.) The
+    // forward chevron is only disabled on the very last question.
+    const canGoNext = step + 1 < total;
     const goNext = () => {
-        if (compact) {
-            if (answers[step] && step + 1 < total) loadStep(step + 1);
-        } else {
-            handleNext();
-        }
+        if (step + 1 < total) loadStep(step + 1);
     };
 
     const pager = useMemo(() => `${step + 1} of ${total}`, [step, total]);
@@ -318,7 +317,11 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className, com
                     disabled={opt.disabled}
                     aria-pressed={active}
                     className={cn(
-                        "w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left transition-colors",
+                        "w-full flex gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left transition-colors",
+                        // Rich cards (thumbnail + description + chips) align to
+                        // the top so the image lines up with the title; plain
+                        // rows stay vertically centered.
+                        hasMedia ? "items-start" : "items-center",
                         opt.disabled
                             ? "opacity-50 cursor-not-allowed"
                             : active

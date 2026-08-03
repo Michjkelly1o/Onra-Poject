@@ -428,6 +428,7 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 type InstructorPending =
     | { mode: "row"; row: Instructor; kind: ConfirmKind }
+    | { mode: "bulk"; rows: Instructor[]; kind: ConfirmKind }
     | null;
 
 function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: {
@@ -532,6 +533,15 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
     const allChecked = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
     const someChecked = !allChecked && pageIds.some(id => selectedIds.has(id));
 
+    // Bulk selection → floating action bar (mirrors the /admin/staff list +
+    // Role/Shift detail pages). Actions apply to every selected instructor.
+    const selectedRows = sortedRows.filter(r => selectedIds.has(r.id));
+    const selectionCount = selectedRows.length;
+    const hasArchivable    = selectedRows.some(r => r.status !== "archive");
+    const hasReactivatable = selectedRows.some(r => r.status === "inactive");
+    const hasRecoverable   = selectedRows.some(r => r.status === "archive");
+    const clearSelection = () => setSelectedIds(new Set());
+
     function toggleAllOnPage() {
         setSelectedIds(prev => {
             const next = new Set(prev);
@@ -557,23 +567,27 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
     }
 
     function performAction(p: NonNullable<InstructorPending>) {
+        const kind = p.kind;
+        const verbPast: Record<ConfirmKind, string> = {
+            archive: "archived", recover: "restored to Active",
+            reactivate: "reactivated", deactivate: "deactivated",
+            delete: "deleted",
+        };
+        const nextStatus: InstructorStatus | null =
+            kind === "archive"    ? "archive"  :
+            kind === "deactivate" ? "inactive" :
+            kind === "recover"    ? "active"   :
+            kind === "reactivate" ? "active"   : null;
+        const icon = kind === "deactivate" ? "slash" : kind === "archive" ? "archive" : kind === "delete" ? "trash" : "refresh";
+        const toneSuccess = kind !== "deactivate" && kind !== "delete";
         if (p.mode === "row") {
-            const { row, kind } = p;
-            const subject = row.name;
-            const verbPast: Record<ConfirmKind, string> = {
-                archive: "archived", recover: "restored to Active",
-                reactivate: "reactivated", deactivate: "deactivated",
-                delete: "deleted",
-            };
-            const nextStatus: InstructorStatus | null =
-                kind === "archive"    ? "archive"  :
-                kind === "deactivate" ? "inactive" :
-                kind === "recover"    ? "active"   :
-                kind === "reactivate" ? "active"   : null;
-            if (nextStatus) setInstructorStatus([row.id], nextStatus);
-            const icon = kind === "deactivate" ? "slash" : kind === "archive" ? "archive" : kind === "delete" ? "trash" : "refresh";
-            const toneSuccess = kind !== "deactivate" && kind !== "delete";
-            showToast(`Instructor ${verbPast[kind]}`, `${subject} has been ${verbPast[kind]}.`, toneSuccess ? "success" : "error", icon);
+            if (nextStatus) setInstructorStatus([p.row.id], nextStatus);
+            showToast(`Instructor ${verbPast[kind]}`, `${p.row.name} has been ${verbPast[kind]}.`, toneSuccess ? "success" : "error", icon);
+        } else {
+            const ids = p.rows.map(r => r.id);
+            if (nextStatus) setInstructorStatus(ids, nextStatus);
+            showToast(`${ids.length} instructor${ids.length === 1 ? "" : "s"} ${verbPast[kind]}`, `${ids.length} instructor${ids.length === 1 ? "" : "s"} ${verbPast[kind]}.`, toneSuccess ? "success" : "error", icon);
+            clearSelection();
         }
         setPendingConfirm(null);
     }
@@ -700,9 +714,55 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                 />
             )}
 
+            {/* Bulk action bar — floats above the page while ≥1 row is selected. */}
+            {selectionCount > 0 && (
+                <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
+                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+                        <button type="button" onClick={clearSelection}
+                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                            {selectionCount} selected
+                            <XClose className="w-5 h-5 text-[#667085]" />
+                        </button>
+                        <div className="flex items-center gap-3">
+                            {hasArchivable && (
+                                <Button variant="secondary-gray" size="sm"
+                                    leftIcon={<Archive className="w-5 h-5 text-[#667085]" />}
+                                    onClick={() => setPendingConfirm({ mode: "bulk", rows: selectedRows, kind: "archive" })}>
+                                    Archive
+                                </Button>
+                            )}
+                            {hasReactivatable && (
+                                <Button variant="secondary-gray" size="sm"
+                                    leftIcon={<Check className="w-5 h-5 text-[#067647]" />}
+                                    onClick={() => setPendingConfirm({ mode: "bulk", rows: selectedRows, kind: "reactivate" })}>
+                                    Reactivate
+                                </Button>
+                            )}
+                            {hasRecoverable && (
+                                <Button variant="secondary-gray" size="sm"
+                                    leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />}
+                                    onClick={() => setPendingConfirm({ mode: "bulk", rows: selectedRows, kind: "recover" })}>
+                                    Recover
+                                </Button>
+                            )}
+                            {hasArchivable && (
+                                <Button variant="secondary-gray" size="sm"
+                                    className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
+                                    leftIcon={<SlashCircle01 className="w-5 h-5 text-[#b42318]" />}
+                                    onClick={() => setPendingConfirm({ mode: "bulk", rows: selectedRows, kind: "deactivate" })}>
+                                    Deactivate
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {pendingConfirm && (() => {
                 const cfg = CONFIRM_CFG[pendingConfirm.kind];
-                const subject = `"${pendingConfirm.row.name}"`;
+                const subject = pendingConfirm.mode === "bulk"
+                    ? `${pendingConfirm.rows.length} instructor${pendingConfirm.rows.length === 1 ? "" : "s"}`
+                    : `"${pendingConfirm.row.name}"`;
                 return (
                     <ConfirmModal
                         open

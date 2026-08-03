@@ -155,6 +155,8 @@ export function askQuestionsTool() {
                                         groupLabel: z.string().optional().describe("section header (kind: grouped)"),
                                         disabled: z.boolean().optional().describe("hard-block this option (e.g. a room already in use)"),
                                         disabledReason: z.string().optional().describe("why it's blocked, shown muted"),
+                                        thumbnailUrl: z.string().optional().describe("cover image url — for class templates, pass the template's coverImage so the option shows its picture"),
+                                        attributes: z.array(z.string()).optional().describe("small info chips shown under the label, e.g. ['Pilates','Group','60 min','15 max'] for a template"),
                                     }),
                                 )
                                 .min(1)
