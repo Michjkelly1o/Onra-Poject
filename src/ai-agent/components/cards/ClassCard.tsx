@@ -18,7 +18,9 @@ import { CalendarPlus01, PencilLine, CheckCircle, Lightbulb02 } from "@untitledu
 import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
+import { SelectDaysEditor } from "@/ai-agent/components/SelectDaysEditor";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
+import type { DaySchedule } from "@/ai-agent/schedule/schedule-wizard";
 
 const NOUN: Record<string, string> = { class: "class schedule", private: "private session", recovery: "recovery session" };
 
@@ -44,11 +46,31 @@ function SpotEditorCard({ capacity, send }: { capacity: number; send: (text: str
     );
 }
 
+/** Select-days editor card — sends the schedule as JSON the model copies into
+ *  the recurDays argument. */
+function DaysEditorCard({ send }: { send: (text: string) => void }) {
+    const [confirmed, setConfirmed] = useState<DaySchedule[] | null>(null);
+    return (
+        <SelectDaysEditor
+            confirmed={confirmed}
+            onConfirm={(days) => {
+                if (confirmed) return;
+                setConfirmed(days);
+                send(`Days confirmed — schedule: ${JSON.stringify(days)}`);
+            }}
+        />
+    );
+}
+
 export function ClassCard({ data, send }: { data: ClassCardData; send: (text: string) => void }) {
     if (data.card === "class_options") return null;
 
     if (data.card === "class_spot_editor") {
         return <SpotEditorCard capacity={data.capacity} send={send} />;
+    }
+
+    if (data.card === "class_days_editor") {
+        return <DaysEditorCard send={send} />;
     }
 
     if (data.card === "class_room_created") {
@@ -101,19 +123,10 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
             <SchedulePreviewCard
                 data={data.preview}
                 title={`${(NOUN[data.sessionType] ?? "class schedule").replace(/^\w/, (c) => c.toUpperCase())} preview`}
+                sessions={data.sessions}
             />
 
-            {data.recurringStub && (
-                <div className="flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f1f2ed] px-4 py-3">
-                    <Lightbulb02 className="size-4 text-[#475467] shrink-0 mt-0.5" />
-                    <p className="text-[14px] text-[#475467] leading-5">
-                        Recurring schedules aren&rsquo;t available in the assistant yet. I can set up a single class now,
-                        or you can create a repeating one from the Schedule page.
-                    </p>
-                </div>
-            )}
-
-            {data.readyToPublish && !data.recurringStub && (
+            {data.readyToPublish && (
                 <div className="w-full rounded-[12px] border border-[#e4e7ec] bg-white overflow-hidden">
                     <p className="px-4 py-3 text-[16px] font-semibold text-[#101828] leading-6 border-b border-[#e4e7ec]">
                         Are you ready to publish this schedule?

@@ -24,6 +24,8 @@ import {
     type SchedulePreviewData,
 } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
+import { SelectDaysEditor } from "@/ai-agent/components/SelectDaysEditor";
+import { expandRecurrence } from "@/ai-agent/schedule/apply-class-schedule";
 import {
     createMachine,
     applyAnswer,
@@ -433,6 +435,37 @@ export default function ClassWizardWidgetsDevPage() {
                         {log["multi"] && (
                             <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["multi"]}</p>
                         )}
+                    </section>
+
+                    <section>
+                        <div className="mb-2 flex items-baseline justify-between gap-3">
+                            <h2 className="text-[15px] font-semibold text-[#101828]">Select-days editor (recurring)</h2>
+                            <span className="text-[12px] text-[#98a2b3] shrink-0">frames 22 / 28</span>
+                        </div>
+                        <SelectDaysEditor
+                            confirmed={log["days"] ? (JSON.parse(log["days"]) as never) : null}
+                            onConfirm={(days) => setLog((prev) => ({ ...prev, days: JSON.stringify(days) }))}
+                        />
+                        {log["days"] && (
+                            <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["days"]}</p>
+                        )}
+                    </section>
+
+                    <section>
+                        <div className="mb-2 flex items-baseline justify-between gap-3">
+                            <h2 className="text-[15px] font-semibold text-[#101828]">Recurring preview (session list)</h2>
+                            <span className="text-[12px] text-[#98a2b3] shrink-0">frame 28 / 33</span>
+                        </div>
+                        <SchedulePreviewCard
+                            data={PREVIEW_FULL}
+                            sessions={expandRecurrence({
+                                startISO: "2026-02-26",
+                                endRule: "after",
+                                endAfterCount: 11,
+                                everyWeeks: 1,
+                                days: [{ day: "Fri", slots: [{ startTime: "09:00", endTime: "10:00" }] }],
+                            })}
+                        />
                     </section>
 
                     <section>

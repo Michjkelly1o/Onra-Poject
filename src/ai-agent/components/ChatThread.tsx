@@ -74,7 +74,7 @@ import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
 import { ClassCard } from "@/ai-agent/components/cards/ClassCard";
 import { isClassCard } from "@/ai-agent/schedule/schedule-cards";
-import { expandDraftToRow, summariseDraft } from "@/ai-agent/schedule/apply-class-schedule";
+import { expandDraftToRows, summariseDraft } from "@/ai-agent/schedule/apply-class-schedule";
 import { TypingDots } from "@/ai-agent/components/TypingDots";
 import { AiQuestionPrompt, type AiQuestionAnswer } from "@/ai-agent/components/AiQuestionPrompt";
 
@@ -441,14 +441,19 @@ export function ChatThread({
                 appliedClassRef.current.add(ti.toolCallId);
                 const st = useAppStore.getState();
                 try {
-                    const draft = res.draft as Parameters<typeof expandDraftToRow>[0];
-                    const row = expandDraftToRow(draft, {
+                    const draft = res.draft as Parameters<typeof expandDraftToRows>[0];
+                    const rows = expandDraftToRows(draft, {
                         instructors: st.instructors,
                         rooms: st.rooms,
                         branches: st.branches,
                     });
-                    st.addClassSchedules([row]);
-                    st.showToast("Class scheduled", summariseDraft(draft), "success", "check");
+                    if (!rows.length) throw new Error("No occurrences were generated for this schedule.");
+                    st.addClassSchedules(rows);
+                    const label =
+                        rows.length > 1
+                            ? `${draft.name} · ${rows.length} classes added`
+                            : summariseDraft(draft);
+                    st.showToast(rows.length > 1 ? "Recurring class scheduled" : "Class scheduled", label, "success", "check");
                 } catch (e) {
                     st.showToast("Couldn't publish class", e instanceof Error ? e.message : "Please try again.", "error");
                 }

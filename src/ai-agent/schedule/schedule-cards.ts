@@ -16,6 +16,13 @@ import type { ClassScheduleDraft, SessionType } from "@/ai-agent/schedule/schedu
 /** Live preview of the class so far. `readyToPublish` flips true once every
  *  required field is present — the client then shows the publish prompt
  *  (Publish schedule / Edit a field) beneath the card. */
+/** One generated occurrence for the recurring session-list preview. */
+export interface PreviewSession {
+    dateISO: string;
+    startTime: string;
+    endTime: string;
+}
+
 export interface ClassPreviewCard {
     card: "class_preview";
     sessionType: SessionType;
@@ -24,9 +31,9 @@ export interface ClassPreviewCard {
     /** The draft to commit, present only when `readyToPublish`. Carries ids +
      *  times; the client expands ids → display fields against the live store. */
     draft?: ClassScheduleDraft;
-    /** Recurring is asked in Phase 4 but not yet built — the tool sets this so
-     *  the client shows a "recurring coming soon" note instead of publishing. */
-    recurringStub?: boolean;
+    /** Recurring only — the expanded occurrences, so the preview can show the
+     *  "Preview of scheduled classes · N classes" month-grouped list. */
+    sessions?: PreviewSession[];
 }
 
 /** Terminal success card. The client writes `draft` into the store exactly
@@ -83,6 +90,13 @@ export interface ClassSpotEditorCard {
     capacity: number;
 }
 
+/** Interactive select-days editor (recurring branch, frames 22/28). The client
+ *  renders SelectDaysEditor; on confirm it sends a "Days confirmed" message
+ *  whose JSON the model copies into the recurDays arg. */
+export interface ClassDaysEditorCard {
+    card: "class_days_editor";
+}
+
 export type ClassCardData =
     | ClassPreviewCard
     | ClassResultCard
@@ -90,6 +104,7 @@ export type ClassCardData =
     | ClassEmptyCard
     | ClassOptionsCard
     | ClassSpotEditorCard
+    | ClassDaysEditorCard
     | ClassRoomCreatedCard;
 
 /** True for any card this feature owns — lets ChatThread route to ClassCard. */

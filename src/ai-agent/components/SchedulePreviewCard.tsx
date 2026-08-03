@@ -15,8 +15,9 @@
 // The recurring "Preview of scheduled classes · N classes ▾" row (frames 28 /
 // 33 / 34) is deliberately NOT here yet — it belongs to the recurrence phase.
 
+import { useMemo, useState } from "react";
 import Image from "next/image";
-import { Image01 } from "@untitledui/icons";
+import { Image01, ChevronDown } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 
 /** Every field is optional. A missing / empty field renders the amber
@@ -42,12 +43,104 @@ export interface SchedulePreviewData {
     dateTime?: string; // "Fri, 26 Feb 2025 · 9:00 – 10:00 AM"
 }
 
+/** One expanded occurrence for the recurring session list. */
+export interface PreviewSession {
+    dateISO: string;
+    startTime: string;
+    endTime: string;
+}
+
 export interface SchedulePreviewCardProps {
     data: SchedulePreviewData;
     /** Header copy override (private / recovery flows swap the noun). */
     title?: string;
     subtitle?: string;
+    /** Recurring only — the generated occurrences. When present, an expandable
+     *  "Preview of scheduled classes · N classes" row renders, grouped by month. */
+    sessions?: PreviewSession[];
     className?: string;
+}
+
+const MONTHS_FULL = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+];
+function parseISODate(iso: string): Date {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+}
+function fmtTime12(hhmm: string): string {
+    const [h, m] = hhmm.split(":").map(Number);
+    const ap = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, "0")} ${ap}`;
+}
+
+/** The expandable, month-grouped list of every generated occurrence. */
+function SessionList({ sessions }: { sessions: PreviewSession[] }) {
+    const [open, setOpen] = useState(false);
+    const groups = useMemo(() => {
+        const order: string[] = [];
+        const map = new Map<string, { dateISO: string; slots: PreviewSession[] }[]>();
+        for (const s of sessions) {
+            const dt = parseISODate(s.dateISO);
+            const key = `${MONTHS_FULL[dt.getMonth()]} ${dt.getFullYear()}`;
+            if (!map.has(key)) {
+                map.set(key, []);
+                order.push(key);
+            }
+            const days = map.get(key)!;
+            const existing = days.find((d) => d.dateISO === s.dateISO);
+            if (existing) existing.slots.push(s);
+            else days.push({ dateISO: s.dateISO, slots: [s] });
+        }
+        return order.map((k) => ({ month: k, days: map.get(k)! }));
+    }, [sessions]);
+
+    return (
+        <div className="mt-4 border border-[#e4e7ec] rounded-[10px] overflow-hidden">
+            <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                className="w-full flex items-center gap-3 px-3.5 py-3 text-left hover:bg-[#f9fafb] transition-colors"
+            >
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-5">Preview of scheduled classes</p>
+                    <p className="text-[12px] text-[#667085] leading-[18px]">Review all upcoming scheduled dates and time slots.</p>
+                </div>
+                <span className="shrink-0 inline-flex items-center rounded-full bg-[#f2f4f7] px-2.5 py-0.5 text-[12px] font-medium text-[#344054]">
+                    {sessions.length} {sessions.length === 1 ? "class" : "classes"}
+                </span>
+                <ChevronDown className={cn("size-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+            </button>
+            {open && (
+                <div className="px-3.5 pb-3 pt-1 flex flex-col gap-3 max-h-[300px] overflow-y-auto border-t border-[#e4e7ec]">
+                    {groups.map((g) => (
+                        <div key={g.month} className="flex flex-col gap-2">
+                            <p className="text-[12px] font-semibold text-[#667085] pt-1">{g.month}</p>
+                            {g.days.map((d) => {
+                                const dt = parseISODate(d.dateISO);
+                                return (
+                                    <div key={d.dateISO} className="flex items-start gap-3">
+                                        <span className="shrink-0 size-8 rounded-full bg-[#f2f4f7] flex items-center justify-center text-[13px] font-semibold text-[#344054]">
+                                            {dt.getDate()}
+                                        </span>
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                            {d.slots.map((s, i) => (
+                                                <span key={i} className="inline-flex items-center rounded-[6px] bg-[#f1f7f4] px-2 py-0.5 text-[12px] font-medium text-[#1d5c3a]">
+                                                    {fmtTime12(s.startTime)} – {fmtTime12(s.endTime)}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
 
 function hasValue(v?: string): v is string {
@@ -83,6 +176,7 @@ export function SchedulePreviewCard({
     data,
     title = "Class preview",
     subtitle = "This is how your class schedule will look like.",
+    sessions,
     className,
 }: SchedulePreviewCardProps) {
     const {
@@ -172,6 +266,8 @@ export function SchedulePreviewCard({
                 </Field>
                 <Field label="Date & time" value={dateTime} />
             </div>
+
+            {sessions && sessions.length > 0 && <SessionList sessions={sessions} />}
         </div>
     );
 }

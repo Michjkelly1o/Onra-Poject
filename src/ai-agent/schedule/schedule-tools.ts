@@ -35,6 +35,7 @@ import {
     type WizardTemplate,
     type WizardLookups,
 } from "@/ai-agent/schedule/schedule-wizard";
+import { expandRecurrence } from "@/ai-agent/schedule/apply-class-schedule";
 
 const GENDER = z.enum(["all", "female", "male"]);
 
@@ -71,10 +72,26 @@ const SCHEDULE_ARGS = z.object({
     instructorInitials: z.string().optional(),
     instructorAvatarUrl: z.string().optional(),
     payRateId: z.string().optional(),
-    // Step 3 (single only in Phase 4)
+    // Step 3
     recurring: z.boolean().optional(),
+    // single
     dateISO: z.string().optional().describe("Single-class date, 'YYYY-MM-DD'."),
     startTime: z.string().optional().describe("Single-class start, 'HH:MM' 24h."),
+    // recurring
+    recurStartISO: z.string().optional().describe("Recurring series start date, 'YYYY-MM-DD'."),
+    recurEndRule: z.enum(["never", "on", "after"]).optional().describe("How the series ends."),
+    recurEndOnISO: z.string().optional().describe("End date when recurEndRule='on'."),
+    recurEndAfterCount: z.number().optional().describe("Occurrence count when recurEndRule='after'."),
+    recurEveryWeeks: z.number().optional().describe("Repeat interval in weeks (1 = every week)."),
+    recurDays: z
+        .array(
+            z.object({
+                day: z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]),
+                slots: z.array(z.object({ startTime: z.string(), endTime: z.string() })).min(1),
+            }),
+        )
+        .optional()
+        .describe("Selected days + their time slots, copied VERBATIM from the 'Days confirmed' message JSON."),
 });
 
 type ScheduleArgs = z.infer<typeof SCHEDULE_ARGS>;
@@ -129,6 +146,12 @@ function hydrate(a: ScheduleArgs): { config: WizardConfig; answers: WizardAnswer
         recurring: a.recurring,
         dateISO: a.dateISO,
         startTime: a.startTime,
+        recurStartISO: a.recurStartISO,
+        recurEndRule: a.recurEndRule,
+        recurEndOnISO: a.recurEndOnISO,
+        recurEndAfterCount: a.recurEndAfterCount,
+        recurEveryWeeks: a.recurEveryWeeks,
+        recurDays: a.recurDays,
     };
 
     const lookups: WizardLookups = {
@@ -247,6 +270,18 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
             },
         }),
 
+        open_days_editor: tool({
+            description:
+                "Open the interactive select-days editor for a RECURRING schedule. Call this once the user has answered the repeat / start / end / interval questions and it's time to pick the weekdays + time slots. The user's choice returns as a 'Days confirmed — schedule: <JSON>' message — copy that JSON array VERBATIM into preview_class_schedule's recurDays argument.",
+            parameters: z.object({}),
+            execute: async (): Promise<ClassCardData> => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
+                }
+                return { card: "class_days_editor" };
+            },
+        }),
+
         preview_class_schedule: tool({
             description:
                 "Show a LIVE preview of the class schedule being built. Call it after each answer the user gives so they can watch it fill in. Pass every field you know so far; leave the rest empty (they render as 'Awaiting your answer'). When all required fields are set the card offers Publish.",
@@ -261,13 +296,18 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 const { config, answers, lookups } = hydrate(args);
                 const preview = toPreview(config, answers, lookups);
                 const ready = isComplete(config, answers);
-
-                if (args.recurring) {
-                    // Phase 4 stub — recurring is asked but not yet built.
-                    return { card: "class_preview", sessionType: config.sessionType, preview, readyToPublish: false, recurringStub: true };
-                }
                 const draft = ready ? toDraft(config, answers) : undefined;
-                return { card: "class_preview", sessionType: config.sessionType, preview, readyToPublish: ready, ...(draft ? { draft } : {}) };
+                // Recurring — expand to the session list for the preview.
+                const sessions =
+                    draft?.recurring && draft.recurrence ? expandRecurrence(draft.recurrence) : undefined;
+                return {
+                    card: "class_preview",
+                    sessionType: config.sessionType,
+                    preview,
+                    readyToPublish: ready,
+                    ...(draft ? { draft } : {}),
+                    ...(sessions ? { sessions } : {}),
+                };
             },
         }),
 
@@ -282,19 +322,21 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         reason: "You don't have permission to publish class schedules.",
                     };
                 }
-                if (args.recurring) {
-                    return {
-                        card: "class_denied",
-                        reason: "Recurring schedules aren't available in the assistant yet — create it from the Schedule page for now.",
-                    };
-                }
                 const { config, answers } = hydrate(args);
                 if (!isComplete(config, answers)) {
                     return { card: "class_empty", message: "Some details are still missing — let's finish the preview first." };
                 }
                 const draft = toDraft(config, answers);
-                const dt = draft.single ? `${draft.single.dateISO} ${draft.single.startTime}` : "";
-                return { card: "class_result", sessionType: config.sessionType, summary: `${draft.name}${dt ? ` · ${dt}` : ""}`, draft };
+                let summary: string;
+                if (draft.recurring && draft.recurrence) {
+                    const n = expandRecurrence(draft.recurrence).length;
+                    summary = `${draft.name} · ${n} ${n === 1 ? "class" : "classes"}`;
+                } else if (draft.single) {
+                    summary = `${draft.name} · ${draft.single.dateISO} ${draft.single.startTime}`;
+                } else {
+                    summary = draft.name;
+                }
+                return { card: "class_result", sessionType: config.sessionType, summary, draft };
             },
         }),
     };
