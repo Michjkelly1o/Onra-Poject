@@ -165,13 +165,10 @@ export function computeFinancialKpis(
     const arpmCur   = activeMembersCur   > 0 ? netCur   / activeMembersCur   : 0;
     const arpmPrior = activeMembersPrior > 0 ? netPrior / activeMembersPrior : 0;
 
-    // ── 8. Revenue per class = net revenue ÷ sessions run in window ──────
-    const sessionsCur = state.classSchedules.filter(s => inWindow(s.dateISO, current) && branchOk(s.branchId, branchFilter)).length;
-    const sessionsPrior = state.classSchedules.filter(s => inWindow(s.dateISO, prior) && branchOk(s.branchId, branchFilter)).length;
-    const revPerClassCur   = sessionsCur   > 0 ? netCur   / sessionsCur   : 0;
-    const revPerClassPrior = sessionsPrior > 0 ? netPrior / sessionsPrior : 0;
+    // Revenue per class moved to the Classes tab (client Aug 2026) — computed
+    // there off the shared revenueTotals() helper, so it's no longer here.
 
-    // ── 9. Revenue per visit = net revenue ÷ attendances in window ───────
+    // ── Revenue per visit = net revenue ÷ attendances in window ─────────
     const scheduleById = new Map(state.classSchedules.map(s => [s.id, s]));
     const attendsInWin = (w: Window) => state.classBookings.filter(b => {
         if (b.attendanceStatus !== "present") return false;

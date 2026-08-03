@@ -141,9 +141,11 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
     // just there to identify the row shape at a glance.
     const Icon = kind === "membership"
         ? CreditCard02
-        : (kind === "cancellation_penalty" || kind === "freeze_fee")
-            ? SlashCircle01
-            : Package;
+        : kind === "gift_card"
+            ? Gift01
+            : (kind === "cancellation_penalty" || kind === "freeze_fee")
+                ? SlashCircle01
+                : Package;
     return (
         <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
             <Icon className="w-5 h-5 text-[#475467]" />

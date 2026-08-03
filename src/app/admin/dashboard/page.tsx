@@ -752,7 +752,11 @@ export default function AdminDashboard() {
             t.status === "complete"
             && (t.transactionType === undefined || t.transactionType === "sale")
             && t.kind !== "cancellation_penalty"
-            && t.kind !== "freeze_fee";
+            && t.kind !== "freeze_fee"
+            // Gift-card sales are DEFERRED revenue (recognised when the card is
+            // redeemed on another product) — excluding them here keeps the
+            // dashboard consistent with the reports and avoids double-counting.
+            && t.kind !== "gift_card";
         const todaySales = scopedTransactions.filter(t =>
             isBillableSaleToday(t) && t.createdAtISO.startsWith(todayISO),
         );
@@ -888,7 +892,11 @@ export default function AdminDashboard() {
             t.status === "complete"
             && (t.transactionType === undefined || t.transactionType === "sale")
             && t.kind !== "cancellation_penalty"
-            && t.kind !== "freeze_fee";
+            && t.kind !== "freeze_fee"
+            // Gift-card sales are DEFERRED revenue (recognised when the card is
+            // redeemed on another product) — excluding them here keeps the
+            // dashboard consistent with the reports and avoids double-counting.
+            && t.kind !== "gift_card";
         const salesInPeriod = scopedTransactions.filter(t => isBillableSale(t) && inRangeMs(t.createdAtISO));
         const salesInPrior  = scopedTransactions.filter(t => isBillableSale(t) && inPrevRangeMs(t.createdAtISO));
         // Sales = sum of purchase amounts landing in the window.
@@ -1117,6 +1125,7 @@ export default function AdminDashboard() {
         // auto-renewal renewals themselves (would double-count).
         const pastNonRecurringSalesAed = scopedTransactions.reduce((sum, t) => {
             if (t.status !== "complete") return sum;
+            if (t.kind === "gift_card") return sum; // deferred — see note above
             if (t.paymentType === "recurring") return sum;
             if (!inPastRange(t.createdAtISO)) return sum;
             const isSale = (t.transactionType ?? "sale") === "sale";
@@ -1131,6 +1140,7 @@ export default function AdminDashboard() {
         // Client Jul 2026 — was hardcoded to +3% before.
         const pastAllRevenueAed = scopedTransactions.reduce((sum, t) => {
             if (t.status !== "complete") return sum;
+            if (t.kind === "gift_card") return sum; // deferred — see note above
             if (!inPastRange(t.createdAtISO)) return sum;
             const isSale = (t.transactionType ?? "sale") === "sale";
             return isSale ? sum + Math.abs(t.subtotalAed ?? t.amountAed) : sum;

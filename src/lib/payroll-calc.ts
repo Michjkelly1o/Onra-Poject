@@ -648,8 +648,15 @@ function categoryStats(
             if (t.staffId !== staffId || t.kind !== txnKind) continue;
             const day = t.createdAtISO.slice(0, 10);
             if (day < startDay || day > endDay) continue;
-            const isSale     = (t.transactionType ?? "sale") === "sale";
-            const isClawback = t.transactionType === "refund" || t.transactionType === "void";
+            // A refunded row must never count as a sale. Live refunds flip
+            // transactionType to "refund"; the seed's Pattern-B refunds carry
+            // status "refunded" with NO transactionType (they rely on
+            // resolveLedger, which commission doesn't call) — catch both, or a
+            // refunded retail sale gets counted as commissionable.
+            const refunded   = t.status === "refunded";
+            const isSale      = !refunded && (t.transactionType ?? "sale") === "sale";
+            const isClawback  = t.transactionType === "refund" || t.transactionType === "void"
+                || (refunded && t.transactionType === undefined);
             if (!isSale && !isClawback) continue;
             // Commission is on the merchandise line (pre-tax) when available.
             const gross = Math.abs(t.subtotalAed ?? t.amountAed);
@@ -689,10 +696,12 @@ function categoryStats(
     }
 
     // ── Gift cards (credited to the seller, at sale) ────────────────────────
-    // No transaction is created for a gift-card sale (crediting it as revenue
-    // would double-count when the card is later redeemed on another product),
-    // so commission reads the issued cards directly. There's no card-refund
-    // flow, so no clawback branch.
+    // A gift-card sale DOES create a `kind: "gift_card"` transaction (for
+    // Payment History + refunds), but that kind is deliberately NOT in
+    // TXN_KIND_FOR — crediting it as commission there AND here would
+    // double-credit. Commission reads the issued cards directly instead, so a
+    // gift-card refund (which flips the card to status "refunded") claws back
+    // via the status check below.
     if (category === "gift_card") {
         let net = 0, count = 0;
         for (const gc of s.issuedGiftCards) {
