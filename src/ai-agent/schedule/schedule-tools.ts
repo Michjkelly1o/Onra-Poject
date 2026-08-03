@@ -363,13 +363,15 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
 
         open_days_editor: tool({
             description:
-                "Open the interactive select-days editor for a RECURRING schedule. Call this once the user has answered the repeat / start / end / interval questions and it's time to pick the weekdays + time slots. The user's choice returns as a 'Days confirmed — schedule: <JSON>' message — copy that JSON array VERBATIM into preview_class_schedule's recurDays argument.",
-            parameters: z.object({}),
-            execute: async (): Promise<ClassCardData> => {
+                "Open the interactive RECURRENCE editor for a RECURRING schedule — the user sets the start date, how the series ends, the repeat interval, the weekdays, and the per-day time slots all in ONE editor (same controls as the admin schedule form). Call this for ANY recurring schedule; do NOT ask start date / end rule / repeat interval as separate questions — the editor collects them. Pass the class duration so end times auto-fill. The result returns as a 'Recurrence confirmed — config: <JSON>' message; map its fields onto preview_class_schedule (startISO→recurStartISO, endRule→recurEndRule, endOnISO→recurEndOnISO, endAfter→recurEndAfterCount, everyWeeks→recurEveryWeeks, days→recurDays).",
+            parameters: z.object({
+                durationMinutes: z.number().describe("Class length in minutes (from the template) — drives auto end-time."),
+            }),
+            execute: async (a): Promise<ClassCardData> => {
                 if (!caps.createSchedule) {
                     return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
                 }
-                return { card: "class_days_editor" };
+                return { card: "class_days_editor", durationMinutes: a.durationMinutes ?? 60 };
             },
         }),
 

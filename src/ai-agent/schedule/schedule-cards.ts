@@ -114,11 +114,13 @@ export interface ClassSpotEditorCard {
     capacity: number;
 }
 
-/** Interactive select-days editor (recurring branch, frames 22/28). The client
- *  renders SelectDaysEditor; on confirm it sends a "Days confirmed" message
- *  whose JSON the model copies into the recurDays arg. */
+/** Interactive recurrence editor (recurring branch, frames 22/28). The client
+ *  renders SelectDaysEditor (start date + recurring-ends + repeat-every + days +
+ *  time slots); on confirm it sends a "Recurrence confirmed" message whose JSON
+ *  the model maps onto the recur* args. `durationMinutes` drives auto end-time. */
 export interface ClassDaysEditorCard {
     card: "class_days_editor";
+    durationMinutes: number;
 }
 
 export type ClassCardData =

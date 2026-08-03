@@ -480,8 +480,9 @@ export default function ClassWizardWidgetsDevPage() {
                             <span className="text-[12px] text-[#98a2b3] shrink-0">frames 22 / 28</span>
                         </div>
                         <SelectDaysEditor
+                            durationMinutes={60}
                             confirmed={log["days"] ? (JSON.parse(log["days"]) as never) : null}
-                            onConfirm={(days) => setLog((prev) => ({ ...prev, days: JSON.stringify(days) }))}
+                            onConfirm={(config) => setLog((prev) => ({ ...prev, days: JSON.stringify(config) }))}
                         />
                         {log["days"] && (
                             <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["days"]}</p>

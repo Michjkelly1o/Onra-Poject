@@ -18,9 +18,8 @@ import { CheckCircle, Lightbulb02, Stars01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
-import { SelectDaysEditor } from "@/ai-agent/components/SelectDaysEditor";
+import { SelectDaysEditor, type RecurrenceConfig } from "@/ai-agent/components/SelectDaysEditor";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
-import type { DaySchedule } from "@/ai-agent/schedule/schedule-wizard";
 
 const NOUN: Record<string, string> = { class: "class schedule", private: "private session", recovery: "recovery session" };
 
@@ -46,17 +45,18 @@ function SpotEditorCard({ capacity, send }: { capacity: number; send: (text: str
     );
 }
 
-/** Select-days editor card — sends the schedule as JSON the model copies into
- *  the recurDays argument. */
-function DaysEditorCard({ send }: { send: (text: string) => void }) {
-    const [confirmed, setConfirmed] = useState<DaySchedule[] | null>(null);
+/** Recurrence editor card — sends the full recurring config as JSON the model
+ *  maps onto the recur* arguments. */
+function DaysEditorCard({ durationMinutes, send }: { durationMinutes: number; send: (text: string) => void }) {
+    const [confirmed, setConfirmed] = useState<RecurrenceConfig | null>(null);
     return (
         <SelectDaysEditor
+            durationMinutes={durationMinutes}
             confirmed={confirmed}
-            onConfirm={(days) => {
+            onConfirm={(config) => {
                 if (confirmed) return;
-                setConfirmed(days);
-                send(`Days confirmed — schedule: ${JSON.stringify(days)}`);
+                setConfirmed(config);
+                send(`Recurrence confirmed — config: ${JSON.stringify(config)}`);
             }}
         />
     );
@@ -103,7 +103,7 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
     }
 
     if (data.card === "class_days_editor") {
-        return <DaysEditorCard send={send} />;
+        return <DaysEditorCard durationMinutes={data.durationMinutes} send={send} />;
     }
 
     if (data.card === "class_room_created") {

@@ -142,7 +142,7 @@ ${
 **Tools:**
 - **list_class_options** — call FIRST. Returns the studio's real templates, rooms, instructors, categories${ctx.scheduleCaps.seePayRate ? ", pay rates" : ""}. NEVER invent these names — always offer options read from here.
 - **open_spot_editor** — call RIGHT AFTER the user turns spot selection ON, passing the class capacity. It opens an interactive grid; the user's choice returns as a "Spot layout confirmed — columns: X, rows: Y, blocked: …" message. Read those numbers and the blocked list (comma-separated, "none" = empty) and pass them to preview_class_schedule as spotCols / spotRows / spotBlocked.
-- **open_days_editor** — for a RECURRING schedule only. Call it AFTER the repeat / start / end / interval questions, to pick weekdays + time slots. The result returns as a "Days confirmed — schedule: <JSON>" message — copy that JSON array VERBATIM into preview_class_schedule's recurDays argument.
+- **open_days_editor** — for a RECURRING schedule only. Call it as soon as the user picks "Recurring", passing durationMinutes (the template's length). It's ONE editor that collects the start date, how the series ends, the repeat interval, the weekdays AND the per-day time slots — do NOT ask any of those as separate questions. Its result "Recurrence confirmed — config: <JSON>" carries {startISO, endRule, endOnISO?, endAfter?, everyWeeks, days}; map them onto preview_class_schedule (see step 3).
 - **preview_class_schedule** — call after EACH answer with every field known so far. Renders the live preview card (unanswered fields show "Awaiting your answer"). Its result tells you (readyToPublish) once every required field is set.
 - **publish_class_schedule** — call ONLY after the user picks "Publish schedule" in the publish confirmation. Writes the class.
 
@@ -154,9 +154,9 @@ ${
    c. **Should members pick their own spot?** — radio Yes/No.
    d. **Who's teaching it?** — kind:"searchable", searchPlaceholder:"Search instructor…". For each instructor set avatarUrl = imageUrl, rating = their rating, ratingCount = their ratingCount (renders "★ 5.0 (6K reviews)").${ctx.scheduleCaps.seePayRate ? "\n   e. **Which pay rate should apply?** — radio (from list_class_options.payRates)." : ""}
    After the panel: if spot selection was Yes, call open_spot_editor with the class capacity; if a room was added, use the new room. Then call preview_class_schedule with everything.
-3. Date & time — does it repeat?
+3. Date & time — first ask ONE question: does it repeat? (Single / Recurring).
    - **Single** (does not repeat): which date? what start time? → set recurring=false, dateISO, startTime.
-   - **Recurring**: ask (a) start date → recurStartISO; (b) how it ends — Never / On a date / After N occurrences → recurEndRule + recurEndOnISO or recurEndAfterCount; (c) repeat every how many weeks → recurEveryWeeks (1 = every week). THEN call open_days_editor and copy its "Days confirmed" JSON verbatim into recurDays. Set recurring=true. The preview then shows a "Preview of scheduled classes · N classes" list.
+   - **Recurring**: immediately call open_days_editor (pass durationMinutes). Do NOT ask start date, end rule, or repeat interval as questions — the editor collects them along with the weekdays and time slots. Read its "Recurrence confirmed — config: <JSON>" and map: recurStartISO=startISO, recurEndRule=endRule, recurEndOnISO=endOnISO, recurEndAfterCount=endAfter, recurEveryWeeks=everyWeeks, recurDays=days. Set recurring=true. The preview then shows a "Preview of scheduled classes · N classes" list.
 
 After every answer, call preview_class_schedule so the card fills in.
 
