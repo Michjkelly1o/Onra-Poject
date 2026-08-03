@@ -77,13 +77,23 @@ export function ProductDetailScreen({
     ensurePurchaseCart(originId);
 
     const [qty, setQty] = useState(1);
+    // Chosen size variant for a sized retail product (null until picked).
+    const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [, bump] = useReducer((x) => x + 1, 0);
+    // Reset the size pick whenever the product changes.
+    useEffect(() => { setSelectedSize(null); }, [product?.id]);
     useEffect(() => {
-        if (product?.kind === "package" || product?.kind === "retail") {
+        if (product?.kind === "package") {
             const inCart = purchaseCart.items.filter((i) => i.id === product.id).reduce((n, i) => n + i.quantity, 0);
             setQty(Math.max(1, inCart || 1));
+        } else if (product?.kind === "retail") {
+            // Qty folds into the matching (product × size) cart line.
+            const inCart = purchaseCart.items
+                .filter((i) => i.id === product.id && i.size === (selectedSize ?? undefined))
+                .reduce((n, i) => n + i.quantity, 0);
+            setQty(Math.max(1, inCart || 1));
         }
-    }, [product?.id, product?.kind]);
+    }, [product?.id, product?.kind, selectedSize]);
 
     if (!product) {
         return (
@@ -143,14 +153,21 @@ export function ProductDetailScreen({
     // Retail: only "sold out at the shopper's branch" gates the button — plans
     // don't affect retail purchases (non-exclusive). The unitsOnHand figure
     // comes from useCatalogProducts and is scoped to the shopper's home branch.
-    const retailOutOfStock = isRetail && (product.unitsOnHand ?? 0) <= 0;
+    // Sized retail — the shopper picks a size before adding. Stock, the
+    // "in stock" line, the qty cap, and the add gate all follow the pick.
+    const hasSizes = isRetail && (product.sizes?.length ?? 0) > 0;
+    const allSizesSoldOut = hasSizes && (product.sizes ?? []).every((sz) => (product.sizeStock?.[sz] ?? 0) <= 0);
+    const selectedSizeStock = selectedSize ? (product.sizeStock?.[selectedSize] ?? 0) : 0;
+    const effectiveStock = hasSizes ? selectedSizeStock : (product.unitsOnHand ?? 0);
+    const needsSize = hasSizes && !selectedSize;
+    const retailOutOfStock = isRetail && (hasSizes ? allSizesSoldOut : (product.unitsOnHand ?? 0) <= 0);
     const addDisabled =
         product.kind === "membership"
             ? holdsActivePackage || product.id === ownedMembershipId
             : product.kind === "package"
               ? !!activeMembershipPlan
               : product.kind === "retail"
-                ? retailOutOfStock
+                ? retailOutOfStock || needsSize || (hasSizes && selectedSizeStock <= 0)
                 : false;
 
     function onAdd() {
@@ -161,16 +178,18 @@ export function ProductDetailScreen({
         // Packages + retail both open at their current cart qty and let the
         // shopper set an explicit total — so an existing line is OVERWRITTEN
         // rather than added onto.
+        const chosenSize = hasSizes ? (selectedSize ?? undefined) : undefined;
         const existing =
             isPackage || isRetail
-                ? purchaseCart.items.find((i) => i.id === product!.id && i.kind === product!.kind)
+                ? purchaseCart.items.find((i) => i.id === product!.id && i.kind === product!.kind && i.size === chosenSize)
                 : null;
+        const sizeSuffix = chosenSize ? ` (${chosenSize})` : "";
         if (existing) {
             existing.quantity = qty;
-            showToast("Cart updated", `${product!.name} quantity set to ${qty}.`, "success", "check");
+            showToast("Cart updated", `${product!.name}${sizeSuffix} quantity set to ${qty}.`, "success", "check");
         } else {
-            addToCart(product!, isPackage || isRetail ? qty : 1);
-            showToast("Added to cart", `${product!.name} added to your cart.`, "success", "check");
+            addToCart(product!, isPackage || isRetail ? qty : 1, chosenSize);
+            showToast("Added to cart", `${product!.name}${sizeSuffix} added to your cart.`, "success", "check");
         }
         bump();
         afterAdd(product!.kind);
@@ -320,15 +339,49 @@ export function ProductDetailScreen({
                             <InfoRow icon={Box}>
                                 {retailOutOfStock ? (
                                     <span className="font-medium text-[#b42318]">Out of stock at your branch</span>
+                                ) : hasSizes && !selectedSize ? (
+                                    <span className="font-medium text-[var(--brand-text)]">Select a size to see availability</span>
                                 ) : (
                                     <>
                                         <span className="font-medium text-[var(--brand-text)]">
-                                            {product.unitsOnHand} in stock
+                                            {effectiveStock} in stock
                                         </span>
                                         {" "}at your branch
                                     </>
                                 )}
                             </InfoRow>
+                            {hasSizes && (
+                                <>
+                                    <div className="h-px w-full bg-[#e4e7ec]" />
+                                    <div className="flex flex-col gap-2">
+                                        <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">Size</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(product.sizes ?? []).map((sz) => {
+                                                const soldOut = (product.sizeStock?.[sz] ?? 0) <= 0;
+                                                const active = selectedSize === sz;
+                                                return (
+                                                    <button
+                                                        key={sz}
+                                                        type="button"
+                                                        disabled={soldOut}
+                                                        onClick={() => setSelectedSize(sz)}
+                                                        className={
+                                                            "min-w-11 rounded-full border px-4 py-2 text-sm font-medium leading-5 transition-colors " +
+                                                            (soldOut
+                                                                ? "cursor-not-allowed border-[#e4e7ec] bg-[#f9fafb] text-[#98a2b3] line-through"
+                                                                : active
+                                                                    ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]"
+                                                                    : "border-[#d0d5dd] bg-white text-[var(--brand-text)] active:bg-gray-50")
+                                                        }
+                                                    >
+                                                        {sz}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </>
                     )}
                 </div>
@@ -369,15 +422,17 @@ export function ProductDetailScreen({
                 ) : (
                     (() => {
                         const qtyEditable = isPackage || isRetail;
-                        const maxQty = isRetail ? Math.max(1, product.unitsOnHand ?? 1) : Number.POSITIVE_INFINITY;
-                        const canIncrement = qtyEditable && qty < maxQty;
+                        const maxQty = isRetail ? Math.max(1, effectiveStock || 1) : Number.POSITIVE_INFINITY;
+                        // Sized retail can't step qty until a size is chosen.
+                        const qtyActive = qtyEditable && !(isRetail && needsSize);
+                        const canIncrement = qtyActive && qty < maxQty;
                         return (
                             <>
                                 <div className="flex items-center gap-4">
                                     <button
                                         type="button"
                                         onClick={() => setQty((q) => Math.max(1, q - 1))}
-                                        disabled={addDisabled || !qtyEditable || qty <= 1}
+                                        disabled={addDisabled || !qtyActive || qty <= 1}
                                         aria-label="Decrease quantity"
                                         className={STEP_BTN}
                                     >
@@ -395,7 +450,7 @@ export function ProductDetailScreen({
                                     </button>
                                 </div>
                                 <Button variant="primary" size="xl" className="shrink-0 rounded-full" disabled={addDisabled} onClick={onAdd}>
-                                    {isGift ? "Buy gift card" : "Add to cart"}
+                                    {isGift ? "Buy gift card" : isRetail && needsSize ? "Select a size" : "Add to cart"}
                                 </Button>
                             </>
                         );

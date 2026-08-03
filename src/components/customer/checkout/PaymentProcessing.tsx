@@ -82,6 +82,7 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
                     name: it.name,
                     unitPrice: it.price,
                     quantity: it.quantity,
+                    size: it.size,
                 })),
                 // Member self-checkout in the app → tag the origin as the
                 // customer portal (not the front-desk POS). Self-service sales

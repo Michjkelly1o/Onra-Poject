@@ -119,14 +119,13 @@ export function useCatalogProducts(): CatalogProducts {
         const categoryLabelById = new Map(retailCategories.map((c) => [c.id, c.label] as const));
         const shopperBranchId =
             member?.branchId ?? (isAll ? undefined : selectedBranchId);
-        const stockAt = (productId: string): number => {
-            if (shopperBranchId) {
-                return retailStock
-                    .filter((s) => s.productId === productId && s.branchId === shopperBranchId)
-                    .reduce((n, s) => n + (s.unitsOnHand ?? 0), 0);
-            }
+        const stockAt = (productId: string, size?: string): number => {
             return retailStock
-                .filter((s) => s.productId === productId)
+                .filter((s) =>
+                    s.productId === productId &&
+                    (shopperBranchId ? s.branchId === shopperBranchId : true) &&
+                    (size === undefined || s.size === size),
+                )
                 .reduce((n, s) => n + (s.unitsOnHand ?? 0), 0);
         };
         const retail: PlanRow[] = retailProducts
@@ -134,6 +133,12 @@ export function useCatalogProducts(): CatalogProducts {
             .map((p) => {
                 const label = categoryLabelById.get(p.categoryId) ?? "Retail";
                 const units = stockAt(p.id);
+                const sizes = p.sizes ?? [];
+                // Per-size on-hand at the shopper's branch — drives the detail
+                // screen's size picker (out-of-stock sizes are disabled).
+                const sizeStock: Record<string, number> | undefined = sizes.length > 0
+                    ? Object.fromEntries(sizes.map((sz) => [sz, stockAt(p.id, sz)]))
+                    : undefined;
                 return {
                     id: p.id,
                     kind: "retail" as const,
@@ -144,6 +149,7 @@ export function useCatalogProducts(): CatalogProducts {
                     categoryLabel: label,
                     sku: p.sku,
                     unitsOnHand: units,
+                    ...(sizes.length > 0 ? { sizes, sizeStock } : {}),
                 };
             });
 

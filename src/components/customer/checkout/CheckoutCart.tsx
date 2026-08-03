@@ -233,7 +233,12 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                         // read on the catalogue — a stock refresh happens on every
                         // catalogue render so the number is live.
                         const qtyEditable = it.kind === "package" || it.kind === "retail";
-                        const stockCap = it.kind === "retail" ? Math.max(1, it.unitsOnHand ?? 1) : Number.POSITIVE_INFINITY;
+                        // Sized retail lines clamp at the CHOSEN size's on-hand,
+                        // not the product total across sizes.
+                        const retailCap = it.size
+                            ? (it.sizeStock?.[it.size] ?? it.unitsOnHand ?? 1)
+                            : (it.unitsOnHand ?? 1);
+                        const stockCap = it.kind === "retail" ? Math.max(1, retailCap) : Number.POSITIVE_INFINITY;
                         const canIncrement = qtyEditable && it.quantity < stockCap;
                         return (
                             <div key={it.lineId} className="flex w-full items-end gap-6">
@@ -251,7 +256,9 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                                             <span className="truncate text-sm font-normal leading-5 text-[#475467]">
                                                 {it.kind === "gift_card" && it.recipientName
                                                     ? `${titleCase(it.recipientName)} • ${it.sub.replace("Valid until ", "")}`
-                                                    : it.sub}
+                                                    : it.kind === "retail" && it.size
+                                                        ? `${it.categoryLabel ?? "Retail"} • Size ${it.size}`
+                                                        : it.sub}
                                             </span>
                                         </div>
                                         <span className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">AED {it.price}</span>
