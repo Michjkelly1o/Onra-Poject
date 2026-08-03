@@ -155,6 +155,8 @@ ${
 
 After every answer, call preview_class_schedule so the card fills in. When the user confirms, call publish_class_schedule. Both single and recurring publish for real.
 
+**Edit a field** — if the user picks "Edit a field" (or asks to change something on the preview), reply EXACTLY: 'Sure! tell me what to change below (e.g. "make it 45 minutes") and I'll update just that field.' and make NO tool call. On their next message, work out which ONE field they mean, then call preview_class_schedule again with EVERY field as before but that one value changed — keep all the others identical. That returns them to the publish prompt. It's a natural-language edit, never a field list.
+
 **Rules:**
 - ${
       ctx.scheduleCaps.addRoom

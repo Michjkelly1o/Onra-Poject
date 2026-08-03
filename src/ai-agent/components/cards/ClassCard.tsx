@@ -13,8 +13,8 @@
 //   • class_empty    → plain note.
 //   • class_options  → renders nothing (data-only, feeds the model).
 
-import { useState } from "react";
-import { CalendarPlus01, PencilLine, CheckCircle, Lightbulb02 } from "@untitledui/icons";
+import { useState, useEffect } from "react";
+import { CalendarPlus01, PencilLine, CheckCircle, Lightbulb02, Stars01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
@@ -62,6 +62,39 @@ function DaysEditorCard({ send }: { send: (text: string) => void }) {
     );
 }
 
+/** Terminal card — plays a brief "Validating…" sparkle (frame 36) then flips to
+ *  the published confirmation (the class is already written; this is the
+ *  optimistic-UI flourish the Figma shows between publish and success). */
+function ResultCard({ noun, summary }: { noun: string; summary: string }) {
+    const [done, setDone] = useState(false);
+    useEffect(() => {
+        const t = setTimeout(() => setDone(true), 1300);
+        return () => clearTimeout(t);
+    }, []);
+
+    if (!done) {
+        return (
+            <div className="w-full flex items-center gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-white px-4 py-3">
+                <Stars01 className="size-4 text-[#3f8f68] shrink-0 animate-pulse" />
+                <p className="text-[14px] text-[#475467] leading-5">
+                    Validating your {noun} data. Moving to the next step…
+                </p>
+            </div>
+        );
+    }
+    return (
+        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
+            <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
+            <div className="min-w-0">
+                <p className="text-[14px] font-medium text-[#101828] leading-5">
+                    Your {noun} has been published.
+                </p>
+                <p className="text-[13px] text-[#475467] leading-5 mt-0.5">{summary}</p>
+            </div>
+        </div>
+    );
+}
+
 export function ClassCard({ data, send }: { data: ClassCardData; send: (text: string) => void }) {
     if (data.card === "class_options") return null;
 
@@ -104,17 +137,7 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
     }
 
     if (data.card === "class_result") {
-        return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
-                <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
-                <div className="min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">
-                        Your {NOUN[data.sessionType] ?? "class schedule"} has been published.
-                    </p>
-                    <p className="text-[13px] text-[#475467] leading-5 mt-0.5">{data.summary}</p>
-                </div>
-            </div>
-        );
+        return <ResultCard noun={NOUN[data.sessionType] ?? "class schedule"} summary={data.summary} />;
     }
 
     // class_preview
@@ -142,7 +165,7 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
                         </button>
                         <button
                             type="button"
-                            onClick={() => send("I'd like to edit a field")}
+                            onClick={() => send("Edit a field")}
                             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-left hover:bg-[#f9fafb] transition-colors"
                         >
                             <PencilLine className="size-4 text-[#475467] shrink-0" />
