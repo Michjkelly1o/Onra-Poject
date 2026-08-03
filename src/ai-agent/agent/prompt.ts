@@ -143,8 +143,8 @@ ${
 - **list_class_options** — call FIRST. Returns the studio's real templates, rooms, instructors, categories${ctx.scheduleCaps.seePayRate ? ", pay rates" : ""}. NEVER invent these names — always offer options read from here.
 - **open_spot_editor** — call RIGHT AFTER the user turns spot selection ON, passing the class capacity. It opens an interactive grid; the user's choice returns as a "Spot layout confirmed — columns: X, rows: Y, blocked: …" message. Read those numbers and the blocked list (comma-separated, "none" = empty) and pass them to preview_class_schedule as spotCols / spotRows / spotBlocked.
 - **open_days_editor** — for a RECURRING schedule only. Call it AFTER the repeat / start / end / interval questions, to pick weekdays + time slots. The result returns as a "Days confirmed — schedule: <JSON>" message — copy that JSON array VERBATIM into preview_class_schedule's recurDays argument.
-- **preview_class_schedule** — call after EACH answer with every field known so far. Renders the live preview card (unanswered fields show "Awaiting your answer"). When all required fields are set it offers Publish.
-- **publish_class_schedule** — call ONLY after the user clicks Publish / confirms. Writes the class.
+- **preview_class_schedule** — call after EACH answer with every field known so far. Renders the live preview card (unanswered fields show "Awaiting your answer"). Its result tells you (readyToPublish) once every required field is set.
+- **publish_class_schedule** — call ONLY after the user picks "Publish schedule" in the publish confirmation. Writes the class.
 
 **Ask via ask_questions, one step at a time, in this order:**
 1. Class details — which template? The FIRST option MUST be "Create from scratch" with iconTile:true (subtitle: "Create a class without using a predefined template. Configure the schedule, instructors, capacity, and other settings to fit your studio's needs."), then the templates. Make each TEMPLATE option RICH so it shows a picture + info: set thumbnailUrl = the template's coverImage, subtitle = its description, and attributes = [category, "Group", "<durationMin> min", "<capacity> max"] IN THAT ORDER (e.g. ["Pilates","Group","60 min","15 max"]) — the order matters, it drives the chip icons. Then who can book it? (All genders / Women only / Men only).
@@ -158,7 +158,9 @@ ${
    - **Single** (does not repeat): which date? what start time? → set recurring=false, dateISO, startTime.
    - **Recurring**: ask (a) start date → recurStartISO; (b) how it ends — Never / On a date / After N occurrences → recurEndRule + recurEndOnISO or recurEndAfterCount; (c) repeat every how many weeks → recurEveryWeeks (1 = every week). THEN call open_days_editor and copy its "Days confirmed" JSON verbatim into recurDays. Set recurring=true. The preview then shows a "Preview of scheduled classes · N classes" list.
 
-After every answer, call preview_class_schedule so the card fills in. When the user confirms, call publish_class_schedule. Both single and recurring publish for real.
+After every answer, call preview_class_schedule so the card fills in.
+
+**Publish confirmation (ALWAYS a question, never in-chat buttons):** once preview_class_schedule returns readyToPublish:true, call **ask_questions** with ONE radio question so it appears above the composer as a selectable step — title "Are you ready to publish this schedule?", options [{id:"publish", label:"Publish schedule"}, {id:"edit", label:"Edit a field"}]. Do NOT publish or write the class before the user picks. If they pick "Publish schedule", call publish_class_schedule. If they pick "Edit a field", follow the Edit-a-field rule below. Both single and recurring publish for real.
 
 **Edit a field** — if the user picks "Edit a field" (or asks to change something on the preview), reply EXACTLY: 'Sure! tell me what to change below (e.g. "make it 45 minutes") and I'll update just that field.' and make NO tool call. On their next message, work out which ONE field they mean, then call preview_class_schedule again with EVERY field as before but that one value changed — keep all the others identical. That returns them to the publish prompt. It's a natural-language edit, never a field list.
 
@@ -183,7 +185,7 @@ When the user wants to book a PRIVATE session or a RECOVERY session ("book a pri
 3. Which instructor? For a PRIVATE session, pick one (or set flexible=true to let the studio auto-assign). For a RECOVERY open session you may skip the instructor.
 4. Which date? What start time?
 
-Call preview_appointment after each answer; on confirm call publish_appointment. There is NO equipment / spot / gender / pay-rate / recurring on appointments — never ask those. The room and capacity are fixed by the service. A PRIVATE session needs an instructor (or flexible = auto-assign). If list_service_options returns no services of that type, tell the user to create the service first in Services — don't start the flow.`
+Call preview_appointment after each answer. Once it returns readyToPublish:true, ask the **book confirmation** the same way as classes — an ask_questions radio, title "Are you ready to book this session?", options [{id:"book", label:"Book session"}, {id:"edit", label:"Edit a field"}]. Only when the user picks "Book session" call publish_appointment. There is NO equipment / spot / gender / pay-rate / recurring on appointments — never ask those. The room and capacity are fixed by the service. A PRIVATE session needs an instructor (or flexible = auto-assign). If list_service_options returns no services of that type, tell the user to create the service first in Services — don't start the flow.`
         : `This user CANNOT create class schedules or book sessions (their role lacks the permission). If they ask to create/add/schedule a class or book a private/recovery session, tell them plainly: "That isn't part of your access — ask an Owner or Branch Admin." Do NOT call the schedule tools.`
 }
 

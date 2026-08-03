@@ -109,7 +109,21 @@
       "Bash(perl -0pi -e 's/hydrate\\\\\\(args\\\\\\)/hydrate\\(args, caps.seePayRate\\)/g' src/ai-agent/schedule/schedule-tools.ts)",
       "Bash(perl -0pi -e 's/if \\\\\\(!caps\\\\.createSchedule \\\\|\\\\| !ctx\\\\.canWrite\\\\\\) \\\\{/if \\(!caps.createSchedule\\) {/g' src/ai-agent/schedule/schedule-tools.ts)",
       "Bash(node -e \"const i=require\\('@untitledui/icons'\\); ['Gift01','Gift02','GiftCard'].forEach\\(n=>console.log\\(n, typeof i[n]\\)\\)\")",
-      "Bash(curl -sL -o template.png \"https://www.figma.com/api/mcp/asset/2d57bc48-4a48-4008-b790-3df99cd69b94\")"
+      "Bash(curl -sL -o template.png \"https://www.figma.com/api/mcp/asset/2d57bc48-4a48-4008-b790-3df99cd69b94\")",
+      "Bash(curl -sL -o equipment.png \"https://www.figma.com/api/mcp/asset/69c9ff4e-8731-4bb3-bd1f-f50032295a93\")",
+      "Bash(curl -sL -o instructor.png \"https://www.figma.com/api/mcp/asset/acd03b4b-0fd7-40e3-bf95-075d53438dc8\")",
+      "Bash(perl -0pi -e 's/\\(\\\\s+\\)instructors: snapshot\\\\.instructors\\\\n\\(\\\\s+\\)\\\\.filter\\\\\\(\\\\\\(i\\\\\\) => inScope\\\\\\(ctx, i\\\\.branchId\\\\\\)\\\\\\)\\\\n\\(\\\\s+\\)\\\\.map\\\\\\(\\\\\\(i\\\\\\) => \\\\\\(\\\\{ id: i\\\\.id, name: i\\\\.name, initials: i\\\\.initials, imageUrl: i\\\\.imageUrl \\\\}\\\\\\)\\\\\\),/$1const ratings = instructorRatings\\(snapshot\\);\\\\n$1instructors: snapshot.instructors\\\\n$2.filter\\(\\(i\\) => inScope\\(ctx, i.branchId\\)\\)\\\\n$3.map\\(\\(i\\) => \\({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get\\(i.id\\)?.rating, ratingCount: ratings.get\\(i.id\\)?.count }\\)\\),/g' src/ai-agent/schedule/schedule-tools.ts)",
+      "Bash(perl -0pi -e 's/\\\\n\\\\s+const ratings = instructorRatings\\\\\\(snapshot\\\\\\);\\\\n\\(\\\\s+instructors: snapshot\\\\.instructors\\)/\\\\n$1/g' src/ai-agent/schedule/schedule-tools.ts)",
+      "Bash(sed -n '/const ROOM_PICKER/,/^};/p' src/app/admin/dev/class-wizard-widgets/page.tsx)",
+      "Bash(sed -n '/const INSTRUCTOR_PICKER/,/^};/p' src/app/admin/dev/class-wizard-widgets/page.tsx)",
+      "Bash(perl -0pi -e 's/\\(avatarUrl: \"\\\\/images\\\\/instructors\\\\/liam-chen.webp\",\\\\n\\\\s+rating: 4\\\\.8,\\)/$1\\\\n            ratingCount: 6000,/' src/app/admin/dev/class-wizard-widgets/page.tsx)",
+      "Bash(perl -0pi -e 's/\\(rating: 4\\\\.9,\\)/$1\\\\n            ratingCount: 4200,/' src/app/admin/dev/class-wizard-widgets/page.tsx)",
+      "Bash(perl -0pi -e 's/\\(rating: 4\\\\.6,\\)/$1\\\\n            ratingCount: 980,/' src/app/admin/dev/class-wizard-widgets/page.tsx)",
+      "Bash(perl -0pi -e 's/\\(rating: 4\\\\.7,\\)/$1\\\\n            ratingCount: 1500,/' src/app/admin/dev/class-wizard-widgets/page.tsx)",
+      "Bash(curl -sL -o __TRACKED_VAR__/spot-figma.png https://www.figma.com/api/mcp/asset/34a9e99c-baee-46bd-b1d4-61f799e5000f)",
+      "Read(//var/folders/mm/y44920rj68776x55nwrg73jh0000gn/T/**)",
+      "Read(//private/var/folders/mm/y44920rj68776x55nwrg73jh0000gn/T/**)",
+      "Bash(echo \"EXIT: $?\")"
     ],
     "additionalDirectories": [
       "/Users/hizkiast/Desktop/Syncfit/src/app/admin/products/retail/[id]",

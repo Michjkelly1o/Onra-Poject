@@ -18,7 +18,7 @@
 // Once confirmed the editor locks (mirrors an answered ask_questions panel).
 
 import { useMemo, useState } from "react";
-import { Settings03, ChevronUp, ChevronDown, CheckCircle } from "@untitledui/icons";
+import { Settings03, ChevronUp, ChevronDown } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -110,9 +110,16 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
     const initCols = defaultColsFor(cap);
     const initRows = Math.ceil(cap / initCols);
 
-    const [cols, setCols] = useState(initCols);
-    const [rows, setRows] = useState(initRows);
-    const [blocked, setBlocked] = useState<Set<string>>(new Set());
+    const [colsState, setColsState] = useState(initCols);
+    const [rowsState, setRowsState] = useState(initRows);
+    const [blockedState, setBlockedState] = useState<Set<string>>(new Set());
+
+    // Once confirmed the panel locks but STAYS on screen (Figma) — display the
+    // frozen confirmed layout, disable the steppers/circles/buttons.
+    const locked = !!confirmed;
+    const cols = confirmed ? confirmed.cols : colsState;
+    const rows = confirmed ? confirmed.rows : rowsState;
+    const blocked = confirmed ? new Set(confirmed.blocked) : blockedState;
 
     // Spots grid — min(cols×rows, capacity) cells, row-major, labelled A1, A2…
     const spots = useMemo(() => {
@@ -132,27 +139,15 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
 
     const exceeds = cols * rows > cap;
 
-    if (confirmed) {
-        const desc = `${confirmed.cols} × ${confirmed.rows} layout${
-            confirmed.blocked.length ? ` · ${confirmed.blocked.length} blocked` : ""
-        }`;
-        return (
-            <div className="w-full flex items-center gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
-                <CheckCircle className="size-4 text-[#3f8f68] shrink-0" />
-                <p className="text-[14px] text-[#101828] leading-5">
-                    Spot layout set — <span className="font-medium">{desc}</span>
-                </p>
-            </div>
-        );
-    }
-
-    const toggle = (id: string) =>
-        setBlocked((prev) => {
+    const toggle = (id: string) => {
+        if (locked) return;
+        setBlockedState((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
             return next;
         });
+    };
 
     // Prune blocks outside the current grid before confirming.
     const liveBlocked = () => {
@@ -196,14 +191,21 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                                             key={id}
                                             type="button"
                                             onClick={() => toggle(id)}
-                                            className="flex flex-col items-center gap-2 group"
+                                            disabled={locked}
+                                            className={cn(
+                                                "flex flex-col items-center gap-2 group",
+                                                locked && "cursor-default",
+                                            )}
                                         >
                                             <span
                                                 className={cn(
                                                     "size-12 rounded-full border-2 transition-all",
                                                     isB
                                                         ? "bg-[#fecdca] border-[#f04438]"
-                                                        : "bg-[#c4edd6] border-transparent group-hover:scale-105",
+                                                        : cn(
+                                                              "bg-[#c4edd6] border-transparent",
+                                                              !locked && "group-hover:scale-105",
+                                                          ),
                                                 )}
                                             />
                                             <span className="text-[16px] font-semibold text-[#475467]">{id}</span>
@@ -226,8 +228,8 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                 </div>
 
                 <div className="flex gap-4">
-                    <Stepper label="Column number" value={cols} onChange={setCols} min={1} max={cap} />
-                    <Stepper label="Row number" value={rows} onChange={setRows} min={1} max={cap} />
+                    <Stepper label="Column number" value={cols} onChange={setColsState} min={1} max={cap} disabled={locked} />
+                    <Stepper label="Row number" value={rows} onChange={setRowsState} min={1} max={cap} disabled={locked} />
                 </div>
 
                 {exceeds && (
@@ -240,8 +242,9 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                     <Button
                         variant="secondary-gray"
                         size="sm"
+                        disabled={locked}
                         onClick={() => {
-                            setBlocked(new Set());
+                            setBlockedState(new Set());
                             onConfirm(initCols, initRows, []);
                         }}
                     >
@@ -250,6 +253,7 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                     <Button
                         variant="primary"
                         size="sm"
+                        disabled={locked}
                         leftIcon={<Settings03 className="w-4 h-4" />}
                         onClick={() => onConfirm(cols, rows, liveBlocked())}
                     >

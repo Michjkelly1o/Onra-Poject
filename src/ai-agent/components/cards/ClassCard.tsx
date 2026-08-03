@@ -14,7 +14,7 @@
 //   • class_options  → renders nothing (data-only, feeds the model).
 
 import { useState, useEffect } from "react";
-import { CalendarPlus01, PencilLine, CheckCircle, Lightbulb02, Stars01 } from "@untitledui/icons";
+import { CheckCircle, Lightbulb02, Stars01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
@@ -83,7 +83,7 @@ function ResultCard({ noun, summary, verb }: { noun: string; summary: string; ve
         );
     }
     return (
-        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
+        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-white px-4 py-3">
             <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
             <div className="min-w-0">
                 <p className="text-[14px] font-medium text-[#101828] leading-5">
@@ -141,43 +141,16 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
         return <ResultCard noun={NOUN[data.sessionType] ?? "class schedule"} summary={data.summary} verb={appt ? "booked" : "published"} />;
     }
 
-    // class_preview
+    // class_preview — just the live preview card. The publish confirmation is a
+    // real ask_questions step (floats above the composer), not in-chat buttons.
     const isAppt = data.sessionType === "private" || data.sessionType === "recovery";
     return (
-        <div className="w-full flex flex-col gap-3">
-            <SchedulePreviewCard
-                data={data.preview}
-                variant={isAppt ? "appointment" : "class"}
-                title={`${(NOUN[data.sessionType] ?? "class schedule").replace(/^\w/, (c) => c.toUpperCase())} preview`}
-                subtitle={isAppt ? "This is how your session will look." : undefined}
-                sessions={data.sessions}
-            />
-
-            {data.readyToPublish && (
-                <div className="w-full rounded-[12px] border border-[#e4e7ec] bg-white overflow-hidden">
-                    <p className="px-4 py-3 text-[16px] font-semibold text-[#101828] leading-6 border-b border-[#e4e7ec]">
-                        {isAppt ? "Are you ready to book this session?" : "Are you ready to publish this schedule?"}
-                    </p>
-                    <div className="flex flex-col p-1.5 gap-1">
-                        <button
-                            type="button"
-                            onClick={() => send("Publish schedule")}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-left hover:bg-[#f9fafb] transition-colors"
-                        >
-                            <CalendarPlus01 className="size-4 text-[#475467] shrink-0" />
-                            <span className="text-[14px] font-medium text-[#344054]">Publish schedule</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => send("Edit a field")}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-left hover:bg-[#f9fafb] transition-colors"
-                        >
-                            <PencilLine className="size-4 text-[#475467] shrink-0" />
-                            <span className="text-[14px] font-medium text-[#344054]">Edit a field</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
+        <SchedulePreviewCard
+            data={data.preview}
+            variant={isAppt ? "appointment" : "class"}
+            title={`${(NOUN[data.sessionType] ?? "class schedule").replace(/^\w/, (c) => c.toUpperCase())} preview`}
+            subtitle={isAppt ? "This is how your session will look." : undefined}
+            sessions={data.sessions}
+        />
     );
 }

@@ -426,13 +426,14 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                             {opt.lead && <span className="text-[#667085] font-normal shrink-0">{opt.lead}</span>}
                             <span className="text-[#344054] font-medium truncate">{opt.label}</span>
                             {opt.metaLabel && <span className="shrink-0 text-[13px] font-normal text-[#98a2b3]">{opt.metaLabel}</span>}
-                            {opt.rating != null && (
+                            {/* Person rows (searchable instructor picker) always
+                                show a rating — a new instructor with no reviews
+                                yet reads as "0 (0 reviews)" rather than nothing. */}
+                            {(opt.rating != null || (isSearchable && hasMedia)) && (
                                 <span className="shrink-0 inline-flex items-center gap-0.5 text-[12px] font-medium text-[#667085]">
                                     <Star01 className="size-3 text-[#f79009] fill-[#f79009]" />
-                                    {opt.rating.toFixed(1)}
-                                    {opt.ratingCount != null && (
-                                        <span className="text-[#98a2b3] font-normal">({fmtReviews(opt.ratingCount)} reviews)</span>
-                                    )}
+                                    {(opt.rating ?? 0).toFixed(1)}
+                                    <span className="text-[#98a2b3] font-normal">({fmtReviews(opt.ratingCount ?? 0)} reviews)</span>
                                 </span>
                             )}
                         </span>
