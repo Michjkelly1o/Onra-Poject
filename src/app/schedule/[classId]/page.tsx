@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useParams, useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, ChevronRight, SearchMd, FilterLines, DotsVertical, AlignLeft,
@@ -1864,6 +1865,7 @@ export default function ClassDetailPage() {
 
     // Bulk-select state — Booked tab (Upcoming/Ongoing) and Reviews tab.
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
     const [bulkRemoveOpen, setBulkRemoveOpen] = useState(false);
     const [bulkPresentOpen, setBulkPresentOpen] = useState(false);

@@ -25,6 +25,7 @@
 // out the same way.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter, usePathname } from "next/navigation";
 import {
     XClose, Edit02, Archive, RefreshCcw01, SlashCircle01, Trash01, Check, CoinsHand,
@@ -449,6 +450,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [pendingConfirm, setPendingConfirm] = useState<InstructorPending>(null);
     const [filterOpen, setFilterOpen] = useState(false);
     const [filter, setFilter] = useState<InstructorFilter>(EMPTY_INSTRUCTOR_FILTER);

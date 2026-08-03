@@ -21,6 +21,7 @@
 // edits here surface everywhere on the same render cycle.
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter } from "next/navigation";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
@@ -628,6 +629,7 @@ export function ShiftManagementTab({
     const [appliedList, setAppliedList] = useState<ListShiftFilter>(EMPTY_LIST_FILTER);
     const [appliedWeek, setAppliedWeek] = useState<WeekShiftFilter>(EMPTY_WEEK_FILTER);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [pendingConfirm, setPendingConfirm] = useState<

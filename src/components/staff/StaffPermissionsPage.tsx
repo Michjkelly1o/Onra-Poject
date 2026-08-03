@@ -24,6 +24,7 @@
 // State source of truth: useAppStore(s => s.roles) + useAppStore(s => s.staff).
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     SearchMd, Download01, Plus, DotsVertical, ChevronLeft, ChevronRight, ChevronDown,
@@ -756,6 +757,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     // Bulk selection — separate sets per tab so switching tabs preserves work.
     const [selectedRoleIds,  setSelectedRoleIds]  = useState<Set<string>>(new Set());
     const [selectedStaffIds, setSelectedStaffIds] = useState<Set<string>>(new Set());
+    useBulkSelectionSignal(selectedRoleIds.size > 0 || selectedStaffIds.size > 0);
     // Bulk confirmation — fires after the floating-bar action is clicked.
     const [pendingBulk, setPendingBulk] = useState<{ entity: "role" | "staff"; kind: ConfirmKind } | null>(null);
 

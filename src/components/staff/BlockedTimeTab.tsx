@@ -17,6 +17,7 @@
 // StaffPermissionsPage, identical to how the Shift management tab is wired.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter } from "next/navigation";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
@@ -220,6 +221,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
     const showToast         = useAppStore(s => s.showToast);
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [pendingDelete, setPendingDelete] = useState<
         | { mode: "row"; row: BlockedTime }
         | { mode: "bulk"; rows: BlockedTime[] }

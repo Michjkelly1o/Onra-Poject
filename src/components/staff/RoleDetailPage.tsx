@@ -18,6 +18,7 @@
 //                  Staff list)
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter, usePathname } from "next/navigation";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
@@ -495,6 +496,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
     const [pending, setPending] = useState<{ kind: ConfirmKind; row: Staff } | null>(null);
     const [bulkPending, setBulkPending] = useState<BulkKind | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    useBulkSelectionSignal(selectedIds.size > 0);
 
     // Roles are branch-agnostic — this role's staff span every branch (each
     // row shows its own branch in the table). Filter purely by role.

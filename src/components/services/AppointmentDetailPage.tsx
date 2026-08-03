@@ -34,6 +34,7 @@
 // since there's only ever one customer.
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter } from "next/navigation";
 import {
     XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, CheckCircle,
@@ -909,6 +910,7 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
     const [reviewsSubTab, setReviewsSubTab] = useState<ReviewsSubTab>("ratings");
     const [search, setSearch] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    useBulkSelectionSignal(selectedIds.size > 0);
     const [reviewFilterOpen, setReviewFilterOpen] = useState(false);
     const [appliedReviewFilter, setAppliedReviewFilter] = useState<ReviewFilter>(EMPTY_REVIEW_FILTER);
 

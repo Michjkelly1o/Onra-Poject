@@ -24,6 +24,7 @@
 // instructor detail page, and any future schedule grid all stay coherent.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter } from "next/navigation";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
@@ -411,6 +412,7 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
     const [pending, setPending] = useState<{ kind: ConfirmKind; row: Staff } | null>(null);
     const [bulkPending, setBulkPending] = useState<BulkKind | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    useBulkSelectionSignal(selectedIds.size > 0);
 
     // Audit fix 2026-07-22 — blend M2M shiftAssignments with the legacy
     // shiftId so a staff whose PRIMARY shift is elsewhere but who ALSO
