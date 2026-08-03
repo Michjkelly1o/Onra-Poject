@@ -1039,6 +1039,7 @@ export function ChatThread({
                 compact
                 questions={migQuestionEntries.map((e) => e.spec)}
                 onComplete={onMigQuestionsComplete}
+                onGroupAction={(branch) => send(`Add a new room in ${branch}`)}
             />
         </div>
     ) : null;

@@ -171,6 +171,21 @@ function hydrate(a: ScheduleArgs, seePayRate: boolean): { config: WizardConfig; 
     return { config, answers, lookups };
 }
 
+/** Per-instructor aggregate rating + review count from class ratings. */
+function instructorRatings(snapshot: AiAgentStateSnapshot): Map<string, { rating: number; count: number }> {
+    const agg = new Map<string, { sum: number; n: number }>();
+    for (const r of snapshot.classRatings) {
+        if (r.deletedAt) continue;
+        const a = agg.get(r.instructorId) ?? { sum: 0, n: 0 };
+        a.sum += r.score;
+        a.n += 1;
+        agg.set(r.instructorId, a);
+    }
+    const out = new Map<string, { rating: number; count: number }>();
+    agg.forEach((a, id) => out.set(id, { rating: a.n > 0 ? a.sum / a.n : 0, count: a.n }));
+    return out;
+}
+
 /** Branch-scope predicate: true when a branch id is in the caller's scope. */
 function inScope(ctx: AuthContext, branchId: string | null | undefined): boolean {
     if (ctx.branchScope === "all") return true;
@@ -261,6 +276,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     };
                 }
                 const branchName = (id: string) => snapshot.branches.find((b) => b.id === id)?.name ?? "";
+                const ratings = instructorRatings(snapshot);
                 return {
                     card: "class_options",
                     templates: snapshot.classTemplates
@@ -278,9 +294,10 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     rooms: snapshot.rooms
                         .filter((r) => r.status === "active" && inScope(ctx, r.branch_id))
                         .map((r) => ({ id: r.id, name: r.name, branchId: r.branch_id, branchName: branchName(r.branch_id), capacity: r.capacity })),
+
                     instructors: snapshot.instructors
                         .filter((i) => inScope(ctx, i.branchId))
-                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl })),
+                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count })),
                     categories: snapshot.classCategories
                         .filter((c) => c.status === "active")
                         .map((c) => ({ id: c.id, name: c.name })),
@@ -429,6 +446,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     return { card: "class_denied", reason: "Booking sessions isn't part of your access. Ask an Owner or Branch Admin." };
                 }
                 const roomName = (id: string) => snapshot.rooms.find((r) => r.id === id)?.name ?? "";
+                const ratings = instructorRatings(snapshot);
                 return {
                     card: "class_service_options",
                     services: snapshot.services
@@ -445,9 +463,10 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                             coverImage: s.coverImage,
                             coverColor: s.coverColor,
                         })),
+
                     instructors: snapshot.instructors
                         .filter((i) => inScope(ctx, i.branchId))
-                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl })),
+                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count })),
                 };
             },
         }),

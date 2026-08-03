@@ -98,22 +98,19 @@ const GENDER_ACCESS: AiQuestionSpec = {
 
 // ── Step 2 · Room picker (searchable + hard-block) — frame 5 ──────────────────
 const ROOM_PICKER: AiQuestionSpec = {
-    title: "Which room should it run in?",
-    kind: "searchable",
-    searchPlaceholder: "Search rooms…",
-    otherPlaceholder: "+ Add a new room",
+    title: "Which room should it use?",
+    kind: "grouped",
+    groupIcon: "building",
+    groupActionLabel: "Add room",
+    allowOther: false,
     options: [
-        { id: "mat", label: "Mat Studio", subtitle: "South branch · cap 20" },
-        { id: "reformer-room", label: "Reformer Room", subtitle: "South branch · cap 8" },
-        {
-            id: "spin",
-            label: "Spin Studio",
-            subtitle: "South branch · cap 24",
-            disabled: true,
-            disabledReason: "Used by another class at this time",
-            badge: { label: "In use", tone: "warning" },
-        },
-        { id: "recovery", label: "Recovery Suite", subtitle: "North branch · cap 6" },
+        { id: "reformer", label: "Reformer Studio", metaLabel: "(6 max)", groupLabel: "Forma Studio (South)", badge: { label: "Over capacity", tone: "warning" } },
+        { id: "mat", label: "Mat Studio", metaLabel: "(15 max)", groupLabel: "Forma Studio (South)" },
+        { id: "barre", label: "Barre Studio", metaLabel: "(10 max)", groupLabel: "Forma Studio (South)" },
+        { id: "private", label: "Private Suite", metaLabel: "(15 max)", groupLabel: "Forma Studio (South)" },
+        { id: "studio1", label: "Studio 1", groupLabel: "Forma Studio (East)", disabled: true, badge: { label: "Used by other class", tone: "neutral" } },
+        { id: "studio2", label: "Studio 2", groupLabel: "Forma Studio (East)", disabled: true, badge: { label: "Used by other class", tone: "neutral" } },
+        { id: "studio3", label: "Studio 3", metaLabel: "(15 max)", groupLabel: "Forma Studio (East)" },
     ],
 };
 
@@ -145,6 +142,7 @@ const INSTRUCTOR_PICKER: AiQuestionSpec = {
             subtitle: "Pilates · Barre",
             avatarUrl: "/images/instructors/liam-chen.webp",
             rating: 4.8,
+            ratingCount: 6000,
         },
         {
             id: "maya",
@@ -152,6 +150,7 @@ const INSTRUCTOR_PICKER: AiQuestionSpec = {
             subtitle: "Yoga · Recovery",
             avatarUrl: "/images/instructors/maya-johnson.webp",
             rating: 4.9,
+            ratingCount: 4200,
         },
         {
             id: "lucy",
@@ -159,6 +158,7 @@ const INSTRUCTOR_PICKER: AiQuestionSpec = {
             subtitle: "Barre",
             avatarUrl: "/images/instructors/lucy-hale.webp",
             rating: 4.6,
+            ratingCount: 980,
         },
         {
             id: "sarah",
@@ -166,6 +166,7 @@ const INSTRUCTOR_PICKER: AiQuestionSpec = {
             subtitle: "Yoga",
             avatarInitials: "SA",
             rating: 4.7,
+            ratingCount: 1500,
         },
     ],
 };
@@ -452,6 +453,7 @@ export default function ClassWizardWidgetsDevPage() {
                             <AiQuestionPrompt
                                 questions={[d.spec]}
                                 onComplete={(a) => record(d.id, a)}
+                                onGroupAction={(g) => setLog((prev) => ({ ...prev, [d.id]: `+ Add room in ${g}` }))}
                             />
                             {log[d.id] && (
                                 <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log[d.id]}</p>

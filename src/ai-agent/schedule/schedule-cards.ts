@@ -69,7 +69,7 @@ export interface ClassOptionsCard {
     card: "class_options";
     templates: { id: string; name: string; description: string; category: string; durationMin: number; capacity: number; coverImage?: string; coverColor: string }[];
     rooms: { id: string; name: string; branchId: string; branchName: string; capacity: number }[];
-    instructors: { id: string; name: string; initials: string; imageUrl?: string }[];
+    instructors: { id: string; name: string; initials: string; imageUrl?: string; rating?: number; ratingCount?: number }[];
     categories: { id: string; name: string }[];
     payRates: { id: string; name: string }[];
     /** Active branches — so the model can offer a parent-location choice in the
@@ -94,7 +94,7 @@ export interface ClassServiceOptionsCard {
         coverImage?: string;
         coverColor: string;
     }[];
-    instructors: { id: string; name: string; initials: string; imageUrl?: string }[];
+    instructors: { id: string; name: string; initials: string; imageUrl?: string; rating?: number; ratingCount?: number }[];
 }
 
 /** Confirmation that a room was created mid-wizard (the `+ Add room` sub-flow).

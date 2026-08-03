@@ -24,7 +24,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, PencilLine, SearchLg, Star01, Check, Plus, Grid01, MarkerPin01, ClockFastForward, Users01 } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, PencilLine, SearchLg, Star01, Check, Plus, Grid01, MarkerPin01, ClockFastForward, Users01, Building01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -62,6 +62,10 @@ export interface AiQuestionOption {
     avatarInitials?: string;
     /** Real aggregate rating (instructor rows), e.g. 4.8 → "★ 4.8". */
     rating?: number;
+    /** Review count shown after the rating, e.g. 6000 → "★ 5.0 (6K reviews)". */
+    ratingCount?: number;
+    /** Muted suffix after the label, e.g. "(15 max)" on a room row. */
+    metaLabel?: string;
     /** Inline attribute chips, e.g. ["60 min", "8 spots"] (template cards). */
     attributes?: string[];
     /** Status pill on the right, e.g. { label: "In use", tone: "warning" }. */
@@ -104,6 +108,12 @@ export interface AiQuestionSpec {
     minSelected?: number;
     /** Maximum selections allowed (kind: "checkbox"). Unlimited when omitted. */
     maxSelected?: number;
+    /** kind: "grouped" — render a right-aligned action button in every group
+     *  header (e.g. "Add room" on each branch in the room picker). Fires
+     *  `onGroupAction(groupLabel)`. */
+    groupActionLabel?: string;
+    /** Render a building icon before each group header (branch groups). */
+    groupIcon?: "building";
 }
 
 /** One answer: a chosen option id, a multi-select set, free text, or skipped. */
@@ -121,6 +131,9 @@ export interface AiQuestionPromptProps {
     onComplete: (answers: AiQuestionAnswer[]) => void;
     /** Optional per-step callback (fires on every Next / Skip). */
     onStep?: (index: number, answer: AiQuestionAnswer) => void;
+    /** Fired when a group-header action button is clicked (e.g. "Add room" on a
+     *  branch) — receives the group label. */
+    onGroupAction?: (groupLabel: string) => void;
     className?: string;
     /** Panel/dropdown presentation (floats above the composer): clicking an
      *  option commits it and auto-advances; the free-text "other" row and the
@@ -129,6 +142,11 @@ export interface AiQuestionPromptProps {
 }
 
 const OTHER_ID = "__other__";
+
+/** 6000 → "6K", 950 → "950". */
+function fmtReviews(n: number): string {
+    return n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K` : `${n}`;
+}
 
 const BADGE_TONE: Record<AiOptionBadgeTone, string> = {
     neutral: "bg-[#f2f4f7] text-[#344054]",
@@ -171,7 +189,7 @@ function OptionMedia({ opt }: { opt: AiQuestionOption }) {
     return null;
 }
 
-export function AiQuestionPrompt({ questions, onComplete, onStep, className, compact = false }: AiQuestionPromptProps) {
+export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction, className, compact = false }: AiQuestionPromptProps) {
     const total = questions.length;
     const [step, setStep] = useState(0);
     // Per-step working state; committed answers accumulate in `answers`.
@@ -332,7 +350,10 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className, com
                     disabled={opt.disabled}
                     aria-pressed={active}
                     className={cn(
-                        "w-full flex gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left transition-colors",
+                        "w-full flex gap-3 pr-2.5 py-1.5 rounded-[6px] text-left transition-colors",
+                        // Grouped rows (rooms under a branch header) get a deeper
+                        // indent; everything else the standard inset.
+                        isGrouped ? "pl-6" : "pl-2",
                         // Rich cards (thumbnail + description + chips) align to
                         // the top so the image lines up with the title; plain
                         // rows stay vertically centered.
@@ -355,7 +376,9 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className, com
                         >
                             {active && <Check className="size-3.5 text-white" strokeWidth={3} />}
                         </span>
-                    ) : hasMedia ? null : (
+                    ) : hasMedia || isGrouped ? null : (
+                        // Grouped lists (rooms by branch) don't use numbered
+                        // badges — they read as a plain indented list.
                         <span
                             className={cn(
                                 "shrink-0 size-6 flex items-center justify-center rounded-[6px] border text-[12px] font-medium",
@@ -372,10 +395,14 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className, com
                         <span className="flex items-center gap-1.5 text-[14px] leading-5 min-w-0">
                             {opt.lead && <span className="text-[#667085] font-normal shrink-0">{opt.lead}</span>}
                             <span className="text-[#344054] font-medium truncate">{opt.label}</span>
+                            {opt.metaLabel && <span className="shrink-0 text-[13px] font-normal text-[#98a2b3]">{opt.metaLabel}</span>}
                             {opt.rating != null && (
                                 <span className="shrink-0 inline-flex items-center gap-0.5 text-[12px] font-medium text-[#667085]">
                                     <Star01 className="size-3 text-[#f79009] fill-[#f79009]" />
                                     {opt.rating.toFixed(1)}
+                                    {opt.ratingCount != null && (
+                                        <span className="text-[#98a2b3] font-normal">({fmtReviews(opt.ratingCount)} reviews)</span>
+                                    )}
                                 </span>
                             )}
                         </span>
@@ -478,12 +505,25 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className, com
             {/* Options list. */}
             <div className="flex flex-col py-1 max-h-[360px] overflow-y-auto">
                 {isGrouped && groups
-                    ? groups.map((g) => (
-                          <div key={g.label} className="flex flex-col">
+                    ? groups.map((g, gi) => (
+                          <div key={g.label} className={cn("flex flex-col", gi > 0 && "border-t border-[#e4e7ec]")}>
                               {g.label && (
-                                  <p className="px-4 pt-2 pb-1 text-[12px] font-semibold uppercase tracking-wide text-[#667085]">
-                                      {g.label}
-                                  </p>
+                                  <div className="flex items-center justify-between px-4 pt-3 pb-1.5">
+                                      <span className="flex items-center gap-2 text-[14px] font-semibold text-[#101828]">
+                                          {q.groupIcon === "building" && <Building01 className="size-4 text-[#667085]" />}
+                                          {g.label}
+                                      </span>
+                                      {q.groupActionLabel && onGroupAction && (
+                                          <button
+                                              type="button"
+                                              onClick={() => onGroupAction(g.label)}
+                                              className="flex items-center gap-1 text-[13px] font-semibold text-[#344054] hover:text-[#101828] transition-colors"
+                                          >
+                                              <Plus className="size-3.5" />
+                                              {q.groupActionLabel}
+                                          </button>
+                                      )}
+                                  </div>
                               )}
                               {g.options.map((opt) => renderOption(opt, nextBadge()))}
                           </div>
