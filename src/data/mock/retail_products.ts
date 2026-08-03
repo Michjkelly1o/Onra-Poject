@@ -31,6 +31,8 @@ export const retail_products: RetailProduct[] = [
         unit_cost_aed: 45,
         reorder_threshold: 10,
         image_url: "/images/retail/studio-tank.webp",
+        // Sized apparel — stock is tracked per size per branch (see retail_stock).
+        sizes: ["Small", "Medium", "Large"],
         status: "active",
         created_at: CREATED,
     },

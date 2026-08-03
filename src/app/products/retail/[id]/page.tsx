@@ -390,6 +390,19 @@ function ProductDetailsTab({ product, categoryLabel }: {
                 />
             </InlineStatRow>
 
+            {product.sizes && product.sizes.length > 0 && (
+                <>
+                    <SectionHeading>Sizes</SectionHeading>
+                    <div className="flex flex-wrap gap-2">
+                        {product.sizes.map(s => (
+                            <span key={s} className="inline-flex items-center px-3 py-1 rounded-full bg-[#f2f4f7] text-[14px] font-medium text-[#344054]">
+                                {s}
+                            </span>
+                        ))}
+                    </div>
+                </>
+            )}
+
             <SectionHeading>Stock alert</SectionHeading>
             <InlineStatRow>
                 <InlineStat
@@ -417,24 +430,44 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
 }) {
     const rowsForProduct = stockRows.filter(s => s.productId === product.id);
     const activeBranches = branches.filter(b => b.status !== "archive");
+    const sizes = product.sizes ?? [];
+    const isSized = sizes.length > 0;
 
     // Client 2026-07-31 — "Sold" column shows the ALL-TIME total units sold
-    // for this product at each branch. Reads from retail_stock_adjustments
-    // filtered to kind = "sale" (deltas are negative on sales; taking abs
-    // to display a positive unit count that reads naturally as "sold N").
-    // Refunds NOT netted here — refunds have their own kind and belong on
-    // the Activity tab; if the client asks for a net figure later, subtract
-    // kind === "refund" deltas.
-    const soldByBranch = useMemo(() => {
+    // for this product. Reads from retail_stock_adjustments filtered to
+    // kind = "sale" (deltas are negative on sales; abs → positive count).
+    // Keyed per branch, or per (branch × size) for a sized product. Refunds
+    // NOT netted here — they live on the Activity tab.
+    const soldByKey = useMemo(() => {
         const map = new Map<string, number>();
         for (const a of adjRows) {
             if (a.productId !== product.id) continue;
             if (a.kind !== "sale") continue;
-            const prev = map.get(a.branchId) ?? 0;
-            map.set(a.branchId, prev + Math.abs(a.delta));
+            const key = a.size ? `${a.branchId}|${a.size}` : a.branchId;
+            map.set(key, (map.get(key) ?? 0) + Math.abs(a.delta));
         }
         return map;
     }, [adjRows, product.id]);
+
+    // One entry per branch (sizeless) or per (branch × size) — flattened so the
+    // table renders a single tbody either way.
+    const cells = activeBranches.flatMap(b =>
+        isSized
+            ? sizes.map(sz => ({
+                key: `${b.id}|${sz}`,
+                branchName: b.name,
+                size: sz as string | undefined,
+                row: rowsForProduct.find(s => s.branchId === b.id && s.size === sz),
+                sold: soldByKey.get(`${b.id}|${sz}`) ?? 0,
+            }))
+            : [{
+                key: b.id,
+                branchName: b.name,
+                size: undefined as string | undefined,
+                row: rowsForProduct.find(s => s.branchId === b.id),
+                sold: soldByKey.get(b.id) ?? 0,
+            }],
+    );
 
     return (
         <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-4">
@@ -442,7 +475,8 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
                 <table className="w-full border-collapse">
                     <thead>
                         <tr>
-                            <th className={cn(TH, "min-w-[220px]")}>Branch</th>
+                            <th className={cn(TH, "min-w-[200px]")}>Branch</th>
+                            {isSized && <th className={cn(TH, "w-[120px]")}>Size</th>}
                             <th className={cn(TH, "w-[160px]")}>Units on hand</th>
                             <th className={cn(TH, "w-[120px]")}>Sold</th>
                             <th className={cn(TH, "w-[140px]")}>Reorder at</th>
@@ -450,15 +484,14 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
                         </tr>
                     </thead>
                     <tbody>
-                        {activeBranches.map(b => {
-                            const row = rowsForProduct.find(s => s.branchId === b.id);
-                            const units = row?.unitsOnHand ?? 0;
-                            const sold = soldByBranch.get(b.id) ?? 0;
+                        {cells.map(c => {
+                            const units = c.row?.unitsOnHand ?? 0;
                             const isLow = units <= product.reorderThreshold;
                             const isOut = units === 0;
                             return (
-                                <tr key={b.id}>
-                                    <td className={TD}>{b.name}</td>
+                                <tr key={c.key}>
+                                    <td className={TD}>{c.branchName}</td>
+                                    {isSized && <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{c.size}</td>}
                                     <td className={cn(TD, "whitespace-nowrap")}>
                                         <span className={cn(
                                             isOut && "text-[#b42318] font-medium",
@@ -468,13 +501,13 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
                                         </span>
                                     </td>
                                     <td className={cn(TD, "whitespace-nowrap tabular-nums")}>
-                                        {sold > 0 ? `${sold} units` : "—"}
+                                        {c.sold > 0 ? `${c.sold} units` : "—"}
                                     </td>
                                     <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
                                         {product.reorderThreshold}
                                     </td>
                                     <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
-                                        {formatDate(row?.lastAdjustedAt)}
+                                        {formatDate(c.row?.lastAdjustedAt)}
                                     </td>
                                 </tr>
                             );

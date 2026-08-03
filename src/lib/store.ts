@@ -2219,6 +2219,9 @@ export interface CustomerTransaction {
     /** Branch the sale rang up at — needed for Retail Sales report's
      *  branch filter + Stock on Hand's per-branch drilldown. */
     branchIdAtSale?: string;
+    /** Size variant sold, for a sized retail product. Lets a refund restore
+     *  the exact (branch × size) stock row. Undefined for sizeless products. */
+    retailSize?: RetailSize;
     // ── Gift-card SALE link (client Aug 2026) ──────────────────────────────
     /** On a `kind: "gift_card"` SALE row, the id of the issued card this sale
      *  created. Lets a refund find the card, check it's unused, and void it.
@@ -2242,8 +2245,17 @@ export interface RetailCategory {
     createdAt: string;
 }
 
-/** Studio-global retail product. Stock is per-branch (see `RetailStock`),
- *  not on this record. */
+/** Apparel size variant — a FREE-FORM admin-defined label ("Small", "Medium",
+ *  "One size", "38", …), not a fixed set. A product with `sizes` is sold +
+ *  stocked per size; a product with no sizes is a single sizeless SKU (size
+ *  stays undefined on its stock / adjustment / transaction rows). */
+export type RetailSize = string;
+/** Optional quick-add labels the product form offers — the admin can type any
+ *  custom size instead. Not an allow-list; purely a convenience. */
+export const RETAIL_SIZE_SUGGESTIONS: string[] = ["Small", "Medium", "Large", "X-Large", "One size"];
+
+/** Studio-global retail product. Stock is per-branch — and, for products with
+ *  `sizes`, per (branch × size) — in `RetailStock`, not on this record. */
 export interface RetailProduct {
     id: string;
     name: string;
@@ -2254,18 +2266,23 @@ export interface RetailProduct {
     unitCostAed: number;
     reorderThreshold: number;
     imageUrl?: string;
+    /** Size variants offered (S/M/L). Empty / undefined = a sizeless product;
+     *  price is shared across sizes, only stock differs per size. */
+    sizes?: RetailSize[];
     status: "active" | "inactive" | "archived";
     createdAt: string;
     updatedAt?: string;
 }
 
-/** One row per (product × branch). `unitsOnHand` decrements on POS sale,
- *  increments on receive / refund. Every mutation writes a matching
- *  `RetailStockAdjustment` in the same `set()`. */
+/** One row per (product × branch × size). `size` is undefined for sizeless
+ *  products. `unitsOnHand` decrements on POS sale, increments on receive /
+ *  refund. Every mutation writes a matching `RetailStockAdjustment`. */
 export interface RetailStock {
     id: string;
     productId: string;
     branchId: string;
+    /** Size variant this row counts; undefined for sizeless products. */
+    size?: RetailSize;
     unitsOnHand: number;
     lastAdjustedAt?: string;
     lastReceivedAt?: string;
@@ -2278,6 +2295,8 @@ export interface RetailStockAdjustment {
     id: string;
     productId: string;
     branchId: string;
+    /** Size variant this delta applied to; undefined for sizeless products. */
+    size?: RetailSize;
     delta: number;
     kind: "sale" | "receive" | "adjust" | "loss" | "refund";
     reason?: string;
@@ -2377,6 +2396,10 @@ export interface PurchaseLineItem {
     name: string;
     unitPrice: number;
     quantity: number;
+    /** Chosen size variant for a sized retail line (free-form label). Decides
+     *  which (branch × size) stock row decrements. Undefined for sizeless
+     *  products + all non-retail lines. */
+    size?: RetailSize;
     /** Optional metadata for gift-card line items (recipient + message). */
     giftCard?: {
         recipientName: string;
@@ -3175,6 +3198,7 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         productSnapshotUnitCostAed:   t.product_snapshot_unit_cost_aed,
         quantity:                     t.quantity,
         branchIdAtSale:               t.branch_id_at_sale,
+        retailSize:                   t.retail_size,
     };
 }
 
@@ -4012,6 +4036,7 @@ function retailProductFromSeed(p: SeedRetailProduct): RetailProduct {
         unitCostAed: p.unit_cost_aed,
         reorderThreshold: p.reorder_threshold,
         imageUrl: p.image_url,
+        sizes: p.sizes,
         status: p.status,
         createdAt: p.created_at,
         updatedAt: p.updated_at,
@@ -4023,6 +4048,7 @@ function retailStockFromSeed(s: SeedRetailStock): RetailStock {
         id: s.id,
         productId: s.product_id,
         branchId: s.branch_id,
+        size: s.size,
         unitsOnHand: s.units_on_hand,
         lastAdjustedAt: s.last_adjusted_at,
         lastReceivedAt: s.last_received_at,
@@ -4034,6 +4060,7 @@ function retailStockAdjustmentFromSeed(a: SeedRetailStockAdjustment): RetailStoc
         id: a.id,
         productId: a.product_id,
         branchId: a.branch_id,
+        size: a.size,
         delta: a.delta,
         kind: a.kind,
         reason: a.reason,
@@ -4215,6 +4242,9 @@ export interface AppState {
     adjustRetailStock: (input: {
         productId: string;
         branchId: string;
+        /** Size variant to adjust; omit for a sizeless product. Stock rows are
+         *  keyed by (product × branch × size). */
+        size?: RetailSize;
         delta: number;
         kind: RetailStockAdjustment["kind"];
         reason?: string;
@@ -4225,6 +4255,7 @@ export interface AppState {
     receiveRetailStock: (input: {
         productId: string;
         branchId: string;
+        size?: RetailSize;
         units: number;
         reason?: string;
     }) => string;
@@ -8813,6 +8844,7 @@ export const useAppStore = create<AppState>()(persist(
                 get().adjustRetailStock({
                     productId: target.retailProductId,
                     branchId: target.branchIdAtSale,
+                    size: target.retailSize,
                     delta: target.quantity,
                     kind: "refund",
                     reason: `Refunded sale ${target.id}`,
@@ -9549,13 +9581,15 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     adjustRetailStock: (input) => {
-        const { productId, branchId, delta, kind, reason, sourceTransactionId } = input;
+        const { productId, branchId, size, delta, kind, reason, sourceTransactionId } = input;
         const now = new Date().toISOString();
         const adjId = `retail_adj_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const currentUserId = get().currentUser?.staff_id ?? get().currentUser?.id ?? "unknown";
         const state = get();
+        // Keyed by (product × branch × size). `size` is undefined for sizeless
+        // products, so the equality check matches the single sizeless row.
         const existing = state.retailStock.find(
-            s => s.productId === productId && s.branchId === branchId,
+            s => s.productId === productId && s.branchId === branchId && (s.size ?? undefined) === (size ?? undefined),
         );
         const currentUnits = existing?.unitsOnHand ?? 0;
         // Clamp negative deltas at 0 so demo data can't drift below zero.
@@ -9567,6 +9601,7 @@ export const useAppStore = create<AppState>()(persist(
             id: adjId,
             productId,
             branchId,
+            ...(size ? { size } : {}),
             delta: appliedDelta,
             kind,
             reason,
@@ -9592,9 +9627,10 @@ export const useAppStore = create<AppState>()(persist(
                 : [
                     ...s.retailStock,
                     {
-                        id: `retail_stock_${productId}_${branchId}_${Date.now()}`,
+                        id: `retail_stock_${productId}_${branchId}${size ? `_${size}` : ""}_${Date.now()}`,
                         productId,
                         branchId,
+                        ...(size ? { size } : {}),
                         unitsOnHand: nextUnits,
                         lastAdjustedAt: now,
                         lastReceivedAt: kind === "receive" ? now : undefined,
@@ -9611,6 +9647,7 @@ export const useAppStore = create<AppState>()(persist(
         return get().adjustRetailStock({
             productId: input.productId,
             branchId: input.branchId,
+            size: input.size,
             delta: Math.max(0, Math.abs(input.units)),
             kind: "receive",
             reason: input.reason ?? "Received shipment",
@@ -11682,6 +11719,9 @@ export const useAppStore = create<AppState>()(persist(
                 const qty = Math.max(1, Math.floor(it.quantity));
                 const lineGross = it.unitPrice * qty;
                 const txnId = `txn_sale_${stamp}_${idx}`;
+                // Sized products decrement the specific (branch × size) row;
+                // sizeless products leave `size` undefined.
+                const saleSize = it.size;
                 // Tax handling for retail lands as a follow-up — the TaxRule
                 // category union doesn't include "retail" yet. Retail sales
                 // currently write with no tax rule (subtotal = total).
@@ -11711,11 +11751,15 @@ export const useAppStore = create<AppState>()(persist(
                     productSnapshotUnitCostAed: product.unitCostAed,
                     quantity: qty,
                     branchIdAtSale: retailBranchId,
+                    ...(saleSize ? { retailSize: saleSize } : {}),
                 });
                 // Stock decrement — clamped at 0. Even if the cart lets the
                 // admin push past on-hand (shouldn't happen — the disabled
                 // "Out of stock" gate is on the card), we never write negative.
-                const stockRow = nextRetailStock.find(s => s.productId === product.id && s.branchId === retailBranchId);
+                // Keyed by (product × branch × size).
+                const stockRow = nextRetailStock.find(
+                    s => s.productId === product.id && s.branchId === retailBranchId && (s.size ?? undefined) === (saleSize ?? undefined),
+                );
                 const currentUnits = stockRow?.unitsOnHand ?? 0;
                 const nextUnits = Math.max(0, currentUnits - qty);
                 const appliedDelta = nextUnits - currentUnits;
@@ -11724,9 +11768,10 @@ export const useAppStore = create<AppState>()(persist(
                     stockRow.lastAdjustedAt = nowISO;
                 } else if (appliedDelta !== 0) {
                     nextRetailStock.push({
-                        id: `retail_stock_${product.id}_${retailBranchId}_${Date.now()}`,
+                        id: `retail_stock_${product.id}_${retailBranchId}${saleSize ? `_${saleSize}` : ""}_${Date.now()}`,
                         productId: product.id,
                         branchId: retailBranchId,
+                        ...(saleSize ? { size: saleSize } : {}),
                         unitsOnHand: nextUnits,
                         lastAdjustedAt: nowISO,
                     });
@@ -11740,6 +11785,7 @@ export const useAppStore = create<AppState>()(persist(
                         id: `retail_adj_sale_${stamp}_${idx}`,
                         productId: product.id,
                         branchId: retailBranchId,
+                        ...(saleSize ? { size: saleSize } : {}),
                         delta: appliedDelta,
                         kind: "sale",
                         sourceTransactionId: txnId,
@@ -12594,7 +12640,7 @@ export const useAppStore = create<AppState>()(persist(
         //   unused. CustomerTransaction gains `issuedGiftCardId`; IssuedGiftCard
         //   status gains "refunded"; one sale txn is synthesised per seeded
         //   card. Bump so persisted v97 payloads gain the gift-card sale rows.
-        version: 98,
+        version: 99,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

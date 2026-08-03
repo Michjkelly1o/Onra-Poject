@@ -15,7 +15,7 @@
 // so retail lives in the same design language as the rest of the products
 // namespace.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     XClose, Check, CoinsHand, Package, Plus,
@@ -28,7 +28,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { NumericStringInput } from "@/components/ui/NumericInput";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
-import { useAppStore, type RetailProduct } from "@/lib/store";
+import { useAppStore, RETAIL_SIZE_SUGGESTIONS, type RetailProduct } from "@/lib/store";
 
 // ─── Steps ─────────────────────────────────────────────────────────────────
 
@@ -274,6 +274,80 @@ interface BasicInfo {
     sku: string;
     categoryId: string;
     description: string;
+    /** Free-form size variants (e.g. "Small", "Medium"). Empty = sizeless. */
+    sizes: string[];
+}
+
+// Stock inputs are keyed per (branch) for sizeless products and per
+// (branch × size) for sized ones. This helper keeps both paths on one flat map.
+const STOCK_SEP = "::";
+function stockKey(branchId: string, size?: string): string {
+    return size ? `${branchId}${STOCK_SEP}${size}` : branchId;
+}
+/** The (branch × size) combos to render / seed for a product. Sizeless → one
+ *  entry per branch with size undefined. */
+function stockCombos(branchId: string, sizes: string[]): { size?: string; key: string }[] {
+    return sizes.length > 0
+        ? sizes.map(sz => ({ size: sz, key: stockKey(branchId, sz) }))
+        : [{ size: undefined, key: stockKey(branchId) }];
+}
+
+/** Dynamic size-variant chip input — the admin types any label and adds it;
+ *  each chip is removable. Quick-add suggestions are a convenience only. */
+function SizesField({ sizes, onChange }: { sizes: string[]; onChange: (next: string[]) => void }) {
+    const [draft, setDraft] = useState("");
+    const add = (raw: string) => {
+        const label = raw.trim();
+        if (!label) return;
+        // Case-insensitive de-dupe so "Small" and "small" don't both land.
+        if (sizes.some(s => s.toLowerCase() === label.toLowerCase())) { setDraft(""); return; }
+        onChange([...sizes, label]);
+        setDraft("");
+    };
+    const remove = (label: string) => onChange(sizes.filter(s => s !== label));
+    const available = RETAIL_SIZE_SUGGESTIONS.filter(
+        s => !sizes.some(x => x.toLowerCase() === s.toLowerCase()),
+    );
+    return (
+        <div className="flex flex-col gap-2.5">
+            {sizes.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    {sizes.map(s => (
+                        <span key={s} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-[#f2f4f7] text-[14px] font-medium text-[#344054]">
+                            {s}
+                            <button type="button" onClick={() => remove(s)} aria-label={`Remove ${s}`}
+                                className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-[#e4e7ec] text-[#667085]">
+                                <XClose className="w-3 h-3" />
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+            <div className="flex items-center gap-2">
+                <div className="flex-1">
+                    <TextInput
+                        value={draft}
+                        onChange={setDraft}
+                        placeholder="Type a size (e.g. Small) and press Add"
+                    />
+                </div>
+                <Button variant="secondary-gray" size="md" disabled={!draft.trim()} onClick={() => add(draft)}>
+                    Add
+                </Button>
+            </div>
+            {available.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[12px] text-[#667085]">Quick add:</span>
+                    {available.map(s => (
+                        <button key={s} type="button" onClick={() => add(s)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border-1 border-[#e4e7ec] text-[13px] font-medium text-[#475467] hover:border-[#aad4bd] hover:bg-[#f9fafb] transition-colors">
+                            <Plus className="w-3 h-3" /> {s}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
 
 function BasicInformationStep({
@@ -359,6 +433,9 @@ function BasicInformationStep({
                             minHeight={120}
                         />
                     </FormField>
+                    <FormField label="Sizes (optional)" hint="Add size variants if this product comes in sizes — stock is tracked per size per branch, and the cashier picks a size at POS. Leave empty for a one-size product.">
+                        <SizesField sizes={data.sizes} onChange={sizes => onChange({ sizes })} />
+                    </FormField>
                 </Section>
             </div>
         </FormCard>
@@ -375,15 +452,18 @@ interface PricingInfo {
 
 function PricingStep({
     data, onChange, errors,
-    branches, stockByBranch, onStockChange,
+    branches, sizes, stockByBranch, onStockChange,
     mode, onBack, onSubmit, submitLabel, saving,
 }: {
     data: PricingInfo;
     onChange: (patch: Partial<PricingInfo>) => void;
     errors: Partial<Record<keyof PricingInfo, string>>;
     branches: { id: string; name: string }[];
+    /** Declared size variants — when non-empty the stock inputs render per
+     *  (branch × size). */
+    sizes: string[];
     stockByBranch: Record<string, string>;
-    onStockChange: (branchId: string, value: string) => void;
+    onStockChange: (key: string, value: string) => void;
     mode: Mode;
     onBack: () => void;
     onSubmit: () => void;
@@ -430,27 +510,55 @@ function PricingStep({
                 </Section>
 
                 {/* Initial stock (create) / Adjust stock (edit) — one input
-                    per active branch. Changes are applied via the store's
+                    per active branch, or per (branch × size) for a sized
+                    product. Changes are applied via the store's
                     adjustRetailStock action on save so the audit log stays
                     in step with the running balance. */}
                 <Section title={mode === "create" ? "Initial stock" : "Stock on hand"}>
                     <p className="text-[14px] text-[#475467] leading-5">
-                        {mode === "create"
-                            ? "Set how many units land at each branch when this product goes live. Every entry writes a matching audit-log row (kind: receive)."
-                            : "Adjust units on hand per branch. Only branches that change are re-written; every change logs a matching audit-log row."}
+                        {sizes.length > 0
+                            ? (mode === "create"
+                                ? "Set how many units land at each branch, per size, when this product goes live. Every entry writes a matching audit-log row (kind: receive)."
+                                : "Adjust units on hand per branch, per size. Only entries that change are re-written; every change logs a matching audit-log row.")
+                            : (mode === "create"
+                                ? "Set how many units land at each branch when this product goes live. Every entry writes a matching audit-log row (kind: receive)."
+                                : "Adjust units on hand per branch. Only branches that change are re-written; every change logs a matching audit-log row.")}
                     </p>
                     <div className="flex flex-col gap-3">
                         {branches.map(b => (
-                            <div key={b.id} className="flex items-center justify-between gap-3">
-                                <p className="text-[14px] text-[#101828]">{b.name}</p>
-                                <div className="w-[140px]">
-                                    <IntegerInput
-                                        value={stockByBranch[b.id] ?? ""}
-                                        onChange={v => onStockChange(b.id, v)}
-                                        placeholder="0"
-                                    />
+                            sizes.length > 0 ? (
+                                <div key={b.id} className="flex flex-col gap-2 border-1 border-[#e4e7ec] rounded-[10px] p-3">
+                                    <p className="text-[14px] font-medium text-[#101828]">{b.name}</p>
+                                    <div className="flex flex-col gap-2 pl-1">
+                                        {sizes.map(sz => {
+                                            const key = stockKey(b.id, sz);
+                                            return (
+                                                <div key={sz} className="flex items-center justify-between gap-3">
+                                                    <p className="text-[14px] text-[#475467]">{sz}</p>
+                                                    <div className="w-[140px]">
+                                                        <IntegerInput
+                                                            value={stockByBranch[key] ?? ""}
+                                                            onChange={v => onStockChange(key, v)}
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div key={b.id} className="flex items-center justify-between gap-3">
+                                    <p className="text-[14px] text-[#101828]">{b.name}</p>
+                                    <div className="w-[140px]">
+                                        <IntegerInput
+                                            value={stockByBranch[b.id] ?? ""}
+                                            onChange={v => onStockChange(b.id, v)}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                </div>
+                            )
                         ))}
                     </div>
                 </Section>
@@ -570,6 +678,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 sku:         target.sku,
                 categoryId:  target.categoryId,
                 description: target.description ?? "",
+                sizes:       target.sizes ?? [],
             };
         }
         const firstActiveCategory = categories.find(c => c.status === "active");
@@ -584,6 +693,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
             sku:         initialSku,
             categoryId:  initialCategoryId,
             description: "",
+            sizes:       [],
         };
     });
     const [pricing, setPricing] = useState<PricingInfo>(() => ({
@@ -591,25 +701,53 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         unitCostAed:      target ? String(target.unitCostAed) : "",
         reorderThreshold: target ? String(target.reorderThreshold) : "",
     }));
-    // Per-branch stock inputs. In create mode start at "" (renders as
-    // placeholder "0"). In edit mode seed from current unitsOnHand so the
-    // admin can see and adjust exactly what's on hand right now.
+    // Per-(branch × size) stock inputs, keyed by `stockKey`. In create mode
+    // start at "" (renders as placeholder "0"). In edit mode seed from current
+    // unitsOnHand so the admin can see and adjust exactly what's on hand.
     const initialStockByBranch = useMemo<Record<string, string>>(() => {
         const map: Record<string, string> = {};
+        const initialSizes = target?.sizes ?? [];
         for (const b of activeBranches) {
-            if (target) {
-                const row = stockRows.find(s => s.productId === target.id && s.branchId === b.id);
-                map[b.id] = row ? String(row.unitsOnHand) : "0";
-            } else {
-                map[b.id] = "";
+            for (const { size, key } of stockCombos(b.id, initialSizes)) {
+                if (target) {
+                    const row = stockRows.find(
+                        s => s.productId === target.id && s.branchId === b.id && (s.size ?? undefined) === (size ?? undefined),
+                    );
+                    map[key] = row ? String(row.unitsOnHand) : "0";
+                } else {
+                    map[key] = "";
+                }
             }
         }
         return map;
     }, [activeBranches, target, stockRows]);
     const [stockByBranch, setStockByBranch] = useState<Record<string, string>>(initialStockByBranch);
-    function updateStock(branchId: string, value: string) {
-        setStockByBranch(prev => ({ ...prev, [branchId]: value }));
+    function updateStock(key: string, value: string) {
+        setStockByBranch(prev => ({ ...prev, [key]: value }));
     }
+    // When the admin adds/removes size variants in step 1, make sure every
+    // needed (branch × size) input key exists before step 2 renders. Existing
+    // values are preserved; new keys default to the current on-hand (edit) or
+    // blank (create). Stale keys are harmless — submit only reads live combos.
+    useEffect(() => {
+        setStockByBranch(prev => {
+            const next = { ...prev };
+            for (const b of activeBranches) {
+                for (const { size, key } of stockCombos(b.id, basic.sizes)) {
+                    if (next[key] !== undefined) continue;
+                    if (target) {
+                        const row = stockRows.find(
+                            s => s.productId === target.id && s.branchId === b.id && (s.size ?? undefined) === (size ?? undefined),
+                        );
+                        next[key] = row ? String(row.unitsOnHand) : "0";
+                    } else {
+                        next[key] = "";
+                    }
+                }
+            }
+            return next;
+        });
+    }, [basic.sizes, activeBranches, target, stockRows]);
     const [errors, setErrors] = useState<{
         basic: Partial<Record<keyof BasicInfo, string>>;
         pricing: Partial<Record<keyof PricingInfo, string>>;
@@ -685,6 +823,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
 
     function handleSubmit() {
         setSaving(true);
+        const cleanSizes = basic.sizes.map(s => s.trim()).filter(Boolean);
         const payload = {
             name: basic.name.trim(),
             sku: basic.sku.trim(),
@@ -694,6 +833,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
             unitCostAed: Number(pricing.unitCostAed),
             reorderThreshold: Number(pricing.reorderThreshold),
             imageUrl: basic.imageUrl.trim() || undefined,
+            sizes: cleanSizes.length > 0 ? cleanSizes : undefined,
             status: (target?.status ?? "active") as RetailProduct["status"],
         };
         if (mode === "create") {
@@ -704,19 +844,23 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                 setErrors(e => ({ ...e, basic: { ...e.basic, sku: "SKU already in use by another product." } }));
                 return;
             }
-            // Seed stock — for each branch with a positive entry, write a
-            // "receive" adjustment so the running balance + audit log land
-            // on the new product atomically.
+            // Seed stock — for each (branch × size) with a positive entry, write
+            // a "receive" adjustment so the running balance + audit log land on
+            // the new product atomically. Sizeless products use one entry per
+            // branch (size undefined).
             for (const b of activeBranches) {
-                const units = Number(stockByBranch[b.id]);
-                if (!Number.isFinite(units) || units <= 0) continue;
-                adjustRetailStock({
-                    productId: id,
-                    branchId: b.id,
-                    delta: Math.floor(units),
-                    kind: "receive",
-                    reason: "Initial stock from product creation",
-                });
+                for (const { size, key } of stockCombos(b.id, cleanSizes)) {
+                    const units = Number(stockByBranch[key]);
+                    if (!Number.isFinite(units) || units <= 0) continue;
+                    adjustRetailStock({
+                        productId: id,
+                        branchId: b.id,
+                        size,
+                        delta: Math.floor(units),
+                        kind: "receive",
+                        reason: "Initial stock from product creation",
+                    });
+                }
             }
             showToast("Product created", `${payload.name} is now in your retail catalog.`, "success", "check");
             router.push(returnTo);
@@ -731,24 +875,29 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
             setErrors(e => ({ ...e, basic: { ...e.basic, sku: "SKU already in use by another product." } }));
             return;
         }
-        // Per-branch stock deltas — every branch that changed gets one
-        // "adjust" entry. Branches with no change are skipped so the audit
+        // Per-(branch × size) stock deltas — every entry that changed gets one
+        // "adjust"/"receive" row. Unchanged entries are skipped so the audit
         // log stays quiet.
         for (const b of activeBranches) {
-            const currentRow = stockRows.find(s => s.productId === productId && s.branchId === b.id);
-            const currentUnits = currentRow?.unitsOnHand ?? 0;
-            const nextUnits = Number(stockByBranch[b.id]);
-            if (!Number.isFinite(nextUnits) || nextUnits < 0) continue;
-            const rounded = Math.floor(nextUnits);
-            const delta = rounded - currentUnits;
-            if (delta === 0) continue;
-            adjustRetailStock({
-                productId,
-                branchId: b.id,
-                delta,
-                kind: delta > 0 ? "receive" : "adjust",
-                reason: "Manual adjustment from product edit",
-            });
+            for (const { size, key } of stockCombos(b.id, cleanSizes)) {
+                const currentRow = stockRows.find(
+                    s => s.productId === productId && s.branchId === b.id && (s.size ?? undefined) === (size ?? undefined),
+                );
+                const currentUnits = currentRow?.unitsOnHand ?? 0;
+                const nextUnits = Number(stockByBranch[key]);
+                if (!Number.isFinite(nextUnits) || nextUnits < 0) continue;
+                const rounded = Math.floor(nextUnits);
+                const delta = rounded - currentUnits;
+                if (delta === 0) continue;
+                adjustRetailStock({
+                    productId,
+                    branchId: b.id,
+                    size,
+                    delta,
+                    kind: delta > 0 ? "receive" : "adjust",
+                    reason: "Manual adjustment from product edit",
+                });
+            }
         }
         setSaving(false);
         showToast("Product updated", `${payload.name} was saved.`, "success", "check");
@@ -819,6 +968,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                             onChange={updatePricing}
                             errors={errors.pricing}
                             branches={activeBranches}
+                            sizes={basic.sizes}
                             stockByBranch={stockByBranch}
                             onStockChange={updateStock}
                             mode={mode}

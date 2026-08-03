@@ -469,21 +469,24 @@ export default function RetailPage() {
             const allProductRows = stockByProduct.get(p.id) ?? [];
             const rows = branchId ? allProductRows.filter(r => r.branchId === branchId) : allProductRows;
             const stockAggregate = rows.reduce((sum, r) => sum + (r.unitsOnHand ?? 0), 0);
+            // A branch can hold several rows now (one per size variant) — sum
+            // them into a per-branch total before deriving low/out flags + the
+            // accordion breakdown.
+            const totalByBranch = new Map<string, number>();
+            for (const r of rows) totalByBranch.set(r.branchId, (totalByBranch.get(r.branchId) ?? 0) + (r.unitsOnHand ?? 0));
+            const branchTotals = Array.from(totalByBranch.values());
             const hasZeroBranch  = branchId
-                ? (rows[0]?.unitsOnHand ?? 0) === 0
-                : rows.some(r => r.unitsOnHand === 0);
+                ? (totalByBranch.get(branchId) ?? 0) === 0
+                : branchTotals.some(t => t === 0);
             const hasLowBranch   = branchId
-                ? (rows[0]?.unitsOnHand ?? 0) <= p.reorderThreshold
-                : rows.some(r => r.unitsOnHand <= p.reorderThreshold);
-            const branchBreakdown: RetailBranchRow[] = scopedBranches.map(b => {
-                const row = rows.find(r => r.branchId === b.id);
-                return {
-                    branchId: b.id,
-                    branchName: b.name,
-                    unitsOnHand: row?.unitsOnHand ?? 0,
-                    sold: soldByPair.get(`${p.id}|${b.id}`) ?? 0,
-                };
-            });
+                ? (totalByBranch.get(branchId) ?? 0) <= p.reorderThreshold
+                : branchTotals.some(t => t <= p.reorderThreshold);
+            const branchBreakdown: RetailBranchRow[] = scopedBranches.map(b => ({
+                branchId: b.id,
+                branchName: b.name,
+                unitsOnHand: totalByBranch.get(b.id) ?? 0,
+                sold: soldByPair.get(`${p.id}|${b.id}`) ?? 0,
+            }));
             return {
                 id: p.id,
                 name: p.name,

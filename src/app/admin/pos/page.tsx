@@ -91,8 +91,17 @@ interface PosProduct {
     /** Retail only. Per-branch units-on-hand map keyed by branch id. The
      *  "Out of stock" gate reads THIS map when a specific branch is
      *  picked, so retail can't be sold at a branch that has no stock
-     *  even if another branch is holding units. */
+     *  even if another branch is holding units. Summed across size variants. */
     perBranchStock?: Record<string, number>;
+    /** Retail only. Declared size variants (free-form labels). When present the
+     *  POS card opens a size picker before adding to cart. */
+    sizes?: string[];
+    /** Retail only. On-hand per (branch → size). Drives the size picker's
+     *  per-size availability at the active sale branch. */
+    sizeStockByBranch?: Record<string, Record<string, number>>;
+    /** Retail only. On-hand per size aggregated across all branches — the size
+     *  picker falls back to this when the branch picker is "All locations". */
+    sizeStockAggregate?: Record<string, number>;
 }
 
 /** ISO date → DD/MM/YYYY — gift-card "Valid until" cell on the POS card. */
@@ -182,8 +191,24 @@ function buildCatalog(
         if (r.status !== "active") continue;
         const rowsForProduct = retailStock.filter(s => s.productId === r.id);
         const stockAggregate = rowsForProduct.reduce((sum, s) => sum + s.unitsOnHand, 0);
+        // Sum across size variants so a branch's total reads correctly even
+        // when the product is stocked per size.
         const perBranchStock: Record<string, number> = {};
-        for (const s of rowsForProduct) perBranchStock[s.branchId] = s.unitsOnHand;
+        for (const s of rowsForProduct) perBranchStock[s.branchId] = (perBranchStock[s.branchId] ?? 0) + s.unitsOnHand;
+        // Per (branch → size) + per-size aggregate, for the size picker.
+        const sizes = r.sizes ?? [];
+        let sizeStockByBranch: Record<string, Record<string, number>> | undefined;
+        let sizeStockAggregate: Record<string, number> | undefined;
+        if (sizes.length > 0) {
+            sizeStockByBranch = {};
+            sizeStockAggregate = {};
+            for (const sz of sizes) sizeStockAggregate[sz] = 0;
+            for (const s of rowsForProduct) {
+                if (!s.size) continue;
+                (sizeStockByBranch[s.branchId] ??= {})[s.size] = (sizeStockByBranch[s.branchId]?.[s.size] ?? 0) + s.unitsOnHand;
+                sizeStockAggregate[s.size] = (sizeStockAggregate[s.size] ?? 0) + s.unitsOnHand;
+            }
+        }
         // primaryMeta = the retail category label; secondaryMeta = the
         // branch-aware stock label (computed at render time, see the
         // ProductPosCard callsite below). SKU stays on the detail page /
@@ -204,6 +229,7 @@ function buildCatalog(
             bannerImageUrl: r.imageUrl,
             stockAggregate,
             perBranchStock,
+            ...(sizes.length > 0 ? { sizes, sizeStockByBranch, sizeStockAggregate } : {}),
         });
     }
 
@@ -326,6 +352,8 @@ function POSInner() {
 
     // Gift card flow — opens when a gift card is added to cart
     const [giftCardModalDesignId, setGiftCardModalDesignId] = useState<string | null>(null);
+    // Sized-retail size picker — the product whose size the cashier is choosing.
+    const [sizePicker, setSizePicker] = useState<PosProduct | null>(null);
 
     // Rebind every gift-card line's senderName whenever the cart's customer
     // changes (incl. cleared). Lets the admin add gift cards first and pick
@@ -455,15 +483,27 @@ function POSInner() {
             setGiftCardModalDesignId(p.id);
             return;
         }
-        // Phase D.2 (2026-07-29) — retail is fully sellable. Cart stacking
-        // matches packages (each qty+1 on repeat clicks); memberships still
-        // cap at 1.
+        // Sized retail — pick a size variant before adding, so the right
+        // (branch × size) stock decrements at checkout.
+        if (p.kind === "retail" && p.sizes && p.sizes.length > 0) {
+            setSizePicker(p);
+            setCartOpen(true);
+            return;
+        }
+        addLineToCart(p);
+    }
+
+    /** Add a catalog product (optionally a specific retail size) to the cart.
+     *  Cart stacking matches packages (qty+1 on repeat); memberships cap at 1.
+     *  A sized retail product stacks per (product × size) — each size is its
+     *  own line. */
+    function addLineToCart(p: PosProduct, size?: string) {
         setCartOpen(true);
         setCart(prev => {
-            const existing = prev.find(l => l.productId === p.id);
+            const existing = prev.find(l => l.productId === p.id && l.size === size);
             if (existing) {
                 if (p.kind === "membership") return prev;
-                return prev.map(l => l.productId === p.id ? { ...l, quantity: l.quantity + 1 } : l);
+                return prev.map(l => (l.productId === p.id && l.size === size) ? { ...l, quantity: l.quantity + 1 } : l);
             }
             return [...prev, {
                 lineId: `cl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -471,8 +511,11 @@ function POSInner() {
                 kind: p.kind,
                 name: p.name,
                 unitPrice: p.priceAed,
-                primaryMeta: p.primaryMeta,
+                // Sized retail lines lead with the chosen size; others keep
+                // their category / credits meta.
+                primaryMeta: size ? `Size ${size}` : p.primaryMeta,
                 quantity: 1,
+                ...(size ? { size } : {}),
                 // Retail cart lines carry the product image so the cart
                 // renders the same photo the POS card showed.
                 imageUrl: p.kind === "retail" ? p.bannerImageUrl : undefined,
@@ -680,6 +723,7 @@ function POSInner() {
             name:        l.name,
             unitPrice:   l.unitPrice,
             quantity:    l.quantity,
+            size:        l.size,
             giftCard:    l.giftCard,
             // Retail cart lines already carry the product image (see the
             // buildCatalog step above where `bannerImageUrl` is threaded
@@ -874,6 +918,13 @@ function POSInner() {
                 onConfirm={handleConfirmGiftCard}
             />
 
+            <SizePickerModal
+                product={sizePicker}
+                branchId={branchId}
+                onClose={() => setSizePicker(null)}
+                onPick={(size) => { if (sizePicker) addLineToCart(sizePicker, size); setSizePicker(null); }}
+            />
+
             {/* New-customer side modal — replaces the previous full-page
                 /customers/new navigation. On save, the newly created
                 customer is auto-selected in the cart so the admin can
@@ -931,6 +982,8 @@ interface CartLine {
     unitPrice: number;
     primaryMeta?: string;
     quantity: number;
+    /** Retail only — chosen size variant. Undefined for sizeless products. */
+    size?: string;
     giftCard?: PurchaseLineItem["giftCard"];
     /** Retail only — the product's banner image URL, so the cart line
      *  can show the same photo the POS card showed instead of the
@@ -1415,6 +1468,68 @@ interface GiftCardRecipientData {
     recipientEmail: string;
     message: string;
     amount?: number;
+}
+
+// ─── Sized-retail size picker modal ─────────────────────────────────────────
+//
+// Opened when a retail product with size variants is tapped. Shows each size
+// with its on-hand (scoped to the picked branch, or aggregate on "All
+// locations"); a size with 0 available is disabled. Picking a size adds that
+// (product × size) line to the cart.
+
+function SizePickerModal({ product, branchId, onClose, onPick }: {
+    product: PosProduct | null;
+    branchId: string;
+    onClose: () => void;
+    onPick: (size: string) => void;
+}) {
+    if (!product || !product.sizes) return null;
+    const stockForSize = (size: string): number => {
+        if (branchId) return product.sizeStockByBranch?.[branchId]?.[size] ?? 0;
+        return product.sizeStockAggregate?.[size] ?? 0;
+    };
+    return (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
+            <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[420px] max-w-[calc(100vw-32px)] flex flex-col">
+                <div className="flex items-start gap-3 p-6 pb-4">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-7">Choose a size</p>
+                        <p className="text-[14px] text-[#475467] leading-5 mt-0.5 truncate">{product.name}</p>
+                    </div>
+                    <button type="button" onClick={onClose} aria-label="Close"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-1">
+                        <XClose className="w-5 h-5 text-[#667085]" />
+                    </button>
+                </div>
+                <div className="px-6 pb-6 flex flex-col gap-2">
+                    {product.sizes.map(size => {
+                        const units = stockForSize(size);
+                        const soldOut = units <= 0;
+                        return (
+                            <button
+                                key={size}
+                                type="button"
+                                disabled={soldOut}
+                                onClick={() => onPick(size)}
+                                className={cn(
+                                    "w-full flex items-center justify-between gap-3 px-4 h-12 rounded-[10px] border-1 text-left transition-colors",
+                                    soldOut
+                                        ? "border-[#e4e7ec] bg-[#f9fafb] cursor-not-allowed"
+                                        : "border-[#d0d5dd] bg-white hover:border-[#7ba08c] hover:bg-[#f9fafb]",
+                                )}
+                            >
+                                <span className={cn("text-[15px] font-medium", soldOut ? "text-[#98a2b3]" : "text-[#101828]")}>{size}</span>
+                                <span className={cn("text-[13px] font-medium", soldOut ? "text-[#b42318]" : "text-[#667085]")}>
+                                    {soldOut ? "Out of stock" : `${units} in stock`}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
 }
 
 // ─── Gift card recipient modal — Figma 4232:180130 ──────────────────────────

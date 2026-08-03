@@ -6,6 +6,10 @@
 // the retail LIST view can open the panel directly without bouncing
 // through the detail route. Both surfaces render the same component; the
 // list page just skips the `?configureStock=1` deep-link plumbing.
+//
+// Client 2026-08-03 — sized products (product.sizes) are configured per
+// (branch × size); sizeless products stay per-branch. A flat draft map keyed
+// by `stockKey` covers both paths.
 
 import { useEffect, useMemo, useState } from "react";
 import { XClose, ChevronSelectorVertical } from "@untitledui/icons";
@@ -30,6 +34,57 @@ export function resolveAdjustKind(
     return delta > 0 ? "receive" : "adjust";
 }
 
+// Draft map keys — per (branch) for sizeless products, per (branch × size)
+// for sized ones.
+const KEY_SEP = "::";
+function stockKey(branchId: string, size?: string): string {
+    return size ? `${branchId}${KEY_SEP}${size}` : branchId;
+}
+
+/** 112×40 units field with the stacked up/down stepper (Onra DS pattern). */
+function UnitsStepper({ value, onChange, ariaLabel }: {
+    value: string; onChange: (next: string) => void; ariaLabel: string;
+}) {
+    const displayed = value === "0" ? "" : value;
+    const numeric = Number(value) || 0;
+    const setValue = (next: number) => onChange(String(Math.max(0, Math.trunc(next))));
+    return (
+        <div className="w-[112px] h-10 flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:border-[#7ba08c] transition-colors overflow-hidden">
+            <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="0"
+                aria-label={ariaLabel}
+                value={displayed}
+                onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    const trimmed = digits.replace(/^0+(?=\d)/, "");
+                    onChange(trimmed === "" ? "0" : trimmed);
+                }}
+                onBlur={() => { if (value.length === 0) onChange("0"); }}
+                className="flex-1 min-w-0 h-full px-3 text-right text-[16px] text-[#101828] bg-transparent focus:outline-none placeholder:text-[#98a2b3]"
+            />
+            <div className="relative w-6 h-full shrink-0 select-none border-l border-[#e4e7ec] flex items-center justify-center">
+                <ChevronSelectorVertical className="pointer-events-none relative z-10 w-4 h-4 text-[#667085]" />
+                <button
+                    type="button"
+                    onClick={() => setValue(numeric + 1)}
+                    aria-label={`Increase ${ariaLabel}`}
+                    className="absolute inset-x-0 top-0 h-1/2 cursor-pointer hover:bg-[#f9fafb] transition-colors"
+                />
+                <button
+                    type="button"
+                    onClick={() => setValue(numeric - 1)}
+                    disabled={numeric <= 0}
+                    aria-label={`Decrease ${ariaLabel}`}
+                    className="absolute inset-x-0 bottom-0 h-1/2 cursor-pointer hover:bg-[#f9fafb] transition-colors disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                />
+            </div>
+        </div>
+    );
+}
+
 export function ConfigureStockPanel({ open, onClose, product }: {
     open: boolean;
     onClose: () => void;
@@ -40,6 +95,8 @@ export function ConfigureStockPanel({ open, onClose, product }: {
     const adjustRetailStock = useAppStore(s => s.adjustRetailStock);
     const showToast  = useAppStore(s => s.showToast);
 
+    const sizes = useMemo(() => product.sizes ?? [], [product.sizes]);
+
     // activeBranches MUST be memoised — a fresh array every render would
     // re-fire the drafts-seeding effect below, tripping React's re-render
     // limit the moment the panel deep-links open.
@@ -48,11 +105,20 @@ export function ConfigureStockPanel({ open, onClose, product }: {
         [branches],
     );
 
-    const currentByBranch = useMemo(() => {
+    // (branch × size) combos to render + save.
+    const combos = useMemo(
+        () => activeBranches.flatMap(b =>
+            (sizes.length > 0 ? sizes.map(sz => ({ branch: b, size: sz as string | undefined })) : [{ branch: b, size: undefined }])
+                .map(c => ({ ...c, key: stockKey(c.branch.id, c.size) })),
+        ),
+        [activeBranches, sizes],
+    );
+
+    const currentByKey = useMemo(() => {
         const map = new Map<string, number>();
         stockRows
             .filter(s => s.productId === product.id)
-            .forEach(s => map.set(s.branchId, s.unitsOnHand));
+            .forEach(s => map.set(stockKey(s.branchId, s.size), s.unitsOnHand));
         return map;
     }, [stockRows, product.id]);
 
@@ -62,40 +128,38 @@ export function ConfigureStockPanel({ open, onClose, product }: {
     useEffect(() => {
         if (!open) return;
         const next: Record<string, string> = {};
-        for (const b of activeBranches) {
-            next[b.id] = String(currentByBranch.get(b.id) ?? 0);
-        }
+        for (const c of combos) next[c.key] = String(currentByKey.get(c.key) ?? 0);
         setDrafts(next);
         setReason("");
-    }, [open, activeBranches, currentByBranch]);
+    }, [open, combos, currentByKey]);
 
     function handleSave() {
         // Fallback so audit rows aren't blank when admin skips the field.
         const trimmedReason = reason.trim() || "Manual adjustment";
         let changed = 0;
-        for (const b of activeBranches) {
-            const raw = drafts[b.id] ?? "0";
+        for (const c of combos) {
+            const raw = drafts[c.key] ?? "0";
             const next = Number(raw);
             if (Number.isNaN(next) || next < 0 || !Number.isInteger(next)) continue;
-            const current = currentByBranch.get(b.id) ?? 0;
+            const current = currentByKey.get(c.key) ?? 0;
             const delta = next - current;
             if (delta === 0) continue;
-            const kind = resolveAdjustKind(trimmedReason, delta);
             adjustRetailStock({
                 productId: product.id,
-                branchId: b.id,
+                branchId: c.branch.id,
+                size: c.size,
                 delta,
-                kind,
+                kind: resolveAdjustKind(trimmedReason, delta),
                 reason: trimmedReason,
             });
             changed += 1;
         }
         if (changed === 0) {
-            showToast("No changes", "None of the branch counts were changed.", "warning", "check");
+            showToast("No changes", "None of the stock counts were changed.", "warning", "check");
         } else {
             showToast(
                 "Stock updated",
-                `${product.name} — ${changed} ${changed === 1 ? "branch" : "branches"} adjusted.`,
+                `${product.name} — ${changed} ${changed === 1 ? "count" : "counts"} adjusted.`,
                 "success",
                 "check",
             );
@@ -134,86 +198,57 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                         )}
                     />
                     <p className="text-[13px] text-[#667085]">
-                        Every changed branch will get an audit-log entry with this reason.
+                        Every changed count will get an audit-log entry with this reason.
                     </p>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    <p className="text-[14px] font-medium text-[#344054]">Units on hand — per branch</p>
+                    <p className="text-[14px] font-medium text-[#344054]">
+                        {sizes.length > 0 ? "Units on hand — per branch, per size" : "Units on hand — per branch"}
+                    </p>
                     <div className="flex flex-col gap-3">
-                        {activeBranches.map(b => {
-                            const raw = drafts[b.id] ?? "0";
-                            // Empty state: `"0"` shows as blank so the placeholder
-                            // "0" is what admins see, matching the memory rule.
-                            const displayed = raw === "0" ? "" : raw;
-                            const numeric = Number(raw) || 0;
-                            const setValue = (next: number) => {
-                                const clamped = Math.max(0, Math.trunc(next));
-                                setDrafts(d => ({ ...d, [b.id]: String(clamped) }));
-                            };
-                            return (
-                                <div key={b.id} className="grid grid-cols-[1fr_112px] items-center gap-3">
-                                    <div className="flex flex-col min-w-0">
-                                        <p className="text-[14px] text-[#101828] truncate">{b.name}</p>
-                                        <p className="text-[12px] text-[#667085]">Current: {currentByBranch.get(b.id) ?? 0}</p>
-                                    </div>
-                                    {/* Fixed 112 × 40 box: text field + stacked up/down
-                                        stepper on the right (Onra DS pattern). `type="text"`
-                                        + `inputMode="numeric"` keeps the browser off its own
-                                        native spinner so the display value never desyncs.
-                                        Focus state swaps border colour only — no `ring-2`
-                                        bloom, so all rows read at the same visual size. */}
-                                    <div className="w-[112px] h-10 flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:border-[#7ba08c] transition-colors overflow-hidden">
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            placeholder="0"
-                                            aria-label={`Units at ${b.name}`}
-                                            value={displayed}
-                                            onChange={e => {
-                                                const digits = e.target.value.replace(/\D/g, "");
-                                                const trimmed = digits.replace(/^0+(?=\d)/, "");
-                                                setDrafts(d => ({ ...d, [b.id]: trimmed === "" ? "0" : trimmed }));
-                                            }}
-                                            onBlur={() => {
-                                                setDrafts(d => ({
-                                                    ...d,
-                                                    [b.id]: (d[b.id] ?? "").length === 0 ? "0" : d[b.id],
-                                                }));
-                                            }}
-                                            className="flex-1 min-w-0 h-full px-3 text-right text-[16px] text-[#101828] bg-transparent focus:outline-none placeholder:text-[#98a2b3]"
-                                        />
-                                        <div className="relative w-6 h-full shrink-0 select-none border-l border-[#e4e7ec] flex items-center justify-center">
-                                            {/* z-10 keeps the glyph on top of the two absolute
-                                                buttons — otherwise the buttons' hover fill paints
-                                                over the chevron and it looks like it disappeared. */}
-                                            <ChevronSelectorVertical className="pointer-events-none relative z-10 w-4 h-4 text-[#667085]" />
-                                            <button
-                                                type="button"
-                                                onClick={() => setValue(numeric + 1)}
-                                                aria-label={`Increase units at ${b.name}`}
-                                                className={cn(
-                                                    "absolute inset-x-0 top-0 h-1/2 cursor-pointer",
-                                                    "hover:bg-[#f9fafb] transition-colors",
-                                                )}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setValue(numeric - 1)}
-                                                disabled={numeric <= 0}
-                                                aria-label={`Decrease units at ${b.name}`}
-                                                className={cn(
-                                                    "absolute inset-x-0 bottom-0 h-1/2 cursor-pointer",
-                                                    "hover:bg-[#f9fafb] transition-colors",
-                                                    "disabled:cursor-not-allowed disabled:hover:bg-transparent",
-                                                )}
-                                            />
-                                        </div>
+                        {sizes.length > 0 ? (
+                            activeBranches.map(b => (
+                                <div key={b.id} className="flex flex-col gap-2 border-1 border-[#e4e7ec] rounded-[10px] p-3">
+                                    <p className="text-[14px] font-medium text-[#101828]">{b.name}</p>
+                                    <div className="flex flex-col gap-2">
+                                        {sizes.map(sz => {
+                                            const key = stockKey(b.id, sz);
+                                            return (
+                                                <div key={sz} className="grid grid-cols-[1fr_112px] items-center gap-3">
+                                                    <div className="flex flex-col min-w-0">
+                                                        <p className="text-[14px] text-[#475467] truncate">{sz}</p>
+                                                        <p className="text-[12px] text-[#667085]">Current: {currentByKey.get(key) ?? 0}</p>
+                                                    </div>
+                                                    <UnitsStepper
+                                                        value={drafts[key] ?? "0"}
+                                                        onChange={v => setDrafts(d => ({ ...d, [key]: v }))}
+                                                        ariaLabel={`units at ${b.name}, size ${sz}`}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                            );
-                        })}
+                            ))
+                        ) : (
+                            activeBranches.map(b => {
+                                const key = stockKey(b.id);
+                                return (
+                                    <div key={b.id} className="grid grid-cols-[1fr_112px] items-center gap-3">
+                                        <div className="flex flex-col min-w-0">
+                                            <p className="text-[14px] text-[#101828] truncate">{b.name}</p>
+                                            <p className="text-[12px] text-[#667085]">Current: {currentByKey.get(key) ?? 0}</p>
+                                        </div>
+                                        <UnitsStepper
+                                            value={drafts[key] ?? "0"}
+                                            onChange={v => setDrafts(d => ({ ...d, [key]: v }))}
+                                            ariaLabel={`units at ${b.name}`}
+                                        />
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
             </div>

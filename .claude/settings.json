@@ -125,7 +125,9 @@
       "Read(//private/var/folders/mm/y44920rj68776x55nwrg73jh0000gn/T/**)",
       "Bash(echo \"EXIT: $?\")",
       "Bash(python3 -)",
-      "Bash(grep -rn \"^[[:space:]]*Add new[[:space:]]*$\" src/app src/components)"
+      "Bash(grep -rn \"^[[:space:]]*Add new[[:space:]]*$\" src/app src/components)",
+      "Bash(size)",
+      "Bash(retailSize)"
     ],
     "additionalDirectories": [
       "/Users/hizkiast/Desktop/Syncfit/src/app/admin/products/retail/[id]",

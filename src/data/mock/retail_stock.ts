@@ -23,22 +23,30 @@ const SOUTH = "branch_forma_south";
 const EAST  = "branch_forma_east";
 const WEST  = "branch_forma_west";
 
-/** Small helper — keeps rows one-liner readable. */
-function row(product: string, branch: string, units: number, lastAdjusted?: string): RetailStock {
+/** Small helper — keeps rows one-liner readable. `size` is optional (sizeless
+ *  products omit it); when present it keys the (product × branch × size) row. */
+function row(product: string, branch: string, units: number, lastAdjusted?: string, size?: string): RetailStock {
     return {
-        id: `retail_stock_${product.replace("retail_prod_", "")}_${branch.replace("branch_forma_", "")}`,
+        id: `retail_stock_${product.replace("retail_prod_", "")}_${branch.replace("branch_forma_", "")}${size ? `_${size.toLowerCase()}` : ""}`,
         product_id: product,
         branch_id: branch,
+        ...(size ? { size } : {}),
         units_on_hand: units,
         last_adjusted_at: lastAdjusted,
     };
 }
 
 export const retail_stock: RetailStock[] = [
-    // ── Onra Studio Tank (threshold 10) ───────────────────────────────────
-    row("retail_prod_studio_tank", SOUTH, 42, "2026-07-25T09:00:00Z"),
-    row("retail_prod_studio_tank", EAST,   8, "2026-07-26T10:00:00Z"),  // low
-    row("retail_prod_studio_tank", WEST,  24, "2026-07-20T09:00:00Z"),
+    // ── Onra Studio Tank (threshold 10) — SIZED: Small / Medium / Large ────
+    row("retail_prod_studio_tank", SOUTH, 18, "2026-07-25T09:00:00Z", "Small"),
+    row("retail_prod_studio_tank", SOUTH, 24, "2026-07-25T09:00:00Z", "Medium"),
+    row("retail_prod_studio_tank", SOUTH, 14, "2026-07-25T09:00:00Z", "Large"),
+    row("retail_prod_studio_tank", EAST,   8, "2026-07-26T10:00:00Z", "Small"),  // low
+    row("retail_prod_studio_tank", EAST,  12, "2026-07-26T10:00:00Z", "Medium"),
+    row("retail_prod_studio_tank", EAST,   6, "2026-07-26T10:00:00Z", "Large"),  // low
+    row("retail_prod_studio_tank", WEST,  10, "2026-07-20T09:00:00Z", "Small"),
+    row("retail_prod_studio_tank", WEST,  14, "2026-07-20T09:00:00Z", "Medium"),
+    row("retail_prod_studio_tank", WEST,   9, "2026-07-20T09:00:00Z", "Large"),  // low
 
     // ── Grip Socks (threshold 12) ─────────────────────────────────────────
     row("retail_prod_grip_socks",  SOUTH, 34, "2026-07-27T09:00:00Z"),

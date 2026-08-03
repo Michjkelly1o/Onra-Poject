@@ -860,6 +860,9 @@ export interface CustomerTransaction {
      *  global, so this differs from `branch_id` (customer home branch)
      *  when a member buys from a walk-in branch. */
     branch_id_at_sale?: string;
+    /** Size variant sold, for a sized retail product (free-form label). Lets a
+     *  refund restore the exact (branch × size) stock row. */
+    retail_size?: string;
 }
 
 // ─── Wallet transactions (PRD 07 §Wallet — account credit ledger) ───────────
@@ -3068,6 +3071,10 @@ export interface RetailProduct {
     unit_cost_aed: number;
     reorder_threshold: number;
     image_url?: string;
+    /** Size variants offered — free-form admin labels ("Small", "Medium",
+     *  "One size", …). Omitted = sizeless product. Price is shared across
+     *  sizes; only stock differs per size. */
+    sizes?: string[];
     status: "active" | "inactive" | "archived";
     created_at: string;
     updated_at?: string;
@@ -3082,6 +3089,9 @@ export interface RetailStock {
     id: string;
     product_id: string;          // FK → retail_products.id
     branch_id: string;           // FK → branches.id
+    /** Size variant (free-form label) this row counts; omitted for sizeless
+     *  products. */
+    size?: string;
     units_on_hand: number;
     last_adjusted_at?: string;
     last_received_at?: string;
@@ -3103,6 +3113,9 @@ export interface RetailStockAdjustment {
     id: string;
     product_id: string;          // FK → retail_products.id
     branch_id: string;           // FK → branches.id
+    /** Size variant (free-form label) this delta applied to; omitted for
+     *  sizeless products. */
+    size?: string;
     delta: number;
     kind: "sale" | "receive" | "adjust" | "loss" | "refund";
     reason?: string;
