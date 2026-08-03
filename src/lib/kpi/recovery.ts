@@ -112,6 +112,14 @@ export function computeRecoveryKpis(
     ).length;
 
     return [
+        // Client Aug 2026 — Sales + Revenue lead the tab. Recovery has no
+        // per-booking refund tracking, so gross == net (service-price proxy).
+        { label: "Sales",                   value: aed(revCur),       change: delta(revCur, revPrior),             period,
+          description: "Value of recovery sessions sold in period.",
+          drillTo: "/reports/total-sales" },
+        { label: "Revenue",                 value: aed(revCur),       change: delta(revCur, revPrior),             period,
+          description: "Revenue earned (recognized) after refunds & discounts.",
+          drillTo: "/reports/total-sales" },
         { label: "Revenue per appointment", value: aed(revPerAptCur), change: delta(revPerAptCur, revPerAptPrior), period,
           description: "Attributed recovery revenue ÷ recovery appointments.",
           drillTo: "/reports/revenue-per-class" },

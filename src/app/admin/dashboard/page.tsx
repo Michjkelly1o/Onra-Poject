@@ -800,13 +800,13 @@ export default function AdminDashboard() {
 
         const today: DashboardMetric[] = [
             {
-                label: "Total sales",
+                label: "Sales",
                 value: totalSalesCount.toLocaleString("en-US"),
                 change: salesD.change, positive: salesD.positive, comparison: "vs yesterday",
                 icon: CurrencyDollar,
             },
             {
-                label: "Total revenue",
+                label: "Revenue",
                 value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
                 change: revenueD.change, positive: revenueD.positive, comparison: "vs yesterday",
                 icon: CoinsStacked01,

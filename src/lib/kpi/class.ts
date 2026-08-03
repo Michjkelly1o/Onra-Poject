@@ -26,7 +26,7 @@
 import type { AppState } from "@/lib/store";
 import type { Metric } from "@/components/insights/InsightMetricCard";
 import type { Window, RangePair } from "./date-range";
-import { num, pct, delta, inWindow, branchOk } from "./financial";
+import { num, pct, delta, inWindow, branchOk, revenueTotals, aedFmt } from "./financial";
 
 // ─── Public API ──────────────────────────────────────────────────────────
 
@@ -139,7 +139,24 @@ export function computeClassKpis(
     // Total attendance · Cancellations on time · Cancellations late ·
     // No-shows · Waitlist conversions · Avg class size. Removed: Class
     // occupancy, No-show rate, Unique attendees.
+    // Client Aug 2026 — Sales / Revenue / Revenue per class lead the Classes
+    // tab. Sales + Revenue come from the shared ledger (membership + package =
+    // the class economy), matching the Financial tab. Revenue per class = net
+    // revenue ÷ sessions run in the window.
+    const { grossCur, grossPrior, netCur, netPrior } = revenueTotals(state, range, branchFilter);
+    const revPerClassCur   = classesCur   > 0 ? netCur   / classesCur   : 0;
+    const revPerClassPrior = classesPrior > 0 ? netPrior / classesPrior : 0;
+
     return [
+        { label: "Sales",                value: aedFmt(grossCur),          change: delta(grossCur, grossPrior),         period,
+          description: "Value of what was sold, counted in full when bought.",
+          drillTo: "/reports/total-sales" },
+        { label: "Revenue",              value: aedFmt(netCur),            change: delta(netCur, netPrior),             period,
+          description: "Revenue earned (recognized) after refunds & discounts.",
+          drillTo: "/reports/total-sales" },
+        { label: "Revenue per class",    value: aedFmt(revPerClassCur),    change: delta(revPerClassCur, revPerClassPrior), period,
+          description: "Revenue attributed ÷ sessions run.",
+          drillTo: "/reports/revenue-per-class" },
         { label: "Classes scheduled",    value: num(classesCur),           change: delta(classesCur, classesPrior),     period,
           description: "Sessions on the calendar in period.",
           drillTo: "/reports/class-performance" },

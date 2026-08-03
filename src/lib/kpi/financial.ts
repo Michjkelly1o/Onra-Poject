@@ -80,7 +80,26 @@ function sumSigned(ledger: LedgerLite[], w: Window, branchFilter: Set<string> | 
     return s;
 }
 
+/** Sales (gross, sale-side) + Revenue (net, after refunds) over the shared
+ *  transaction ledger, for current + prior windows. The ledger already excludes
+ *  retail / gift-card / penalty / freeze, so this is membership + package money
+ *  — i.e. the class economy. Shared with the Classes tab so its Sales / Revenue
+ *  tiles match the Financial tab exactly. `aed`-formatted at the call site. */
+export function revenueTotals(state: AppState, range: RangePair, branchFilter: Set<string> | null) {
+    const ledger = selectTransactionLedger(state) as unknown as LedgerLite[];
+    const { current, prior } = range;
+    return {
+        grossCur:   sumSigned(ledger, current, branchFilter, r => r.transactionType === "sale"),
+        grossPrior: sumSigned(ledger, prior,   branchFilter, r => r.transactionType === "sale"),
+        netCur:     sumSigned(ledger, current, branchFilter),
+        netPrior:   sumSigned(ledger, prior,   branchFilter),
+    };
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────
+
+/** AED formatter — exported so session-type tabs render money identically. */
+export function aedFmt(n: number): string { return aed(n); }
 
 export function computeFinancialKpis(
     state: AppState,
@@ -177,10 +196,9 @@ export function computeFinancialKpis(
         { label: "Sales",                        value: aed(grossCur),             change: delta(grossCur, grossPrior),                   period,
           description: "Value of what was sold, counted in full when bought.",
           drillTo: "/reports/total-sales" },
-        { label: "Gross revenue",                value: aed(grossCur),             change: delta(grossCur, grossPrior),                   period,
-          description: "Revenue earned (recognized) before refunds & discounts.",
-          drillTo: "/reports/total-sales" },
-        { label: "Net revenue",                  value: aed(netCur),               change: delta(netCur, netPrior),                       period,
+        // Client Aug 2026 — "Gross revenue" removed (numerically identical to
+        // Sales); "Net revenue" renamed to "Revenue" (same tooltip kept).
+        { label: "Revenue",                      value: aed(netCur),               change: delta(netCur, netPrior),                       period,
           description: "Revenue earned (recognized) after refunds & discounts.",
           drillTo: "/reports/total-sales" },
         { label: "Recurring revenue (MRR)",      value: aed(mrrNow),                                                                       period: "as of today",
@@ -189,9 +207,7 @@ export function computeFinancialKpis(
         { label: "Avg revenue per member (ARPM)", value: aed(arpmCur),             change: delta(arpmCur, arpmPrior),                     period,
           description: "Net revenue ÷ active customers.",
           drillTo: "/reports/arpm" },
-        { label: "Revenue per class",            value: aed(revPerClassCur),       change: delta(revPerClassCur, revPerClassPrior),       period,
-          description: "Revenue attributed ÷ sessions run.",
-          drillTo: "/reports/revenue-per-class" },
+        // Client Aug 2026 — "Revenue per class" moved to the Classes tab.
         { label: "Revenue per visit",            value: aed(revPerVisitCur),       change: delta(revPerVisitCur, revPerVisitPrior),       period,
           description: "Revenue attributed ÷ attendees.",
           drillTo: "/reports/revenue-per-class" },

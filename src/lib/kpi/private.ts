@@ -14,6 +14,7 @@ import type { Window, RangePair } from "./date-range";
 const NUMBER = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 function num(n: number): string { return NUMBER.format(Math.round(n)); }
 function pct(n: number): string { return `${n.toFixed(1)}%`; }
+function aed(n: number): string { return `AED ${NUMBER.format(Math.round(n))}`; }
 
 function delta(cur: number, prior: number): number | undefined {
     if (prior === 0) return undefined;
@@ -49,6 +50,14 @@ export function computePrivateKpis(
     );
     const privCur   = privateInWin(current);
     const privPrior = privateInWin(prior);
+
+    // Client Aug 2026 — Sales + Revenue lead the tab. Private revenue is the
+    // parent service's list price per appointment (same proxy Recovery uses);
+    // no per-booking refund tracking, so gross == net.
+    const priceByServiceId = new Map(state.services.map(s => [s.id, s.price ?? 0]));
+    const revenueSum = (list: typeof privCur) => list.reduce((s, a) => s + (priceByServiceId.get(a.serviceId) ?? 0), 0);
+    const revCur   = revenueSum(privCur);
+    const revPrior = revenueSum(privPrior);
 
     // ── 1. Bookings ─────────────────────────────────────────────────────
     // Count of AppointmentBooking rows for those private appointments,
@@ -130,6 +139,12 @@ export function computePrivateKpis(
     const rebookPrior = rebookingRateFor(prior);
 
     return [
+        { label: "Sales",          value: aed(revCur),      change: delta(revCur, revPrior),           period,
+          description: "Value of private sessions sold in period.",
+          drillTo: "/reports/total-sales" },
+        { label: "Revenue",        value: aed(revCur),      change: delta(revCur, revPrior),           period,
+          description: "Revenue earned (recognized) after refunds & discounts.",
+          drillTo: "/reports/total-sales" },
         { label: "Bookings",       value: num(bookingsCur), change: delta(bookingsCur, bookingsPrior), period,
           description: "Confirmed private session bookings in period.",
           drillTo: "/reports/class-performance" },
