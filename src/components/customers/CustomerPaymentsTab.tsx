@@ -66,10 +66,11 @@ const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", status
 // package-plan customer reads "Credit package". The row is identified
 // as a penalty via its icon + transaction name, NOT its plan-type text
 // (client feedback Jul 2026).
-const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package" | "retail">, string> = {
+const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package" | "retail" | "gift_card">, string> = {
     membership: "Membership",
     package: "Credit package",
     retail: "Retail",
+    gift_card: "Gift card",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -158,10 +159,23 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
 // gates on `membership.credits === "unlimited"`) — credit-package
 // customers can never receive one, so there's no "Credit package"
 // case here. Client requirement Jul 2026.
+// A gift-card SALE is refundable only while the linked card is FULLY UNUSED —
+// once any balance is spent (or it's already refunded), the sale can't be
+// reversed. All other kinds pass through (their own `isRefundable` flag +
+// status already gate them). Mirrors the store guard in `refundTransaction`.
+function isTxnRefundable(t: CustomerTransaction, cards: IssuedGiftCard[]): boolean {
+    if (t.kind !== "gift_card") return true;
+    if (!t.issuedGiftCardId) return true;
+    const card = cards.find(c => c.id === t.issuedGiftCardId);
+    if (!card) return true;
+    return card.status === "active" && card.current_balance_aed >= card.face_value_aed;
+}
+
 function planTypeLabel(t: CustomerTransaction): string {
     // Penalty + freeze-fee rows are membership-scoped fees → always "Membership".
     if (t.kind === "cancellation_penalty" || t.kind === "freeze_fee") return "Membership";
     if (t.kind === "retail") return "Retail";
+    if (t.kind === "gift_card") return "Gift card";
     return KIND_LABEL[t.kind];
 }
 
@@ -196,6 +210,7 @@ function GiftCardWidget({ card, design }: { card: IssuedGiftCard; design?: GiftC
         active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
         redeemed: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
         expired: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
+        refunded: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
     const statusLabel = card.status.charAt(0).toUpperCase() + card.status.slice(1);
 
@@ -533,13 +548,19 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
     // row contributes to neither. Every combination is consistent.
     const isNonRefundLike = (tt: CustomerTransaction["transactionType"]) =>
         tt !== "refund" && tt !== "void" && tt !== "write_off";
+    // Gift-card SALES are excluded from spend/refund totals (client Aug 2026):
+    // the money is recognised when the card is REDEEMED on another product (that
+    // redemption is its own sale row). Counting the card purchase here as well
+    // would double-count it against the redemption. The card purchase still
+    // shows as its own Payment History row — it's just not re-summed.
     const totalSpent = txns
-        .filter(t => t.amountAed > 0 && isNonRefundLike(t.transactionType))
+        .filter(t => t.amountAed > 0 && isNonRefundLike(t.transactionType) && t.kind !== "gift_card")
         .reduce((s, t) => s + t.amountAed, 0);
     const totalRefunded = txns
         .filter(t => t.status === "refunded"
             && t.transactionType !== "void"
-            && t.transactionType !== "write_off")
+            && t.transactionType !== "write_off"
+            && t.kind !== "gift_card")
         .reduce((s, t) => s + Math.abs(t.amountAed), 0);
     const netSpend = totalSpent - totalRefunded;
 
@@ -781,7 +802,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                         action. Legacy rows without the flag stay
                                                         refundable (undefined → falsy check misses,
                                                         explicit false gates). */}
-                                                    {t.status === "complete" && t.isRefundable !== false && (
+                                                    {t.status === "complete" && t.isRefundable !== false && isTxnRefundable(t, issuedGiftCards) && (
                                                         <RowActions
                                                             items={[{
                                                                 label: "Refund payment",

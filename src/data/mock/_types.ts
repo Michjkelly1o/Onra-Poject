@@ -1082,8 +1082,10 @@ export interface IssuedGiftCard {
     issued_at: string;
     /** ISO 8601 — when the card expires and can no longer be redeemed. */
     expires_at: string;
-    /** active = redeemable · redeemed = balance spent · expired = past expiry. */
-    status: "active" | "redeemed" | "expired";
+    /** active = redeemable · redeemed = balance spent · expired = past expiry ·
+     *  refunded = the sale was refunded (only possible while fully unused), the
+     *  card is voided and can no longer be redeemed. */
+    status: "active" | "redeemed" | "expired" | "refunded";
     // ─ POS gift-card recipient form fields ───────────────────────────────
     /** Recipient name captured in the POS gift-card modal. */
     recipient_name?: string;

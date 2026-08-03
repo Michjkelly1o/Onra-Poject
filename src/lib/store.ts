@@ -2126,7 +2126,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail";
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -2219,6 +2219,12 @@ export interface CustomerTransaction {
     /** Branch the sale rang up at — needed for Retail Sales report's
      *  branch filter + Stock on Hand's per-branch drilldown. */
     branchIdAtSale?: string;
+    // ── Gift-card SALE link (client Aug 2026) ──────────────────────────────
+    /** On a `kind: "gift_card"` SALE row, the id of the issued card this sale
+     *  created. Lets a refund find the card, check it's unused, and void it.
+     *  (Distinct from `giftCardDebits`, which records SPENDING a card on some
+     *  other sale.) */
+    issuedGiftCardId?: string;
 }
 
 // ─── Inventory / Retail — Phase A store shape (2026-07-29) ──────────────────
@@ -3945,6 +3951,37 @@ const INITIAL_CUSTOMERS: Customer[] = reconcileCreditsRemaining(
     INITIAL_CUSTOMER_PLANS,
 );
 const INITIAL_CUSTOMER_TRANSACTIONS: CustomerTransaction[] = SEED_CUSTOMER_TRANSACTIONS.map(customerTransactionFromSeed);
+
+// Gift-card SALE transactions, derived 1:1 from the seeded issued cards
+// (client Aug 2026). A gift-card sale wasn't recorded as a transaction, so it
+// never showed in Payment History and couldn't be refunded. We synthesise one
+// per seeded card so every gift card a customer holds appears as a purchase
+// they can refund (while unused) — exactly like the live POS path now does.
+// EXCLUDED from revenue (see `selectTransactionLedger`): a gift-card sale is
+// deferred; revenue is recognised when the card is later redeemed, so counting
+// the sale too would double-count. `staffId` (= the card's seller) drives
+// commission via the issued-card path, so these are NOT re-summed there.
+const INITIAL_GIFT_CARD_SALE_TXNS: CustomerTransaction[] = (() => {
+    const custBranch = new Map(INITIAL_CUSTOMERS.map(c => [c.id, c.branchId]));
+    const designName = new Map(SEED_GIFT_CARD_DESIGNS.map(d => [d.id, d.name]));
+    return SEED_ISSUED_GIFT_CARDS.map((card): CustomerTransaction => ({
+        id: `txn_gc_${card.id}`,
+        customerId: card.customer_id,
+        branchId: custBranch.get(card.customer_id) ?? DEFAULT_BRANCH_ID,
+        kind: "gift_card",
+        productId: card.design_id,
+        name: designName.get(card.design_id) ?? `AED ${card.face_value_aed} Gift Card`,
+        amountAed: card.face_value_aed,
+        status: "complete",
+        paymentMethod: "card",
+        paymentSource: "pos",
+        transactionType: "sale",
+        staffId: card.sold_by_staff_id,
+        createdAtISO: card.issued_at,
+        issuedGiftCardId: card.id,
+        isRefundable: true,
+    }));
+})();
 const INITIAL_CUSTOMER_AGREEMENTS: CustomerAgreement[] = SEED_CUSTOMER_AGREEMENTS.map(customerAgreementFromSeed);
 const INITIAL_CUSTOMER_REFERRALS: CustomerReferral[] = SEED_CUSTOMER_REFERRALS.map(customerReferralFromSeed);
 const INITIAL_WALLET_TRANSACTIONS: WalletTransaction[] = SEED_WALLET_TRANSACTIONS.map(walletTransactionFromSeed);
@@ -5902,7 +5939,7 @@ export const useAppStore = create<AppState>()(persist(
     classRatings: INITIAL_RATINGS,
     customers: [...SHOWCASE_CUSTOMERS, ...BULK_SHOWCASE.customers, ...INITIAL_CUSTOMERS],
     customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...BULK_SHOWCASE.plans],
-    customerTransactions: [...INITIAL_CUSTOMER_TRANSACTIONS, ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions],
+    customerTransactions: [...INITIAL_CUSTOMER_TRANSACTIONS, ...INITIAL_GIFT_CARD_SALE_TXNS, ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions],
     customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
     customerReferrals: INITIAL_CUSTOMER_REFERRALS,
     walletTransactions: INITIAL_WALLET_TRANSACTIONS,
@@ -8709,6 +8746,15 @@ export const useAppStore = create<AppState>()(persist(
         // its own `isRefundable` check, the store rejects the refund
         // on non-refundable rows (e.g. cancellation-penalty fees).
         if (target && target.isRefundable === false) return;
+        // Gift-card SALE refund (client Aug 2026) — only allowed while the card
+        // is FULLY UNUSED. Once any balance is spent the sale can't be reversed
+        // (the money's already been redeemed against other products). The UI
+        // hides the Refund action in this case too; this is the store-side
+        // belt-and-braces guard.
+        if (target && target.kind === "gift_card" && target.issuedGiftCardId) {
+            const card = get().issuedGiftCards.find(c => c.id === target.issuedGiftCardId);
+            if (card && (card.status !== "active" || card.current_balance_aed < card.face_value_aed)) return;
+        }
         // v83 audit-1 (2026-07-29) — capture whether the set() below will
         // actually flip the row. The outer if(target) block runs side
         // effects (wallet credit-back, retail stock restore); those must
@@ -8772,6 +8818,18 @@ export const useAppStore = create<AppState>()(persist(
                     reason: `Refunded sale ${target.id}`,
                     sourceTransactionId: target.id,
                 });
+            }
+            // Gift-card sale refund — void the issued card so it can no longer
+            // be redeemed, and zero its balance. `status: "refunded"` also drops
+            // it from the seller's gift-card commission base (categoryStats
+            // skips refunded cards), clawing the commission back.
+            if (target.kind === "gift_card" && target.issuedGiftCardId) {
+                const cardId = target.issuedGiftCardId;
+                set(state => ({
+                    issuedGiftCards: state.issuedGiftCards.map(c =>
+                        c.id === cardId ? { ...c, status: "refunded" as const, current_balance_aed: 0 } : c,
+                    ),
+                }));
             }
         }
         // v83 audit-2 fix — a refund reverses paid history, which
@@ -11412,6 +11470,34 @@ export const useAppStore = create<AppState>()(persist(
             const nowISO = new Date().toISOString();
             const newPlans: CustomerPlan[] = [];
             const newTransactions: CustomerTransaction[] = [];
+            // Gift-card SALE transactions — one per issued card (client Aug
+            // 2026). Records the sale in Payment History and makes it
+            // refundable while the card is unused. EXCLUDED from revenue (see
+            // selectTransactionLedger) so redeeming the card later isn't
+            // double-counted. Commission for gift cards reads the issued card
+            // (sold_by_staff_id), not this row, so there's no double credit.
+            newIssued.forEach((card, gi) => {
+                newTransactions.push({
+                    id: `txn_gc_${stamp}_${gi}`,
+                    customerId,
+                    branchId: saleBranchId,
+                    kind: "gift_card",
+                    productId: card.design_id,
+                    name: state.giftCardDesigns.find(d => d.id === card.design_id)?.name
+                        ?? `AED ${card.face_value_aed} Gift Card`,
+                    amountAed: card.face_value_aed,
+                    status: "complete",
+                    paymentMethod: "card",
+                    paymentSource: paymentSource ?? "pos",
+                    transactionType: "sale",
+                    staffId: giftCardSeller,
+                    createdAtISO: nowISO,
+                    issuedGiftCardId: card.id,
+                    isRefundable: true,
+                });
+                // Back-link the card to its sale for the Gift Card report.
+                card.transaction_id = `txn_gc_${stamp}_${gi}`;
+            });
             items.forEach((it, idx) => {
                 if (it.productType !== "membership" && it.productType !== "package") return;
                 const isMembership = it.productType === "membership";
@@ -12503,7 +12589,12 @@ export const useAppStore = create<AppState>()(persist(
         //   seed gains a `retail` commission row; a few seeded gift cards get a
         //   seller. Bump so persisted v96 payloads (no seller ids, old rate)
         //   reseed and surface the new commission categories in the demo.
-        version: 97,
+        // v98 — gift-card SALES are now real transactions (kind:"gift_card"):
+        //   they appear in Payment History and are refundable while the card is
+        //   unused. CustomerTransaction gains `issuedGiftCardId`; IssuedGiftCard
+        //   status gains "refunded"; one sale txn is synthesised per seeded
+        //   card. Bump so persisted v97 payloads gain the gift-card sale rows.
+        version: 98,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

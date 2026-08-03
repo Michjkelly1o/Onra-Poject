@@ -697,6 +697,8 @@ function categoryStats(
         let net = 0, count = 0;
         for (const gc of s.issuedGiftCards) {
             if (gc.sold_by_staff_id !== staffId) continue;
+            // A refunded gift-card sale claws the commission back.
+            if (gc.status === "refunded") { refundIds.push(gc.id); continue; }
             const day = gc.issued_at.slice(0, 10);
             if (day < startDay || day > endDay) continue;
             net += gc.face_value_aed;

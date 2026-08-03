@@ -114,7 +114,7 @@ export interface GiftCardRow {
     /** faceValue − currentBalance. */
     redeemed: number;
     /** active | redeemed | expired. */
-    status: "active" | "redeemed" | "expired";
+    status: "active" | "redeemed" | "expired" | "refunded";
     recipientName: string;
     recipientEmail: string;
     senderName: string;
@@ -414,11 +414,16 @@ export function selectTransactionLedger(state: AppState): LedgerRow[] {
     // of the standalone Retail Sales report, AND the Sale Category
     // pivot would sprout a stray "retail" bucket that the label maps
     // don't know about.
+    // gift_card SALES are excluded too (client Aug 2026): a gift-card sale is
+    // deferred revenue — recognised when the card is later redeemed on another
+    // product (that redemption IS a membership/package sale in this ledger).
+    // Counting the card sale here as well would double-count the same money.
     return resolveLedger(state.customerTransactions)
         .filter(t =>
             t.kind !== "cancellation_penalty"
             && t.kind !== "freeze_fee"
             && t.kind !== "retail"
+            && t.kind !== "gift_card"
         )
         .map(t => {
             const c = cust(t.customerId);
@@ -450,6 +455,7 @@ export function selectPayments(state: AppState): PaymentRow[] {
             t.kind !== "cancellation_penalty"
             && t.kind !== "freeze_fee"
             && t.kind !== "retail"
+            && t.kind !== "gift_card"
         )
         .map(t => {
         const c = cust(t.customerId);
@@ -832,6 +838,10 @@ export function selectCustomers(state: AppState): CustomerRow[] {
     const ledger = resolveLedger(state.customerTransactions);
     const ltvByCustomer = new Map<string, number>();
     for (const t of ledger) {
+        // Gift-card sales are deferred — the value lands when the card is
+        // redeemed (that redemption is its own sale row in this ledger), so
+        // counting the card purchase too would double-count LTV.
+        if (t.kind === "gift_card") continue;
         const prev = ltvByCustomer.get(t.customerId) ?? 0;
         ltvByCustomer.set(t.customerId, prev + signedAmount(t));
     }

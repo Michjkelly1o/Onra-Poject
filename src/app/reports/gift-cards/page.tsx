@@ -17,6 +17,7 @@ const STATUS_LABEL: Record<GiftCardRow["status"], string> = {
     active:   "Active",
     redeemed: "Redeemed",
     expired:  "Expired",
+    refunded: "Refunded",
 };
 
 interface GiftCardDisplayRow {
