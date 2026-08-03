@@ -415,7 +415,7 @@ export default function ClassTypesPage() {
 
                 {/* Add template */}
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`)}>
-                    Add template
+                    Add
                 </Button>
             </div>
 

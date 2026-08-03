@@ -784,7 +784,7 @@ export function PaymentsTab() {
                             "success", "check",
                         )}
                     >
-                        Add provider
+                        Add
                     </Button>
                 </div>
             </div>

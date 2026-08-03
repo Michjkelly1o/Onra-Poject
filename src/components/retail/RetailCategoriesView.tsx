@@ -1,17 +1,16 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Retail categories VIEW (shared)
+// Onra Studio — Retail categories view (shared)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Extracted from the old /admin/products/retail-categories page so it can be
-// rendered BOTH as the "Categories" tab of the merged Retail page AND from the
-// legacy standalone route (kept alive for deep links). Behaviour is unchanged —
-// same table + CRUD chrome as /admin/categories, same store guards.
+// Split into a controller hook + a toolbar + a panel so the merged Retail page
+// can render the toolbar ABOVE the shared view-card and the table INSIDE it
+// (matching Memberships & Packages), while the legacy standalone route renders
+// the self-contained `RetailCategoriesView`.
 //
 // Delete is blocked when any non-archived retail product still references the
-// category — `canDeleteRetailCategory` enforces this at the store layer, and
-// this view surfaces a friendly toast when the gate fires.
+// category — `canDeleteRetailCategory` enforces this at the store layer.
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -44,7 +43,9 @@ const STATUS_ORDER: Record<RetailCategory["status"], number> = {
     active: 0, inactive: 1,
 };
 
-export function RetailCategoriesView() {
+// ─── Controller — all state + handlers + derived rows ────────────────────────
+
+export function useRetailCategoriesController() {
     const categories             = useAppStore(s => s.retailCategories);
     const addRetailCategory      = useAppStore(s => s.addRetailCategory);
     const updateRetailCategory   = useAppStore(s => s.updateRetailCategory);
@@ -52,7 +53,6 @@ export function RetailCategoriesView() {
     const canDeleteRetailCategory = useAppStore(s => s.canDeleteRetailCategory);
     const showToast              = useAppStore(s => s.showToast);
 
-    // ── Modal + delete state ──────────────────────────────────────────────
     const [categoryModal, setCategoryModal] = useState<"new" | RetailCategory | null>(null);
     const [pendingDelete, setPendingDelete] = useState<
         | { kind: "row"; row: RetailCategory }
@@ -60,12 +60,8 @@ export function RetailCategoriesView() {
         | null
     >(null);
 
-    // ── Toolbar state ──────────────────────────────────────────────────────
     const [search, setSearch] = useState("");
-
-    // ── Selection + pagination state ──────────────────────────────────────
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
     useBulkSelectionSignal(selectedIds.size > 0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -74,8 +70,6 @@ export function RetailCategoriesView() {
     function handleAddCategory()                     { setCategoryModal("new"); }
     function handleEditCategory(c: RetailCategory)   { setCategoryModal(c); }
 
-    /** Row delete — refuses with a friendly toast when the category is still
-     *  referenced by any non-archived retail product. */
     function requestDeleteCategory(c: RetailCategory) {
         const gate = canDeleteRetailCategory(c.id);
         if (!gate.deletable) {
@@ -89,8 +83,6 @@ export function RetailCategoriesView() {
         setPendingDelete({ kind: "row", row: c });
     }
 
-    /** Bulk delete — gates each row through the same guard; blocked rows are
-     *  excluded from the delete and reported via toast. */
     function requestBulkDelete(rows: RetailCategory[]) {
         const deletable = rows.filter(r => canDeleteRetailCategory(r.id).deletable);
         const blocked   = rows.filter(r => !deletable.includes(r));
@@ -116,45 +108,24 @@ export function RetailCategoriesView() {
         if (categoryModal === "new") {
             const id = addRetailCategory({ label: name, imageUrl: image_url || undefined });
             if (!id) {
-                showToast(
-                    "Duplicate name",
-                    `A category called "${name}" already exists.`,
-                    "error", "slash",
-                );
+                showToast("Duplicate name", `A category called "${name}" already exists.`, "error", "slash");
                 return;
             }
-            showToast(
-                "Category created",
-                `"${name}" has been added to your retail catalog.`,
-                "success", "check",
-            );
+            showToast("Category created", `"${name}" has been added to your retail catalog.`, "success", "check");
         } else if (categoryModal) {
-            const ok = updateRetailCategory(categoryModal.id, {
-                label: name,
-                imageUrl: image_url || undefined,
-            });
+            const ok = updateRetailCategory(categoryModal.id, { label: name, imageUrl: image_url || undefined });
             if (!ok) {
-                showToast(
-                    "Couldn't save changes",
-                    `A category called "${name}" already exists.`,
-                    "error", "slash",
-                );
+                showToast("Couldn't save changes", `A category called "${name}" already exists.`, "error", "slash");
                 return;
             }
-            showToast(
-                "Category updated",
-                `"${name}" has been saved.`,
-                "success", "check",
-            );
+            showToast("Category updated", `"${name}" has been saved.`, "success", "check");
         }
         setCategoryModal(null);
     }
 
     function confirmDelete() {
         if (!pendingDelete) return;
-        const rows = pendingDelete.kind === "row"
-            ? [pendingDelete.row]
-            : pendingDelete.rows;
+        const rows = pendingDelete.kind === "row" ? [pendingDelete.row] : pendingDelete.rows;
         for (const c of rows) deleteRetailCategory(c.id);
         showToast(
             rows.length === 1 ? "Category deleted" : `${rows.length} categories deleted`,
@@ -170,12 +141,9 @@ export function RetailCategoriesView() {
         setPendingDelete(null);
     }
 
-    // ── Filter + sort + paginate ──────────────────────────────────────────
     const filteredCategories = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return q
-            ? categories.filter(c => c.label.toLowerCase().includes(q))
-            : categories;
+        return q ? categories.filter(c => c.label.toLowerCase().includes(q)) : categories;
     }, [categories, search]);
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<RetailCategory>(filteredCategories, {
@@ -187,14 +155,10 @@ export function RetailCategoriesView() {
     const clampedPage  = Math.min(Math.max(1, page), totalPages);
     const pageRows     = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
-    // ── Bulk selection (scoped to current page) ───────────────────────────
     const pageIds = pageRows.map(r => r.id);
     const allChecked  = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
     const someChecked = !allChecked && pageIds.some(id => selectedIds.has(id));
-    const selectedRows = useMemo(
-        () => sortedRows.filter(r => selectedIds.has(r.id)),
-        [sortedRows, selectedIds],
-    );
+    const selectedRows = useMemo(() => sortedRows.filter(r => selectedIds.has(r.id)), [sortedRows, selectedIds]);
     function toggleAllOnPage() {
         setSelectedIds(prev => {
             const next = new Set(prev);
@@ -216,178 +180,203 @@ export function RetailCategoriesView() {
     const isTrulyEmpty    = categories.length === 0;
     const isFilteredEmpty = !isTrulyEmpty && sortedRows.length === 0;
 
-    // CategoryModal accepts a ClassCategory-shape via `existing`. We pass a
-    // thin adapter object (name / image_url) so we can reuse the modal as-is
-    // — the modal only reads those two fields, so the shape mismatch is
-    // safe. Kept behind a small helper so future readers see the intent.
     function categoryModalExisting() {
         if (!categoryModal || categoryModal === "new") return undefined;
         return {
             id: categoryModal.id,
             name: categoryModal.label,
             image_url: categoryModal.imageUrl ?? "",
-            // Fields below are unused by CategoryModal — declared so the
-            // ClassCategory shape typechecks.
             color_hex: "#f9fafb",
             status: "active" as const,
         };
     }
 
+    return {
+        categories, search, setSearch,
+        sortKey, sortDir, toggleSort, sortedRows, pageRows,
+        selectedIds, allChecked, someChecked, selectedRows,
+        toggleAllOnPage, toggleOne, clearSelection,
+        clampedPage, pageSize, setPage, setPageSize,
+        handleAddCategory, handleEditCategory, requestDeleteCategory, requestBulkDelete,
+        categoryModal, setCategoryModal, pendingDelete, setPendingDelete,
+        handleCategorySubmit, confirmDelete, categoryModalExisting,
+        isTrulyEmpty, isFilteredEmpty,
+    };
+}
+
+type CategoriesController = ReturnType<typeof useRetailCategoriesController>;
+
+// ─── Toolbar (renders above the shared view-card) ────────────────────────────
+
+export function RetailCategoriesToolbar({ ctrl }: { ctrl: CategoriesController }) {
     return (
-        <div className="flex flex-col gap-5 w-full">
-            {/* Toolbar — Total + count on the left, search + Add on the right */}
-            <div className="flex items-end gap-3 w-full">
-                <ToolbarTotal count={categories.length} entitySingular="category" entityPlural="categories" />
-                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search category..." />
-                {/* Import — empty-state only (client 2026-07-31). Hidden
-                    once the table has real data so admins default to
-                    "Add". No filter panel on this view, so we gate
-                    on truly-empty + no active search only. */}
-                <ToolbarImportButton visible={categories.length === 0 && !search.trim()} />
-                <Button
-                    variant="primary"
-                    leftIcon={<Plus className="w-5 h-5" />}
-                    onClick={handleAddCategory}
-                >
-                    Add
-                </Button>
-            </div>
+        <div className="flex items-center gap-3 w-full">
+            <ToolbarTotal count={ctrl.categories.length} entitySingular="category" entityPlural="categories" />
+            <ToolbarSearch value={ctrl.search} onChange={ctrl.setSearch} placeholder="Search category..." />
+            <ToolbarImportButton visible={ctrl.categories.length === 0 && !ctrl.search.trim()} />
+            <Button variant="primary" leftIcon={<Plus className="w-5 h-5" />} onClick={ctrl.handleAddCategory}>
+                Add
+            </Button>
+        </div>
+    );
+}
 
-            {/* Table */}
-            <div className="flex flex-col">
-                {isTrulyEmpty || isFilteredEmpty ? (
-                    <div className="relative" style={{ minHeight: 360 }}>
-                        <EmptyState
-                            title={isFilteredEmpty ? "No matches found" : "No categories yet"}
-                            subtitle={isFilteredEmpty
-                                ? "Try a different search term."
-                                : "You haven't created any category yet. Click Add to get started."}
-                        />
+// ─── Panel (table + pagination + overlays — renders inside the view-card) ────
+
+export function RetailCategoriesPanel({ ctrl }: { ctrl: CategoriesController }) {
+    return (
+        <>
+            {ctrl.isTrulyEmpty || ctrl.isFilteredEmpty ? (
+                <EmptyState
+                    title={ctrl.isFilteredEmpty ? "No matches found" : "No categories yet"}
+                    subtitle={ctrl.isFilteredEmpty
+                        ? "Try a different search term."
+                        : "You haven't created any category yet. Click Add to get started."}
+                />
+            ) : (
+                <div className="px-6">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr>
+                                    <th className={cn(TH, "w-[44px]")}>
+                                        <CheckboxCell
+                                            checked={ctrl.allChecked}
+                                            indeterminate={ctrl.someChecked}
+                                            onChange={ctrl.toggleAllOnPage}
+                                            ariaLabel="Select all categories on this page"
+                                        />
+                                    </th>
+                                    <th className={TH}>
+                                        <SortableHeader sortKey="name" currentSort={ctrl.sortKey} dir={ctrl.sortDir} onSort={ctrl.toggleSort}>Name</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[160px]")}>
+                                        <SortableHeader sortKey="status" currentSort={ctrl.sortKey} dir={ctrl.sortDir} onSort={ctrl.toggleSort}>Status</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[52px]")} />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {ctrl.pageRows.map(c => {
+                                    const isSelected = ctrl.selectedIds.has(c.id);
+                                    return (
+                                        <tr key={c.id}
+                                            className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                            <td className={TD}>
+                                                <CheckboxCell
+                                                    checked={isSelected}
+                                                    onChange={() => ctrl.toggleOne(c.id)}
+                                                    ariaLabel={`Select ${c.label}`}
+                                                />
+                                            </td>
+                                            <td className={TD}>
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <CategoryAvatar src={c.imageUrl} />
+                                                    <span className="text-[14px] font-medium text-[#101828] truncate">{c.label}</span>
+                                                </div>
+                                            </td>
+                                            <td className={TD}>
+                                                <span className={cn(
+                                                    "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
+                                                    STATUS_BADGE[c.status],
+                                                )}>
+                                                    {STATUS_LABEL[c.status]}
+                                                </span>
+                                            </td>
+                                            <td className={TD}>
+                                                <RowActions
+                                                    minWidth={180}
+                                                    items={[
+                                                        { label: "Edit", icon: Edit02, onClick: () => ctrl.handleEditCategory(c) },
+                                                        { label: "Delete", icon: Trash01, onClick: () => ctrl.requestDeleteCategory(c), danger: true },
+                                                    ]}
+                                                />
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
-                ) : (
-                    <>
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr>
-                                        <th className={cn(TH, "w-[44px]")}>
-                                            <CheckboxCell
-                                                checked={allChecked}
-                                                indeterminate={someChecked}
-                                                onChange={toggleAllOnPage}
-                                                ariaLabel="Select all categories on this page"
-                                            />
-                                        </th>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[160px]")}>
-                                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[52px]")} />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pageRows.map(c => {
-                                        const isSelected = selectedIds.has(c.id);
-                                        return (
-                                            <tr key={c.id}
-                                                className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD}>
-                                                    <CheckboxCell
-                                                        checked={isSelected}
-                                                        onChange={() => toggleOne(c.id)}
-                                                        ariaLabel={`Select ${c.label}`}
-                                                    />
-                                                </td>
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <CategoryAvatar src={c.imageUrl} />
-                                                        <span className="text-[14px] font-medium text-[#101828] truncate">{c.label}</span>
-                                                    </div>
-                                                </td>
-                                                <td className={TD}>
-                                                    <span className={cn(
-                                                        "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-                                                        STATUS_BADGE[c.status],
-                                                    )}>
-                                                        {STATUS_LABEL[c.status]}
-                                                    </span>
-                                                </td>
-                                                <td className={TD}>
-                                                    <RowActions
-                                                        minWidth={180}
-                                                        items={[
-                                                            { label: "Edit", icon: Edit02, onClick: () => handleEditCategory(c) },
-                                                            { label: "Delete", icon: Trash01, onClick: () => requestDeleteCategory(c), danger: true },
-                                                        ]}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <Pagination
-                            page={clampedPage}
-                            total={sortedRows.length}
-                            pageSize={pageSize}
-                            onPage={setPage}
-                            onPageSize={n => { setPageSize(n); setPage(1); }}
-                        />
-                    </>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Floating bulk-delete pill */}
-            {selectedRows.length > 0 && (
+            {ctrl.selectedRows.length > 0 && (
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
                     <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
-                        <button type="button" onClick={clearSelection}
+                        <button type="button" onClick={ctrl.clearSelection}
                             className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
-                            {selectedRows.length} selected
+                            {ctrl.selectedRows.length} selected
                             <XClose className="w-5 h-5 text-[#667085]" />
                         </button>
                         <Button variant="secondary-gray"
                             className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
                             leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />}
-                            onClick={() => requestBulkDelete(selectedRows)}>
+                            onClick={() => ctrl.requestBulkDelete(ctrl.selectedRows)}>
                             Delete
                         </Button>
                     </div>
                 </div>
             )}
 
-            {categoryModal && (
+            {ctrl.categoryModal && (
                 <CategoryModal
                     entityLabel="retail category"
-                    existing={categoryModalExisting()}
-                    onClose={() => setCategoryModal(null)}
-                    onSubmit={handleCategorySubmit}
-                    // Client 2026-07-31 — pass every OTHER category's label so
-                    // the modal shows the duplicate-name error INLINE below
-                    // the input as the admin types. Editing a row excludes
-                    // its own label so re-saving without renaming is legal.
-                    takenNames={categories
-                        .filter(c => categoryModal === "new" || c.id !== categoryModal.id)
+                    existing={ctrl.categoryModalExisting()}
+                    onClose={() => ctrl.setCategoryModal(null)}
+                    onSubmit={ctrl.handleCategorySubmit}
+                    takenNames={ctrl.categories
+                        .filter(c => ctrl.categoryModal === "new" || c.id !== (ctrl.categoryModal as RetailCategory).id)
                         .map(c => c.label)}
                 />
             )}
 
-            {pendingDelete && (
+            {ctrl.pendingDelete && (
                 <DeleteConfirmModal
-                    name={pendingDelete.kind === "row"
-                        ? `"${pendingDelete.row.label}"`
-                        : `${pendingDelete.rows.length} ${pendingDelete.rows.length === 1 ? "category" : "categories"}`}
-                    description={pendingDelete.kind === "row"
+                    name={ctrl.pendingDelete.kind === "row"
+                        ? `"${ctrl.pendingDelete.row.label}"`
+                        : `${ctrl.pendingDelete.rows.length} ${ctrl.pendingDelete.rows.length === 1 ? "category" : "categories"}`}
+                    description={ctrl.pendingDelete.kind === "row"
                         ? "This category will be permanently removed. This can't be undone."
                         : "These categories will be permanently removed. This can't be undone."}
-                    onCancel={() => setPendingDelete(null)}
-                    onConfirm={confirmDelete}
+                    onCancel={() => ctrl.setPendingDelete(null)}
+                    onConfirm={ctrl.confirmDelete}
                 />
             )}
+        </>
+    );
+}
+
+// ─── Pagination footer (pinned at the bottom of the view-card) ───────────────
+
+export function RetailCategoriesPagination({ ctrl }: { ctrl: CategoriesController }) {
+    return (
+        <Pagination
+            page={ctrl.clampedPage}
+            total={ctrl.sortedRows.length}
+            pageSize={ctrl.pageSize}
+            onPage={ctrl.setPage}
+            onPageSize={n => { ctrl.setPageSize(n); ctrl.setPage(1); }}
+        />
+    );
+}
+
+// ─── Standalone view (legacy deep-link route) ────────────────────────────────
+
+export function RetailCategoriesView() {
+    const ctrl = useRetailCategoriesController();
+    return (
+        <div className="flex flex-col gap-6">
+            <RetailCategoriesToolbar ctrl={ctrl} />
+            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative py-4">
+                    <RetailCategoriesPanel ctrl={ctrl} />
+                </div>
+                <div className="px-6 shrink-0">
+                    <RetailCategoriesPagination ctrl={ctrl} />
+                </div>
+            </div>
         </div>
     );
 }

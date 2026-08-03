@@ -24,7 +24,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
-import { RetailCategoriesView } from "@/components/retail/RetailCategoriesView";
+import {
+    useRetailCategoriesController,
+    RetailCategoriesToolbar,
+    RetailCategoriesPanel,
+    RetailCategoriesPagination,
+} from "@/components/retail/RetailCategoriesView";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -384,6 +389,8 @@ export default function RetailPage() {
     const setRetailProductStatus = useAppStore(s => s.setRetailProductStatus);
     const deleteRetailProducts   = useAppStore(s => s.deleteRetailProducts);
     const showToast              = useAppStore(s => s.showToast);
+    // Categories tab controller — shared with the standalone route's view.
+    const catCtrl = useRetailCategoriesController();
 
     // Client 2026-08-03 — Retail + Categories merged into one page with tabs
     // (mirrors Memberships & Packages). "products" shows the stock list;
@@ -717,21 +724,10 @@ export default function RetailPage() {
 
     return (
         <div className="flex flex-col gap-6">
-            {/* ── Tabs — Retail products vs categories (client 2026-08-03) ── */}
-            <SegmentedTabs
-                tabs={[
-                    { key: "products",   label: `Products (${products.length})` },
-                    { key: "categories", label: `Categories (${categories.length})` },
-                ]}
-                activeKey={tab}
-                onChange={(k) => setTab(k as "products" | "categories")}
-            />
-
+            {/* ── Toolbar — adaptive per tab, above the view-card (matches Memberships & Packages) ── */}
             {tab === "categories" ? (
-                <RetailCategoriesView />
+                <RetailCategoriesToolbar ctrl={catCtrl} />
             ) : (
-            <>
-            {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={filteredRows.length} entitySingular="product" />
                 <SelectInput
@@ -769,25 +765,41 @@ export default function RetailPage() {
                 <ToolbarImportButton />
                 <Button
                     variant="primary"
-                   
+
                     leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/retail/new?returnTo=${encodeURIComponent("/admin/products/retail")}`)}
                 >
                     Add
                 </Button>
             </div>
+            )}
 
-            {/* ── Table + pagination ── */}
-            <div className="relative flex flex-col flex-1">
-                {sorted.length === 0 ? (
-                    <div className="relative flex-1" style={{ minHeight: 400 }}>
-                        <EmptyState
-                            title="No products found"
-                            subtitle="Try adjusting your search or filters."
-                        />
+            {/* ── View card with tabs (client 2026-08-03 — matches Memberships & Packages) ── */}
+            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                <div className="shrink-0 flex items-center px-6 py-4">
+                    <SegmentedTabs
+                        tabs={[
+                            { key: "products",   label: `Products (${products.length})` },
+                            { key: "categories", label: `Categories (${categories.length})` },
+                        ]}
+                        activeKey={tab}
+                        onChange={(k) => setTab(k as "products" | "categories")}
+                    />
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                {tab === "categories" ? (
+                    <div className="py-4">
+                        <RetailCategoriesPanel ctrl={catCtrl} />
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                <div className="relative flex flex-col">
+                {sorted.length === 0 ? (
+                    <EmptyState
+                        title="No products found"
+                        subtitle="Try adjusting your search or filters."
+                    />
+                ) : (
+                    <div className="overflow-x-auto px-6">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
@@ -962,11 +974,6 @@ export default function RetailPage() {
                     </div>
                 )}
 
-                <Pagination
-                    page={clampedPage} total={sorted.length} pageSize={pageSize}
-                    onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
-                />
-
                 <BulkActionBar
                     count={selectedIds.size}
                     hasArchivable={hasArchivable}
@@ -976,6 +983,21 @@ export default function RetailPage() {
                     onClear={clearSelection}
                     onAction={openBulkConfirm}
                 />
+                </div>
+                )}
+                </div>
+
+                {/* Pagination footer — pinned to the bottom of the card, tab-aware. */}
+                <div className="px-6 shrink-0">
+                    {tab === "categories" ? (
+                        <RetailCategoriesPagination ctrl={catCtrl} />
+                    ) : (
+                        <Pagination
+                            page={clampedPage} total={sorted.length} pageSize={pageSize}
+                            onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+                        />
+                    )}
+                </div>
             </div>
 
             <FilterPanel
@@ -1011,8 +1033,6 @@ export default function RetailPage() {
                     />
                 );
             })()}
-            </>
-            )}
 
             <Toast />
         </div>

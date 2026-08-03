@@ -481,7 +481,7 @@ export default function PayRatePage() {
                 <Button variant="primary"
                     leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push("/staff/pay-rate/new?returnTo=/admin/staff/pay-rate")}>
-                    Add pay rate
+                    Add
                 </Button>
             </div>
 

@@ -450,7 +450,7 @@ export default function InstructorTimeOffPage() {
                 </div>
                 <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => setPanel({ open: true, mode: "create" })}>
-                    Add time off
+                    Add
                 </Button>
             </div>
 

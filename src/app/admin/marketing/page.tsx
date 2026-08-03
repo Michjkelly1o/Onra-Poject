@@ -485,7 +485,7 @@ export default function MarketingListPage() {
 
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/marketing/new?returnTo=${encodeURIComponent("/admin/marketing")}`)}>
-                    Add campaign
+                    Add
                 </Button>
             </div>
 

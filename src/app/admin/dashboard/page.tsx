@@ -1705,7 +1705,7 @@ export default function AdminDashboard() {
                                     className="flex-shrink-0 whitespace-nowrap"
                                     onClick={() => setWidgetModalOpen(true)}
                                 >
-                                    Add widget
+                                    Add
                                 </Button>
                             </>
                         )}

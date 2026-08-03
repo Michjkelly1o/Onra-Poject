@@ -20,7 +20,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
     Edit02, Archive, RefreshCcw01, Trash01, Trash02, Check, XClose,
     Package, CoinsHand, Tag01, CalendarPlus02, SlashCircle01,
-    BankNote01, ShoppingBag01,
+    BankNote01, ShoppingBag01, ChevronUp, ChevronDown,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -353,6 +353,43 @@ function InlineStat({ icon, label, value }: {
     );
 }
 
+// ─── Sizes accordion — collapsible card, disabled checkboxes (mirrors the
+//     membership detail's Applicable-branches card) ─────────────────────────
+
+function SizesCard({ sizes }: { sizes: string[] }) {
+    const [open, setOpen] = useState(true);
+    return (
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-5">Sizes</p>
+                    <p className="text-[14px] text-[#667085] leading-5">The sizes this product is stocked in.</p>
+                </div>
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                    {sizes.length} sizes
+                </span>
+                <button type="button" onClick={() => setOpen(p => !p)}
+                    aria-label={open ? "Collapse" : "Expand"}
+                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 hover:text-[#344054] transition-colors">
+                    {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+            </div>
+            {open && (
+                <div className="flex flex-col gap-3">
+                    {sizes.map(s => (
+                        <div key={s} className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-[6px] bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
+                                <Check className="w-3 h-3 text-[#98a2b3]" />
+                            </span>
+                            <span className="text-[14px] font-medium text-[#101828]">{s}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Tab 1: Product details ─────────────────────────────────────────────────
 
 function ProductDetailsTab({ product, categoryLabel }: {
@@ -393,13 +430,7 @@ function ProductDetailsTab({ product, categoryLabel }: {
             {product.sizes && product.sizes.length > 0 && (
                 <>
                     <SectionHeading>Sizes</SectionHeading>
-                    <div className="flex flex-wrap gap-2">
-                        {product.sizes.map(s => (
-                            <span key={s} className="inline-flex items-center px-3 py-1 rounded-full bg-[#f2f4f7] text-[14px] font-medium text-[#344054]">
-                                {s}
-                            </span>
-                        ))}
-                    </div>
+                    <SizesCard sizes={product.sizes} />
                 </>
             )}
 

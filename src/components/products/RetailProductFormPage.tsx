@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    XClose, Check, CoinsHand, Package, Plus,
+    XClose, Check, CoinsHand, Package, Plus, ChevronUp, ChevronDown,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -292,58 +292,103 @@ function stockCombos(branchId: string, sizes: string[]): { size?: string; key: s
         : [{ size: undefined, key: stockKey(branchId) }];
 }
 
-/** Dynamic size-variant chip input — the admin types any label and adds it;
- *  each chip is removable. Quick-add suggestions are a convenience only. */
+/** Filled checkbox — same look as the membership form's BranchMultiSelect. */
+function SizeCheckbox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+    return (
+        <button type="button" onClick={onChange}
+            className={cn(
+                "w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 transition-colors border",
+                checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#658774]",
+            )}>
+            {checked && <Check className="w-[10px] h-[10px] text-white" />}
+        </button>
+    );
+}
+
+/** Dynamic size-variant multi-select — mirrors the "Applicable branches"
+ *  collapsible card (header + "N selected" badge + chevron + checkbox rows).
+ *  The admin ticks/creates size labels; each row can be removed outright.
+ *  Empty selection = a sizeless product. */
 function SizesField({ sizes, onChange }: { sizes: string[]; onChange: (next: string[]) => void }) {
+    const [expanded, setExpanded] = useState(true);
     const [draft, setDraft] = useState("");
-    const add = (raw: string) => {
-        const label = raw.trim();
+    // The visible option rows — common suggestions + whatever the admin has
+    // added. Removing a row drops it entirely (and deselects it).
+    const [options, setOptions] = useState<string[]>(() => {
+        const seen = new Set<string>();
+        const out: string[] = [];
+        for (const label of [...RETAIL_SIZE_SUGGESTIONS, ...sizes]) {
+            const k = label.toLowerCase();
+            if (seen.has(k)) continue;
+            seen.add(k);
+            out.push(label);
+        }
+        return out;
+    });
+
+    const isChecked = (label: string) => sizes.some(s => s.toLowerCase() === label.toLowerCase());
+    const toggle = (label: string) => {
+        if (isChecked(label)) onChange(sizes.filter(s => s.toLowerCase() !== label.toLowerCase()));
+        else onChange([...sizes, label]);
+    };
+    const removeOption = (label: string) => {
+        setOptions(prev => prev.filter(o => o.toLowerCase() !== label.toLowerCase()));
+        if (isChecked(label)) onChange(sizes.filter(s => s.toLowerCase() !== label.toLowerCase()));
+    };
+    const addCustom = () => {
+        const label = draft.trim();
         if (!label) return;
-        // Case-insensitive de-dupe so "Small" and "small" don't both land.
-        if (sizes.some(s => s.toLowerCase() === label.toLowerCase())) { setDraft(""); return; }
-        onChange([...sizes, label]);
+        if (!options.some(o => o.toLowerCase() === label.toLowerCase())) setOptions(p => [...p, label]);
+        if (!isChecked(label)) onChange([...sizes, label]);
         setDraft("");
     };
-    const remove = (label: string) => onChange(sizes.filter(s => s !== label));
-    const available = RETAIL_SIZE_SUGGESTIONS.filter(
-        s => !sizes.some(x => x.toLowerCase() === s.toLowerCase()),
-    );
+
     return (
-        <div className="flex flex-col gap-2.5">
-            {sizes.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                    {sizes.map(s => (
-                        <span key={s} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-[#f2f4f7] text-[14px] font-medium text-[#344054]">
-                            {s}
-                            <button type="button" onClick={() => remove(s)} aria-label={`Remove ${s}`}
-                                className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-[#e4e7ec] text-[#667085]">
-                                <XClose className="w-3 h-3" />
-                            </button>
-                        </span>
-                    ))}
+        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-[#101828] leading-5">Sizes</p>
+                    <p className="text-[14px] text-[#6e776f] leading-5 truncate">Add the sizes this product comes in.</p>
                 </div>
-            )}
-            <div className="flex items-center gap-2">
-                <div className="flex-1">
-                    <TextInput
-                        value={draft}
-                        onChange={setDraft}
-                        placeholder="Type a size (e.g. Small) and press Add"
-                    />
-                </div>
-                <Button variant="secondary-gray" size="md" disabled={!draft.trim()} onClick={() => add(draft)}>
-                    Add
-                </Button>
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                    {sizes.length} selected
+                </span>
+                <button type="button" onClick={() => setExpanded(p => !p)}
+                    aria-label={expanded ? "Collapse" : "Expand"}
+                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0">
+                    {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
             </div>
-            {available.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[12px] text-[#667085]">Quick add:</span>
-                    {available.map(s => (
-                        <button key={s} type="button" onClick={() => add(s)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border-1 border-[#e4e7ec] text-[13px] font-medium text-[#475467] hover:border-[#aad4bd] hover:bg-[#f9fafb] transition-colors">
-                            <Plus className="w-3 h-3" /> {s}
-                        </button>
+
+            {expanded && (
+                <div className="flex flex-col gap-3">
+                    {options.map(label => (
+                        <div key={label} className="flex items-center gap-2">
+                            <SizeCheckbox checked={isChecked(label)} onChange={() => toggle(label)} />
+                            <span className="text-[14px] font-medium text-[#101828] flex-1">{label}</span>
+                            <button type="button" onClick={() => removeOption(label)} aria-label={`Remove ${label}`}
+                                className="w-6 h-6 flex items-center justify-center rounded-[6px] text-[#98a2b3] hover:text-[#b42318] hover:bg-[#fef3f2] transition-colors shrink-0">
+                                <XClose className="w-4 h-4" />
+                            </button>
+                        </div>
                     ))}
+
+                    <div className="h-px bg-[#e4e7ec]" />
+
+                    {/* Add a custom size label */}
+                    <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                            <TextInput
+                                value={draft}
+                                onChange={setDraft}
+                                placeholder="Add a custom size (e.g. XXL, 38)"
+                            />
+                        </div>
+                        <Button variant="secondary-gray" size="md" disabled={!draft.trim()} onClick={addCustom}>
+                            Add
+                        </Button>
+                    </div>
                 </div>
             )}
         </div>
@@ -433,9 +478,7 @@ function BasicInformationStep({
                             minHeight={120}
                         />
                     </FormField>
-                    <FormField label="Sizes (optional)" hint="Add size variants if this product comes in sizes — stock is tracked per size per branch, and the cashier picks a size at POS. Leave empty for a one-size product.">
-                        <SizesField sizes={data.sizes} onChange={sizes => onChange({ sizes })} />
-                    </FormField>
+                    <SizesField sizes={data.sizes} onChange={sizes => onChange({ sizes })} />
                 </Section>
             </div>
         </FormCard>

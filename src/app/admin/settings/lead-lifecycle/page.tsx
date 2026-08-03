@@ -86,7 +86,7 @@ function LeadSourcesCard() {
                         leftIcon={<Plus className="w-4 h-4" />}
                         onClick={() => setEditing({ mode: "create" })}
                     >
-                        Add source
+                        Add
                     </Button>
                 </header>
                 <ul className="divide-y divide-[#f2f4f7]">
@@ -182,7 +182,7 @@ function FollowUpStagesCard() {
                         onClick={() => setEditing({ mode: "create" })}
                         disabled={atMax}
                     >
-                        Add stage
+                        Add
                     </Button>
                 </header>
                 <ul className="divide-y divide-[#f2f4f7]">

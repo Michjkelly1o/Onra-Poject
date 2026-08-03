@@ -503,7 +503,7 @@ export default function PromoListPage() {
 
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
                     onClick={() => router.push(`/products/promo-codes/new?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)}>
-                    Add promotion
+                    Add
                 </Button>
             </div>
 

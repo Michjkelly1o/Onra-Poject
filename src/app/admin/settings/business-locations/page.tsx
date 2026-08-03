@@ -593,7 +593,7 @@ function AddLocationDropdown({ open, onToggle, onClose, onAddBranch, onAddRoom }
                 leftIcon={<Plus className="w-5 h-5" />}
                 onClick={onToggle}
             >
-                Add location
+                Add
             </Button>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">

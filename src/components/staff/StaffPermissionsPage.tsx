@@ -191,7 +191,7 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
     if (variant === "role-only") {
         return (
             <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={onAddRole}>
-                Add role
+                Add
             </Button>
         );
     }
