@@ -127,7 +127,11 @@
       "Bash(python3 -)",
       "Bash(grep -rn \"^[[:space:]]*Add new[[:space:]]*$\" src/app src/components)",
       "Bash(size)",
-      "Bash(retailSize)"
+      "Bash(retailSize)",
+      "Bash(git checkout *)",
+      "Bash(grep -rn \"leftIcon={<Plus\\\\|>Add<\\\\|>Add \\\\|Add new\\\\|>Add$\\\\|Add another\\\\|Add category\" src/components/retail/RetailCategoriesView.tsx)",
+      "Bash(sort -t: -k1)",
+      "Bash(grep -rEn --include='*.tsx' \"^[[:space:]]+Add \\(new |[A-Z][a-z]+|[a-z]+\\)$\" src/app/admin src/app/instructor src/components)"
     ],
     "additionalDirectories": [
       "/Users/hizkiast/Desktop/Syncfit/src/app/admin/products/retail/[id]",

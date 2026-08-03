@@ -11720,8 +11720,19 @@ export const useAppStore = create<AppState>()(persist(
                 const lineGross = it.unitPrice * qty;
                 const txnId = `txn_sale_${stamp}_${idx}`;
                 // Sized products decrement the specific (branch × size) row;
-                // sizeless products leave `size` undefined.
-                const saleSize = it.size;
+                // sizeless products leave `size` undefined. Customer-side flows
+                // don't surface a size picker yet, so when a sized product
+                // arrives with no `size` we resolve a concrete variant here —
+                // preferring an in-stock size at the sale branch — instead of
+                // no-opping against a nonexistent sizeless row (which would let
+                // stock drift and let a refund inject a phantom row).
+                let saleSize = it.size;
+                if (!saleSize && product.sizes && product.sizes.length > 0) {
+                    const inStock = product.sizes.find(sz =>
+                        (nextRetailStock.find(s => s.productId === product.id && s.branchId === retailBranchId && s.size === sz)?.unitsOnHand ?? 0) > 0,
+                    );
+                    saleSize = inStock ?? product.sizes[0];
+                }
                 // Tax handling for retail lands as a follow-up — the TaxRule
                 // category union doesn't include "retail" yet. Retail sales
                 // currently write with no tax rule (subtotal = total).

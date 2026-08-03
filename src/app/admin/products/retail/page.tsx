@@ -685,14 +685,23 @@ export default function RetailPage() {
             ...stockHeaders,
         ];
         const productsById = new Map(products.map(p => [p.id, p]));
+        // Per-(product × branch) stock summed across size variants, UNSCOPED by
+        // the location filter — the CSV must always export every branch's real
+        // stock so it round-trips, even when the list is filtered to one branch.
+        // (r.branchBreakdown is view-scoped and would blank the other branches.)
+        const unscopedByProductBranch = new Map<string, number>();
+        for (const s of stock) {
+            const key = `${s.productId}|${s.branchId}`;
+            unscopedByProductBranch.set(key, (unscopedByProductBranch.get(key) ?? 0) + (s.unitsOnHand ?? 0));
+        }
         const rows = sorted.map(r => {
             const p = productsById.get(r.id);
             const perBranch = activeBranchesForExport.map(b => {
-                const cell = r.branchBreakdown.find(x => x.branchId === b.id);
+                const units = unscopedByProductBranch.get(`${r.id}|${b.id}`) ?? 0;
                 // Blank cell (not "0") when a branch carries no stock —
                 // keeps the CSV visually clean AND round-trips correctly
                 // (import skips blank/zero stock cells).
-                return cell && cell.unitsOnHand > 0 ? cell.unitsOnHand.toString() : "";
+                return units > 0 ? units.toString() : "";
             });
             return [
                 r.name,
@@ -792,7 +801,7 @@ export default function RetailPage() {
                         <RetailCategoriesPanel ctrl={catCtrl} />
                     </div>
                 ) : (
-                <div className="relative flex flex-col">
+                <>
                 {sorted.length === 0 ? (
                     <EmptyState
                         title="No products found"
@@ -983,7 +992,7 @@ export default function RetailPage() {
                     onClear={clearSelection}
                     onAction={openBulkConfirm}
                 />
-                </div>
+                </>
                 )}
                 </div>
 
