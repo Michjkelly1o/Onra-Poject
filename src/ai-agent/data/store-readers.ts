@@ -425,12 +425,14 @@ export function readRetailProducts(state: AppState): Row[] {
         unit_cost_aed: p.unitCostAed,
         reorder_threshold: p.reorderThreshold,
         image_url: p.imageUrl,
+        sizes: (p.sizes ?? []).join(", "),
         status: p.status,
         created_at: p.createdAt,
     }));
 }
 
-/** retail_stock — one row per (product × branch). Product name +
+/** retail_stock — one row per (product × branch × size); `size` is blank for
+ *  sizeless products. Product name +
  *  category + reorder_threshold denormalized on the row so the model can
  *  filter units_on_hand <= reorder_threshold without a join, and group_by
  *  product_name / category / branch renders sensible axis labels. */
@@ -448,6 +450,7 @@ export function readRetailStock(state: AppState): Row[] {
             sku: product?.sku ?? "",
             category: product ? (categoryLabel.get(product.categoryId) ?? "Retail") : "Retail",
             branch_id: s.branchId,
+            size: s.size ?? "",
             units_on_hand: s.unitsOnHand,
             reorder_threshold: product?.reorderThreshold ?? 0,
             stock_value_aed: (product?.unitCostAed ?? 0) * s.unitsOnHand,

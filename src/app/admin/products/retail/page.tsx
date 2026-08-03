@@ -681,26 +681,38 @@ export default function RetailPage() {
         const headers = [
             "Name", "SKU", "Retail category", "Description",
             "Price AED", "Unit cost AED", "Reorder threshold",
-            "Image URL", "Status",
+            "Image URL", "Status", "Sizes",
             ...stockHeaders,
         ];
         const productsById = new Map(products.map(p => [p.id, p]));
-        // Per-(product × branch) stock summed across size variants, UNSCOPED by
-        // the location filter — the CSV must always export every branch's real
-        // stock so it round-trips, even when the list is filtered to one branch.
-        // (r.branchBreakdown is view-scoped and would blank the other branches.)
-        const unscopedByProductBranch = new Map<string, number>();
+        // Per-(product × branch × size) stock, UNSCOPED by the location filter —
+        // the CSV must always export every branch's real stock so it round-trips,
+        // even when the list is filtered to one branch. Size "" = a sizeless
+        // product's single row. (r.branchBreakdown is view-scoped + size-summed,
+        // so we read the raw stock slice instead.)
+        const stockByPBS = new Map<string, number>();
         for (const s of stock) {
-            const key = `${s.productId}|${s.branchId}`;
-            unscopedByProductBranch.set(key, (unscopedByProductBranch.get(key) ?? 0) + (s.unitsOnHand ?? 0));
+            const key = `${s.productId}|${s.branchId}|${s.size ?? ""}`;
+            stockByPBS.set(key, (stockByPBS.get(key) ?? 0) + (s.unitsOnHand ?? 0));
         }
         const rows = sorted.map(r => {
             const p = productsById.get(r.id);
+            const sizes = p?.sizes ?? [];
             const perBranch = activeBranchesForExport.map(b => {
-                const units = unscopedByProductBranch.get(`${r.id}|${b.id}`) ?? 0;
-                // Blank cell (not "0") when a branch carries no stock —
-                // keeps the CSV visually clean AND round-trips correctly
-                // (import skips blank/zero stock cells).
+                if (sizes.length > 0) {
+                    // Sized product — encode "Size:qty | Size:qty" for the sizes
+                    // that carry stock at this branch. Pipe/colon are safe
+                    // against comma/semicolon CSV delimiters; the AI-agent
+                    // importer parses this exact shape back.
+                    const parts = sizes
+                        .map(sz => ({ sz, units: stockByPBS.get(`${r.id}|${b.id}|${sz}`) ?? 0 }))
+                        .filter(x => x.units > 0)
+                        .map(x => `${x.sz}:${x.units}`);
+                    return parts.length > 0 ? parts.join(" | ") : "";
+                }
+                // Sizeless — a plain total. Blank (not "0") when empty so the
+                // CSV stays clean and re-import skips it.
+                const units = stockByPBS.get(`${r.id}|${b.id}|`) ?? 0;
                 return units > 0 ? units.toString() : "";
             });
             return [
@@ -713,6 +725,7 @@ export default function RetailPage() {
                 r.reorderThreshold.toString(),
                 r.imageUrl ?? "",
                 r.status,
+                sizes.join(", "),
                 ...perBranch,
             ];
         });

@@ -385,6 +385,7 @@ export function buildCatalog(state: AppState): Catalog {
                 sku:               { row: "sku",               type: "string", label: "SKU" },
                 category:          { row: "category",          type: "string", label: "category" },
                 description:       { row: "description",       type: "string", label: "description" },
+                sizes:             { row: "sizes",             type: "string", label: "sizes (comma-separated; blank = sizeless)" },
                 status:            { row: "status",            type: "enum",   label: "status", values: ["active", "inactive", "archived"] },
                 price_aed:         { row: "price_aed",         type: "number", label: "price (AED)" },
                 unit_cost_aed:     { row: "unit_cost_aed",     type: "number", label: "unit cost (AED)" },
@@ -395,12 +396,13 @@ export function buildCatalog(state: AppState): Catalog {
 
         retail_stock: {
             key: "retail_stock",
-            label: "retail stock — one row per (product × branch), with on-hand units + reorder flag",
+            label: "retail stock — one row per (product × branch × size), with on-hand units + reorder flag (size is blank for sizeless products)",
             rows: readRetailStock(state),
             fields: {
                 product_name:      { row: "product_name",      type: "string", label: "product name" },
                 sku:               { row: "sku",               type: "string", label: "SKU" },
                 category:          { row: "category",          type: "string", label: "category" },
+                size:              { row: "size",              type: "string", label: "size variant" },
                 units_on_hand:     { row: "units_on_hand",     type: "number", label: "units on hand" },
                 reorder_threshold: { row: "reorder_threshold", type: "number", label: "reorder threshold" },
                 stock_value_aed:   { row: "stock_value_aed",   type: "number", label: "stock value (AED)" },
