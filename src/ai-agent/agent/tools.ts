@@ -137,31 +137,36 @@ export function askQuestionsTool() {
                             allowOther: z.boolean().optional().describe("show a free-text row (default true for radio)"),
                             otherPlaceholder: z.string().optional(),
                             searchPlaceholder: z.string().optional().describe("placeholder for the searchable filter box"),
-                            minSelected: z.number().optional().describe("checkbox: min picks before Confirm (default 1; 0 = optional)"),
+                            minSelected: z.number().optional().describe("checkbox: min picks (default 1; 0 = optional)"),
                             maxSelected: z.number().optional().describe("checkbox: max picks"),
+                            groupIcon: z.enum(["building"]).optional().describe("kind:grouped — a building icon before each group header (branch groups, e.g. the room picker)"),
+                            groupActionLabel: z.string().optional().describe("kind:grouped — a right-aligned action button in every group header, e.g. 'Add room' on each branch in the room picker"),
                             options: z
                                 .array(
                                     z.object({
                                         id: z.string().describe("stable id for this option"),
-                                        lead: z
-                                            .string()
-                                            .optional()
-                                            .describe("muted lead-in, e.g. 'Show me'"),
+                                        lead: z.string().optional().describe("muted lead-in, e.g. 'Show me'"),
                                         label: z.string().describe("the emphasised answer text"),
-                                        subtitle: z
-                                            .string()
-                                            .optional()
-                                            .describe("optional one-line hint under the label"),
-                                        groupLabel: z.string().optional().describe("section header (kind: grouped)"),
-                                        disabled: z.boolean().optional().describe("hard-block this option (e.g. a room already in use)"),
-                                        disabledReason: z.string().optional().describe("why it's blocked, shown muted"),
-                                        thumbnailUrl: z.string().optional().describe("cover image url — for class templates, pass the template's coverImage so the option shows its picture"),
-                                        iconTile: z.boolean().optional().describe("render a '+' placeholder tile instead of an image — set true on the 'Create from scratch' template option"),
-                                        attributes: z.array(z.string()).optional().describe("info chips under the label, IN ORDER [category, type, duration, capacity] e.g. ['Pilates','Group','60 min','15 max'] — order drives the chip icons"),
+                                        metaLabel: z.string().optional().describe("muted suffix INLINE after the label, e.g. '(15 max)' on a room row"),
+                                        subtitle: z.string().optional().describe("one-line hint UNDER the label"),
+                                        groupLabel: z.string().optional().describe("section header (kind:grouped), e.g. the branch name for a room"),
+                                        badge: z.object({
+                                            label: z.string(),
+                                            tone: z.enum(["neutral", "success", "warning", "danger"]).optional(),
+                                        }).optional().describe("right-side status pill, e.g. {label:'Over capacity',tone:'warning'} on a room too small for the class"),
+                                        disabled: z.boolean().optional().describe("make this option unselectable (rarely needed; do NOT use it for over-capacity rooms — those are still selectable, just badged)"),
+                                        disabledReason: z.string().optional().describe("why it's disabled"),
+                                        thumbnailUrl: z.string().optional().describe("cover image url — for class templates, the template's coverImage"),
+                                        iconTile: z.boolean().optional().describe("render a '+' placeholder tile — set true on the 'Create from scratch' template option"),
+                                        attributes: z.array(z.string()).optional().describe("template chips, IN ORDER [category, type, duration, capacity] e.g. ['Pilates','Group','60 min','15 max']"),
+                                        avatarUrl: z.string().optional().describe("round avatar image — the instructor's imageUrl"),
+                                        avatarInitials: z.string().optional().describe("initials shown when there's no avatarUrl"),
+                                        rating: z.number().optional().describe("instructor rating, e.g. 5.0 → renders a gold star"),
+                                        ratingCount: z.number().optional().describe("instructor review count, e.g. 6000 → '(6K reviews)'"),
                                     }),
                                 )
                                 .min(1)
-                                .describe("2–5 suggested answers"),
+                                .describe("the suggested answers"),
                         }),
                     )
                     .min(1)

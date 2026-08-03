@@ -274,8 +274,18 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
         advance(buildAnswer());
     };
     const handleSkip = () => advance({ kind: "skipped" });
+    // Commit the current question's working answer WITHOUT advancing — so a
+    // checkbox (equipment) is saved when the user pages away instead of needing
+    // a Confirm button, and a radio selection is preserved when navigating.
+    const commitCurrent = () => {
+        if (isMulti) {
+            if (checkedIds.length > 0 || otherText.trim()) commit(buildAnswer());
+        } else if (selectedId !== null) {
+            commit(buildAnswer());
+        }
+    };
     const handlePrev = () => {
-        if (step > 0) loadStep(step - 1);
+        if (step > 0) { commitCurrent(); loadStep(step - 1); }
     };
 
     // Option click.
@@ -307,7 +317,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
     // forward chevron is only disabled on the very last question.
     const canGoNext = step + 1 < total;
     const goNext = () => {
-        if (step + 1 < total) loadStep(step + 1);
+        if (step + 1 < total) { commitCurrent(); loadStep(step + 1); }
     };
 
     const pager = useMemo(() => `${step + 1} of ${total}`, [step, total]);
@@ -573,17 +583,23 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         </div>
                     )}
 
-                    {/* Skip / Next|Confirm actions. */}
-                    <div className="flex items-center justify-end gap-3 px-3 py-2">
-                        {!compact && (
-                            <Button variant="secondary-gray" size="sm" onClick={handleSkip}>
-                                Skip
+                    {/* Actions. In the compact PAGED panel a checkbox commits
+                        when the user pages to the next question (no Confirm
+                        button) — a button only appears when the checkbox is the
+                        LAST question and there's nothing to page to. The inline
+                        (non-compact) panel keeps the full Skip / Next footer. */}
+                    {(!compact || (isMulti && step + 1 >= total)) && (
+                        <div className="flex items-center justify-end gap-3 px-3 py-2">
+                            {!compact && (
+                                <Button variant="secondary-gray" size="sm" onClick={handleSkip}>
+                                    Skip
+                                </Button>
+                            )}
+                            <Button variant="primary" size="sm" disabled={!canAdvance} onClick={handleNext}>
+                                {step + 1 >= total ? "Done" : isMulti ? "Confirm" : "Next"}
                             </Button>
-                        )}
-                        <Button variant="primary" size="sm" disabled={!canAdvance} onClick={handleNext}>
-                            {isMulti ? "Confirm" : step + 1 >= total ? "Done" : "Next"}
-                        </Button>
-                    </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
