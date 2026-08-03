@@ -190,6 +190,45 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     payRates: caps.seePayRate
                         ? snapshot.payRates.filter((p) => p.status === "active").map((p) => ({ id: p.id, name: p.name }))
                         : [],
+                    branches: snapshot.branches
+                        .filter((b) => b.status === "active" && inScope(ctx, b.id))
+                        .map((b) => ({ id: b.id, name: b.name })),
+                };
+            },
+        }),
+
+        create_room: tool({
+            description:
+                "Create a NEW room mid-wizard (the `+ Add room` flow). Only offer this if the studio lacks a suitable room. Ask the user for the parent location (branch), room name, and capacity FIRST via ask_questions, then call this. On success the new room is auto-selected — pass its id + name to preview_class_schedule.",
+            parameters: z.object({
+                branchId: z.string().describe("Parent branch id (from list_class_options.branches)."),
+                name: z.string().describe("Room name, e.g. 'Reformer Studio'."),
+                capacity: z.number().describe("Max participants the room holds."),
+            }),
+            execute: async ({ branchId, name, capacity }): Promise<ClassCardData> => {
+                if (!caps.addRoom) {
+                    return {
+                        card: "class_denied",
+                        reason: "Adding rooms isn't part of your access — pick an existing room, or ask an Owner to add one.",
+                    };
+                }
+                const branch = snapshot.branches.find((b) => b.id === branchId);
+                if (!branch || !inScope(ctx, branchId)) {
+                    return { card: "class_empty", message: "That branch isn't available — pick one from the list." };
+                }
+                if (!name.trim() || capacity < 1) {
+                    return { card: "class_empty", message: "A room needs a name and a capacity of at least 1." };
+                }
+                return {
+                    card: "class_room_created",
+                    room: {
+                        id: `room_ai_${Date.now().toString(36)}`,
+                        branch_id: branchId,
+                        name: name.trim(),
+                        capacity: Math.floor(capacity),
+                        status: "active",
+                    },
+                    branchName: branch.name,
                 };
             },
         }),

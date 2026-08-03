@@ -291,6 +291,22 @@ export function ChatThread({
         ),
     );
 
+    // Room-creation applier (Phase 5b) — same once-per-card guard for the
+    // `+ Add room` sub-flow's class_room_created cards.
+    const appliedRoomRef = useRef<Set<string>>(
+        new Set(
+            initialMessages.current.flatMap((mm) =>
+                (mm.toolInvocations ?? [])
+                    .filter(
+                        (ti) =>
+                            ti.state === "result" &&
+                            (ti.result as { card?: string } | undefined)?.card === "class_room_created",
+                    )
+                    .map((ti) => ti.toolCallId),
+            ),
+        ),
+    );
+
     const {
         messages,
         input,
@@ -436,6 +452,28 @@ export function ChatThread({
                 } catch (e) {
                     st.showToast("Couldn't publish class", e instanceof Error ? e.message : "Please try again.", "error");
                 }
+            }
+        }
+    }, [messages]);
+
+    // Room-creation applier (Phase 5b). When a class_room_created card lands
+    // (the `+ Add room` sub-flow), write the room to the store once so it's a
+    // real, selectable room — indistinguishable from one made in Settings.
+    useEffect(() => {
+        for (const mm of messages) {
+            if (mm.role !== "assistant" || !mm.toolInvocations) continue;
+            for (const ti of mm.toolInvocations) {
+                if (ti.state !== "result") continue;
+                const res = ti.result as { card?: string; room?: unknown } | undefined;
+                if (res?.card !== "class_room_created" || !res.room) continue;
+                if (appliedRoomRef.current.has(ti.toolCallId)) continue;
+                appliedRoomRef.current.add(ti.toolCallId);
+                const st = useAppStore.getState();
+                const room = res.room as Parameters<typeof st.addRoom>[0];
+                // Guard against a persisted duplicate (id already present).
+                if (st.rooms.some((r) => r.id === room.id)) continue;
+                st.addRoom(room);
+                st.showToast("Room added", `${room.name} is ready to use.`, "success", "check");
             }
         }
     }, [messages]);

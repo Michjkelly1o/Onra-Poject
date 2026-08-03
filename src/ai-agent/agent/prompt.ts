@@ -153,7 +153,11 @@ ${
 After every answer, call preview_class_schedule so the card fills in. When the user confirms, call publish_class_schedule.
 
 **Rules:**
-- ${ctx.scheduleCaps.addRoom ? "If the studio has no suitable room, you may offer to add one." : "You cannot add new rooms — only offer existing ones."}
+- ${
+      ctx.scheduleCaps.addRoom
+          ? "`+ Add room`: when the room question is asked, include a '➕ Add a new room' option. If the user picks it (or no room fits), run the sub-flow: ask parent location (from list_class_options.branches), room name, and capacity via ask_questions, THEN call create_room. The new room is auto-selected — use its id + name for the rest of the flow."
+          : "You cannot add new rooms — only offer existing ones. Do not call create_room."
+  }
 - Recurring classes are NOT available here yet — if the user wants a repeating class, say so plainly and offer a single class instead (or point them to the Schedule page).
 - Equipment is optional and free-form; join multiple items with commas ("Mat, resistance bands").
 - Never fabricate a template, room, instructor, or capacity — everything comes from list_class_options.`

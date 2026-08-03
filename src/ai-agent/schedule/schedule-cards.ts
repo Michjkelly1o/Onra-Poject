@@ -61,6 +61,18 @@ export interface ClassOptionsCard {
     instructors: { id: string; name: string; initials: string; imageUrl?: string }[];
     categories: { id: string; name: string }[];
     payRates: { id: string; name: string }[];
+    /** Active branches — so the model can offer a parent-location choice in the
+     *  `+ Add room` sub-flow even for a branch with no rooms yet. */
+    branches: { id: string; name: string }[];
+}
+
+/** Confirmation that a room was created mid-wizard (the `+ Add room` sub-flow).
+ *  The client writes `room` into the store once; the model then auto-selects it
+ *  for the schedule. */
+export interface ClassRoomCreatedCard {
+    card: "class_room_created";
+    room: { id: string; branch_id: string; name: string; capacity: number; status: "active" };
+    branchName: string;
 }
 
 /** Interactive spot-layout editor (frames 9–11). The client renders
@@ -77,7 +89,8 @@ export type ClassCardData =
     | ClassDeniedCard
     | ClassEmptyCard
     | ClassOptionsCard
-    | ClassSpotEditorCard;
+    | ClassSpotEditorCard
+    | ClassRoomCreatedCard;
 
 /** True for any card this feature owns — lets ChatThread route to ClassCard. */
 export function isClassCard(card: unknown): card is ClassCardData {

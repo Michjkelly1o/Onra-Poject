@@ -51,6 +51,18 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
         return <SpotEditorCard capacity={data.capacity} send={send} />;
     }
 
+    if (data.card === "class_room_created") {
+        return (
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
+                <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
+                <p className="text-[14px] text-[#101828] leading-5">
+                    Added <span className="font-medium">{data.room.name}</span> to {data.branchName} (capacity{" "}
+                    {data.room.capacity}). It&rsquo;s selected for this class.
+                </p>
+            </div>
+        );
+    }
+
     if (data.card === "class_denied") {
         return (
             <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f1f2ed] px-4 py-3">
