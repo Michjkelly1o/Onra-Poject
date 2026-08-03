@@ -65,6 +65,7 @@ const SCHEDULE_ARGS = z.object({
     spotSelectionEnabled: z.boolean().optional(),
     spotCols: z.number().optional(),
     spotRows: z.number().optional(),
+    spotBlocked: z.array(z.string()).optional().describe("Blocked spot ids from the layout editor, e.g. ['A1','B2']."),
     instructorId: z.string().optional(),
     instructorName: z.string().optional().describe("Instructor display name, e.g. 'Liam C.'."),
     instructorInitials: z.string().optional(),
@@ -121,7 +122,7 @@ function hydrate(a: ScheduleArgs): { config: WizardConfig; answers: WizardAnswer
         equipment: a.equipment,
         spotSelectionEnabled: a.spotSelectionEnabled,
         ...(a.spotSelectionEnabled && a.spotCols && a.spotRows
-            ? { spotLayout: { cols: a.spotCols, rows: a.spotRows, blockedSpots: [] } }
+            ? { spotLayout: { cols: a.spotCols, rows: a.spotRows, blockedSpots: a.spotBlocked ?? [] } }
             : {}),
         instructorId: a.instructorId,
         payRateId: a.payRateId,
@@ -190,6 +191,20 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         ? snapshot.payRates.filter((p) => p.status === "active").map((p) => ({ id: p.id, name: p.name }))
                         : [],
                 };
+            },
+        }),
+
+        open_spot_editor: tool({
+            description:
+                "Open the interactive spot-layout editor. Call this RIGHT AFTER the user turns spot selection ON, passing the class capacity. The user picks columns/rows (and optionally blocks spots), then a 'Spot layout confirmed' message comes back — read its columns/rows/blocked and pass them to preview_class_schedule as spotCols / spotRows / spotBlocked.",
+            parameters: z.object({
+                capacity: z.number().describe("The class capacity (max participants) to lay out."),
+            }),
+            execute: async ({ capacity }): Promise<ClassCardData> => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
+                }
+                return { card: "class_spot_editor", capacity: Math.max(1, capacity) };
             },
         }),
 

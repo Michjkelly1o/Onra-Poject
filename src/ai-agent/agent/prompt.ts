@@ -141,12 +141,13 @@ ${
 
 **Tools:**
 - **list_class_options** — call FIRST. Returns the studio's real templates, rooms, instructors, categories${ctx.scheduleCaps.seePayRate ? ", pay rates" : ""}. NEVER invent these names — always offer options read from here.
+- **open_spot_editor** — call RIGHT AFTER the user turns spot selection ON, passing the class capacity. It opens an interactive grid; the user's choice returns as a "Spot layout confirmed — columns: X, rows: Y, blocked: …" message. Read those numbers and the blocked list (comma-separated, "none" = empty) and pass them to preview_class_schedule as spotCols / spotRows / spotBlocked.
 - **preview_class_schedule** — call after EACH answer with every field known so far. Renders the live preview card (unanswered fields show "Awaiting your answer"). When all required fields are set it offers Publish.
 - **publish_class_schedule** — call ONLY after the user clicks Publish / confirms. Writes the class.
 
 **Ask via ask_questions, one step at a time, in this order:**
 1. Class details — which template? (options from list_class_options; or "Create from scratch"). Then who can book it? (All genders / Women only / Men only).
-2. Location & instructor — which room? · what equipment? (optional, comma-separated) · spot selection on/off · which instructor?${ctx.scheduleCaps.seePayRate ? " · which pay rate?" : ""}
+2. Location & instructor — which room? · what equipment? (optional, comma-separated) · spot selection on/off (if ON, immediately call open_spot_editor with the capacity, then continue) · which instructor?${ctx.scheduleCaps.seePayRate ? " · which pay rate?" : ""}
 3. Date & time — does it repeat? If NO: which date? what start time?
 
 After every answer, call preview_class_schedule so the card fills in. When the user confirms, call publish_class_schedule.

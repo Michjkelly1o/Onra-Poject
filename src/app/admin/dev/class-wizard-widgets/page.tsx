@@ -23,6 +23,7 @@ import {
     SchedulePreviewCard,
     type SchedulePreviewData,
 } from "@/ai-agent/components/SchedulePreviewCard";
+import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
 import {
     createMachine,
     applyAnswer,
@@ -431,6 +432,27 @@ export default function ClassWizardWidgetsDevPage() {
                         <AiQuestionPrompt questions={MULTI_STEP} onComplete={(a) => record("multi", a)} />
                         {log["multi"] && (
                             <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["multi"]}</p>
+                        )}
+                    </section>
+
+                    <section>
+                        <div className="mb-2 flex items-baseline justify-between gap-3">
+                            <h2 className="text-[15px] font-semibold text-[#101828]">Spot layout editor (default + customize)</h2>
+                            <span className="text-[12px] text-[#98a2b3] shrink-0">frames 9–11</span>
+                        </div>
+                        <SpotLayoutEditor
+                            capacity={8}
+                            confirmed={
+                                log["spot"]
+                                    ? (JSON.parse(log["spot"]) as { cols: number; rows: number; blocked: string[] })
+                                    : null
+                            }
+                            onConfirm={(cols, rows, blocked) =>
+                                setLog((prev) => ({ ...prev, spot: JSON.stringify({ cols, rows, blocked }) }))
+                            }
+                        />
+                        {log["spot"] && (
+                            <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["spot"]}</p>
                         )}
                     </section>
 

@@ -13,15 +13,43 @@
 //   • class_empty    → plain note.
 //   • class_options  → renders nothing (data-only, feeds the model).
 
+import { useState } from "react";
 import { CalendarPlus01, PencilLine, CheckCircle, Lightbulb02 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
+import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 
 const NOUN: Record<string, string> = { class: "class schedule", private: "private session", recovery: "recovery session" };
 
+/** Spot editor card — local state so the panel locks once confirmed and the
+ *  message is sent exactly once. */
+function SpotEditorCard({ capacity, send }: { capacity: number; send: (text: string) => void }) {
+    const [confirmed, setConfirmed] = useState<{ cols: number; rows: number; blocked: string[] } | null>(null);
+    return (
+        <SpotLayoutEditor
+            capacity={capacity}
+            confirmed={confirmed}
+            onConfirm={(cols, rows, blocked) => {
+                if (confirmed) return;
+                setConfirmed({ cols, rows, blocked });
+                // Machine-readable line the prompt teaches the model to parse.
+                send(
+                    `Spot layout confirmed — columns: ${cols}, rows: ${rows}, blocked: ${
+                        blocked.length ? blocked.join(", ") : "none"
+                    }`,
+                );
+            }}
+        />
+    );
+}
+
 export function ClassCard({ data, send }: { data: ClassCardData; send: (text: string) => void }) {
     if (data.card === "class_options") return null;
+
+    if (data.card === "class_spot_editor") {
+        return <SpotEditorCard capacity={data.capacity} send={send} />;
+    }
 
     if (data.card === "class_denied") {
         return (

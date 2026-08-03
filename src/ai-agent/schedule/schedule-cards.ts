@@ -63,12 +63,21 @@ export interface ClassOptionsCard {
     payRates: { id: string; name: string }[];
 }
 
+/** Interactive spot-layout editor (frames 9–11). The client renders
+ *  SpotLayoutEditor; on confirm it sends a machine-readable message the model
+ *  parses into spotCols / spotRows / spotBlocked. */
+export interface ClassSpotEditorCard {
+    card: "class_spot_editor";
+    capacity: number;
+}
+
 export type ClassCardData =
     | ClassPreviewCard
     | ClassResultCard
     | ClassDeniedCard
     | ClassEmptyCard
-    | ClassOptionsCard;
+    | ClassOptionsCard
+    | ClassSpotEditorCard;
 
 /** True for any card this feature owns — lets ChatThread route to ClassCard. */
 export function isClassCard(card: unknown): card is ClassCardData {
