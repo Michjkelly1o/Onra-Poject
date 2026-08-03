@@ -13,8 +13,8 @@
 // admin form's private helpers aren't exported, so the small pure ones are
 // replicated here 1:1 so both creation paths produce identical rows.
 //
-// Phase 4 = SINGLE class only. A recurring draft throws — the caller gates on
-// `draft.recurring` and shows the recurring stub instead (Phase 6 builds it).
+// Handles BOTH single (1 row) and recurring (N rows sharing a recurrenceGroupId)
+// via expandDraftToRows; `expandDraftToRow` is the single-only helper it uses.
 
 import { formatTimeRange12 } from "@/lib/utils";
 import type { ClassSchedule, Instructor, Branch, Room } from "@/lib/store";

@@ -182,12 +182,14 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
             )}
 
             {customizing && (
-                <div className="bg-[#f8f8f6] rounded-[12px] px-6 py-6 flex flex-col items-center gap-6">
+                <div className="bg-[#f8f8f6] rounded-[12px] px-4 py-6 flex flex-col items-center gap-6 overflow-x-auto">
                     <div className="flex flex-col items-center gap-1.5">
                         <div className="w-[110px] h-9 rounded-[8px] bg-[#717bbc]" />
                         <span className="text-[12px] font-semibold text-[#475467]">Instructor</span>
                     </div>
-                    <div className="flex flex-col gap-4">
+                    {/* w-max so a wide grid (many columns) scrolls horizontally
+                        inside the card at narrow widths instead of overflowing. */}
+                    <div className="flex flex-col gap-4 w-max mx-auto">
                         {spots.map((row, ri) => (
                             <div key={ri} className="flex gap-5 justify-center">
                                 {row.map((id) => {

@@ -9,7 +9,8 @@
 //   • preview_class_schedule — echoes a live preview card as answers accumulate.
 //     Gated on `scheduleCaps.createSchedule` (docs/ai-agent-rbac.md). Emits the
 //     commit `draft` only once every required field is present.
-//   • publish_class_schedule — terminal. Gated on createSchedule AND canWrite.
+//   • publish_class_schedule — terminal. Gated on scheduleCaps.createSchedule
+//     (the single matrix cell — NOT canWrite; an Operator holds create too).
 //     Returns a `class_result` card carrying the draft; the CLIENT writes it to
 //     the store (server is stateless), mirroring migration's import apply-back.
 //
@@ -18,8 +19,8 @@
 // labels (room/instructor) come as args too, since the server can't read the
 // store to resolve ids.
 //
-// Phase 4 = SINGLE class only. `recurring: true` is accepted but routed to a
-// stub (preview shows a note; publish is refused) until Phase 6.
+// Supports single + recurring classes and private/recovery appointments (which
+// call addCustomerAppointment via appointmentDraft instead of addClassSchedules).
 
 import { tool } from "ai";
 import { z } from "zod";
@@ -99,7 +100,7 @@ const SCHEDULE_ARGS = z.object({
 type ScheduleArgs = z.infer<typeof SCHEDULE_ARGS>;
 
 /** Build (config, answers, lookups) from the flat tool args. */
-function hydrate(a: ScheduleArgs): { config: WizardConfig; answers: WizardAnswers; lookups: WizardLookups } {
+function hydrate(a: ScheduleArgs, seePayRate: boolean): { config: WizardConfig; answers: WizardAnswers; lookups: WizardLookups } {
     const template: WizardTemplate | undefined = a.isScratch
         ? undefined
         : {
@@ -121,7 +122,11 @@ function hydrate(a: ScheduleArgs): { config: WizardConfig; answers: WizardAnswer
         sessionType: a.sessionType,
         isScratch: a.isScratch,
         template,
-        canSeePayRate: true, // gating is enforced by the tool caller; unused for projection
+        // MUST reflect the real cap: buildQuestionPlan adds a pay-rate node
+        // only when this is true. An Operator (seePayRate=false) is never asked
+        // for a pay rate, so forcing this true left an unanswerable node and
+        // the preview never completed → could never publish.
+        canSeePayRate: seePayRate,
         canAddRoom: true,
     };
 
@@ -198,9 +203,15 @@ const APPOINTMENT_ARGS = z.object({
 
 type AppointmentArgs = z.infer<typeof APPOINTMENT_ARGS>;
 
-/** Required fields for a bookable appointment: service, customer, date, time. */
+/** Required fields for a bookable appointment: service, customer, date, time.
+ *  A PRIVATE session additionally needs an instructor (or `flexible` so the
+ *  studio auto-assigns) — otherwise the card would offer Publish while showing
+ *  "Instructor: Awaiting your answer". Recovery open sessions have no
+ *  instructor requirement. */
 function apptComplete(a: AppointmentArgs): boolean {
-    return !!(a.serviceId && a.customerId && a.dateISO && a.startTime);
+    const base = !!(a.serviceId && a.customerId && a.dateISO && a.startTime);
+    if (a.sessionType === "private") return base && (!!a.instructorId || !!a.flexible);
+    return base;
 }
 
 function apptPreview(a: AppointmentArgs): SchedulePreviewData {
@@ -356,7 +367,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin to set this one up.",
                     };
                 }
-                const { config, answers, lookups } = hydrate(args);
+                const { config, answers, lookups } = hydrate(args, caps.seePayRate);
                 const preview = toPreview(config, answers, lookups);
                 const ready = isComplete(config, answers);
                 const draft = ready ? toDraft(config, answers) : undefined;
@@ -379,13 +390,13 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 "Publish the finished class schedule. Call ONLY after the user confirms on the preview. Pass every resolved field. Refused if the user lacks create access, or for recurring schedules (not available yet).",
             parameters: SCHEDULE_ARGS,
             execute: async (args): Promise<ClassCardData> => {
-                if (!caps.createSchedule || !ctx.canWrite) {
+                if (!caps.createSchedule) {
                     return {
                         card: "class_denied",
                         reason: "You don't have permission to publish class schedules.",
                     };
                 }
-                const { config, answers } = hydrate(args);
+                const { config, answers } = hydrate(args, caps.seePayRate);
                 if (!isComplete(config, answers)) {
                     return { card: "class_empty", message: "Some details are still missing — let's finish the preview first." };
                 }
@@ -467,7 +478,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 "Book the finished private/recovery session. Call ONLY after the user confirms. Pass every resolved field. Refused without create access.",
             parameters: APPOINTMENT_ARGS,
             execute: async (args): Promise<ClassCardData> => {
-                if (!caps.createSchedule || !ctx.canWrite) {
+                if (!caps.createSchedule) {
                     return { card: "class_denied", reason: "You don't have permission to book sessions." };
                 }
                 if (!apptComplete(args)) {
