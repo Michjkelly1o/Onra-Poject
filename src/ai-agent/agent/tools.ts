@@ -156,7 +156,8 @@ export function askQuestionsTool() {
                                         disabled: z.boolean().optional().describe("hard-block this option (e.g. a room already in use)"),
                                         disabledReason: z.string().optional().describe("why it's blocked, shown muted"),
                                         thumbnailUrl: z.string().optional().describe("cover image url — for class templates, pass the template's coverImage so the option shows its picture"),
-                                        attributes: z.array(z.string()).optional().describe("small info chips shown under the label, e.g. ['Pilates','Group','60 min','15 max'] for a template"),
+                                        iconTile: z.boolean().optional().describe("render a '+' placeholder tile instead of an image — set true on the 'Create from scratch' template option"),
+                                        attributes: z.array(z.string()).optional().describe("info chips under the label, IN ORDER [category, type, duration, capacity] e.g. ['Pilates','Group','60 min','15 max'] — order drives the chip icons"),
                                     }),
                                 )
                                 .min(1)

@@ -50,30 +50,36 @@ interface Demo {
 
 // ── Step 1 · Class template picker (rich cards) — frames 1, 2 ────────────────
 const TEMPLATE_PICKER: AiQuestionSpec = {
-    title: "Which class template do you want to schedule?",
+    title: "Which class template do you want to use?",
     kind: "radio",
-    otherPlaceholder: "Or create one from scratch…",
+    allowOther: false,
     options: [
+        {
+            id: "__scratch",
+            label: "Create from scratch",
+            subtitle: "Create a class without using a predefined template. Configure the schedule, instructors, capacity, and other settings to fit your studio's needs.",
+            iconTile: true,
+        },
         {
             id: "reformer",
             label: "Reformer Pilates",
-            subtitle: "Low-impact strength on the reformer.",
+            subtitle: "Full-body workout on the Pilates reformer. Builds core strength, improves posture and flexibility.",
             thumbnailUrl: "/images/class-template/reformer-pilates.webp",
-            attributes: ["50 min", "6 spots", "Pilates"],
+            attributes: ["Pilates", "Group", "60 min", "15 max"],
         },
         {
             id: "barre",
-            label: "Barre Sculpt",
-            subtitle: "Ballet-inspired conditioning.",
+            label: "Berre",
+            subtitle: "Ballet-inspired low-impact workout that sculpts and tones using small isometric movements.",
             thumbnailUrl: "/images/class-template/berre.webp",
-            attributes: ["45 min", "12 spots", "Barre"],
+            attributes: ["Berre", "Group", "45 min", "12 max"],
         },
         {
             id: "hot-yoga",
             label: "Hot Yoga",
             subtitle: "Vinyasa flow in a heated studio.",
             thumbnailUrl: "/images/class-template/hot-yoga.webp",
-            attributes: ["60 min", "20 spots", "Yoga"],
+            attributes: ["Yoga", "Group", "60 min", "20 max"],
         },
     ],
 };

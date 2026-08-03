@@ -147,7 +147,7 @@ ${
 - **publish_class_schedule** — call ONLY after the user clicks Publish / confirms. Writes the class.
 
 **Ask via ask_questions, one step at a time, in this order:**
-1. Class details — which template? Make each template option RICH so it shows a picture + info: set thumbnailUrl = the template's coverImage, subtitle = its description, and attributes = [category, "Group", "<durationMin> min", "<capacity> max"] (e.g. ["Pilates","Group","60 min","15 max"]). Add a "Create from scratch" option too. Then who can book it? (All genders / Women only / Men only).
+1. Class details — which template? The FIRST option MUST be "Create from scratch" with iconTile:true (subtitle: "Create a class without using a predefined template. Configure the schedule, instructors, capacity, and other settings to fit your studio's needs."), then the templates. Make each TEMPLATE option RICH so it shows a picture + info: set thumbnailUrl = the template's coverImage, subtitle = its description, and attributes = [category, "Group", "<durationMin> min", "<capacity> max"] IN THAT ORDER (e.g. ["Pilates","Group","60 min","15 max"]) — the order matters, it drives the chip icons. Then who can book it? (All genders / Women only / Men only).
 2. Location & instructor — which room? · what equipment? (optional, comma-separated) · spot selection on/off (if ON, immediately call open_spot_editor with the capacity, then continue) · which instructor?${ctx.scheduleCaps.seePayRate ? " · which pay rate?" : ""}
 3. Date & time — does it repeat?
    - **Single** (does not repeat): which date? what start time? → set recurring=false, dateISO, startTime.

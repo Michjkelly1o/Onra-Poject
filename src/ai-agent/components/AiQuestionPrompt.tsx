@@ -24,9 +24,14 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, PencilLine, SearchLg, Star01, Check } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, PencilLine, SearchLg, Star01, Check, Plus, Grid01, MarkerPin01, ClockFastForward, Users01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+
+// Icons for a template option's attribute chips, by position — mirrors the
+// admin schedule form's template card (category · location/type · duration ·
+// capacity), so the AI wizard's template picker matches Figma 368-123129.
+const ATTR_ICONS = [Grid01, MarkerPin01, ClockFastForward, Users01] as const;
 
 /** Small status pill tone. Mirrors the DS badge tones used across admin. */
 export type AiOptionBadgeTone = "neutral" | "success" | "warning" | "danger";
@@ -46,8 +51,11 @@ export interface AiQuestionOption {
     /** Optional one-line supporting text under the label. */
     subtitle?: string;
     // ── Rich option content (class-creation wizard, Figma frames 1–9) ──
-    /** Square cover image (class template cards). Rendered as a 40px tile. */
+    /** Square cover image (class template cards). Rendered as a tile. */
     thumbnailUrl?: string;
+    /** Render a bordered "+" placeholder tile instead of an image — used for
+     *  the "Create from scratch" option in the template picker (Figma). */
+    iconTile?: boolean;
     /** Round avatar image (instructor rows). Falls back to `avatarInitials`. */
     avatarUrl?: string;
     /** Initials shown in the avatar tile when there is no `avatarUrl`. */
@@ -136,6 +144,13 @@ function OptionMedia({ opt }: { opt: AiQuestionOption }) {
         return (
             <span className="shrink-0 size-14 rounded-[8px] overflow-hidden bg-[#f2f4f7] relative">
                 <Image src={opt.thumbnailUrl} alt="" fill sizes="56px" className="object-cover" />
+            </span>
+        );
+    }
+    if (opt.iconTile) {
+        return (
+            <span className="shrink-0 size-14 rounded-[8px] border border-[#e4e7ec] bg-[#f9fafb] flex items-center justify-center">
+                <Plus className="size-5 text-[#667085]" />
             </span>
         );
     }
@@ -308,7 +323,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className, com
 
     const renderOption = (opt: AiQuestionOption, badgeNumber: number) => {
         const active = isMulti ? checkedIds.includes(opt.id) : selectedId === opt.id;
-        const hasMedia = !!(opt.thumbnailUrl || opt.avatarUrl || opt.avatarInitials);
+        const hasMedia = !!(opt.thumbnailUrl || opt.avatarUrl || opt.avatarInitials || opt.iconTile);
         return (
             <div key={opt.id} className="px-1.5 py-0.5">
                 <button
@@ -371,15 +386,16 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, className, com
                             <span className="text-[12px] leading-[18px] text-[#b42318] truncate">{opt.disabledReason}</span>
                         )}
                         {opt.attributes && opt.attributes.length > 0 && (
-                            <span className="flex flex-wrap items-center gap-1 pt-0.5">
-                                {opt.attributes.map((a, ai) => (
-                                    <span
-                                        key={ai}
-                                        className="inline-flex items-center rounded-[4px] bg-[#f2f4f7] px-1.5 py-0.5 text-[11px] font-medium text-[#475467]"
-                                    >
-                                        {a}
-                                    </span>
-                                ))}
+                            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5">
+                                {opt.attributes.map((a, ai) => {
+                                    const AttrIcon = ATTR_ICONS[ai];
+                                    return (
+                                        <span key={ai} className="inline-flex items-center gap-1 text-[12px] text-[#667085] leading-[18px]">
+                                            {AttrIcon && <AttrIcon className="size-4 shrink-0" />}
+                                            {a}
+                                        </span>
+                                    );
+                                })}
                             </span>
                         )}
                     </span>
