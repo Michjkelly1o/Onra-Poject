@@ -1719,6 +1719,11 @@ function QuestionStepCard({
 }: {
     data: Extract<InsightCard, { card: "questions" }>;
 }) {
+    // The interactive options float above the composer (PendingQuestionPanel).
+    // In the bubble we only echo the badge/title/message — so if the model sent
+    // none of those (e.g. a batched multi-question step with no preamble), there
+    // is nothing to show and an empty bordered box would just look like a bug.
+    if (!data.stepLabel && !data.title && !data.message) return null;
     return (
         <div className="w-full max-w-[560px] bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-1.5">
             {data.stepLabel && (

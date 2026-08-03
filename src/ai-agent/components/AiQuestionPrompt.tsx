@@ -155,6 +155,15 @@ const BADGE_TONE: Record<AiOptionBadgeTone, string> = {
     danger: "bg-[#fef3f2] text-[#b42318]",
 };
 
+/** First-letter initials from a person's display name — "Olivia Rhye" → "OR".
+ *  Used as the avatar fallback for searchable (people) rows with no photo. */
+function initialsFromLabel(label: string): string {
+    const parts = label.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 /** Leading visual for a rich option: cover thumbnail, or avatar (image /
  *  initials). Returns null for plain options so the numbered badge shows. */
 function OptionMedia({ opt }: { opt: AiQuestionOption }) {
@@ -351,7 +360,18 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
 
     const renderOption = (opt: AiQuestionOption, badgeNumber: number) => {
         const active = isMulti ? checkedIds.includes(opt.id) : selectedId === opt.id;
-        const hasMedia = !!(opt.thumbnailUrl || opt.avatarUrl || opt.avatarInitials || opt.iconTile);
+        // Searchable lists are people-pickers (instructors) — every row reads as
+        // a round avatar. When a person has no photo we derive initials from the
+        // label so the list stays visually consistent instead of half-avatars,
+        // half numbered-badges.
+        const derivedInitials =
+            isSearchable && !opt.thumbnailUrl && !opt.avatarUrl && !opt.avatarInitials && !opt.iconTile
+                ? initialsFromLabel(opt.label)
+                : undefined;
+        const mediaOpt: AiQuestionOption = derivedInitials
+            ? { ...opt, avatarInitials: derivedInitials }
+            : opt;
+        const hasMedia = !!(mediaOpt.thumbnailUrl || mediaOpt.avatarUrl || mediaOpt.avatarInitials || mediaOpt.iconTile);
         return (
             <div key={opt.id} className="px-1.5 py-0.5">
                 <button
@@ -399,7 +419,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         </span>
                     )}
 
-                    {hasMedia && <OptionMedia opt={opt} />}
+                    {hasMedia && <OptionMedia opt={mediaOpt} />}
 
                     <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                         <span className="flex items-center gap-1.5 text-[14px] leading-5 min-w-0">

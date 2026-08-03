@@ -112,7 +112,6 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
 
     const [cols, setCols] = useState(initCols);
     const [rows, setRows] = useState(initRows);
-    const [customizing, setCustomizing] = useState(false);
     const [blocked, setBlocked] = useState<Set<string>>(new Set());
 
     // Spots grid — min(cols×rows, capacity) cells, row-major, labelled A1, A2…
@@ -162,36 +161,34 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
     };
 
     return (
-        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4">
-            <div className="flex flex-col gap-0.5">
-                <p className="text-[15px] font-semibold text-[#101828]">Spot layout</p>
-                <p className="text-[13px] text-[#667085]">
-                    Define the columns and rows to generate the room&rsquo;s {cap}-spot layout.
-                </p>
-            </div>
+        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-8">
+            {/* ── Section 1 · Customize area (grid always visible, Figma 380-122725) ── */}
+            <div className="flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-1 min-w-0">
+                        <p className="text-[16px] font-semibold text-[#101828] leading-6">Customize area</p>
+                        <p className="text-[14px] text-[#344054] leading-5">Select spot to block or unblock.</p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 pt-0.5">
+                        <span className="flex items-center gap-2 text-[14px] text-[#667085] whitespace-nowrap">
+                            <span className="size-2 rounded-full bg-[#17b26a]" /> Available spot
+                        </span>
+                        <span className="flex items-center gap-2 text-[14px] text-[#475467] whitespace-nowrap">
+                            <span className="size-2 rounded-full bg-[#f04438]" /> Blocked spot
+                        </span>
+                    </div>
+                </div>
 
-            <div className="flex gap-3">
-                <Stepper label="Column number" value={cols} onChange={setCols} min={1} max={cap} />
-                <Stepper label="Row number" value={rows} onChange={setRows} min={1} max={cap} />
-            </div>
-
-            {exceeds && (
-                <p className="text-[12px] text-[#b42318]">
-                    {cols} × {rows} exceeds the {cap}-spot capacity — only {cap} will be shown.
-                </p>
-            )}
-
-            {customizing && (
-                <div className="bg-[#f8f8f6] rounded-[12px] px-4 py-6 flex flex-col items-center gap-6 overflow-x-auto">
-                    <div className="flex flex-col items-center gap-1.5">
-                        <div className="w-[110px] h-9 rounded-[8px] bg-[#717bbc]" />
-                        <span className="text-[12px] font-semibold text-[#475467]">Instructor</span>
+                <div className="bg-[#f8f8f6] rounded-[16px] px-4 py-6 flex flex-col items-center gap-6 overflow-x-auto">
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="w-[137px] h-12 rounded-[10px] bg-[#717bbc]" />
+                        <span className="text-[16px] font-semibold text-[#475467]">Instructor</span>
                     </div>
                     {/* w-max so a wide grid (many columns) scrolls horizontally
                         inside the card at narrow widths instead of overflowing. */}
-                    <div className="flex flex-col gap-4 w-max mx-auto">
+                    <div className="flex flex-col gap-8 w-max mx-auto">
                         {spots.map((row, ri) => (
-                            <div key={ri} className="flex gap-5 justify-center">
+                            <div key={ri} className="flex gap-x-10 justify-center">
                                 {row.map((id) => {
                                     const isB = blocked.has(id);
                                     return (
@@ -199,54 +196,66 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                                             key={id}
                                             type="button"
                                             onClick={() => toggle(id)}
-                                            className="flex flex-col items-center gap-1.5 group"
+                                            className="flex flex-col items-center gap-2 group"
                                         >
                                             <span
                                                 className={cn(
-                                                    "size-10 rounded-full border-2 transition-all",
+                                                    "size-12 rounded-full border-2 transition-all",
                                                     isB
                                                         ? "bg-[#fecdca] border-[#f04438]"
-                                                        : "bg-[var(--brand-tertiary)] border-transparent group-hover:scale-105",
+                                                        : "bg-[#c4edd6] border-transparent group-hover:scale-105",
                                                 )}
                                             />
-                                            <span className="text-[12px] font-semibold text-[#475467]">{id}</span>
+                                            <span className="text-[16px] font-semibold text-[#475467]">{id}</span>
                                         </button>
                                     );
                                 })}
                             </div>
                         ))}
                     </div>
-                    <div className="flex items-center gap-4 text-[12px]">
-                        <span className="flex items-center gap-1.5 text-[#667085]">
-                            <span className="size-2 rounded-full bg-[var(--brand-tertiary)]" /> Available
-                        </span>
-                        <span className="flex items-center gap-1.5 text-[#475467]">
-                            <span className="size-2 rounded-full bg-[#f04438]" /> Blocked
-                        </span>
-                    </div>
                 </div>
-            )}
+            </div>
 
-            <div className="flex items-center justify-end gap-3">
-                {customizing ? (
-                    <Button variant="primary" size="sm" onClick={() => onConfirm(cols, rows, liveBlocked())}>
-                        Confirm layout
-                    </Button>
-                ) : (
-                    <>
-                        <Button variant="secondary-gray" size="sm" onClick={() => onConfirm(cols, rows, [])}>
-                            Use default
-                        </Button>
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            leftIcon={<Settings03 className="w-4 h-4" />}
-                            onClick={() => setCustomizing(true)}
-                        >
-                            Customize spot
-                        </Button>
-                    </>
+            {/* ── Section 2 · Spot layout controls ── */}
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                    <p className="text-[18px] font-semibold text-[#101828] leading-7">Spot layout</p>
+                    <p className="text-[14px] text-[#6e776f] leading-5">
+                        Define the number of rows and columns to generate the room&rsquo;s spot layout.
+                    </p>
+                </div>
+
+                <div className="flex gap-4">
+                    <Stepper label="Column number" value={cols} onChange={setCols} min={1} max={cap} />
+                    <Stepper label="Row number" value={rows} onChange={setRows} min={1} max={cap} />
+                </div>
+
+                {exceeds && (
+                    <p className="text-[12px] text-[#b42318]">
+                        {cols} × {rows} exceeds the {cap}-spot capacity — only {cap} will be shown.
+                    </p>
                 )}
+
+                <div className="flex items-center justify-end gap-3">
+                    <Button
+                        variant="secondary-gray"
+                        size="sm"
+                        onClick={() => {
+                            setBlocked(new Set());
+                            onConfirm(initCols, initRows, []);
+                        }}
+                    >
+                        Use default
+                    </Button>
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        leftIcon={<Settings03 className="w-4 h-4" />}
+                        onClick={() => onConfirm(cols, rows, liveBlocked())}
+                    >
+                        Customize spot
+                    </Button>
+                </div>
             </div>
         </div>
     );
