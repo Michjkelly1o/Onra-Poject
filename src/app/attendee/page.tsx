@@ -613,7 +613,6 @@ function AttendeePage() {
                                 <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
                                     {ongoingClasses.length > 0 && (
                                         <section className="flex flex-col gap-3">
-                                            <p className="text-[14px] font-semibold text-[#101828]">Ongoing · {ongoingClasses.length}</p>
                                             <div className="flex flex-col gap-4">
                                                 {ongoingClasses.map(ci => (
                                                     <AttendeeClassCard key={ci.id} ci={ci} onView={() => handleView(ci)} />
@@ -623,7 +622,6 @@ function AttendeePage() {
                                     )}
                                     {upcomingClasses.length > 0 && (
                                         <section className="flex flex-col gap-3">
-                                            <p className="text-[14px] font-semibold text-[#101828]">Upcoming · {upcomingClasses.length}</p>
                                             <div className="flex flex-col gap-4">
                                                 {upcomingClasses.map(ci => (
                                                     <AttendeeClassCard key={ci.id} ci={ci} onView={() => handleView(ci)} />
