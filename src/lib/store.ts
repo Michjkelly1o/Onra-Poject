@@ -12812,7 +12812,11 @@ export const useAppStore = create<AppState>()(persist(
         //   changed); PurchaseLineItem / CustomerTransaction gain the two session
         //   kinds. Bump so persisted payloads drop the stale "appointment" tax
         //   rule and pick up the new per-type rules + session-aware seeds.
-        version: 100,
+        // v101 — new "Attendees" predefined role + Robin Vega staff row. The
+        //   roles + staff slices are persisted, so bump to re-seed them (and
+        //   refresh today's classSchedules) — otherwise the new role never
+        //   appears in Staff & Permissions on an existing device.
+        version: 101,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
