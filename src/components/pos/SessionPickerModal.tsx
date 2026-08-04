@@ -130,37 +130,42 @@ export function SessionPickerModal({ product, customerId, onClose, onPick }: {
         });
     }, []);
 
-    // Slot list for the chosen (date, instructor). Rebuilds the SlotData bundle
-    // internally so the memo tracks every underlying slice.
+    // AppointmentVM shape the pure slot engine needs (it only reads id / type /
+    // durationMins / branchId / capacity).
+    const vm = useMemo(() => product ? ({
+        id: product.id,
+        type: product.openSession ? "open" : "private",
+        durationMins: product.durationMin,
+        branchId: product.branchId,
+        capacity: product.capacity,
+    } as unknown as AppointmentVM) : null, [product]);
+
+    // The SlotData bundle — the selected POS customer rides as `member` so a
+    // slot they're already booked at is hidden (no double-booking).
+    const slotData = useMemo(() => ({
+        businessHours, shifts, shiftAssignments, staff, blockedTimes,
+        classSchedules, adminAppointments, classBookings, customerAppointments,
+        member: customerId ? { id: customerId } : null,
+    }), [businessHours, shifts, shiftAssignments, staff, blockedTimes,
+        classSchedules, adminAppointments, classBookings, customerAppointments, customerId]);
+
+    // Slot list for the chosen (date, instructor).
     const slots = useMemo(() => {
-        if (!product) return [];
-        const vm = {
-            id: product.id,
-            type: product.openSession ? "open" : "private",
-            durationMins: product.durationMin,
-            branchId: product.branchId,
-            capacity: product.capacity,
-        } as unknown as AppointmentVM;
-        const data = {
-            businessHours, shifts, shiftAssignments, staff, blockedTimes,
-            classSchedules, adminAppointments, classBookings, customerAppointments,
-            member: customerId ? { id: customerId } : null,
-        };
+        if (!product || !vm) return [];
         if (product.openSession) {
-            return computeAvailableSlots(vm, null, dateISO, data);
+            return computeAvailableSlots(vm, null, dateISO, slotData);
         }
         if (instructorSel === FLEXIBLE) {
             // Union every qualified instructor's free times — a slot appears
-            // when ≥1 instructor can cover it (studio auto-assigns at checkout).
+            // when ≥1 instructor can cover it (studio auto-assigns at pick time).
             const times = new Set<string>();
             for (const i of qualified) {
-                for (const s of computeAvailableSlots(vm, i.id, dateISO, data)) times.add(s.time);
+                for (const s of computeAvailableSlots(vm, i.id, dateISO, slotData)) times.add(s.time);
             }
             return Array.from(times).sort().map((time) => ({ time, spotsLeft: null, capacity: null, booked: null }));
         }
-        return computeAvailableSlots(vm, instructorSel, dateISO, data);
-    }, [product, dateISO, instructorSel, qualified, businessHours, shifts, shiftAssignments,
-        staff, blockedTimes, classSchedules, adminAppointments, classBookings, customerAppointments, customerId]);
+        return computeAvailableSlots(vm, instructorSel, dateISO, slotData);
+    }, [product, vm, slotData, dateISO, instructorSel, qualified]);
 
     if (!product) return null;
 
@@ -175,6 +180,14 @@ export function SessionPickerModal({ product, customerId, onClose, onPick }: {
         if (isPrivate) {
             if (instructorSel === FLEXIBLE) {
                 flexible = true;
+                // Resolve a concrete free instructor for this slot now — the
+                // union guaranteed ≥1 is available, so the studio "auto-assigns"
+                // at pick time and the cart + checkout carry a real assignee.
+                const freeId = vm
+                    ? qualified.find((i) => computeAvailableSlots(vm, i.id, dateISO, slotData).some((s) => s.time === time))?.id ?? null
+                    : null;
+                instructorId = freeId;
+                instructorName = qualified.find((i) => i.id === freeId)?.name;
             } else {
                 instructorId = instructorSel;
                 instructorName = qualified.find((i) => i.id === instructorSel)?.name;

@@ -24,7 +24,7 @@
 import { useMemo } from "react";
 import {
     XClose, Check, CreditCard02, CreditCard01, BankNote01, Package,
-    Lightbulb02, CheckCircle, Gift01, CreditCardCheck, Wallet01,
+    Lightbulb02, CheckCircle, Gift01, CreditCardCheck, Wallet01, User01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -362,6 +362,9 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
                         <div className="flex-1 flex flex-col gap-1">
                             <p className="text-[14px] font-medium text-[#101828]">{it.name}</p>
                             <p className="text-[14px] text-[#658774]">AED {it.unitPrice.toLocaleString()}</p>
+                            {it.appointment && (
+                                <p className="text-[12px] text-[#667085]">{sessionWhenLabel(it.appointment)}</p>
+                            )}
                         </div>
                         <p className="text-[14px] font-medium text-[#101828] whitespace-nowrap">{it.quantity}x</p>
                     </div>
@@ -431,6 +434,17 @@ function PaymentInformation({ customer, items, subtotal, discountPercent, discou
     );
 }
 
+/** "when + who" summary for a session (appointment) line — mirrors the POS
+ *  cart line so the cashier sees the same booking on the checkout + receipt. */
+function sessionWhenLabel(a: NonNullable<PurchaseLineItem["appointment"]>): string {
+    const d = new Date(`${a.dateISO}T00:00:00`);
+    const date = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    const [h, m] = a.startTime.split(":").map(Number);
+    const time = `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+    const who = a.openSession ? null : (a.flexible ? "Flexible" : (a.instructorName ?? "Instructor"));
+    return who ? `${date} · ${time} · ${who}` : `${date} · ${time}`;
+}
+
 function ProductIcon({ type, imageUrl }: {
     type: PurchaseLineItem["productType"];
     imageUrl?: string;
@@ -448,15 +462,18 @@ function ProductIcon({ type, imageUrl }: {
         );
     }
     const tint =
-        type === "membership" ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
-        type === "package"    ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
-        type === "retail"     ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
+        type === "membership"  ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
+        type === "package"     ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
+        type === "retail"      ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
+        type === "appointment" ? { bg: "bg-[#f4ebff]", color: "text-[#7f56d9]" } :
                                  { bg: "bg-[#e0f9f4]", color: "text-[#4b8c9a]" };
     const Icon = type === "membership"
         ? CreditCard02
         : type === "package" || type === "retail"
             ? Package
-            : Gift01;
+            : type === "appointment"
+                ? User01
+                : Gift01;
     return (
         <div className={cn("w-10 h-10 rounded-[8px] flex items-center justify-center shrink-0", tint.bg)}>
             <Icon className={cn("w-5 h-5", tint.color)} />
@@ -868,6 +885,9 @@ export function ReceiptStep(p: ReceiptStepProps) {
                                 <div className="flex-1 flex flex-col gap-1">
                                     <p className="text-[14px] font-medium text-[#101828]">{it.name}</p>
                                     <p className="text-[14px] text-[#658774]">AED {it.unitPrice.toLocaleString()}</p>
+                                    {it.appointment && (
+                                        <p className="text-[12px] text-[#667085]">{sessionWhenLabel(it.appointment)}</p>
+                                    )}
                                 </div>
                                 <p className="text-[14px] font-medium text-[#101828] whitespace-nowrap">{it.quantity}x</p>
                             </div>

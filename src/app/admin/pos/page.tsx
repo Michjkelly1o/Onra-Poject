@@ -685,12 +685,12 @@ function POSInner() {
         // and lets the validator decide.
         // Sessions aren't promo-eligible yet — exclude them from the promo math.
         const promoLines = cart.filter(l => !l.appointment);
-        const kinds = Array.from(new Set(promoLines.map(l => l.kind as PurchaseLineItem["productType"])));
+        const kinds = Array.from(new Set(promoLines.map(l => l.kind as "membership" | "package" | "gift_card" | "retail")));
         const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         return validatePromoCode(appliedPromoCode, {
             subtotalAed: promoSubtotal,
             productTypes: kinds,
-            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind as PurchaseLineItem["productType"], lineTotal: l.unitPrice * l.quantity })),
+            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind as "membership" | "package" | "gift_card" | "retail", lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
         }, promoCodes);
     }, [appliedPromoCode, cart, subtotal, promoCodes, branchId]);
@@ -707,12 +707,12 @@ function POSInner() {
         // Client 2026-07-31 — full cart (retail included); the validator's
         // own applies_to gate decides which lines actually qualify.
         const promoLines = cart.filter(l => !l.appointment);
-        const kinds = Array.from(new Set(promoLines.map(l => l.kind as PurchaseLineItem["productType"])));
+        const kinds = Array.from(new Set(promoLines.map(l => l.kind as "membership" | "package" | "gift_card" | "retail")));
         const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         const res = validatePromoCode(promoInput, {
             subtotalAed: promoSubtotal,
             productTypes: kinds,
-            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind as PurchaseLineItem["productType"], lineTotal: l.unitPrice * l.quantity })),
+            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind as "membership" | "package" | "gift_card" | "retail", lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
         }, promoCodes);
         if (res.ok) {
@@ -776,15 +776,13 @@ function POSInner() {
         let runningTax = 0;
         let firstRate = 0;
         for (const line of cart) {
-            // Sessions (private / recovery) tax through the checkout commit
-            // path (Phase 2), not this main-cart estimate — skip them here.
-            if (line.appointment) continue;
-            // Retail is now taxed via its own `TaxRuleCategory` (client
-            // 2026-07-31 — was excluded during Phase D.2 before Tax
-            // gained a retail category). The applies-to lookup below
-            // sources a per-branch or all-locations rule the same way
-            // memberships / packages / appointments do.
-            const category = categoryForProductType(line.kind as PurchaseLineItem["productType"]);
+            // Sessions (private / recovery) tax via the "appointment" category —
+            // the same rule the checkout commit applies — so the cart estimate
+            // and the recorded transaction agree. Retail taxes via its own
+            // category (client 2026-07-31); memberships / packages the same way.
+            const category = line.appointment
+                ? categoryForProductType("appointment")
+                : categoryForProductType(line.kind as PurchaseLineItem["productType"]);
             if (!category) continue;
             const match = findActiveTaxRuleFor(
                 { taxRules, taxRates },
@@ -823,11 +821,25 @@ function POSInner() {
     // ── Proceed to payment — hand off to the existing checkout screen ──────
     function handleProceed() {
         if (!customerId || cart.length === 0) return;
-        // Sessions check out through their own book-and-charge path (Phase 2);
-        // the Proceed button is gated while any session line is present, so
-        // filtering here is belt-and-braces to keep the purchase items typed to
-        // the four applyPurchase kinds.
-        const items: PurchaseLineItem[] = cart.filter(l => !l.appointment).map(l => ({
+        const items: PurchaseLineItem[] = cart.map(l => l.appointment ? {
+            // Session line → a single "appointment" purchase item carrying the
+            // booked slot; applyPurchase books it (addCustomerAppointment) and
+            // records the revenue. Instructor is already resolved on the line.
+            productId:   l.productId,
+            productType: "appointment" as const,
+            name:        l.name,
+            unitPrice:   l.unitPrice,
+            quantity:    l.quantity,
+            appointment: {
+                dateISO:        l.appointment.dateISO,
+                startTime:      l.appointment.startTime,
+                durationMin:    l.appointment.durationMin,
+                instructorId:   l.appointment.instructorId,
+                instructorName: l.appointment.instructorName,
+                flexible:       l.appointment.flexible,
+                openSession:    l.appointment.openSession,
+            },
+        } : {
             productId:   l.productId,
             productType: l.kind as PurchaseLineItem["productType"],
             name:        l.name,
@@ -840,7 +852,7 @@ function POSInner() {
             // in). Passing it through here lets the checkout screen render
             // the real photo instead of the category-tinted gift icon.
             imageUrl:    l.imageUrl,
-        }));
+        });
         // The checkout screen already lives at /schedule/[classId]/checkout.
         // We thread `returnTo: "/admin/pos"` so it bounces back here on
         // complete/close instead of to a class.
@@ -1153,11 +1165,7 @@ function PosCartPanel(props: {
     // a customer for the prototype (the brief says customer is required for
     // membership/package; we apply the same here since the checkout screen
     // expects one).
-    // Sessions (private / recovery) book + charge through a dedicated checkout
-    // path that isn't wired yet — until it lands, a cart holding a session line
-    // can't proceed (the line still adds + displays so the flow is testable).
-    const cartHasAppointment = props.lines.some(l => l.appointment);
-    const canProceed = !cartEmpty && !!props.customerId && !cartHasAppointment;
+    const canProceed = !cartEmpty && !!props.customerId;
 
     return (
         // Cart panel.
@@ -1305,13 +1313,6 @@ function PosCartPanel(props: {
                     <p className="text-[18px] font-semibold text-[#101828]">AED {props.total.toLocaleString()}</p>
                 </div>
 
-                {cartHasAppointment && (
-                    <div className="flex items-start gap-2 rounded-[10px] bg-[#fffaeb] border-1 border-[#fedf89] px-3 py-2">
-                        <p className="text-[12px] text-[#93370d]">
-                            Session checkout is coming next — booking + charging a session at POS isn&apos;t wired yet. Remove the session line to check out the rest.
-                        </p>
-                    </div>
-                )}
                 <Button variant="primary" size="lg" className="w-full" disabled={!canProceed} onClick={props.onProceed}>
                     Proceed to payment
                 </Button>

@@ -2126,7 +2126,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card";
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card" | "appointment";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -2392,10 +2392,24 @@ export interface AuditLogEntry {
 
 export interface PurchaseLineItem {
     productId: string;
-    productType: "membership" | "package" | "gift_card" | "retail";
+    productType: "membership" | "package" | "gift_card" | "retail" | "appointment";
     name: string;
     unitPrice: number;
     quantity: number;
+    /** Private / Recovery session line (2026-08-04). Carries the booked slot so
+     *  the checkout commit (`applyPurchase`) can create the real appointment
+     *  (via `addCustomerAppointment`) alongside the revenue transaction. The
+     *  instructor is already resolved (a "Flexible" pick is assigned a concrete
+     *  free instructor at pick time); `null` only for open/capacity sessions. */
+    appointment?: {
+        dateISO: string;
+        startTime: string;
+        durationMin: number;
+        instructorId: string | null;
+        instructorName?: string;
+        flexible: boolean;
+        openSession: boolean;
+    };
     /** Chosen size variant for a sized retail line (free-form label). Decides
      *  which (branch × size) stock row decrements. Undefined for sizeless
      *  products + all non-retail lines. */
@@ -11391,6 +11405,12 @@ export const useAppStore = create<AppState>()(persist(
                 }
                 return `${totalUnits} retail items`;
             }
+            const appointments = items.filter(it => it.productType === "appointment");
+            if (appointments.length > 0) {
+                return appointments.length === 1
+                    ? `the ${appointments[0].name} session`
+                    : `${appointments.length} sessions`;
+            }
             return "items at checkout";
         })();
         // Pre-compute the first transaction id so the notification record can
@@ -11402,6 +11422,34 @@ export const useAppStore = create<AppState>()(persist(
         const firstRetailIdx = items.findIndex(it => it.productType === "retail");
         const resolvedFirstIdx = firstSaleIdx >= 0 ? firstSaleIdx : firstRetailIdx;
         const firstTxnId = resolvedFirstIdx >= 0 ? `txn_sale_${txnStamp}_${resolvedFirstIdx}` : undefined;
+        // ── Session bookings (2026-08-04) ──────────────────────────────────
+        // Private / Recovery lines create a REAL appointment at the chosen slot
+        // BEFORE the sale posts, reusing `addCustomerAppointment` (which handles
+        // open-session sharing, capacity, and the instructor snapshot). The
+        // instructor is already resolved on the line — a "Flexible" pick was
+        // assigned a concrete free instructor at pick time. Each call runs its
+        // own set(); the sale `set` below is a partial merge, so these writes
+        // persist alongside the transaction rows.
+        if (buyerSnapshot) {
+            const apptCustomer = {
+                id: buyerSnapshot.id,
+                name: `${buyerSnapshot.firstName} ${buyerSnapshot.lastName}`.trim(),
+                initials: buyerSnapshot.initials,
+                imageUrl: buyerSnapshot.imageUrl,
+            };
+            for (const it of items) {
+                if (it.productType !== "appointment" || !it.appointment) continue;
+                get().addCustomerAppointment({
+                    serviceId: it.productId,
+                    dateISO: it.appointment.dateISO,
+                    startTime: it.appointment.startTime,
+                    durationMins: it.appointment.durationMin,
+                    instructorId: it.appointment.instructorId,
+                    flexible: it.appointment.flexible,
+                    customer: apptCustomer,
+                });
+            }
+        }
         set((state) => {
             // Business rule (per CLAUDE.md): 1 membership OR multiple packages — never both.
             const membership = items.find(it => it.productType === "membership");
@@ -11804,6 +11852,53 @@ export const useAppStore = create<AppState>()(persist(
                         createdAt: nowISO,
                     });
                 }
+            });
+
+            // ─── Session (appointment) line items (2026-08-04) ────────────
+            // The booking was already created (addCustomerAppointment, above);
+            // here we record the revenue transaction so the sale lands in the
+            // Payments tab + reports. Tax follows the "appointment" rule the
+            // same way memberships / packages do (untaxed when no rule exists).
+            items.forEach((it, idx) => {
+                if (it.productType !== "appointment") return;
+                const lineGross = it.unitPrice * it.quantity;
+                const taxRule = state.taxRules.find(r =>
+                    r.category === "appointment"
+                    && r.status === "active"
+                    && r.taxRateId !== undefined
+                    && (r.allLocations || r.locationIds.includes(saleBranchId)),
+                );
+                const taxRate = taxRule?.taxRateId
+                    ? state.taxRates.find(t => t.id === taxRule.taxRateId && t.status === "active")
+                    : undefined;
+                let txnExtra: Partial<CustomerTransaction> = {};
+                if (taxRate) {
+                    const rPct = taxRate.ratePercentage;
+                    const pricesInclude = state.taxSettings.pricesIncludeTax;
+                    const taxAed = pricesInclude
+                        ? Math.round(lineGross * rPct / (100 + rPct))
+                        : Math.round(lineGross * rPct / 100);
+                    const subtotalAed = pricesInclude ? lineGross - taxAed : lineGross;
+                    txnExtra = { subtotalAed, taxAed, taxRatePercentage: rPct, taxInclusive: pricesInclude };
+                }
+                const source = paymentSource ?? "pos";
+                const cashierStaffId = source === "customer_portal" ? undefined : sellerStaffId;
+                newTransactions.push({
+                    id: `txn_sale_${stamp}_${idx}`,
+                    customerId,
+                    branchId: saleBranchId,
+                    kind: "appointment",
+                    productId: it.productId,
+                    name: it.name,
+                    amountAed: lineGross,
+                    ...txnExtra,
+                    status: "complete",
+                    paymentMethod: "card",
+                    paymentSource: source,
+                    transactionType: "sale",
+                    staffId: cashierStaffId,
+                    createdAtISO: nowISO,
+                });
             });
 
             return {
