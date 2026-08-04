@@ -356,7 +356,7 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 }
 
 // ── Cross-navigation UI cache ────────────────────────────────────────────────
-// Persists the toolbar/view state (filter, location, view tab, search) across a
+// Persists the toolbar/view state (filter, location, view tab) across a
 // detail round-trip. The day/week date cursors are DELIBERATELY excluded — the
 // Attendee module always reopens on the current week + today (client
 // 2026-07-28), so the date resets on every mount instead of restoring the
@@ -520,11 +520,9 @@ function AttendeePage() {
     const [detailOpen, setDetailOpen] = useState(false);
 
     function handleView(cls: ClassInstance) {
-        // Classes AND appointments (Private + Recovery) open in the SAME
-        // Attendee detail so both render through the identical roster card.
-        // Opens as a right slide panel (no navigation); the detail resolves
-        // `appt_` ids from the appointments slice. `detailId` persists through
-        // the panel's slide-out so the content stays mounted during the exit.
+        // Opens the class roster as a right slide panel (no navigation). The
+        // console is classes-only now, so only class ids flow here. `detailId`
+        // persists through the panel's slide-out so content stays mounted.
         setDetailId(cls.id);
         setDetailOpen(true);
     }
@@ -592,7 +590,7 @@ function AttendeePage() {
                                     <div className="flex flex-col gap-0.5 min-w-0">
                                         <p className="text-[18px] font-semibold text-[#101828] leading-[28px] truncate">{todayLabel}</p>
                                         <p className="text-[14px] text-[#667085] leading-[20px]">
-                                            {schedulesCount} upcoming class{schedulesCount === 1 ? "" : "es"}
+                                            {schedulesCount} class{schedulesCount === 1 ? "" : "es"} today
                                         </p>
                                     </div>
                                     {/* Search removed (client 2026-08-04) — the attendee

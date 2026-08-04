@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 const PAGE_TITLES: Record<string, string> = {
     "/admin/dashboard": "Dashboard",
     "/admin/schedule": "Schedule",
-    "/attendee": "Attendee",
     "/admin/class-types": "Class Templates",
     "/admin/services": "Appointment services",
     "/admin/categories": "Categories",

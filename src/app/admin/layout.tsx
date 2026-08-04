@@ -51,7 +51,6 @@ export default function AdminLayout({
         "/admin/staff",
         "/admin/schedule",
         "/admin/pos",
-        "/admin/attendee",
         "/admin/products",
         "/admin/marketing",
         "/admin/notifications",

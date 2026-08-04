@@ -267,6 +267,7 @@ const ROLE_TYPE_OPTIONS: { value: RoleType; label: string }[] = [
     { value: "operator",     label: "Operator" },
     { value: "instructor",   label: "Instructor" },
     { value: "front_desk",   label: "Front desk" },
+    { value: "attendees",    label: "Attendees" },
 ];
 
 function PermissionCellInput({ value, onChange, disabled, ariaLabel }: {
