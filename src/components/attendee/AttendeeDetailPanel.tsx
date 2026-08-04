@@ -28,6 +28,7 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { TableAvatar } from "@/components/ui/avatar";
 import { NoShowBadge } from "@/components/ui/badge";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { isAttendeeOngoing } from "@/components/attendee/attendee-status";
 import {
     useAppStore, appointmentToClassInstance, isAppointmentId,
     type ClassInstance, type ClassBooking, type Customer, type CustomerPlan, type GenderAccess,
@@ -456,7 +457,9 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
     }
     const ci: ClassInstance = classInstance;
 
-    const isOngoing = ci.status === "Ongoing";
+    // Attendee-only: Mark-present opens 30 min before start (client 2026-08-04),
+    // matching the list's early-Ongoing rule — not the studio-wide status.
+    const isOngoing = isAttendeeOngoing(ci.status, ci.dateISO, ci.startTime);
     const startHint = `Starts at ${to12h(ci.startTime)}`;
     const instructorLabel = (() => {
         const parts = ci.instructorName.split(" ");

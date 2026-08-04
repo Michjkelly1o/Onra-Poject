@@ -19,7 +19,7 @@ import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronRight, ChevronDown, MarkerPin01, AlignLeft,
-    CalendarCheck01, Clock, Users01, UserCheck01,
+    Users01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { AttendeeTopBar } from "@/components/attendee/AttendeeTopBar";
 import { AttendeeDetailPanel } from "@/components/attendee/AttendeeDetailPanel";
+import { isAttendeeOngoing } from "@/components/attendee/attendee-status";
 import {
     INSTRUCTORS, isoAddDays, isoToDisplay, isoToMonday, formatWeekRange, TODAY_ISO, DAY_VIEW_DATE,
 } from "@/components/schedule/ScheduleGridViews";
@@ -40,20 +41,6 @@ import {
 } from "@/lib/store";
 
 // ─── Small date helpers (timezone-stable, parse ISO parts directly) ────────────
-
-const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** "2025-02-26" → { weekday:"Fri", day:"26", month:"Feb", year:2025 } */
-function isoParts(iso: string) {
-    const d = new Date(iso + "T00:00:00Z");
-    return {
-        weekday: WEEKDAYS_SHORT[d.getUTCDay()],
-        day: String(d.getUTCDate()),
-        month: MONTHS_SHORT[d.getUTCMonth()],
-        year: d.getUTCFullYear(),
-    };
-}
 
 /** "10:00" → "10:00 AM". Graceful passthrough for odd inputs. */
 function to12h(time: string): string {
@@ -82,110 +69,88 @@ const ALL_TYPES: SessionType[] = SESSION_TYPE_ORDER;
 // exactly those two (Past is excluded by definition — §7.1 of the PRD).
 const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing"];
 
-// ─── Live status badge (card overlay) ──────────────────────────────────────────
-//
-// Ongoing → blue utility pill (#eff8ff / #b2ddff / #175cd3).
-// Upcoming → gray utility pill (#f9fafb / #e4e7ec / #344054). Exact Figma tokens.
 
-function CardStatusBadge({ status }: { status: ClassStatus }) {
-    const ongoing = status === "Ongoing";
-    return (
-        <span
-            className={cn(
-                "inline-flex shrink-0 items-center rounded-full border px-[10px] py-[2px] text-[14px] font-medium leading-[20px]",
-                ongoing
-                    ? "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]"
-                    : "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]",
-            )}
-        >
-            {status}
-        </span>
-    );
-}
-
-// ─── Attendee class card (Figma 7962:40188 — built to match exactly) ───────────
+// ─── Attendee class card — horizontal row (Figma 8069:25666), stacked as a
+//     vertical list. ──────────────────────────────────────────────────────────
 
 function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => void }) {
-    const dp = isoParts(ci.dateISO);
-    const dateTimeLabel = `${dp.weekday}, ${dp.day} ${dp.month} ${dp.year} at ${to12h(ci.startTime)}`;
     const duration = (() => {
         const [sh, sm] = ci.startTime.split(":").map(Number);
         const [eh, em] = ci.endTime.split(":").map(Number);
         const mins = (eh * 60 + em) - (sh * 60 + sm);
-        // Guard sessions that cross midnight (e.g. 23:00 → 00:00) so the
-        // duration never renders negative.
+        // Guard sessions that cross midnight so the duration never goes negative.
         return mins < 0 ? mins + 1440 : mins;
     })();
+    // Attendee-only: a class reads "Ongoing" 30 min before start (client 2026-08-04).
+    const ongoing = isAttendeeOngoing(ci.status, ci.dateISO, ci.startTime);
 
     return (
-        // The whole card navigates to the class detail (Figma parity — client
-        // 2026-07-27). The inner "View details" button repeats the action but
-        // stops propagation so the click isn't double-handled.
+        // The whole row opens the class detail; the inner "View details" button
+        // repeats the action but stops propagation so it isn't double-handled.
         <div
             role="button"
             tabIndex={0}
             onClick={onView}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onView(); } }}
-            className="group flex flex-col gap-5 pb-6 bg-white border border-[#e4e7ec] rounded-[20px] overflow-hidden cursor-pointer transition-shadow hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.10),0px_2px_4px_-2px_rgba(16,24,40,0.06)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd]"
+            className="group flex items-center gap-6 p-5 bg-white border border-[#e4e7ec] rounded-[20px] cursor-pointer transition-shadow hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.10),0px_2px_4px_-2px_rgba(16,24,40,0.06)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd]"
         >
-            {/* Cover image + overlaid name / date-time / status */}
-            <div
-                className="relative h-[220px] shrink-0 flex flex-col justify-end p-4 overflow-hidden"
-                style={{ backgroundColor: ci.coverColor }}
-            >
+            {/* Time block */}
+            <div className="flex flex-col gap-1 shrink-0 whitespace-nowrap">
+                <p className="text-[16px] font-semibold leading-6 text-[#101828]">{to12h(ci.startTime)}</p>
+                <p className="text-[14px] font-medium leading-5 text-[#667085]">{duration} minutes</p>
+            </div>
+
+            {/* Circular class image */}
+            <div className="relative w-[88px] h-[88px] rounded-full overflow-hidden shrink-0" style={{ backgroundColor: ci.coverColor }}>
                 {ci.coverImage && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                        src={ci.coverImage}
-                        alt=""
+                    <img src={ci.coverImage} alt=""
                         className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                    />
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                 )}
-                <div className="absolute inset-x-0 bottom-0 h-[160px] bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none" />
-                <div className="relative flex items-end justify-between gap-2">
-                    <div className="min-w-0">
-                        <p className="text-[18px] font-bold leading-[26px] text-white truncate">{ci.name}</p>
-                        <p className="text-[14px] leading-[20px] text-white/90 truncate">{dateTimeLabel}</p>
-                    </div>
-                    <CardStatusBadge status={ci.status} />
-                </div>
+                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/55 to-transparent pointer-events-none" />
             </div>
 
-            {/* Detail block — 2-col grid */}
-            <div className="px-4 flex flex-col gap-5">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            {/* Content */}
+            <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2 min-w-0">
-                        <Clock className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span className="text-[14px] text-[#475467] truncate">{duration} minutes</span>
+                        <p className="text-[16px] font-semibold leading-6 text-[#101828] truncate">{ci.name}</p>
+                        <span className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium border-1 shrink-0",
+                            ongoing ? "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                        )}>
+                            {ongoing ? "Ongoing" : "Upcoming"}
+                        </span>
                     </div>
-                    <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-[14px] leading-5 text-[#667085] truncate">with {ci.instructorName || "Open session"}</p>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap text-[14px]">
+                    <span className="flex items-center gap-2 text-[#475467]">
                         <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span className="text-[14px] text-[#475467] truncate">{ci.booked}/{ci.capacity} spots</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                        <UserCheck01 className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span
-                            className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
-                            style={{ backgroundColor: ci.instructorColor }}
-                        >
+                        {ci.booked}/{ci.capacity} spots
+                    </span>
+                    <span className="w-px h-4 bg-[#e4e7ec] shrink-0" />
+                    <span className="flex items-center gap-1.5 text-[#475467] min-w-0">
+                        <span className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+                            style={{ backgroundColor: ci.instructorColor }}>
                             {ci.instructorInitials}
                         </span>
-                        <span className="text-[14px] text-[#475467] truncate">{ci.instructorName || "Open session"}</span>
-                    </div>
-                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="truncate">{ci.instructorName || "Open session"}</span>
+                    </span>
+                    <span className="w-px h-4 bg-[#e4e7ec] shrink-0" />
+                    <span className="flex items-center gap-2 text-[#667085] min-w-0">
                         <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
-                        {/* Room when set; otherwise the branch location so the pin
-                            never renders label-less (room-less appointments). */}
-                        <span className="text-[14px] text-[#475467] truncate">{ci.room || ci.location}</span>
-                    </div>
+                        <span className="truncate">{ci.room || ci.location}</span>
+                    </span>
                 </div>
-
-                <Button variant="secondary-gray" size="lg" className="w-full rounded-full text-[16px]"
-                    onClick={(e) => { e.stopPropagation(); onView(); }}>
-                    View details
-                </Button>
             </div>
+
+            {/* View details */}
+            <Button variant="secondary-gray" size="lg" className="shrink-0 w-[200px] rounded-full text-[16px]"
+                onClick={(e) => { e.stopPropagation(); onView(); }}>
+                View details
+            </Button>
         </div>
     );
 }
@@ -562,6 +527,10 @@ function AttendeePage() {
         [filteredClasses, selectedDayISO],
     );
     const schedulesCount = dayClasses.length;
+    // Group by attendee status (client 2026-08-04): Ongoing first (incl. classes
+    // starting within 30 min), then Upcoming. Each renders as a vertical list.
+    const ongoingClasses  = useMemo(() => dayClasses.filter(c => isAttendeeOngoing(c.status, c.dateISO, c.startTime)), [dayClasses]);
+    const upcomingClasses = useMemo(() => dayClasses.filter(c => !isAttendeeOngoing(c.status, c.dateISO, c.startTime)), [dayClasses]);
     // Section-header date label, e.g. "Friday, 26 Feb 2026".
     const todayLabel = new Date(`${TODAY_ISO}T00:00:00`).toLocaleDateString("en-GB", {
         weekday: "long", day: "numeric", month: "short", year: "numeric",
@@ -664,15 +633,28 @@ function AttendeePage() {
                                     />
                                 </div>
                             ) : (
-                                // Dedicated scroll container so cards keep their natural
-                                // height and the list scrolls — a height-constrained grid
-                                // item was collapsing the rows.
-                                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
-                                        {dayClasses.map(ci => (
-                                            <AttendeeClassCard key={ci.id} ci={ci} onView={() => handleView(ci)} />
-                                        ))}
-                                    </div>
+                                // Vertical stacked list, grouped Ongoing → Upcoming.
+                                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+                                    {ongoingClasses.length > 0 && (
+                                        <section className="flex flex-col gap-3">
+                                            <p className="text-[14px] font-semibold text-[#101828]">Ongoing · {ongoingClasses.length}</p>
+                                            <div className="flex flex-col gap-4">
+                                                {ongoingClasses.map(ci => (
+                                                    <AttendeeClassCard key={ci.id} ci={ci} onView={() => handleView(ci)} />
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
+                                    {upcomingClasses.length > 0 && (
+                                        <section className="flex flex-col gap-3">
+                                            <p className="text-[14px] font-semibold text-[#101828]">Upcoming · {upcomingClasses.length}</p>
+                                            <div className="flex flex-col gap-4">
+                                                {upcomingClasses.map(ci => (
+                                                    <AttendeeClassCard key={ci.id} ci={ci} onView={() => handleView(ci)} />
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
                                 </div>
                             )}
                         </div>
