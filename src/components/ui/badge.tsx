@@ -67,7 +67,7 @@ export function planKindFromName(planName: string): "membership" | "package" {
 
 /**
  * "No plan" badge — used for newly-created customers who haven't been assigned a
- * membership or credit package yet. Gray pill with a dashed outline.
+ * membership or package yet. Gray pill with a dashed outline.
  */
 export function NoPlanBadge({ className }: { className?: string }) {
     return (

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 // ─── Onra DS — Product POS Card ───────────────────────────────────────────────
 //
 // Reusable card used in the POS module (and the schedule module's POS shortcut)
-// for memberships, credit packages, and gift cards.
+// for memberships, packages, and gift cards.
 //
 // Figma source: ONRA DESIGN SYSTEM Light Version — node 18501:9099
 //

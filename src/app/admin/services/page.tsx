@@ -12,8 +12,8 @@
 //
 // Differences from Gift Cards:
 //   • Branch dropdown sits in the toolbar (Figma 7414:328584)
-//   • "Type" column shows the session type (Private session / Recovery &
-//     wellness) off `service.type`; the ?type= deep-link scopes the list
+//   • "Type" column shows the session type (Private session / Recovery
+//     ) off `service.type`; the ?type= deep-link scopes the list
 //   • "Price" column shows fixed AED price (services are currency-priced,
 //     not membership-gated, per the Module 13 update)
 //   • Filter is the side-panel multi-select (Figma 7424:139522) — Status +
@@ -760,12 +760,12 @@ function ServicesPageInner() {
                     count={filteredRows.length}
                     entitySingular={
                         typeScope === "private"  ? "private session" :
-                        typeScope === "recovery" ? "recovery" :
+                        typeScope === "recovery" ? "recovery session" :
                         "service"
                     }
                     entityPlural={
                         typeScope === "private"  ? "private sessions" :
-                        typeScope === "recovery" ? "recovery" :
+                        typeScope === "recovery" ? "recovery sessions" :
                         undefined
                     }
                 />

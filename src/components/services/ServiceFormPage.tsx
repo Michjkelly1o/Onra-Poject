@@ -698,7 +698,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
     const pageTitle = mode === "edit"
         ? `Edit ${existing?.name ?? "service"}`
         : presetType === "private"  ? "Create private session"
-        : presetType === "recovery" ? "Create recovery"
+        : presetType === "recovery" ? "Create recovery session"
         : "Create new service";
 
     return (

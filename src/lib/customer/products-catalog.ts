@@ -40,7 +40,7 @@ function fmtValidity(days: number): string {
 }
 
 export interface CatalogProducts {
-    /** Memberships first, then credit packages (the "Packages" tab + the top of "All"). */
+    /** Memberships first, then packages (the "Packages" tab + the top of "All"). */
     plans: PlanRow[];
     /** Gift-card designs (the "Gift card" tab + the bottom section of "All"). */
     giftCards: PlanRow[];
@@ -285,7 +285,7 @@ export function planIdsToCancel(activePlans: CustomerPlan[]): string[] {
 
 /**
  * Invariant self-heal: a customer holds ONE active membership OR one-or-more
- * active credit packages — never two memberships and never a membership + a
+ * active packages — never two memberships and never a membership + a
  * package. If legacy / corrupt persisted state violates this, cancel the extras
  * (keeping the most recently purchased plan / kind) so every customer surface —
  * My plan, the credit-balance card, the Products gating — reads a valid state.

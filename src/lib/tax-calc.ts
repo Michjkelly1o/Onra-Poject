@@ -236,7 +236,7 @@ export function effectiveRatePercentage(rate: TaxRate | undefined | null): numbe
  *  `appointment` was added in Module 13 (currency-priced appointment
  *  services). It maps directly to the new `appointment` tax rule category
  *  so the per-branch + all-locations lookup precedence applies the same
- *  way as memberships + credit packages.
+ *  way as memberships + packages.
  *
  *  Unmapped types (`gift_card`, `drop_in`, anything new) return `null` so
  *  the caller skips them when iterating cart lines. */

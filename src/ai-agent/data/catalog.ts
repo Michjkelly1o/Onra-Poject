@@ -458,7 +458,7 @@ export function buildCatalog(state: AppState): Catalog {
 
         packages: {
             key: "packages",
-            label: "credit packages (one-time class-credit packs)",
+            label: "packages (one-time class-credit packs)",
             rows: readPackages(state),
             fields: {
                 name:            { row: "name",            type: "string", label: "package name" },

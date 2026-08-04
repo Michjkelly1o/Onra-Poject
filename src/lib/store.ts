@@ -3131,7 +3131,7 @@ function derivedFlatPlanFields(
             planKind: "package",
             planName: sorted.length === 1
                 ? sorted[0].name
-                : `${sorted.length} credit packages`,
+                : `${sorted.length} packages`,
             membershipId: undefined,
             packageIds: sorted.map(p => p.productId).filter((id): id is string => typeof id === "string"),
             planExpiryISO: sorted[0].expiryISO,
@@ -4749,7 +4749,7 @@ export interface AppState {
     deleteMemberships: (ids: string[]) => { deleted: string[]; blocked: string[] };
 
     // ── Packages ───────────────────────────────────────────────────────────
-    /** Append a new credit package to the store. Same id-handling as
+    /** Append a new package to the store. Same id-handling as
      *  `addMembership`. */
     addPackage: (input: Omit<Package, "id"> & { id?: string }) => string;
     updatePackage: (id: string, patch: Partial<Omit<Package, "id">>) => void;
@@ -8614,7 +8614,7 @@ export const useAppStore = create<AppState>()(persist(
                     status: "cancelled" as const,
                     cancelReason: reactivatingKind === "membership"
                         ? "Switched to membership"
-                        : "Switched to credit package",
+                        : "Switched to package",
                     cancelledAtISO: nowISO,
                 };
             });
@@ -11378,7 +11378,7 @@ export const useAppStore = create<AppState>()(persist(
             const retails = items.filter(it => it.productType === "retail");
             if (membership) return `the ${membership.name}`;
             if (packages.length === 1) return `the ${packages[0].name}`;
-            if (packages.length > 1) return `${packages.reduce((sum, p) => sum + p.quantity, 0)} credit packages`;
+            if (packages.length > 1) return `${packages.reduce((sum, p) => sum + p.quantity, 0)} packages`;
             if (giftCards.length > 0) return giftCards.length === 1
                 ? `a ${giftCards[0].name} gift card`
                 : `${giftCards.length} gift cards`;
@@ -11412,7 +11412,7 @@ export const useAppStore = create<AppState>()(persist(
                 ?? (packageItems.length === 1
                     ? packageItems[0].name
                     : packageItems.length > 1
-                        ? `${packageItems.reduce((sum, p) => sum + p.quantity, 0)} credit packages`
+                        ? `${packageItems.reduce((sum, p) => sum + p.quantity, 0)} packages`
                         : undefined);
             // Credits the purchase grants. A numbered membership contributes
             // its credit count; an unlimited membership has no cap. Each
@@ -11655,7 +11655,7 @@ export const useAppStore = create<AppState>()(persist(
 
             // ─── Plan-exclusivity cascade (Jul 2026 client feedback) ──────
             // The customer either holds ONE active membership OR one or
-            // more active credit packages — never both. Buying a
+            // more active packages — never both. Buying a
             // membership must therefore cancel any previously-held
             // packages, and buying a package must cancel any
             // previously-held membership. `complimentary` plans are
@@ -11666,7 +11666,7 @@ export const useAppStore = create<AppState>()(persist(
             // null) — that path never displaces the current plan.
             const cascadeReason = planKind === "membership"
                 ? "Switched to membership"
-                : "Switched to credit package";
+                : "Switched to package";
             const shouldCascade = planKind !== null && (
                 planKind === "membership"
                     ? state.customerPlans.some(p =>

@@ -29,7 +29,7 @@ const FALLBACK_CANCEL_REASONS = [
     "It's not in my budget right now",
 ];
 
-const noun = (p: CustomerPlan) => (p.kind === "membership" ? "membership" : "credit package");
+const noun = (p: CustomerPlan) => (p.kind === "membership" ? "membership" : "package");
 const Noun = (p: CustomerPlan) => (p.kind === "membership" ? "Membership" : "Package");
 
 export default function MyPlanPage() {
@@ -87,13 +87,13 @@ export default function MyPlanPage() {
         : null;
 
     // Admin invariant: a customer holds EITHER one Membership OR one-
-    // or-more credit packages — never both (client rule Jul 2026,
+    // or-more packages — never both (client rule Jul 2026,
     // enforced in the store by `applyPurchase` + `cancelCustomerPlan`
     // + `reactivateCustomerPlan`). The customer-portal Plan page
     // therefore trusts `planKind` as the single source of truth for
     // WHICH kind to show; we further filter to non-complimentary
     // rows because free credits are surfaced elsewhere in the portal.
-    // Show the FULL plan history — every membership + credit package the customer
+    // Show the FULL plan history — every membership + package the customer
     // has held (active / frozen / cancelled / expired), newest-active first.
     // Complimentary free-credit grants are surfaced elsewhere.
     const statusOrder: Record<string, number> = { active: 0, freeze_requested: 0, frozen: 1, cancelled: 2, expired: 3 };

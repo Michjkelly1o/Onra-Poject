@@ -7,7 +7,7 @@
 // When the booking confirmation has no eligible plan, the member buys one. The
 // cart survives the Select Plan → Product Details → Checkout round-trip via a
 // module singleton (same pattern as bookingDraft). Business rule (CLAUDE.md):
-// ONE membership OR multiple credit packages — never both.
+// ONE membership OR multiple packages — never both.
 
 import { useMemo, useSyncExternalStore } from "react";
 import { useAppStore } from "@/lib/store";

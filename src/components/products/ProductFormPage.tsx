@@ -327,7 +327,7 @@ function ProductConfigurationStep({ kind, data, onChange, onBack, onContinue, br
                     title="Multi-location access"
                     subtitle={kind === "membership"
                         ? "The membership can be use on multiple branches"
-                        : "The credit package can be use on multiple branches"}
+                        : "The package can be use on multiple branches"}
                     on={data.multiLocation}
                     onChange={v => onChange({ multiLocation: v })}
                 />
@@ -455,7 +455,7 @@ function BranchMultiSelect({ kind, selected, onChange, branches }: {
 
     const subtitle = kind === "membership"
         ? "The membership can be use on multiple branches"
-        : "The credit package can be use on multiple branches";
+        : "The package can be use on multiple branches";
 
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
@@ -1525,7 +1525,7 @@ interface PreviewState {
 function TemplatePreviewCard({ data }: { data: PreviewState }) {
     const hasName = !!data.name.trim();
     const Icon = data.kind === "package" ? PackageIcon : CreditCard02;
-    // Membership reads indigo, credit package sage — the banner tint is the
+    // Membership reads indigo, package sage — the banner tint is the
     // only thing that differs from the gift-card preview (same card design).
     const tint = data.kind === "package" ? BANNER_TINTS.package : BANNER_TINTS.membership;
 
@@ -1672,7 +1672,7 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
      *                 returns to the detail page. */
     function handleSubmit() {
         if (!kind) return;
-        const productLabel = kind === "membership" ? "membership" : "credit package";
+        const productLabel = kind === "membership" ? "membership" : "package";
 
         // ─── Shared column derivations ─────────────────────────────────────
         const price = Number(basic.price);
@@ -1747,7 +1747,7 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
             });
         } else {
             newId = addPackage({
-                name: basic.name.trim() || "New credit package",
+                name: basic.name.trim() || "New package",
                 description: basic.description.trim() || undefined,
                 credits: safeCredits,
                 validity_days: daysFromDuration(duration),
@@ -1804,7 +1804,7 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                     <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
                         {isEdit
-                            ? `Edit ${kind === "package" ? "credit package" : "membership"}`
+                            ? `Edit ${kind === "package" ? "package" : "membership"}`
                             : "Create new product"}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />

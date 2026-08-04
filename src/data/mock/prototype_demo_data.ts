@@ -1237,7 +1237,7 @@ interface PlanSpec {
 }
 
 // Plan-exclusivity invariant (client Jul 2026): each customer holds
-// EITHER one active membership OR one+ active credit packages — never
+// EITHER one active membership OR one+ active packages — never
 // both, and never two memberships. Every hand-authored customer in
 // `customer_plans.ts` already ships with a valid current plan (`cp_*`
 // rows) so this seed no longer piles ACTIVE / FROZEN rows on top of

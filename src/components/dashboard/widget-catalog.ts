@@ -71,7 +71,7 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     // ─── Customer ───────────────────────────────────────────────────────
     { id: "active-memberships",  title: "Active memberships",                description: "", category: "Customer",
       info: "How many memberships were active over time." },
-    { id: "active-credits",      title: "Active credit packages",            description: "", category: "Customer",
+    { id: "active-credits",      title: "Active packages",            description: "", category: "Customer",
       info: "Packages with credits left and still valid." },
     { id: "top-memberships",     title: "Top 5 plans",                       description: "", category: "Customer",
       info: "Plans ranked by customers currently on them." },

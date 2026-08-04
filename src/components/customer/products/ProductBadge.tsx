@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // A rounded tile with a faint lilac wash and a skeuomorphic featured icon
-// (credit-card for memberships, package for credit packages). Sizes: 64px on the
+// (credit-card for memberships, package for packages). Sizes: 64px on the
 // plan card, 72px in the product-details sheet.
 
 import { CreditCard02, Package } from "@untitledui/icons";

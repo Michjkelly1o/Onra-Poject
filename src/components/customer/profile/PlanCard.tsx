@@ -1,6 +1,6 @@
 "use client";
 
-// Customer — plan card (membership + credit package) for My plan.
+// Customer — plan card (membership + package) for My plan.
 // Active = coloured tile + green status/price + green progress.
 // Frozen / Cancelled = disabled grey tile + quaternary (#667085) status, muted price.
 
@@ -171,7 +171,7 @@ export function PlanCard({
                 </div>
             )}
 
-            {/* Cancel / Freeze / Reactivate are MEMBERSHIP-only — credit packages
+            {/* Cancel / Freeze / Reactivate are MEMBERSHIP-only — packages
                 have no plan actions. */}
             {isMembership &&
                 (plan.status === "cancelled" ? (

@@ -86,8 +86,8 @@ const NAV_ITEMS: NavItemDef[] = [
     {
         // 'Studio' caption renders above this item — the first setup section
         // below the divider. Renamed from "Services & pricing": everything a
-        // member buys / books lives here. Private sessions + Recovery &
-        // wellness are type-filtered views of the shared /admin/services list.
+        // member buys / books lives here. Private sessions + Recovery
+        //  are type-filtered views of the shared /admin/services list.
         label: "Products", icon: ShoppingBag01, permission: "manage_products",
         sectionLabel: "Studio",
         // Client 2026-08-03 — order set by client, and "Retail categories" is

@@ -10,7 +10,7 @@
 //
 // The tint (pattern line colour + frosted-avatar fill + icon colour) is passed
 // per product type via the `BANNER_TINTS` presets so memberships read indigo,
-// credit packages sage-green, and gift cards cyan.
+// packages sage-green, and gift cards cyan.
 //
 // `bannerHeight` + `iconBox` cover every size in the design:
 //   • preview card   — bannerHeight 120, iconBox 56

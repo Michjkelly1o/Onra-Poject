@@ -419,7 +419,7 @@ export interface Customer {
     /** Membership plan id (when plan_kind="membership"). FK → memberships.id. */
     membership_id?: string;
     /** Package plan ids (when plan_kind="package"). FK → packages.id[]. A
-     *  customer may hold MULTIPLE credit packages at once (each contributes
+     *  customer may hold MULTIPLE packages at once (each contributes
      *  its remaining credits to the same pool). */
     package_ids?: string[];
     /** Legacy denormalized name — used by older renderers + the
@@ -622,7 +622,7 @@ export interface CustomerAgreement {
 
 /**
  * Customer plan record — one row of a customer's "Plan" tab. Covers purchased
- * memberships, purchased credit packages, and complimentary grants. A customer
+ * memberships, purchased packages, and complimentary grants. A customer
  * accrues a NEW row each time they buy / are granted a plan, so the table is
  * the full plan history (active + expired + frozen + cancelled + removed).
  *
@@ -695,7 +695,7 @@ export interface CustomerPlan {
  * (Total spent / Total refunded / Net spend).
  *
  * A transaction is created each time a customer pays for a membership or a
- * credit package. Gift-card sales are NOT modelled here — the customer's
+ * package. Gift-card sales are NOT modelled here — the customer's
  * gift cards live in `issued_gift_cards`.
  *
  * FK: `customer_id` → customers.id; `branch_id` → branches.id;

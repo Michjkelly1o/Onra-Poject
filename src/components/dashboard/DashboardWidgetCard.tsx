@@ -1101,7 +1101,7 @@ function renderChart(
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={28} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Line type="monotone" dataKey="v" name="Active credit packages" stroke="#b892ba" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="v" name="Active packages" stroke="#b892ba" strokeWidth={2} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
             );

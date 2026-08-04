@@ -896,11 +896,11 @@ function AddCustomerConfirmationModal({ open, onClose, onConfirm }: {
 // ─── Point of sale modal — Figma 4029:71676 ───────────────────────────────────
 // Shortcut from the schedule module's Payment confirmation when the customer
 // has no plan (or admin clicked "Purchase new" to upgrade). Renders 3 memberships
-// + 3 credit packages in a 3-column grid using <ProductPosCard>. After Continue,
+// + 3 packages in a 3-column grid using <ProductPosCard>. After Continue,
 // the user-promised "Checkout confirmation modal" picks up the cart.
 //
 // Business rule (per CLAUDE.md and user instruction):
-//   • A customer can have 1 membership OR multiple credit packages — never both.
+//   • A customer can have 1 membership OR multiple packages — never both.
 //   • The card whose type conflicts with what's already in the cart is disabled.
 type PosProduct = {
     id: string;

@@ -225,7 +225,7 @@ function LeftSidebar({
     status: ProductStatus;
     onAction: (a: "edit" | ModalAction) => void;
 }) {
-    const productNoun = kind === "package" ? "credit package" : "membership";
+    const productNoun = kind === "package" ? "package" : "membership";
     const hasHolders = customerCount > 0;
 
     const actions = (() => {
@@ -1106,7 +1106,7 @@ function CustomersPagination({ page, total, pageSize, onPage, onPageSize }: {
 interface MembershipDetailVM {
     kind: ProductKind;
     kindLabel: string;         // "Membership" / "Package"
-    productNoun: string;       // "membership" / "credit package"
+    productNoun: string;       // "membership" / "package"
     name: string;
     description?: string;
     welcomeMessage: string;
@@ -1190,7 +1190,7 @@ function buildPackageVM(p: Package, tierName: string): MembershipDetailVM {
     return {
         kind: "package",
         kindLabel: "Package",
-        productNoun: "credit package",
+        productNoun: "package",
         name: p.name,
         description: p.description,
         welcomeMessage: p.welcome_message ?? "",

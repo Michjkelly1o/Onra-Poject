@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // One row per plan a customer has purchased or been granted — the data behind
-// the customer-detail "Plan" tab. Covers memberships, credit packages, and
+// the customer-detail "Plan" tab. Covers memberships, packages, and
 // complimentary grants, across every lifecycle status so the tab + its row
 // actions (freeze / unfreeze / cancel / remove complimentary / view details)
 // all have data to act on.
@@ -220,7 +220,7 @@ export const customer_plans: CustomerPlan[] = [
         expiry_iso: "2026-08-01T22:00:00Z",
         price_aed: 600,
         cancel_mode: "today",
-        cancel_reason: "Switched to credit package",
+        cancel_reason: "Switched to package",
         cancelled_at: "2026-05-14",
     },
     {

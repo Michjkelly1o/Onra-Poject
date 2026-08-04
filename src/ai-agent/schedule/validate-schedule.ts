@@ -83,12 +83,18 @@ interface Occurrence { dateISO: string; startTime: string; endTime: string; dura
  *  past-time pruning applied against the clock — same as admin generatePreview. */
 function classOccurrences(draft: ClassScheduleDraft, clock: ScheduleClock): Occurrence[] {
     if (draft.recurring && draft.recurrence) {
-        return expandRecurrence(draft.recurrence, { todayISO: clock.todayISO, nowMinutes: clock.nowMinutes }).map((o) => ({
-            dateISO: o.dateISO,
-            startTime: o.startTime,
-            endTime: o.endTime,
-            durationMins: toMin(o.endTime) - toMin(o.startTime),
-        }));
+        return expandRecurrence(draft.recurrence, { todayISO: clock.todayISO, nowMinutes: clock.nowMinutes })
+            // Defense-in-depth: expandRecurrence only prunes same-day past
+            // TIMES, not past DATES (it mirrors the admin form, whose UI pins
+            // the start to today). recurStartISO here is a raw model arg, so
+            // drop any occurrence before today too.
+            .filter((o) => o.dateISO >= clock.todayISO)
+            .map((o) => ({
+                dateISO: o.dateISO,
+                startTime: o.startTime,
+                endTime: o.endTime,
+                durationMins: toMin(o.endTime) - toMin(o.startTime),
+            }));
     }
     if (draft.single) {
         const { dateISO, startTime, durationMinutes } = draft.single;
@@ -308,6 +314,11 @@ export function validateAppointment(args: {
                 errors.push(`${instr.fullName} already has a class or session at ${fmt12(start)} on ${dateISO}.`);
             }
         }
+    } else {
+        // Non-open (private, or a recovery service that isn't an open session)
+        // is a 1:1 booking — it needs a real instructor. Without this the
+        // model could book it with no one assigned + no availability check.
+        errors.push("This session needs an instructor — pick one, or make it flexible so the studio auto-assigns.");
     }
 
     return { errors, warnings };

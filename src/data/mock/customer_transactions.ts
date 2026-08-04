@@ -2,7 +2,7 @@
 // Onra Studio — `customer_transactions` seed
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// One row per payment a customer made for a membership or credit package —
+// One row per payment a customer made for a membership or package —
 // the data behind the customer-detail "Payments" tab. Drives both the
 // Payment-history table and the Overview metrics (Total spent / Total
 // refunded / Net spend).
