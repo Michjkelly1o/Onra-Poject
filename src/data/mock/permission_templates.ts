@@ -399,15 +399,31 @@ const PERM_INSTRUCTOR: PermissionsMapSeed = {
     },
 };
 
+// Attendees (client 2026-08-04) — a floor check-in role. It uses the STAFF
+// section list (permissionSectionsFor → non-instructor), so its matrix must be
+// STAFF-shaped. Everything is NONE except what the console actually does: view
+// the class schedule + its bookings roster, and mark attendance. Built from the
+// staff section list so every module has a cell (no blank rows).
+const PERM_ATTENDEES: PermissionsMapSeed = (() => {
+    const map: PermissionsMapSeed = {};
+    for (const section of STAFF_PERMISSION_SECTIONS) {
+        const row: Record<string, PermissionRowSeed> = {};
+        for (const m of section.modules) {
+            row[m.key] =
+                m.key === "mark_attendance" ? ALL()
+                : (m.key === "schedule" || m.key === "bookings") ? VIEW_ONLY()
+                : NONE();
+        }
+        map[section.key] = row;
+    }
+    return map;
+})();
+
 export const DEFAULT_PERMISSIONS_BY_TYPE: Record<RoleTypeSeed, PermissionsMapSeed> = {
     owner:        PERM_OWNER,
     branch_admin: PERM_BRANCH_ADMIN,
     operator:     PERM_OPERATOR,
     front_desk:   PERM_FRONT_DESK,
     instructor:   PERM_INSTRUCTOR,
-    // Attendees (client 2026-08-04) — a floor check-in role; it only opens the
-    // attendee view and marks attendance. Reuses the instructor template (the
-    // closest attendance-capable, otherwise-limited permission set) for the
-    // Staff & Permissions display.
-    attendees:    PERM_INSTRUCTOR,
+    attendees:    PERM_ATTENDEES,
 };
