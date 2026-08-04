@@ -13,7 +13,15 @@
 // NOT here — it stays in validate-schedule.ts, which reuses the admin helpers.
 
 import type { AiQuestionSpec } from "@/ai-agent/components/AiQuestionPrompt";
-import { fmtTime } from "@/components/ui/TimeDropdown";
+
+/** "09:00" → "09:00 AM". Local copy — the TimeDropdown export is "use client"
+ *  and undefined in the server-side tool that builds these questions. */
+function fmtTime(t: string): string {
+    const [h, m] = t.split(":").map(Number);
+    const ap = h >= 12 ? "PM" : "AM";
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ap}`;
+}
 
 // ── The studio data the questions are built from (mirrors list_class_options) ─
 
