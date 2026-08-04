@@ -24,7 +24,7 @@
 import { useMemo } from "react";
 import {
     XClose, Check, CreditCard02, CreditCard01, BankNote01, Package,
-    Lightbulb02, CheckCircle, Gift01, CreditCardCheck, Wallet01, User01,
+    Lightbulb02, CheckCircle, Gift01, CreditCardCheck, Wallet01, User01, Heart,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -462,18 +462,21 @@ function ProductIcon({ type, imageUrl }: {
         );
     }
     const tint =
-        type === "membership"  ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
-        type === "package"     ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
-        type === "retail"      ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
-        type === "appointment" ? { bg: "bg-[#f4ebff]", color: "text-[#7f56d9]" } :
+        type === "membership" ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
+        type === "package"    ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
+        type === "retail"     ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
+        type === "private"    ? { bg: "bg-[#f4ebff]", color: "text-[#7f56d9]" } :
+        type === "recovery"   ? { bg: "bg-[#fef0c7]", color: "text-[#dc6803]" } :
                                  { bg: "bg-[#e0f9f4]", color: "text-[#4b8c9a]" };
     const Icon = type === "membership"
         ? CreditCard02
         : type === "package" || type === "retail"
             ? Package
-            : type === "appointment"
+            : type === "private"
                 ? User01
-                : Gift01;
+                : type === "recovery"
+                    ? Heart
+                    : Gift01;
     return (
         <div className={cn("w-10 h-10 rounded-[8px] flex items-center justify-center shrink-0", tint.bg)}>
             <Icon className={cn("w-5 h-5", tint.color)} />

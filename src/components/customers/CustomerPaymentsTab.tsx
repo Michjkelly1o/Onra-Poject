@@ -178,7 +178,8 @@ function planTypeLabel(t: CustomerTransaction): string {
     if (t.kind === "cancellation_penalty" || t.kind === "freeze_fee") return "Membership";
     if (t.kind === "retail") return "Retail";
     if (t.kind === "gift_card") return "Gift card";
-    if (t.kind === "appointment") return "Session";
+    if (t.kind === "private") return "Private session";
+    if (t.kind === "recovery") return "Recovery";
     return KIND_LABEL[t.kind];
 }
 

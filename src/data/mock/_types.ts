@@ -2558,9 +2558,11 @@ export interface TaxSettingsSeed {
  *    Services (VAT tab):
  *      • "membership"     — Membership product sales
  *      • "credit_package" — Credit/class package sales
- *      • "appointment"    — Appointment service bookings (post-Module-13
- *                            currency-priced services). New for Figma
- *                            5006:73920 / 5041:99307.
+ *      • "private"        — Private (1:1) session bookings
+ *      • "recovery"       — Recovery / wellness session bookings
+ *                           (client 2026-08-04 split the single
+ *                           "appointment" category into the two session
+ *                           types so each can carry its own tax rule).
  *    Gift card (VAT tab):
  *      • "gift_card"      — Renders as "Tax at redemption" — gift card
  *                            sales are stored-value transfers (no tax at
@@ -2574,7 +2576,8 @@ export interface TaxSettingsSeed {
 export type TaxRuleCategorySeed =
     | "membership"
     | "credit_package"
-    | "appointment"
+    | "private"
+    | "recovery"
     | "gift_card"
     | "pay_rate"
     // Client 2026-07-31 — retail added after the initial Tax module ship.

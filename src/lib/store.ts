@@ -2126,7 +2126,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card" | "appointment";
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card" | "private" | "recovery";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -2392,7 +2392,7 @@ export interface AuditLogEntry {
 
 export interface PurchaseLineItem {
     productId: string;
-    productType: "membership" | "package" | "gift_card" | "retail" | "appointment";
+    productType: "membership" | "package" | "gift_card" | "retail" | "private" | "recovery";
     name: string;
     unitPrice: number;
     quantity: number;
@@ -11405,7 +11405,7 @@ export const useAppStore = create<AppState>()(persist(
                 }
                 return `${totalUnits} retail items`;
             }
-            const appointments = items.filter(it => it.productType === "appointment");
+            const appointments = items.filter(it => it.productType === "private" || it.productType === "recovery");
             if (appointments.length > 0) {
                 return appointments.length === 1
                     ? `the ${appointments[0].name} session`
@@ -11438,7 +11438,7 @@ export const useAppStore = create<AppState>()(persist(
                 imageUrl: buyerSnapshot.imageUrl,
             };
             for (const it of items) {
-                if (it.productType !== "appointment" || !it.appointment) continue;
+                if ((it.productType !== "private" && it.productType !== "recovery") || !it.appointment) continue;
                 get().addCustomerAppointment({
                     serviceId: it.productId,
                     dateISO: it.appointment.dateISO,
@@ -11854,16 +11854,21 @@ export const useAppStore = create<AppState>()(persist(
                 }
             });
 
-            // ─── Session (appointment) line items (2026-08-04) ────────────
+            // ─── Session (private / recovery) line items (2026-08-04) ─────
             // The booking was already created (addCustomerAppointment, above);
             // here we record the revenue transaction so the sale lands in the
-            // Payments tab + reports. Tax follows the "appointment" rule the
-            // same way memberships / packages do (untaxed when no rule exists).
+            // Payments tab + reports. Tax follows the session's OWN rule
+            // ("private" / "recovery") the same way memberships / packages do
+            // (untaxed when no rule exists).
             items.forEach((it, idx) => {
-                if (it.productType !== "appointment") return;
+                if (it.productType !== "private" && it.productType !== "recovery") return;
+                // The session's own tax category — client 2026-08-04 split
+                // "appointment" into "private" + "recovery" so each type can
+                // carry its own rule.
+                const sessionCategory = it.productType;
                 const lineGross = it.unitPrice * it.quantity;
                 const taxRule = state.taxRules.find(r =>
-                    r.category === "appointment"
+                    r.category === sessionCategory
                     && r.status === "active"
                     && r.taxRateId !== undefined
                     && (r.allLocations || r.locationIds.includes(saleBranchId)),
@@ -11887,7 +11892,7 @@ export const useAppStore = create<AppState>()(persist(
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,
                     branchId: saleBranchId,
-                    kind: "appointment",
+                    kind: sessionCategory,
                     productId: it.productId,
                     name: it.name,
                     amountAed: lineGross,
@@ -12746,7 +12751,12 @@ export const useAppStore = create<AppState>()(persist(
         //   unused. CustomerTransaction gains `issuedGiftCardId`; IssuedGiftCard
         //   status gains "refunded"; one sale txn is synthesised per seeded
         //   card. Bump so persisted v97 payloads gain the gift-card sale rows.
-        version: 99,
+        // v100 — POS sells Private / Recovery sessions. The single "appointment"
+        //   tax category split into "private" + "recovery" (seed tax_rules
+        //   changed); PurchaseLineItem / CustomerTransaction gain the two session
+        //   kinds. Bump so persisted payloads drop the stale "appointment" tax
+        //   rule and pick up the new per-type rules + session-aware seeds.
+        version: 100,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

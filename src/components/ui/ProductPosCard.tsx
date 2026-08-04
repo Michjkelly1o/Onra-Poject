@@ -130,6 +130,10 @@ export function ProductPosCard({
     const inCart = quantity > 0;
     const isSmall = size === "sm";
     const isRetail = type === "retail";
+    // Image-banner cards — retail + sessions (Private / Recovery) lead with a
+    // real cover photo (client 2026-08-04), unlike memberships / packages /
+    // gift cards which use the tinted-icon banner.
+    const isImageBanner = type === "retail" || type === "private" || type === "recovery";
     // Out-of-stock retail cards lock every interactive path — the card
     // reads visually muted with an "Out of stock" pill overlay.
     const effectiveDisabled = disabled || outOfStock;
@@ -152,10 +156,10 @@ export function ProductPosCard({
                 gradient placeholder when no image was uploaded). */}
             <div className={cn(
                 "relative flex items-center justify-center shrink-0 overflow-hidden",
-                !isRetail && "bg-[#f9fafb]",
-                isSmall ? "h-[64px]" : (isRetail ? "h-[120px]" : "h-[80px]"),
+                !isImageBanner && "bg-[#f9fafb]",
+                isSmall ? "h-[64px]" : (isImageBanner ? "h-[120px]" : "h-[80px]"),
             )}>
-                {isRetail ? (
+                {isImageBanner ? (
                     bannerImageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={bannerImageUrl} alt="" className="w-full h-full object-cover" />

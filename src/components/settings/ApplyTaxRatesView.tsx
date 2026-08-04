@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ChevronUp, ChevronDown, Trash02, Plus, Check, XClose,
-    CreditCard02, Package, Gift01, CoinsHand, CalendarCheck01,
+    CreditCard02, Package, Gift01, CoinsHand, User01, Heart,
     ShoppingBag03, SlashCircle01, InfoCircle, Lightbulb02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,8 @@ const CATEGORY_META: Record<TaxRuleCategory, {
 }> = {
     membership:     { title: "Membership",               Icon: CreditCard02   },
     credit_package: { title: "Package",           Icon: Package        },
-    appointment:    { title: "Appointment",              Icon: CalendarCheck01 },
+    private:        { title: "Private session",          Icon: User01         },
+    recovery:       { title: "Recovery",                 Icon: Heart          },
     // Client 2026-07-31 — retail added after the Tax module shipped.
     // Physical merchandise sold at POS is taxed at purchase time (unlike
     // gift cards, which are taxed on redemption), so it sits alongside
@@ -53,7 +54,7 @@ const CATEGORY_META: Record<TaxRuleCategory, {
 };
 
 const CATEGORY_ORDER: TaxRuleCategory[] = [
-    "membership", "credit_package", "appointment", "retail", "gift_card", "pay_rate",
+    "membership", "credit_package", "private", "recovery", "retail", "gift_card", "pay_rate",
 ];
 
 /** Which categories live under which top-level tab. The Apply view scopes
@@ -62,11 +63,11 @@ const CATEGORY_ORDER: TaxRuleCategory[] = [
  *  parent wrapper card on the VAT tab. Retail is VAT-scoped but stands
  *  alone (it's merchandise, not a service). */
 const CATEGORIES_BY_KIND: Record<TaxRateKind, TaxRuleCategory[]> = {
-    vat:    ["membership", "credit_package", "appointment", "retail", "gift_card"],
+    vat:    ["membership", "credit_package", "private", "recovery", "retail", "gift_card"],
     income: ["pay_rate"],
 };
 
-const SERVICES_SUBCATEGORIES: TaxRuleCategory[] = ["membership", "credit_package", "appointment"];
+const SERVICES_SUBCATEGORIES: TaxRuleCategory[] = ["membership", "credit_package", "private", "recovery"];
 
 /** Intrinsic kind for a category — drives both the rate-dropdown filter
  *  (a Services rule's dropdown only sees VAT rates; pay_rate's only sees
@@ -669,7 +670,8 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
     const [openCats, setOpenCats] = useState<Record<TaxRuleCategory, boolean>>({
         membership:     true,
         credit_package: true,
-        appointment:    true,
+        private:        true,
+        recovery:       true,
         retail:         kind !== "income",
         gift_card:      kind !== "income",
         pay_rate:       true,
@@ -715,7 +717,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
     // Group rules by category, preserving createdAt order.
     const rulesByCategory = useMemo(() => {
         const byCat: Record<TaxRuleCategory, TaxRule[]> = {
-            membership: [], credit_package: [], appointment: [], retail: [], gift_card: [], pay_rate: [],
+            membership: [], credit_package: [], private: [], recovery: [], retail: [], gift_card: [], pay_rate: [],
         };
         for (const r of taxRules) {
             byCat[r.category].push(r);

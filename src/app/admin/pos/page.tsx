@@ -274,6 +274,9 @@ function buildCatalog(
             // Services are single-branch — scope the card to that branch so the
             // POS branch picker hides it at other locations.
             branchIds: [s.branchId],
+            // Session cards use the service cover image as the banner (like
+            // retail) — client 2026-08-04. Falls back to a gradient when unset.
+            bannerImageUrl: s.coverImage,
             session: {
                 id: s.id,
                 name: s.name,
@@ -283,6 +286,7 @@ function buildCatalog(
                 capacity: s.capacity,
                 branchId: s.branchId,
                 price: s.price,
+                coverImage: s.coverImage,
             },
         });
     }
@@ -776,13 +780,11 @@ function POSInner() {
         let runningTax = 0;
         let firstRate = 0;
         for (const line of cart) {
-            // Sessions (private / recovery) tax via the "appointment" category —
-            // the same rule the checkout commit applies — so the cart estimate
-            // and the recorded transaction agree. Retail taxes via its own
-            // category (client 2026-07-31); memberships / packages the same way.
-            const category = line.appointment
-                ? categoryForProductType("appointment")
-                : categoryForProductType(line.kind as PurchaseLineItem["productType"]);
+            // Every line taxes via its own category — sessions map to "private"
+            // / "recovery" (client 2026-08-04 split), the same rule the checkout
+            // commit applies, so the cart estimate and the recorded transaction
+            // agree. Retail / memberships / packages the same way.
+            const category = categoryForProductType(line.kind as PurchaseLineItem["productType"]);
             if (!category) continue;
             const match = findActiveTaxRuleFor(
                 { taxRules, taxRates },
@@ -822,11 +824,11 @@ function POSInner() {
     function handleProceed() {
         if (!customerId || cart.length === 0) return;
         const items: PurchaseLineItem[] = cart.map(l => l.appointment ? {
-            // Session line → a single "appointment" purchase item carrying the
+            // Session line → a "private" / "recovery" purchase item carrying the
             // booked slot; applyPurchase books it (addCustomerAppointment) and
             // records the revenue. Instructor is already resolved on the line.
             productId:   l.productId,
-            productType: "appointment" as const,
+            productType: l.kind as "private" | "recovery",
             name:        l.name,
             unitPrice:   l.unitPrice,
             quantity:    l.quantity,
