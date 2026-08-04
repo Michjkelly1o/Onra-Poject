@@ -41,7 +41,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/settings": "Settings",
     "/admin/settings/business-locations": "Business & locations",
     "/admin/settings/branding": "Branding",
-    "/admin/settings/offerings": "Offerings",
+    "/admin/settings/services": "Services",
     "/admin/settings/booking-rules": "Booking Rules",
     // Payments + Integrations merged into a single Integrations module
     // (Figma 7564:188282 + 7632:17561 — two tabs). The legacy /payments

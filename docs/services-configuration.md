@@ -1,11 +1,11 @@
-# Offerings — studio-level on/off configuration
+# Services — studio-level on/off configuration
 
 > **Audience:** owners setting up a studio (onboarding) + developers wiring the
 > cascade later.
 > **Status:** **UI only.** The settings tab and toggles exist and hold local
-> state, but nothing is hidden yet — the store slice + cascade gating (§4) are
-> **not implemented**. This doc specifies the intended behaviour so the wiring
-> phase has a single reference.
+> state (each flip is gated behind a confirmation modal), but nothing is hidden
+> yet — the store slice + cascade gating (§4) are **not implemented**. This doc
+> specifies the intended behaviour so the wiring phase has a single reference.
 
 ---
 
@@ -15,23 +15,27 @@ Not every studio sells everything. A boutique yoga studio may only run
 **class memberships**; a physiotherapy clinic may only sell **recovery**
 sessions; a personal-training gym may live entirely on **private** sessions.
 
-The **Offerings** tab lets an owner declare *what this studio actually sells*
-and switch off the rest. Turning an offering **off** is meant to hide
+The **Services** tab lets an owner declare *what this studio actually sells*
+and switch off the rest. Turning a service **off** is meant to hide
 **everything** related to it — sidebar menus, modules, catalog tabs, customer
 plans, schedule surfaces and reports — so staff never see options the studio
 doesn't use.
 
-**Classes are the core and are always on.** Only the three optional offerings
+**Classes are the core and are always on.** Only the three optional services
 can be switched off:
 
-| Offering | What it covers |
+| Service | What it covers |
 |---|---|
 | **Memberships** | Recurring plans customers subscribe to for ongoing access. |
 | **Private sessions** | One-to-one bookings with an instructor (personal training, private class). |
 | **Recovery** | Wellness / recovery sessions — sauna, stretch, ice bath, physiotherapy. |
 
-Where it lives: **Settings → Operations → Offerings**
-(`/admin/settings/offerings`).
+Every toggle opens a **confirmation modal** before the change applies (turning
+off uses a destructive-tone confirm; turning on uses a positive-tone confirm),
+so a service is never hidden or restored by an accidental tap.
+
+Where it lives: **Settings → Operations → Services**
+(`/admin/settings/services`).
 
 ---
 
@@ -44,13 +48,13 @@ one — no empty modules, no irrelevant tabs.
 
 The onboarding step and the settings tab read and write the **same** state, so
 a choice made in onboarding is editable forever under
-Settings → Operations → Offerings (and vice-versa).
+Settings → Operations → Services (and vice-versa).
 
 ---
 
 ## 3. Impact map — what each toggle hides
 
-This is the full blast radius per offering. Nothing here is wired yet; it is
+This is the full blast radius per service. Nothing here is wired yet; it is
 the checklist for the cascade phase (§4).
 
 ### 3.1 Memberships (off)
@@ -98,10 +102,10 @@ the checklist for the cascade phase (§4).
 
 ### 3.4 Cross-cutting (any of the three off)
 
-- **Booking / checkout flows** never offer the disabled product type.
-- **Notifications** for that product type stop being generated.
-- **AI-Agent import / migration** skips the disabled product type.
-- **CSV / Excel exports** omit the disabled product type's columns/rows.
+- **Booking / checkout flows** never offer the disabled service type.
+- **Notifications** for that service type stop being generated.
+- **AI-Agent import / migration** skips the disabled service type.
+- **CSV / Excel exports** omit the disabled service type's columns/rows.
 
 ---
 
@@ -110,11 +114,11 @@ the checklist for the cascade phase (§4).
 The current tab is intentionally UI-only (client asked for the surface first).
 When the cascade is implemented, the recommended shape:
 
-1. **State** — add an `offerings` slice to the Zustand store
+1. **State** — add a `services` slice to the Zustand store
    (`src/lib/store.ts`), e.g.
-   `offeringsEnabled: { membership: boolean; private: boolean; recovery: boolean }`,
+   `servicesEnabled: { membership: boolean; private: boolean; recovery: boolean }`,
    included in `partialize` (persisted) and guarded with a `version` bump.
-2. **Single selector** — expose `isOfferingEnabled(key)` and consume it
+2. **Single selector** — expose `isServiceEnabled(key)` and consume it
    everywhere, mirroring the existing route blocklist pattern in
    [`src/config/feature-flags.ts`](../src/config/feature-flags.ts). One helper,
    many call-sites — no scattered booleans.
@@ -127,14 +131,16 @@ When the cascade is implemented, the recommended shape:
    ([`src/config/reports-registry.ts`](../src/config/reports-registry.ts)).
 4. **Onboarding** — the onboarding "what you offer" step reads/writes the same
    slice.
-5. **Safety** — turning an offering off should **hide, never delete**. Existing
+5. **Safety** — turning a service off should **hide, never delete**. Existing
    records (a customer's active membership, a booked recovery appointment)
    remain in data; only the entry points disappear. Turning it back on restores
-   every surface with data intact.
+   every surface with data intact. (The confirmation modal already spells this
+   out to the admin before the flip.)
 
 ### Files in this feature (UI phase)
 
 - Tab registration — [`src/config/settings-groups.ts`](../src/config/settings-groups.ts) (Operations group)
-- Page component — [`src/components/settings/OfferingsPage.tsx`](../src/components/settings/OfferingsPage.tsx)
-- Route — [`src/app/admin/settings/offerings/page.tsx`](../src/app/admin/settings/offerings/page.tsx)
+- Page component — [`src/components/settings/ServicesPage.tsx`](../src/components/settings/ServicesPage.tsx)
+- Route — [`src/app/admin/settings/services/page.tsx`](../src/app/admin/settings/services/page.tsx)
+- Confirmation modal — [`src/components/modals/ConfirmModal.tsx`](../src/components/modals/ConfirmModal.tsx) (shared)
 - Titles / breadcrumbs — [`src/components/layout/Header.tsx`](../src/components/layout/Header.tsx), [`src/config/breadcrumbs.ts`](../src/config/breadcrumbs.ts)
