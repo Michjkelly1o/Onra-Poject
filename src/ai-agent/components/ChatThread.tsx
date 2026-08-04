@@ -1099,6 +1099,8 @@ export function ChatThread({
         <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
             <SelectDaysEditor
                 durationMinutes={pendingScheduleEditor.durationMinutes}
+                instructorId={pendingScheduleEditor.instructorId}
+                roomId={pendingScheduleEditor.roomId}
                 onConfirm={(days) =>
                     send(`Days confirmed — days: ${JSON.stringify(days)}`)
                 }

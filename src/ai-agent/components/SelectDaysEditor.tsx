@@ -17,9 +17,26 @@ import { Trash01, Plus, CheckCircle } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TimeDropdown, fmtSlotRange, DAY_FULL } from "@/components/ui/TimeDropdown";
+import { todayISO } from "@/components/ui/DatePicker";
+import { useAppStore, getBusinessHours, buildTimeSlots } from "@/lib/store";
+import { gateSlotsByInstructor } from "@/lib/instructor-availability";
 import type { DaySchedule } from "@/ai-agent/schedule/schedule-wizard";
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+/** Day-of-week index for each weekday key — used to find a representative date
+ *  so the branch-hours + instructor gate resolves the right weekday. */
+const DOW_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+/** The next date on/after `todayIso` that falls on `dayKey`'s weekday (ISO). */
+function nextDateForWeekday(todayIso: string, dayKey: string): string {
+    const target = DOW_INDEX[dayKey] ?? 1;
+    const [y, m, d] = todayIso.split("-").map(Number);
+    const base = new Date(y, m - 1, d);
+    const add = (target - base.getDay() + 7) % 7;
+    const dt = new Date(y, m - 1, d + add);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
 
 /** Add minutes to a "HH:MM" clock string (24h, no midnight wrap needed here). */
 function addMinutes(hhmm: string, mins: number): string {
@@ -37,13 +54,57 @@ interface Slot {
 export interface SelectDaysEditorProps {
     /** Class length in minutes — end time is auto-derived as start + duration. */
     durationMinutes: number;
+    /** Instructor chosen in step 2 — gates each weekday's offered times to the
+     *  instructor's shift + free slots (same as the admin form). */
+    instructorId?: string;
+    /** Room chosen in step 2 — resolves the branch whose hours bound the times. */
+    roomId?: string;
     onConfirm: (days: DaySchedule[]) => void;
     confirmed?: DaySchedule[] | null;
 }
 
-export function SelectDaysEditor({ durationMinutes, onConfirm, confirmed }: SelectDaysEditorProps) {
+export function SelectDaysEditor({ durationMinutes, instructorId, roomId, onConfirm, confirmed }: SelectDaysEditorProps) {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [byDay, setByDay] = useState<Record<string, Slot[]>>({});
+
+    // Live availability slices — same sources the admin schedule form gates on.
+    const businessHours    = useAppStore((s) => s.businessHours);
+    const rooms            = useAppStore((s) => s.rooms);
+    const staff            = useAppStore((s) => s.staff);
+    const shifts           = useAppStore((s) => s.shifts);
+    const shiftAssignments = useAppStore((s) => s.shiftAssignments);
+    const blockedTimes     = useAppStore((s) => s.blockedTimes);
+    const today = todayISO();
+
+    // Branch = the room's branch (falls back to the instructor's) — exactly how
+    // the admin form resolves the business-hours window.
+    const branchId = useMemo(
+        () => rooms.find((r) => r.id === roomId)?.branch_id ?? staff.find((s) => s.id === instructorId)?.branchId ?? "",
+        [rooms, roomId, staff, instructorId],
+    );
+    const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff]);
+
+    // Per-weekday offered times: `slots` = the branch's open-hour grid for that
+    // weekday; `unavailable` = the ones the instructor can't take (outside shift
+    // / blocked). The TimeDropdown shows only `slots` and disables `unavailable`,
+    // so a time outside hours (e.g. 6 AM before a 7 AM open) is never offered.
+    const slotsByWeekday = useMemo(() => {
+        const out: Record<string, { slots: string[]; unavailable: string[] }> = {};
+        for (const day of WEEK_DAYS) {
+            if (!branchId) { out[day] = { slots: [], unavailable: [] }; continue; }
+            const iso = nextDateForWeekday(today, day);
+            const slots = buildTimeSlots(getBusinessHours(businessHours, branchId, iso), durationMinutes);
+            let avail = slots;
+            if (instructorId && slots.length) {
+                avail = gateSlotsByInstructor(slots, iso, {
+                    instructorId, durationMins: durationMinutes, staffById, shifts, shiftAssignments, blockedTimes,
+                });
+            }
+            const availSet = new Set(avail);
+            out[day] = { slots, unavailable: slots.filter((s) => !availSet.has(s)) };
+        }
+        return out;
+    }, [branchId, businessHours, durationMinutes, instructorId, staffById, shifts, shiftAssignments, blockedTimes, today]);
 
     const locked = !!confirmed;
 
@@ -178,7 +239,10 @@ export function SelectDaysEditor({ durationMinutes, onConfirm, confirmed }: Sele
                                                     <TimeDropdown
                                                         value={s.startTime}
                                                         onChange={(v) => setSlotStart(day, i, v)}
+                                                        slots={slotsByWeekday[day]?.slots}
+                                                        unavailable={slotsByWeekday[day]?.unavailable}
                                                         placeholder="Select time"
+                                                        emptyLabel="Branch closed this day"
                                                         displayValue={s.startTime ? fmtSlotRange(s.startTime, s.endTime) : ""}
                                                     />
                                                 </div>

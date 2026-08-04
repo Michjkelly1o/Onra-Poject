@@ -120,13 +120,16 @@ export interface ClassSpotEditorCard {
     capacity: number;
 }
 
-/** Interactive recurrence editor (recurring branch, frames 22/28). The client
- *  renders SelectDaysEditor (start date + recurring-ends + repeat-every + days +
- *  time slots); on confirm it sends a "Recurrence confirmed" message whose JSON
- *  the model maps onto the recur* args. `durationMinutes` drives auto end-time. */
+/** "Select days & General schedule" editor (recurring branch). The client
+ *  renders SelectDaysEditor (weekdays + per-day time slots) and on confirm
+ *  sends "Days confirmed — days: <JSON>". `durationMinutes` drives auto
+ *  end-time; `instructorId`/`roomId` gate each weekday's offered times to the
+ *  branch hours + instructor availability (same as the admin form). */
 export interface ClassDaysEditorCard {
     card: "class_days_editor";
     durationMinutes: number;
+    instructorId?: string;
+    roomId?: string;
 }
 
 /** Single (non-recurring) date + time picker — the model opens this after the

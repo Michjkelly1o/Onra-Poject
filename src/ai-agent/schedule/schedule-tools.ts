@@ -563,15 +563,17 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
 
         open_days_editor: tool({
             description:
-                "Open the 'Select days & General schedule' editor — the user picks the WEEKDAYS and a start time slot (or several) for each day. Call this in the RECURRING flow AFTER ask_recur_interval (the start date, end rule and interval are their own question cards). Pass the class duration so end times auto-fill. The result returns as a 'Days confirmed — days: <JSON>' message; map days → recurDays on preview_class_schedule.",
+                "Open the 'Select days & General schedule' editor — the user picks the WEEKDAYS and a start time slot (or several) for each day. Call this in the RECURRING flow AFTER ask_recur_interval (the start date, end rule and interval are their own question cards). Pass the class duration AND the instructorId + roomId chosen in step 2 so each weekday only offers times inside the branch's hours + the instructor's availability. The result returns as a 'Days confirmed — days: <JSON>' message; map days → recurDays on preview_class_schedule.",
             parameters: z.object({
                 durationMinutes: z.number().describe("Class length in minutes (from the template) — drives auto end-time."),
+                instructorId: z.string().optional().describe("The instructor chosen in step 2 — gates each weekday's offered times."),
+                roomId: z.string().optional().describe("The room chosen in step 2 — resolves the branch whose hours bound the times."),
             }),
             execute: async (a): Promise<ClassCardData> => {
                 if (!caps.createSchedule) {
                     return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
                 }
-                return { card: "class_days_editor", durationMinutes: a.durationMinutes ?? 60 };
+                return { card: "class_days_editor", durationMinutes: a.durationMinutes ?? 60, instructorId: a.instructorId, roomId: a.roomId };
             },
         }),
 

@@ -156,7 +156,7 @@ ${
      1) **ask_recur_start** → read the picked start date → recurStartISO (a custom pick returns the ISO; a preset returns a date label — convert to YYYY-MM-DD).
      2) **ask_recur_end_rule** → recurEndRule = never|on|after. If **on** → **ask_recur_end_on** (pass startISO) → recurEndOnISO. If **after** → **ask_recur_end_after** → recurEndAfterCount. If **never** → go straight to 3.
      3) **ask_recur_interval** → recurEveryWeeks (a preset number or the typed custom value).
-     4) **open_days_editor** (pass durationMinutes) → read "Days confirmed — days: <JSON>" → recurDays.
+     4) **open_days_editor** (pass durationMinutes + the instructorId + roomId chosen in step 2, so each weekday only offers times inside the branch's hours + the instructor's availability) → read "Days confirmed — days: <JSON>" → recurDays.
      Set recurring=true, then call preview_class_schedule with everything. The preview then shows a "Preview of scheduled classes · N classes" list.
 
 Call preview_class_schedule at most ONCE per step — after step 2 (location & instructor), and once more after step 3 (date & time) when every answer is in. Do NOT re-preview after every single sub-answer, and do NOT preview between the recurring cards — that stacks duplicate preview cards. The server VALIDATES the schedule the same way the admin form does — the preview card may come back with \`blockers\` (e.g. "outside the branch's hours", "instructor is on time-off", "room already booked"). When it does, readyToPublish stays false: DON'T offer the publish question — tell the user plainly what's wrong (the blockers are already short, deduped, human sentences — relay them as-is, don't list one per date) and help them change the room / instructor / date / time, then re-preview once.
