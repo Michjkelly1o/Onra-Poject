@@ -34,7 +34,6 @@ import { isAttendeeOngoing } from "@/components/attendee/attendee-status";
 import {
     INSTRUCTORS, isoAddDays, isoToDisplay, isoToMonday, formatWeekRange, TODAY_ISO, DAY_VIEW_DATE,
 } from "@/components/schedule/ScheduleGridViews";
-import { SESSION_TYPE_FILTER_LABEL, SESSION_TYPE_ORDER } from "@/lib/session-type";
 import {
     useAppStore,
     type ClassInstance, type ClassStatus, type SessionType,
@@ -64,7 +63,6 @@ type FilterState = {
     categories: string[];
 };
 const EMPTY_FILTER: FilterState = { types: [], statuses: [], timeOfDay: [], instructors: [], categories: [] };
-const ALL_TYPES: SessionType[] = SESSION_TYPE_ORDER;
 // Attendee only ever lists Ongoing + Upcoming, so the Status filter offers
 // exactly those two (Past is excluded by definition — §7.1 of the PRD).
 const ALL_STATUSES: ClassStatus[] = ["Upcoming", "Ongoing"];
@@ -296,28 +294,8 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                {/* Type */}
-                <div className="flex flex-col gap-2">
-                    <SectionLabel label="Type" />
-                    <div className="grid grid-cols-3 gap-2">
-                        {ALL_TYPES.map(t => {
-                            const selected = pending.types.includes(t);
-                            return (
-                                <button key={t} type="button"
-                                    onClick={() => setPending(p => ({ ...p, types: toggle(p.types, t) }))}
-                                    className={cn(
-                                        "h-10 px-2 rounded-[8px] text-[13px] font-medium border transition-all text-center leading-tight",
-                                        selected
-                                            ? "bg-[#f5fffa] border-2 border-[#7ba08c] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                            : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
-                                    )}>
-                                    {SESSION_TYPE_FILTER_LABEL[t]}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-                <Divider />
+                {/* Type filter removed — the attendee console is classes-only
+                    (client 2026-08-04), so a Class/Private/Recovery filter is moot. */}
 
                 {/* Status — live-only (Upcoming / Ongoing). */}
                 <div className="flex flex-col gap-2">
