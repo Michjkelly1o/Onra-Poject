@@ -161,8 +161,8 @@ export function askQuestionsTool() {
                                         attributes: z.array(z.string()).optional().describe("template chips, IN ORDER [category, type, duration, capacity] e.g. ['Pilates','Group','60 min','15 max']"),
                                         avatarUrl: z.string().optional().describe("round avatar image — the instructor's imageUrl"),
                                         avatarInitials: z.string().optional().describe("initials shown when there's no avatarUrl"),
-                                        rating: z.number().optional().describe("instructor rating, e.g. 5.0 → renders a gold star"),
-                                        ratingCount: z.number().optional().describe("instructor review count, e.g. 6000 → '(6K reviews)'"),
+                                        rating: z.number().nullable().optional().describe("instructor rating, e.g. 5.0 → renders a gold star; null/omit for a new instructor with no reviews"),
+                                        ratingCount: z.number().nullable().optional().describe("instructor review count, e.g. 6000 → '(6K reviews)'; null/omit when there are none"),
                                     }),
                                 )
                                 .min(1)
