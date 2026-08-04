@@ -1828,7 +1828,7 @@ export interface PayrollEntrySeed {
 //
 // FK: branch_id → branches.id (nullable — Owner has no branch scope).
 
-export type RoleTypeSeed = "owner" | "branch_admin" | "operator" | "front_desk" | "instructor";
+export type RoleTypeSeed = "owner" | "branch_admin" | "operator" | "front_desk" | "instructor" | "attendees";
 export type RoleStatusSeed = "active" | "inactive" | "archive";
 
 /** A single cell in the CRUD permission matrix.

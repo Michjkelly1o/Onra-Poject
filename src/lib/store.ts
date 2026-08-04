@@ -544,6 +544,7 @@ export function maxCustomDiscountPct(role: UserRole | string): number {
 export function demoRoleToStaffType(role: UserRole | string): RoleTypeSeed | null {
     if (role === "admin")      return "owner";
     if (role === "instructor") return "instructor";
+    if (role === "attendee")   return "attendees";
     // Member personas aren't Staff and don't get a Staff role.
     return null;
 }

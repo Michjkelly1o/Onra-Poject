@@ -131,6 +131,16 @@ export const roles: RoleSeed[] = [
         locked: false,
     },
     {
+        id: "role_attendees",
+        name: "Attendees",
+        description: "Views the attendee check-in screen and marks class attendance only",
+        type: "attendees",
+        status: "active",
+        grant_limits: DEFAULT_GRANT_LIMITS,
+        permissions: PERM_INSTRUCTOR,
+        locked: false,
+    },
+    {
         id: "role_operator_legacy",
         name: "Operator (legacy)",
         description: "Retired role kept for historical permission reference",

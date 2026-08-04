@@ -10,6 +10,7 @@ export const ROLE_TYPE_BADGE: Record<RoleType, string> = {
     operator:     "bg-[#eff4ff] border-1 border-[#c7d7fe] text-[#3538cd]",
     front_desk:   "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     instructor:   "bg-[#fff4ed] border-1 border-[#f9dbaf] text-[#b93815]",
+    attendees:    "bg-[#ecfeff] border-1 border-[#a5f0fc] text-[#0e7090]",
 };
 
 /** Colored role pill — the role NAME tinted by its type. */

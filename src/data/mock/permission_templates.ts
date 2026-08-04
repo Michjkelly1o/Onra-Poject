@@ -405,4 +405,9 @@ export const DEFAULT_PERMISSIONS_BY_TYPE: Record<RoleTypeSeed, PermissionsMapSee
     operator:     PERM_OPERATOR,
     front_desk:   PERM_FRONT_DESK,
     instructor:   PERM_INSTRUCTOR,
+    // Attendees (client 2026-08-04) — a floor check-in role; it only opens the
+    // attendee view and marks attendance. Reuses the instructor template (the
+    // closest attendance-capable, otherwise-limited permission set) for the
+    // Staff & Permissions display.
+    attendees:    PERM_INSTRUCTOR,
 };
