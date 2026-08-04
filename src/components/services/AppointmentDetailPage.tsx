@@ -39,7 +39,7 @@ import { useRouter } from "next/navigation";
 import {
     XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, CheckCircle,
     SearchMd, Eye, AlignLeft, ChevronLeft, RefreshCcw01, Star01,
-    FilterLines, Shuffle01, ArrowUpRight,
+    FilterLines, Shuffle01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { branchTzLabel } from "@/lib/branch-time";
@@ -1037,15 +1037,9 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                         ...(showReviewsTab
                             ? [{ id: "reviews" as const, label: "Reviews & Rating", count: String(visibleRatings.length) }]
                             : []),
-                        // The Attendee tab is an ACTION, not a real tab — it opens the
-                        // standalone attendance view for this appointment in a new
-                        // browser tab (same approach as the class schedule detail) and
-                        // carries no count badge.
-                        { id: "attendee" as const, label: "Attendee", count: undefined as string | undefined },
                     ]).map(t => (
                         <button key={t.id} type="button"
                             onClick={() => {
-                                if (t.id === "attendee") { window.open(`/attendee/${appointment.id}`, "_blank", "noopener"); return; }
                                 setTab(t.id);
                                 if (t.id === "reviews") setReviewsSubTab("ratings");
                                 setSearch(""); clear();
@@ -1055,7 +1049,6 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                 tab === t.id ? "border-b-2 border-[#101828] text-[#101828]" : "text-[#667085] hover:text-[#344054]",
                             )}>
                             {t.label}
-                            {t.id === "attendee" && <ArrowUpRight className="w-4 h-4" />}
                             {t.count != null && (
                                 <span className={cn(
                                     "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",

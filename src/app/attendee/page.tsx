@@ -19,7 +19,7 @@ import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import {
     XClose, ChevronLeft, ChevronRight, ChevronDown, MarkerPin01, AlignLeft,
-    CalendarCheck01, Clock, Users01, UserCheck01, SearchMd,
+    CalendarCheck01, Clock, Users01, UserCheck01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ import {
 } from "@/components/schedule/ScheduleGridViews";
 import { SESSION_TYPE_FILTER_LABEL, SESSION_TYPE_ORDER } from "@/lib/session-type";
 import {
-    useAppStore, appointmentToClassInstance,
+    useAppStore,
     type ClassInstance, type ClassStatus, type SessionType,
 } from "@/lib/store";
 
@@ -423,12 +423,10 @@ const attendeeUi: {
     applied: FilterState;
     location: string;
     activeView: AttendeeView;
-    search: string;
 } = {
     applied: EMPTY_FILTER,
     location: "",
     activeView: "day",
-    search: "",
 };
 
 export default function AttendeePageRoute() {
@@ -438,7 +436,6 @@ export default function AttendeePageRoute() {
 function AttendeePage() {
     const router = useRouter();
     const classSchedules = useAppStore(s => s.classSchedules);
-    const appointments = useAppStore(s => s.appointments);
     const classCategories = useAppStore(s => s.classCategories);
     const branches = useAppStore(s => s.branches);
     const businessProfile = useAppStore(s => s.businessProfile);
@@ -458,7 +455,6 @@ function AttendeePage() {
     // is no "All locations" option; only real branches are selectable.
     const [location, setLocation] = useState<string>(attendeeUi.location || activeBranches[0]?.id || "");
     const [filterOpen, setFilterOpen] = useState(false);
-    const [search, setSearch] = useState(attendeeUi.search);
     // Always open on today / the current week — never restored from the cache
     // (client 2026-07-28). Each remount (incl. navigating back from a detail)
     // re-runs these initializers, so the date + week strip reset every time.
@@ -516,20 +512,10 @@ function AttendeePage() {
         attendeeUi.applied = applied;
         attendeeUi.location = location;
         attendeeUi.activeView = activeView;
-        attendeeUi.search = search;
-    }, [applied, location, activeView, search]);
+    }, [applied, location, activeView]);
 
-    // ── Class feed — identical merge to Schedule, then live-only filter. ──────
-    const appointmentInstances = useMemo(
-        () => appointments
-            .filter(a => a.booked > 0 || a.status === "Cancelled")
-            .map(appointmentToClassInstance),
-        [appointments],
-    );
-    const mergedSchedules = useMemo(
-        () => [...classSchedules, ...appointmentInstances],
-        [classSchedules, appointmentInstances],
-    );
+    // ── Class feed — CLASSES ONLY (client 2026-08-04 — Private & Recovery are
+    //    no longer surfaced in the attendee console), then live-only filter. ──
 
     const categoryNames = useMemo(
         () => classCategories.map(c => c.name).sort((a, b) => a.localeCompare(b)),
@@ -550,10 +536,8 @@ function AttendeePage() {
     // Apply location / filter / search, then narrow to Ongoing + Upcoming ONLY —
     // never Past. Status is already device-live (`liveScheduleStatus` at boot).
     const filteredClasses = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        return mergedSchedules.filter(c => {
+        return classSchedules.filter(c => {
             if (location && c.branchId !== location) return false;
-            if (q && !c.name.toLowerCase().includes(q)) return false;
             if (applied.types.length > 0 && !applied.types.includes(c.type)) return false;
             if (applied.statuses.length > 0 && !applied.statuses.includes(c.status)) return false;
             if (applied.instructors.length > 0 && !applied.instructors.includes(c.instructorId)) return false;
@@ -566,7 +550,7 @@ function AttendeePage() {
             // Live-only surface — the single job of Attendee.
             return c.status === "Ongoing" || c.status === "Upcoming";
         });
-    }, [mergedSchedules, location, applied, search]);
+    }, [classSchedules, location, applied]);
 
     // The Attendee module is TODAY-ONLY (client 2026-07-31) — no Day/Week toggle,
     // no date navigator. Always shows today's on-and-upcoming classes.
@@ -664,22 +648,8 @@ function AttendeePage() {
                                             {schedulesCount} upcoming class{schedulesCount === 1 ? "" : "es"}
                                         </p>
                                     </div>
-
-                                    {/* Search — the day/filter controls were retired with
-                                        the today-only view (client 2026-07-31), so only the
-                                        participant search remains. */}
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative w-[240px]">
-                                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
-                                            <input
-                                                type="text"
-                                                value={search}
-                                                onChange={(e) => setSearch(e.target.value)}
-                                                placeholder="Search class..."
-                                                className="w-full h-10 pl-9 pr-3 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                            />
-                                        </div>
-                                    </div>
+                                    {/* Search removed (client 2026-08-04) — the attendee
+                                        console is a live-only, today-only surface. */}
                                 </div>
 
                             </div>
