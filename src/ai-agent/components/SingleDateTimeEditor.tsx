@@ -189,7 +189,7 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
                 </div>
             </div>
 
-            <div className="p-3 flex flex-col gap-2">
+            <div className="py-2">
                 {step === 1 ? (
                     <>
                         {dateOptions.map((iso, i) => (
@@ -197,20 +197,22 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
                                 selected={dateISO === iso} onClick={() => pickDate(iso)} />
                         ))}
                         {/* Pick a custom date — the shared DS DatePicker (calendar popover). */}
-                        <DatePicker
-                            value={dateOptions.includes(dateISO) ? "" : dateISO}
-                            onChange={(iso) => pickDate(iso)}
-                            minDate={today}
-                            placeholder="Pick a custom date"
-                        />
+                        <div className="px-1.5 pt-1">
+                            <DatePicker
+                                value={dateOptions.includes(dateISO) ? "" : dateISO}
+                                onChange={(iso) => pickDate(iso)}
+                                minDate={today}
+                                placeholder="Pick a custom date"
+                            />
+                        </div>
                     </>
                 ) : times.length === 0 ? (
-                    <div className="rounded-[10px] border border-dashed border-[#e4e7ec] bg-[#f9fafb] py-8 px-4 flex flex-col items-center gap-1 text-center">
+                    <div className="mx-3 my-1 rounded-[10px] border border-dashed border-[#e4e7ec] bg-[#f9fafb] py-8 px-4 flex flex-col items-center gap-1 text-center">
                         <p className="text-[14px] font-medium text-[#475467]">No times available on {fmtDateLabel(dateISO)}</p>
                         <p className="text-[12px] text-[#98a2b3]">The instructor is fully booked or off that day — go back and pick another date.</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-2 max-h-[280px] overflow-y-auto pr-0.5">
+                    <div className="max-h-[280px] overflow-y-auto">
                         {times.map((t, i) => (
                             <OptionRow key={t} index={i + 1} label={fmtTime(t)}
                                 selected={startTime === t} onClick={() => pickTime(t)} />
@@ -222,23 +224,27 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
     );
 }
 
-/** A numbered selectable row — matches the ask-questions option style. */
+/** A numbered selectable row — IDENTICAL to AiQuestionPrompt's plain option:
+ *  a borderless row (only the number badge is bordered), same padding + hover,
+ *  so the date/time step reads exactly like every other question step. */
 function OptionRow({ index, label, selected, onClick }: {
     index: number; label: string; selected: boolean; onClick: () => void;
 }) {
     return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "flex items-center gap-3 w-full px-3 py-2.5 rounded-[10px] border-1 text-left transition-colors",
-                selected ? "border-[#7ba08c] bg-[#f1f7f4]" : "border-[#e4e7ec] bg-white hover:border-[#aad4bd] hover:bg-[#f9fafb]",
-            )}>
-            <span className={cn(
-                "w-6 h-6 shrink-0 flex items-center justify-center rounded-[6px] border-1 text-[12px] font-medium",
-                selected ? "border-[#7ba08c] text-[#3f8f68] bg-white" : "border-[#e4e7ec] text-[#667085]",
-            )}>
-                {index}
-            </span>
-            <span className="text-[14px] font-medium text-[#344054]">{label}</span>
-        </button>
+        <div className="px-1.5 py-0.5">
+            <button type="button" onClick={onClick} aria-pressed={selected}
+                className={cn(
+                    "w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left transition-colors",
+                    selected ? "bg-[#f1f7f4]" : "hover:bg-[#f9fafb]",
+                )}>
+                <span className={cn(
+                    "shrink-0 size-6 flex items-center justify-center rounded-[6px] border text-[12px] font-medium",
+                    selected ? "border-[#aad4bd] text-[#344054] bg-white" : "border-[#e4e7ec] text-[#667085] bg-white",
+                )}>
+                    {index}
+                </span>
+                <span className="flex-1 min-w-0 text-[14px] leading-5 font-medium text-[#344054] truncate">{label}</span>
+            </button>
+        </div>
     );
 }

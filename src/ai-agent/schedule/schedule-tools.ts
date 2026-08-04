@@ -355,7 +355,8 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 }
                 return {
                     card: "questions" as const,
-                    stepLabel: "Class details",
+                    stepLabel: "Step 1",
+                    title: "Class details",
                     message: "Let's start building the class schedule.",
                     questions: classDetailsQuestions(buildOptions()),
                 };
@@ -383,7 +384,9 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 }
                 return {
                     card: "questions" as const,
-                    stepLabel: "Location & instructor",
+                    stepLabel: "Step 2",
+                    title: "Location & instructor",
+                    message: "Where it runs and who teaches it.",
                     questions: locationInstructorQuestions(opts, templateId, caps.seePayRate, caps.addRoom),
                 };
             },
@@ -396,7 +399,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 if (!caps.createSchedule) {
                     return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
                 }
-                return { card: "questions" as const, stepLabel: "Date & time", questions: repeatQuestion() };
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", message: "When does it run?", questions: repeatQuestion() };
             },
         }),
         ask_publish_confirm: tool({
@@ -407,7 +410,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 if (!caps.createSchedule) {
                     return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
                 }
-                return { card: "questions" as const, stepLabel: "Publish", questions: publishConfirmQuestion() };
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Ready to publish", questions: publishConfirmQuestion() };
             },
         }),
 
@@ -502,7 +505,38 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin to set this one up.",
                     };
                 }
-                const { config, answers, lookups } = hydrate(args, caps.seePayRate);
+                // Resolve the display fields (cover image, name, description,
+                // category, duration, capacity, room label, instructor avatar)
+                // from the REAL studio data by id — so the preview never depends
+                // on what the model remembered to pass. Model-passed values only
+                // fill the scratch path (no templateId).
+                const args2: ScheduleArgs = { ...args };
+                if (!args.isScratch && args.templateId) {
+                    const t = snapshot.classTemplates.find((tt) => tt.id === args.templateId && tt.type === "class");
+                    if (t) {
+                        args2.templateName = t.name;
+                        args2.templateDescription = t.description;
+                        args2.category = t.category;
+                        args2.durationMinutes = t.durationMin;
+                        args2.capacity = t.capacity;
+                        args2.coverImage = t.coverImage;
+                        args2.coverColor = t.coverColor;
+                        args2.classTypeLabel = "Group class";
+                    }
+                }
+                if (args.instructorId) {
+                    const inst = snapshot.instructors.find((i) => i.id === args.instructorId);
+                    if (inst) {
+                        args2.instructorName = inst.name;
+                        args2.instructorInitials = inst.initials;
+                        args2.instructorAvatarUrl = inst.imageUrl;
+                    }
+                }
+                if (args.roomId) {
+                    const room = snapshot.rooms.find((r) => r.id === args.roomId);
+                    if (room) args2.roomLabel = room.name;
+                }
+                const { config, answers, lookups } = hydrate(args2, caps.seePayRate);
                 const preview = toPreview(config, answers, lookups);
                 const ready = isComplete(config, answers);
                 const draft = ready ? toDraft(config, answers) : undefined;
