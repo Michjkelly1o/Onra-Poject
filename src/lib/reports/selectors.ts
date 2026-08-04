@@ -429,7 +429,11 @@ export function selectTransactionLedger(state: AppState): LedgerRow[] {
             const c = cust(t.customerId);
             return {
                 ...t,
-                kind: t.kind as "membership" | "package",
+                // Ledger carries membership / package AND the two session kinds
+                // (private / recovery) — all are recognised revenue. Cast reflects
+                // the real runtime value so kind-grouped pivots label sessions
+                // correctly instead of surfacing a stray bucket (audit 2026-08-04).
+                kind: t.kind as "membership" | "package" | "private" | "recovery",
                 location: loc(t.branchId),
                 customerName: c ? `${c.firstName} ${c.lastName}`.trim() : "—",
                 customerEmail: c?.email ?? "—",

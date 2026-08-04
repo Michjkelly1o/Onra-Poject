@@ -59,7 +59,7 @@ const CATEGORY_ORDER: TaxRuleCategory[] = [
 
 /** Which categories live under which top-level tab. The Apply view scopes
  *  its rendered accordions to one of these arrays based on `props.kind`.
- *  Membership / Package / Appointment also share the "Services"
+ *  Membership / Package / Private / Recovery also share the "Services"
  *  parent wrapper card on the VAT tab. Retail is VAT-scoped but stands
  *  alone (it's merchandise, not a service). */
 const CATEGORIES_BY_KIND: Record<TaxRateKind, TaxRuleCategory[]> = {

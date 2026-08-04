@@ -2228,6 +2228,10 @@ export interface CustomerTransaction {
      *  (Distinct from `giftCardDebits`, which records SPENDING a card on some
      *  other sale.) */
     issuedGiftCardId?: string;
+    /** On a `kind: "private" | "recovery"` SESSION sale row, the id of the
+     *  appointment this sale booked. Lets a refund cancel that customer's
+     *  booking so a refunded session doesn't stay live on the schedule. */
+    appointmentId?: string;
 }
 
 // ─── Inventory / Retail — Phase A store shape (2026-07-29) ──────────────────
@@ -8877,6 +8881,26 @@ export const useAppStore = create<AppState>()(persist(
                     ),
                 }));
             }
+            // Session refund (2026-08-04) — cancel the booking this sale created
+            // so a refunded session doesn't stay live on the schedule. A 1:1
+            // session cancels the whole appointment (frees the instructor's
+            // slot); an open/capacity session just removes this customer's spot
+            // (others on the roster keep theirs). Skips already-cancelled /
+            // completed appointments (a delivered session isn't un-booked).
+            if ((target.kind === "private" || target.kind === "recovery") && target.appointmentId) {
+                const appt = get().appointments.find(a => a.id === target.appointmentId);
+                if (appt && appt.status !== "Cancelled" && appt.status !== "Completed") {
+                    if (appt.openSession) {
+                        const bk = get().appointmentBookings.find(b =>
+                            b.appointmentId === appt.id
+                            && b.customerId === target.customerId
+                            && b.status === "Booked");
+                        if (bk) get().cancelAppointmentBooking(bk.id, false, "Refunded");
+                    } else {
+                        get().cancelAppointment(appt.id, false, "Refunded");
+                    }
+                }
+            }
         }
         // v83 audit-2 fix — a refund reverses paid history, which
         // determines New Active / Won-back / Churned via
@@ -11418,7 +11442,13 @@ export const useAppStore = create<AppState>()(persist(
         // profile (Payments tab → highlighted row). Retail-only orders fall
         // back to the first retail line so click-through still resolves.
         const txnStamp = Date.now();
-        const firstSaleIdx = items.findIndex(it => it.productType === "membership" || it.productType === "package");
+        // First "plan-style" sale line — carries the account-credit / gift-card
+        // debit stamp (so a refund can restore them) AND the notification
+        // deep-link. Sessions count here too (2026-08-04) so a session-only
+        // cart still stamps its payment + deep-links its receipt.
+        const firstSaleIdx = items.findIndex(it =>
+            it.productType === "membership" || it.productType === "package"
+            || it.productType === "private" || it.productType === "recovery");
         const firstRetailIdx = items.findIndex(it => it.productType === "retail");
         const resolvedFirstIdx = firstSaleIdx >= 0 ? firstSaleIdx : firstRetailIdx;
         const firstTxnId = resolvedFirstIdx >= 0 ? `txn_sale_${txnStamp}_${resolvedFirstIdx}` : undefined;
@@ -11430,6 +11460,10 @@ export const useAppStore = create<AppState>()(persist(
         // assigned a concrete free instructor at pick time. Each call runs its
         // own set(); the sale `set` below is a partial merge, so these writes
         // persist alongside the transaction rows.
+        // Map each session item's index → the appointment id it booked, so the
+        // transaction loop below can stamp `appointmentId` on the sale row (a
+        // refund then cancels exactly that booking).
+        const apptIdByItemIdx = new Map<number, string>();
         if (buyerSnapshot) {
             const apptCustomer = {
                 id: buyerSnapshot.id,
@@ -11437,9 +11471,9 @@ export const useAppStore = create<AppState>()(persist(
                 initials: buyerSnapshot.initials,
                 imageUrl: buyerSnapshot.imageUrl,
             };
-            for (const it of items) {
-                if ((it.productType !== "private" && it.productType !== "recovery") || !it.appointment) continue;
-                get().addCustomerAppointment({
+            items.forEach((it, idx) => {
+                if ((it.productType !== "private" && it.productType !== "recovery") || !it.appointment) return;
+                const apptId = get().addCustomerAppointment({
                     serviceId: it.productId,
                     dateISO: it.appointment.dateISO,
                     startTime: it.appointment.startTime,
@@ -11448,7 +11482,8 @@ export const useAppStore = create<AppState>()(persist(
                     flexible: it.appointment.flexible,
                     customer: apptCustomer,
                 });
-            }
+                apptIdByItemIdx.set(idx, apptId);
+            });
         }
         set((state) => {
             // Business rule (per CLAUDE.md): 1 membership OR multiple packages — never both.
@@ -11866,12 +11901,18 @@ export const useAppStore = create<AppState>()(persist(
                 // "appointment" into "private" + "recovery" so each type can
                 // carry its own rule.
                 const sessionCategory = it.productType;
+                // A session is DELIVERED at the service's branch (that's where
+                // the appointment is created), so revenue + the tax rule resolve
+                // against THAT branch, not the buyer's home branch — otherwise a
+                // customer buying an out-of-branch session misattributes the
+                // money + could apply the wrong branch's VAT (audit 2026-08-04).
+                const sessionBranchId = state.services.find(s => s.id === it.productId)?.branchId || saleBranchId;
                 const lineGross = it.unitPrice * it.quantity;
                 const taxRule = state.taxRules.find(r =>
                     r.category === sessionCategory
                     && r.status === "active"
                     && r.taxRateId !== undefined
-                    && (r.allLocations || r.locationIds.includes(saleBranchId)),
+                    && (r.allLocations || r.locationIds.includes(sessionBranchId)),
                 );
                 const taxRate = taxRule?.taxRateId
                     ? state.taxRates.find(t => t.id === taxRule.taxRateId && t.status === "active")
@@ -11888,10 +11929,16 @@ export const useAppStore = create<AppState>()(persist(
                 }
                 const source = paymentSource ?? "pos";
                 const cashierStaffId = source === "customer_portal" ? undefined : sellerStaffId;
+                // Account credit + gift-card debits ride the FIRST sale line so a
+                // refund of that line restores them. On a session-only cart the
+                // first session line IS that line (firstSaleIdx now covers
+                // sessions), so the payment is restorable on refund.
+                const isFirstSaleLine = idx === firstSaleIdx;
+                const bookedApptId = apptIdByItemIdx.get(idx);
                 newTransactions.push({
                     id: `txn_sale_${stamp}_${idx}`,
                     customerId,
-                    branchId: saleBranchId,
+                    branchId: sessionBranchId,
                     kind: sessionCategory,
                     productId: it.productId,
                     name: it.name,
@@ -11903,6 +11950,14 @@ export const useAppStore = create<AppState>()(persist(
                     transactionType: "sale",
                     staffId: cashierStaffId,
                     createdAtISO: nowISO,
+                    // Link to the booking so a refund can cancel it.
+                    ...(bookedApptId ? { appointmentId: bookedApptId } : {}),
+                    ...(isFirstSaleLine && accountCreditAppliedAed && accountCreditAppliedAed > 0
+                        ? { accountCreditAppliedAed }
+                        : {}),
+                    ...(isFirstSaleLine && giftCardDebits && giftCardDebits.length > 0
+                        ? { giftCardDebits }
+                        : {}),
                 });
             });
 

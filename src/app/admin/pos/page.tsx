@@ -1052,6 +1052,11 @@ function POSInner() {
             <SessionPickerModal
                 product={sessionPicker?.session ?? null}
                 customerId={customerId}
+                cartSessions={cart.filter(l => l.appointment).map(l => ({
+                    dateISO: l.appointment!.dateISO,
+                    startTime: l.appointment!.startTime,
+                    durationMin: l.appointment!.durationMin,
+                }))}
                 onClose={() => setSessionPicker(null)}
                 onPick={(pick) => { if (sessionPicker) addAppointmentToCart(sessionPicker, pick); setSessionPicker(null); }}
             />

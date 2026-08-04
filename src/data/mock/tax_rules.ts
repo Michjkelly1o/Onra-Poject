@@ -9,7 +9,8 @@
 //   VAT tab — Services parent:
 //     • Membership      — 1 rule, all locations (Services VAT 5%)
 //     • Package  — 2 rules, one per active club branch (South + East)
-//     • Appointment     — 1 rule, all locations (Services VAT 5%)
+//     • Private         — 1 rule, all locations (Services VAT 5%)
+//     • Recovery        — 1 rule, all locations (Services VAT 5%)
 //   VAT tab — Gift card (redeemed tax):
 //     • Gift card       — 1 placeholder rule (no rate; tax applies at the
 //                          redeemed category instead)

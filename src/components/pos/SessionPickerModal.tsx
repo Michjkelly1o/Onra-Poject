@@ -30,7 +30,7 @@ import { XClose, ChevronDown, User01, Check } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
-import { computeAvailableSlots } from "@/lib/customer/slot-availability";
+import { computeAvailableSlots, type AvailableSlot } from "@/lib/customer/slot-availability";
 import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
 import type { AppointmentVM } from "@/lib/customer/appointments-data";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
@@ -66,18 +66,35 @@ export interface SessionPick {
     openSession: boolean;
 }
 
+/** A session already in the cart — used to hide slots the same customer is
+ *  already booked into (they can't be in two sessions at once). */
+export interface CartSession {
+    dateISO: string;
+    startTime: string;
+    durationMin: number;
+}
+
 const FLEXIBLE = "__flexible__";
 
 const pad = (n: number) => String(n).padStart(2, "0");
+const toMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 function addMinutes(hhmm: string, mins: number): string {
     const [h, m] = hhmm.split(":").map(Number);
     const t = h * 60 + m + mins;
     return `${pad(Math.floor(t / 60) % 24)}:${pad(t % 60)}`;
 }
+/** [aStart,aEnd) overlaps [bStart,bEnd). */
+function rangesOverlap(aStart: string, aDur: number, bStart: string, bDur: number): boolean {
+    const as = toMin(aStart), ae = as + aDur, bs = toMin(bStart), be = bs + bDur;
+    return as < be && ae > bs;
+}
 
-export function SessionPickerModal({ product, customerId, onClose, onPick }: {
+export function SessionPickerModal({ product, customerId, cartSessions = [], onClose, onPick }: {
     product: SessionProduct | null;
     customerId: string | null;
+    /** Sessions already in the POS cart for this customer — their times are
+     *  hidden so the same customer can't be double-booked / a slot oversold. */
+    cartSessions?: CartSession[];
     onClose: () => void;
     onPick: (pick: SessionPick) => void;
 }) {
@@ -137,22 +154,35 @@ export function SessionPickerModal({ product, customerId, onClose, onPick }: {
     }), [businessHours, shifts, shiftAssignments, staff, blockedTimes,
         classSchedules, adminAppointments, classBookings, customerAppointments, customerId]);
 
-    // The free start times for the current (instructor, date) — feeds the Time
-    // dropdown. Flexible unions every qualified instructor's free times.
-    const availableTimes = useMemo(() => {
-        if (!product || !vm || !dateISO) return [] as string[];
+    // The free slots for the current (instructor, date) from the engine.
+    // Flexible unions every qualified instructor's free times.
+    const rawSlots = useMemo<AvailableSlot[]>(() => {
+        if (!product || !vm || !dateISO) return [];
         if (product.openSession) {
-            return computeAvailableSlots(vm, null, dateISO, slotData).map((s) => s.time);
+            return computeAvailableSlots(vm, null, dateISO, slotData);
         }
         if (instructorSel === FLEXIBLE) {
             const times = new Set<string>();
             for (const i of qualified) {
                 for (const s of computeAvailableSlots(vm, i.id, dateISO, slotData)) times.add(s.time);
             }
-            return Array.from(times).sort();
+            return Array.from(times).sort().map((time) => ({ time, spotsLeft: null, capacity: null, booked: null }));
         }
-        return computeAvailableSlots(vm, instructorSel, dateISO, slotData).map((s) => s.time);
+        return computeAvailableSlots(vm, instructorSel, dateISO, slotData);
     }, [product, vm, slotData, dateISO, instructorSel, qualified]);
+
+    // Drop any slot that OVERLAPS a session the same customer already has in the
+    // cart on this date — they can't be in two sessions at once, and this also
+    // stops an open session being oversold by the same buyer. (Persisted
+    // bookings are already handled by the engine via `member`.)
+    const availableTimes = useMemo(() => {
+        if (!product) return [] as string[];
+        const dur = product.durationMin;
+        const sameDay = cartSessions.filter((c) => c.dateISO === dateISO);
+        return rawSlots
+            .filter((s) => !sameDay.some((c) => rangesOverlap(s.time, dur, c.startTime, c.durationMin)))
+            .map((s) => s.time);
+    }, [rawSlots, cartSessions, product, dateISO]);
 
     if (!product) return null;
 
@@ -182,6 +212,9 @@ export function SessionPickerModal({ product, customerId, onClose, onPick }: {
                 // at pick time and the cart + checkout carry a real assignee.
                 const freeId = qualified.find((i) =>
                     computeAvailableSlots(vm, i.id, dateISO, slotData).some((s) => s.time === selectedTime))?.id ?? null;
+                // Guard the rare stale case (store changed while the modal was
+                // open): never book an unassigned 1:1 session — bail instead.
+                if (!freeId) return;
                 instructorId = freeId;
                 instructorName = qualified.find((i) => i.id === freeId)?.name;
             } else {
