@@ -343,6 +343,28 @@ export const DEMO_TODAY_MEETING_SCHEDULES: ClassSchedule[] = [
         class_type: "Group",
         waitlist_enabled: true,
     },
+    {
+        // Evening class — stays UPCOMING through the daytime demo window (it's
+        // >30 min out until 18:30), so the attendee console reliably shows an
+        // Upcoming group alongside the 1pm/2pm Ongoing ones (client 2026-08-04).
+        id: "class_sched_demo_meeting_7pm",
+        template_id: "tpl_reformer_pilates",
+        branch_id: SOUTH,
+        room_id: "room_south_reformer",
+        instructor_id: "staff_maya_johnson",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "19:00",
+        end_time: "20:00",
+        display_time: "19:00 – 20:00",
+        capacity: 8,
+        booked: 4,
+        rating: 0,
+        rating_count: 0,
+        status: "Upcoming",
+        gender_access: "all",
+        class_type: "Group",
+        waitlist_enabled: true,
+    },
 ];
 
 export const DEMO_TODAY_MEETING_BOOKINGS: ClassBooking[] = DEMO_TODAY_MEETING_SCHEDULES.flatMap((sched, sIdx) => {

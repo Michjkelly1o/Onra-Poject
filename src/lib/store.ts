@@ -12816,7 +12816,10 @@ export const useAppStore = create<AppState>()(persist(
         //   roles + staff slices are persisted, so bump to re-seed them (and
         //   refresh today's classSchedules) — otherwise the new role never
         //   appears in Staff & Permissions on an existing device.
-        version: 101,
+        // v102 — added a today EVENING demo class so the attendee console's
+        //   Upcoming group reliably populates alongside the Ongoing ones.
+        //   classSchedules are persisted → bump to re-seed today's classes.
+        version: 102,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
