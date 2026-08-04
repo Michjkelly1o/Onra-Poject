@@ -585,6 +585,9 @@ function POSInner() {
             unitPrice: p.priceAed,
             primaryMeta: `${pick.durationMin} min`,
             quantity: 1,
+            // Cover image so the cart + checkout render the service PHOTO (like
+            // retail) instead of a category icon (client 2026-08-04).
+            imageUrl: p.bannerImageUrl,
             appointment: {
                 serviceId: p.id,
                 dateISO: pick.dateISO,
@@ -832,6 +835,8 @@ function POSInner() {
             name:        l.name,
             unitPrice:   l.unitPrice,
             quantity:    l.quantity,
+            // Cover image so the checkout order + receipt show the service photo.
+            imageUrl:    l.imageUrl,
             appointment: {
                 dateISO:        l.appointment.dateISO,
                 startTime:      l.appointment.startTime,
@@ -1396,19 +1401,23 @@ function CartLineRow({ line, onQty, onRemove }: {
 }
 
 function CartIcon({ kind, imageUrl }: { kind: PosProductKind; imageUrl?: string }) {
-    // Retail cart rows render the product PHOTO (banner from the POS
-    // card) instead of a decorative icon — that's what admins recognise
-    // at a glance. Falls back to the sage gradient when the product has
-    // no image uploaded yet.
+    // Retail + session rows render the product / service PHOTO (banner from the
+    // POS card) instead of a decorative icon — that's what admins recognise at
+    // a glance (client 2026-08-04). Retail with no image falls back to the sage
+    // gradient; a session with no cover image falls through to its tinted icon.
+    const isPhotoKind = kind === "retail" || kind === "private" || kind === "recovery";
+    if (isPhotoKind && imageUrl) {
+        return (
+            <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[#e4e7ec] bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+            </div>
+        );
+    }
     if (kind === "retail") {
         return (
             <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[#e4e7ec] bg-white">
-                {imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={imageUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
-                )}
+                <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
             </div>
         );
     }

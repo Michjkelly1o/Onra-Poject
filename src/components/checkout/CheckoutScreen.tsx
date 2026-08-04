@@ -449,11 +449,11 @@ function ProductIcon({ type, imageUrl }: {
     type: PurchaseLineItem["productType"];
     imageUrl?: string;
 }) {
-    // Retail lines render their real product photo (matches the POS cart
-    // + product card treatment). Non-retail lines keep the category-tinted
-    // icon — memberships, packages, and gift cards don't have a "photo"
-    // concept, so the icon still reads as a category cue there.
-    if (type === "retail" && imageUrl) {
+    // Retail + session lines render their real product / service photo (matches
+    // the POS cart + product card). Membership / package / gift card have no
+    // "photo" concept, so they keep the category-tinted icon; a session with no
+    // cover image falls through to its tinted icon below.
+    if ((type === "retail" || type === "private" || type === "recovery") && imageUrl) {
         return (
             <div className="w-10 h-10 rounded-[8px] shrink-0 overflow-hidden border-1 border-[#e4e7ec] bg-white">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
