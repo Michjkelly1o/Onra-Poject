@@ -171,6 +171,7 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
         blockedTimes:            state.blockedTimes,
         customerReferrals:       state.customerReferrals,
         roles:                   state.roles,
+        businessHours:           state.businessHours,
     };
 }
 
@@ -346,6 +347,16 @@ export function ChatThread({
                 // state so the freshest value is captured at request time
                 // even if the closure was created earlier.
                 parsedFile: parsedFileRef.current,
+                // Client's LOCAL now, so schedule validation prunes past-time
+                // slots against the studio's real local day.
+                clientNowISO: (() => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                })(),
+                clientNowMinutes: (() => {
+                    const d = new Date();
+                    return d.getHours() * 60 + d.getMinutes();
+                })(),
             };
             return body;
         },
@@ -470,10 +481,18 @@ export function ChatThread({
                         continue;
                     }
                     const draft = res.draft as Parameters<typeof expandDraftToRows>[0];
+                    // Local clock so recurring expansion drops any occurrence
+                    // earlier today that already passed — same as the admin form.
+                    const now = new Date();
                     const rows = expandDraftToRows(draft, {
                         instructors: st.instructors,
                         rooms: st.rooms,
                         branches: st.branches,
+                    }, {
+                        clock: {
+                            todayISO: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
+                            nowMinutes: now.getHours() * 60 + now.getMinutes(),
+                        },
                     });
                     if (!rows.length) throw new Error("No occurrences were generated for this schedule.");
                     st.addClassSchedules(rows);

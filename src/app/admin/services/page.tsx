@@ -12,8 +12,8 @@
 //
 // Differences from Gift Cards:
 //   • Branch dropdown sits in the toolbar (Figma 7414:328584)
-//   • "Type" column shows the session type (Private session / Recovery &
-//     wellness) off `service.type`; the ?type= deep-link scopes the list
+//   • "Type" column shows the session type (Private session / Recovery
+//     ) off `service.type`; the ?type= deep-link scopes the list
 //   • "Price" column shows fixed AED price (services are currency-priced,
 //     not membership-gated, per the Module 13 update)
 //   • Filter is the side-panel multi-select (Figma 7424:139522) — Status +
@@ -476,7 +476,7 @@ function ListView({
                                 </td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationMin} minutes</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.branchName || "—"}</td>
-                                <td className={cn(TD, "whitespace-nowrap")}>{r.type === "recovery" ? "Recovery & wellness" : "Private session"}</td>
+                                <td className={cn(TD, "whitespace-nowrap")}>{r.type === "recovery" ? "Recovery" : "Private session"}</td>
                                 <td className={cn(TD, "whitespace-nowrap")}>AED {r.price.toLocaleString()}</td>
                                 <td className={TD}><StatusBadge type="service" status={r.status} /></td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
@@ -507,7 +507,7 @@ type PendingConfirm =
 
 // Default export wraps the page in a Suspense boundary — required because
 // ServicesPageInner reads the `?type=` deep-link via useSearchParams (the
-// Products & pricing nav's "Private sessions" / "Recovery & wellness" entries).
+// Products & pricing nav's "Private sessions" / "Recovery" entries).
 export default function ServicesPage() {
     return (
         <Suspense fallback={null}>
@@ -730,7 +730,7 @@ function ServicesPageInner() {
     // (`/class-types/new`) and customers (`/customers/[id]/edit`).
     //
     // returnTo carries the active `?type=` scope so closing a service from the
-    // "Private sessions" / "Recovery & wellness" view lands back on the SAME
+    // "Private sessions" / "Recovery" view lands back on the SAME
     // filtered list (keeps the sidebar highlight + the type-scoped header title).
     const listPath = typeScope ? `/admin/services?type=${typeScope}` : "/admin/services";
     function handleAdd() {
@@ -754,18 +754,18 @@ function ServicesPageInner() {
             <div className="flex items-center gap-3">
                 {/* Total label mirrors the deep-linked scope (client 2026-07-21) —
                     Private page reads "private session(s)", Recovery reads
-                    "recovery & wellness". The generic "service(s)" label is kept
+                    "recovery". The generic "service(s)" label is kept
                     for the umbrella /admin/services route that lists both. */}
                 <ToolbarTotal
                     count={filteredRows.length}
                     entitySingular={
                         typeScope === "private"  ? "private session" :
-                        typeScope === "recovery" ? "recovery & wellness" :
+                        typeScope === "recovery" ? "recovery session" :
                         "service"
                     }
                     entityPlural={
                         typeScope === "private"  ? "private sessions" :
-                        typeScope === "recovery" ? "recovery & wellness" :
+                        typeScope === "recovery" ? "recovery sessions" :
                         undefined
                     }
                 />
@@ -790,7 +790,7 @@ function ServicesPageInner() {
                 <ToolbarImportButton visible={services.length === 0 && !search.trim() && !hasActiveFilter} />
 
                 {/* Add-new shows on every scope — the umbrella /admin/services
-                    list, Private sessions, and Recovery & wellness — so admins
+                    list, Private sessions, and Recovery — so admins
                     can create a service directly from the list they're
                     already viewing (client 2026-07-22 revert of the earlier
                     scoped-hide). `handleAdd` uses `typeScope` to pre-select

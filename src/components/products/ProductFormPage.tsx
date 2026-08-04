@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Create new product (Membership / Credit package)
+// Onra Studio — Create new product (Membership / Package)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Full-page modal flow at /products/new. Same shell as /class-types/new and
@@ -9,7 +9,7 @@
 // the multi-step form takes over the whole viewport per the Figma comp.
 //
 // Five-step flow:
-//   1. Select product           — Membership vs Credit package radio (3629:70578)
+//   1. Select product           — Membership vs Package radio (3629:70578)
 //   2. Basic information        — name / description / welcome / price (2526:59411)
 //   3. Product configuration    — kind-specific:
 //        membership   (3629:96269 ON / 3629:90746 OFF)
@@ -154,7 +154,7 @@ function SelectProductStep({ kind, onChange, onContinue }: {
                     onSelect={() => onChange("membership")}
                 />
                 <ProductOptionCard
-                    title="Credit package"
+                    title="Package"
                     description="Pre-paid credit for flexible class bookings."
                     selected={kind === "package"}
                     onSelect={() => onChange("package")}
@@ -209,17 +209,8 @@ function BasicInformationStep({ kind, data, onChange, onBack, onContinue }: {
                             minHeight={120}
                         />
                     </FormField>
-                    <FormField
-                        label="Welcome message"
-                        hint="This message is to be sent to the customer's email confirmation"
-                    >
-                        <Textarea
-                            value={data.welcomeMessage}
-                            onChange={v => onChange({ welcomeMessage: v })}
-                            placeholder="Welcome message to customer in their confirmation email..."
-                            minHeight={120}
-                        />
-                    </FormField>
+                    {/* Welcome message removed (client 2026-08-04) — the
+                        confirmation copy now lives in Customer notifications. */}
                 </Section>
 
                 <Section title="Pricing">
@@ -336,7 +327,7 @@ function ProductConfigurationStep({ kind, data, onChange, onBack, onContinue, br
                     title="Multi-location access"
                     subtitle={kind === "membership"
                         ? "The membership can be use on multiple branches"
-                        : "The credit package can be use on multiple branches"}
+                        : "The package can be use on multiple branches"}
                     on={data.multiLocation}
                     onChange={v => onChange({ multiLocation: v })}
                 />
@@ -464,7 +455,7 @@ function BranchMultiSelect({ kind, selected, onChange, branches }: {
 
     const subtitle = kind === "membership"
         ? "The membership can be use on multiple branches"
-        : "The credit package can be use on multiple branches";
+        : "The package can be use on multiple branches";
 
     return (
         <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
@@ -632,7 +623,7 @@ function BranchSingleSelect({ value, onChange, branches }: {
 //     followed by "Active on first use" ToggleCard.
 //   • Renewal  section: "This membership auto-renews" ToggleCard.
 //
-// Credit package (Figma 3629:112703):
+// Package (Figma 3629:112703):
 //   • Duration section ONLY — same Duration + Unit row, no toggles below.
 
 const UNIT_OPTIONS: { value: DurationUnit; label: string }[] = [
@@ -1534,7 +1525,7 @@ interface PreviewState {
 function TemplatePreviewCard({ data }: { data: PreviewState }) {
     const hasName = !!data.name.trim();
     const Icon = data.kind === "package" ? PackageIcon : CreditCard02;
-    // Membership reads indigo, credit package sage — the banner tint is the
+    // Membership reads indigo, package sage — the banner tint is the
     // only thing that differs from the gift-card preview (same card design).
     const tint = data.kind === "package" ? BANNER_TINTS.package : BANNER_TINTS.membership;
 
@@ -1681,7 +1672,7 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
      *                 returns to the detail page. */
     function handleSubmit() {
         if (!kind) return;
-        const productLabel = kind === "membership" ? "membership" : "credit package";
+        const productLabel = kind === "membership" ? "membership" : "package";
 
         // ─── Shared column derivations ─────────────────────────────────────
         const price = Number(basic.price);
@@ -1727,7 +1718,7 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
                 });
             }
             showToast(
-                `${kind === "membership" ? "Membership" : "Credit package"} was updated`,
+                `${kind === "membership" ? "Membership" : "Package"} was updated`,
                 `${basic.name.trim() || `Your ${productLabel}`} has been saved.`,
                 "success",
                 "check",
@@ -1756,7 +1747,7 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
             });
         } else {
             newId = addPackage({
-                name: basic.name.trim() || "New credit package",
+                name: basic.name.trim() || "New package",
                 description: basic.description.trim() || undefined,
                 credits: safeCredits,
                 validity_days: daysFromDuration(duration),
@@ -1813,7 +1804,7 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                     <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
                         {isEdit
-                            ? `Edit ${kind === "package" ? "credit package" : "membership"}`
+                            ? `Edit ${kind === "package" ? "package" : "membership"}`
                             : "Create new product"}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />

@@ -63,6 +63,11 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     { id: "payments-by-source",  title: "Payments by source",                description: "", category: "Financial" },
     { id: "revenue-overview",    title: "Revenue overview",                  description: "", category: "Financial",
       info: "Net revenue, compared with the previous period." },
+    // Revenue & new customers — client 2026-08-04. Combination bar (net
+    // revenue) + line (customers new to the studio) over the same period, so
+    // the studio reads growth in revenue and headcount from one card.
+    { id: "revenue-vs-new-customers", title: "Revenue & new customers",       description: "", category: "Financial",
+      info: "Value of services used, net · customers new to the studio" },
     { id: "sales-by-product",    title: "Sales by product",                  description: "", category: "Financial" },
     // Revenue by type — client (9a). Stacked area over the period so the
     // Classes / Private / Recovery revenue split AND its trend both read
@@ -71,7 +76,7 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
     // ─── Customer ───────────────────────────────────────────────────────
     { id: "active-memberships",  title: "Active memberships",                description: "", category: "Customer",
       info: "How many memberships were active over time." },
-    { id: "active-credits",      title: "Active credit packages",            description: "", category: "Customer",
+    { id: "active-credits",      title: "Active packages",            description: "", category: "Customer",
       info: "Packages with credits left and still valid." },
     { id: "top-memberships",     title: "Top 5 plans",                       description: "", category: "Customer",
       info: "Plans ranked by customers currently on them." },
@@ -149,6 +154,7 @@ export const WIDGET_CATALOG: WidgetMeta[] = [
 
 export const DEFAULT_ACTIVE_WIDGETS = [
     "revenue-overview",
+    "revenue-vs-new-customers",
     "attendance-overview",
     "sales-by-product",
     "class-by-popularity",

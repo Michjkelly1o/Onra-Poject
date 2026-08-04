@@ -5,9 +5,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Reached from the "Purchase product" card on the booking confirmation when the
-// member has no eligible plan. Lists the active memberships + credit packages
+// member has no eligible plan. Lists the active memberships + packages
 // applicable to the class. Tapping one opens the Product Details sheet → Add to
-// cart. A membership goes straight to checkout (it's exclusive); credit packages
+// cart. A membership goes straight to checkout (it's exclusive); packages
 // stay here with a floating cart so more can be added before checking out.
 
 import { useMemo } from "react";

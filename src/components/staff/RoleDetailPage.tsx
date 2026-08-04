@@ -81,6 +81,7 @@ const ROLE_TYPE_BADGE: Record<RoleType, string> = {
     operator:     "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     front_desk:   "bg-[#fdf2fa] border-1 border-[#fcceee] text-[#c11574]",
     instructor:   "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
+    attendees:    "bg-[#ecfeff] border-1 border-[#a5f0fc] text-[#0e7090]",
 };
 
 // ─── Confirm modal (shared with PayRateDetailPage chrome) ─────────────────

@@ -11,7 +11,7 @@
 //   • Delete tax rule     — 5041-105464
 //
 // Renders one collapsible accordion per predefined category (Membership,
-// Credit package, Gift card, Pay rate). Each accordion's body is a list of
+// Package, Gift card, Pay rate). Each accordion's body is a list of
 // `TaxRule` rows; each row is two dropdowns (rate + location) + an on/off
 // toggle + a delete button. A "+ Add another tax rule" link sits below the
 // rows. Clicking the trash button on a row opens a confirmation modal.
@@ -24,7 +24,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ChevronUp, ChevronDown, Trash02, Plus, Check, XClose,
-    CreditCard02, Package, Gift01, CoinsHand, CalendarCheck01,
+    CreditCard02, Package, Gift01, CoinsHand, User01, Heart,
     ShoppingBag03, SlashCircle01, InfoCircle, Lightbulb02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -41,8 +41,9 @@ const CATEGORY_META: Record<TaxRuleCategory, {
     Icon: React.FC<{ className?: string }>;
 }> = {
     membership:     { title: "Membership",               Icon: CreditCard02   },
-    credit_package: { title: "Credit package",           Icon: Package        },
-    appointment:    { title: "Appointment",              Icon: CalendarCheck01 },
+    credit_package: { title: "Package",           Icon: Package        },
+    private:        { title: "Private session",          Icon: User01         },
+    recovery:       { title: "Recovery",                 Icon: Heart          },
     // Client 2026-07-31 — retail added after the Tax module shipped.
     // Physical merchandise sold at POS is taxed at purchase time (unlike
     // gift cards, which are taxed on redemption), so it sits alongside
@@ -53,20 +54,20 @@ const CATEGORY_META: Record<TaxRuleCategory, {
 };
 
 const CATEGORY_ORDER: TaxRuleCategory[] = [
-    "membership", "credit_package", "appointment", "retail", "gift_card", "pay_rate",
+    "membership", "credit_package", "private", "recovery", "retail", "gift_card", "pay_rate",
 ];
 
 /** Which categories live under which top-level tab. The Apply view scopes
  *  its rendered accordions to one of these arrays based on `props.kind`.
- *  Membership / Credit package / Appointment also share the "Services"
+ *  Membership / Package / Private / Recovery also share the "Services"
  *  parent wrapper card on the VAT tab. Retail is VAT-scoped but stands
  *  alone (it's merchandise, not a service). */
 const CATEGORIES_BY_KIND: Record<TaxRateKind, TaxRuleCategory[]> = {
-    vat:    ["membership", "credit_package", "appointment", "retail", "gift_card"],
+    vat:    ["membership", "credit_package", "private", "recovery", "retail", "gift_card"],
     income: ["pay_rate"],
 };
 
-const SERVICES_SUBCATEGORIES: TaxRuleCategory[] = ["membership", "credit_package", "appointment"];
+const SERVICES_SUBCATEGORIES: TaxRuleCategory[] = ["membership", "credit_package", "private", "recovery"];
 
 /** Intrinsic kind for a category — drives both the rate-dropdown filter
  *  (a Services rule's dropdown only sees VAT rates; pay_rate's only sees
@@ -536,7 +537,7 @@ function CategoryAccordion({
 }) {
     const meta = CATEGORY_META[category];
     const Icon = meta.Icon;
-    // Nested sub-rows (Membership / Credit package / Appointment) sit
+    // Nested sub-rows (Membership / Package / Appointment) sit
     // INSIDE the Services parent accordion which already owns the
     // collapse behaviour — so their own header is non-clickable and the
     // body is always visible. Only stand-alone cards (Gift card, Pay
@@ -669,7 +670,8 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
     const [openCats, setOpenCats] = useState<Record<TaxRuleCategory, boolean>>({
         membership:     true,
         credit_package: true,
-        appointment:    true,
+        private:        true,
+        recovery:       true,
         retail:         kind !== "income",
         gift_card:      kind !== "income",
         pay_rate:       true,
@@ -715,7 +717,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
     // Group rules by category, preserving createdAt order.
     const rulesByCategory = useMemo(() => {
         const byCat: Record<TaxRuleCategory, TaxRule[]> = {
-            membership: [], credit_package: [], appointment: [], retail: [], gift_card: [], pay_rate: [],
+            membership: [], credit_package: [], private: [], recovery: [], retail: [], gift_card: [], pay_rate: [],
         };
         for (const r of taxRules) {
             byCat[r.category].push(r);
@@ -964,7 +966,7 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
 }
 
 // ─── Services parent card ────────────────────────────────────────────────────
-// Wraps the 3 sub-category accordions (Membership / Credit package /
+// Wraps the 3 sub-category accordions (Membership / Package /
 // Appointment) per Figma 5041:99307. Provides the outer card chrome + the
 // "All service categories inherit VAT X% unless overridden below." info
 // banner at the bottom. Children are rendered in `nested` mode (no inner
@@ -993,7 +995,7 @@ function ServicesParentCard({ open, onToggleOpen, servicesRuleCount, inheritedRa
                     <div className="flex flex-col items-start text-left min-w-0">
                         <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">Services</span>
                         <span className="text-[12px] text-[#667085] leading-[18px]">
-                            Memberships · Credit packages · Appointments
+                            Memberships · Packages · Appointments
                         </span>
                     </div>
                 </div>

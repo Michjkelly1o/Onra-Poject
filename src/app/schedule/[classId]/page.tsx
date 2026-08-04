@@ -39,7 +39,7 @@ import { firstFreeSpot } from "@/lib/spot-layout";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type DetailTab = "booked" | "waitlisted" | "cancelled" | "reviews" | "attendee";
+type DetailTab = "booked" | "waitlisted" | "cancelled" | "reviews";
 type ReviewsSubTab = "ratings" | "deletion-log";
 
 function fmtBookingTime(iso: string): string {
@@ -124,7 +124,7 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
                         <div className="flex flex-wrap gap-2">
                             <FilterPill label="Membership" selected={pending.plans.includes("membership")}
                                 onClick={() => togglePlan("membership")} />
-                            <FilterPill label="Credit package" selected={pending.plans.includes("package")}
+                            <FilterPill label="Package" selected={pending.plans.includes("package")}
                                 onClick={() => togglePlan("package")} />
                         </div>
                     </div>
@@ -896,11 +896,11 @@ function AddCustomerConfirmationModal({ open, onClose, onConfirm }: {
 // ─── Point of sale modal — Figma 4029:71676 ───────────────────────────────────
 // Shortcut from the schedule module's Payment confirmation when the customer
 // has no plan (or admin clicked "Purchase new" to upgrade). Renders 3 memberships
-// + 3 credit packages in a 3-column grid using <ProductPosCard>. After Continue,
+// + 3 packages in a 3-column grid using <ProductPosCard>. After Continue,
 // the user-promised "Checkout confirmation modal" picks up the cart.
 //
 // Business rule (per CLAUDE.md and user instruction):
-//   • A customer can have 1 membership OR multiple credit packages — never both.
+//   • A customer can have 1 membership OR multiple packages — never both.
 //   • The card whose type conflicts with what's already in the cart is disabled.
 type PosProduct = {
     id: string;
@@ -1766,9 +1766,6 @@ const BASE_TABS: { id: DetailTab; label: string }[] = [
     { id: "booked", label: "Booked" },
     { id: "waitlisted", label: "Waitlisted" },
     { id: "cancelled", label: "Cancelled" },
-    // Opens the standalone Attendee details in a new browser tab (not a real
-    // tab switch) — see the tab-strip onClick below.
-    { id: "attendee", label: "Attendee" },
 ];
 const COMPLETED_TABS: { id: DetailTab; label: string }[] = [
     ...BASE_TABS,
@@ -2381,26 +2378,18 @@ export default function ClassDetailPage() {
                         <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
                             <div className="flex gap-1">
                                 {TABS.map(t => {
-                                    // The Attendee tab is an ACTION, not a real tab — it opens the
-                                    // standalone attendance view in a new browser tab and carries no
-                                    // count badge.
-                                    const badge = t.id === "attendee" ? null
-                                        : t.id === "booked" ? `${bookedCount}/${ci.capacity}`
+                                    const badge = t.id === "booked" ? `${bookedCount}/${ci.capacity}`
                                         : t.id === "waitlisted" ? String(waitlistCount)
                                         : t.id === "cancelled" ? String(cancelledCount)
                                         : String(visibleRatings.length);
                                     return (
                                         <button key={t.id} type="button"
-                                            onClick={() => {
-                                                if (t.id === "attendee") { window.open(`/attendee/${classId}`, "_blank", "noopener"); return; }
-                                                handleTabChange(t.id);
-                                            }}
+                                            onClick={() => handleTabChange(t.id)}
                                             className={cn(
                                                 "h-[48px] px-3 text-[14px] font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
                                                 tab === t.id ? "border-b-2 border-[#101828] text-[#101828]" : "text-[#667085] hover:text-[#344054]",
                                             )}>
                                             {t.label}
-                                            {t.id === "attendee" && <ArrowUpRight className="w-4 h-4" />}
                                             {badge != null && (
                                                 <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
                                                     tab === t.id ? "bg-[#f2f4f7] text-[#344054]" : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#667085]"

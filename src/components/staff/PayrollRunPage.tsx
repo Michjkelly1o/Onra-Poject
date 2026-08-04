@@ -344,6 +344,12 @@ interface RunRow {
     /** True for instructor roles (three pay tracks); false for other staff
      *  (Default rate only). */
     isInstructor: boolean;
+    /** Live completed-session counts (from the pay-config tracks) — the
+     *  "Basis" the per-class / per-private rates multiply against, surfaced
+     *  in the CSV export's Basis column. Sourced from the same tracks that
+     *  produce the per-class / per-private amounts so count and amount agree. */
+    completedClassCount: number;
+    completedApptCount: number;
     /** Configured per-booking rate names — for the CSV Rate column. Undefined
      *  when that track is off. */
     perClassRateName?: string;
@@ -394,16 +400,32 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
         // Instructors list all three tracks (a disabled / empty track reads
         // AED 0); other staff have the Default rate only. Sales commission is
         // appended on top so the components sum to the total payout.
-        const components: { component: string; rate: string; amount: string }[] = [];
+        // Basis = the count / base each rate multiplies against (client
+        // 2026-08-04 — the column previously shipped as a hardcoded "—").
+        //   • Default salary  → "1 month" for a monthly rate; class count for a
+        //     legacy class-teaching default; "—" when the base is 0.
+        //   • Pay per class   → number of completed classes in the period.
+        //   • Pay per private → number of completed private sessions.
+        //   • Sales commission→ the net sales AED the commission % applied to.
+        const plur = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+        const isMonthly = r.payRate?.type === "monthly";
+        const defaultBasis = isMonthly
+            ? "1 month"
+            : r.trackBreakdown.defaultBase > 0
+                ? plur(r.completedClassCount, "class", "classes")
+                : "—";
+        const commissionBase = r.commission.lines.reduce((s, l) => s + l.baseAed, 0);
+
+        const components: { component: string; basis: string; rate: string; amount: string }[] = [];
         if (r.isInstructor) {
-            components.push({ component: "Default pay rate", rate: r.payRateName,               amount: fmt(r.trackBreakdown.defaultBase) });
-            components.push({ component: "Pay per class",    rate: r.perClassRateName   ?? "—", amount: fmt(r.trackBreakdown.perClass) });
-            components.push({ component: "Pay per private",  rate: r.perPrivateRateName ?? "—", amount: fmt(r.trackBreakdown.perAppointment) });
+            components.push({ component: "Default pay rate", basis: defaultBasis,                                                                rate: r.payRateName,               amount: fmt(r.trackBreakdown.defaultBase) });
+            components.push({ component: "Pay per class",    basis: r.perClassRateName   ? plur(r.completedClassCount, "class", "classes")   : "—", rate: r.perClassRateName   ?? "—", amount: fmt(r.trackBreakdown.perClass) });
+            components.push({ component: "Pay per private",  basis: r.perPrivateRateName ? plur(r.completedApptCount,  "session", "sessions") : "—", rate: r.perPrivateRateName ?? "—", amount: fmt(r.trackBreakdown.perAppointment) });
         } else if (r.trackBreakdown.defaultBase > 0) {
-            components.push({ component: "Default pay rate", rate: r.payRateName, amount: fmt(r.trackBreakdown.defaultBase) });
+            components.push({ component: "Default pay rate", basis: defaultBasis, rate: r.payRateName, amount: fmt(r.trackBreakdown.defaultBase) });
         }
         if (r.commission.totalCommission > 0) {
-            components.push({ component: "Sales commission", rate: "—", amount: fmt(r.commission.totalCommission) });
+            components.push({ component: "Sales commission", basis: commissionBase > 0 ? `AED ${fmt(commissionBase)}` : "—", rate: "—", amount: fmt(r.commission.totalCommission) });
         }
         const statusLabel = r.status === "paid" ? "Paid" : "Pending";
         const totalPayout = Math.round(r.payout);
@@ -416,7 +438,7 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
                 isFirst ? branchName(r.branchId) : "",
                 isFirst ? r.payRateName : "",
                 comp.component,
-                "—",
+                comp.basis,
                 comp.rate,
                 comp.amount,
                 isFirst ? totalPayout : "",
@@ -568,6 +590,8 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     baseEarnings:   base,
                     trackBreakdown,
                     isInstructor:   true,
+                    completedClassCount: tracks.completedClasses.length,
+                    completedApptCount:  tracks.completedAppointments.length,
                     perClassRateName:   cfg?.perClass.enabled ? payRates.find(p => p.id === cfg.perClass.payRateId)?.name : undefined,
                     perPrivateRateName: cfg?.perAppointment.enabled ? payRates.find(p => p.id === cfg.perAppointment.payRateId)?.name : undefined,
                     commission,
@@ -615,6 +639,8 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     baseEarnings: base,
                     trackBreakdown,
                     isInstructor: false,
+                    completedClassCount: tracks.completedClasses.length,
+                    completedApptCount:  tracks.completedAppointments.length,
                     commission,
                     payout: displayPayout,
                     status: entry?.status ?? "pending",

@@ -343,6 +343,28 @@ export const DEMO_TODAY_MEETING_SCHEDULES: ClassSchedule[] = [
         class_type: "Group",
         waitlist_enabled: true,
     },
+    {
+        // Evening class — stays UPCOMING through the daytime demo window (it's
+        // >30 min out until 18:30), so the attendee console reliably shows an
+        // Upcoming group alongside the 1pm/2pm Ongoing ones (client 2026-08-04).
+        id: "class_sched_demo_meeting_7pm",
+        template_id: "tpl_reformer_pilates",
+        branch_id: SOUTH,
+        room_id: "room_south_reformer",
+        instructor_id: "staff_maya_johnson",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "19:00",
+        end_time: "20:00",
+        display_time: "19:00 – 20:00",
+        capacity: 8,
+        booked: 4,
+        rating: 0,
+        rating_count: 0,
+        status: "Upcoming",
+        gender_access: "all",
+        class_type: "Group",
+        waitlist_enabled: true,
+    },
 ];
 
 export const DEMO_TODAY_MEETING_BOOKINGS: ClassBooking[] = DEMO_TODAY_MEETING_SCHEDULES.flatMap((sched, sIdx) => {
@@ -1237,7 +1259,7 @@ interface PlanSpec {
 }
 
 // Plan-exclusivity invariant (client Jul 2026): each customer holds
-// EITHER one active membership OR one+ active credit packages — never
+// EITHER one active membership OR one+ active packages — never
 // both, and never two memberships. Every hand-authored customer in
 // `customer_plans.ts` already ships with a valid current plan (`cp_*`
 // rows) so this seed no longer piles ACTIVE / FROZEN rows on top of
@@ -1296,7 +1318,7 @@ export const DEMO_NOW_PLANS: CustomerPlan[] = PLAN_SPECS.map((p, idx) => {
         kind: p.kind,
         product_id: p.productKey,
         name: productName,
-        plan_type_label: p.kind === "membership" ? "Membership" : "Credit package",
+        plan_type_label: p.kind === "membership" ? "Membership" : "Package",
         credits_label: creditsLabel,
         status: p.status,
         purchased_at: purchasedAt,

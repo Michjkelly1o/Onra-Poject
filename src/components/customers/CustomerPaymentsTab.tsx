@@ -63,12 +63,12 @@ const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", status
 // or a column value — a `cancellation_penalty` row's Plan type column
 // is derived from the CUSTOMER'S plan (see `planTypeLabel` below) so a
 // penalty on a membership-plan customer reads "Membership" and on a
-// package-plan customer reads "Credit package". The row is identified
+// package-plan customer reads "Package". The row is identified
 // as a penalty via its icon + transaction name, NOT its plan-type text
 // (client feedback Jul 2026).
 const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package" | "retail" | "gift_card">, string> = {
     membership: "Membership",
-    package: "Credit package",
+    package: "Package",
     retail: "Retail",
     gift_card: "Gift card",
 };
@@ -159,7 +159,7 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
 // "Membership" because the cancellation-penalty flow is scoped to
 // UNLIMITED-membership customers ONLY (`computeCancellationPenalty`
 // gates on `membership.credits === "unlimited"`) — credit-package
-// customers can never receive one, so there's no "Credit package"
+// customers can never receive one, so there's no "Package"
 // case here. Client requirement Jul 2026.
 // A gift-card SALE is refundable only while the linked card is FULLY UNUSED —
 // once any balance is spent (or it's already refunded), the sale can't be
@@ -178,6 +178,8 @@ function planTypeLabel(t: CustomerTransaction): string {
     if (t.kind === "cancellation_penalty" || t.kind === "freeze_fee") return "Membership";
     if (t.kind === "retail") return "Retail";
     if (t.kind === "gift_card") return "Gift card";
+    if (t.kind === "private") return "Private session";
+    if (t.kind === "recovery") return "Recovery";
     return KIND_LABEL[t.kind];
 }
 
@@ -333,9 +335,9 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
                     <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
-                    {/* Plan type */}
+                    {/* Products */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Plan type</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Products</p>
                         <div className="flex flex-wrap gap-2">
                             {KINDS.map(k => (
                                 <FilterPill key={k} label={KIND_LABEL[k]} selected={pending.kinds.includes(k)}
@@ -735,7 +737,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                 <SortableHeader sortKey="name"     currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Transaction name</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[160px]")}>
-                                                <SortableHeader sortKey="planType" currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Plan type</SortableHeader>
+                                                <SortableHeader sortKey="planType" currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Products</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[120px]")}>
                                                 <SortableHeader sortKey="amount"   currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Amount</SortableHeader>

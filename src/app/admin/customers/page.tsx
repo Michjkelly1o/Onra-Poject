@@ -66,7 +66,7 @@ const STATUS_ORDER: Record<CustomerStatus, number> = { active: 0, inactive: 1, a
 
 const ALL_PLAN_TYPES: PlanType[] = ["membership", "package", "none"];
 const PLAN_LABEL: Record<PlanType, string> = {
-    membership: "Membership", package: "Credit package", none: "No plan",
+    membership: "Membership", package: "Package", none: "No plan",
 };
 
 const LAST_VISIT_OPTIONS: { value: LastVisitBucket; label: string }[] = [

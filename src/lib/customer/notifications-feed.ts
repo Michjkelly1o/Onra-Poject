@@ -146,7 +146,7 @@ function seedFeed(): CustomerNotification[] {
             });
         }
 
-        // A credit package → "Class package" (→ My plan).
+        // A package → "Class package" (→ My plan).
         const pkg =
             plans.find((p) => p.kind === "package" && (p.status === "active" || p.status === "frozen")) ??
             plans.find((p) => p.kind === "package");

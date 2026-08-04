@@ -17,7 +17,7 @@ function NewServiceRouteInner() {
     const searchParams = useSearchParams();
     const returnTo = searchParams.get("returnTo") ?? "/admin/services";
     // Scope the create to the menu it came from — "Private sessions" locks the
-    // form to Private, "Recovery & wellness" to Recovery.
+    // form to Private, "Recovery" to Recovery.
     const typeParam = searchParams.get("type");
     const presetType: ServiceType | undefined =
         typeParam === "private" || typeParam === "recovery" ? typeParam : undefined;

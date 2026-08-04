@@ -81,7 +81,7 @@ export default function ProductsPage() {
     // shows Upgrade / Downgrade (by tier price) instead of Add to cart.
     // A membership only "counts" while a matching plan is ACTIVE or FROZEN. A
     // cancelled / expired plan is treated as no active plan → every plan (incl.
-    // a fresh membership or credit package) becomes purchasable again.
+    // a fresh membership or package) becomes purchasable again.
     // The customer's actively-held membership plan (active or frozen), read straight
     // from customerPlans — so a cancelled / expired plan (or a stale
     // member.membershipId in persisted demo state) is correctly treated as "no

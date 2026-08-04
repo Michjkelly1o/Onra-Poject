@@ -225,6 +225,7 @@ export interface ImportDeps {
     adjustRetailStock: (input: {
         productId: string;
         branchId: string;
+        size?: string;
         delta: number;
         kind: RetailStockAdjustment["kind"];
         reason?: string;
@@ -427,6 +428,47 @@ function generateRetailSku(
     if (!trimmedName || !categoryLabel) return "";
     const stem = `${retailCategoryPrefix(categoryLabel)}-${retailNameInitials(trimmedName)}`;
     return `${stem}-${nextRetailSkuOrdinal(stem, existingSkus)}`;
+}
+
+// ── Retail size parsing (round-trips with the retail CSV export) ─────────────
+
+/** Parse a comma-separated "Sizes" cell → clean, case-insensitively deduped
+ *  free-form size labels ("Small, Medium, Large"). Empty → []. */
+function parseRetailSizes(raw: string | undefined): string[] {
+    if (!raw) return [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const part of raw.split(",")) {
+        const label = part.trim();
+        if (!label) continue;
+        const k = label.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(label);
+    }
+    return out;
+}
+
+/** Parse a per-branch stock cell. A sizeless cell is a plain number ("42").
+ *  A sized cell carries "Size:qty | Size:qty" pairs ("Small:18 | Medium:24") —
+ *  pipe/colon are safe against comma/semicolon CSV delimiters. */
+function parseRetailStockCell(raw: string | undefined): { total: number; perSize: { size: string; units: number }[] } {
+    const cell = (raw ?? "").trim();
+    if (!cell) return { total: 0, perSize: [] };
+    if (cell.includes(":")) {
+        const perSize: { size: string; units: number }[] = [];
+        for (const part of cell.split("|")) {
+            const seg = part.trim();
+            if (!seg) continue;
+            const idx = seg.lastIndexOf(":");
+            if (idx <= 0) continue;
+            const size = seg.slice(0, idx).trim();
+            const units = Math.floor(toNumber(seg.slice(idx + 1).trim(), 0));
+            if (size && units > 0) perSize.push({ size, units });
+        }
+        return { total: perSize.reduce((n, x) => n + x.units, 0), perSize };
+    }
+    return { total: Math.floor(toNumber(cell, 0)), perSize: [] };
 }
 
 // ── Date / time helpers (class_schedule) ─────────────────────────────────────
@@ -1316,7 +1358,7 @@ export function applyImportToStore(
                 kind: isMembership ? "membership" : "package",
                 productId: (mem?.id ?? pkg?.id) ?? undefined,
                 name: mem?.name ?? pkg?.name ?? productName,
-                planTypeLabel: isMembership ? "Membership" : "Credit package",
+                planTypeLabel: isMembership ? "Membership" : "Package",
                 creditsLabel: credits,
                 status,
                 purchasedAtISO: `${purchased}T00:00:00Z`,
@@ -1792,6 +1834,26 @@ export function applyImportToStore(
                 // prevents this in normal flow; check anyway.
                 if (usedSkus.has(sku.toLowerCase())) continue;
             }
+            // Resolve this row's raw cells up-front (only when per-branch stock
+            // columns exist) so we can union the product's sizes from BOTH the
+            // "Sizes" column AND any sizes that appear in the per-branch stock
+            // cells before creating the product.
+            const raw = perBranchStockCols.length > 0 ? rawByDedupKey.get(sku.toLowerCase()) : undefined;
+            const parsedCells = new Map<string, { total: number; perSize: { size: string; units: number }[] }>();
+            const sizeSeen = new Set<string>();
+            const sizes: string[] = [];
+            for (const label of parseRetailSizes(rec.sizes)) {
+                if (!sizeSeen.has(label.toLowerCase())) { sizeSeen.add(label.toLowerCase()); sizes.push(label); }
+            }
+            if (raw) {
+                for (const { column } of perBranchStockCols) {
+                    const parsed = parseRetailStockCell(raw[column]);
+                    parsedCells.set(column, parsed);
+                    for (const ps of parsed.perSize) {
+                        if (!sizeSeen.has(ps.size.toLowerCase())) { sizeSeen.add(ps.size.toLowerCase()); sizes.push(ps.size); }
+                    }
+                }
+            }
             const id = deps.addRetailProduct({
                 name,
                 sku,
@@ -1801,30 +1863,43 @@ export function applyImportToStore(
                 unitCostAed: toNumber(rec.unit_cost, 0),
                 reorderThreshold: Math.max(0, Math.floor(toNumber(rec.reorder_threshold, 0))),
                 imageUrl: rec.image_url?.trim() || undefined,
+                sizes: sizes.length > 0 ? sizes : undefined,
                 status: "active",
             });
             if (!id) continue; // store rejected (dup SKU race)
             skuPool.push(sku);
             usedSkus.add(sku.toLowerCase());
             // Per-branch stock — if the CSV has any `stock_<branch>`
-            // columns matched to live branches, we distribute across
-            // them from THIS row's raw cells. Falls back to the legacy
-            // single-branch `initial_stock` when no per-branch columns
+            // columns matched to live branches, seed from THIS row's cells.
+            // A sized cell ("Small:18 | Medium:24") seeds one receive per size;
+            // a plain cell seeds a single sizeless receive. Falls back to the
+            // legacy single-branch `initial_stock` when no per-branch columns
             // were detected (that path still seeds into deps.branchId).
             if (perBranchStockCols.length > 0) {
-                const rawKey = sku.toLowerCase();
-                const raw = rawByDedupKey.get(rawKey);
                 if (raw) {
                     for (const { column, branchId, branchName } of perBranchStockCols) {
-                        const units = Math.floor(toNumber(raw[column], 0));
-                        if (units <= 0) continue;
-                        deps.adjustRetailStock({
-                            productId: id,
-                            branchId,
-                            delta: units,
-                            kind: "receive",
-                            reason: `Initial stock from AI Agent import (${branchName})`,
-                        });
+                        const parsed = parsedCells.get(column);
+                        if (!parsed) continue;
+                        if (parsed.perSize.length > 0) {
+                            for (const { size, units } of parsed.perSize) {
+                                deps.adjustRetailStock({
+                                    productId: id,
+                                    branchId,
+                                    size,
+                                    delta: units,
+                                    kind: "receive",
+                                    reason: `Initial stock from AI Agent import (${branchName}, ${size})`,
+                                });
+                            }
+                        } else if (parsed.total > 0) {
+                            deps.adjustRetailStock({
+                                productId: id,
+                                branchId,
+                                delta: parsed.total,
+                                kind: "receive",
+                                reason: `Initial stock from AI Agent import (${branchName})`,
+                            });
+                        }
                     }
                 }
             } else {

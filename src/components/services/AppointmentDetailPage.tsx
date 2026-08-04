@@ -39,7 +39,7 @@ import { useRouter } from "next/navigation";
 import {
     XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, CheckCircle,
     SearchMd, Eye, AlignLeft, ChevronLeft, RefreshCcw01, Star01,
-    FilterLines, Shuffle01, ArrowUpRight,
+    FilterLines, Shuffle01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { branchTzLabel } from "@/lib/branch-time";
@@ -638,7 +638,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Session type</p>
                             <p className="text-[16px] font-medium text-[#101828]">
-                                {isRecovery ? "Recovery & wellness" : "Private session"}
+                                {isRecovery ? "Recovery" : "Private session"}
                             </p>
                         </div>
                         {isRecovery && (
@@ -1037,15 +1037,9 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                         ...(showReviewsTab
                             ? [{ id: "reviews" as const, label: "Reviews & Rating", count: String(visibleRatings.length) }]
                             : []),
-                        // The Attendee tab is an ACTION, not a real tab — it opens the
-                        // standalone attendance view for this appointment in a new
-                        // browser tab (same approach as the class schedule detail) and
-                        // carries no count badge.
-                        { id: "attendee" as const, label: "Attendee", count: undefined as string | undefined },
                     ]).map(t => (
                         <button key={t.id} type="button"
                             onClick={() => {
-                                if (t.id === "attendee") { window.open(`/attendee/${appointment.id}`, "_blank", "noopener"); return; }
                                 setTab(t.id);
                                 if (t.id === "reviews") setReviewsSubTab("ratings");
                                 setSearch(""); clear();
@@ -1055,7 +1049,6 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                 tab === t.id ? "border-b-2 border-[#101828] text-[#101828]" : "text-[#667085] hover:text-[#344054]",
                             )}>
                             {t.label}
-                            {t.id === "attendee" && <ArrowUpRight className="w-4 h-4" />}
                             {t.count != null && (
                                 <span className={cn(
                                     "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
@@ -1427,7 +1420,7 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                     <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
                         {appointment.type === "private"  ? "Private session details" :
-                         appointment.type === "recovery" ? "Recovery & wellness details" :
+                         appointment.type === "recovery" ? "Recovery details" :
                          "Appointment details"}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />

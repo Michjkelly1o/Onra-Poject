@@ -371,7 +371,7 @@ export const staff: StaffSeed[] = [
         shift_id: "shift_afternoon",
         category_ids: ["cat_pilates", "cat_barre"],
     },
-    // ── Recovery & wellness practitioners ──────────────────────────────────
+    // ── Recovery practitioners ──────────────────────────────────
     // Recovery services (massage / IV / breathwork / sauna) now live at real
     // branches — these two practitioners are based at Forma South. Two
     // entries so /admin/services and appointment instructor pickers have
@@ -428,5 +428,21 @@ export const staff: StaffSeed[] = [
         specialties: ["Pilates"],
         category_ids: ["cat_pilates"],
         pay_rate_id: "pr_standard",
+    },
+
+    // ── Attendee — floor check-in role (client 2026-08-04) ─────────────────
+    // The one staff member under the new "Attendees" role. Identity matches the
+    // attendee persona seed (attendee_profile.ts) — same person, two seeds.
+    {
+        id: "user_robin_vega",
+        first_name: "Robin", last_name: "Vega", full_name: "Robin Vega",
+        email: "robin@email.com", phone: "+971 55 200 2017",
+        initials: "RV", color_hex: "#0e7090",
+        role_id: "role_attendees",
+        branch_id: "branch_forma_south",
+        status: "active",
+        first_login_completed: true,
+        joined_date: "Aug 1, 2026",
+        pay_rate_id: "pr_monthly",
     },
 ];

@@ -517,6 +517,16 @@ function PricingStep({
     const costOk  = data.unitCostAed !== "" && Number(data.unitCostAed) >= 0;
     const thrOk   = data.reorderThreshold !== "" && Number(data.reorderThreshold) >= 0 && Number.isInteger(Number(data.reorderThreshold));
     const canSubmit = priceOk && costOk && thrOk && !saving;
+    // Per-branch accordion for the SIZED stock grid — branches start EXPANDED
+    // (client 2026-08-04); collapse the ones you're done with so a studio with
+    // many branches isn't one long scroll. Sizeless products stay flat rows.
+    const [collapsedBranches, setCollapsedBranches] = useState<Set<string>>(new Set());
+    const toggleBranch = (id: string) =>
+        setCollapsedBranches(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
     return (
         <FormCard
             title="Pricing & stock"
@@ -568,29 +578,45 @@ function PricingStep({
                                 : "Adjust units on hand per branch. Only branches that change are re-written; every change logs a matching audit-log row.")}
                     </p>
                     <div className="flex flex-col gap-3">
-                        {branches.map(b => (
-                            sizes.length > 0 ? (
-                                <div key={b.id} className="flex flex-col gap-2 border-1 border-[#e4e7ec] rounded-[10px] p-3">
-                                    <p className="text-[14px] font-medium text-[#101828]">{b.name}</p>
-                                    <div className="flex flex-col gap-2 pl-1">
-                                        {sizes.map(sz => {
-                                            const key = stockKey(b.id, sz);
-                                            return (
-                                                <div key={sz} className="flex items-center justify-between gap-3">
-                                                    <p className="text-[14px] text-[#475467]">{sz}</p>
-                                                    <div className="w-[140px]">
-                                                        <IntegerInput
-                                                            value={stockByBranch[key] ?? ""}
-                                                            onChange={v => onStockChange(key, v)}
-                                                            placeholder="0"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                        {branches.map(b => {
+                            // Sized product → collapsible per-branch accordion
+                            // (header toggles the size rows). Sizeless → flat row.
+                            if (sizes.length > 0) {
+                                const open = !collapsedBranches.has(b.id);
+                                return (
+                                    <div key={b.id} className="flex flex-col border-1 border-[#e4e7ec] rounded-[10px] overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleBranch(b.id)}
+                                            aria-expanded={open}
+                                            className="flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[#f9fafb] transition-colors"
+                                        >
+                                            <p className="text-[14px] font-medium text-[#101828]">{b.name}</p>
+                                            <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", !open && "-rotate-90")} />
+                                        </button>
+                                        {open && (
+                                            <div className="flex flex-col gap-2 px-3 pb-3 pl-4">
+                                                {sizes.map(sz => {
+                                                    const key = stockKey(b.id, sz);
+                                                    return (
+                                                        <div key={sz} className="flex items-center justify-between gap-3">
+                                                            <p className="text-[14px] text-[#475467]">{sz}</p>
+                                                            <div className="w-[140px]">
+                                                                <IntegerInput
+                                                                    value={stockByBranch[key] ?? ""}
+                                                                    onChange={v => onStockChange(key, v)}
+                                                                    placeholder="0"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            ) : (
+                                );
+                            }
+                            return (
                                 <div key={b.id} className="flex items-center justify-between gap-3">
                                     <p className="text-[14px] text-[#101828]">{b.name}</p>
                                     <div className="w-[140px]">
@@ -601,8 +627,8 @@ function PricingStep({
                                         />
                                     </div>
                                 </div>
-                            )
-                        ))}
+                            );
+                        })}
                     </div>
                 </Section>
             </div>

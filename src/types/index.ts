@@ -3,7 +3,7 @@
 // Mirrors the PRD database entities
 // ───────────────────────────────────────────────────
 
-export type UserRole = "admin" | "instructor" | "member";
+export type UserRole = "admin" | "instructor" | "member" | "attendee";
 
 export type BookingStatus =
     | "confirmed"

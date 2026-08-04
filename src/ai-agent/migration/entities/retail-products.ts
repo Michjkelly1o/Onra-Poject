@@ -33,6 +33,11 @@ export const retailProductsEntity: EntityDef = {
         { key: "unit_cost",         label: "Unit cost (AED)" },
         { key: "reorder_threshold", label: "Reorder threshold" },
         { key: "image_url",         label: "Image URL" },
+        // Size variants — a comma-separated list of free-form size labels
+        // (e.g. "Small, Medium, Large"). Empty = a sizeless product. When set,
+        // the per-branch `stock_<branch>` cells carry a per-size breakdown
+        // ("Small:18 | Medium:24") which the applier parses; see apply-import.
+        { key: "sizes",             label: "Sizes" },
         { key: "initial_stock",     label: "Initial stock (units)" },
         // Per-branch stock — CSVs can carry a column named
         // `stock_<branch>` for each active branch (e.g. `stock_Main`,
@@ -98,6 +103,12 @@ export const retailProductsEntity: EntityDef = {
         photo:                 "image_url",
         "photo url":           "image_url",
         picture:               "image_url",
+        // Sizes — comma-separated free-form size labels
+        sizes:                 "sizes",
+        size:                  "sizes",
+        "size variants":       "sizes",
+        variants:              "sizes",
+        "size options":        "sizes",
         // Initial stock — seeds a `receive` adjustment into the wizard's
         // picked branch so the product ships with real on-hand units.
         stock:                 "initial_stock",

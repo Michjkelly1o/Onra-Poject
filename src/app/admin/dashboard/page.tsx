@@ -23,7 +23,6 @@ import {
     UserCheck01,
     ClockFastForward,
     InfoCircle,
-    ArrowUpRight,
 } from "@untitledui/icons";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { useRouter } from "next/navigation";
@@ -1103,7 +1102,7 @@ export default function AdminDashboard() {
             (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
         );
 
-        // ── Credit packages (kind=package) ──────────────────────────────────
+        // ── Packages (kind=package) ──────────────────────────────────
         const heldPackages = scopedCustomerPlans.filter(p =>
             p.kind === "package" && (p.status === "active" || p.status === "frozen"),
         );
@@ -1808,14 +1807,8 @@ export default function AdminDashboard() {
                         <p className="font-semibold text-lg text-[#101828] flex-1 truncate">
                             Today&apos;s sessions
                         </p>
-                        <Button
-                            variant="secondary-gray"
-                            size="sm"
-                            rightIcon={<ArrowUpRight className="w-4 h-4" />}
-                            onClick={() => window.open("/attendee", "_blank", "noopener")}
-                        >
-                            Attendee
-                        </Button>
+                        {/* Attendee entry point removed — the attendance console
+                            is its own role-scoped persona now (2026-08-04). */}
                         <Button
                             variant="secondary-gray"
                             size="sm"

@@ -34,6 +34,10 @@ const SEEDS: Record<string, Record<string, number[]>> = {
     "payments-collected":  { v: [220, 195, 240, 250, 235, 265, 280] },
     "payments-by-source":  { crm: [4, 3, 5, 4, 6, 4, 3], app: [26, 20, 22, 26, 30, 28, 24], web: [10, 8, 9, 10, 12, 11, 8] },
     "revenue-overview":    { revenue: [480, 540, 600, 680, 760, 830, 910], lastWeek: [640, 610, 630, 615, 595, 605, 610] },
+    // Revenue & new customers — client 2026-08-04. `revenue` reuses the
+    // revenue-overview net-revenue shape; `newCustomers` mirrors the
+    // returning-vs-new "new" seed so the two cards read the same headcount.
+    "revenue-vs-new-customers": { revenue: [480, 540, 600, 680, 760, 830, 910], newCustomers: [4, 3, 5, 6, 5, 7, 8] },
     // Values are AED sales revenue per day (not unit counts) — client Jul 2026:
     // tooltip must read as sales, not quantity.
     "sales-by-product":    { membership: [8400, 5600, 4500, 3200, 9800, 12500, 2400], package: [2400, 3600, 1500, 2400, 3200, 14200, 1500] },
@@ -374,6 +378,7 @@ const WIDGET_CSV_COLS: Record<string, { headers: string[]; fields: string[] }> =
     "payments-collected":   { headers: ["Date", "Payments (AED)"], fields: ["date", "v"] },
     "payments-by-source":   { headers: ["Date", "CRM", "Customer App", "Website"], fields: ["date", "crm", "app", "web"] },
     "revenue-overview":     { headers: ["Date", "Revenue", "Last week"],          fields: ["date", "revenue", "lastWeek"] },
+    "revenue-vs-new-customers": { headers: ["Date", "Net revenue (AED)", "New customers"], fields: ["date", "revenue", "newCustomers"] },
     "sales-by-product":     { headers: ["Date", "Membership (AED)", "Class package (AED)"], fields: ["date", "membership", "package"] },
     "active-memberships":   { headers: ["Date", "Customers"],                     fields: ["date", "v"] },
     // active-subscriptions row retired 2026-07-20 (widget removed from
@@ -1060,6 +1065,27 @@ function renderChart(
                 </div>
             );
 
+        // Revenue & new customers — client 2026-08-04. Net-revenue bars on the
+        // left AED axis + a new-customers line on the right count axis, so a
+        // single card reads revenue growth against studio headcount growth.
+        case "revenue-vs-new-customers":
+            return (
+                <div className="flex flex-col gap-2">
+                    <Legend items={[{ color: "#92baa4", label: "Net revenue" }, { color: "#b892ba", label: "New customers" }]} />
+                    <ResponsiveContainer width="100%" height={h}>
+                        <ComposedChart data={data}>
+                            <CartesianGrid vertical={false} stroke="#f2f4f7" />
+                            <XAxis dataKey="date" {...axisProps} interval={interval} />
+                            <YAxis yAxisId="rev" {...axisProps} width={36} tickFormatter={aedAxisTick} />
+                            <YAxis yAxisId="cust" orientation="right" {...axisProps} width={24} allowDecimals={false} />
+                            <Tooltip content={<ChartTooltip valueFormatter={(p) => p.dataKey === "newCustomers" ? `${p.value ?? 0}` : aedMoney(p.value)} />} cursor={{ fill: "#f9fafb" }} />
+                            <Bar  yAxisId="rev"  dataKey="revenue"      name="Net revenue"   fill="#92baa4" radius={[3,3,0,0]} maxBarSize={14} />
+                            <Line yAxisId="cust" dataKey="newCustomers" name="New customers"  type="monotone" stroke="#b892ba" strokeWidth={2} dot={false} />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
+            );
+
         case "sales-by-product":
             return (
                 <div className="flex flex-col gap-2">
@@ -1101,7 +1127,7 @@ function renderChart(
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={28} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Line type="monotone" dataKey="v" name="Active credit packages" stroke="#b892ba" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="v" name="Active packages" stroke="#b892ba" strokeWidth={2} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
             );

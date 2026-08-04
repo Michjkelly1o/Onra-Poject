@@ -13,8 +13,8 @@
 //   • click a column → deep-link to /admin/schedule scoped to that
 //     period (single-day in 7d mode, dateFrom+dateTo in 30d mode)
 //   • hover a column → shared cursor-following tooltip listing the
-//     per-type revenue breakdown for that period (same visual chrome
-//     as the InfoTooltip DS pattern used across settings pages)
+//     per-type revenue breakdown for that period (white card chrome
+//     matching the Insights / dashboard revenue tooltip — client 2026-08-04)
 //   • hover a legend chip / event chip → title-only (no cursor tip)
 
 import { useRouter } from "next/navigation";
@@ -59,7 +59,10 @@ export interface RevenueOutlookChartProps {
     granularity: "day" | "week";
 }
 
-// ── Shared cursor-following tooltip (DS chrome from `InfoTooltip`) ──────────
+// ── Shared cursor-following tooltip ─────────────────────────────────────────
+// White card chrome matching the Insights / dashboard revenue tooltip
+// (`ChartTooltip` in DashboardWidgetCard) so the revenue tooltip reads the
+// same everywhere the studio sees revenue (client 2026-08-04).
 interface TooltipPayload {
     x: number;
     y: number;
@@ -73,16 +76,16 @@ function BarTooltip({ payload }: { payload: TooltipPayload | null }) {
     return (
         <div
             role="tooltip"
-            className="fixed z-50 bg-[#0c111d] text-white text-[12px] leading-[16px] rounded-[8px] px-3 py-2 min-w-[200px] shadow-[0px_8px_16px_-2px_rgba(0,0,0,0.15)] pointer-events-none"
+            className="fixed z-50 bg-white border border-[#e4e7ec] rounded-lg shadow-lg text-[12px] leading-[16px] px-3 py-2 min-w-[200px] pointer-events-none"
             style={{ left: payload.x, top: payload.y }}
         >
-            <p className="font-semibold mb-0.5">{payload.title}</p>
-            {payload.subtitle && <p className="text-[11px] text-[#c8d0cb] mb-1">{payload.subtitle}</p>}
+            <p className="font-semibold text-[#101828] mb-0.5">{payload.title}</p>
+            {payload.subtitle && <p className="text-[11px] text-[#667085] mb-1.5">{payload.subtitle}</p>}
             {payload.rows.map((r, i) => (
-                <div key={i} className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full inline-block shrink-0" style={{ backgroundColor: r.color }} aria-hidden />
-                    <span className="flex-1">{r.name}</span>
-                    <span className="font-semibold tabular-nums">{r.value}</span>
+                <div key={i} className="flex items-center gap-1.5 mb-0.5">
+                    <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: r.color }} aria-hidden />
+                    <span className="flex-1 text-[#475467]">{r.name}</span>
+                    <span className="font-medium text-[#101828] tabular-nums">{r.value}</span>
                 </div>
             ))}
         </div>

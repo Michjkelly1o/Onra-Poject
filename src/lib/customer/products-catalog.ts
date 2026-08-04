@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer — Products catalog data (Memberships · Credit Packages · Gift Cards)
+// Customer — Products catalog data (Memberships · Packages · Gift Cards)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Branch-scoped, active-only catalog for the Products tab. Memberships + packages
@@ -40,7 +40,7 @@ function fmtValidity(days: number): string {
 }
 
 export interface CatalogProducts {
-    /** Memberships first, then credit packages (the "Packages" tab + the top of "All"). */
+    /** Memberships first, then packages (the "Packages" tab + the top of "All"). */
     plans: PlanRow[];
     /** Gift-card designs (the "Gift card" tab + the bottom section of "All"). */
     giftCards: PlanRow[];
@@ -119,14 +119,13 @@ export function useCatalogProducts(): CatalogProducts {
         const categoryLabelById = new Map(retailCategories.map((c) => [c.id, c.label] as const));
         const shopperBranchId =
             member?.branchId ?? (isAll ? undefined : selectedBranchId);
-        const stockAt = (productId: string): number => {
-            if (shopperBranchId) {
-                return retailStock
-                    .filter((s) => s.productId === productId && s.branchId === shopperBranchId)
-                    .reduce((n, s) => n + (s.unitsOnHand ?? 0), 0);
-            }
+        const stockAt = (productId: string, size?: string): number => {
             return retailStock
-                .filter((s) => s.productId === productId)
+                .filter((s) =>
+                    s.productId === productId &&
+                    (shopperBranchId ? s.branchId === shopperBranchId : true) &&
+                    (size === undefined || s.size === size),
+                )
                 .reduce((n, s) => n + (s.unitsOnHand ?? 0), 0);
         };
         const retail: PlanRow[] = retailProducts
@@ -134,6 +133,12 @@ export function useCatalogProducts(): CatalogProducts {
             .map((p) => {
                 const label = categoryLabelById.get(p.categoryId) ?? "Retail";
                 const units = stockAt(p.id);
+                const sizes = p.sizes ?? [];
+                // Per-size on-hand at the shopper's branch — drives the detail
+                // screen's size picker (out-of-stock sizes are disabled).
+                const sizeStock: Record<string, number> | undefined = sizes.length > 0
+                    ? Object.fromEntries(sizes.map((sz) => [sz, stockAt(p.id, sz)]))
+                    : undefined;
                 return {
                     id: p.id,
                     kind: "retail" as const,
@@ -144,6 +149,7 @@ export function useCatalogProducts(): CatalogProducts {
                     categoryLabel: label,
                     sku: p.sku,
                     unitsOnHand: units,
+                    ...(sizes.length > 0 ? { sizes, sizeStock } : {}),
                 };
             });
 
@@ -199,7 +205,7 @@ export function useOwnedProductIds(): Set<string> {
 
 export interface CreditBalanceVM {
     kind: "membership" | "package";
-    /** "Membership" or "Credit package" — the active plan type. */
+    /** "Membership" or "Package" — the active plan type. */
     typeLabel: string;
     /** Unlimited membership → show "Unlimited credits" + a full progress bar. */
     unlimited: boolean;
@@ -243,7 +249,7 @@ export function useCreditBalance(): CreditBalanceVM | null {
             .at(-1);
         return {
             kind,
-            typeLabel: kind === "membership" ? "Membership" : "Credit package",
+            typeLabel: kind === "membership" ? "Membership" : "Package",
             unlimited,
             remaining,
             // Never let the summed total read below the live remaining (keeps the
@@ -279,7 +285,7 @@ export function planIdsToCancel(activePlans: CustomerPlan[]): string[] {
 
 /**
  * Invariant self-heal: a customer holds ONE active membership OR one-or-more
- * active credit packages — never two memberships and never a membership + a
+ * active packages — never two memberships and never a membership + a
  * package. If legacy / corrupt persisted state violates this, cancel the extras
  * (keeping the most recently purchased plan / kind) so every customer surface —
  * My plan, the credit-balance card, the Products gating — reads a valid state.

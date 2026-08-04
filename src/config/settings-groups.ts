@@ -62,6 +62,14 @@ export const SETTINGS_GROUPS: SettingsGroupDef[] = [
         label: "Operations",
         icon: Settings03,
         tabs: [
+            // Services (client 2026-08-04) — studio-level on/off switches for
+            // the optional service types (Memberships / Private sessions /
+            // Recovery). Not every studio runs all three; turning one off is
+            // meant to hide everything related to it (menus, modules, data,
+            // reports). UI-only for now — the cascade wiring lands in a later
+            // phase. Sits first because it's the most foundational "what does
+            // this studio actually sell" configuration.
+            { label: "Services",            href: "/admin/settings/services"            },
             { label: "Booking rules",        href: "/admin/settings/booking-rules"       },
             { label: "Tax",                  href: "/admin/settings/tax"                 },
             // Retail categories tab retired 2026-07-31 — moved out of

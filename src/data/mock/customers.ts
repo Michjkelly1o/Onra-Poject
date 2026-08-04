@@ -15,7 +15,7 @@
 // Customer module list, the Status filter, and the row/bulk lifecycle actions
 // (deactivate / reactivate / archive / recover) all have data to act on.
 //
-// Multi-package: Bosa Ahmed holds 2 different credit packages at once —
+// Multi-package: Bosa Ahmed holds 2 different packages at once —
 // surfaces the "select which package to use" radio picker in the Payment
 // confirmation modal. Per CLAUDE.md a customer may hold 1 membership OR
 // multiple packages — never both.

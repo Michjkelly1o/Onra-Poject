@@ -8,8 +8,9 @@
 //
 //   VAT tab — Services parent:
 //     • Membership      — 1 rule, all locations (Services VAT 5%)
-//     • Credit package  — 2 rules, one per active club branch (South + East)
-//     • Appointment     — 1 rule, all locations (Services VAT 5%)
+//     • Package  — 2 rules, one per active club branch (South + East)
+//     • Private         — 1 rule, all locations (Services VAT 5%)
+//     • Recovery        — 1 rule, all locations (Services VAT 5%)
 //   VAT tab — Gift card (redeemed tax):
 //     • Gift card       — 1 placeholder rule (no rate; tax applies at the
 //                          redeemed category instead)
@@ -37,7 +38,7 @@ export const tax_rules: TaxRuleSeed[] = [
         created_at: "2026-01-15T10:00:00Z",
     },
 
-    // ── Services > Credit package — one per active club branch ───────────────
+    // ── Services > Package — one per active club branch ───────────────
     {
         id: "trl_credit_package_south",
         category: "credit_package",
@@ -57,13 +58,23 @@ export const tax_rules: TaxRuleSeed[] = [
         created_at: "2026-01-10T10:01:00Z",
     },
 
-    // ── Services > Appointment — one rule, all locations ─────────────────────
-    // New for Figma 5041:99307. Appointment-service bookings carry the same
-    // Services VAT as memberships + packages by default; admin can override
-    // per-branch via the "+ Add another tax rule" link on this row.
+    // ── Services > Private + Recovery — one rule each, all locations ─────────
+    // Client 2026-08-04 split the single "appointment" rule into the two
+    // session types so each can carry its own tax treatment. Both default to
+    // the same Services VAT as memberships + packages; admin can override
+    // per-branch via the "+ Add another tax rule" link on each row.
     {
-        id: "trl_appointment_all",
-        category: "appointment",
+        id: "trl_private_all",
+        category: "private",
+        tax_rate_id: "tax_services_vat",
+        all_locations: true,
+        location_ids: [],
+        status: "active",
+        created_at: "2026-01-15T10:01:00Z",
+    },
+    {
+        id: "trl_recovery_all",
+        category: "recovery",
         tax_rate_id: "tax_services_vat",
         all_locations: true,
         location_ids: [],

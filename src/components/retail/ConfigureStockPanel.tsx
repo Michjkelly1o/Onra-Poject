@@ -12,7 +12,7 @@
 // by `stockKey` covers both paths.
 
 import { useEffect, useMemo, useState } from "react";
-import { XClose, ChevronSelectorVertical } from "@untitledui/icons";
+import { XClose, ChevronSelectorVertical, ChevronDown } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -124,6 +124,15 @@ export function ConfigureStockPanel({ open, onClose, product }: {
 
     const [drafts, setDrafts] = useState<Record<string, string>>({});
     const [reason, setReason] = useState<string>("");
+    // Per-branch accordion for the SIZED grid — branches start EXPANDED
+    // (client 2026-08-04); collapse ones you're done with when there are many.
+    const [collapsedBranches, setCollapsedBranches] = useState<Set<string>>(new Set());
+    const toggleBranch = (id: string) =>
+        setCollapsedBranches(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
 
     useEffect(() => {
         if (!open) return;
@@ -208,29 +217,42 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                     </p>
                     <div className="flex flex-col gap-3">
                         {sizes.length > 0 ? (
-                            activeBranches.map(b => (
-                                <div key={b.id} className="flex flex-col gap-2 border-1 border-[#e4e7ec] rounded-[10px] p-3">
-                                    <p className="text-[14px] font-medium text-[#101828]">{b.name}</p>
-                                    <div className="flex flex-col gap-2">
-                                        {sizes.map(sz => {
-                                            const key = stockKey(b.id, sz);
-                                            return (
-                                                <div key={sz} className="grid grid-cols-[1fr_112px] items-center gap-3">
-                                                    <div className="flex flex-col min-w-0">
-                                                        <p className="text-[14px] text-[#475467] truncate">{sz}</p>
-                                                        <p className="text-[12px] text-[#667085]">Current: {currentByKey.get(key) ?? 0}</p>
-                                                    </div>
-                                                    <UnitsStepper
-                                                        value={drafts[key] ?? "0"}
-                                                        onChange={v => setDrafts(d => ({ ...d, [key]: v }))}
-                                                        ariaLabel={`units at ${b.name}, size ${sz}`}
-                                                    />
-                                                </div>
-                                            );
-                                        })}
+                            activeBranches.map(b => {
+                                const open = !collapsedBranches.has(b.id);
+                                return (
+                                    <div key={b.id} className="flex flex-col border-1 border-[#e4e7ec] rounded-[10px] overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleBranch(b.id)}
+                                            aria-expanded={open}
+                                            className="flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[#f9fafb] transition-colors"
+                                        >
+                                            <p className="text-[14px] font-medium text-[#101828]">{b.name}</p>
+                                            <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", !open && "-rotate-90")} />
+                                        </button>
+                                        {open && (
+                                            <div className="flex flex-col gap-2 px-3 pb-3">
+                                                {sizes.map(sz => {
+                                                    const key = stockKey(b.id, sz);
+                                                    return (
+                                                        <div key={sz} className="grid grid-cols-[1fr_112px] items-center gap-3">
+                                                            <div className="flex flex-col min-w-0">
+                                                                <p className="text-[14px] text-[#475467] truncate">{sz}</p>
+                                                                <p className="text-[12px] text-[#667085]">Current: {currentByKey.get(key) ?? 0}</p>
+                                                            </div>
+                                                            <UnitsStepper
+                                                                value={drafts[key] ?? "0"}
+                                                                onChange={v => setDrafts(d => ({ ...d, [key]: v }))}
+                                                                ariaLabel={`units at ${b.name}, size ${sz}`}
+                                                            />
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            ))
+                                );
+                            })
                         ) : (
                             activeBranches.map(b => {
                                 const key = stockKey(b.id);

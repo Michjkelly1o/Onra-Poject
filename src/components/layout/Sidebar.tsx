@@ -10,7 +10,7 @@ import {
     BarChartSquare02,
     CalendarCheck01,
     LayoutAlt01,
-    ShoppingBag03,
+    ShoppingBag02,
     ShoppingBag01,
     Announcement01,
     User01,
@@ -56,7 +56,7 @@ export type NavItemDef = {
 // refactor Phase 5: the old "Classes" group is dissolved — Schedule is a
 // top-level daily item; class Templates + Categories move below the line
 // into a "Classes" setup section; "Services & pricing" is renamed
-// "Products & pricing" with Private sessions + Recovery & wellness as
+// "Products & pricing" with Private sessions + Recovery as
 // type-filtered views of /admin/services.
 const NAV_ITEMS: NavItemDef[] = [
     { label: "Dashboard", href: "/admin/dashboard", icon: BarChartSquare02 },
@@ -74,7 +74,7 @@ const NAV_ITEMS: NavItemDef[] = [
             { label: "Reports",  href: "/admin/reports"  },
         ],
     },
-    { label: "Point of Sale", href: "/admin/pos", icon: ShoppingBag03, permission: "process_sales" },
+    { label: "Point of Sale", href: "/admin/pos", icon: ShoppingBag02, permission: "process_sales" },
     {
         label: "Marketing", icon: Announcement01, permission: "manage_marketing",
         children: [
@@ -86,9 +86,9 @@ const NAV_ITEMS: NavItemDef[] = [
     {
         // 'Studio' caption renders above this item — the first setup section
         // below the divider. Renamed from "Services & pricing": everything a
-        // member buys / books lives here. Private sessions + Recovery &
-        // wellness are type-filtered views of the shared /admin/services list.
-        label: "Products & pricing", icon: ShoppingBag01, permission: "manage_products",
+        // member buys / books lives here. Private sessions + Recovery
+        //  are type-filtered views of the shared /admin/services list.
+        label: "Products", icon: ShoppingBag01, permission: "manage_products",
         sectionLabel: "Studio",
         // Client 2026-08-03 — order set by client, and "Retail categories" is
         // no longer a standalone entry: Retail + Categories are now tabs on
@@ -96,7 +96,7 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Memberships & packages", href: "/admin/products"              },
             { label: "Private sessions",       href: "/admin/services?type=private" },
-            { label: "Recovery & wellness",    href: "/admin/services?type=recovery" },
+            { label: "Recovery",               href: "/admin/services?type=recovery" },
             { label: "Retail",                 href: "/admin/products/retail"        },
             { label: "Gift cards",             href: "/admin/products/gift-cards"    },
         ],
@@ -258,7 +258,7 @@ interface SidebarProps {
 export default function Sidebar({ navItems, accountHref, showSettings = true }: SidebarProps = {}) {
     const pathname = usePathname();
     // Query string — used only to disambiguate the two /admin/services deep-
-    // links (Private sessions vs Recovery & wellness). `.toString()` drops the
+    // links (Private sessions vs Recovery). `.toString()` drops the
     // leading "?"; empty when no params.
     const search = useSearchParams()?.toString() ?? "";
     const { sidebarCollapsed, toggleSidebar } = useAppStore();

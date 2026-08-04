@@ -32,7 +32,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, SearchMd, FilterLines, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
     MarkerPin01, User01, Plus, Trash01, Sale04, ShoppingBag03, Check,
-    CreditCard02, Package, Gift01,
+    CreditCard02, Package, Gift01, Heart,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { usePersistedListState } from "@/lib/list-ui-cache";
@@ -48,6 +48,7 @@ import { PlanBadge, NoPlanBadge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { RangeSlider } from "@/components/ui/RangeSlider";
 import { PosNewCustomerModal } from "@/components/pos/PosNewCustomerModal";
+import { SessionPickerModal, type SessionProduct, type SessionPick } from "@/components/pos/SessionPickerModal";
 import {
     useAppStore,
     MEMBERSHIPS, PACKAGES, GIFT_CARD_DESIGNS,
@@ -62,7 +63,7 @@ import { findActiveTaxRuleFor, computeLineTax, categoryForProductType, effective
 // `creditsValue` lets the credits-range filter sort everything in one pass
 // (gift cards get undefined and are excluded from that filter).
 
-type PosProductKind = "membership" | "package" | "gift_card" | "retail";
+type PosProductKind = "membership" | "package" | "gift_card" | "retail" | "private" | "recovery";
 
 interface PosProduct {
     id: string;
@@ -102,6 +103,9 @@ interface PosProduct {
     /** Retail only. On-hand per size aggregated across all branches — the size
      *  picker falls back to this when the branch picker is "All locations". */
     sizeStockAggregate?: Record<string, number>;
+    /** Private / Recovery only (2026-08-04). The service payload the session
+     *  picker modal needs to compute availability + build the booking. */
+    session?: SessionProduct;
 }
 
 /** ISO date → DD/MM/YYYY — gift-card "Valid until" cell on the POS card. */
@@ -109,6 +113,25 @@ function formatShortDate(iso: string): string {
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
     if (!m) return iso;
     return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+/** "HH:MM" (24h) → "9:00 AM" for the session cart line. */
+function fmt12(hhmm: string): string {
+    const [h, m] = hhmm.split(":").map(Number);
+    const period = h < 12 ? "AM" : "PM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/** The one-line "when + who" summary shown on a session cart line. */
+function fmtSessionWhen(a: NonNullable<CartLine["appointment"]>): string {
+    const d = new Date(`${a.dateISO}T00:00:00`);
+    const date = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    const time = fmt12(a.startTime);
+    // Open (capacity) sessions have no instructor; private lines show the
+    // chosen instructor or "Flexible" (studio assigns at checkout).
+    const who = a.openSession ? null : (a.flexible ? "Flexible" : (a.instructorName ?? "Instructor"));
+    return who ? `${date} · ${time} · ${who}` : `${date} · ${time}`;
 }
 
 // Catalog is built FROM LIVE STORE STATE — memberships, packages, AND
@@ -121,6 +144,7 @@ function buildCatalog(
     retailProducts: import("@/lib/store").RetailProduct[],
     retailStock: import("@/lib/store").RetailStock[],
     retailCategories: import("@/lib/store").RetailCategory[],
+    services: import("@/lib/store").Service[],
 ): PosProduct[] {
     const out: PosProduct[] = [];
 
@@ -233,6 +257,40 @@ function buildCatalog(
         });
     }
 
+    // Sessions (2026-08-04) — Private + Recovery services sold at POS. Each
+    // active service becomes a catalog card under its own tab; clicking it opens
+    // the session picker (date + instructor) before it joins the cart. The card
+    // leads with duration + capacity/1-on-1 so the cashier scans what it is.
+    for (const s of services) {
+        if (s.status !== "Active") continue;
+        out.push({
+            id: s.id,
+            kind: s.type, // "private" | "recovery"
+            name: s.name,
+            primaryMeta: `${s.durationMin} min`,
+            secondaryMeta: s.openSession ? `Up to ${s.capacity}` : "1-on-1",
+            priceAed: s.price,
+            priceDisplay: `AED ${s.price.toLocaleString()}`,
+            // Services are single-branch — scope the card to that branch so the
+            // POS branch picker hides it at other locations.
+            branchIds: [s.branchId],
+            // Session cards use the service cover image as the banner (like
+            // retail) — client 2026-08-04. Falls back to a gradient when unset.
+            bannerImageUrl: s.coverImage,
+            session: {
+                id: s.id,
+                name: s.name,
+                sessionType: s.type,
+                openSession: s.openSession,
+                durationMin: s.durationMin,
+                capacity: s.capacity,
+                branchId: s.branchId,
+                price: s.price,
+                coverImage: s.coverImage,
+            },
+        });
+    }
+
     return out;
 }
 
@@ -242,28 +300,38 @@ const KIND_TO_CARD_TYPE: Record<PosProductKind, ProductPosCardType> = {
     package:    "package",
     gift_card:  "gift-card",
     retail:     "retail",
+    private:    "private",
+    recovery:   "recovery",
 };
 
 // ─── Tabs + filter state ─────────────────────────────────────────────────────
 
-type TabId = "all" | "memberships" | "packages" | "gift-cards" | "retail";
+type TabId = "all" | "memberships" | "packages" | "private" | "recovery" | "retail" | "gift-cards";
 
+// Tab render order = insertion order below. Client 2026-08-04 asked for:
+// All · Memberships · Packages · Private sessions · Recovery · Retail · Gift cards.
 const TAB_FILTER: Record<TabId, PosProductKind[] | null> = {
     "all":          null,
     "memberships":  ["membership"],
     "packages":     ["package"],
-    "gift-cards":   ["gift_card"],
+    "private":      ["private"],
+    "recovery":     ["recovery"],
     "retail":       ["retail"],
+    "gift-cards":   ["gift_card"],
 };
 
 const TAB_LABEL: Record<TabId, { label: string; unit: string }> = {
-    "all":         { label: "All",         unit: "products"    },
-    "memberships": { label: "Memberships", unit: "memberships" },
-    "packages":    { label: "Packages",    unit: "packages"    },
-    "gift-cards":  { label: "Gift cards",  unit: "gift cards"  },
+    "all":         { label: "All",              unit: "products"    },
+    "memberships": { label: "Memberships",      unit: "memberships" },
+    "packages":    { label: "Packages",         unit: "packages"    },
+    // Sessions (2026-08-04) — Private + Recovery services booked at POS. The
+    // count noun reads "sessions" for both.
+    "private":     { label: "Private sessions", unit: "sessions"    },
+    "recovery":    { label: "Recovery",         unit: "sessions"    },
     // Retail (2026-07-29) — physical products (apparel, supplements,
-    // equipment, accessories, recovery). Sits AFTER Gift cards per client.
-    "retail":      { label: "Retail",      unit: "products"    },
+    // equipment, accessories, recovery).
+    "retail":      { label: "Retail",           unit: "products"    },
+    "gift-cards":  { label: "Gift cards",       unit: "gift cards"  },
 };
 
 interface FilterState {
@@ -295,6 +363,7 @@ function POSInner() {
     const retailProducts = useAppStore(s => s.retailProducts);
     const retailStock = useAppStore(s => s.retailStock);
     const retailCategories = useAppStore(s => s.retailCategories);
+    const services         = useAppStore(s => s.services);
     const promoCodes = useAppStore(s => s.promoCodes);
     const branches = useAppStore(s => s.branches);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
@@ -354,6 +423,9 @@ function POSInner() {
     const [giftCardModalDesignId, setGiftCardModalDesignId] = useState<string | null>(null);
     // Sized-retail size picker — the product whose size the cashier is choosing.
     const [sizePicker, setSizePicker] = useState<PosProduct | null>(null);
+    // Session picker — the private/recovery product whose date + instructor the
+    // cashier is choosing before it joins the cart (2026-08-04).
+    const [sessionPicker, setSessionPicker] = useState<PosProduct | null>(null);
 
     // Rebind every gift-card line's senderName whenever the cart's customer
     // changes (incl. cleared). Lets the admin add gift cards first and pick
@@ -439,8 +511,8 @@ function POSInner() {
 
     // Catalog filtered against the active tab, search box, and filter panel.
     const catalog = useMemo(
-        () => buildCatalog(memberships, packages, giftCardDesigns, retailProducts, retailStock, retailCategories),
-        [memberships, packages, giftCardDesigns, retailProducts, retailStock, retailCategories],
+        () => buildCatalog(memberships, packages, giftCardDesigns, retailProducts, retailStock, retailCategories, services),
+        [memberships, packages, giftCardDesigns, retailProducts, retailStock, retailCategories, services],
     );
     const filteredProducts = useMemo(() => {
         const kinds = TAB_FILTER[activeTab];
@@ -490,7 +562,44 @@ function POSInner() {
             setCartOpen(true);
             return;
         }
+        // Sessions — pick date + instructor (or capacity slot) before adding.
+        if (p.kind === "private" || p.kind === "recovery") {
+            setSessionPicker(p);
+            setCartOpen(true);
+            return;
+        }
         addLineToCart(p);
+    }
+
+    /** Add a booked session (private / recovery) to the cart. Each pick is a
+     *  distinct slot, so it always pushes a NEW line (never stacks). The
+     *  appointment block carries everything the checkout needs to create the
+     *  real booking + charge for it. */
+    function addAppointmentToCart(p: PosProduct, pick: SessionPick) {
+        setCartOpen(true);
+        setCart(prev => [...prev, {
+            lineId: `cl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            productId: p.id,
+            kind: p.kind,
+            name: p.name,
+            unitPrice: p.priceAed,
+            primaryMeta: `${pick.durationMin} min`,
+            quantity: 1,
+            // Cover image so the cart + checkout render the service PHOTO (like
+            // retail) instead of a category icon (client 2026-08-04).
+            imageUrl: p.bannerImageUrl,
+            appointment: {
+                serviceId: p.id,
+                dateISO: pick.dateISO,
+                startTime: pick.startTime,
+                endTime: pick.endTime,
+                durationMin: pick.durationMin,
+                instructorId: pick.instructorId,
+                instructorName: pick.instructorName,
+                flexible: pick.flexible,
+                openSession: pick.openSession,
+            },
+        }]);
     }
 
     /** Add a catalog product (optionally a specific retail size) to the cart.
@@ -581,13 +690,14 @@ function POSInner() {
         // `validatePromoCode`'s own `lineEligible` gate does the
         // per-type filtering, so the POS passes the FULL cart through
         // and lets the validator decide.
-        const promoLines = cart;
-        const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
+        // Sessions aren't promo-eligible yet — exclude them from the promo math.
+        const promoLines = cart.filter(l => !l.appointment);
+        const kinds = Array.from(new Set(promoLines.map(l => l.kind as "membership" | "package" | "gift_card" | "retail")));
         const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         return validatePromoCode(appliedPromoCode, {
             subtotalAed: promoSubtotal,
             productTypes: kinds,
-            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
+            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind as "membership" | "package" | "gift_card" | "retail", lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
         }, promoCodes);
     }, [appliedPromoCode, cart, subtotal, promoCodes, branchId]);
@@ -603,13 +713,13 @@ function POSInner() {
         if (!promoInput.trim()) return;
         // Client 2026-07-31 — full cart (retail included); the validator's
         // own applies_to gate decides which lines actually qualify.
-        const promoLines = cart;
-        const kinds = Array.from(new Set(promoLines.map(l => l.kind)));
+        const promoLines = cart.filter(l => !l.appointment);
+        const kinds = Array.from(new Set(promoLines.map(l => l.kind as "membership" | "package" | "gift_card" | "retail")));
         const promoSubtotal = promoLines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
         const res = validatePromoCode(promoInput, {
             subtotalAed: promoSubtotal,
             productTypes: kinds,
-            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind, lineTotal: l.unitPrice * l.quantity })),
+            lines: promoLines.map(l => ({ productId: l.productId, kind: l.kind as "membership" | "package" | "gift_card" | "retail", lineTotal: l.unitPrice * l.quantity })),
             branchId: branchId || undefined,
         }, promoCodes);
         if (res.ok) {
@@ -673,12 +783,11 @@ function POSInner() {
         let runningTax = 0;
         let firstRate = 0;
         for (const line of cart) {
-            // Retail is now taxed via its own `TaxRuleCategory` (client
-            // 2026-07-31 — was excluded during Phase D.2 before Tax
-            // gained a retail category). The applies-to lookup below
-            // sources a per-branch or all-locations rule the same way
-            // memberships / packages / appointments do.
-            const category = categoryForProductType(line.kind);
+            // Every line taxes via its own category — sessions map to "private"
+            // / "recovery" (client 2026-08-04 split), the same rule the checkout
+            // commit applies, so the cart estimate and the recorded transaction
+            // agree. Retail / memberships / packages the same way.
+            const category = categoryForProductType(line.kind as PurchaseLineItem["productType"]);
             if (!category) continue;
             const match = findActiveTaxRuleFor(
                 { taxRules, taxRates },
@@ -717,9 +826,29 @@ function POSInner() {
     // ── Proceed to payment — hand off to the existing checkout screen ──────
     function handleProceed() {
         if (!customerId || cart.length === 0) return;
-        const items: PurchaseLineItem[] = cart.map(l => ({
+        const items: PurchaseLineItem[] = cart.map(l => l.appointment ? {
+            // Session line → a "private" / "recovery" purchase item carrying the
+            // booked slot; applyPurchase books it (addCustomerAppointment) and
+            // records the revenue. Instructor is already resolved on the line.
             productId:   l.productId,
-            productType: l.kind,
+            productType: l.kind as "private" | "recovery",
+            name:        l.name,
+            unitPrice:   l.unitPrice,
+            quantity:    l.quantity,
+            // Cover image so the checkout order + receipt show the service photo.
+            imageUrl:    l.imageUrl,
+            appointment: {
+                dateISO:        l.appointment.dateISO,
+                startTime:      l.appointment.startTime,
+                durationMin:    l.appointment.durationMin,
+                instructorId:   l.appointment.instructorId,
+                instructorName: l.appointment.instructorName,
+                flexible:       l.appointment.flexible,
+                openSession:    l.appointment.openSession,
+            },
+        } : {
+            productId:   l.productId,
+            productType: l.kind as PurchaseLineItem["productType"],
             name:        l.name,
             unitPrice:   l.unitPrice,
             quantity:    l.quantity,
@@ -730,7 +859,7 @@ function POSInner() {
             // in). Passing it through here lets the checkout screen render
             // the real photo instead of the category-tinted gift icon.
             imageUrl:    l.imageUrl,
-        }));
+        });
         // The checkout screen already lives at /schedule/[classId]/checkout.
         // We thread `returnTo: "/admin/pos"` so it bounces back here on
         // complete/close instead of to a class.
@@ -830,7 +959,7 @@ function POSInner() {
                                     icon={ShoppingBag03}
                                 />
                             ) : (
-                                <div className={cn("grid gap-4", cartOpen ? "grid-cols-3" : "grid-cols-4")}>
+                                <div className="flex flex-col gap-3">
                                     {filteredProducts.map(p => {
                                         // Sum across all cart lines (gift cards
                                         // can spawn multiple lines from one design).
@@ -839,6 +968,7 @@ function POSInner() {
                                             .reduce((sum, l) => sum + l.quantity, 0);
                                         return (
                                             <ProductPosCard key={p.id}
+                                                layout="row"
                                                 type={KIND_TO_CARD_TYPE[p.kind]}
                                                 name={p.name}
                                                 primaryMeta={p.primaryMeta}
@@ -925,6 +1055,18 @@ function POSInner() {
                 onPick={(size) => { if (sizePicker) addLineToCart(sizePicker, size); setSizePicker(null); }}
             />
 
+            <SessionPickerModal
+                product={sessionPicker?.session ?? null}
+                customerId={customerId}
+                cartSessions={cart.filter(l => l.appointment).map(l => ({
+                    dateISO: l.appointment!.dateISO,
+                    startTime: l.appointment!.startTime,
+                    durationMin: l.appointment!.durationMin,
+                }))}
+                onClose={() => setSessionPicker(null)}
+                onPick={(pick) => { if (sessionPicker) addAppointmentToCart(sessionPicker, pick); setSessionPicker(null); }}
+            />
+
             {/* New-customer side modal — replaces the previous full-page
                 /customers/new navigation. On save, the newly created
                 customer is auto-selected in the cart so the admin can
@@ -971,7 +1113,7 @@ function CartToggleButton({ open, onClick }: { open: boolean; onClick: () => voi
  *  snapshot fields on the transaction and decrements per-branch stock in
  *  one set(). refundTransaction restores stock when a retail sale
  *  refunds. Cart lines can now hold retail products. */
-type SellableKind = "membership" | "package" | "gift_card" | "retail";
+type SellableKind = "membership" | "package" | "gift_card" | "retail" | "private" | "recovery";
 
 interface CartLine {
     /** Local stable id so duplicate-named gift cards don't collide. */
@@ -985,6 +1127,19 @@ interface CartLine {
     /** Retail only — chosen size variant. Undefined for sizeless products. */
     size?: string;
     giftCard?: PurchaseLineItem["giftCard"];
+    /** Private / Recovery only (2026-08-04) — the chosen slot. On checkout the
+     *  sale books this appointment (date/time/instructor) and charges for it. */
+    appointment?: {
+        serviceId: string;
+        dateISO: string;
+        startTime: string;
+        endTime: string;
+        durationMin: number;
+        instructorId: string | null;
+        instructorName?: string;
+        flexible: boolean;
+        openSession: boolean;
+    };
     /** Retail only — the product's banner image URL, so the cart line
      *  can show the same photo the POS card showed instead of the
      *  membership/package/gift-card icon fallback. */
@@ -1217,19 +1372,26 @@ function CartLineRow({ line, onQty, onRemove }: {
                             : <span className="text-[#dc6803]">Sender pending</span>}
                     </p>
                 )}
+                {line.appointment && (
+                    <p className="text-[12px] text-[#667085]">{fmtSessionWhen(line.appointment)}</p>
+                )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
-                <div className="flex items-center gap-2 border-1 border-[#e4e7ec] rounded-[8px] px-1.5 py-1">
-                    <button type="button" onClick={() => line.kind === "membership" || line.quantity <= 1 ? onRemove() : onQty(-1)}
-                        className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828]">
-                        <span className="text-[16px] leading-none">−</span>
-                    </button>
-                    <span className="text-[12px] font-semibold text-[#101828] min-w-[14px] text-center">{line.quantity}</span>
-                    <button type="button" disabled={line.kind === "membership"} onClick={() => onQty(+1)}
-                        className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed">
-                        <Plus className="w-[14px] h-[14px]" />
-                    </button>
-                </div>
+                {/* Session lines are a single booked slot — no quantity stepper,
+                    just remove. Every other line keeps the −/qty/+ control. */}
+                {!line.appointment && (
+                    <div className="flex items-center gap-2 border-1 border-[#e4e7ec] rounded-[8px] px-1.5 py-1">
+                        <button type="button" onClick={() => line.kind === "membership" || line.quantity <= 1 ? onRemove() : onQty(-1)}
+                            className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828]">
+                            <span className="text-[16px] leading-none">−</span>
+                        </button>
+                        <span className="text-[12px] font-semibold text-[#101828] min-w-[14px] text-center">{line.quantity}</span>
+                        <button type="button" disabled={line.kind === "membership"} onClick={() => onQty(+1)}
+                            className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed">
+                            <Plus className="w-[14px] h-[14px]" />
+                        </button>
+                    </div>
+                )}
                 <button type="button" onClick={onRemove}
                     className="w-8 h-8 flex items-center justify-center text-[#d92d20] hover:bg-[#fef3f2] rounded-[6px] transition-colors">
                     <Trash01 className="w-4 h-4" />
@@ -1240,19 +1402,23 @@ function CartLineRow({ line, onQty, onRemove }: {
 }
 
 function CartIcon({ kind, imageUrl }: { kind: PosProductKind; imageUrl?: string }) {
-    // Retail cart rows render the product PHOTO (banner from the POS
-    // card) instead of a decorative icon — that's what admins recognise
-    // at a glance. Falls back to the sage gradient when the product has
-    // no image uploaded yet.
+    // Retail + session rows render the product / service PHOTO (banner from the
+    // POS card) instead of a decorative icon — that's what admins recognise at
+    // a glance (client 2026-08-04). Retail with no image falls back to the sage
+    // gradient; a session with no cover image falls through to its tinted icon.
+    const isPhotoKind = kind === "retail" || kind === "private" || kind === "recovery";
+    if (isPhotoKind && imageUrl) {
+        return (
+            <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[#e4e7ec] bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+            </div>
+        );
+    }
     if (kind === "retail") {
         return (
             <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[#e4e7ec] bg-white">
-                {imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={imageUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
-                )}
+                <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
             </div>
         );
     }
@@ -1261,8 +1427,14 @@ function CartIcon({ kind, imageUrl }: { kind: PosProductKind; imageUrl?: string 
     const tint =
         kind === "membership" ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
         kind === "package"    ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
+        kind === "private"    ? { bg: "bg-[#f4ebff]", color: "text-[#7f56d9]" } :
+        kind === "recovery"   ? { bg: "bg-[#fef0c7]", color: "text-[#dc6803]" } :
                                  { bg: "bg-[#e0f9f4]", color: "text-[#4b8c9a]" };
-    const Icon = kind === "membership" ? CreditCard02 : kind === "package" ? Package : Gift01;
+    const Icon = kind === "membership" ? CreditCard02
+        : kind === "package"  ? Package
+        : kind === "private"  ? User01
+        : kind === "recovery" ? Heart
+        : Gift01;
     return (
         <div className={cn(
             "relative shrink-0 w-10 h-10 border-1 border-white/12 rounded-[8.84px] flex items-center justify-center backdrop-blur-[4.85px]",

@@ -2,11 +2,11 @@
 // Onra Studio — `packages` seed
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// 6 credit packages — single source of truth for:
+// 6 packages — single source of truth for:
 //   • POS catalog (filters by status === "active")
 //   • class-types "Applicable plans" tab
 //   • Memberships & Packages list view (/admin/products)
-//   • Credit package detail page (/products/[id])
+//   • Package detail page (/products/[id])
 //   • Customer profile "Active plans" tab (via planKind/packageIds join)
 //
 // Variety:
@@ -24,7 +24,7 @@
 
 import type { Package, PurchaseRulesData } from "./_types";
 
-/** Default purchase-rule snapshot for credit packages — includes the
+/** Default purchase-rule snapshot for packages — includes the
  *  package-only purchase-limit section. */
 function defaultPackagePurchaseRules(): PurchaseRulesData {
     return {
@@ -64,7 +64,7 @@ function defaultPackagePurchaseRules(): PurchaseRulesData {
     };
 }
 
-const DEFAULT_WELCOME = "Welcome to the community! Your credit package is now active and ready to use — book your favorite classes at any active branch.";
+const DEFAULT_WELCOME = "Welcome to the community! Your package is now active and ready to use — book your favorite classes at any active branch.";
 
 export const packages: Package[] = [
     {

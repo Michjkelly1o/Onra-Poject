@@ -39,6 +39,7 @@ import {
     type AppointmentDraft,
 } from "@/ai-agent/schedule/schedule-wizard";
 import { expandRecurrence } from "@/ai-agent/schedule/apply-class-schedule";
+import { validateClassSchedule, validateAppointment, type ScheduleClock } from "@/ai-agent/schedule/validate-schedule";
 
 const GENDER = z.enum(["all", "female", "male"]);
 
@@ -262,6 +263,19 @@ function apptDraft(a: AppointmentArgs): AppointmentDraft {
 
 export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) {
     const caps = ctx.scheduleCaps;
+    // Client-local clock (falls back to the server clock) — drives past-time
+    // pruning + validation against the studio's real local day.
+    const clock: ScheduleClock = { todayISO: ctx.nowISO, nowMinutes: ctx.nowMinutes };
+
+    // Which class categories each instructor teaches (by NAME) — so the model
+    // only offers instructors who teach the chosen template/service category.
+    // instructor.id === staff.id (instructors are synced from staff).
+    const catNameById = new Map(snapshot.classCategories.map((c) => [c.id, c.name] as const));
+    const staffById = new Map(snapshot.staff.map((s) => [s.id, s] as const));
+    const teachesOf = (instructorId: string): string[] =>
+        (staffById.get(instructorId)?.categoryIds ?? [])
+            .map((id) => catNameById.get(id))
+            .filter((n): n is string => !!n);
 
     return {
         list_class_options: tool({
@@ -297,7 +311,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
 
                     instructors: snapshot.instructors
                         .filter((i) => inScope(ctx, i.branchId))
-                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count })),
+                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count, teaches: teachesOf(i.id) })),
                     categories: snapshot.classCategories
                         .filter((c) => c.status === "active")
                         .map((c) => ({ id: c.id, name: c.name })),
@@ -375,6 +389,22 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
             },
         }),
 
+        open_single_datetime_editor: tool({
+            description:
+                "Open the interactive DATE & TIME picker for a SINGLE (non-recurring) class — the user picks the session date (from the next open days at the branch, or a custom date via the calendar) then a start time. ONLY genuinely-available times are offered — computed with the SAME logic the admin form uses (branch hours, gated by the chosen instructor's shift + free slots + room availability). Call this for ANY single class INSTEAD of asking date/time as separate questions. Pass durationMinutes, and the instructorId + roomId already chosen in step 2 so availability is correct. The result returns as a 'Session date & time confirmed — dateISO: <YYYY-MM-DD>, startTime: <HH:MM>' message; set recurring=false, dateISO, startTime on preview_class_schedule from it.",
+            parameters: z.object({
+                durationMinutes: z.number().describe("Class length in minutes (from the template) — bounds the last start slot."),
+                instructorId: z.string().optional().describe("The instructor chosen in step 2 — gates the offered times to their availability."),
+                roomId: z.string().optional().describe("The room chosen in step 2 — no other class may hold it at that time."),
+            }),
+            execute: async (a): Promise<ClassCardData> => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
+                }
+                return { card: "class_single_datetime", durationMinutes: a.durationMinutes ?? 60, instructorId: a.instructorId, roomId: a.roomId };
+            },
+        }),
+
         preview_class_schedule: tool({
             description:
                 "Show a LIVE preview of the class schedule being built. Call it after each answer the user gives so they can watch it fill in. Pass every field you know so far; leave the rest empty (they render as 'Awaiting your answer'). When all required fields are set the card offers Publish.",
@@ -390,16 +420,24 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 const preview = toPreview(config, answers, lookups);
                 const ready = isComplete(config, answers);
                 const draft = ready ? toDraft(config, answers) : undefined;
-                // Recurring — expand to the session list for the preview.
+                // Recurring — expand to the session list for the preview (past
+                // occurrences pruned against the studio's local clock).
                 const sessions =
-                    draft?.recurring && draft.recurrence ? expandRecurrence(draft.recurrence) : undefined;
+                    draft?.recurring && draft.recurrence ? expandRecurrence(draft.recurrence, clock) : undefined;
+                // Enforce the admin rules server-side — instructor teaches the
+                // category, inside business hours + the instructor's shift, not
+                // blocked, no double-booking, no past times. Only meaningful once
+                // the draft is complete.
+                const validation = draft ? validateClassSchedule({ draft, snapshot, clock }) : { errors: [], warnings: [] };
                 return {
                     card: "class_preview",
                     sessionType: config.sessionType,
                     preview,
-                    readyToPublish: ready,
+                    readyToPublish: ready && validation.errors.length === 0,
                     ...(draft ? { draft } : {}),
                     ...(sessions ? { sessions } : {}),
+                    ...(validation.errors.length > 0 ? { blockers: validation.errors } : {}),
+                    ...(validation.warnings.length > 0 ? { warnings: validation.warnings } : {}),
                 };
             },
         }),
@@ -420,9 +458,18 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     return { card: "class_empty", message: "Some details are still missing — let's finish the preview first." };
                 }
                 const draft = toDraft(config, answers);
+                // Hard gate — the SAME rules the admin form enforces. Refuse the
+                // publish and explain exactly what to fix.
+                const { errors } = validateClassSchedule({ draft, snapshot, clock });
+                if (errors.length > 0) {
+                    return {
+                        card: "class_denied",
+                        reason: `This schedule can't be published yet:\n• ${errors.join("\n• ")}`,
+                    };
+                }
                 let summary: string;
                 if (draft.recurring && draft.recurrence) {
-                    const n = expandRecurrence(draft.recurrence).length;
+                    const n = expandRecurrence(draft.recurrence, clock).length;
                     summary = `${draft.name} · ${n} ${n === 1 ? "class" : "classes"}`;
                 } else if (draft.single) {
                     summary = `${draft.name} · ${draft.single.dateISO} ${draft.single.startTime}`;
@@ -468,7 +515,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
 
                     instructors: snapshot.instructors
                         .filter((i) => inScope(ctx, i.branchId))
-                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count })),
+                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count, teaches: teachesOf(i.id) })),
                 };
             },
         }),
@@ -484,12 +531,19 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 const preview = apptPreview(args);
                 const ready = apptComplete(args);
                 const draft = ready ? apptDraft(args) : undefined;
+                // Same admin-parity gate for appointments — instructor teaches
+                // the service category + is free (shift/blocked/no clash), or a
+                // flexible booking has ≥1 free instructor; open sessions aren't
+                // full; inside business hours; not in the past.
+                const validation = draft ? validateAppointment({ draft, snapshot, clock }) : { errors: [], warnings: [] };
                 return {
                     card: "class_preview",
                     sessionType: args.sessionType,
                     preview,
-                    readyToPublish: ready,
+                    readyToPublish: ready && validation.errors.length === 0,
                     ...(draft ? { appointmentDraft: draft } : {}),
+                    ...(validation.errors.length > 0 ? { blockers: validation.errors } : {}),
+                    ...(validation.warnings.length > 0 ? { warnings: validation.warnings } : {}),
                 };
             },
         }),
@@ -506,6 +560,13 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     return { card: "class_empty", message: "Some details are still missing — let's finish the preview first." };
                 }
                 const draft = apptDraft(args);
+                const { errors } = validateAppointment({ draft, snapshot, clock });
+                if (errors.length > 0) {
+                    return {
+                        card: "class_denied",
+                        reason: `This session can't be booked yet:\n• ${errors.join("\n• ")}`,
+                    };
+                }
                 const noun = args.sessionType === "recovery" ? "Recovery session" : "Private session";
                 return {
                     card: "class_result",

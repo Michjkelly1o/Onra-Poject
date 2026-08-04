@@ -10,7 +10,7 @@
 // Cancelled tabs; the Booked roster renders as CARDS (avatar + name + spot +
 // a green Present button). "Present all" + each card's Present route through a
 // confirmation modal, then surface the Present Details modal (the customer's
-// active Class Credit Package + expiry — Figma 7986:135664).
+// active Class Package + expiry — Figma 7986:135664).
 //
 // Attendance is the ONLY write — via the shared `updateAttendance` store action,
 // so the class detail roster (Module 03), Bookings (04), customer profile (07),
@@ -28,6 +28,7 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { TableAvatar } from "@/components/ui/avatar";
 import { NoShowBadge } from "@/components/ui/badge";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { isAttendeeOngoing } from "@/components/attendee/attendee-status";
 import {
     useAppStore, appointmentToClassInstance, isAppointmentId,
     type ClassInstance, type ClassBooking, type Customer, type CustomerPlan, type GenderAccess,
@@ -112,7 +113,7 @@ function synthCustomerFromApptBooking(b: AppointmentBooking): Customer {
     };
 }
 
-/** Resolve the customer's active Class Credit Package for the Present Details
+/** Resolve the customer's active Class Package for the Present Details
  *  modal — newest active package first, else the active membership, else null. */
 function resolveActivePlan(plans: CustomerPlan[], customerId: string): { plan: CustomerPlan | null; kind: "package" | "membership" | null } {
     const mine = plans.filter(p => p.customerId === customerId && p.status === "active");
@@ -155,7 +156,9 @@ function LeftPanel({ ci, instructorLabel }: { ci: ClassInstance; instructorLabel
                     </div>
                 )}
                 <div className="absolute top-3 right-3">
-                    <StatusBadge type="class-detail" status={ci.status} />
+                    {/* Show the attendee-console effective status (Ongoing 30 min
+                        before start), so the detail badge matches the list. */}
+                    <StatusBadge type="class-detail" status={isAttendeeOngoing(ci.status, ci.dateISO, ci.startTime) ? "Ongoing" : ci.status} />
                 </div>
             </div>
 
@@ -456,7 +459,9 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
     }
     const ci: ClassInstance = classInstance;
 
-    const isOngoing = ci.status === "Ongoing";
+    // Attendee-only: Mark-present opens 30 min before start (client 2026-08-04),
+    // matching the list's early-Ongoing rule — not the studio-wide status.
+    const isOngoing = isAttendeeOngoing(ci.status, ci.dateISO, ci.startTime);
     const startHint = `Starts at ${to12h(ci.startTime)}`;
     const instructorLabel = (() => {
         const parts = ci.instructorName.split(" ");

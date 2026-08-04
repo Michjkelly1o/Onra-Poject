@@ -66,7 +66,7 @@ export type PlanKind = "membership" | "credit_package" | "gift_card" | "drop_in"
 
 const PLAN_LABEL: Record<PlanKind, string> = {
     membership:     "Membership",
-    credit_package: "Credit package",
+    credit_package: "Package",
     gift_card:      "Gift card",
     drop_in:        "Drop in",
 };

@@ -233,20 +233,22 @@ export function effectiveRatePercentage(rate: TaxRate | undefined | null): numbe
  *  category in Apply tax rates applies at REDEMPTION time, not at purchase.
  *  Buying a gift card is a pre-paid balance transfer with no tax of its own.
  *
- *  `appointment` was added in Module 13 (currency-priced appointment
- *  services). It maps directly to the new `appointment` tax rule category
- *  so the per-branch + all-locations lookup precedence applies the same
- *  way as memberships + credit packages.
+ *  `private` + `recovery` are the two session types (client 2026-08-04 split
+ *  the old single `appointment` category). Each maps to its own tax rule
+ *  category so the per-branch + all-locations lookup precedence applies the
+ *  same way as memberships + packages, and the studio can tax the two session
+ *  types differently.
  *
  *  Unmapped types (`gift_card`, `drop_in`, anything new) return `null` so
  *  the caller skips them when iterating cart lines. */
 export function categoryForProductType(
-    type: "membership" | "package" | "appointment" | "gift_card" | "drop_in" | "retail",
+    type: "membership" | "package" | "private" | "recovery" | "gift_card" | "drop_in" | "retail",
 ): TaxRuleCategory | null {
     switch (type) {
         case "membership":  return "membership";
         case "package":     return "credit_package";
-        case "appointment": return "appointment";
+        case "private":     return "private";
+        case "recovery":    return "recovery";
         case "retail":      return "retail";
         // gift_card + drop_in remain intentionally unmapped — sold at face
         // value with no tax on the card itself; tax applies when the card

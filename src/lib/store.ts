@@ -544,6 +544,7 @@ export function maxCustomDiscountPct(role: UserRole | string): number {
 export function demoRoleToStaffType(role: UserRole | string): RoleTypeSeed | null {
     if (role === "admin")      return "owner";
     if (role === "instructor") return "instructor";
+    if (role === "attendee")   return "attendees";
     // Member personas aren't Staff and don't get a Staff role.
     return null;
 }
@@ -2126,7 +2127,7 @@ export interface CustomerTransaction {
     id: string;
     customerId: string;
     branchId: string;
-    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card";
+    kind: "membership" | "package" | "cancellation_penalty" | "freeze_fee" | "retail" | "gift_card" | "private" | "recovery";
     productId: string;
     name: string;
     /** Gross amount paid. When the breakdown fields below are present this
@@ -2228,6 +2229,10 @@ export interface CustomerTransaction {
      *  (Distinct from `giftCardDebits`, which records SPENDING a card on some
      *  other sale.) */
     issuedGiftCardId?: string;
+    /** On a `kind: "private" | "recovery"` SESSION sale row, the id of the
+     *  appointment this sale booked. Lets a refund cancel that customer's
+     *  booking so a refunded session doesn't stay live on the schedule. */
+    appointmentId?: string;
 }
 
 // ─── Inventory / Retail — Phase A store shape (2026-07-29) ──────────────────
@@ -2392,10 +2397,24 @@ export interface AuditLogEntry {
 
 export interface PurchaseLineItem {
     productId: string;
-    productType: "membership" | "package" | "gift_card" | "retail";
+    productType: "membership" | "package" | "gift_card" | "retail" | "private" | "recovery";
     name: string;
     unitPrice: number;
     quantity: number;
+    /** Private / Recovery session line (2026-08-04). Carries the booked slot so
+     *  the checkout commit (`applyPurchase`) can create the real appointment
+     *  (via `addCustomerAppointment`) alongside the revenue transaction. The
+     *  instructor is already resolved (a "Flexible" pick is assigned a concrete
+     *  free instructor at pick time); `null` only for open/capacity sessions. */
+    appointment?: {
+        dateISO: string;
+        startTime: string;
+        durationMin: number;
+        instructorId: string | null;
+        instructorName?: string;
+        flexible: boolean;
+        openSession: boolean;
+    };
     /** Chosen size variant for a sized retail line (free-form label). Decides
      *  which (branch × size) stock row decrements. Undefined for sizeless
      *  products + all non-retail lines. */
@@ -3131,7 +3150,7 @@ function derivedFlatPlanFields(
             planKind: "package",
             planName: sorted.length === 1
                 ? sorted[0].name
-                : `${sorted.length} credit packages`,
+                : `${sorted.length} packages`,
             membershipId: undefined,
             packageIds: sorted.map(p => p.productId).filter((id): id is string => typeof id === "string"),
             planExpiryISO: sorted[0].expiryISO,
@@ -4752,7 +4771,7 @@ export interface AppState {
     deleteMemberships: (ids: string[]) => { deleted: string[]; blocked: string[] };
 
     // ── Packages ───────────────────────────────────────────────────────────
-    /** Append a new credit package to the store. Same id-handling as
+    /** Append a new package to the store. Same id-handling as
      *  `addMembership`. */
     addPackage: (input: Omit<Package, "id"> & { id?: string }) => string;
     updatePackage: (id: string, patch: Partial<Omit<Package, "id">>) => void;
@@ -5082,7 +5101,7 @@ export interface AppState {
 
     // ── Tax rules (Apply tax rates tab) ────────────────────────────────────
     /** Live tax rules — one row per applied rule across the four
-     *  predefined categories (Membership / Credit package / Gift card /
+     *  predefined categories (Membership / Package / Gift card /
      *  Pay rate). Drives `hasUsage` derivation for the Tax rates list. */
     taxRules: TaxRule[];
     /** Append a blank rule under `category` — created by the "+ Add another
@@ -8617,7 +8636,7 @@ export const useAppStore = create<AppState>()(persist(
                     status: "cancelled" as const,
                     cancelReason: reactivatingKind === "membership"
                         ? "Switched to membership"
-                        : "Switched to credit package",
+                        : "Switched to package",
                     cancelledAtISO: nowISO,
                 };
             });
@@ -8865,6 +8884,26 @@ export const useAppStore = create<AppState>()(persist(
                         c.id === cardId ? { ...c, status: "refunded" as const, current_balance_aed: 0 } : c,
                     ),
                 }));
+            }
+            // Session refund (2026-08-04) — cancel the booking this sale created
+            // so a refunded session doesn't stay live on the schedule. A 1:1
+            // session cancels the whole appointment (frees the instructor's
+            // slot); an open/capacity session just removes this customer's spot
+            // (others on the roster keep theirs). Skips already-cancelled /
+            // completed appointments (a delivered session isn't un-booked).
+            if ((target.kind === "private" || target.kind === "recovery") && target.appointmentId) {
+                const appt = get().appointments.find(a => a.id === target.appointmentId);
+                if (appt && appt.status !== "Cancelled" && appt.status !== "Completed") {
+                    if (appt.openSession) {
+                        const bk = get().appointmentBookings.find(b =>
+                            b.appointmentId === appt.id
+                            && b.customerId === target.customerId
+                            && b.status === "Booked");
+                        if (bk) get().cancelAppointmentBooking(bk.id, false, "Refunded");
+                    } else {
+                        get().cancelAppointment(appt.id, false, "Refunded");
+                    }
+                }
             }
         }
         // v83 audit-2 fix — a refund reverses paid history, which
@@ -11373,7 +11412,7 @@ export const useAppStore = create<AppState>()(persist(
             const retails = items.filter(it => it.productType === "retail");
             if (membership) return `the ${membership.name}`;
             if (packages.length === 1) return `the ${packages[0].name}`;
-            if (packages.length > 1) return `${packages.reduce((sum, p) => sum + p.quantity, 0)} credit packages`;
+            if (packages.length > 1) return `${packages.reduce((sum, p) => sum + p.quantity, 0)} packages`;
             if (giftCards.length > 0) return giftCards.length === 1
                 ? `a ${giftCards[0].name} gift card`
                 : `${giftCards.length} gift cards`;
@@ -11386,6 +11425,12 @@ export const useAppStore = create<AppState>()(persist(
                 }
                 return `${totalUnits} retail items`;
             }
+            const appointments = items.filter(it => it.productType === "private" || it.productType === "recovery");
+            if (appointments.length > 0) {
+                return appointments.length === 1
+                    ? `the ${appointments[0].name} session`
+                    : `${appointments.length} sessions`;
+            }
             return "items at checkout";
         })();
         // Pre-compute the first transaction id so the notification record can
@@ -11393,10 +11438,49 @@ export const useAppStore = create<AppState>()(persist(
         // profile (Payments tab → highlighted row). Retail-only orders fall
         // back to the first retail line so click-through still resolves.
         const txnStamp = Date.now();
-        const firstSaleIdx = items.findIndex(it => it.productType === "membership" || it.productType === "package");
+        // First "plan-style" sale line — carries the account-credit / gift-card
+        // debit stamp (so a refund can restore them) AND the notification
+        // deep-link. Sessions count here too (2026-08-04) so a session-only
+        // cart still stamps its payment + deep-links its receipt.
+        const firstSaleIdx = items.findIndex(it =>
+            it.productType === "membership" || it.productType === "package"
+            || it.productType === "private" || it.productType === "recovery");
         const firstRetailIdx = items.findIndex(it => it.productType === "retail");
         const resolvedFirstIdx = firstSaleIdx >= 0 ? firstSaleIdx : firstRetailIdx;
         const firstTxnId = resolvedFirstIdx >= 0 ? `txn_sale_${txnStamp}_${resolvedFirstIdx}` : undefined;
+        // ── Session bookings (2026-08-04) ──────────────────────────────────
+        // Private / Recovery lines create a REAL appointment at the chosen slot
+        // BEFORE the sale posts, reusing `addCustomerAppointment` (which handles
+        // open-session sharing, capacity, and the instructor snapshot). The
+        // instructor is already resolved on the line — a "Flexible" pick was
+        // assigned a concrete free instructor at pick time. Each call runs its
+        // own set(); the sale `set` below is a partial merge, so these writes
+        // persist alongside the transaction rows.
+        // Map each session item's index → the appointment id it booked, so the
+        // transaction loop below can stamp `appointmentId` on the sale row (a
+        // refund then cancels exactly that booking).
+        const apptIdByItemIdx = new Map<number, string>();
+        if (buyerSnapshot) {
+            const apptCustomer = {
+                id: buyerSnapshot.id,
+                name: `${buyerSnapshot.firstName} ${buyerSnapshot.lastName}`.trim(),
+                initials: buyerSnapshot.initials,
+                imageUrl: buyerSnapshot.imageUrl,
+            };
+            items.forEach((it, idx) => {
+                if ((it.productType !== "private" && it.productType !== "recovery") || !it.appointment) return;
+                const apptId = get().addCustomerAppointment({
+                    serviceId: it.productId,
+                    dateISO: it.appointment.dateISO,
+                    startTime: it.appointment.startTime,
+                    durationMins: it.appointment.durationMin,
+                    instructorId: it.appointment.instructorId,
+                    flexible: it.appointment.flexible,
+                    customer: apptCustomer,
+                });
+                apptIdByItemIdx.set(idx, apptId);
+            });
+        }
         set((state) => {
             // Business rule (per CLAUDE.md): 1 membership OR multiple packages — never both.
             const membership = items.find(it => it.productType === "membership");
@@ -11407,7 +11491,7 @@ export const useAppStore = create<AppState>()(persist(
                 ?? (packageItems.length === 1
                     ? packageItems[0].name
                     : packageItems.length > 1
-                        ? `${packageItems.reduce((sum, p) => sum + p.quantity, 0)} credit packages`
+                        ? `${packageItems.reduce((sum, p) => sum + p.quantity, 0)} packages`
                         : undefined);
             // Credits the purchase grants. A numbered membership contributes
             // its credit count; an unlimited membership has no cap. Each
@@ -11561,7 +11645,7 @@ export const useAppStore = create<AppState>()(persist(
                     kind: isMembership ? "membership" : "package",
                     productId: it.productId,
                     name: it.name,
-                    planTypeLabel: isMembership ? "Membership" : "Credit package",
+                    planTypeLabel: isMembership ? "Membership" : "Package",
                     creditsLabel,
                     // Reports v33 + Plan-tab column read these. Unlimited
                     // memberships store 0 → the unlimited-label check on
@@ -11650,7 +11734,7 @@ export const useAppStore = create<AppState>()(persist(
 
             // ─── Plan-exclusivity cascade (Jul 2026 client feedback) ──────
             // The customer either holds ONE active membership OR one or
-            // more active credit packages — never both. Buying a
+            // more active packages — never both. Buying a
             // membership must therefore cancel any previously-held
             // packages, and buying a package must cancel any
             // previously-held membership. `complimentary` plans are
@@ -11661,7 +11745,7 @@ export const useAppStore = create<AppState>()(persist(
             // null) — that path never displaces the current plan.
             const cascadeReason = planKind === "membership"
                 ? "Switched to membership"
-                : "Switched to credit package";
+                : "Switched to package";
             const shouldCascade = planKind !== null && (
                 planKind === "membership"
                     ? state.customerPlans.some(p =>
@@ -11715,8 +11799,19 @@ export const useAppStore = create<AppState>()(persist(
                 const lineGross = it.unitPrice * qty;
                 const txnId = `txn_sale_${stamp}_${idx}`;
                 // Sized products decrement the specific (branch × size) row;
-                // sizeless products leave `size` undefined.
-                const saleSize = it.size;
+                // sizeless products leave `size` undefined. Customer-side flows
+                // don't surface a size picker yet, so when a sized product
+                // arrives with no `size` we resolve a concrete variant here —
+                // preferring an in-stock size at the sale branch — instead of
+                // no-opping against a nonexistent sizeless row (which would let
+                // stock drift and let a refund inject a phantom row).
+                let saleSize = it.size;
+                if (!saleSize && product.sizes && product.sizes.length > 0) {
+                    const inStock = product.sizes.find(sz =>
+                        (nextRetailStock.find(s => s.productId === product.id && s.branchId === retailBranchId && s.size === sz)?.unitsOnHand ?? 0) > 0,
+                    );
+                    saleSize = inStock ?? product.sizes[0];
+                }
                 // Tax handling for retail lands as a follow-up — the TaxRule
                 // category union doesn't include "retail" yet. Retail sales
                 // currently write with no tax rule (subtotal = total).
@@ -11788,6 +11883,78 @@ export const useAppStore = create<AppState>()(persist(
                         createdAt: nowISO,
                     });
                 }
+            });
+
+            // ─── Session (private / recovery) line items (2026-08-04) ─────
+            // The booking was already created (addCustomerAppointment, above);
+            // here we record the revenue transaction so the sale lands in the
+            // Payments tab + reports. Tax follows the session's OWN rule
+            // ("private" / "recovery") the same way memberships / packages do
+            // (untaxed when no rule exists).
+            items.forEach((it, idx) => {
+                if (it.productType !== "private" && it.productType !== "recovery") return;
+                // The session's own tax category — client 2026-08-04 split
+                // "appointment" into "private" + "recovery" so each type can
+                // carry its own rule.
+                const sessionCategory = it.productType;
+                // A session is DELIVERED at the service's branch (that's where
+                // the appointment is created), so revenue + the tax rule resolve
+                // against THAT branch, not the buyer's home branch — otherwise a
+                // customer buying an out-of-branch session misattributes the
+                // money + could apply the wrong branch's VAT (audit 2026-08-04).
+                const sessionBranchId = state.services.find(s => s.id === it.productId)?.branchId || saleBranchId;
+                const lineGross = it.unitPrice * it.quantity;
+                const taxRule = state.taxRules.find(r =>
+                    r.category === sessionCategory
+                    && r.status === "active"
+                    && r.taxRateId !== undefined
+                    && (r.allLocations || r.locationIds.includes(sessionBranchId)),
+                );
+                const taxRate = taxRule?.taxRateId
+                    ? state.taxRates.find(t => t.id === taxRule.taxRateId && t.status === "active")
+                    : undefined;
+                let txnExtra: Partial<CustomerTransaction> = {};
+                if (taxRate) {
+                    const rPct = taxRate.ratePercentage;
+                    const pricesInclude = state.taxSettings.pricesIncludeTax;
+                    const taxAed = pricesInclude
+                        ? Math.round(lineGross * rPct / (100 + rPct))
+                        : Math.round(lineGross * rPct / 100);
+                    const subtotalAed = pricesInclude ? lineGross - taxAed : lineGross;
+                    txnExtra = { subtotalAed, taxAed, taxRatePercentage: rPct, taxInclusive: pricesInclude };
+                }
+                const source = paymentSource ?? "pos";
+                const cashierStaffId = source === "customer_portal" ? undefined : sellerStaffId;
+                // Account credit + gift-card debits ride the FIRST sale line so a
+                // refund of that line restores them. On a session-only cart the
+                // first session line IS that line (firstSaleIdx now covers
+                // sessions), so the payment is restorable on refund.
+                const isFirstSaleLine = idx === firstSaleIdx;
+                const bookedApptId = apptIdByItemIdx.get(idx);
+                newTransactions.push({
+                    id: `txn_sale_${stamp}_${idx}`,
+                    customerId,
+                    branchId: sessionBranchId,
+                    kind: sessionCategory,
+                    productId: it.productId,
+                    name: it.name,
+                    amountAed: lineGross,
+                    ...txnExtra,
+                    status: "complete",
+                    paymentMethod: "card",
+                    paymentSource: source,
+                    transactionType: "sale",
+                    staffId: cashierStaffId,
+                    createdAtISO: nowISO,
+                    // Link to the booking so a refund can cancel it.
+                    ...(bookedApptId ? { appointmentId: bookedApptId } : {}),
+                    ...(isFirstSaleLine && accountCreditAppliedAed && accountCreditAppliedAed > 0
+                        ? { accountCreditAppliedAed }
+                        : {}),
+                    ...(isFirstSaleLine && giftCardDebits && giftCardDebits.length > 0
+                        ? { giftCardDebits }
+                        : {}),
+                });
             });
 
             return {
@@ -12635,10 +12802,22 @@ export const useAppStore = create<AppState>()(persist(
         //   unused. CustomerTransaction gains `issuedGiftCardId`; IssuedGiftCard
         //   status gains "refunded"; one sale txn is synthesised per seeded
         //   card. Bump so persisted v97 payloads gain the gift-card sale rows.
-        // v100 (2026-08): custom-amount gift card design added to the seed +
+        // v100 — POS sells Private / Recovery sessions. The single "appointment"
+        //   tax category split into "private" + "recovery" (seed tax_rules
+        //   changed); PurchaseLineItem / CustomerTransaction gain the two session
+        //   kinds. Bump so persisted payloads drop the stale "appointment" tax
+        //   rule and pick up the new per-type rules + session-aware seeds.
+        // v101 — new "Attendees" predefined role + Robin Vega staff row. The
+        //   roles + staff slices are persisted, so bump to re-seed them (and
+        //   refresh today's classSchedules) — otherwise the new role never
+        //   appears in Staff & Permissions on an existing device.
+        // v102 — added a today EVENING demo class so the attendee console's
+        //   Upcoming group reliably populates alongside the Ongoing ones.
+        //   classSchedules are persisted → bump to re-seed today's classes.
+        // v103 (2026-08): custom-amount gift card design added to the seed +
         //   shift assignments gained an optional `week_start` (weekly scoping).
-        //   Bump so persisted demos reseed the gift-card catalog.
-        version: 100,
+        //   Bump so persisted demos reseed the gift-card catalog + shift scoping.
+        version: 103,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

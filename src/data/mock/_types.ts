@@ -419,7 +419,7 @@ export interface Customer {
     /** Membership plan id (when plan_kind="membership"). FK → memberships.id. */
     membership_id?: string;
     /** Package plan ids (when plan_kind="package"). FK → packages.id[]. A
-     *  customer may hold MULTIPLE credit packages at once (each contributes
+     *  customer may hold MULTIPLE packages at once (each contributes
      *  its remaining credits to the same pool). */
     package_ids?: string[];
     /** Legacy denormalized name — used by older renderers + the
@@ -622,7 +622,7 @@ export interface CustomerAgreement {
 
 /**
  * Customer plan record — one row of a customer's "Plan" tab. Covers purchased
- * memberships, purchased credit packages, and complimentary grants. A customer
+ * memberships, purchased packages, and complimentary grants. A customer
  * accrues a NEW row each time they buy / are granted a plan, so the table is
  * the full plan history (active + expired + frozen + cancelled + removed).
  *
@@ -635,7 +635,7 @@ export interface CustomerPlan {
     kind: "membership" | "package" | "complimentary";
     product_id?: string;
     name: string;
-    /** Plan-type column label — "Membership" | "Credit package" | "Free credit". */
+    /** Plan-type column label — "Membership" | "Package" | "Free credit". */
     plan_type_label: string;
     /** Transaction-name subtitle — "10 credits" | "1 free credit" | "Unlimited". */
     credits_label: string;
@@ -695,7 +695,7 @@ export interface CustomerPlan {
  * (Total spent / Total refunded / Net spend).
  *
  * A transaction is created each time a customer pays for a membership or a
- * credit package. Gift-card sales are NOT modelled here — the customer's
+ * package. Gift-card sales are NOT modelled here — the customer's
  * gift cards live in `issued_gift_cards`.
  *
  * FK: `customer_id` → customers.id; `branch_id` → branches.id;
@@ -1318,7 +1318,7 @@ export interface ClassTemplate {
  *   • "private"  — 1:1 session.   Comes from a Service      → Appointment.
  *   • "recovery" — spa/wellness.  Comes from a Service      → Appointment.
  *
- * Canonical UI labels: "Classes" · "Private sessions" · "Recovery & wellness".
+ * Canonical UI labels: "Classes" · "Private sessions" · "Recovery".
  */
 export type SessionType = "class" | "private" | "recovery";
 
@@ -1828,7 +1828,7 @@ export interface PayrollEntrySeed {
 //
 // FK: branch_id → branches.id (nullable — Owner has no branch scope).
 
-export type RoleTypeSeed = "owner" | "branch_admin" | "operator" | "front_desk" | "instructor";
+export type RoleTypeSeed = "owner" | "branch_admin" | "operator" | "front_desk" | "instructor" | "attendees";
 export type RoleStatusSeed = "active" | "inactive" | "archive";
 
 /** A single cell in the CRUD permission matrix.
@@ -2564,9 +2564,11 @@ export interface TaxSettingsSeed {
  *    Services (VAT tab):
  *      • "membership"     — Membership product sales
  *      • "credit_package" — Credit/class package sales
- *      • "appointment"    — Appointment service bookings (post-Module-13
- *                            currency-priced services). New for Figma
- *                            5006:73920 / 5041:99307.
+ *      • "private"        — Private (1:1) session bookings
+ *      • "recovery"       — Recovery / wellness session bookings
+ *                           (client 2026-08-04 split the single
+ *                           "appointment" category into the two session
+ *                           types so each can carry its own tax rule).
  *    Gift card (VAT tab):
  *      • "gift_card"      — Renders as "Tax at redemption" — gift card
  *                            sales are stored-value transfers (no tax at
@@ -2580,7 +2582,8 @@ export interface TaxSettingsSeed {
 export type TaxRuleCategorySeed =
     | "membership"
     | "credit_package"
-    | "appointment"
+    | "private"
+    | "recovery"
     | "gift_card"
     | "pay_rate"
     // Client 2026-07-31 — retail added after the initial Tax module ship.

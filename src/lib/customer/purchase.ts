@@ -7,7 +7,7 @@
 // When the booking confirmation has no eligible plan, the member buys one. The
 // cart survives the Select Plan → Product Details → Checkout round-trip via a
 // module singleton (same pattern as bookingDraft). Business rule (CLAUDE.md):
-// ONE membership OR multiple credit packages — never both.
+// ONE membership OR multiple packages — never both.
 
 import { useMemo, useSyncExternalStore } from "react";
 import { useAppStore } from "@/lib/store";
@@ -66,12 +66,19 @@ export interface PlanRow {
     /** Units on hand at the shopper's branch. Drives the "N in stock" line
      *  + the sold-out add gate. Undefined on non-retail rows. */
     unitsOnHand?: number;
+    /** Size variants offered (free-form labels). Present only on sized retail
+     *  rows — the detail screen shows a size picker before add-to-cart. */
+    sizes?: string[];
+    /** Per-size on-hand at the shopper's branch (size → units). */
+    sizeStock?: Record<string, number>;
 }
 
 export interface CartItem extends PlanRow {
     quantity: number;
     /** Stable line key (gift cards can repeat the same design with different recipients). */
     lineId: string;
+    /** Chosen size variant for a sized retail line. Undefined = sizeless. */
+    size?: string;
     /** Gift-card recipient + chosen amount + message (Gift Card Information page). */
     recipientName?: string;
     recipientEmail?: string;
@@ -171,7 +178,7 @@ let _giftLineSeq = 0;
  *  gift cards + retail; a package drops any membership but keeps packages +
  *  gift cards + retail; retail stacks by id (like packages do among themselves)
  *  and never touches the plan lines. */
-export function addToCart(item: PlanRow, quantity: number): void {
+export function addToCart(item: PlanRow, quantity: number, size?: string): void {
     const giftCards = purchaseCart.items.filter((i) => i.kind === "gift_card");
     const retails = purchaseCart.items.filter((i) => i.kind === "retail");
     if (item.kind === "gift_card") {
@@ -180,14 +187,14 @@ export function addToCart(item: PlanRow, quantity: number): void {
         return;
     }
     if (item.kind === "retail") {
-        // Retail lines stack per product id — every branch buys one at a
-        // time from the shopper's home stock so quantity always folds into
-        // the same lineId. Never displaces plan lines.
-        const existingRetail = retails.find((i) => i.id === item.id);
+        // Retail lines stack per (product id × size) — each size is its own
+        // line so quantity folds into the matching lineId. Never displaces
+        // plan lines. Sizeless products keep `size` undefined.
+        const existingRetail = retails.find((i) => i.id === item.id && i.size === size);
         if (existingRetail) {
             existingRetail.quantity += quantity;
         } else {
-            retails.push({ ...item, quantity, lineId: item.id });
+            retails.push({ ...item, quantity, size, lineId: size ? `${item.id}-${size}` : item.id });
         }
         const others = purchaseCart.items.filter((i) => i.kind !== "retail");
         purchaseCart.items = [...others, ...retails];

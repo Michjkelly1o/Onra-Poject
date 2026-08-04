@@ -45,6 +45,7 @@ const PERM_BRANCH_ADMIN  = DEFAULT_PERMISSIONS_BY_TYPE.branch_admin;
 const PERM_OPERATOR      = DEFAULT_PERMISSIONS_BY_TYPE.operator;
 const PERM_FRONT_DESK    = DEFAULT_PERMISSIONS_BY_TYPE.front_desk;
 const PERM_INSTRUCTOR    = DEFAULT_PERMISSIONS_BY_TYPE.instructor;
+const PERM_ATTENDEES     = DEFAULT_PERMISSIONS_BY_TYPE.attendees;
 
 /** Default Grant Limits — disabled. Admins toggle on per role instance. */
 export const DEFAULT_GRANT_LIMITS: GrantLimitsSeed = {
@@ -128,6 +129,16 @@ export const roles: RoleSeed[] = [
         status: "active",
         grant_limits: OPERATOR_GRANT_LIMITS,
         permissions: PERM_OPERATOR,
+        locked: false,
+    },
+    {
+        id: "role_attendees",
+        name: "Attendees",
+        description: "Views the attendee check-in screen and marks class attendance only",
+        type: "attendees",
+        status: "active",
+        grant_limits: DEFAULT_GRANT_LIMITS,
+        permissions: PERM_ATTENDEES,
         locked: false,
     },
     {

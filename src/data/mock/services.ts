@@ -62,7 +62,7 @@ export const services: Service[] = [
         status: "Active",
     },
 
-    // ── Recovery & wellness services (type="recovery"). Seeded under Forma
+    // ── Recovery services (type="recovery"). Seeded under Forma
     //    South for the demo; any branch can host recovery. Room is optional
     //    per service (see appointments.ts — massage + IV use the South
     //    Recovery room, sauna + breathwork are room-less). ──

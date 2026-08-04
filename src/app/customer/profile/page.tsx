@@ -85,7 +85,7 @@ export default function ProfilePage() {
             ? 100
             : Math.min(100, Math.max(0, Math.round((bal.remaining / bal.total) * 100)))
         : 0;
-    // Column 1: plan TYPE (Membership / Credit package) + the total credits held.
+    // Column 1: plan TYPE (Membership / Package) + the total credits held.
     const planTypeLabel = bal?.typeLabel ?? "Membership";
     const totalCreditsValue = bal ? (bal.unlimited ? "Unlimited" : `${bal.total} credits`) : "—";
     function MenuGroup({ rows }: { rows: Row[] }) {

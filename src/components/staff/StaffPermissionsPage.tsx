@@ -94,6 +94,7 @@ const ROLE_TYPE_BADGE: Record<RoleType, string> = {
     operator:     "bg-[#eff4ff] border-1 border-[#c7d7fe] text-[#3538cd]",
     front_desk:   "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     instructor:   "bg-[#fff4ed] border-1 border-[#f9dbaf] text-[#b93815]",
+    attendees:    "bg-[#ecfeff] border-1 border-[#a5f0fc] text-[#0e7090]",
 };
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
 //   • Active shadow   two-stop drop shadow (skeumorphic)
 //   • Transition      `transition-all` (not just colors)
 //   • Label format    "Roles (7)" — count in parens, same as
-//                     "Membership (3)" / "Credit package (5)"
+//                     "Membership (3)" / "Package (5)"
 //
 // Wrapper bg uses `bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1`
 // — Tailwind tokens (resolved via the global Tailwind config) so the staff

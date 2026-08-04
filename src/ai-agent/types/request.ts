@@ -89,6 +89,11 @@ export type AiAgentStateSnapshot = Pick<
     | "customerReferrals"
     // roles is needed for readStaff to resolve role_id → role name
     | "roles"
+    // Class-creation validation (2026-08-04) — the AI agent enforces the SAME
+    // rules as the admin schedule form: business hours gate the offerable time
+    // window; appointments carry the live private/recovery bookings the conflict
+    // scan checks against. `businessHours` also feeds getBusinessHours parity.
+    | "businessHours"
 >;
 
 /** Thread mode. Insight = analytics chat; migration = 4-step CSV wizard;
@@ -118,4 +123,10 @@ export interface AiAgentRequestBody {
      *  the user attaches a file. The API route routes to migrationTools
      *  when `mode === "migration"` and passes this through. */
     parsedFile?: ParsedFile | null;
+    /** The client's LOCAL "now" — "YYYY-MM-DD" + minutes-since-midnight —
+     *  forwarded so class/appointment scheduling prunes past-time slots against
+     *  the studio's real local time (matches the admin form). Optional; the
+     *  server clock is used when absent. */
+    clientNowISO?: string;
+    clientNowMinutes?: number;
 }

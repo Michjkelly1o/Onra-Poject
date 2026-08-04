@@ -624,7 +624,7 @@ function ListView({
                             <SortableHeader sortKey="credits" currentSort={sortKey} dir={sortDir} onSort={onSort} className="whitespace-nowrap">Credit amount</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[200px]")}>
-                            <SortableHeader sortKey="branches" currentSort={sortKey} dir={sortDir} onSort={onSort}>Branch location</SortableHeader>
+                            <SortableHeader sortKey="branches" currentSort={sortKey} dir={sortDir} onSort={onSort}>Location</SortableHeader>
                         </th>
                         <th className={cn(TH, "w-[140px]")}>
                             <SortableHeader sortKey="duration" currentSort={sortKey} dir={sortDir} onSort={onSort}>Duration</SortableHeader>
@@ -989,7 +989,7 @@ export default function ProductsPage() {
                     <SegmentedTabs
                         tabs={[
                             { key: "memberships", label: `Membership (${memberships.length})` },
-                            { key: "packages",    label: `Credit package (${packages.length})` },
+                            { key: "packages",    label: `Packages (${packages.length})` },
                         ]}
                         activeKey={tab}
                         onChange={(k) => setTab(k as TabId)}

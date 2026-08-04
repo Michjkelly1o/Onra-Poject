@@ -33,7 +33,7 @@ export const tax_rates: TaxRateSeed[] = [
         rate_percentage: 5,
         kind: "vat",
         type: "default",
-        description: "Standard VAT applied to membership, credit package, and appointment sales.",
+        description: "Standard VAT applied to membership, package, and appointment sales.",
         calculation_mode: "exclusive",
         status: "active",
         created_at: "2026-01-10T09:00:00Z",

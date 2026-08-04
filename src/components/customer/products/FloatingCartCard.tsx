@@ -4,7 +4,7 @@
 // Customer — FloatingCartCard (Products catalog) — Figma 3298-70460
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// After adding a credit package / gift card, a card floats above the bottom nav on
+// After adding a package / gift card, a card floats above the bottom nav on
 // the catalog summarising the cart (count + total) and opening the Checkout Cart.
 // Fixed to the bottom of the centred member column, above the 5-tab nav.
 

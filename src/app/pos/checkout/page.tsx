@@ -144,8 +144,10 @@ function POSCheckoutInner() {
     const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
 
     function canConfirm(): boolean {
-        // Sales must be credited to a staff member before completing.
-        if (sellerStaffId === null) return false;
+        // "Credited to" is OPTIONAL (client 2026-08-04) — a sale can complete
+        // with no staff attribution (it just earns no commission, exactly like a
+        // self-service portal sale). `applyPurchase` already accepts an
+        // undefined seller, so no gate here.
         // Account credit alone can cover a sale — no payment method needed
         // when the credit fully zeroes the total.
         if (total === 0) return true;

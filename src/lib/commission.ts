@@ -16,12 +16,12 @@ import type { CommissionCategory } from "@/lib/store";
 /** Full labels — category dropdown + payroll breakdown rows. */
 export const COMMISSION_CATEGORY_LABEL: Record<CommissionCategory, string> = {
     membership:       "Membership",
-    credit_package:   "Credit package",
+    credit_package:   "Package",
     gift_card:        "Gift card",
     retail:           "Retail",
     class_booking:    "Class",
     service_private:  "Private session",
-    service_recovery: "Recovery & wellness",
+    service_recovery: "Recovery",
 };
 
 /** Display order for the category dropdown — products first (POS-sold), then

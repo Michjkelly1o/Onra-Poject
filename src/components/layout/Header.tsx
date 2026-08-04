@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { SESSION_TYPE_LABEL } from "@/lib/session-type";
 import Link from "next/link";
-import { SearchMd, UserCircle, LogOut01, ChevronDown, ArrowUpRight } from "@untitledui/icons";
+import { SearchMd, UserCircle, LogOut01, ChevronDown } from "@untitledui/icons";
 import NotificationBell from "@/components/NotificationBell";
 import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 const PAGE_TITLES: Record<string, string> = {
     "/admin/dashboard": "Dashboard",
     "/admin/schedule": "Schedule",
-    "/attendee": "Attendee",
     "/admin/class-types": "Class Templates",
     "/admin/services": "Appointment services",
     "/admin/categories": "Categories",
@@ -42,6 +41,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/settings": "Settings",
     "/admin/settings/business-locations": "Business & locations",
     "/admin/settings/branding": "Branding",
+    "/admin/settings/services": "Services",
     "/admin/settings/booking-rules": "Booking Rules",
     // Payments + Integrations merged into a single Integrations module
     // (Figma 7564:188282 + 7632:17561 — two tabs). The legacy /payments
@@ -171,7 +171,7 @@ function ProfileDropdown({ accountHref }: { accountHref: string }) {
 export default function Header() {
     const pathname = usePathname();
     // Session-type deep-link on /admin/services — the "Private sessions" and
-    // "Recovery & wellness" nav entries share the route, so the header title
+    // "Recovery" nav entries share the route, so the header title
     // reads the type off the query to show the right module name.
     const typeParam = useSearchParams().get("type");
     // Dashboard title greets the studio by name (client 2026-07-21).
@@ -224,20 +224,9 @@ export default function Header() {
                 experience never sees it (their surfaces are scoped to their
                 own data, so cross-studio search is irrelevant). */}
             <div className="flex items-center gap-[12px]">
-                {/* Attendee — entry point to the attendance console, shown only on
-                    the Schedule module (client 2026-07-24). Sits beside the bell,
-                    matching the header-button chrome. */}
-                {pathname.startsWith("/admin/schedule") && (
-                    <Link
-                        href="/attendee"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 h-9 px-3 rounded-[8px] border-1 border-[#d0d5dd] bg-white text-[14px] font-semibold text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors"
-                    >
-                        Attendee
-                        <ArrowUpRight className="w-4 h-4 text-[#667085]" />
-                    </Link>
-                )}
+                {/* The Attendee entry point moved off the admin header — the
+                    attendance console is now its own role-scoped persona
+                    (client 2026-08-04). */}
                 {showGlobalSearch && (
                     <button
                         type="button"

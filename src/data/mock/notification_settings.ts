@@ -133,7 +133,7 @@ export const notification_settings: NotificationSettingSeed[] = [
         id: "ns_cancellation_confirm",
         category: "booking",
         notification_type: "cancellation_confirm",
-        label: "Cancellation confirm",
+        label: "Cancellation confirmation",
         email_enabled: true,
         whatsapp_enabled: true,
         sms_enabled: false,

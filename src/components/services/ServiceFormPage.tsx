@@ -15,7 +15,7 @@
 //      – Class category (live `classCategories` slice — adds in Booking
 //        Rules surface here on the same render)
 //      – Duration (in minutes)
-//      – "Session type" selector — Private session vs Recovery & wellness.
+//      – "Session type" selector — Private session vs Recovery.
 //        Choosing Recovery reveals the "open sessions" toggle (multi-
 //        participant, no instructor) + capacity. Private is always 1:1.
 //   2. Pricing
@@ -228,11 +228,11 @@ function ServicePreviewCard({ data }: { data: PreviewData }) {
 
 // Session-type card metadata — shared by the interactive picker (bare create)
 // and the read-only card (menu-scoped create / edit). The type is fixed by the
-// menu you came from — "Private sessions" creates Private, "Recovery & wellness"
+// menu you came from — "Private sessions" creates Private, "Recovery"
 // creates Recovery — so the two are never mixed up.
 const TYPE_OPTIONS = [
     { value: "private" as const,  title: "Private session",     subtitle: "1:1 training with an instructor.", Icon: UserCheck01 },
-    { value: "recovery" as const, title: "Recovery & wellness", subtitle: "Spa / wellness — massage, sauna, breathwork, etc.", Icon: Feather },
+    { value: "recovery" as const, title: "Recovery", subtitle: "Spa / wellness — massage, sauna, breathwork, etc.", Icon: Feather },
 ];
 
 interface Step1Data {
@@ -330,7 +330,7 @@ function ServiceDetailStep({
                 </div>
 
                 {/* Session type — the type is fixed by the menu you came from
-                    ("Private sessions" / "Recovery & wellness"), so the picker
+                    ("Private sessions" / "Recovery"), so the picker
                     is hidden when locked. Only a bare/direct create shows it.
                     Recovery keeps the Open-sessions option regardless. */}
                 {(!lockType || data.type === "recovery") && (
@@ -526,7 +526,7 @@ export interface ServiceFormPageProps {
     /** Service id — required in edit mode, ignored in create mode. */
     serviceId?: string;
     returnTo?: string;
-    /** Create scoped to a menu ("Private sessions" / "Recovery & wellness") —
+    /** Create scoped to a menu ("Private sessions" / "Recovery") —
      *  locks the type so you can't create the other kind from this menu. */
     presetType?: ServiceType;
 }
@@ -562,7 +562,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
         category:     existing?.category ?? "",
         durationMin:  existing ? String(existing.durationMin) : "",
         // Type comes from the edited service, else the menu that opened the
-        // create form ("Private sessions" / "Recovery & wellness"), else
+        // create form ("Private sessions" / "Recovery"), else
         // defaults to Private for a bare/direct create.
         type:         existing?.type ?? presetType ?? "private",
         openSession:  existing?.openSession ?? false,
@@ -698,7 +698,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
     const pageTitle = mode === "edit"
         ? `Edit ${existing?.name ?? "service"}`
         : presetType === "private"  ? "Create private session"
-        : presetType === "recovery" ? "Create recovery & wellness"
+        : presetType === "recovery" ? "Create recovery session"
         : "Create new service";
 
     return (
