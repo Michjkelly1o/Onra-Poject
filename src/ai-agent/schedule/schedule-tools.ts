@@ -29,6 +29,13 @@ import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 import type { SchedulePreviewData } from "@/ai-agent/components/SchedulePreviewCard";
 import {
+    classDetailsQuestions,
+    locationInstructorQuestions,
+    repeatQuestion,
+    publishConfirmQuestion,
+    type ClassOptionsData,
+} from "@/ai-agent/schedule/class-questions";
+import {
     toPreview,
     toDraft,
     isComplete,
@@ -277,6 +284,44 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
             .map((id) => catNameById.get(id))
             .filter((n): n is string => !!n);
 
+    const branchNameById = (id: string) => snapshot.branches.find((b) => b.id === id)?.name ?? "";
+
+    // The studio data every class question is built from — the SINGLE source
+    // shared by list_class_options AND the code-driven question tools, so the
+    // options a question shows always match the live studio.
+    const buildOptions = (): ClassOptionsData => {
+        const ratings = instructorRatings(snapshot);
+        return {
+            templates: snapshot.classTemplates
+                .filter((t) => t.status === "Active" && t.type === "class")
+                .map((t) => ({
+                    id: t.id,
+                    name: t.name,
+                    description: t.description,
+                    category: t.category,
+                    durationMin: t.durationMin,
+                    capacity: t.capacity,
+                    coverImage: t.coverImage,
+                    coverColor: t.coverColor,
+                })),
+            rooms: snapshot.rooms
+                .filter((r) => r.status === "active" && inScope(ctx, r.branch_id))
+                .map((r) => ({ id: r.id, name: r.name, branchId: r.branch_id, branchName: branchNameById(r.branch_id), capacity: r.capacity })),
+            instructors: snapshot.instructors
+                .filter((i) => inScope(ctx, i.branchId))
+                .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count, teaches: teachesOf(i.id) })),
+            categories: snapshot.classCategories
+                .filter((c) => c.status === "active")
+                .map((c) => ({ id: c.id, name: c.name })),
+            payRates: caps.seePayRate
+                ? snapshot.payRates.filter((p) => p.status === "active").map((p) => ({ id: p.id, name: p.name }))
+                : [],
+            branches: snapshot.branches
+                .filter((b) => b.status === "active" && inScope(ctx, b.id))
+                .map((b) => ({ id: b.id, name: b.name })),
+        };
+    };
+
     return {
         list_class_options: tool({
             description:
@@ -289,39 +334,80 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin to set this one up.",
                     };
                 }
-                const branchName = (id: string) => snapshot.branches.find((b) => b.id === id)?.name ?? "";
-                const ratings = instructorRatings(snapshot);
-                return {
-                    card: "class_options",
-                    templates: snapshot.classTemplates
-                        .filter((t) => t.status === "Active" && t.type === "class")
-                        .map((t) => ({
-                            id: t.id,
-                            name: t.name,
-                            description: t.description,
-                            category: t.category,
-                            durationMin: t.durationMin,
-                            capacity: t.capacity,
-                            coverImage: t.coverImage,
-                            coverColor: t.coverColor,
-                        })),
-                    rooms: snapshot.rooms
-                        .filter((r) => r.status === "active" && inScope(ctx, r.branch_id))
-                        .map((r) => ({ id: r.id, name: r.name, branchId: r.branch_id, branchName: branchName(r.branch_id), capacity: r.capacity })),
+                return { card: "class_options", ...buildOptions() };
+            },
+        }),
 
-                    instructors: snapshot.instructors
-                        .filter((i) => inScope(ctx, i.branchId))
-                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count, teaches: teachesOf(i.id) })),
-                    categories: snapshot.classCategories
-                        .filter((c) => c.status === "active")
-                        .map((c) => ({ id: c.id, name: c.name })),
-                    payRates: caps.seePayRate
-                        ? snapshot.payRates.filter((p) => p.status === "active").map((p) => ({ id: p.id, name: p.name }))
-                        : [],
-                    branches: snapshot.branches
-                        .filter((b) => b.status === "active" && inScope(ctx, b.id))
-                        .map((b) => ({ id: b.id, name: b.name })),
+        // ── Code-driven wizard questions ─────────────────────────────────────
+        // These four tools BUILD the class-creation questions from the live
+        // studio data (buildOptions) and return a ready-made `questions` card.
+        // The model calls them instead of composing ask_questions itself, so the
+        // questions never drift — same wording, order, and options every run.
+        // The model's only job is to read the picked answer and map its LABEL
+        // back to the matching id from list_class_options.
+        ask_class_details: tool({
+            description:
+                "STEP 1 (Class details). Returns the template-picker + gender-access questions BUILT from the studio's real templates. Call this INSTEAD of composing the questions yourself. Read the answers: map the picked template label back to its id via list_class_options (or 'Create from scratch' = no template), and the gender (All genders/Women only/Men only).",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return {
+                    card: "questions" as const,
+                    stepLabel: "Class details",
+                    message: "Let's start building the class schedule.",
+                    questions: classDetailsQuestions(buildOptions()),
                 };
+            },
+        }),
+        ask_location_instructor: tool({
+            description:
+                "STEP 2 (Location & instructor). Pass the templateId chosen in step 1 (omit for Create-from-scratch). Returns the room (grouped by branch, over-capacity badged), equipment, spot, instructor (ONLY those who teach the template's category) and — when allowed — pay-rate questions, all BUILT from live data. Call this INSTEAD of composing the questions yourself. Read the answers and map each picked label back to its id via list_class_options. After: if spot=Yes call open_spot_editor(capacity); then preview_class_schedule.",
+            parameters: z.object({
+                templateId: z.string().optional().describe("The template picked in step 1 — omit for Create-from-scratch."),
+            }),
+            execute: async ({ templateId }) => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const opts = buildOptions();
+                const template = opts.templates.find((t) => t.id === templateId);
+                // Mirror the admin gate: if a template's category has no
+                // instructor who teaches it, don't offer an empty picker.
+                if (template && !opts.instructors.some((i) => i.teaches.includes(template.category))) {
+                    return {
+                        card: "class_empty" as const,
+                        message: `No active instructor teaches ${template.category}. Pick a different template or category, or add an instructor who teaches it in Staff.`,
+                    };
+                }
+                return {
+                    card: "questions" as const,
+                    stepLabel: "Location & instructor",
+                    questions: locationInstructorQuestions(opts, templateId, caps.seePayRate, caps.addRoom),
+                };
+            },
+        }),
+        ask_repeat: tool({
+            description:
+                "STEP 3's first question — does the class repeat? Returns the Single / Recurring choice. After the answer: Single → open_single_datetime_editor; Recurring → open_days_editor.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Date & time", questions: repeatQuestion() };
+            },
+        }),
+        ask_publish_confirm: tool({
+            description:
+                "The publish confirmation — call ONLY once preview_class_schedule returns readyToPublish:true. Returns the 'Publish schedule / Edit a field' choice. If the user picks Publish, call publish_class_schedule; if Edit a field, follow the Edit-a-field rule.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Publish", questions: publishConfirmQuestion() };
             },
         }),
 
