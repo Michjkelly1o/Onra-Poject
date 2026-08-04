@@ -13,6 +13,7 @@
 // NOT here — it stays in validate-schedule.ts, which reuses the admin helpers.
 
 import type { AiQuestionSpec } from "@/ai-agent/components/AiQuestionPrompt";
+import { fmtTime } from "@/components/ui/TimeDropdown";
 
 // ── The studio data the questions are built from (mirrors list_class_options) ─
 
@@ -210,6 +211,17 @@ export function dateQuestion(title: string, days: DateOpt[], minDateISO: string)
                 })),
                 { id: "__custom_date", label: "Pick a custom date", datePicker: true, minDateISO },
             ],
+        },
+    ];
+}
+
+/** SINGLE class time picker — the genuinely-available start times as options. */
+export function singleTimeQuestion(times: string[]): AiQuestionSpec[] {
+    return [
+        {
+            title: "When does the class start?",
+            kind: "radio",
+            options: times.map((t) => ({ id: t, label: fmtTime(t) })),
         },
     ];
 }

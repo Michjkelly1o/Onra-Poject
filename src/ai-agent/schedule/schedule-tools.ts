@@ -34,6 +34,7 @@ import {
     repeatQuestion,
     publishConfirmQuestion,
     dateQuestion,
+    singleTimeQuestion,
     recurEndRuleQuestion,
     recurEndAfterQuestion,
     recurIntervalQuestion,
@@ -51,7 +52,7 @@ import {
     type AppointmentDraft,
 } from "@/ai-agent/schedule/schedule-wizard";
 import { expandRecurrence } from "@/ai-agent/schedule/apply-class-schedule";
-import { validateClassSchedule, validateAppointment, type ScheduleClock } from "@/ai-agent/schedule/validate-schedule";
+import { validateClassSchedule, validateAppointment, computeAvailableTimes, type ScheduleClock } from "@/ai-agent/schedule/validate-schedule";
 
 const GENDER = z.enum(["all", "female", "male"]);
 
@@ -574,19 +575,37 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
             },
         }),
 
-        open_single_datetime_editor: tool({
+        ask_single_date: tool({
             description:
-                "Open the interactive DATE & TIME picker for a SINGLE (non-recurring) class — the user picks the session date (from the next open days at the branch, or a custom date via the calendar) then a start time. ONLY genuinely-available times are offered — computed with the SAME logic the admin form uses (branch hours, gated by the chosen instructor's shift + free slots + room availability). Call this for ANY single class INSTEAD of asking date/time as separate questions. Pass durationMinutes, and the instructorId + roomId already chosen in step 2 so availability is correct. The result returns as a 'Session date & time confirmed — dateISO: <YYYY-MM-DD>, startTime: <HH:MM>' message; set recurring=false, dateISO, startTime on preview_class_schedule from it.",
-            parameters: z.object({
-                durationMinutes: z.number().describe("Class length in minutes (from the template) — bounds the last start slot."),
-                instructorId: z.string().optional().describe("The instructor chosen in step 2 — gates the offered times to their availability."),
-                roomId: z.string().optional().describe("The room chosen in step 2 — no other class may hold it at that time."),
-            }),
-            execute: async (a): Promise<ClassCardData> => {
+                "SINGLE class — 'When is the session?'. Returns the next days + a 'Pick a custom date' option. Read the picked date → dateISO (a custom pick returns the ISO; a preset returns a date label — convert to YYYY-MM-DD). Then call ask_single_time with that date.",
+            parameters: z.object({}),
+            execute: async () => {
                 if (!caps.createSchedule) {
-                    return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
                 }
-                return { card: "class_single_datetime", durationMinutes: a.durationMinutes ?? 60, instructorId: a.instructorId, roomId: a.roomId };
+                const tomorrow = addDaysISO(ctx.nowISO, 1);
+                const days: DateOpt[] = nextDayRows(ctx.nowISO, "Tomorrow");
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", message: "Set when this class runs.", questions: dateQuestion("When is the session?", days, tomorrow) };
+            },
+        }),
+        ask_single_time: tool({
+            description:
+                "SINGLE class — 'When does the class start?'. Pass the chosen dateISO plus the instructorId + roomId + durationMinutes from step 2. Returns ONLY the genuinely-available start times (same availability logic as the admin form — branch hours, the instructor's shift + free slots, no room double-booking, not in the past). Read the picked time → startTime (HH:MM). Then set recurring=false, dateISO, startTime and call preview_class_schedule.",
+            parameters: z.object({
+                dateISO: z.string().describe("The session date (YYYY-MM-DD) from ask_single_date."),
+                instructorId: z.string().optional().describe("The instructor chosen in step 2 — gates the offered times."),
+                roomId: z.string().optional().describe("The room chosen in step 2 — no other class may hold it then."),
+                durationMinutes: z.number().optional().describe("Class length in minutes (from the template)."),
+            }),
+            execute: async ({ dateISO, instructorId, roomId, durationMinutes }) => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const times = computeAvailableTimes({ snapshot, clock, dateISO, instructorId, roomId, durationMins: durationMinutes ?? 60 });
+                if (times.length === 0) {
+                    return { card: "class_empty" as const, message: `No available times on ${dateISO} — the instructor is fully booked or off that day, or the branch is closed. Go back and pick another date.` };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: singleTimeQuestion(times) };
             },
         }),
 

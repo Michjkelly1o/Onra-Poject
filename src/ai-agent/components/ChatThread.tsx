@@ -78,9 +78,8 @@ import { isClassCard, type ClassCardData } from "@/ai-agent/schedule/schedule-ca
 import { expandDraftToRows, summariseDraft } from "@/ai-agent/schedule/apply-class-schedule";
 import { TypingDots } from "@/ai-agent/components/TypingDots";
 import { AiQuestionPrompt, type AiQuestionAnswer } from "@/ai-agent/components/AiQuestionPrompt";
-// Step-3 date/time editors — rendered in the panel ABOVE the composer (same
-// treatment as ask_questions), never inline in the chat (client 2026-08-04).
-import { SingleDateTimeEditor } from "@/ai-agent/components/SingleDateTimeEditor";
+// Recurring "Select days & General schedule" editor — rendered in the panel
+// ABOVE the composer (like ask_questions), never inline (client 2026-08-04).
 import { SelectDaysEditor } from "@/ai-agent/components/SelectDaysEditor";
 import { fmtTime } from "@/components/ui/TimeDropdown";
 
@@ -695,14 +694,10 @@ export function ChatThread({
         const ti = last.toolInvocations?.find(
             (t) =>
                 t.state === "result" &&
-                ((t.result as ClassCardData)?.card === "class_single_datetime" ||
-                    (t.result as ClassCardData)?.card === "class_days_editor"),
+                (t.result as ClassCardData)?.card === "class_days_editor",
         );
         if (!ti || ti.state !== "result") return null;
-        return ti.result as Extract<
-            ClassCardData,
-            { card: "class_single_datetime" | "class_days_editor" }
-        >;
+        return ti.result as Extract<ClassCardData, { card: "class_days_editor" }>;
     })();
     // The old `answerQuestions` handler that composed a single reply from
     // insight `ask_questions` answers has been folded into
@@ -1102,25 +1097,12 @@ export function ChatThread({
     // bubble via the machine-message interception in MessageRow.
     const scheduleEditorPanel = pendingScheduleEditor ? (
         <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
-            {pendingScheduleEditor.card === "class_single_datetime" ? (
-                <SingleDateTimeEditor
-                    durationMinutes={pendingScheduleEditor.durationMinutes}
-                    instructorId={pendingScheduleEditor.instructorId}
-                    roomId={pendingScheduleEditor.roomId}
-                    onConfirm={(pick) =>
-                        send(
-                            `Session date & time confirmed — dateISO: ${pick.dateISO}, startTime: ${pick.startTime}`,
-                        )
-                    }
-                />
-            ) : (
-                <SelectDaysEditor
-                    durationMinutes={pendingScheduleEditor.durationMinutes}
-                    onConfirm={(days) =>
-                        send(`Days confirmed — days: ${JSON.stringify(days)}`)
-                    }
-                />
-            )}
+            <SelectDaysEditor
+                durationMinutes={pendingScheduleEditor.durationMinutes}
+                onConfirm={(days) =>
+                    send(`Days confirmed — days: ${JSON.stringify(days)}`)
+                }
+            />
         </div>
     ) : null;
 
