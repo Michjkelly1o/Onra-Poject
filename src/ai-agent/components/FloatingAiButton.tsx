@@ -62,8 +62,16 @@ export function FloatingAiButton() {
         // (was bottom-right). `left-1/2` + `-translate-x-1/2` on the
         // wrapper horizontally centres the pill regardless of its width;
         // 32px bottom padding stays per Figma spacing-4xl.
+        //
+        // z-40 (client 2026-08-04) — sits just BELOW the app's modal / side-
+        // panel layer (every admin dialog, sheet, and filter panel is z-50 or
+        // higher) so the pill slides BEHIND any open overlay instead of
+        // floating over a dimmed backdrop. Still above all page chrome
+        // (sticky headers / in-page dropdowns top out at z-30), so it keeps
+        // floating over ordinary content. Was z-[60], which sat over z-50
+        // modals — the bug the client reported on the Add-widget modal.
         <div
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60]"
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
