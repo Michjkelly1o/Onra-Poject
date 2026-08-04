@@ -335,9 +335,9 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
                     <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
-                    {/* Plan type */}
+                    {/* Products */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Plan type</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Products</p>
                         <div className="flex flex-wrap gap-2">
                             {KINDS.map(k => (
                                 <FilterPill key={k} label={KIND_LABEL[k]} selected={pending.kinds.includes(k)}
@@ -737,7 +737,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                 <SortableHeader sortKey="name"     currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Transaction name</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[160px]")}>
-                                                <SortableHeader sortKey="planType" currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Plan type</SortableHeader>
+                                                <SortableHeader sortKey="planType" currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Products</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[120px]")}>
                                                 <SortableHeader sortKey="amount"   currentSort={txnSortKey} dir={txnSortDir} onSort={toggleTxnSort}>Amount</SortableHeader>
