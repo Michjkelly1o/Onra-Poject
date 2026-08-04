@@ -168,7 +168,7 @@ export function SelectDaysEditor({ durationMinutes, onConfirm, confirmed }: Sele
     const labelCls = "text-[14px] font-medium text-[#344054]";
 
     return (
-        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-6">
+        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-6 shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]">
             {/* ── Start date ── */}
             <div className="flex flex-col gap-1.5">
                 <label className={labelCls}>When should the series start?</label>

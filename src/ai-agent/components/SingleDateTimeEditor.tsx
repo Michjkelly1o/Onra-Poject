@@ -20,7 +20,7 @@
 // onto preview_class_schedule (recurring=false, dateISO, startTime).
 
 import { useMemo, useState } from "react";
-import { CheckCircle, ChevronLeft } from "@untitledui/icons";
+import { CheckCircle, ChevronLeft, ChevronRight } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
@@ -157,19 +157,36 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
     }
 
     return (
-        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden">
-            {/* Header — title + pager (+ back on step 2) */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-[#e4e7ec]">
-                {step === 2 && (
-                    <button type="button" onClick={() => setStep(1)} aria-label="Back"
-                        className="w-7 h-7 -ml-1 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f2f4f7] transition-colors shrink-0">
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-                )}
-                <p className="flex-1 text-[15px] font-semibold text-[#101828]">
+        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]">
+            {/* Header — title + pager. Matches the AiQuestionPrompt chrome so
+                the date/time step reads as the same kind of question panel. */}
+            <div className="h-[52px] flex items-center gap-2 px-3.5 border-b border-[#e4e7ec]">
+                <p className="flex-1 min-w-0 text-[16px] font-semibold text-[#101828] leading-6 truncate">
                     {step === 1 ? "When is the session?" : "When does the class start?"}
                 </p>
-                <span className="text-[13px] text-[#667085] shrink-0">{step} of 2</span>
+                <div className="flex items-center gap-1 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => setStep(1)}
+                        disabled={step === 1}
+                        aria-label="Previous question"
+                        className="size-6 flex items-center justify-center rounded-[3px] text-[#667085] enabled:hover:bg-[#f9fafb] disabled:opacity-40 transition-colors"
+                    >
+                        <ChevronLeft className="size-3.5" />
+                    </button>
+                    <span className="text-[14px] font-medium text-[#667085] tabular-nums px-1">
+                        {step} of 2
+                    </span>
+                    <button
+                        type="button"
+                        onClick={step === 1 && dateISO ? () => setStep(2) : undefined}
+                        disabled={!(step === 1 && dateISO)}
+                        aria-label="Next question"
+                        className="size-6 flex items-center justify-center rounded-[3px] text-[#667085] enabled:hover:bg-[#f9fafb] disabled:opacity-40 transition-colors"
+                    >
+                        <ChevronRight className="size-3.5" />
+                    </button>
+                </div>
             </div>
 
             <div className="p-3 flex flex-col gap-2">
