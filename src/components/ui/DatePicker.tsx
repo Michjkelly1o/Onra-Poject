@@ -87,11 +87,14 @@ function buildCells(year: number, month: number): { date: Date; cur: boolean }[]
     return cells;
 }
 
-export function DatePicker({ value, onChange, placeholder = "Select date", className, disabled = false, minDate, maxDate }: {
+export function DatePicker({ value, onChange, placeholder = "Select date", className, triggerClassName, disabled = false, minDate, maxDate }: {
     value: string;
     onChange: (iso: string) => void;
     placeholder?: string;
     className?: string;
+    /** Override the trigger button styling — used to render the picker as a
+     *  plain borderless list-option row (AI-agent "Pick a custom date"). */
+    triggerClassName?: string;
     disabled?: boolean;
     /** Inclusive earliest selectable date (ISO "YYYY-MM-DD"). Cells before
      *  this date render disabled + faded. The Today button is also disabled
@@ -244,7 +247,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
         <div ref={ref} className={cn("relative", className)}>
             <button type="button" disabled={disabled}
                 onClick={() => { setPending(value); if (value) { const d = parseISO(value); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); } setOpen(p => !p); }}
-                className={cn(
+                className={triggerClassName ?? cn(
                     "flex items-center gap-2 w-full h-10 px-[14px] border-1 rounded-[8px] text-[16px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     disabled
                         ? "bg-[#f9fafb] border-[#d0d5dd] cursor-not-allowed"

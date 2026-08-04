@@ -1116,8 +1116,8 @@ export function ChatThread({
             ) : (
                 <SelectDaysEditor
                     durationMinutes={pendingScheduleEditor.durationMinutes}
-                    onConfirm={(config) =>
-                        send(`Recurrence confirmed — config: ${JSON.stringify(config)}`)
+                    onConfirm={(days) =>
+                        send(`Days confirmed — days: ${JSON.stringify(days)}`)
                     }
                 />
             )}
@@ -1887,23 +1887,26 @@ function parseScheduleConfirmation(
             detail: `${fmtConfirmDate(single[1])} · ${fmtTime(single[2])}`,
         };
     }
-    if (content.startsWith("Recurrence confirmed — config:")) {
+    if (content.startsWith("Days confirmed — days:")) {
         try {
-            const cfg = JSON.parse(
-                content.slice(content.indexOf("config:") + "config:".length).trim(),
+            const days = JSON.parse(
+                content.slice(content.indexOf("days:") + "days:".length).trim(),
             );
-            const dayCount = Array.isArray(cfg.days) ? cfg.days.length : 0;
-            const from =
-                typeof cfg.startISO === "string" ? fmtConfirmDate(cfg.startISO) : "";
+            const dayNames = Array.isArray(days)
+                ? days.map((d: { day?: string }) => d.day).filter(Boolean)
+                : [];
+            const slotCount = Array.isArray(days)
+                ? days.reduce((n: number, d: { slots?: unknown[] }) => n + (Array.isArray(d.slots) ? d.slots.length : 0), 0)
+                : 0;
             const detail = [
-                from && `From ${from}`,
-                dayCount && `${dayCount} day${dayCount === 1 ? "" : "s"}/week`,
+                dayNames.length ? dayNames.join(", ") : "",
+                slotCount ? `${slotCount} time slot${slotCount === 1 ? "" : "s"}` : "",
             ]
                 .filter(Boolean)
                 .join(" · ");
-            return { title: "Recurring schedule set", detail: detail || "Repeating series" };
+            return { title: "Days set", detail: detail || "Weekly schedule" };
         } catch {
-            return { title: "Recurring schedule set", detail: "Repeating series" };
+            return { title: "Days set", detail: "Weekly schedule" };
         }
     }
     return null;

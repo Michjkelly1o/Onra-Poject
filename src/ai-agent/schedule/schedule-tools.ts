@@ -33,7 +33,12 @@ import {
     locationInstructorQuestions,
     repeatQuestion,
     publishConfirmQuestion,
+    dateQuestion,
+    recurEndRuleQuestion,
+    recurEndAfterQuestion,
+    recurIntervalQuestion,
     type ClassOptionsData,
+    type DateOpt,
 } from "@/ai-agent/schedule/class-questions";
 import {
     toPreview,
@@ -268,6 +273,29 @@ function apptDraft(a: AppointmentArgs): AppointmentDraft {
     };
 }
 
+/** ISO "YYYY-MM-DD" `n` days after `iso` (local calendar, no tz drift). */
+function addDaysISO(iso: string, n: number): string {
+    const [y, m, d] = iso.split("-").map(Number);
+    const dt = new Date(y, m - 1, d + n);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+/** "Fri, 26 Feb 2026". */
+function fmtDayLabel(iso: string): string {
+    const [y, m, d] = iso.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    const wd = dt.toLocaleDateString("en-US", { weekday: "short" });
+    const mon = dt.toLocaleDateString("en-US", { month: "short" });
+    return `${wd}, ${d} ${mon} ${y}`;
+}
+/** The next 4 day rows starting the day after `fromISO`; first badged label. */
+function nextDayRows(fromISO: string, firstBadge?: string): DateOpt[] {
+    const start = addDaysISO(fromISO, 1);
+    return [0, 1, 2, 3].map((n, i) => {
+        const iso = addDaysISO(start, n);
+        return { iso, label: fmtDayLabel(iso), ...(i === 0 && firstBadge ? { badge: firstBadge } : {}) };
+    });
+}
+
 export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) {
     const caps = ctx.scheduleCaps;
     // Client-local clock (falls back to the server clock) — drives past-time
@@ -414,6 +442,74 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
             },
         }),
 
+        // ── Recurring sub-steps (code-driven, one card each) ─────────────────
+        // Flow after the user picks "Recurring": ask_recur_start →
+        // ask_recur_end_rule → (On → ask_recur_end_on · After → ask_recur_end_after
+        // · Never → skip) → ask_recur_interval → open_days_editor → preview →
+        // ask_publish_confirm. The model maps each answer onto preview_class_schedule.
+        ask_recur_start: tool({
+            description:
+                "RECURRING — 'When should the recurring schedule start?'. Returns the next days + a 'Pick a custom date' option. Read the picked date → recurStartISO (YYYY-MM-DD): a custom pick returns the ISO directly; a preset row returns its date label (convert to YYYY-MM-DD).",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const tomorrow = addDaysISO(ctx.nowISO, 1);
+                const days: DateOpt[] = nextDayRows(ctx.nowISO, "Tomorrow");
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", message: "Set when this recurring class starts.", questions: dateQuestion("When should the recurring schedule start?", days, tomorrow) };
+            },
+        }),
+        ask_recur_end_rule: tool({
+            description:
+                "RECURRING — 'How should this recurring schedule end?'. Returns Never / On / After. Then: Never → ask_recur_interval; On → ask_recur_end_on; After → ask_recur_end_after. Set recurEndRule = never|on|after.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: recurEndRuleQuestion() };
+            },
+        }),
+        ask_recur_end_on: tool({
+            description:
+                "RECURRING (End = On) — 'When should this recurring schedule end?'. Pass startISO (the recurring start) so the day options come after it. Read the picked date → recurEndOnISO. Then call ask_recur_interval.",
+            parameters: z.object({
+                startISO: z.string().optional().describe("The recurring start date (YYYY-MM-DD), so end options come after it."),
+            }),
+            execute: async ({ startISO }) => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const base = startISO && /^\d{4}-\d{2}-\d{2}$/.test(startISO) ? startISO : ctx.nowISO;
+                const minDate = addDaysISO(base, 1);
+                const days: DateOpt[] = nextDayRows(base);
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: dateQuestion("When should this recurring schedule end?", days, minDate) };
+            },
+        }),
+        ask_recur_end_after: tool({
+            description:
+                "RECURRING (End = After) — 'After how many class sessions should the schedule end?'. Returns 10/20/30/40 + a 'Type number of classes' manual row. Read the number → recurEndAfterCount. Then call ask_recur_interval.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: recurEndAfterQuestion() };
+            },
+        }),
+        ask_recur_interval: tool({
+            description:
+                "RECURRING — 'Repeat every X week?'. Returns 1 week (Default) / 2 / 3 / 4 + a 'Custom X' manual row. Read the number of weeks → recurEveryWeeks. After this, call open_days_editor to collect the weekdays + per-day time slots, then preview_class_schedule.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: recurIntervalQuestion() };
+            },
+        }),
+
         create_room: tool({
             description:
                 "Create a NEW room mid-wizard (the `+ Add room` flow). Only offer this if the studio lacks a suitable room. Ask the user for the parent location (branch), room name, and capacity FIRST via ask_questions, then call this. On success the new room is auto-selected — pass its id + name to preview_class_schedule.",
@@ -466,7 +562,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
 
         open_days_editor: tool({
             description:
-                "Open the interactive RECURRENCE editor for a RECURRING schedule — the user sets the start date, how the series ends, the repeat interval, the weekdays, and the per-day time slots all in ONE editor (same controls as the admin schedule form). Call this for ANY recurring schedule; do NOT ask start date / end rule / repeat interval as separate questions — the editor collects them. Pass the class duration so end times auto-fill. The result returns as a 'Recurrence confirmed — config: <JSON>' message; map its fields onto preview_class_schedule (startISO→recurStartISO, endRule→recurEndRule, endOnISO→recurEndOnISO, endAfter→recurEndAfterCount, everyWeeks→recurEveryWeeks, days→recurDays).",
+                "Open the 'Select days & General schedule' editor — the user picks the WEEKDAYS and a start time slot (or several) for each day. Call this in the RECURRING flow AFTER ask_recur_interval (the start date, end rule and interval are their own question cards). Pass the class duration so end times auto-fill. The result returns as a 'Days confirmed — days: <JSON>' message; map days → recurDays on preview_class_schedule.",
             parameters: z.object({
                 durationMinutes: z.number().describe("Class length in minutes (from the template) — drives auto end-time."),
             }),

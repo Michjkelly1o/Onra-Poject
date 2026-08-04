@@ -185,6 +185,86 @@ export function repeatQuestion(): AiQuestionSpec[] {
     ];
 }
 
+// ── Recurring sub-steps — each an individual question card ───────────────────
+
+/** One preset date row for a date question. */
+export interface DateOpt {
+    iso: string;
+    label: string;
+    /** e.g. "Tomorrow" — rendered as a small green badge. */
+    badge?: string;
+}
+
+/** A date question — preset day rows + a "Pick a custom date" option that opens
+ *  the calendar. Used by: recurring start, recurring end-on, single date. */
+export function dateQuestion(title: string, days: DateOpt[], minDateISO: string): AiQuestionSpec[] {
+    return [
+        {
+            title,
+            kind: "radio",
+            options: [
+                ...days.map((d) => ({
+                    id: d.iso,
+                    label: d.label,
+                    ...(d.badge ? { badge: { label: d.badge, tone: "success" as const } } : {}),
+                })),
+                { id: "__custom_date", label: "Pick a custom date", datePicker: true, minDateISO },
+            ],
+        },
+    ];
+}
+
+/** How the recurring series ends — Never / On / After. */
+export function recurEndRuleQuestion(): AiQuestionSpec[] {
+    return [
+        {
+            title: "How should this recurring schedule end?",
+            kind: "radio",
+            options: [
+                { id: "never", label: "Never" },
+                { id: "on", label: "On" },
+                { id: "after", label: "After" },
+            ],
+        },
+    ];
+}
+
+/** After-N-sessions count — presets + a manual "Type number of classes" row. */
+export function recurEndAfterQuestion(): AiQuestionSpec[] {
+    return [
+        {
+            title: "After how many class sessions should the schedule end?",
+            kind: "radio",
+            allowOther: true,
+            otherPlaceholder: "Type number of classes",
+            options: [
+                { id: "10", label: "10" },
+                { id: "20", label: "20" },
+                { id: "30", label: "30" },
+                { id: "40", label: "40" },
+            ],
+        },
+    ];
+}
+
+/** Repeat interval in weeks — presets (1 = Default) + a manual "Custom X" row. */
+export function recurIntervalQuestion(): AiQuestionSpec[] {
+    return [
+        {
+            title: "Repeat every X week?",
+            kind: "radio",
+            allowOther: true,
+            otherPlaceholder: "Custom X",
+            options: [
+                { id: "1", label: "1 week", badge: { label: "Default", tone: "success" } },
+                { id: "2", label: "2 week" },
+                { id: "3", label: "3 week" },
+                { id: "4", label: "4 week" },
+            ],
+        },
+    ];
+}
+
 // ── Publish confirmation ─────────────────────────────────────────────────────
 
 export function publishConfirmQuestion(): AiQuestionSpec[] {

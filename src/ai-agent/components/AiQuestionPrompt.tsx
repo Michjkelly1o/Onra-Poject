@@ -27,6 +27,7 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight, PencilLine, SearchLg, Star01, Check, Plus, Grid01, MarkerPin01, ClockFastForward, Users01, Building01 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 // Icons for a template option's attribute chips, by position — mirrors the
 // admin schedule form's template card (category · location/type · duration ·
@@ -79,6 +80,12 @@ export interface AiQuestionOption {
      *  sharing a `groupLabel` render together beneath one header, in the
      *  order they appear in the `options` array. */
     groupLabel?: string;
+    /** Render this row as a "Pick a custom date" option — a plain borderless
+     *  row with a calendar icon that opens the date picker on click. The picked
+     *  ISO date becomes the answer (kind: "other", text: <YYYY-MM-DD>). */
+    datePicker?: boolean;
+    /** Inclusive earliest selectable date for a `datePicker` option (ISO). */
+    minDateISO?: string;
 }
 
 /** Widget shape.
@@ -359,6 +366,21 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
     }, [isGrouped, visibleOptions]);
 
     const renderOption = (opt: AiQuestionOption, badgeNumber: number) => {
+        // "Pick a custom date" — a plain borderless row with a calendar icon
+        // that opens the date picker; the picked ISO becomes the answer.
+        if (opt.datePicker) {
+            return (
+                <div key={opt.id} className="px-1.5 py-0.5">
+                    <DatePicker
+                        value=""
+                        onChange={(iso) => advance({ kind: "other", text: iso })}
+                        minDate={opt.minDateISO}
+                        placeholder={opt.label}
+                        triggerClassName="w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left text-[14px] font-medium text-[#667085] hover:bg-[#f9fafb] transition-colors"
+                    />
+                </div>
+            );
+        }
         const active = isMulti ? checkedIds.includes(opt.id) : selectedId === opt.id;
         // Searchable lists are people-pickers (instructors) — every row reads as
         // a round avatar. When a person has no photo we derive initials from the
@@ -570,10 +592,18 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                 handles free text and option-clicks auto-advance). Checkbox
                 ALWAYS shows a footer, even compact — multi-select can't
                 auto-advance. */}
-            {compact && !isMulti ? null : (
+            {(() => {
+                // Free-text row: non-compact always (per allowOther); compact
+                // ONLY when the question opts in explicitly (q.allowOther===true)
+                // — e.g. "Custom X weeks" / "Type number of classes". Actions
+                // stay hidden in the compact paged panel.
+                const showOther = allowOther && (!compact || q.allowOther === true);
+                const showActions = !compact || (isMulti && step + 1 >= total);
+                if (!showOther && !showActions) return null;
+                return (
                 <div className="flex flex-col">
                     {/* Free-text "other" / "Something else" row. */}
-                    {allowOther && (
+                    {showOther && (
                         <div className="px-1.5 py-0.5">
                             <div
                                 className={cn(
@@ -609,7 +639,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         button) — a button only appears when the checkbox is the
                         LAST question and there's nothing to page to. The inline
                         (non-compact) panel keeps the full Skip / Next footer. */}
-                    {(!compact || (isMulti && step + 1 >= total)) && (
+                    {showActions && (
                         <div className="flex items-center justify-end gap-3 px-3 py-2">
                             {!compact && (
                                 <Button variant="secondary-gray" size="sm" onClick={handleSkip}>
@@ -622,7 +652,8 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         </div>
                     )}
                 </div>
-            )}
+                );
+            })()}
         </div>
     );
 }

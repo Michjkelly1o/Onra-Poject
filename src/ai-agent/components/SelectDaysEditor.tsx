@@ -1,46 +1,27 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra AI Agent · In-chat RECURRENCE editor (mirrors the admin schedule form's
-// recurring section, Figma 391-157099 / 391-148046)
+// Onra AI Agent · In-chat "Select days & General schedule" editor
+// (Figma 391-148046) — the ONLY recurring editor left.
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The whole recurring configuration in the chat column, built from the SAME
-// components the real /schedule/new form uses — no chat-only reinventions:
-//   • Start date + "Recurring Ends → On" date  → <DatePicker>  (ui/DatePicker)
-//   • "Repeat every N weeks" / "After N classes" → <NumericInput> (ui/NumericInput)
-//   • Select days                                → horizontal WEEK_DAYS buttons
-//   • Per-day time slots                         → <TimeDropdown> (ui/TimeDropdown)
-//
-// On Confirm it hands the parent a RecurrenceConfig which ClassCard relays to
-// the model as a compact JSON line; the model maps each field onto
-// preview_class_schedule's recur* arguments.
+// The recurring start date, end rule (Never/On/After) and repeat interval are
+// now asked as individual question cards above the composer (ask_recur_*). This
+// editor only collects the WEEKDAYS + per-day time slots — the last piece that
+// genuinely needs a multi-control surface. On Confirm it hands the parent the
+// day list; ChatThread relays it as "Days confirmed — days: <JSON>" and the
+// model maps it onto preview_class_schedule's recurDays.
 
 import { useMemo, useState } from "react";
 import { Trash01, Plus, CheckCircle } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { DatePicker, todayISO } from "@/components/ui/DatePicker";
-import { NumericInput } from "@/components/ui/NumericInput";
 import { TimeDropdown, fmtSlotRange, DAY_FULL } from "@/components/ui/TimeDropdown";
 import type { DaySchedule } from "@/ai-agent/schedule/schedule-wizard";
 
 const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
-export type EndRule = "never" | "on" | "after";
-
-/** Full recurring config the editor emits — matches preview_class_schedule's
- *  recur* argument set 1-for-1. */
-export interface RecurrenceConfig {
-    startISO: string;
-    endRule: EndRule;
-    endOnISO?: string;
-    endAfter?: number;
-    everyWeeks: number;
-    days: DaySchedule[];
-}
-
-/** Add minutes to a "HH:MM" clock string (24h, no wrap past midnight needed here). */
+/** Add minutes to a "HH:MM" clock string (24h, no midnight wrap needed here). */
 function addMinutes(hhmm: string, mins: number): string {
     if (!hhmm) return "";
     const [h, m] = hhmm.split(":").map(Number);
@@ -54,21 +35,13 @@ interface Slot {
 }
 
 export interface SelectDaysEditorProps {
-    /** Class length in minutes — end time is auto-derived as start + duration,
-     *  exactly like the admin form. */
+    /** Class length in minutes — end time is auto-derived as start + duration. */
     durationMinutes: number;
-    onConfirm: (config: RecurrenceConfig) => void;
-    confirmed?: RecurrenceConfig | null;
+    onConfirm: (days: DaySchedule[]) => void;
+    confirmed?: DaySchedule[] | null;
 }
 
 export function SelectDaysEditor({ durationMinutes, onConfirm, confirmed }: SelectDaysEditorProps) {
-    const today = todayISO();
-    const [startISO, setStartISO] = useState<string>(today);
-    const [endRule, setEndRule] = useState<EndRule>("never");
-    const [endOnISO, setEndOnISO] = useState<string>("");
-    const [endAfter, setEndAfter] = useState<number>(8);
-    const [everyWeeks, setEveryWeeks] = useState<number>(1);
-
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [byDay, setByDay] = useState<Record<string, Slot[]>>({});
 
@@ -112,16 +85,8 @@ export function SelectDaysEditor({ durationMinutes, onConfirm, confirmed }: Sele
 
     const selectedDays = useMemo(() => WEEK_DAYS.filter((d) => selected.has(d)), [selected]);
 
-    // Confirm enabled once: a start date is set, the end rule's dependent field
-    // is valid, and every selected day has ≥1 complete slot.
-    const endValid =
-        endRule === "never" ||
-        (endRule === "on" && !!endOnISO) ||
-        (endRule === "after" && endAfter >= 1);
+    // Confirm enabled once every selected day has ≥1 complete slot.
     const canConfirm =
-        !!startISO &&
-        endValid &&
-        everyWeeks >= 1 &&
         selectedDays.length > 0 &&
         selectedDays.every((d) => (byDay[d] ?? []).some((s) => s.startTime && s.endTime));
 
@@ -130,87 +95,32 @@ export function SelectDaysEditor({ durationMinutes, onConfirm, confirmed }: Sele
             day: d,
             slots: (byDay[d] ?? []).filter((s) => s.startTime && s.endTime),
         }));
-        onConfirm({
-            startISO,
-            endRule,
-            ...(endRule === "on" ? { endOnISO } : {}),
-            ...(endRule === "after" ? { endAfter } : {}),
-            // "Never" pins the series to a single week, so the interval is 1.
-            everyWeeks: endRule === "never" ? 1 : everyWeeks,
-            days,
-        });
+        onConfirm(days);
     };
 
     if (confirmed) {
-        const total = confirmed.days.reduce((n, d) => n + d.slots.length, 0);
-        const ends =
-            confirmed.endRule === "never"
-                ? "no end date"
-                : confirmed.endRule === "on"
-                  ? `ends ${confirmed.endOnISO}`
-                  : `ends after ${confirmed.endAfter} classes`;
+        const total = confirmed.reduce((n, d) => n + d.slots.length, 0);
         return (
             <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
                 <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
                 <div className="min-w-0">
                     <p className="text-[14px] font-medium text-[#101828] leading-5">
-                        Recurring schedule set — {confirmed.days.map((d) => d.day).join(", ")}
+                        Days set — {confirmed.map((d) => d.day).join(", ")}
                         {total ? ` · ${total} time slot${total === 1 ? "" : "s"}` : ""}
-                    </p>
-                    <p className="text-[13px] text-[#475467] leading-5 mt-0.5">
-                        From {confirmed.startISO}, every {confirmed.everyWeeks} week{confirmed.everyWeeks === 1 ? "" : "s"}, {ends}.
                     </p>
                 </div>
             </div>
         );
     }
 
-    const labelCls = "text-[14px] font-medium text-[#344054]";
-
     return (
         <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-6 shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]">
-            {/* ── Start date ── */}
-            <div className="flex flex-col gap-1.5">
-                <label className={labelCls}>When should the series start?</label>
-                <div className="w-[220px] max-w-full">
-                    <DatePicker value={startISO} onChange={setStartISO} minDate={today} />
-                </div>
-            </div>
-
-            {/* ── Recurring Ends ── */}
-            <div className="flex flex-col gap-4">
-                <p className="text-[16px] font-semibold text-[#101828]">Recurring Ends</p>
-                <div className="flex flex-col items-start gap-3">
-                    <EndRadio label="Never" checked={endRule === "never"} onSelect={() => setEndRule("never")} />
-                    <EndRadio label="On" checked={endRule === "on"} onSelect={() => setEndRule("on")}>
-                        <div className={cn("w-[200px]", endRule !== "on" && "opacity-40 pointer-events-none")}>
-                            <DatePicker value={endOnISO} onChange={setEndOnISO} minDate={startISO || today} />
-                        </div>
-                    </EndRadio>
-                    <EndRadio label="After" checked={endRule === "after"} onSelect={() => setEndRule("after")}>
-                        <div className={cn("flex items-center gap-2", endRule !== "after" && "opacity-40 pointer-events-none")}>
-                            <div className="w-[100px]">
-                                <NumericInput value={endAfter} onChange={setEndAfter} min={1} max={365} />
-                            </div>
-                            <span className="text-[14px] text-[#475467]">classes</span>
-                        </div>
-                    </EndRadio>
-                </div>
-
-                {/* Repeat every — hidden for "Never" (a single-week schedule has no interval). */}
-                {endRule !== "never" && (
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1.5">
-                            <label className={labelCls}>Repeat every</label>
-                            <NumericInput value={everyWeeks} onChange={setEveryWeeks} min={1} max={52} suffix="week" />
-                        </div>
-                    </div>
-                )}
-            </div>
-
             {/* ── Select days (horizontal, same as the admin form) ── */}
             <div className="flex flex-col gap-4">
-                <p className="text-[16px] font-semibold text-[#101828]">Select days</p>
+                <div className="flex flex-col gap-0.5">
+                    <p className="text-[16px] font-semibold text-[#101828]">Select days</p>
+                    <p className="text-[14px] text-[#667085]">Pick the days, then set a start time for each one. You can add multiple slots per day.</p>
+                </div>
                 <div className="flex gap-2 sm:gap-3">
                     {WEEK_DAYS.map((d) => {
                         const isSel = selected.has(d);
@@ -288,26 +198,6 @@ export function SelectDaysEditor({ durationMinutes, onConfirm, confirmed }: Sele
                     Confirm
                 </Button>
             </div>
-        </div>
-    );
-}
-
-/** Recurring-ends radio row — same look as the admin form's RepeatEndRadio. */
-function EndRadio({ label, checked, onSelect, children }: { label: string; checked: boolean; onSelect: () => void; children?: React.ReactNode }) {
-    return (
-        <div className="flex items-center gap-3">
-            <button type="button" onClick={onSelect} aria-pressed={checked} className="flex items-center gap-2 shrink-0 group">
-                <span
-                    className={cn(
-                        "w-5 h-5 rounded-full border-1 flex items-center justify-center transition-colors",
-                        checked ? "border-[#658774]" : "border-[#d0d5dd] group-hover:border-[#98a2b3]",
-                    )}
-                >
-                    {checked && <span className="w-2.5 h-2.5 rounded-full bg-[#658774]" />}
-                </span>
-                <span className="text-[14px] font-medium text-[#344054]">{label}</span>
-            </button>
-            {children}
         </div>
     );
 }
