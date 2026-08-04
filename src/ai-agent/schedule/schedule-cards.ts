@@ -35,6 +35,12 @@ export interface ClassPreviewCard {
     /** Recurring only — the expanded occurrences, so the preview can show the
      *  "Preview of scheduled classes · N classes" month-grouped list. */
     sessions?: PreviewSession[];
+    /** Rule violations (instructor doesn't teach the category, outside business
+     *  hours / shift, double-booked, past time…). When non-empty, publish is
+     *  blocked and the card renders them as a red "fix these first" list. */
+    blockers?: string[];
+    /** Non-blocking notes (e.g. class capacity over the room's capacity). */
+    warnings?: string[];
 }
 
 /** Terminal success card. The client writes `draft` into the store exactly
@@ -69,7 +75,7 @@ export interface ClassOptionsCard {
     card: "class_options";
     templates: { id: string; name: string; description: string; category: string; durationMin: number; capacity: number; coverImage?: string; coverColor: string }[];
     rooms: { id: string; name: string; branchId: string; branchName: string; capacity: number }[];
-    instructors: { id: string; name: string; initials: string; imageUrl?: string; rating?: number; ratingCount?: number }[];
+    instructors: { id: string; name: string; initials: string; imageUrl?: string; rating?: number; ratingCount?: number; teaches?: string[] }[];
     categories: { id: string; name: string }[];
     payRates: { id: string; name: string }[];
     /** Active branches — so the model can offer a parent-location choice in the
@@ -94,7 +100,7 @@ export interface ClassServiceOptionsCard {
         coverImage?: string;
         coverColor: string;
     }[];
-    instructors: { id: string; name: string; initials: string; imageUrl?: string; rating?: number; ratingCount?: number }[];
+    instructors: { id: string; name: string; initials: string; imageUrl?: string; rating?: number; ratingCount?: number; teaches?: string[] }[];
 }
 
 /** Confirmation that a room was created mid-wizard (the `+ Add room` sub-flow).

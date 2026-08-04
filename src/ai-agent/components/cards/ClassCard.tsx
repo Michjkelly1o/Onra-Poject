@@ -14,7 +14,7 @@
 //   • class_options  → renders nothing (data-only, feeds the model).
 
 import { useState, useEffect } from "react";
-import { CheckCircle, Lightbulb02, Stars01 } from "@untitledui/icons";
+import { CheckCircle, Lightbulb02, Stars01, AlertCircle } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
@@ -122,7 +122,7 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
         return (
             <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f1f2ed] px-4 py-3">
                 <Lightbulb02 className="size-4 text-[#475467] shrink-0 mt-0.5" />
-                <p className="text-[14px] text-[#475467] leading-5">{data.reason}</p>
+                <p className="text-[14px] text-[#475467] leading-5 whitespace-pre-line">{data.reason}</p>
             </div>
         );
     }
@@ -141,16 +141,38 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
         return <ResultCard noun={NOUN[data.sessionType] ?? "class schedule"} summary={data.summary} verb={appt ? "booked" : "published"} />;
     }
 
-    // class_preview — just the live preview card. The publish confirmation is a
-    // real ask_questions step (floats above the composer), not in-chat buttons.
+    // class_preview — the live preview card + any rule violations (blockers,
+    // red) / notes (warnings, amber). The publish confirmation is a real
+    // ask_questions step (floats above the composer), not in-chat buttons.
     const isAppt = data.sessionType === "private" || data.sessionType === "recovery";
     return (
-        <SchedulePreviewCard
-            data={data.preview}
-            variant={isAppt ? "appointment" : "class"}
-            title={`${(NOUN[data.sessionType] ?? "class schedule").replace(/^\w/, (c) => c.toUpperCase())} preview`}
-            subtitle={isAppt ? "This is how your session will look." : undefined}
-            sessions={data.sessions}
-        />
+        <div className="w-full flex flex-col gap-3">
+            <SchedulePreviewCard
+                data={data.preview}
+                variant={isAppt ? "appointment" : "class"}
+                title={`${(NOUN[data.sessionType] ?? "class schedule").replace(/^\w/, (c) => c.toUpperCase())} preview`}
+                subtitle={isAppt ? "This is how your session will look." : undefined}
+                sessions={data.sessions}
+            />
+            {data.blockers && data.blockers.length > 0 && (
+                <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#fecdca] bg-[#fef3f2] px-4 py-3">
+                    <AlertCircle className="size-4 text-[#d92d20] shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex flex-col gap-1">
+                        <p className="text-[14px] font-medium text-[#b42318] leading-5">Fix these before publishing:</p>
+                        <ul className="text-[14px] text-[#b42318] leading-5 list-disc pl-4 flex flex-col gap-0.5">
+                            {data.blockers.map((b, i) => <li key={i}>{b}</li>)}
+                        </ul>
+                    </div>
+                </div>
+            )}
+            {data.warnings && data.warnings.length > 0 && (
+                <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#fedf89] bg-[#fffaeb] px-4 py-3">
+                    <AlertCircle className="size-4 text-[#dc6803] shrink-0 mt-0.5" />
+                    <ul className="text-[14px] text-[#7a2e0e] leading-5 list-disc pl-4 flex flex-col gap-0.5 min-w-0">
+                        {data.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                </div>
+            )}
+        </div>
     );
 }

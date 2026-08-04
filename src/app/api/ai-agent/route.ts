@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         return new Response("Bad JSON body.", { status: 400 });
     }
 
-    const { messages, context, storeSnapshot, mode, parsedFile } = body;
+    const { messages, context, storeSnapshot, mode, parsedFile, clientNowISO, clientNowMinutes } = body;
     if (!messages || !context?.user || !context?.role || !storeSnapshot) {
         return new Response(
             "Missing one of: messages, context.user, context.role, storeSnapshot.",
@@ -81,7 +81,16 @@ export async function POST(req: Request) {
     // Auth context: role + branch scope, derived server-side. Never from the
     // model. Owner sees all branches; Branch Admin sees their assigned branch.
     const ctx = resolveAuthContext(context.user, context.role);
-    const today = new Date().toISOString().slice(0, 10);
+    // Prefer the client's local wall-clock so schedule validation prunes
+    // past-time slots against the studio's real local day (not the server's UTC
+    // day). Falls back to the server clock resolveAuthContext already set.
+    if (typeof clientNowISO === "string" && /^\d{4}-\d{2}-\d{2}$/.test(clientNowISO)) {
+        ctx.nowISO = clientNowISO;
+    }
+    if (typeof clientNowMinutes === "number" && Number.isFinite(clientNowMinutes)) {
+        ctx.nowMinutes = clientNowMinutes;
+    }
+    const today = ctx.nowISO;
 
     // Live catalog + tools, built per-request from the snapshot the client
     // just sent. Nothing here is cached across requests — the snapshot IS

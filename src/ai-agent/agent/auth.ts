@@ -88,6 +88,13 @@ export interface AuthContext {
     canWrite: boolean;
     /** Per-cell capabilities for the class-creation wizard (docs/ai-agent-rbac.md). */
     scheduleCaps: ScheduleCapabilities;
+    /** The CLIENT's local "now" (browser wall-clock), forwarded so schedule
+     *  validation prunes past-time slots against the studio's real local time,
+     *  matching the admin form (which uses local browser time). Falls back to
+     *  the server clock when the client didn't send one. */
+    nowISO: string;
+    /** Client local minutes-since-midnight for today's past-slot cutoff. */
+    nowMinutes: number;
 }
 
 /**
@@ -129,6 +136,9 @@ export function resolveAuthContext(user: User, role: UserRole): AuthContext {
     const canWrite = roleType === "owner" || roleType === "branch_admin";
     const displayName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() || "Admin";
 
+    // Default clock to the SERVER's UTC now; the route overrides both with the
+    // client's local wall-clock when it forwards one (accurate past-slot cutoff).
+    const serverNow = new Date();
     return {
         studioId,
         staffId: user.id,
@@ -137,5 +147,7 @@ export function resolveAuthContext(user: User, role: UserRole): AuthContext {
         branchScope,
         canWrite,
         scheduleCaps: resolveScheduleCapabilities(roleType),
+        nowISO: serverNow.toISOString().slice(0, 10),
+        nowMinutes: serverNow.getUTCHours() * 60 + serverNow.getUTCMinutes(),
     };
 }
