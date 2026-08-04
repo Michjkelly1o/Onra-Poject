@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
 import { SelectDaysEditor, type RecurrenceConfig } from "@/ai-agent/components/SelectDaysEditor";
+import { SingleDateTimeEditor, type SingleDateTimePick } from "@/ai-agent/components/SingleDateTimeEditor";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 
 const NOUN: Record<string, string> = { class: "class schedule", private: "private session", recovery: "recovery session" };
@@ -57,6 +58,27 @@ function DaysEditorCard({ durationMinutes, send }: { durationMinutes: number; se
                 if (confirmed) return;
                 setConfirmed(config);
                 send(`Recurrence confirmed — config: ${JSON.stringify(config)}`);
+            }}
+        />
+    );
+}
+
+/** Single date + time picker card — sends the chosen slot the model maps onto
+ *  dateISO / startTime (with recurring=false). */
+function SingleDatetimeEditorCard({ durationMinutes, instructorId, roomId, send }: {
+    durationMinutes: number; instructorId?: string; roomId?: string; send: (text: string) => void;
+}) {
+    const [confirmed, setConfirmed] = useState<SingleDateTimePick | null>(null);
+    return (
+        <SingleDateTimeEditor
+            durationMinutes={durationMinutes}
+            instructorId={instructorId}
+            roomId={roomId}
+            confirmed={confirmed}
+            onConfirm={(pick) => {
+                if (confirmed) return;
+                setConfirmed(pick);
+                send(`Session date & time confirmed — dateISO: ${pick.dateISO}, startTime: ${pick.startTime}`);
             }}
         />
     );
@@ -104,6 +126,10 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
 
     if (data.card === "class_days_editor") {
         return <DaysEditorCard durationMinutes={data.durationMinutes} send={send} />;
+    }
+
+    if (data.card === "class_single_datetime") {
+        return <SingleDatetimeEditorCard durationMinutes={data.durationMinutes} instructorId={data.instructorId} roomId={data.roomId} send={send} />;
     }
 
     if (data.card === "class_room_created") {

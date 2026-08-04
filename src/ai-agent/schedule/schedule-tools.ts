@@ -389,6 +389,22 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
             },
         }),
 
+        open_single_datetime_editor: tool({
+            description:
+                "Open the interactive DATE & TIME picker for a SINGLE (non-recurring) class — the user picks the session date (from the next open days at the branch, or a custom date via the calendar) then a start time. ONLY genuinely-available times are offered — computed with the SAME logic the admin form uses (branch hours, gated by the chosen instructor's shift + free slots + room availability). Call this for ANY single class INSTEAD of asking date/time as separate questions. Pass durationMinutes, and the instructorId + roomId already chosen in step 2 so availability is correct. The result returns as a 'Session date & time confirmed — dateISO: <YYYY-MM-DD>, startTime: <HH:MM>' message; set recurring=false, dateISO, startTime on preview_class_schedule from it.",
+            parameters: z.object({
+                durationMinutes: z.number().describe("Class length in minutes (from the template) — bounds the last start slot."),
+                instructorId: z.string().optional().describe("The instructor chosen in step 2 — gates the offered times to their availability."),
+                roomId: z.string().optional().describe("The room chosen in step 2 — no other class may hold it at that time."),
+            }),
+            execute: async (a): Promise<ClassCardData> => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
+                }
+                return { card: "class_single_datetime", durationMinutes: a.durationMinutes ?? 60, instructorId: a.instructorId, roomId: a.roomId };
+            },
+        }),
+
         preview_class_schedule: tool({
             description:
                 "Show a LIVE preview of the class schedule being built. Call it after each answer the user gives so they can watch it fill in. Pass every field you know so far; leave the rest empty (they render as 'Awaiting your answer'). When all required fields are set the card offers Publish.",

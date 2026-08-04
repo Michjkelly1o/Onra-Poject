@@ -129,6 +129,16 @@ export interface ClassDaysEditorCard {
     durationMinutes: number;
 }
 
+/** Single (non-recurring) date + time picker — the model opens this after the
+ *  user chooses "Single". The editor computes real availability client-side
+ *  (branch hours + instructor gate + conflicts) from `instructorId` / `roomId`. */
+export interface ClassSingleDatetimeCard {
+    card: "class_single_datetime";
+    durationMinutes: number;
+    instructorId?: string;
+    roomId?: string;
+}
+
 export type ClassCardData =
     | ClassPreviewCard
     | ClassResultCard
@@ -138,6 +148,7 @@ export type ClassCardData =
     | ClassServiceOptionsCard
     | ClassSpotEditorCard
     | ClassDaysEditorCard
+    | ClassSingleDatetimeCard
     | ClassRoomCreatedCard;
 
 /** True for any card this feature owns — lets ChatThread route to ClassCard. */
