@@ -67,6 +67,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/settings":                 "Settings",
     "/admin/settings/business-locations": "Business & locations",
     "/admin/settings/branding":        "Branding",
+    "/admin/settings/offerings":       "Offerings",
     "/admin/settings/booking-rules":   "Booking rules",
     "/admin/settings/payments":        "Integrations",
     "/admin/settings/integrations":    "Integrations",
