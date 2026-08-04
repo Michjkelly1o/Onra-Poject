@@ -136,8 +136,8 @@ export interface PaymentConfirmationStepProps {
     change: number;
     canConfirm: boolean;
     onConfirm: () => void;
-    /** "Credited to" — the staff who earns commission on this sale. Required
-     *  (commission refactor Phase 2). Empty until the cashier picks. */
+    /** "Credited to" — the staff who earns commission on this sale. Optional
+     *  (client 2026-08-04): null = unattributed sale (no commission). */
     sellerStaffId: string | null;
     setSellerStaffId: (id: string) => void;
     /** Active staff the sale can be credited to (name — role label). */
@@ -196,11 +196,14 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                 />
 
                 {/* Credited to — the staff who earns commission on this sale.
-                    Required; no default (commission refactor Phase 2). */}
+                    OPTIONAL (client 2026-08-04): leave blank for an unattributed
+                    sale (no commission), like a self-service portal sale. */}
                 <div className="flex flex-col gap-2">
-                    <p className="text-[18px] font-semibold text-[#101828]">Credited to</p>
+                    <p className="text-[18px] font-semibold text-[#101828]">
+                        Credited to <span className="text-[16px] text-[#667085] font-normal">(optional)</span>
+                    </p>
                     <p className="text-[14px] text-[#667085] leading-[20px]">
-                        Choose the staff member who gets sales-commission credit for this sale.
+                        Choose the staff member who gets sales-commission credit for this sale. Leave blank to complete without attribution.
                     </p>
                     <SelectInput
                         value={p.sellerStaffId ?? ""}
