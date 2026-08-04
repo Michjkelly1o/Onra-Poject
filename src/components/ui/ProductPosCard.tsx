@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CreditCard02, Package, Gift01, Plus, Minus, CalendarCheck01, ClockFastForward, BankNote01, ShoppingBag01, Box, Tag03 } from "@untitledui/icons";
+import { CreditCard02, Package, Gift01, Plus, Minus, CalendarCheck01, ClockFastForward, BankNote01, ShoppingBag01, Box, Tag03, User01, Heart } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 
 // ─── Onra DS — Product POS Card ───────────────────────────────────────────────
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 // Callbacks
 //   onAdd / onIncrement / onDecrement — wire the cart actions
 
-export type ProductPosCardType = "membership" | "package" | "gift-card" | "retail";
+export type ProductPosCardType = "membership" | "package" | "gift-card" | "retail" | "private" | "recovery";
 
 export interface ProductPosCardProps {
     type: ProductPosCardType;
@@ -72,12 +72,19 @@ const TYPE_TOKENS: Record<ProductPosCardType, { iconBg: string; iconColor: strin
     // Retail (2026-07-29) — banner is a real product image; tokens still
     // needed for the tiny name-row bag icon when no bannerImageUrl is set.
     retail:     { iconBg: "bg-[var(--brand-tertiary)]", iconColor: "text-[#658774]", patternBorder: "border-[#aad4bd]" },
+    // Session products (client 2026-08-04) — Private = purple, Recovery =
+    // orange, matching the session-type tag palette used across schedule /
+    // services so a POS session card reads as the same colour family.
+    private:    { iconBg: "bg-[#f4ebff]", iconColor: "text-[#7f56d9]", patternBorder: "border-[#e9d7fe]" },
+    recovery:   { iconBg: "bg-[#fef0c7]", iconColor: "text-[#dc6803]", patternBorder: "border-[#fedf89]" },
 };
 
 function TypeIcon({ type, className }: { type: ProductPosCardType; className?: string }) {
     if (type === "membership") return <CreditCard02 className={className} />;
     if (type === "gift-card") return <Gift01 className={className} />;
     if (type === "retail") return <ShoppingBag01 className={className} />;
+    if (type === "private") return <User01 className={className} />;
+    if (type === "recovery") return <Heart className={className} />;
     return <Package className={className} />;
 }
 
@@ -197,7 +204,9 @@ export function ProductPosCard({
                                         ? <BankNote01 className="w-4 h-4 text-[#667085] shrink-0" />
                                         : type === "retail"
                                             ? <Tag03 className="w-4 h-4 text-[#667085] shrink-0" />
-                                            : <CalendarCheck01 className="w-4 h-4 text-[#667085] shrink-0" />}
+                                            : (type === "private" || type === "recovery")
+                                                ? <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
+                                                : <CalendarCheck01 className="w-4 h-4 text-[#667085] shrink-0" />}
                                     <span className="text-[14px] font-medium text-[#667085]">{primaryMeta}</span>
                                 </div>
                             )}
@@ -207,7 +216,9 @@ export function ProductPosCard({
                                         types keep the clock-fast-forward duration icon. */}
                                     {type === "retail"
                                         ? <Box className="w-4 h-4 text-[#667085] shrink-0" />
-                                        : <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />}
+                                        : (type === "private" || type === "recovery")
+                                            ? <User01 className="w-4 h-4 text-[#667085] shrink-0" />
+                                            : <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />}
                                     <span className="text-[14px] font-medium text-[#667085]">{secondaryMeta}</span>
                                 </div>
                             )}
