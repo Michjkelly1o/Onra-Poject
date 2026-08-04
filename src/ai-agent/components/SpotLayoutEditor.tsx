@@ -18,7 +18,7 @@
 // Once confirmed the editor locks (mirrors an answered ask_questions panel).
 
 import { useMemo, useState } from "react";
-import { Settings03, ChevronUp, ChevronDown } from "@untitledui/icons";
+import { ChevronUp, ChevronDown } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -254,10 +254,9 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                         variant="primary"
                         size="sm"
                         disabled={locked}
-                        leftIcon={<Settings03 className="w-4 h-4" />}
                         onClick={() => onConfirm(cols, rows, liveBlocked())}
                     >
-                        Customize spot
+                        Continue
                     </Button>
                 </div>
             </div>

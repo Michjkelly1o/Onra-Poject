@@ -42,6 +42,7 @@ import {
     Copy03,
     Edit02,
     Check,
+    CheckCircle,
     XClose,
     ArrowNarrowRight,
 } from "@untitledui/icons";
@@ -73,10 +74,15 @@ import type { User, UserRole } from "@/types";
 import { Card } from "@/ai-agent/components/cards/Card";
 import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
 import { ClassCard } from "@/ai-agent/components/cards/ClassCard";
-import { isClassCard } from "@/ai-agent/schedule/schedule-cards";
+import { isClassCard, type ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 import { expandDraftToRows, summariseDraft } from "@/ai-agent/schedule/apply-class-schedule";
 import { TypingDots } from "@/ai-agent/components/TypingDots";
 import { AiQuestionPrompt, type AiQuestionAnswer } from "@/ai-agent/components/AiQuestionPrompt";
+// Step-3 date/time editors — rendered in the panel ABOVE the composer (same
+// treatment as ask_questions), never inline in the chat (client 2026-08-04).
+import { SingleDateTimeEditor } from "@/ai-agent/components/SingleDateTimeEditor";
+import { SelectDaysEditor } from "@/ai-agent/components/SelectDaysEditor";
+import { fmtTime } from "@/components/ui/TimeDropdown";
 
 // three.js is ~600KB — dynamic import so it only ships when the empty
 // state is actually rendered (i.e. before the user's first message).
@@ -673,6 +679,31 @@ export function ChatThread({
         if (!ti || ti.state !== "result") return null;
         return ti.result as Extract<InsightCard, { card: "questions" }>;
     })();
+
+    // Pending step-3 date/time editor — when the LAST message is an assistant
+    // turn whose tool result is a date/time editor card (single date+time OR
+    // recurring days), the interactive editor floats ABOVE the composer, the
+    // same treatment ask_questions gets — NEVER inline in the chat (client
+    // 2026-08-04). Clears the instant the user confirms (a new user message
+    // lands). The spot editor deliberately stays inline — it's a mid-step-2
+    // control, not a step-3 date/time question.
+    const pendingScheduleEditor = (() => {
+        if (isBusy) return null;
+        if (mode === "migration") return null;
+        const last = messages[messages.length - 1];
+        if (!last || last.role !== "assistant") return null;
+        const ti = last.toolInvocations?.find(
+            (t) =>
+                t.state === "result" &&
+                ((t.result as ClassCardData)?.card === "class_single_datetime" ||
+                    (t.result as ClassCardData)?.card === "class_days_editor"),
+        );
+        if (!ti || ti.state !== "result") return null;
+        return ti.result as Extract<
+            ClassCardData,
+            { card: "class_single_datetime" | "class_days_editor" }
+        >;
+    })();
     // The old `answerQuestions` handler that composed a single reply from
     // insight `ask_questions` answers has been folded into
     // `onMigQuestionsComplete` below — every source (insight, branch,
@@ -1063,6 +1094,36 @@ export function ChatThread({
         </div>
     ) : null;
 
+    // Step-3 date/time editor panel — floats above the composer exactly like
+    // the question panel. Single → the date + time picker; recurring → the
+    // days/slots editor. On confirm it sends the machine-readable line the
+    // model parses (mapped onto preview_class_schedule); the panel unmounts as
+    // the reply lands, and the confirmation renders as a white "… scheduled"
+    // bubble via the machine-message interception in MessageRow.
+    const scheduleEditorPanel = pendingScheduleEditor ? (
+        <div className="w-full max-w-[720px] mx-auto px-6 pb-2">
+            {pendingScheduleEditor.card === "class_single_datetime" ? (
+                <SingleDateTimeEditor
+                    durationMinutes={pendingScheduleEditor.durationMinutes}
+                    instructorId={pendingScheduleEditor.instructorId}
+                    roomId={pendingScheduleEditor.roomId}
+                    onConfirm={(pick) =>
+                        send(
+                            `Session date & time confirmed — dateISO: ${pick.dateISO}, startTime: ${pick.startTime}`,
+                        )
+                    }
+                />
+            ) : (
+                <SelectDaysEditor
+                    durationMinutes={pendingScheduleEditor.durationMinutes}
+                    onConfirm={(config) =>
+                        send(`Recurrence confirmed — config: ${JSON.stringify(config)}`)
+                    }
+                />
+            )}
+        </div>
+    ) : null;
+
     // Wrapper around useChat's handleSubmit — same "mark the outgoing
     // user message with the current composer attachment" pattern as
     // `send` uses (see above). Blocks the submit if the upload parse
@@ -1235,6 +1296,7 @@ export function ChatThread({
                         `migQuestionEntries` so the panel renders one card
                         with a pager instead of two stacked cards. */}
                     {migQuestionsPanel}
+                    {scheduleEditorPanel}
                     <div className="w-full max-w-[720px] mx-auto px-6 py-4">{composerNode}</div>
                 </div>
             )}
@@ -1794,6 +1856,72 @@ function ImportingScreen() {
 }
 
 
+// ── Step-3 confirmation bubbles ──────────────────────────────────────────────
+// The date/time + recurrence editors send a machine-readable "… confirmed —"
+// line for the model to parse. We DON'T echo that raw text as a user bubble —
+// it renders as a clean WHITE confirmation card (same style as the published
+// result), so the chat reads "Session scheduled · Fri, 21 Aug 2026 · 08:00 AM"
+// instead of a green box or the raw machine line (client 2026-08-04).
+
+/** "Fri, 21 Aug 2026" from an ISO date (local calendar, no tz drift). */
+function fmtConfirmDate(iso: string): string {
+    const [y, m, d] = iso.split("-").map(Number);
+    if (!y || !m || !d) return iso;
+    const dt = new Date(y, m - 1, d);
+    const wd = dt.toLocaleDateString("en-US", { weekday: "short" });
+    const mon = dt.toLocaleDateString("en-US", { month: "short" });
+    return `${wd}, ${d} ${mon} ${y}`;
+}
+
+/** Parse a machine "… confirmed —" line into { title, detail } for the white
+ *  bubble, or null when the message isn't one of them. */
+function parseScheduleConfirmation(
+    content: string,
+): { title: string; detail: string } | null {
+    const single = content.match(
+        /^Session date & time confirmed — dateISO:\s*(\d{4}-\d{2}-\d{2}),\s*startTime:\s*(\d{1,2}:\d{2})/,
+    );
+    if (single) {
+        return {
+            title: "Session scheduled",
+            detail: `${fmtConfirmDate(single[1])} · ${fmtTime(single[2])}`,
+        };
+    }
+    if (content.startsWith("Recurrence confirmed — config:")) {
+        try {
+            const cfg = JSON.parse(
+                content.slice(content.indexOf("config:") + "config:".length).trim(),
+            );
+            const dayCount = Array.isArray(cfg.days) ? cfg.days.length : 0;
+            const from =
+                typeof cfg.startISO === "string" ? fmtConfirmDate(cfg.startISO) : "";
+            const detail = [
+                from && `From ${from}`,
+                dayCount && `${dayCount} day${dayCount === 1 ? "" : "s"}/week`,
+            ]
+                .filter(Boolean)
+                .join(" · ");
+            return { title: "Recurring schedule set", detail: detail || "Repeating series" };
+        } catch {
+            return { title: "Recurring schedule set", detail: "Repeating series" };
+        }
+    }
+    return null;
+}
+
+/** White confirmation bubble — mirrors the published-result card style. */
+function ScheduleConfirmationBubble({ title, detail }: { title: string; detail: string }) {
+    return (
+        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-white px-4 py-3">
+            <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
+            <div className="min-w-0">
+                <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
+                {detail && <p className="text-[13px] text-[#475467] leading-5 mt-0.5">{detail}</p>}
+            </div>
+        </div>
+    );
+}
+
 function MessageRow({
     message: m,
     mode,
@@ -1814,6 +1942,12 @@ function MessageRow({
     attachment?: { filename: string };
 }) {
     if (m.role === "user") {
+        // Machine "… confirmed —" lines from the step-3 editors render as a
+        // clean white confirmation card, not the raw right-aligned user bubble.
+        const confirmation = parseScheduleConfirmation(m.content);
+        if (confirmation) {
+            return <ScheduleConfirmationBubble title={confirmation.title} detail={confirmation.detail} />;
+        }
         return (
             <UserMessageBubble
                 text={m.content}

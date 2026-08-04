@@ -18,8 +18,6 @@ import { CheckCircle, Lightbulb02, Stars01, AlertCircle } from "@untitledui/icon
 import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
-import { SelectDaysEditor, type RecurrenceConfig } from "@/ai-agent/components/SelectDaysEditor";
-import { SingleDateTimeEditor, type SingleDateTimePick } from "@/ai-agent/components/SingleDateTimeEditor";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 
 const NOUN: Record<string, string> = { class: "class schedule", private: "private session", recovery: "recovery session" };
@@ -41,44 +39,6 @@ function SpotEditorCard({ capacity, send }: { capacity: number; send: (text: str
                         blocked.length ? blocked.join(", ") : "none"
                     }`,
                 );
-            }}
-        />
-    );
-}
-
-/** Recurrence editor card — sends the full recurring config as JSON the model
- *  maps onto the recur* arguments. */
-function DaysEditorCard({ durationMinutes, send }: { durationMinutes: number; send: (text: string) => void }) {
-    const [confirmed, setConfirmed] = useState<RecurrenceConfig | null>(null);
-    return (
-        <SelectDaysEditor
-            durationMinutes={durationMinutes}
-            confirmed={confirmed}
-            onConfirm={(config) => {
-                if (confirmed) return;
-                setConfirmed(config);
-                send(`Recurrence confirmed — config: ${JSON.stringify(config)}`);
-            }}
-        />
-    );
-}
-
-/** Single date + time picker card — sends the chosen slot the model maps onto
- *  dateISO / startTime (with recurring=false). */
-function SingleDatetimeEditorCard({ durationMinutes, instructorId, roomId, send }: {
-    durationMinutes: number; instructorId?: string; roomId?: string; send: (text: string) => void;
-}) {
-    const [confirmed, setConfirmed] = useState<SingleDateTimePick | null>(null);
-    return (
-        <SingleDateTimeEditor
-            durationMinutes={durationMinutes}
-            instructorId={instructorId}
-            roomId={roomId}
-            confirmed={confirmed}
-            onConfirm={(pick) => {
-                if (confirmed) return;
-                setConfirmed(pick);
-                send(`Session date & time confirmed — dateISO: ${pick.dateISO}, startTime: ${pick.startTime}`);
             }}
         />
     );
@@ -124,12 +84,11 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
         return <SpotEditorCard capacity={data.capacity} send={send} />;
     }
 
-    if (data.card === "class_days_editor") {
-        return <DaysEditorCard durationMinutes={data.durationMinutes} send={send} />;
-    }
-
-    if (data.card === "class_single_datetime") {
-        return <SingleDatetimeEditorCard durationMinutes={data.durationMinutes} instructorId={data.instructorId} roomId={data.roomId} send={send} />;
+    // Date & time editors (single + recurring) render in the panel ABOVE the
+    // composer now — same treatment as ask_questions — not inline in the chat.
+    // ChatThread's scheduleEditorPanel mounts them; nothing to show inline.
+    if (data.card === "class_days_editor" || data.card === "class_single_datetime") {
+        return null;
     }
 
     if (data.card === "class_room_created") {
