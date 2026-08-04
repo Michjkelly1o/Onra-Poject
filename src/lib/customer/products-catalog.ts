@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer — Products catalog data (Memberships · Credit Packages · Gift Cards)
+// Customer — Products catalog data (Memberships · Packages · Gift Cards)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Branch-scoped, active-only catalog for the Products tab. Memberships + packages
@@ -205,7 +205,7 @@ export function useOwnedProductIds(): Set<string> {
 
 export interface CreditBalanceVM {
     kind: "membership" | "package";
-    /** "Membership" or "Credit package" — the active plan type. */
+    /** "Membership" or "Package" — the active plan type. */
     typeLabel: string;
     /** Unlimited membership → show "Unlimited credits" + a full progress bar. */
     unlimited: boolean;
@@ -249,7 +249,7 @@ export function useCreditBalance(): CreditBalanceVM | null {
             .at(-1);
         return {
             kind,
-            typeLabel: kind === "membership" ? "Membership" : "Credit package",
+            typeLabel: kind === "membership" ? "Membership" : "Package",
             unlimited,
             remaining,
             // Never let the summed total read below the live remaining (keeps the

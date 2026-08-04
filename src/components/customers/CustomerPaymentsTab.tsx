@@ -63,12 +63,12 @@ const EMPTY_PAYMENT_FILTER: PaymentFilter = { dateStart: "", dateEnd: "", status
 // or a column value — a `cancellation_penalty` row's Plan type column
 // is derived from the CUSTOMER'S plan (see `planTypeLabel` below) so a
 // penalty on a membership-plan customer reads "Membership" and on a
-// package-plan customer reads "Credit package". The row is identified
+// package-plan customer reads "Package". The row is identified
 // as a penalty via its icon + transaction name, NOT its plan-type text
 // (client feedback Jul 2026).
 const KIND_LABEL: Record<Extract<TxnKind, "membership" | "package" | "retail" | "gift_card">, string> = {
     membership: "Membership",
-    package: "Credit package",
+    package: "Package",
     retail: "Retail",
     gift_card: "Gift card",
 };
@@ -159,7 +159,7 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
 // "Membership" because the cancellation-penalty flow is scoped to
 // UNLIMITED-membership customers ONLY (`computeCancellationPenalty`
 // gates on `membership.credits === "unlimited"`) — credit-package
-// customers can never receive one, so there's no "Credit package"
+// customers can never receive one, so there's no "Package"
 // case here. Client requirement Jul 2026.
 // A gift-card SALE is refundable only while the linked card is FULLY UNUSED —
 // once any balance is spent (or it's already refunded), the sale can't be

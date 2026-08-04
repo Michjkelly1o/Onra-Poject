@@ -237,7 +237,7 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
 //   • Active shadow   two-stop drop shadow (skeumorphic)
 //   • Transition      `transition-all` (not just colors)
 //   • Label format    "Roles (7)" — count in parens, same as
-//                     "Membership (3)" / "Credit package (5)"
+//                     "Membership (3)" / "Package (5)"
 //
 // Wrapper bg uses `bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1`
 // — Tailwind tokens (resolved via the global Tailwind config) so the staff

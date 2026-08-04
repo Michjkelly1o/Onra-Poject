@@ -638,7 +638,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Session type</p>
                             <p className="text-[16px] font-medium text-[#101828]">
-                                {isRecovery ? "Recovery & wellness" : "Private session"}
+                                {isRecovery ? "Recovery" : "Private session"}
                             </p>
                         </div>
                         {isRecovery && (
@@ -1427,7 +1427,7 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                     <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
                         {appointment.type === "private"  ? "Private session details" :
-                         appointment.type === "recovery" ? "Recovery & wellness details" :
+                         appointment.type === "recovery" ? "Recovery details" :
                          "Appointment details"}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />

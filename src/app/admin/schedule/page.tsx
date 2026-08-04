@@ -977,7 +977,7 @@ function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
     const items: { label: string; icon: React.ReactNode; href: string }[] = [
         { label: "Class",               icon: <Users01 className="w-4 h-4 text-[#667085]" />,  href: `/schedule/new?returnTo=${returnTo}` },
         { label: "Private session",     icon: <User01 className="w-4 h-4 text-[#667085]" />,   href: `/services/new?returnTo=${returnTo}&type=private` },
-        { label: "Recovery & wellness", icon: <HeartHand className="w-4 h-4 text-[#667085]" />, href: `/services/new?returnTo=${returnTo}&type=recovery` },
+        { label: "Recovery", icon: <HeartHand className="w-4 h-4 text-[#667085]" />, href: `/services/new?returnTo=${returnTo}&type=recovery` },
     ];
     return (
         <div ref={ref} className="relative">
@@ -1367,7 +1367,7 @@ function SchedulePage() {
                 {/* Add new — dropdown (client 2026-07-21). Was a single
                     button routing to /schedule/new. Now offers the three
                     session types so the admin can create a class, a
-                    private session service, or a recovery & wellness
+                    private session service, or a recovery
                     service directly from the schedule module.
                     • Class    → /schedule/new  (dated class instance)
                     • Private  → /services/new?type=private  (service definition)

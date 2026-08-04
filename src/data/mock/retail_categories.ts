@@ -38,10 +38,4 @@ export const retail_categories: RetailCategory[] = [
         status: "active",
         created_at: "2026-07-29T00:00:00Z",
     },
-    {
-        id: "retail_cat_recovery",
-        label: "Recovery",
-        status: "active",
-        created_at: "2026-07-29T00:00:00Z",
-    },
 ];

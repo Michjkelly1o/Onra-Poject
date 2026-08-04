@@ -171,7 +171,7 @@ function ProfileDropdown({ accountHref }: { accountHref: string }) {
 export default function Header() {
     const pathname = usePathname();
     // Session-type deep-link on /admin/services — the "Private sessions" and
-    // "Recovery & wellness" nav entries share the route, so the header title
+    // "Recovery" nav entries share the route, so the header title
     // reads the type off the query to show the right module name.
     const typeParam = useSearchParams().get("type");
     // Dashboard title greets the studio by name (client 2026-07-21).

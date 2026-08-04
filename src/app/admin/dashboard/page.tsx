@@ -1103,7 +1103,7 @@ export default function AdminDashboard() {
             (sum, p) => sum + (p.nextBillingAmountAed ?? p.priceAed ?? 0), 0,
         );
 
-        // ── Credit packages (kind=package) ──────────────────────────────────
+        // ── Packages (kind=package) ──────────────────────────────────
         const heldPackages = scopedCustomerPlans.filter(p =>
             p.kind === "package" && (p.status === "active" || p.status === "frozen"),
         );

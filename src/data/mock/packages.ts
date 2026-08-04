@@ -6,7 +6,7 @@
 //   • POS catalog (filters by status === "active")
 //   • class-types "Applicable plans" tab
 //   • Memberships & Packages list view (/admin/products)
-//   • Credit package detail page (/products/[id])
+//   • Package detail page (/products/[id])
 //   • Customer profile "Active plans" tab (via planKind/packageIds join)
 //
 // Variety:

@@ -124,7 +124,7 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
                         <div className="flex flex-wrap gap-2">
                             <FilterPill label="Membership" selected={pending.plans.includes("membership")}
                                 onClick={() => togglePlan("membership")} />
-                            <FilterPill label="Credit package" selected={pending.plans.includes("package")}
+                            <FilterPill label="Package" selected={pending.plans.includes("package")}
                                 onClick={() => togglePlan("package")} />
                         </div>
                     </div>

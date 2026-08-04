@@ -827,7 +827,7 @@ interface PlanFilter {
 const EMPTY_PLAN_FILTER: PlanFilter = { dateStart: "", dateEnd: "", kinds: [], statuses: [] };
 
 const PLAN_KIND_LABEL: Record<PlanKind, string> = {
-    membership: "Membership", package: "Credit package", complimentary: "Free credit",
+    membership: "Membership", package: "Package", complimentary: "Free credit",
 };
 
 
@@ -1113,7 +1113,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const creditRows: { label: string; value: string }[] = [];
     if (planCreditPlans.length > 0) {
         const isMembership = planCreditPlans[0].kind === "membership";
-        const baseLabel = isMembership ? "Membership" : "Credit package";
+        const baseLabel = isMembership ? "Membership" : "Package";
         creditRows.push({
             label: planAllFrozen ? `${baseLabel} (Frozen)` : baseLabel,
             value: hasUnlimited

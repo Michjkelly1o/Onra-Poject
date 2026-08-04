@@ -257,7 +257,7 @@ function LeftSidebar({
         );
     })();
 
-    const actionsLabel = kind === "package" ? "Credit package actions" : "Membership actions";
+    const actionsLabel = kind === "package" ? "Package actions" : "Membership actions";
 
     return (
         <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
@@ -324,7 +324,7 @@ function RightPanel({ kind, vm, productId, activeCustomers, renewalFor, branches
 }) {
     const [tab, setTab] = useState<TabId>("details");
 
-    // The tab labels swap "Membership" → "Credit package" for the package
+    // The tab labels swap "Membership" → "Package" for the package
     // case. Both tabs always render — the toolbar's "Total" content is
     // tab-specific so we keep that inside the customers branch.
     const tabsCopy: { id: TabId; label: string }[] = [
@@ -407,7 +407,7 @@ function DetailsTab({ vm, productId, branches }: { vm: MembershipDetailVM; produ
             </InlineStatRow>
 
             {/* ── Product configuration ──
-                Credit packages add a "This package is an intro offer" row.
+                Packages add a "This package is an intro offer" row.
                 Memberships keep the original 2-stat row (the Unlimited
                 credits state is folded into the Number-of-credits value). */}
             <SectionHeading>Product configuration</SectionHeading>
@@ -443,7 +443,7 @@ function DetailsTab({ vm, productId, branches }: { vm: MembershipDetailVM; produ
             {/* ── Duration block ──
                 Membership: "Duration & renewal" with 3 stats (Duration,
                 Active on first use, Auto-renew).
-                Credit package: "Duration configuration" with just Duration —
+                Package: "Duration configuration" with just Duration —
                 packages don't auto-renew and aren't gated on first use. */}
             {vm.kind === "membership" ? (
                 <>
@@ -1105,7 +1105,7 @@ function CustomersPagination({ page, total, pageSize, onPage, onPageSize }: {
 
 interface MembershipDetailVM {
     kind: ProductKind;
-    kindLabel: string;         // "Membership" / "Credit package"
+    kindLabel: string;         // "Membership" / "Package"
     productNoun: string;       // "membership" / "credit package"
     name: string;
     description?: string;
@@ -1329,7 +1329,7 @@ function ProductDetailPageInner() {
         }
     }
 
-    const headerTitle = kind === "membership" ? "Membership details" : "Credit package details";
+    const headerTitle = kind === "membership" ? "Membership details" : "Package details";
 
     return (
         <div className="h-screen bg-white flex flex-col overflow-hidden">

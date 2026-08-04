@@ -8,7 +8,7 @@
 // decorative" (6 concentric rounded squares, rotated, emanating from above) + a
 // centred, colour-coded skeuomorphic icon tile. One element, two sizes — the
 // catalog card (64px) and the Product Details sheet (240px) — so both match.
-// Theme per type: Membership (brand green), Credit Package (lilac), Gift Card (pink).
+// Theme per type: Membership (brand green), Package (lilac), Gift Card (pink).
 
 import type { ComponentType, SVGProps } from "react";
 import { CreditCard02, Gift01, Package } from "@untitledui/icons";

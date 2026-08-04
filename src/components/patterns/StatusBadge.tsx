@@ -181,7 +181,7 @@ const REGISTRY: StatusRegistry = {
     // ── Plans ─────────────────────────────────────────────────────────────
     plan: {
         membership: { palette: "indigo",     label: "Membership" },
-        package:    { palette: "gray",       label: "Credit package" },
+        package:    { palette: "gray",       label: "Package" },
         none:       { palette: "grayDashed", label: "No plan" },
     },
     "plan-status": {

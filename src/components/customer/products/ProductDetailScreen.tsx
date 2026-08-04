@@ -201,7 +201,7 @@ export function ProductDetailScreen({
     const typeLabel = product.kind === "membership"
         ? "Membership"
         : isPackage
-            ? "Credit package"
+            ? "Package"
             : isRetail
                 ? "Retail"
                 : "Gift card";

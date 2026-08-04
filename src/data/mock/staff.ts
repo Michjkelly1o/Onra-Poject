@@ -371,7 +371,7 @@ export const staff: StaffSeed[] = [
         shift_id: "shift_afternoon",
         category_ids: ["cat_pilates", "cat_barre"],
     },
-    // ── Recovery & wellness practitioners ──────────────────────────────────
+    // ── Recovery practitioners ──────────────────────────────────
     // Recovery services (massage / IV / breathwork / sauna) now live at real
     // branches — these two practitioners are based at Forma South. Two
     // entries so /admin/services and appointment instructor pickers have

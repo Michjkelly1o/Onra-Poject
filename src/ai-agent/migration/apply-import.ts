@@ -1358,7 +1358,7 @@ export function applyImportToStore(
                 kind: isMembership ? "membership" : "package",
                 productId: (mem?.id ?? pkg?.id) ?? undefined,
                 name: mem?.name ?? pkg?.name ?? productName,
-                planTypeLabel: isMembership ? "Membership" : "Credit package",
+                planTypeLabel: isMembership ? "Membership" : "Package",
                 creditsLabel: credits,
                 status,
                 purchasedAtISO: `${purchased}T00:00:00Z`,

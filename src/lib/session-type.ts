@@ -19,7 +19,7 @@ import type { SessionType } from "@/lib/store";
 export const SESSION_TYPE_LABEL: Record<SessionType, string> = {
     class:    "Classes",
     private:  "Private sessions",
-    recovery: "Recovery & wellness",
+    recovery: "Recovery",
 };
 
 /** Short labels — compact tag chips on schedule / dashboard cards. */

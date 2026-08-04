@@ -1296,7 +1296,7 @@ export const DEMO_NOW_PLANS: CustomerPlan[] = PLAN_SPECS.map((p, idx) => {
         kind: p.kind,
         product_id: p.productKey,
         name: productName,
-        plan_type_label: p.kind === "membership" ? "Membership" : "Credit package",
+        plan_type_label: p.kind === "membership" ? "Membership" : "Package",
         credits_label: creditsLabel,
         status: p.status,
         purchased_at: purchasedAt,

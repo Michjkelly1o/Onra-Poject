@@ -27,6 +27,7 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById, resolveSelector } from "@/config/reports-registry";
 import type { LedgerRow } from "@/lib/reports/selectors";
+import { derivePlanBalances } from "@/lib/plan-credits";
 
 interface RevRecDisplayRow {
     [k: string]: unknown;
@@ -65,8 +66,33 @@ export default function RevenueRecognitionReportPage() {
     const customers    = useAppStore(s => s.customers);
     const branches     = useAppStore(s => s.branches);
     const staff        = useAppStore(s => s.staff);
+    const customerPlans = useAppStore(s => s.customerPlans);
+    const packages      = useAppStore(s => s.packages);
 
     const report = getReportById("revenue-recognition");
+
+    // Per-plan credit balances (total / used / left), reconciled against each
+    // customer's live creditsRemaining — the SAME canonical math the customer
+    // profile + Memberships report use, so "Remaining" agrees everywhere.
+    const planBalById = useMemo(() => {
+        const out = new Map<string, { total: number; used: number; left: number }>();
+        const byCustomer = new Map<string, typeof customerPlans>();
+        for (const p of customerPlans) {
+            const arr = byCustomer.get(p.customerId);
+            if (arr) arr.push(p); else byCustomer.set(p.customerId, [p]);
+        }
+        Array.from(byCustomer.entries()).forEach(([customerId, plans]) => {
+            const cust = customers.find(c => c.id === customerId);
+            const bal = derivePlanBalances(plans, cust?.creditsRemaining);
+            bal.forEach((b, planId) => out.set(planId, { total: b.total, used: b.used, left: b.left }));
+        });
+        return out;
+    }, [customerPlans, customers]);
+    // Fallback total credits per package id, for a sale with no resolvable plan.
+    const packageCreditsById = useMemo(
+        () => new Map(packages.map(p => [p.id, typeof p.credits === "number" ? p.credits : 0] as const)),
+        [packages],
+    );
 
     const rawLedger = useMemo<LedgerRow[]>(() => {
         if (!report) return [];
@@ -104,15 +130,26 @@ export default function RevenueRecognitionReportPage() {
                 recognizedThisPeriod = amount / MEMBERSHIP_TERM_MONTHS;    // per-period slice
                 deferredBalance      = amount - recognizedToDate;
                 usedThisPeriod       = `${Math.min(monthsElapsed, MEMBERSHIP_TERM_MONTHS)} of ${MEMBERSHIP_TERM_MONTHS}`;
-                remaining            = `${Math.max(0, MEMBERSHIP_TERM_MONTHS - monthsElapsed)} months`;
+                const monthsLeft     = Math.max(0, MEMBERSHIP_TERM_MONTHS - monthsElapsed);
+                remaining            = `${monthsLeft} month${monthsLeft === 1 ? "" : "s"}`;
             } else {
                 recognitionBasis = "Per credit used";
-                // The store doesn't track per-contract credit usage yet;
-                // leave usage / recognition-to-date blank. Fill in when
-                // credit consumption events land.
-                termOrCredits    = "—";
-                usedThisPeriod   = "";
-                remaining        = "";
+                // Resolve this package sale's live credit balance so "Remaining"
+                // reflects the credits still on the plan (e.g. a fresh 20-credit
+                // sale with none used shows 20, not 0). Matches the customer
+                // profile + Memberships report via derivePlanBalances.
+                const plan = customerPlans.find(
+                    (p) => p.customerId === r.customerId && p.kind === "package"
+                        && (p.productId === r.productId || p.name === r.name),
+                );
+                const bal = plan ? planBalById.get(plan.id) : undefined;
+                const totalCredits = bal?.total ?? packageCreditsById.get(r.productId ?? "") ?? 0;
+                const usedCredits   = bal?.used ?? 0;
+                const leftCredits   = bal?.left ?? totalCredits;
+                const creditWord = (n: number) => `${n} credit${n === 1 ? "" : "s"}`;
+                termOrCredits    = totalCredits > 0 ? creditWord(totalCredits) : "—";
+                usedThisPeriod   = totalCredits > 0 ? `${usedCredits} of ${totalCredits}` : "";
+                remaining        = totalCredits > 0 ? creditWord(leftCredits) : "";
                 deferredBalance  = amount;
             }
 

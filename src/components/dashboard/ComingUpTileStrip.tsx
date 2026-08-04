@@ -13,7 +13,7 @@
 //   • All types             → Capacity used mini-bar tile (cross-type compare)
 //   • Classes               → Under-filled classes alert tile
 //   • Private sessions      → no trailing tile (5 tiles total)
-//   • Recovery & wellness   → Top services mini-bar tile
+//   • Recovery   → Top services mini-bar tile
 //
 // Split tooltips (revenue / bookings / new / returning / expiring
 // plans) on the All-mode strip surface the per-type breakdown so the

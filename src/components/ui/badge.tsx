@@ -37,10 +37,10 @@ export { Badge, badgeVariants }
 // ─── Onra DS pill badges ──────────────────────────────────────────────────────
 
 /**
- * Plan badge — used wherever a customer's plan (Membership or Credit package) is shown.
+ * Plan badge — used wherever a customer's plan (Membership or Package) is shown.
  * Colors lifted directly from the Onra DS Figma file:
  *  - Membership      → indigo-50 / indigo-200 / indigo-700
- *  - Credit package  → gray-50 / gray-200 / gray-700
+ *  - Package  → gray-50 / gray-200 / gray-700
  */
 export function PlanBadge({ kind, className }: {
     kind: "membership" | "package";
@@ -49,7 +49,7 @@ export function PlanBadge({ kind, className }: {
     const styles = kind === "membership"
         ? "bg-[#eef4ff] border-[#c7d7fe] text-[#3538cd]"
         : "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]";
-    const label = kind === "membership" ? "Membership" : "Credit package";
+    const label = kind === "membership" ? "Membership" : "Package";
     return (
         <span className={cn(
             "inline-flex items-center px-2 py-0.5 rounded-full border text-[12px] font-medium leading-[18px] whitespace-nowrap",

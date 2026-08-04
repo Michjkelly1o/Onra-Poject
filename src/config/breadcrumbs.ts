@@ -115,7 +115,7 @@ interface ModuleRoot {
      *  and returns the noun to use for THIS record. Wins over the static
      *  `detailNoun` when set. Used by /services + /appointments so a
      *  private-service detail reads "Private session details" and a
-     *  recovery-service detail reads "Recovery & wellness details"
+     *  recovery-service detail reads "Recovery details"
      *  (client 2026-07-21). */
     detailNounResolver?: (id: string, s: AppState) => string;
 }
@@ -127,18 +127,18 @@ const MODULE_ROOT: ModuleRoot[] = [
     { prefix: "/services",            listPath: "/admin/services",          label: "Appointment services",
       // Client 2026-07-21 — swap the static "Service details" for a
       // type-aware noun that mirrors the module name the customer sees
-      // (Private session / Recovery & wellness).
+      // (Private session / Recovery).
       detailNounResolver: (id, s) => {
           const sv = s.services.find(x => x.id === id);
           if (sv?.type === "private")  return "Private session details";
-          if (sv?.type === "recovery") return "Recovery & wellness details";
+          if (sv?.type === "recovery") return "Recovery details";
           return "Service details";
       } },
     { prefix: "/appointments",        listPath: "/admin/services",          label: "Appointment services",
       detailNounResolver: (id, s) => {
           const a = s.appointments.find(x => x.id === id);
           if (a?.type === "private")  return "Private session details";
-          if (a?.type === "recovery") return "Recovery & wellness details";
+          if (a?.type === "recovery") return "Recovery details";
           return "Appointment details";
       } },
     // /products has three list variants — MOST SPECIFIC prefixes come first
@@ -406,7 +406,7 @@ export function resolveBreadcrumbs(pathname: string, store: AppState): Breadcrum
             // "Class details (Reformer Pilates)" per client Jul 2026.
             // detailNounResolver (dynamic) wins over the static detailNoun
             // so /services + /appointments show a type-aware label
-            // ("Private session details" / "Recovery & wellness details").
+            // ("Private session details" / "Recovery details").
             const resolver = DYNAMIC_LABELS[root.prefix];
             if (resolver && i === 0) {
                 const name = resolver(seg, store);

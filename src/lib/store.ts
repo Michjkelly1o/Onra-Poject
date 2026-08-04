@@ -5079,7 +5079,7 @@ export interface AppState {
 
     // ── Tax rules (Apply tax rates tab) ────────────────────────────────────
     /** Live tax rules — one row per applied rule across the four
-     *  predefined categories (Membership / Credit package / Gift card /
+     *  predefined categories (Membership / Package / Gift card /
      *  Pay rate). Drives `hasUsage` derivation for the Tax rates list. */
     taxRules: TaxRule[];
     /** Append a blank rule under `category` — created by the "+ Add another
@@ -11566,7 +11566,7 @@ export const useAppStore = create<AppState>()(persist(
                     kind: isMembership ? "membership" : "package",
                     productId: it.productId,
                     name: it.name,
-                    planTypeLabel: isMembership ? "Membership" : "Credit package",
+                    planTypeLabel: isMembership ? "Membership" : "Package",
                     creditsLabel,
                     // Reports v33 + Plan-tab column read these. Unlimited
                     // memberships store 0 → the unlimited-label check on

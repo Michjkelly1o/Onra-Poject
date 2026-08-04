@@ -635,7 +635,7 @@ export interface CustomerPlan {
     kind: "membership" | "package" | "complimentary";
     product_id?: string;
     name: string;
-    /** Plan-type column label — "Membership" | "Credit package" | "Free credit". */
+    /** Plan-type column label — "Membership" | "Package" | "Free credit". */
     plan_type_label: string;
     /** Transaction-name subtitle — "10 credits" | "1 free credit" | "Unlimited". */
     credits_label: string;
@@ -1318,7 +1318,7 @@ export interface ClassTemplate {
  *   • "private"  — 1:1 session.   Comes from a Service      → Appointment.
  *   • "recovery" — spa/wellness.  Comes from a Service      → Appointment.
  *
- * Canonical UI labels: "Classes" · "Private sessions" · "Recovery & wellness".
+ * Canonical UI labels: "Classes" · "Private sessions" · "Recovery".
  */
 export type SessionType = "class" | "private" | "recovery";
 

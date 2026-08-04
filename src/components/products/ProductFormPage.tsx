@@ -1,7 +1,7 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Create new product (Membership / Credit package)
+// Onra Studio — Create new product (Membership / Package)
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // Full-page modal flow at /products/new. Same shell as /class-types/new and
@@ -9,7 +9,7 @@
 // the multi-step form takes over the whole viewport per the Figma comp.
 //
 // Five-step flow:
-//   1. Select product           — Membership vs Credit package radio (3629:70578)
+//   1. Select product           — Membership vs Package radio (3629:70578)
 //   2. Basic information        — name / description / welcome / price (2526:59411)
 //   3. Product configuration    — kind-specific:
 //        membership   (3629:96269 ON / 3629:90746 OFF)
@@ -154,7 +154,7 @@ function SelectProductStep({ kind, onChange, onContinue }: {
                     onSelect={() => onChange("membership")}
                 />
                 <ProductOptionCard
-                    title="Credit package"
+                    title="Package"
                     description="Pre-paid credit for flexible class bookings."
                     selected={kind === "package"}
                     onSelect={() => onChange("package")}
@@ -209,17 +209,8 @@ function BasicInformationStep({ kind, data, onChange, onBack, onContinue }: {
                             minHeight={120}
                         />
                     </FormField>
-                    <FormField
-                        label="Welcome message"
-                        hint="This message is to be sent to the customer's email confirmation"
-                    >
-                        <Textarea
-                            value={data.welcomeMessage}
-                            onChange={v => onChange({ welcomeMessage: v })}
-                            placeholder="Welcome message to customer in their confirmation email..."
-                            minHeight={120}
-                        />
-                    </FormField>
+                    {/* Welcome message removed (client 2026-08-04) — the
+                        confirmation copy now lives in Customer notifications. */}
                 </Section>
 
                 <Section title="Pricing">
@@ -632,7 +623,7 @@ function BranchSingleSelect({ value, onChange, branches }: {
 //     followed by "Active on first use" ToggleCard.
 //   • Renewal  section: "This membership auto-renews" ToggleCard.
 //
-// Credit package (Figma 3629:112703):
+// Package (Figma 3629:112703):
 //   • Duration section ONLY — same Duration + Unit row, no toggles below.
 
 const UNIT_OPTIONS: { value: DurationUnit; label: string }[] = [
@@ -1727,7 +1718,7 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
                 });
             }
             showToast(
-                `${kind === "membership" ? "Membership" : "Credit package"} was updated`,
+                `${kind === "membership" ? "Membership" : "Package"} was updated`,
                 `${basic.name.trim() || `Your ${productLabel}`} has been saved.`,
                 "success",
                 "check",

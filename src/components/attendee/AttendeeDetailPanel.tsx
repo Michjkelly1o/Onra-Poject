@@ -10,7 +10,7 @@
 // Cancelled tabs; the Booked roster renders as CARDS (avatar + name + spot +
 // a green Present button). "Present all" + each card's Present route through a
 // confirmation modal, then surface the Present Details modal (the customer's
-// active Class Credit Package + expiry — Figma 7986:135664).
+// active Class Package + expiry — Figma 7986:135664).
 //
 // Attendance is the ONLY write — via the shared `updateAttendance` store action,
 // so the class detail roster (Module 03), Bookings (04), customer profile (07),
@@ -112,7 +112,7 @@ function synthCustomerFromApptBooking(b: AppointmentBooking): Customer {
     };
 }
 
-/** Resolve the customer's active Class Credit Package for the Present Details
+/** Resolve the customer's active Class Package for the Present Details
  *  modal — newest active package first, else the active membership, else null. */
 function resolveActivePlan(plans: CustomerPlan[], customerId: string): { plan: CustomerPlan | null; kind: "package" | "membership" | null } {
     const mine = plans.filter(p => p.customerId === customerId && p.status === "active");

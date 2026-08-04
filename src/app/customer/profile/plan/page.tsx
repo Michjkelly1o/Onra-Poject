@@ -30,7 +30,7 @@ const FALLBACK_CANCEL_REASONS = [
 ];
 
 const noun = (p: CustomerPlan) => (p.kind === "membership" ? "membership" : "credit package");
-const Noun = (p: CustomerPlan) => (p.kind === "membership" ? "Membership" : "Credit package");
+const Noun = (p: CustomerPlan) => (p.kind === "membership" ? "Membership" : "Package");
 
 export default function MyPlanPage() {
     useRequireCustomerAuth();

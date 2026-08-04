@@ -215,7 +215,7 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Session type</p>
                             <p className="text-[16px] font-medium text-[#101828]">
-                                {service.type === "recovery" ? "Recovery & wellness" : "Private session"}
+                                {service.type === "recovery" ? "Recovery" : "Private session"}
                             </p>
                         </div>
                         {service.type === "recovery" && (
@@ -1008,7 +1008,7 @@ export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: S
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                     <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
                         {service.type === "private"  ? "Private session details" :
-                         service.type === "recovery" ? "Recovery & wellness details" :
+                         service.type === "recovery" ? "Recovery details" :
                          "Service details"}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
