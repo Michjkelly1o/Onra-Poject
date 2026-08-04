@@ -959,7 +959,7 @@ function POSInner() {
                                     icon={ShoppingBag03}
                                 />
                             ) : (
-                                <div className={cn("grid gap-4", cartOpen ? "grid-cols-3" : "grid-cols-4")}>
+                                <div className="flex flex-col gap-3">
                                     {filteredProducts.map(p => {
                                         // Sum across all cart lines (gift cards
                                         // can spawn multiple lines from one design).
@@ -968,6 +968,7 @@ function POSInner() {
                                             .reduce((sum, l) => sum + l.quantity, 0);
                                         return (
                                             <ProductPosCard key={p.id}
+                                                layout="row"
                                                 type={KIND_TO_CARD_TYPE[p.kind]}
                                                 name={p.name}
                                                 primaryMeta={p.primaryMeta}

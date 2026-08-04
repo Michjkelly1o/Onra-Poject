@@ -60,6 +60,14 @@ export interface ProductPosCardProps {
     onIncrement?: () => void;
     onDecrement?: () => void;
     size?: "lg" | "sm";
+    /** Visual layout.
+     *  • "card" (default) — vertical card: banner on top, content below. Used
+     *    by the schedule mini-POS grid.
+     *  • "row" — horizontal list row: a compact 64px icon/image tile on the
+     *    left, name + dot-joined meta + price stacked in the middle, and the
+     *    cart action on the right. Drives the POS admin catalog's vertical
+     *    stack list (Figma 4581:47313). */
+    layout?: "card" | "row";
     className?: string;
 }
 
@@ -124,6 +132,7 @@ export function ProductPosCard({
     onIncrement,
     onDecrement,
     size = "lg",
+    layout = "card",
     className,
 }: ProductPosCardProps) {
     const tokens = TYPE_TOKENS[type];
@@ -137,6 +146,93 @@ export function ProductPosCard({
     // Out-of-stock retail cards lock every interactive path — the card
     // reads visually muted with an "Out of stock" pill overlay.
     const effectiveDisabled = disabled || outOfStock;
+
+    // Right-side cart control — shared by both layouts. Three states: passive
+    // count badge (POS module), inline −/qty/+ stepper (mini-POS), or the add
+    // button when not yet in the cart.
+    const actionEl =
+        inCart && quantityDisplay === "stepper" ? (
+            <div className="border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-3 px-1.5 py-1.5 shrink-0">
+                <button type="button" onClick={onDecrement} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] transition-colors">
+                    <Minus className="w-[18px] h-[18px]" />
+                </button>
+                <span className="text-[12px] font-semibold text-[#101828] min-w-[16px] text-center">{quantity}</span>
+                <button type="button" onClick={onIncrement} disabled={effectiveDisabled} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <Plus className="w-[18px] h-[18px]" />
+                </button>
+            </div>
+        ) : inCart && quantityDisplay === "badge" ? (
+            <div
+                aria-label={`${name} added (${quantity})`}
+                className="w-9 h-9 rounded-full border-1 border-[#658774] flex items-center justify-center text-[14px] font-semibold text-[#658774] shrink-0"
+            >
+                {quantity}
+            </div>
+        ) : (
+            <button
+                type="button"
+                onClick={onAdd}
+                disabled={effectiveDisabled}
+                aria-label={`Add ${name}`}
+                className="border-1 border-[#d0d5dd] bg-[#f9fafb] rounded-[8px] p-2 shrink-0 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f2f4f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+                <Plus className="w-5 h-5 text-[#344054]" />
+            </button>
+        );
+
+    // ── Row layout — horizontal list row (POS admin catalog). Figma 4581:47313:
+    //    [64px icon/image tile] · [name / "meta · meta" / price] · [+ / stepper]
+    // All tabs share it: icon types (membership/package/gift-card) show the
+    // tinted glyph; image types (retail/private/recovery) show the cover image.
+    if (layout === "row") {
+        const metaLine = [primaryMeta, secondaryMeta].filter(Boolean).join(" · ");
+        return (
+            <div
+                className={cn(
+                    "bg-white border-1 border-[#e4e7ec] rounded-[16px] flex items-center gap-4 px-4 h-[96px] w-full overflow-hidden",
+                    outOfStock && "opacity-60",
+                    className,
+                )}
+            >
+                {/* Left tile — compact 64px square. */}
+                <div
+                    className={cn(
+                        "relative shrink-0 size-[64px] rounded-[12px] overflow-hidden flex items-center justify-center border-1",
+                        isImageBanner ? "border-[#e4e7ec]" : cn(tokens.iconBg, tokens.patternBorder),
+                    )}
+                >
+                    {isImageBanner ? (
+                        bannerImageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={bannerImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
+                        )
+                    ) : (
+                        <TypeIcon type={type} className={cn(tokens.iconColor, "w-[28px] h-[28px]")} />
+                    )}
+                </div>
+
+                {/* Middle — name, dot-joined meta, price. */}
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <p className="text-[16px] font-medium text-[#101828] leading-[24px] truncate">{name}</p>
+                    {metaLine && (
+                        <p className="text-[14px] font-medium text-[#667085] leading-[20px] truncate">{metaLine}</p>
+                    )}
+                    <p className="text-[16px] font-semibold text-[#658774] leading-[24px]">{price}</p>
+                </div>
+
+                {/* Right — out-of-stock pill, otherwise the cart control. */}
+                {outOfStock ? (
+                    <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-white border-1 border-[#fecdca] text-[#b42318]">
+                        Out of stock
+                    </span>
+                ) : (
+                    actionEl
+                )}
+            </div>
+        );
+    }
 
     return (
         <div
@@ -239,34 +335,7 @@ export function ProductPosCard({
                     <p className="flex-1 text-[16px] font-semibold text-[#658774]">
                         {price}
                     </p>
-                    {inCart && quantityDisplay === "stepper" ? (
-                        <div className="border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-3 px-1.5 py-1.5 shrink-0">
-                            <button type="button" onClick={onDecrement} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] transition-colors">
-                                <Minus className="w-[18px] h-[18px]" />
-                            </button>
-                            <span className="text-[12px] font-semibold text-[#101828] min-w-[16px] text-center">{quantity}</span>
-                            <button type="button" onClick={onIncrement} disabled={effectiveDisabled} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                                <Plus className="w-[18px] h-[18px]" />
-                            </button>
-                        </div>
-                    ) : inCart && quantityDisplay === "badge" ? (
-                        <div
-                            aria-label={`${name} added (${quantity})`}
-                            className="w-9 h-9 rounded-full border-1 border-[#658774] flex items-center justify-center text-[14px] font-semibold text-[#658774] shrink-0"
-                        >
-                            {quantity}
-                        </div>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={onAdd}
-                            disabled={effectiveDisabled}
-                            aria-label={`Add ${name}`}
-                            className="border-1 border-[#d0d5dd] bg-[#f9fafb] rounded-[8px] p-2 shrink-0 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f2f4f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        >
-                            <Plus className="w-5 h-5 text-[#344054]" />
-                        </button>
-                    )}
+                    {actionEl}
                 </div>
             </div>
         </div>
