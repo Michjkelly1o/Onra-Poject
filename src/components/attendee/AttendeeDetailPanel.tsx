@@ -156,7 +156,9 @@ function LeftPanel({ ci, instructorLabel }: { ci: ClassInstance; instructorLabel
                     </div>
                 )}
                 <div className="absolute top-3 right-3">
-                    <StatusBadge type="class-detail" status={ci.status} />
+                    {/* Show the attendee-console effective status (Ongoing 30 min
+                        before start), so the detail badge matches the list. */}
+                    <StatusBadge type="class-detail" status={isAttendeeOngoing(ci.status, ci.dateISO, ci.startTime) ? "Ongoing" : ci.status} />
                 </div>
             </div>
 
