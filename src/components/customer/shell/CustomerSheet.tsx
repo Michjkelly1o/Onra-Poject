@@ -32,9 +32,13 @@ export interface CustomerSheetProps {
     /** Override the height with a custom class (e.g. "h-[52dvh]") for a fixed,
      *  smaller sheet. Also makes children a scrollable flex column. */
     heightClass?: string;
+    /** Edge-to-edge content — drops the panel padding and floats the drag handle
+     *  over the content (for a full-bleed hero). The child supplies its own
+     *  padding. Clips to the rounded top. */
+    bleed?: boolean;
 }
 
-export function CustomerSheet({ open, onClose, children, tall = false, heightClass }: CustomerSheetProps) {
+export function CustomerSheet({ open, onClose, children, tall = false, heightClass, bleed = false }: CustomerSheetProps) {
     // Portal target is only available on the client.
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
@@ -84,15 +88,19 @@ export function CustomerSheet({ open, onClose, children, tall = false, heightCla
                 style={{ opacity: shown ? 1 : 0, transition: `opacity ${ANIM_MS}ms ${EASE}` }}
             />
             <div
-                className={`relative z-10 w-full max-w-[500px] rounded-t-3xl bg-white px-4 pb-5 pt-3 shadow-[0_-8px_40px_rgba(16,24,40,0.12)] will-change-transform ${
-                    heightClass ? `flex flex-col ${heightClass}` : tall ? "flex h-[calc(100dvh-96px)] flex-col" : ""
-                }`}
+                className={`relative z-10 w-full max-w-[402px] rounded-t-3xl bg-white shadow-[0_-8px_40px_rgba(16,24,40,0.12)] will-change-transform ${
+                    bleed ? "overflow-hidden" : "px-4 pb-5 pt-3"
+                } ${heightClass ? `flex flex-col ${heightClass}` : tall ? "flex h-[calc(100dvh-96px)] flex-col" : ""}`}
                 style={{
                     transform: shown ? "translateY(0)" : "translateY(100%)",
                     transition: `transform ${ANIM_MS}ms ${EASE}`,
                 }}
             >
-                <div className="mx-auto mb-4 h-1.5 w-9 shrink-0 rounded-full bg-[#e4e7ec]" />
+                {bleed ? (
+                    <div className="pointer-events-none absolute left-1/2 top-2 z-30 h-1.5 w-9 -translate-x-1/2 rounded-full bg-[#d0d5dd]" />
+                ) : (
+                    <div className="mx-auto mb-4 h-1.5 w-9 shrink-0 rounded-full bg-[#e4e7ec]" />
+                )}
                 {tall || heightClass ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
             </div>
         </div>,

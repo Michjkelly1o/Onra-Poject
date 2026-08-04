@@ -26,7 +26,7 @@
 
 import { useMemo } from "react";
 import { useAppStore, getBusinessHours, type BusinessHours, type Shift, type ShiftAssignment, type Staff, type BlockedTime, type ClassSchedule, type ClassBooking, type Appointment } from "@/lib/store";
-import { REAL_TODAY_ISO, nowHHMM } from "./dates";
+import { REAL_TODAY_ISO, nowHHMM, addDaysISO, mondayOfISO } from "./dates";
 import { useAppointmentBookings, type AppointmentBooking } from "./appointment-bookings";
 import { useCurrentCustomer } from "./context";
 import { useCustomerInstructors } from "./instructors";
@@ -322,4 +322,69 @@ export function useFlexibleInstructorsForSlot(
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [appointment, dateISO, slotTime, instructorIds, data.businessHours, data.shifts, data.shiftAssignments, data.staff, data.blockedTimes, data.classSchedules, data.adminAppointments, data.classBookings, data.customerAppointments, data.member]);
+}
+
+
+// ─── Range availability (Select Date & Time sheet) ───────────────────────────
+//
+// For the appointment date strip we need to know WHICH days have ≥1 bookable
+// slot, so days with none are disabled and the default selection can jump to the
+// first available date. Computed by running the pure `computeAvailableSlots`
+// across a forward window (from today). Flexible uses the union of every
+// qualified instructor. Capped at 42 days (6 weeks) — plenty for the strip.
+
+const AVAILABILITY_WINDOW_DAYS = 42;
+
+/** Set of ISO days (from today, up to 6 weeks) that have ≥1 available slot. */
+export function useDaysWithAvailability(
+    appointment: AppointmentVM | null,
+    instructorId: string | null,
+    isFlexible: boolean,
+): Set<string> {
+    const data = useSlotData();
+    const flexibleIds = useQualifiedInstructorIds(appointment);
+    return useMemo(() => {
+        const set = new Set<string>();
+        if (!appointment) return set;
+        for (let i = 0; i < AVAILABILITY_WINDOW_DAYS; i++) {
+            const d = addDaysISO(REAL_TODAY_ISO, i);
+            let has = false;
+            if (isFlexible) {
+                for (const id of flexibleIds) {
+                    if (computeAvailableSlots(appointment, id, d, data).length > 0) { has = true; break; }
+                }
+            } else {
+                has = computeAvailableSlots(appointment, instructorId, d, data).length > 0;
+            }
+            if (has) set.add(d);
+        }
+        return set;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [appointment, instructorId, isFlexible, flexibleIds, data.businessHours, data.shifts, data.shiftAssignments, data.staff, data.blockedTimes, data.classSchedules, data.adminAppointments, data.classBookings, data.customerAppointments, data.member]);
+}
+
+/** The earliest ISO day (from today) with availability, or today if the set is
+ *  empty (the strip still renders; the day just shows "no available times"). */
+export function firstAvailableDay(days: Set<string>): string {
+    let best: string | null = null;
+    days.forEach((d) => { if (best === null || d < best) best = d; });
+    return best ?? REAL_TODAY_ISO;
+}
+
+/**
+ * The date the Select-date sheet should open on — matching the Classes tab:
+ * ALWAYS the current week. TODAY when it has slots; otherwise the nearest
+ * available date WITHIN the current week; if the whole current week is empty we
+ * still keep TODAY selected (the day shows "no available times") so the view
+ * never jumps to a future week on open — the customer scrolls forward themselves.
+ */
+export function defaultAvailableDay(days: Set<string>): string {
+    const today = REAL_TODAY_ISO;
+    if (days.has(today)) return today;
+    const weekEnd = addDaysISO(mondayOfISO(today), 6);
+    let bestInWeek: string | null = null;
+    days.forEach((d) => {
+        if (d >= today && d <= weekEnd && (bestInWeek === null || d < bestInWeek)) bestInWeek = d;
+    });
+    return bestInWeek ?? today;
 }

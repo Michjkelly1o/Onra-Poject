@@ -37,9 +37,17 @@ export interface SpotPickerProps {
     seats: SpotSeat[];
     /** New positional selection after a tap. */
     onChange: (next: (string | undefined)[]) => void;
+    /** Compact variant — shorter container (~300px) + smaller spots. */
+    compact?: boolean;
 }
 
-export function SpotPicker({ cols, rows, unavailable, selected, seats, onChange }: SpotPickerProps) {
+export function SpotPicker({ cols, rows, unavailable, selected, seats, onChange, compact = false }: SpotPickerProps) {
+    // Compact sizing keeps the grid under ~300px tall in the Review & Book sheet.
+    const dot = compact ? "size-8" : "size-10";
+    const iconDot = compact ? "size-8" : "size-10";
+    const colGap = compact ? "gap-4" : "gap-6";
+    const rowGap = compact ? "gap-3" : "gap-5";
+    const markerGap = compact ? "gap-4" : "gap-6";
     const [zoom, setZoom] = useState(1);
     const [activeSeat, setActiveSeat] = useState(0);
     const taken = new Set(unavailable);
@@ -64,7 +72,7 @@ export function SpotPicker({ cols, rows, unavailable, selected, seats, onChange 
 
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex min-h-[380px] flex-col gap-3 rounded-2xl bg-[#f2f4f7] p-3">
+            <div className={`flex flex-col gap-3 rounded-2xl bg-[#f2f4f7] p-3 ${compact ? "h-[288px]" : "min-h-[380px]"}`}>
                 {/* Legend — states */}
                 <div className="flex items-center justify-between rounded-[10px] bg-white px-3 py-2">
                     <span className="flex items-center gap-1 text-xs font-normal leading-[18px] text-[#475467]">
@@ -82,17 +90,17 @@ export function SpotPicker({ cols, rows, unavailable, selected, seats, onChange 
                 </div>
 
                 {/* Front marker + grid (centered) */}
-                <div className="flex flex-1 items-center justify-center overflow-hidden">
+                <div className="flex flex-1 items-start justify-center overflow-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <div
-                        className="flex flex-col items-center gap-6"
-                        style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
+                        className={`flex flex-col items-center py-1 ${markerGap}`}
+                        style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
                     >
-                        <span className="flex size-10 items-center justify-center rounded-full border-2 border-white bg-[#f2f4f7] shadow-[0px_2px_4px_-2px_rgba(16,24,40,0.1),0px_1px_2px_-2px_rgba(16,24,40,0.06)]">
-                            <User01 className="size-5 text-[#667085]" aria-hidden />
+                        <span className={`flex ${iconDot} items-center justify-center rounded-full border-2 border-white bg-[#f2f4f7] shadow-[0px_2px_4px_-2px_rgba(16,24,40,0.1),0px_1px_2px_-2px_rgba(16,24,40,0.06)]`}>
+                            <User01 className={`${compact ? "size-4" : "size-5"} text-[#667085]`} aria-hidden />
                         </span>
-                        <div className="flex flex-col gap-5">
+                        <div className={`flex flex-col ${rowGap}`}>
                             {Array.from({ length: rows }).map((_, r) => (
-                                <div key={r} className="flex items-center justify-center gap-6">
+                                <div key={r} className={`flex items-center justify-center ${colGap}`}>
                                     {Array.from({ length: cols }).map((_, c) => {
                                         const id = spotId(r, c);
                                         const isTaken = taken.has(id);
@@ -105,7 +113,7 @@ export function SpotPicker({ cols, rows, unavailable, selected, seats, onChange 
                                                 disabled={isTaken}
                                                 onClick={() => pick(id)}
                                                 aria-pressed={isSel}
-                                                className={`flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-medium leading-5 transition-colors ${
+                                                className={`flex ${dot} shrink-0 items-center justify-center rounded-full font-medium leading-5 transition-colors ${compact ? "text-xs" : "text-sm"} ${
                                                     isTaken
                                                         ? "cursor-not-allowed bg-[#d0d5dd] text-white"
                                                         : isSel

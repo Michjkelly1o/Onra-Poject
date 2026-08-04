@@ -4290,10 +4290,12 @@ export interface AppState {
     // ── Shift actions (Shift management module) ──────────────────────────
     /** Create a new shift. Returns the generated id. */
     addShift: (input: Omit<Shift, "id" | "created_at"> & { id?: string }) => string;
-    /** Add a staff → shift assignment. Idempotent (same pair returns the
-     *  existing row instead of duplicating). Defaults `days_of_week` to
-     *  the parent shift's `working_days` when omitted. */
-    addShiftAssignment: (input: { shift_id: string; staff_id: string; days_of_week?: boolean[] }) => string;
+    /** Add a staff → shift assignment. Idempotent per (shift, staff, week):
+     *  the same trio returns the existing row instead of duplicating. Defaults
+     *  `days_of_week` to the parent shift's `working_days` when omitted. Pass
+     *  `week_start` (this-week Monday ISO) to scope the assignment to ONE week;
+     *  omit it for a recurring/all-weeks baseline. */
+    addShiftAssignment: (input: { shift_id: string; staff_id: string; days_of_week?: boolean[]; week_start?: string }) => string;
     /** Remove a staff → shift assignment by id. */
     removeShiftAssignment: (id: string) => void;
     /** Update the per-assignment days-of-week subset. */
@@ -4303,9 +4305,10 @@ export interface AppState {
     /** Bulk status flip (Archive / Reactivate / Deactivate / Recover).
      *  Mirrors `setRolesStatus` shape. */
     setShiftsStatus: (ids: string[], status: Shift["status"]) => void;
-    /** Bulk delete — only succeeds when NO staff has the shift assigned.
-     *  Returns the ids that were actually removed + the blocked ones so
-     *  the caller can toast the right counts. */
+    /** Bulk delete — always succeeds. Cascades: removes each shift's
+     *  `shiftAssignments`, clears the legacy `staff.shiftId` for any staff who
+     *  held it, and re-syncs instructors so no dangling reference remains.
+     *  `blocked` is kept in the shape for callers but is always empty now. */
     deleteShifts: (ids: string[]) => { deleted: string[]; blocked: string[] };
 
     // ── Blocked time slice (Staff & shift module → Blocked time tab) ─────
@@ -10826,62 +10829,54 @@ export const useAppStore = create<AppState>()(persist(
         for (const s of before) get().recordAudit(verb, "shift", s.id, s.name);
     },
     deleteShifts: (ids) => {
-        // Delete only when NO staff has the shift assigned. Otherwise the
-        // caller must Deactivate / Archive. Mirrors the gift card / service
-        // delete gate.
-        //
-        // Audit fix 2026-07-22: source of truth flipped from the legacy
-        // `staff.shiftId` (one-shift-per-staff) to the Phase 3
-        // `shiftAssignments` many-to-many table. Without this, an admin
-        // could delete a shift that still had assignments (via the row-
-        // expand), leaving orphan assignment rows pointing at a missing
-        // shift. Belt + suspenders: scrub `shiftAssignments` on delete
-        // even after the gate passes, so nothing lingers if the
-        // assignments slice ever drifts out of sync with the shifts
-        // slice.
-        const assignmentCount = new Map<string, number>();
-        for (const a of get().shiftAssignments) {
-            assignmentCount.set(a.shift_id, (assignmentCount.get(a.shift_id) ?? 0) + 1);
-        }
-        // Legacy fallback — a pre-v82 store with an empty assignments
-        // slice still counts off `staff.shiftId` so a fresh browser
-        // that hasn't hydrated the migration yet doesn't misgate.
-        if (assignmentCount.size === 0) {
-            for (const s of get().staff) {
-                if (!s.shiftId) continue;
-                assignmentCount.set(s.shiftId, (assignmentCount.get(s.shiftId) ?? 0) + 1);
-            }
-        }
-        const deletable = ids.filter(i => (assignmentCount.get(i) ?? 0) === 0);
-        const blocked = ids.filter(i => !deletable.includes(i));
-        const before = get().shifts.filter(s => deletable.includes(s.id));
-        if (deletable.length > 0) {
-            const deletableSet = new Set(deletable);
-            set(state => ({
-                shifts: state.shifts.filter(s => !deletableSet.has(s.id)),
-                shiftAssignments: state.shiftAssignments.filter(a => !deletableSet.has(a.shift_id)),
-            }));
-        }
+        // Deleting a shift CASCADES (client 2026-08): the shift is removed along
+        // with every `shiftAssignments` row pointing at it, AND any staff whose
+        // legacy primary `staff.shiftId` referenced it has that cleared — then
+        // instructors re-sync from the patched staff so no dangling reference
+        // survives. Attendance / schedules key off `instructorId` (never a shift
+        // id), so they stay consistent automatically.
+        const idSet = new Set(ids);
+        const before = get().shifts.filter(s => idSet.has(s.id));
+        if (before.length === 0) return { deleted: [], blocked: [] };
+        // Staff whose primary shift pointer is about to dangle → clear + resync.
+        const affectedStaffIds = get().staff.filter(s => s.shiftId && idSet.has(s.shiftId)).map(s => s.id);
+        set(state => {
+            const nextStaff = state.staff.map(s =>
+                s.shiftId && idSet.has(s.shiftId) ? { ...s, shiftId: undefined } : s,
+            );
+            return {
+                shifts: state.shifts.filter(s => !idSet.has(s.id)),
+                shiftAssignments: state.shiftAssignments.filter(a => !idSet.has(a.shift_id)),
+                staff: nextStaff,
+                instructors: affectedStaffIds.length
+                    ? syncInstructorsFromStaff(state.instructors, nextStaff, state.roles, affectedStaffIds)
+                    : state.instructors,
+            };
+        });
         for (const s of before) get().recordAudit("Deleted shift", "shift", s.id, s.name);
-        return { deleted: deletable, blocked };
+        return { deleted: before.map(s => s.id), blocked: [] };
     },
 
     // ── Shift assignment actions (client 2026-07-22 many-to-many) ─────────
     addShiftAssignment: (input) => {
-        const { shift_id, staff_id, days_of_week } = input;
-        // Idempotent — same pair returns the existing row's id.
+        const { shift_id, staff_id, days_of_week, week_start } = input;
+        // Idempotent per (shift, staff, week) — a week-scoped row and the
+        // recurring baseline (no week) are distinct, so the same trio returns
+        // the existing row rather than duplicating.
         const existing = get().shiftAssignments.find(
-            a => a.shift_id === shift_id && a.staff_id === staff_id,
+            a => a.shift_id === shift_id && a.staff_id === staff_id && (a.week_start ?? null) === (week_start ?? null),
         );
         if (existing) return existing.id;
         const parent = get().shifts.find(s => s.id === shift_id);
         const defaultDays = parent?.working_days ?? [false, false, false, false, false, false, false];
-        const id = `sa_${shift_id}_${staff_id}`;
+        // Week-scoped rows carry the week in the id so multiple weeks coexist.
+        const id = week_start ? `sa_${shift_id}_${staff_id}_${week_start}` : `sa_${shift_id}_${staff_id}`;
         const next: ShiftAssignment = {
             id,
             shift_id,
             staff_id,
             days_of_week: days_of_week ?? [...defaultDays],
+            ...(week_start ? { week_start } : {}),
             created_at: new Date().toISOString(),
         };
         set(state => ({ shiftAssignments: [...state.shiftAssignments, next] }));
@@ -12640,7 +12635,10 @@ export const useAppStore = create<AppState>()(persist(
         //   unused. CustomerTransaction gains `issuedGiftCardId`; IssuedGiftCard
         //   status gains "refunded"; one sale txn is synthesised per seeded
         //   card. Bump so persisted v97 payloads gain the gift-card sale rows.
-        version: 99,
+        // v100 (2026-08): custom-amount gift card design added to the seed +
+        //   shift assignments gained an optional `week_start` (weekly scoping).
+        //   Bump so persisted demos reseed the gift-card catalog.
+        version: 100,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

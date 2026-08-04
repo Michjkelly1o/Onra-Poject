@@ -20,9 +20,12 @@ export interface DateStripProps {
     onSelect: (iso: string) => void;
     /** Optional bookable horizon (days from today). Days beyond are disabled. */
     bookingOpenDays?: number;
+    /** When provided, days NOT in this set are disabled (e.g. no available
+     *  appointment slots that day). */
+    enabledDays?: Set<string>;
 }
 
-export function DateStrip({ selectedISO, onSelect, bookingOpenDays }: DateStripProps) {
+export function DateStrip({ selectedISO, onSelect, bookingOpenDays, enabledDays }: DateStripProps) {
     const ref = useRef<HTMLDivElement>(null);
     const start = mondayOfISO(REAL_TODAY_ISO);
     const lastBookable = bookingOpenDays != null ? addDaysISO(REAL_TODAY_ISO, bookingOpenDays) : null;
@@ -47,7 +50,10 @@ export function DateStrip({ selectedISO, onSelect, bookingOpenDays }: DateStripP
                 <div key={w} data-week={w} className="flex w-full shrink-0 snap-start gap-1.5">
                     {Array.from({ length: 7 }, (_, d) => {
                         const iso = addDaysISO(start, w * 7 + d);
-                        const disabled = iso < REAL_TODAY_ISO || (lastBookable != null && iso > lastBookable);
+                        const disabled =
+                            iso < REAL_TODAY_ISO ||
+                            (lastBookable != null && iso > lastBookable) ||
+                            (enabledDays != null && !enabledDays.has(iso));
                         const selected = iso === selectedISO;
                         return (
                             <button

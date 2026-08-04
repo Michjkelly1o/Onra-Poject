@@ -20,7 +20,7 @@ export function BookNowButton() {
             className="w-full rounded-full"
             onClick={() => router.push("/customer/search")}
         >
-            Book class
+            Book
         </Button>
     );
 }

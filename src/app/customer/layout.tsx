@@ -73,7 +73,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                 the panel's iframe preview live, before Save. */}
             <BrandTokens>
             <div data-brand-scope="customer" className="fixed inset-0 flex justify-center overflow-hidden bg-[#f2f4f7]">
-                <div className="relative flex h-full w-full max-w-[500px] flex-col overflow-hidden bg-[var(--brand-background)]">
+                <div className="relative flex h-full w-full max-w-[402px] flex-col overflow-hidden bg-[var(--brand-background)]">
                     {/* Shared decorative background — MAIN pages only (§3); level-2
                         pages omit it for a cleaner plain-background look. */}
                     {showBackground && <CustomerBackground />}

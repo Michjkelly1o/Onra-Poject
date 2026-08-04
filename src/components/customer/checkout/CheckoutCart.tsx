@@ -12,7 +12,7 @@
 
 import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, HelpCircle, Minus, Plus, Ticket01, Wallet02 } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, HelpCircle, Minus, Plus, Ticket01, Wallet02, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrolled } from "@/lib/customer/use-scrollable";
 import {
@@ -35,6 +35,7 @@ import { usePaymentMethods } from "@/lib/customer/payment-methods";
 import { useAccountCreditBalance, useAccountCreditEnabled } from "@/lib/customer/account-credit";
 import { AccountCreditInfoSheet } from "@/components/customer/profile/AccountCreditInfoSheet";
 import { GiftCardMark } from "@/components/customer/products/GiftCardArt";
+import { PromoSheet } from "@/components/customer/checkout/PromoSheet";
 import { Button } from "@/components/ui/button";
 
 interface PayMethod {
@@ -52,14 +53,19 @@ interface PayMethod {
 export interface CheckoutCartProps {
     originId: string;
     onBack: () => void;
-    promoHref: string;
     processingHref: string;
+    /** "sheet" hosts this inside a bottom sheet (full-height flex, scroll body,
+     *  X-close header, sticky footer). */
+    variant?: "page" | "sheet";
     /** Replaces the "Detail product" section (e.g. an appointment overview + location). */
     summary?: ReactNode;
     /** Fixed subtotal (e.g. an appointment price) instead of the products cart total. */
     fixedSubtotal?: number;
     /** Tax rate % — defaults to the products TAX_RATE_PCT; pass 0 for appointments. */
     taxRatePct?: number;
+    /** Sheet mode only — suppress the internal "Payment" header when the host
+     *  already renders one (e.g. embedded as a slide in the appointment flow). */
+    hideHeader?: boolean;
 }
 
 /** Circular ± stepper button (DS Buttons/Secondary, scaled). */
@@ -94,7 +100,12 @@ function StepBtn({
 /** Title-case a free-text name: "bosa ahmed" / "BOSA AHMED" → "Bosa Ahmed". */
 const titleCase = (s: string) => s.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
-export function CheckoutCart({ originId, onBack, promoHref, processingHref, summary, fixedSubtotal, taxRatePct }: CheckoutCartProps) {
+export function CheckoutCart({ originId, onBack, processingHref, summary, fixedSubtotal, taxRatePct, variant = "page", hideHeader = false }: CheckoutCartProps) {
+    const isSheet = variant === "sheet";
+    // In sheet mode the host CustomerSheet already supplies the 16px side padding
+    // (exactly like Review & Book) — so the content must NOT add its own, or the
+    // padding doubles. Full-page keeps px-4.
+    const hpad = isSheet ? "" : "px-4";
     const router = useRouter();
     const showToast = useAppStore((s) => s.showToast);
     const scrolled = useMainScrolled();
@@ -123,6 +134,9 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
         setRedeemState(v);
     };
     const [creditInfoOpen, setCreditInfoOpen] = useState(false);
+    const [promoOpen, setPromoOpen] = useState(false);
+    // Appointment origins ("appointment-<id>") filter out class-only vouchers.
+    const promoScope = originId.startsWith("appointment") ? "appointment" : "class";
     const totals = computeTotals(fixedSubtotal ?? cartTotal(), promo, taxPct, redeemOn ? accountCredit : 0);
 
     // Gift-card payment reflects the customer's currently-redeemed cards: a single
@@ -202,27 +216,44 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
     }
 
     return (
-        <div className="flex min-h-full flex-col">
+        <div className={isSheet ? "flex h-full flex-col" : "flex min-h-full flex-col"}>
+            {!hideHeader && (
             <header
-                className={`sticky top-0 z-20 flex w-full items-center gap-3 px-4 py-3 transition-colors ${
-                    scrolled ? "bg-white/80 backdrop-blur-md" : ""
+                className={`z-20 flex w-full shrink-0 items-center gap-3 transition-colors ${
+                    isSheet ? "pb-3" : `sticky top-0 px-4 py-3 ${scrolled ? "bg-white/80 backdrop-blur-md" : ""}`
                 }`}
             >
-                <button
-                    type="button"
-                    onClick={onBack}
-                    aria-label="Back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
-                >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
-                </button>
+                {isSheet ? (
+                    <span aria-hidden className="size-8 shrink-0" />
+                ) : (
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        aria-label="Back"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    >
+                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    </button>
+                )}
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Payment
                 </p>
-                <div className="size-10 shrink-0" aria-hidden />
+                {isSheet ? (
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        aria-label="Close"
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    >
+                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                    </button>
+                ) : (
+                    <div className="size-10 shrink-0" aria-hidden />
+                )}
             </header>
+            )}
 
-            <div className="flex flex-1 flex-col gap-6 px-4 pb-4 pt-2">
+            <div className={`flex flex-1 flex-col gap-6 pb-4 pt-2 ${isSheet ? "min-h-0 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "px-4"}`}>
                 {/* Summary — products "Detail product" cart, or a caller-supplied summary (appointments). */}
                 {summary ?? (
                 <section className="flex flex-col gap-3">
@@ -364,11 +395,11 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
             </div>
 
             {/* Sticky bottom — Apply promo + Total / Pay now (Primary Background) */}
-            <div className="sticky bottom-0 z-10 bg-white">
+            <div className={`z-10 bg-white ${isSheet ? "shrink-0" : "sticky bottom-0"}`}>
                 <button
                     type="button"
-                    onClick={() => router.push(promoHref)}
-                    className="flex w-full items-center gap-2 border-b border-[#f2f4f7] px-4 py-4 text-left"
+                    onClick={() => setPromoOpen(true)}
+                    className={`flex w-full items-center gap-2 border-b border-[#f2f4f7] py-4 text-left ${hpad}`}
                 >
                     <Ticket01 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
                     {promo ? (
@@ -384,7 +415,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                 </button>
 
                 {canRedeem && (
-                    <div className="flex w-full items-center gap-2 border-b border-[#f2f4f7] px-4 py-4">
+                    <div className={`flex w-full items-center gap-2 border-b border-[#f2f4f7] py-4 ${hpad}`}>
                         <Wallet02 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
                         <span className="flex flex-1 items-center gap-1.5 text-sm font-normal leading-5 text-[#344054]">
                             Redeem AED {accountCredit} credits
@@ -410,7 +441,7 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
                     </div>
                 )}
 
-                <div className="flex items-center gap-4 px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+                <div className={`flex items-center gap-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${hpad}`}>
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="text-sm font-normal leading-5 text-[#344054]">Total</span>
                         <span className="text-lg font-semibold leading-7 text-[var(--brand-text)]">AED {totals.total}</span>
@@ -422,6 +453,14 @@ export function CheckoutCart({ originId, onBack, promoHref, processingHref, summ
             </div>
 
             <AccountCreditInfoSheet open={creditInfoOpen} onClose={() => setCreditInfoOpen(false)} />
+
+            <PromoSheet
+                open={promoOpen}
+                onClose={() => setPromoOpen(false)}
+                scope={promoScope}
+                originId={originId}
+                onApplied={bump}
+            />
         </div>
     );
 }

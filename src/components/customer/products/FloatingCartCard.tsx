@@ -21,7 +21,7 @@ export function FloatingCartCard({
 }) {
     return (
         <div
-            className="fixed inset-x-0 z-40 mx-auto w-full max-w-[500px] px-4"
+            className="fixed inset-x-0 z-40 mx-auto w-full max-w-[402px] px-4"
             style={{ bottom: "calc(59px + max(16px, env(safe-area-inset-bottom)) + 16px)" }}
         >
             <button

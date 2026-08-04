@@ -60,20 +60,21 @@ function StreakTile({ days }: { days: number }) {
 }
 
 export interface MetricsProps {
-    totalClasses: number;
-    classesThisMonth: number;
+    /** All booking types (classes + private/recovery appointments). */
+    totalBookings: number;
+    bookingsThisMonth: number;
     dayStreak: number;
-    /** Display string for the "Upcoming classes" tile (e.g. "20", or "∞" for unlimited). */
-    classesRemaining: string;
+    /** Display string for the "Credits left" tile (e.g. "20", or "∞" for unlimited). */
+    creditsLeft: string;
 }
 
-export function Metrics({ totalClasses, classesThisMonth, dayStreak, classesRemaining }: MetricsProps) {
+export function Metrics({ totalBookings, bookingsThisMonth, dayStreak, creditsLeft }: MetricsProps) {
     return (
         <div className="grid w-full grid-cols-2 gap-3">
-            <MetricTile value={String(totalClasses)} label="Total classes" />
+            <MetricTile value={String(totalBookings)} label="Total bookings" />
             <StreakTile days={dayStreak} />
-            <MetricTile value={String(classesThisMonth)} label="Classes this month" />
-            <MetricTile value={classesRemaining} label="Upcoming classes" />
+            <MetricTile value={String(bookingsThisMonth)} label="Bookings this month" />
+            <MetricTile value={creditsLeft} label="Credits left" />
         </div>
     );
 }

@@ -10,7 +10,7 @@
 // sheet; "+" on a gift card opens the Gift Card Information page. Adding a
 // membership → Checkout; a package/gift card → stays on the list + Floating Cart.
 
-import { useReducer, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
 import { useAppStore } from "@/lib/store";
@@ -29,7 +29,10 @@ import { BranchSelector } from "@/components/customer/branch/BranchSelector";
 import { ProductCard } from "@/components/customer/products/ProductCard";
 import { ActivePlanCard } from "@/components/customer/products/ActivePlanCard";
 import { FloatingCartCard } from "@/components/customer/products/FloatingCartCard";
-import { ProductDetailsSheet } from "@/components/customer/products/ProductDetailsSheet";
+import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
+import { ProductDetailScreen } from "@/components/customer/products/ProductDetailScreen";
+import { CheckoutCart } from "@/components/customer/checkout/CheckoutCart";
+import { GiftCardInfoContent } from "@/components/customer/products/GiftCardInfoContent";
 import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelectorSheet";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { ShoppingBag03 } from "@untitledui/icons";
@@ -53,8 +56,18 @@ export default function ProductsPage() {
     const { plans, giftCards, retail } = useCatalogProducts();
     const creditBalance = useCreditBalance();
 
+    // Restore the originating tab when returning from a product detail — the
+    // detail's Back threads `?back=/customer/products?tab=<tab>`. Read AFTER mount
+    // (in an effect) so the server + first client render agree on "all" — reading
+    // window.location in the initializer caused a hydration mismatch.
     const [tab, setTab] = useState<Tab>("all");
-    const [sheetPlan, setSheetPlan] = useState<PlanRow | null>(null);
+    useEffect(() => {
+        const t = new URLSearchParams(window.location.search).get("tab");
+        if (TABS.some((x) => x.id === t)) setTab(t as Tab);
+    }, []);
+    const [detailId, setDetailId] = useState<string | null>(null);
+    const [checkoutOpen, setCheckoutOpen] = useState(false);
+    const [giftSheet, setGiftSheet] = useState<{ id: string; pay: boolean } | null>(null);
     const [branchSheet, setBranchSheet] = useState(false);
     const [, bump] = useReducer((x) => x + 1, 0);
 
@@ -138,13 +151,17 @@ export default function ProductsPage() {
             router.push("/customer/profile/plan");
             return;
         }
-        // Guests can view the full detail page (read-only) — the CTA there gates.
-        // Product Details is now a full-page screen (the sheet is kept as a backup).
-        router.push(`/customer/products/${p.id}`);
+        // Product Details opens as a bottom sheet over the catalog.
+        setDetailId(p.id);
+    }
+
+    /** `?back=` param that returns the detail's Back button to the current tab. */
+    function backToTab() {
+        return `?back=${encodeURIComponent(`/customer/products?tab=${tab}`)}`;
     }
 
     function onAdd(plan: PlanRow, qty: number) {
-        setSheetPlan(null);
+        setDetailId(null);
         // Guests can't purchase — any add-to-cart routes to the login front door.
         if (!member) {
             router.push(loginHref(pathname));
@@ -154,7 +171,7 @@ export default function ProductsPage() {
         // the sheet's "Add to cart" routes there (the line is added on Confirm), so
         // multiple gift cards can be purchased by repeating the flow.
         if (plan.kind === "gift_card") {
-            router.push(`/customer/products/gift-card/${plan.id}`);
+            router.push(`/customer/products/gift-card/${plan.id}${backToTab()}`);
             return;
         }
         // Packages + retail both open the detail page at their current cart qty and
@@ -316,22 +333,46 @@ export default function ProductsPage() {
                 <FloatingCartCard
                     count={cartCount()}
                     total={cartTotal()}
-                    onCheckout={() => router.push("/customer/products/checkout")}
+                    onCheckout={() => setCheckoutOpen(true)}
                 />
             )}
 
             <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
 
-            <ProductDetailsSheet
-                open={!!sheetPlan}
-                onClose={() => setSheetPlan(null)}
-                plan={sheetPlan}
-                onAdd={onAdd}
-                upgrade={sheetPlan ? upgradeFor(sheetPlan) : null}
-                disabled={sheetPlan ? addDisabledFor(sheetPlan) : false}
-                guest={!member}
-                initialQty={sheetPlan?.kind === "package" ? cartQtyFor(sheetPlan) || 1 : 1}
-            />
+            <CustomerSheet open={detailId != null} onClose={() => setDetailId(null)} tall bleed>
+                {detailId && (
+                    <ProductDetailScreen
+                        productId={detailId}
+                        originId="products"
+                        variant="sheet"
+                        onBack={() => setDetailId(null)}
+                        afterAdd={() => setDetailId(null)}
+                        onCheckout={() => { setDetailId(null); setCheckoutOpen(true); }}
+                        onGiftConfigure={(intent) => { setDetailId(null); setGiftSheet({ id: detailId!, pay: intent === "pay" }); }}
+                    />
+                )}
+            </CustomerSheet>
+
+            <CustomerSheet open={giftSheet != null} onClose={() => setGiftSheet(null)} tall>
+                {giftSheet && (
+                    <GiftCardInfoContent
+                        designId={giftSheet.id}
+                        variant="sheet"
+                        payNow={giftSheet.pay}
+                        onDone={() => setGiftSheet(null)}
+                        onCheckout={() => setCheckoutOpen(true)}
+                    />
+                )}
+            </CustomerSheet>
+
+            <CustomerSheet open={checkoutOpen} onClose={() => setCheckoutOpen(false)} tall>
+                <CheckoutCart
+                    variant="sheet"
+                    originId="products"
+                    onBack={() => setCheckoutOpen(false)}
+                    processingHref="/customer/products/checkout/processing"
+                />
+            </CustomerSheet>
         </div>
     );
 }

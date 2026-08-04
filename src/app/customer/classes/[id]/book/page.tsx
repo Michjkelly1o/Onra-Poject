@@ -19,7 +19,7 @@ import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useClassDetail, useNeedsWaiver } from "@/lib/customer/search-data";
 import { formatLongDate, to12h } from "@/lib/customer/dates";
-import { bookingDraft, ensureBookingDraft, DROP_IN_PRICE_AED, type BookingGuest } from "@/lib/customer/booking-flow";
+import { bookingDraft, ensureBookingDraft, type BookingGuest } from "@/lib/customer/booking-flow";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { getFrozenActiveMembership } from "@/lib/customer/freeze-eligibility";
 import { shortDate } from "@/lib/customer/profile-format";
@@ -60,9 +60,12 @@ function BookingConfirmation() {
 
     // Guests survive the Add Guest sub-route round-trip via the shared draft.
     ensureBookingDraft(id);
-    const [guests] = useState<BookingGuest[]>(() => bookingDraft.guests);
-    // Self is ALWAYS booked — a guest is brought ALONG (never booked instead of you).
-    bookingDraft.bookSelf = true;
+    const [guests, setGuests] = useState<BookingGuest[]>(() => bookingDraft.guests);
+    // Reserve-to model: the single seat is for EITHER you OR one other person —
+    // never both. A reservee (guests[0]) means the seat is booked in their name
+    // and paid from your plan; with none, the seat is yours.
+    const reservee = guests[0];
+    bookingDraft.bookSelf = !reservee;
 
     if (!detail) {
         return (
@@ -84,7 +87,9 @@ function BookingConfirmation() {
     });
     const credits = member?.creditsRemaining;
     const hasCredits = typeof credits === "number";
-    const memberCreditSeats = 1 + guests.filter((g) => g.payment === "booker_credit").length;
+    // One seat, always charged to the member's plan (whether it's yours or a
+    // reserved seat for someone else).
+    const memberCreditSeats = 1;
     const creditsAfter = hasCredits ? Math.max(0, credits - memberCreditSeats) : null;
     // Eligible = holds a plan that still has credit (or an unlimited membership).
     // No eligible plan → the footer offers Purchase Product instead of Confirm.
@@ -94,28 +99,11 @@ function BookingConfirmation() {
     // Today's classes whose start time has passed are closed — no booking action.
     const isClosed = detail.state === "closed";
 
-    // ── Detail payment — what this booking actually costs. Seats covered by MY
-    // plan spend my credits (me + any "use my credits" guest); a guest paying
-    // another way is listed on its own line so the total is never misleading.
-    const guestExtras = guests
-        .filter((g) => g.payment !== "booker_credit")
-        .map((g) => {
-            const who = g.name.trim() || "Guest";
-            if (g.payment === "drop_in") return { label: `${who} — drop-in`, value: `AED ${DROP_IN_PRICE_AED}`, aed: DROP_IN_PRICE_AED };
-            if (g.payment === "guest_package") return { label: `${who} — own package`, value: "1 credit (theirs)", aed: 0 };
-            return { label: `${who} — invite link`, value: "Pays when booking", aed: 0 };
-        });
-    const guestAed = guestExtras.reduce((sum, g) => sum + g.aed, 0);
+    // ── Detail payment — one seat, drawn from the member's plan. Unlimited
+    // memberships show "Included".
     const creditsLabel = `${memberCreditSeats} credit${memberCreditSeats === 1 ? "" : "s"}`;
-    // Unlimited membership → no credits are drawn down for my own seat.
     const myLineValue = hasCredits ? creditsLabel : "Included";
-    const totalValue = hasCredits
-        ? guestAed > 0
-            ? `${creditsLabel} + AED ${guestAed}`
-            : creditsLabel
-        : guestAed > 0
-          ? `AED ${guestAed}`
-          : "Included";
+    const totalValue = myLineValue;
 
     const planLine = !hasCredits
         ? "Included in your membership"
@@ -141,13 +129,15 @@ function BookingConfirmation() {
           ]
         : [];
     const spotRequired = !!spotLayout && mode === "book";
-    // Seats to place: yourself + each guest (index-aligned with selectedSpots).
+    // A single seat — placed for whoever the booking is reserved to.
+    const reserveeLabel = reservee ? (reservee.name.trim() || "Guest") : "You";
     const spotSeats = [
-        { initials: member?.initials ?? "You", label: "You" },
-        ...guests.map((g, i) => ({
-            initials: (g.name.trim().slice(0, 1) || "G").toUpperCase() + (guests.length > 1 ? String(i + 1) : ""),
-            label: guests.length > 1 ? `Guest ${i + 1}` : "Guest",
-        })),
+        {
+            initials: reservee
+                ? (reservee.name.trim().slice(0, 1).toUpperCase() || "G")
+                : (member?.initials ?? "You"),
+            label: reserveeLabel,
+        },
     ];
     // Every seat needs its own chosen spot (nothing is auto-selected).
     const spotMissing = spotRequired && spotSeats.some((_, i) => !selectedSpots[i]);
@@ -314,66 +304,74 @@ function BookingConfirmation() {
 
                 <div className="h-px w-full bg-[#e4e7ec]" />
 
-                {/* Guest — you're always booked; bring ALONG up to one guest. */}
+                {/* Reserve to — the single seat is for you by default, or you can
+                    reserve it for someone else instead. */}
                 <section className="flex w-full flex-col gap-3">
                     <div className="flex w-full items-center justify-between">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Guest</p>
-                        {guests.length === 0 && (
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Reserve to</p>
+                        {!reservee && (
                             <button
                                 type="button"
                                 onClick={() => router.push(`/customer/classes/${detail.id}/book/guest?index=0`)}
                                 className="text-sm font-semibold leading-5 text-[var(--brand-primary)]"
                             >
-                                Add guest
+                                Reserve for someone else
                             </button>
                         )}
                     </div>
 
-                    {/* Your own account — always included (you can't book without yourself). */}
-                    {member && (
+                    {reservee ? (
+                        // Reserved for another person — the seat is booked in their name.
                         <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
-                            <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
-                                {member.imageUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={member.imageUrl} alt="" className="size-full object-cover" />
-                                ) : (
-                                    <span className="text-xs font-semibold leading-none text-[#667085]">{member.initials}</span>
-                                )}
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-xs font-semibold text-[#667085]">
+                                {reservee.name.trim().slice(0, 1).toUpperCase() || "G"}
                             </span>
                             <div className="flex min-w-0 flex-1 flex-col">
-                                <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
-                                    {`${member.firstName} ${member.lastName}`.trim()} <span className="font-normal text-[#667085]">(You)</span>
+                                <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{reservee.name}</span>
+                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">
+                                    {reservee.email || "Reserved on your plan"}
                                 </span>
-                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">{member.email}</span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => router.push(`/customer/classes/${detail.id}/book/guest?index=0`)}
+                                    className="text-sm font-semibold leading-5 text-[var(--brand-primary)]"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        bookingDraft.guests = [];
+                                        setGuests([]);
+                                    }}
+                                    className="text-sm font-semibold leading-5 text-[#b42318]"
+                                >
+                                    Remove
+                                </button>
                             </div>
                         </div>
-                    )}
-
-                    {/* One guest, brought along */}
-                    {guests.length > 0 && (
-                        <div className="flex w-full flex-col gap-2">
-                            {guests.map((g, i) => (
-                                <div
-                                    key={i}
-                                    className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4"
-                                >
-                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-xs font-semibold text-[#667085]">
-                                        {g.name.trim().slice(0, 1).toUpperCase() || "G"}
+                    ) : (
+                        // Default — the seat is booked under your own account.
+                        member && (
+                            <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                    {member.imageUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={member.imageUrl} alt="" className="size-full object-cover" />
+                                    ) : (
+                                        <span className="text-xs font-semibold leading-none text-[#667085]">{member.initials}</span>
+                                    )}
+                                </span>
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                    <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
+                                        {`${member.firstName} ${member.lastName}`.trim()} <span className="font-normal text-[#667085]">(You)</span>
                                     </span>
-                                    <div className="flex min-w-0 flex-1 flex-col">
-                                        <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{g.name}</span>
-                                        <span className="truncate text-sm font-normal leading-5 text-[#667085]">{g.email}</span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => router.push(`/customer/classes/${detail.id}/book/guest?index=${i}`)}
-                                        className="shrink-0 text-sm font-semibold leading-5 text-[var(--brand-primary)]"
-                                    >
-                                        Edit
-                                    </button>
+                                    <span className="truncate text-sm font-normal leading-5 text-[#667085]">{member.email}</span>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        )
                     )}
                 </section>
 
@@ -390,12 +388,6 @@ function BookingConfirmation() {
                                 </span>
                                 <span className="shrink-0 font-medium text-[var(--brand-text)]">{myLineValue}</span>
                             </div>
-                            {guestExtras.map((g) => (
-                                <div key={g.label} className="flex items-center justify-between gap-3 text-sm leading-5">
-                                    <span className="min-w-0 truncate font-normal text-[#475467]">{g.label}</span>
-                                    <span className="shrink-0 font-medium text-[var(--brand-text)]">{g.value}</span>
-                                </div>
-                            ))}
                             <div className="flex items-center justify-between gap-3 text-sm leading-5">
                                 <span className="font-normal text-[#475467]">Total</span>
                                 <span className="shrink-0 font-semibold text-[var(--brand-text)]">{totalValue}</span>
@@ -440,7 +432,7 @@ function BookingConfirmation() {
                                 <p className="text-sm font-normal leading-5 text-[#475467]">{planLine}</p>
                             </div>
                         </div>
-                    ) : guests.length === 0 ? (
+                    ) : (
                         <button
                             type="button"
                             onClick={() => router.push(`/customer/classes/${detail.id}/book/plans`)}
@@ -450,11 +442,11 @@ function BookingConfirmation() {
                                 <ShoppingBag03 className="size-5 text-[#344054]" aria-hidden />
                             </span>
                             <span className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--brand-text)]">
-                                Purchase product
+                                Purchase plan
                             </span>
                             <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
                         </button>
-                    ) : null
+                    )
                 ) : (
                     <div className="flex w-full items-start gap-2 rounded-xl border border-[#e4e7ec] bg-[#f9fafb] p-4">
                         <Clock className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />

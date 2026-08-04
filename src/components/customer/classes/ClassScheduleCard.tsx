@@ -37,7 +37,10 @@ export interface ClassScheduleCardProps {
     ctaLabel: string;
     ctaVariant?: "primary" | "secondary";
     ctaDisabled?: boolean;
+    /** Tapping the card BODY — opens Class Details. */
     onAction?: () => void;
+    /** Tapping the CTA — opens Review & Book (falls back to onAction). */
+    onBook?: () => void;
 }
 
 const TONE: Record<BadgeTone, string> = {
@@ -62,6 +65,7 @@ export function ClassScheduleCard({
     ctaVariant = "primary",
     ctaDisabled = false,
     onAction,
+    onBook,
 }: ClassScheduleCardProps) {
     // Split "10:00 AM • 60 mins" so the start time reads medium and the duration
     // regular — matching the location line (room medium / branch regular).
@@ -143,7 +147,7 @@ export function ClassScheduleCard({
                 className="w-full rounded-full"
                 onClick={(e) => {
                     e.stopPropagation();
-                    onAction?.();
+                    (onBook ?? onAction)?.();
                 }}
             >
                 {ctaLabel}

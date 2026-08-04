@@ -235,7 +235,9 @@ export function cardPresentation(vm: SearchClassVM): {
         case "available":
             return {
                 badgeLabel: `${vm.booked}/${vm.capacity}`,
-                badgeTone: "success",
+                // Grey (neutral) participant-count badge — matches the private/
+                // recovery "1 on 1" badge style (client 2026-08). Was green.
+                badgeTone: "neutral",
                 badgeIcon: "users",
                 ctaLabel: "Book now",
                 ctaVariant: "primary",
@@ -256,7 +258,7 @@ export function cardPresentation(vm: SearchClassVM): {
         case "booked":
             // Keep the capacity badge (class fill) AND add a "Booked" pill next to
             // the instructor so the member's own state is clear without losing info.
-            return { badgeLabel: `${vm.booked}/${vm.capacity}`, badgeTone: "success", badgeIcon: "users", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false, statusPill: { label: "Booked", tone: "booked" } };
+            return { badgeLabel: `${vm.booked}/${vm.capacity}`, badgeTone: "neutral", badgeIcon: "users", ctaLabel: "View details", ctaVariant: "secondary", ctaDisabled: false, statusPill: { label: "Booked", tone: "booked" } };
         case "waitlisted":
             // The member is on the waitlist — the class is FULL (capacity badge),
             // and their own position shows in the pill ("Waitlist #2").

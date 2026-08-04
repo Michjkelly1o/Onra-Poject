@@ -54,9 +54,13 @@ export interface BookingCardProps {
     /** Desaturate the cover (cancelled / no-show bookings). */
     mutedCover?: boolean;
     onClick?: () => void;
+    /** Optional action rendered INSIDE the card, below the content (e.g. a
+     *  "Rate class" button on a past booking). Clicks here don't trigger the
+     *  card's own onClick. */
+    footer?: React.ReactNode;
 }
 
-export function BookingCard({ name, date, time, location, tzLabel, status, image, imageColor, mutedCover, onClick }: BookingCardProps) {
+export function BookingCard({ name, date, time, location, tzLabel, status, image, imageColor, mutedCover, onClick, footer }: BookingCardProps) {
     const tone = TONE[status.tone];
     const Icon = status.icon ?? tone.Icon;
     const color = status.color ?? tone.color;
@@ -109,6 +113,12 @@ export function BookingCard({ name, date, time, location, tzLabel, status, image
                     </div>
                 </div>
             </div>
+
+            {footer != null && (
+                <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+                    {footer}
+                </div>
+            )}
         </div>
     );
 }

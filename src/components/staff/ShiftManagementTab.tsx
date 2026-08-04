@@ -324,7 +324,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         iconBg: "bg-[#fee4e2]", IconComp: Trash02, iconColor: "text-[#d92d20]",
         titleSingle: "Delete this shift?",
         titleBulk:   n => `Delete ${n} shifts?`,
-        description: subject => <>{subject} will be permanently removed. This action cannot be undone.</>,
+        description: subject => <>{subject} will be permanently removed and any assigned staff will be unassigned. This action cannot be undone.</>,
         confirmLabel: "Delete",
         tone: "destructive",
     },
@@ -768,7 +768,7 @@ export function ShiftManagementTab({
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
     const hasRecoverable   = selectedRows.some(r => r.status === "archive");
     const hasDeletable     = selectedRows.length > 0 &&
-        selectedRows.every(r => r.status === "active" && (staffCountByShift.get(r.id) ?? 0) === 0);
+        selectedRows.every(r => r.status === "active");
 
     // ── Row + bulk action plumbing ─────────────────────────────────────────
     function handleRowAction(row: Shift, kind: RowActionKind) {
@@ -787,7 +787,7 @@ export function ShiftManagementTab({
                 case "reactivate": return selectedRows.filter(r => r.status === "inactive");
                 case "archive":    return selectedRows.filter(r => r.status !== "archive");
                 case "recover":    return selectedRows.filter(r => r.status === "archive");
-                case "delete":     return selectedRows.filter(r => r.status === "active" && (staffCountByShift.get(r.id) ?? 0) === 0);
+                case "delete":     return selectedRows.filter(r => r.status === "active");
                 default:           return [];
             }
         })();
@@ -996,7 +996,7 @@ export function ShiftManagementTab({
                                                     { label: "Reactivate", icon: Check, onClick: () => handleRowAction(s, "reactivate"), hidden: s.status !== "inactive" },
                                                     { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(s, "recover"), hidden: s.status !== "archive" },
                                                     { label: "Deactivate", icon: SlashCircle01, onClick: () => handleRowAction(s, "deactivate"), danger: true, hidden: !(s.status === "active" && assignedCount > 0) },
-                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true, hidden: !(s.status === "active" && assignedCount === 0) },
+                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true, hidden: s.status !== "active" },
                                                 ]} />
                                             </td>
                                         </tr>

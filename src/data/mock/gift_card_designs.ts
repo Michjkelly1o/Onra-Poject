@@ -7,10 +7,11 @@
 // the gift-card management surface ships) carrying the actual code, balance,
 // expiry, and recipient.
 //
-// 4 seeded designs matching the Figma /admin/products/gift-cards reference:
+// 5 seeded designs matching the Figma /admin/products/gift-cards reference:
 //   • AED 250 — Active, expires 2025-02-22
 //   • AED 250 — Active, no expiry
 //   • AED 500 — Active, expires 2025-02-22
+//   • Custom Amount — Active, buyer picks AED 100–2,000
 //   • AED 750 — Archived, expires 2025-02-22
 //
 // Module 06 extended columns (description, welcome_message,
@@ -70,6 +71,23 @@ export const gift_card_designs: GiftCardDesign[] = [
         issue_date: "2024-04-04",
         valid_until_date: "2025-02-22",
         created_at: "2024-04-04T08:00:00Z",
+    },
+    {
+        id: "gc_design_custom_amount",
+        name: "Custom Amount Gift Card",
+        value_type: "custom",
+        min_value_aed: 100,
+        max_value_aed: 2000,
+        price_aed: 100,
+        validity_days: 365,
+        status: "active",
+        description: "Choose your own amount — a flexible gift card the buyer sets between AED 100 and AED 2,000. Valid for any purchase across active branches.",
+        welcome_message: DEFAULT_WELCOME,
+        gift_card_number: "GC-2025-CUST1",
+        no_expiry: false,
+        issue_date: "2024-05-01",
+        valid_until_date: "2025-05-01",
+        created_at: "2024-05-01T09:00:00Z",
     },
     {
         id: "gc_design_aed_750_archived",
