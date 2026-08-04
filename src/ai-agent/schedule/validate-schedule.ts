@@ -241,13 +241,13 @@ export function validateClassSchedule(args: {
                 blockedTimes: snapshot.blockedTimes,
             });
             if (ok.length === 0) {
-                push(`${instructor.fullName} isn't available at ${fmt12(o.startTime)} on ${o.dateISO} — it's outside their shift or on their time-off.`);
+                push(`${instructor.fullName} isn't available at ${fmt12(o.startTime)} — it's outside their shift or on their time-off.`);
             }
         }
         // Double-booking (instructor or room).
         const conflict = occConflict(snapshot, o, draft.instructorId, draft.roomId, room?.name);
-        if (conflict.instructor) push(`${instructor?.fullName ?? "The instructor"} already has a class or session at ${fmt12(o.startTime)} on ${o.dateISO}.`);
-        if (conflict.room) push(`${room?.name ?? "That room"} is already booked at ${fmt12(o.startTime)} on ${o.dateISO}.`);
+        if (conflict.instructor) push(`${instructor?.fullName ?? "The instructor"} already has a class or session at ${fmt12(o.startTime)}.`);
+        if (conflict.room) push(`${room?.name ?? "That room"} is already booked at ${fmt12(o.startTime)}.`);
     }
 
     return { errors, warnings };

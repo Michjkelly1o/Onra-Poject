@@ -598,7 +598,15 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                 // — e.g. "Custom X weeks" / "Type number of classes". Actions
                 // stay hidden in the compact paged panel.
                 const showOther = allowOther && (!compact || q.allowOther === true);
-                const showActions = !compact || (isMulti && step + 1 >= total);
+                // Compact single-select normally auto-advances on option click, so
+                // no button — BUT when the user types a custom value there's no
+                // click to advance on, so surface a "Continue" button once they've
+                // typed something.
+                const compactCustom = compact && !isMulti && showOther && otherText.trim().length > 0;
+                const showActions = !compact || (isMulti && step + 1 >= total) || compactCustom;
+                const actionLabel = compactCustom
+                    ? "Continue"
+                    : step + 1 >= total ? "Done" : isMulti ? "Confirm" : "Next";
                 if (!showOther && !showActions) return null;
                 return (
                 <div className="flex flex-col">
@@ -647,7 +655,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                                 </Button>
                             )}
                             <Button variant="primary" size="sm" disabled={!canAdvance} onClick={handleNext}>
-                                {step + 1 >= total ? "Done" : isMulti ? "Confirm" : "Next"}
+                                {actionLabel}
                             </Button>
                         </div>
                     )}

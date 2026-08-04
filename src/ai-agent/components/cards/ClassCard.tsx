@@ -50,16 +50,21 @@ function SpotEditorCard({ capacity, send }: { capacity: number; send: (text: str
 function ResultCard({ noun, summary, verb }: { noun: string; summary: string; verb: string }) {
     const [done, setDone] = useState(false);
     useEffect(() => {
-        const t = setTimeout(() => setDone(true), 1300);
+        const t = setTimeout(() => setDone(true), 1900);
         return () => clearTimeout(t);
     }, []);
 
+    // Centered "publishing…" loader (same feel as the migration import screen) —
+    // icon + text in the middle, then it flips to the success confirmation.
     if (!done) {
         return (
-            <div className="w-full flex items-center gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-white px-4 py-3">
-                <Stars01 className="size-4 text-[#3f8f68] shrink-0 animate-pulse" />
-                <p className="text-[14px] text-[#475467] leading-5">
-                    Validating your {noun} data. Moving to the next step…
+            <div className="w-full flex flex-col items-center justify-center gap-3 py-12">
+                <div className="relative w-11 h-11 shrink-0" aria-hidden="true">
+                    <Stars01 className="absolute top-0 right-0 size-5 text-[#4f6e5d] animate-pulse" />
+                    <Stars01 className="absolute bottom-0 left-1 size-7 text-[#3f8f68] animate-pulse" />
+                </div>
+                <p className="text-[16px] font-semibold text-[#101828]" role="status" aria-live="polite">
+                    Publishing your {noun}…
                 </p>
             </div>
         );

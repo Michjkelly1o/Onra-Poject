@@ -54,19 +54,35 @@ export function SelectDaysEditor({ durationMinutes, onConfirm, confirmed }: Sele
             if (next.has(day)) next.delete(day);
             else {
                 next.add(day);
-                setByDay((b) => (b[day] ? b : { ...b, [day]: [{ startTime: "", endTime: "" }] }));
+                // Newly-added days inherit the schedule of an already-filled day
+                // (admin "General schedule" — set once, the rest follow).
+                setByDay((b) => {
+                    if (b[day]) return b;
+                    const donor = WEEK_DAYS.find((d) => prev.has(d) && (b[d] ?? []).some((s) => s.startTime && s.endTime));
+                    return { ...b, [day]: donor ? b[donor].map((s) => ({ ...s })) : [{ startTime: "", endTime: "" }] };
+                });
             }
             return next;
         });
     };
 
     // Picking a start auto-fills the end from the class duration (matches the
-    // admin form's single combined slot input).
+    // admin form's single combined slot input). Setting the time on ONE day also
+    // fills the other selected days that are still empty — you set it once and
+    // the rest of the active days follow (admin "General schedule"). Any day can
+    // still be overridden afterward.
     const setSlotStart = (day: string, i: number, start: string) =>
-        setByDay((b) => ({
-            ...b,
-            [day]: b[day].map((s, si) => (si === i ? { startTime: start, endTime: addMinutes(start, durationMinutes) } : s)),
-        }));
+        setByDay((b) => {
+            const updatedDay = b[day].map((s, si) => (si === i ? { startTime: start, endTime: addMinutes(start, durationMinutes) } : s));
+            const next: Record<string, Slot[]> = { ...b, [day]: updatedDay };
+            for (const d of WEEK_DAYS) {
+                if (d === day || !selected.has(d)) continue;
+                if (!(next[d] ?? []).some((s) => s.startTime && s.endTime)) {
+                    next[d] = updatedDay.map((s) => ({ ...s }));
+                }
+            }
+            return next;
+        });
     const addSlot = (day: string) =>
         setByDay((b) => ({ ...b, [day]: [...(b[day] ?? []), { startTime: "", endTime: "" }] }));
     const removeSlot = (day: string, i: number) =>
