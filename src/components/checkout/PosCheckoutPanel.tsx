@@ -17,6 +17,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { XClose, ChevronRight } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useAppStore, walletBalanceAed } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 
@@ -161,6 +162,7 @@ function PosCheckoutBody({ onCancel, onComplete }: {
         ? (loading
             ? <ProcessingPaymentCard method={paymentMethod!} chargedTo={chargedTo} />
             : <PaymentConfirmationStep
+                hideFooter
                 customer={customer}
                 items={pendingPurchase.items}
                 subtotal={subtotal}
@@ -194,6 +196,7 @@ function PosCheckoutBody({ onCancel, onComplete }: {
                 sellerOptions={sellerOptions}
             />)
         : <ReceiptStep
+            hideFooter
             receiptNumber={receiptNumber}
             transactionId={transactionId}
             customer={customer}
@@ -254,6 +257,26 @@ function PosCheckoutBody({ onCancel, onComplete }: {
             <div className="flex-1 min-h-0 flex flex-col px-6 py-5">
                 {body}
             </div>
+            {/* Footer — same chrome as the branding panel: border-t, Cancel/Back
+                on the left, primary action on the right. Hidden during the
+                processing spinner. */}
+            {!loading && (
+                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between">
+                    {step === 1 ? (
+                        <>
+                            <Button variant="secondary-gray" size="lg" onClick={onCancel}>Cancel</Button>
+                            <Button variant="primary" size="lg" disabled={!canConfirm()} onClick={handleConfirmPurchase}>
+                                Confirm purchase
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="secondary-gray" size="lg" onClick={() => setStep(1)}>Back</Button>
+                            <Button variant="primary" size="lg" onClick={handleComplete}>Complete transaction</Button>
+                        </>
+                    )}
+                </div>
+            )}
         </>
     );
 }

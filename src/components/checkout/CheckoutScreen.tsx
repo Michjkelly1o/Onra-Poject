@@ -136,6 +136,10 @@ export interface PaymentConfirmationStepProps {
     change: number;
     canConfirm: boolean;
     onConfirm: () => void;
+    /** Hide the step's own action button — the caller renders its own footer
+     *  (the POS slide panel puts a branding-style Cancel/Confirm footer at the
+     *  panel level instead). Defaults to false (full-page checkout keeps it). */
+    hideFooter?: boolean;
     /** "Credited to" — the staff who earns commission on this sale. Optional
      *  (client 2026-08-04): null = unattributed sale (no commission). */
     sellerStaffId: string | null;
@@ -313,11 +317,13 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                 )}
             </div>
 
-            <div className="shrink-0 px-6 py-4 flex justify-end">
-                <Button variant="primary" size="lg" disabled={!p.canConfirm} onClick={p.onConfirm}>
-                    Confirm purchase
-                </Button>
-            </div>
+            {!p.hideFooter && (
+                <div className="shrink-0 px-6 py-4 flex justify-end">
+                    <Button variant="primary" size="lg" disabled={!p.canConfirm} onClick={p.onConfirm}>
+                        Confirm purchase
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
@@ -855,6 +861,8 @@ export interface ReceiptStepProps {
     chargedTo: string;
     onBack: () => void;
     onComplete: () => void;
+    /** Hide the step's Back/Complete footer — the POS panel renders its own. */
+    hideFooter?: boolean;
 }
 
 export function ReceiptStep(p: ReceiptStepProps) {
@@ -973,10 +981,12 @@ export function ReceiptStep(p: ReceiptStepProps) {
                 </div>
             </div>
 
-            <div className="shrink-0 px-6 py-4 border-[#e4e7ec] flex items-center justify-between">
+            {!p.hideFooter && (
+              <div className="shrink-0 px-6 py-4 border-[#e4e7ec] flex items-center justify-between">
                 <Button variant="secondary-gray" size="lg" onClick={p.onBack}>Back</Button>
                 <Button variant="primary" size="lg" onClick={p.onComplete}>Complete transaction</Button>
-            </div>
+              </div>
+            )}
         </div>
     );
 }
