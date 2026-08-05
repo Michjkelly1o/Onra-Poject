@@ -7139,8 +7139,24 @@ export const useAppStore = create<AppState>()(persist(
     updateClassSchedule: (id, updates) => {
         const stateBefore = get();
         const before = stateBefore.classSchedules.find(s => s.id === id);
+        // When a class is reassigned to a different instructor, its OWN ratings
+        // and staff-attendance-log rows must follow it (audit Phase 6,
+        // 2026-08-05). Otherwise the old instructor keeps the class's ratings
+        // (StaffDetailPage rating count + the delete-guard) and the Staff
+        // Attendance report's staff↔class join goes stale. Reattributing keeps
+        // schedule.instructorId, ratings.instructorId and log.staff_id in lock-
+        // step — the single-source-of-truth invariant the whole audit enforces.
+        const newInstructor = updates.instructorId;
+        const instructorReassigned =
+            newInstructor !== undefined && !!before && newInstructor !== before.instructorId;
         set((state) => ({
             classSchedules: state.classSchedules.map(s => s.id === id ? { ...s, ...updates } : s),
+            classRatings: instructorReassigned
+                ? state.classRatings.map(r => r.classScheduleId === id ? { ...r, instructorId: newInstructor! } : r)
+                : state.classRatings,
+            staffAttendanceLog: instructorReassigned
+                ? state.staffAttendanceLog.map(l => l.class_schedule_id === id ? { ...l, staff_id: newInstructor! } : l)
+                : state.staffAttendanceLog,
         }));
         // Phase 4 sync — fire a notification only when an instructor-
         // relevant field actually changed. Quiet for cover-image swaps,
@@ -11470,6 +11486,25 @@ export const useAppStore = create<AppState>()(persist(
             const editingCurrent = state.currentUser.role === "instructor" && currentStaffId === id;
             const editedRow = nextStaff.find(s => s.id === id);
 
+            // Keep the schedule cards' denormalized instructor identity fresh when
+            // an admin renames / re-avatars an instructor. The admin path
+            // previously skipped this cascade (only updateOwnProfile had it), so
+            // an admin rename didn't reach the schedule list / grid / detail.
+            // Audit Phase 6, 2026-08-05.
+            const identityChanged = !!editedRow && (
+                patch.firstName !== undefined || patch.lastName !== undefined ||
+                patch.fullName  !== undefined || patch.initials !== undefined ||
+                patch.color     !== undefined || patch.imageUrl !== undefined
+            );
+            const nextSchedules = identityChanged && editedRow
+                ? state.classSchedules.map(c => c.instructorId === id ? {
+                    ...c,
+                    instructorName: editedRow.fullName,
+                    instructorInitials: editedRow.initials,
+                    instructorColor: editedRow.color,
+                  } : c)
+                : state.classSchedules;
+
             if (editingCurrent && editedRow) {
                 // Phase 3 cascade — `staff[].bio` mirrors back to
                 // `currentUser.introduction` so when admin edits Liam's
@@ -11483,6 +11518,7 @@ export const useAppStore = create<AppState>()(persist(
                 return {
                     staff: nextStaff,
                     instructors: nextInstructors,
+                    classSchedules: nextSchedules,
                     currentUser: {
                         ...state.currentUser,
                         first_name: editedRow.firstName,
@@ -11498,6 +11534,7 @@ export const useAppStore = create<AppState>()(persist(
             return {
                 staff: nextStaff,
                 instructors: nextInstructors,
+                classSchedules: nextSchedules,
             };
         });
 
