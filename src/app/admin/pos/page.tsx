@@ -49,6 +49,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { RangeSlider } from "@/components/ui/RangeSlider";
 import { PosNewCustomerModal } from "@/components/pos/PosNewCustomerModal";
 import { SessionPickerModal, type SessionProduct, type SessionPick } from "@/components/pos/SessionPickerModal";
+import { PosCheckoutPanel } from "@/components/checkout/PosCheckoutPanel";
 import {
     useAppStore,
     MEMBERSHIPS, PACKAGES, GIFT_CARD_DESIGNS,
@@ -445,12 +446,11 @@ function POSInner() {
         });
     }, [cartCustomer]);
 
-    // Reset POS to a blank slate when the checkout returns ?paymentSuccess=1.
-    // The toast itself was already fired by /admin/pos/checkout's
-    // handleComplete (Zustand keeps it visible across the route change), so
-    // this effect's only job is wiping the cart + filters.
-    useEffect(() => {
-        if (searchParams.get("paymentSuccess") !== "1") return;
+    // Checkout now opens as a right-side slide panel (client 2026-08) instead
+    // of navigating to a full page. `checkoutOpen` drives the panel; on a
+    // completed sale it wipes the cart via `resetCartAfterSale`.
+    const [checkoutOpen, setCheckoutOpen] = useState(false);
+    const resetCartAfterSale = () => {
         setCart([]);
         setCustomerId(null);
         setPromoInput("");
@@ -459,6 +459,13 @@ function POSInner() {
         setCustomDiscountOn(false);
         setCustomDiscountPct("");
         setAppliedCustomDiscount(null);
+    };
+
+    // Legacy route path — the old full-page /pos/checkout still redirects here
+    // with ?paymentSuccess=1; keep wiping the cart for that case too.
+    useEffect(() => {
+        if (searchParams.get("paymentSuccess") !== "1") return;
+        resetCartAfterSale();
         router.replace("/admin/pos");
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
@@ -877,12 +884,10 @@ function POSInner() {
             // in the picker → applyPurchase falls back to buyer.branchId.
             saleBranchId: branchId || undefined,
         });
-        // Dedicated POS checkout route at /pos/checkout (top-level, outside
-        // the /admin layout) so the screen renders FULL-SCREEN without the
-        // admin sidebar — matches /schedule/[classId]/checkout's pattern.
-        // The screen's handleComplete redirects back to /admin/pos with a
-        // success toast already up.
-        router.push("/pos/checkout");
+        // Open the checkout as a right-side slide panel over the POS page
+        // (client 2026-08 — "like branding"), instead of navigating to a
+        // full-screen route. The panel reads the pending purchase just set.
+        setCheckoutOpen(true);
     }
 
     // ── Branch picker options (active branches only, live `branches` slice) ─
@@ -1076,6 +1081,12 @@ function POSInner() {
                 defaultBranchId={branchId || undefined}
                 onClose={() => setNewCustomerModalOpen(false)}
                 onCustomerCreated={(id) => setCustomerId(id)}
+            />
+
+            {/* Checkout slide panel — opens over the POS page (client 2026-08). */}
+            <PosCheckoutPanel
+                open={checkoutOpen}
+                onClose={(completed) => { setCheckoutOpen(false); if (completed) resetCartAfterSale(); }}
             />
 
             <Toast />
