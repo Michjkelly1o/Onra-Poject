@@ -13119,7 +13119,13 @@ export const useAppStore = create<AppState>()(persist(
         //   pr_monthly→pr_standard in instructors) so the instructors slice is
         //   persisted → bump so existing devices pick up the reconciled data
         //   instead of the stale divergent copies.
-        version: 106,
+        // v107 — class-schedule audit Phase 2 (2026-08-05): every generated
+        //   class now binds to a constraint-valid instructor + room (category /
+        //   branch / shift / time-off / room fit / no double-book) instead of
+        //   the old round-robin, and no class lands on a day its branch is
+        //   closed. classSchedules is persisted → bump so existing devices load
+        //   the repaired schedule instead of the old invalid assignments.
+        version: 107,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
