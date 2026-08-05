@@ -1188,13 +1188,16 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // as the stored class. In that state the class's own start time is valid
     // by definition (it passed every check when created), so the form must
     // keep it selected + saveable even if the recomputed window would exclude
-    // it (branch hours edited, shift edge, a room whose name no longer resolves
-    // to a slot list, etc.). Client 2026-08: turning off spot selection on an
-    // unchanged class was wiping its start time and blocking save. The moment
-    // the admin changes the date / instructor / room / duration this flips
-    // false and the normal availability gating takes over again.
+    // it (a shift edge, an instructor with no shift that day, a room whose name
+    // no longer resolves to a slot list, etc.). Client 2026-08: turning off spot
+    // selection on an unchanged class wiped its start time and blocked save. The
+    // moment the admin changes the date / instructor / room / duration this
+    // flips false and the normal availability gating takes over again.
+    //
+    // NB: this deliberately does NOT compare the current start time — an earlier
+    // version did, which was self-defeating: once the reset effect cleared the
+    // time, the flag went false and could never restore it.
     const editWindowUnchanged = !!editing
-        && startTime === editing.startTime
         && selectedDate === editing.dateISO
         && instructorId === (editing.instructorId ?? "")
         && locationId === editingRoomId
@@ -1547,12 +1550,29 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         return false;
     }, [repeat, selectedDate, selectedDays, daySlots]);
 
+    // Editing an unchanged class whose start time is empty (never populated on a
+    // slow hydrate, restored empty from a stale draft, or wiped by the reset
+    // effect below on a previous open) — restore it to the class's real time.
+    // Only while the time-defining fields still match the stored class, so it
+    // never fights a genuine user change. Pairs with `editWindowUnchanged`
+    // keeping that time in `singleDateSlots`, so the pair self-stabilises: the
+    // restored time is a valid slot, the reset effect leaves it alone.
+    useEffect(() => {
+        if (editWindowUnchanged && editing && !startTime) {
+            setStartTime(editing.startTime);
+        }
+    }, [editWindowUnchanged, editing, startTime]);
+
     // When the date/duration/branch changes the valid slot list reshapes —
     // any previously-picked start time outside the new window has to be
     // cleared so the user can't submit a class that runs past close-time.
     // The Create button gates on `startTime` being set, so clearing here also
-    // disables submission until the user re-picks a legal slot.
+    // disables submission until the user re-picks a legal slot. Skipped for an
+    // unchanged edit — the class's own time is valid by definition and is kept
+    // in `singleDateSlots`, so it must never be wiped just because the
+    // recomputed window omits it at a boundary.
     useEffect(() => {
+        if (editWindowUnchanged) return;
         if (!startTime) return;
         if (singleDateSlots.length === 0) { setStartTime(""); return; }
         if (!singleDateSlots.includes(startTime)) setStartTime("");
@@ -1561,7 +1581,11 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Clear a picked start time the instant it becomes a conflict — e.g. the
     // admin picks a time, then assigns an instructor or room already booked
     // for that slot. Stops the form from ever submitting a double-booking.
+    // Skipped for an unchanged edit: the class already occupies that slot (the
+    // conflict scan excludes itself), so its own time can never be a conflict —
+    // and skipping here also prevents a tug-of-war with the restore effect.
     useEffect(() => {
+        if (editWindowUnchanged) return;
         if (startTime && unavailableTimes.includes(startTime)) setStartTime("");
     }, [unavailableTimes]); // eslint-disable-line react-hooks/exhaustive-deps
 
