@@ -23,6 +23,7 @@ import { RatingsSection } from "@/components/customer/bookings/RatingsSection";
 import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirmSheet";
+import { RateSheet } from "@/components/customer/bookings/RateSheet";
 import { Button } from "@/components/ui/button";
 
 export default function BookingDetailPage() {
@@ -35,6 +36,7 @@ export default function BookingDetailPage() {
     const reviews = useClassReviews(vm?.detail.id ?? "");
     const hasRated = useHasRated(vm?.detail.id ?? "");
     const [cancelOpen, setCancelOpen] = useState(false);
+    const [rateOpen, setRateOpen] = useState(false);
     const cancelClassBooking = useAppStore((st) => st.cancelClassBooking);
     const updateAttendance = useAppStore((st) => st.updateAttendance);
     const showToast = useAppStore((st) => st.showToast);
@@ -132,7 +134,7 @@ export default function BookingDetailPage() {
                 variant="primary"
                 size="xl"
                 className="w-full rounded-full"
-                onClick={() => router.push(`/customer/bookings/${bookingId}/rate`)}
+                onClick={() => setRateOpen(true)}
             >
                 Rate class
             </Button>
@@ -164,6 +166,7 @@ export default function BookingDetailPage() {
                 ) : undefined
             }
             actionZone={actionZone}
+            stickyAction={tab !== "upcoming"}
         />
         <CancelConfirmSheet
             open={cancelOpen}
@@ -173,6 +176,11 @@ export default function BookingDetailPage() {
             refundNote={cancelCopy.refundNote}
             confirmLabel={cancelCopy.confirmLabel}
             onConfirm={confirmCancel}
+        />
+        <RateSheet
+            open={rateOpen}
+            onClose={() => setRateOpen(false)}
+            rateHref={`/customer/bookings/${bookingId}/rate`}
         />
         </>
     );

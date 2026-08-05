@@ -23,11 +23,10 @@ import { useAppStore } from "@/lib/store";
 import {
     useAvailableSlots,
     useFlexibleAvailableSlots,
-    useDaysWithAvailability,
-    defaultAvailableDay,
+    useInstructorsWithWeekAvailability,
 } from "@/lib/customer/slot-availability";
 import { appointmentDraft, ensureAppointmentDraft } from "@/lib/customer/booking-flow";
-import { formatMonth } from "@/lib/customer/dates";
+import { formatMonth, REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { branchTimezone } from "@/lib/branch-time";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
@@ -53,6 +52,10 @@ function InstructorContent({ appointment, onPicked }: {
     const branchInstructors = appointment
         ? instructors.filter((i) => i.status === "active" && i.branchId === appointment.branchId)
         : [];
+    // Hide instructors with NO bookable slot this week (today … today+6) so the
+    // picker only lists people you can actually book — client 2026-08.
+    const availableIds = useInstructorsWithWeekAvailability(appointment, branchInstructors.map((i) => i.id));
+    const visibleInstructors = branchInstructors.filter((i) => availableIds.has(i.id));
 
     function pick(instructorId: string) {
         appointmentDraft.flexible = false;
@@ -82,7 +85,7 @@ function InstructorContent({ appointment, onPicked }: {
                 <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
             </button>
 
-            {branchInstructors.map((i) => (
+            {visibleInstructors.map((i) => (
                 <button
                     key={i.id}
                     type="button"
@@ -120,16 +123,21 @@ function SlotContent({ appointment, active, onPickedSlot }: {
     const isFlexible = appointmentDraft.flexible;
     const instructorId = appointmentDraft.instructorId;
 
-    const daysAvail = useDaysWithAvailability(appointment, instructorId, isFlexible);
-    const defaultDay = useMemo(() => defaultAvailableDay(daysAvail), [daysAvail]);
-    const [dateISO, setDateISO] = useState<string>(defaultDay);
+    const [dateISO, setDateISO] = useState<string>(REAL_TODAY_ISO);
     const [tzOpen, setTzOpen] = useState(false);
+    // Bumped every time this step becomes active so the DateStrip snaps its scroll
+    // back to today's week (a drag-scrolled strip can otherwise reopen on a later week).
+    const [dateResetSignal, setDateResetSignal] = useState(0);
 
-    // Always open on the current-week default — NEVER a stale slot carried over
-    // from a previous flow (that was what made it jump to a future week).
+    // EXACTLY like the Classes flow: always open on TODAY (current week). Never a
+    // "first available" future day and never a stale carried-over slot — so the
+    // strip opens on the current week and the user never has to scroll back.
     useEffect(() => {
-        if (active) setDateISO(defaultDay);
-    }, [active, defaultDay]);
+        if (active) {
+            setDateISO(REAL_TODAY_ISO);
+            setDateResetSignal((n) => n + 1);
+        }
+    }, [active]);
 
     const singleSlots = useAvailableSlots(appointment, instructorId, dateISO);
     const flexibleSlots = useFlexibleAvailableSlots(appointment, dateISO);
@@ -149,7 +157,12 @@ function SlotContent({ appointment, active, onPickedSlot }: {
             </div>
 
             <div className="mt-4 shrink-0">
-                <DateStrip selectedISO={dateISO} onSelect={setDateISO} enabledDays={daysAvail} />
+                {/* Same DateStrip the Search Classes tab uses — forward-only, current
+                    week, TODAY selected. Accessible range is today → +7 days
+                    (bookingOpenDays), and scroll is capped at this week + next
+                    (maxWeeks). Days with no slots are NOT disabled; the slot list
+                    shows the "No available times" empty state instead. */}
+                <DateStrip selectedISO={dateISO} onSelect={setDateISO} bookingOpenDays={7} maxWeeks={2} resetSignal={dateResetSignal} />
             </div>
 
             <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -228,12 +241,16 @@ export function AppointmentBookingFlow({ appointmentId, open, onClose }: {
     // Latches once the customer reaches Payment so the panel stays mounted (with a
     // valid draft) — a fresh mount mid-flow would flip the checkout's hook count.
     const [reachedPayment, setReachedPayment] = useState(false);
+    // True while the checkout's Payment method / Promo sub-panel covers the sheet —
+    // the flow hides its own header so there's never a double header.
+    const [checkoutSubActive, setCheckoutSubActive] = useState(false);
 
     useEffect(() => {
         if (open) {
             ensureAppointmentDraft(appointmentId);
             setStepIdx(0);
             setReachedPayment(false);
+            setCheckoutSubActive(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, appointmentId, appointment?.type]);
@@ -255,7 +272,9 @@ export function AppointmentBookingFlow({ appointmentId, open, onClose }: {
 
     return (
         <CustomerSheet open={open} onClose={onClose} tall>
-            {/* Sticky header — title + edge-to-edge progress bar. */}
+            {/* Sticky header — hidden while a checkout sub-panel covers the sheet
+                (that panel renders its own header). */}
+            {!checkoutSubActive && (
             <div className="shrink-0">
                 <div className="relative flex items-center justify-center pb-3">
                     {onBack ? (
@@ -287,6 +306,7 @@ export function AppointmentBookingFlow({ appointmentId, open, onClose }: {
                     />
                 </div>
             </div>
+            )}
 
             {/* Sliding track — instructor → slot → payment panels (edge-to-edge slide). */}
             <div className="relative -mx-4 mt-4 min-h-0 flex-1 overflow-hidden">
@@ -309,6 +329,7 @@ export function AppointmentBookingFlow({ appointmentId, open, onClose }: {
                                 variant="sheet"
                                 hideHeader
                                 onBack={() => setStepIdx(slotStep)}
+                                onSubviewChange={setCheckoutSubActive}
                             />
                         </div>
                     )}

@@ -197,7 +197,7 @@ export function GiftCardInfoContent({
                 </div>
             </div>
 
-            <div className={`z-10 pb-[max(16px,env(safe-area-inset-bottom))] pt-4 ${isSheet ? "shrink-0 bg-white" : `sticky bottom-0 px-5 ${scrollable ? "bg-white" : ""}`}`}>
+            <div className={`z-10 pt-4 ${isSheet ? "shrink-0 bg-white" : `sticky bottom-0 px-5 pb-[max(16px,env(safe-area-inset-bottom))] ${scrollable ? "bg-white" : ""}`}`}>
                 <Button variant="primary" size="xl" disabled={!valid} className="w-full rounded-full" onClick={confirm}>
                     Confirm
                 </Button>

@@ -35,6 +35,31 @@ export function useMainScrollable(): boolean {
     return scrollable;
 }
 
+/** True WHILE the member scroll area is actively scrolling; flips back to false
+ *  after a short idle. Drives the Home sticky "Browse classes" button, which is
+ *  hidden at rest and reveals only while the page is being scrolled. */
+export function useScrollActive(idleMs = 900): boolean {
+    const [active, setActive] = useState(false);
+
+    useEffect(() => {
+        const el = document.querySelector("main");
+        if (!el) return;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const onScroll = () => {
+            setActive(true);
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => setActive(false), idleMs);
+        };
+        el.addEventListener("scroll", onScroll, { passive: true });
+        return () => {
+            el.removeEventListener("scroll", onScroll);
+            if (timer) clearTimeout(timer);
+        };
+    }, [idleMs]);
+
+    return active;
+}
+
 /** True once the member scroll area has scrolled away from the top. Drives the
  *  shared header treatment: transparent at the top, frosted (bg + blur) on scroll. */
 export function useMainScrolled(): boolean {

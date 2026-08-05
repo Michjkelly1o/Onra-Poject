@@ -25,6 +25,7 @@ export function AppointmentCheckoutContent({
     variant = "page",
     onBack,
     hideHeader = false,
+    onSubviewChange,
 }: {
     appointmentId: string;
     variant?: "page" | "sheet";
@@ -32,6 +33,8 @@ export function AppointmentCheckoutContent({
     /** Suppress the internal Payment header when embedded in the booking flow
      *  (the flow renders its own header + back + progress). */
     hideHeader?: boolean;
+    /** Bubbles CheckoutCart's sub-panel state so the flow can hide its header. */
+    onSubviewChange?: (inSubview: boolean) => void;
 }) {
     const router = useRouter();
     const id = appointmentId;
@@ -173,6 +176,7 @@ export function AppointmentCheckoutContent({
             onBack={onBack}
             variant={variant}
             hideHeader={hideHeader}
+            onSubviewChange={onSubviewChange}
             processingHref={`/customer/appointments/${id}/book/processing`}
             summary={summary}
             fixedSubtotal={appointment.price}

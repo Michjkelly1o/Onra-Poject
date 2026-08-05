@@ -23,7 +23,32 @@
 
 import type { BlockedTime } from "./_types";
 
+// Today-relative anchor — mirrors the class-schedule demo data so the
+// "shift + time off + schedule" staff-table state always lands on the
+// current demo day (see the Liam partial entry below).
+const _now = new Date();
+const TODAY_ISO = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
+
 export const blocked_times: BlockedTime[] = [
+    // ── Liam partial time off TODAY (08–09) — pairs with his 10 AM class so
+    //    the staff table's "Today's schedule" column renders the
+    //    "shift + time off + schedule" variant. Today-relative. ───────────
+    {
+        id: "time_off_liam_today_partial",
+        title: "Physio",
+        date: TODAY_ISO,
+        date_from_iso: TODAY_ISO,
+        date_to_iso:   TODAY_ISO,
+        all_day: false,
+        start_time: "08:00",
+        end_time:   "09:00",
+        reason: "other",
+        note: "Physio appointment",
+        staff_ids: ["staff_liam_chen"],
+        branch_id: "branch_forma_south",
+        created_at: "2026-07-20T08:00:00Z",
+    },
+
     // ── Maya vacation — 7-day range (Aug 3 → 9) ──────────────────────────
     {
         id: "time_off_maya_vacation_aug_3",

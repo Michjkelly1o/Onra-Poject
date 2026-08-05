@@ -10986,6 +10986,47 @@ export const useAppStore = create<AppState>()(persist(
                 },
             });
         }
+
+        // ── Auto-cancel + refund ────────────────────────────────────────────
+        // Any UPCOMING class or appointment an affected instructor already has
+        // during this time-off window is cancelled (studio-side) and the booked
+        // customers' credits are refunded. Past / already-cancelled sessions are
+        // left untouched. Client 2026-08.
+        const winFrom = next.date_from_iso ?? next.date;
+        const winTo = next.date_to_iso ?? next.date;
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const toMin = (t: string) => {
+            const [h, m] = (t ?? "").split(":").map(Number);
+            return (h || 0) * 60 + (m || 0);
+        };
+        // Overlap in minutes; an all-day block covers the whole day.
+        const overlapsBlock = (aStart: string, aEnd: string) =>
+            next.all_day || (toMin(aStart) < toMin(next.end_time) && toMin(aEnd) > toMin(next.start_time));
+        const affectedStaff = new Set(next.staff_ids);
+
+        const affectedClasses = get().classSchedules.filter(
+            (c) =>
+                affectedStaff.has(c.instructorId) &&
+                c.dateISO >= winFrom &&
+                c.dateISO <= winTo &&
+                c.dateISO >= todayISO &&
+                c.status !== "Cancelled" &&
+                overlapsBlock(c.startTime, c.endTime),
+        );
+        for (const c of affectedClasses) get().cancelClassSchedule(c.id, true, "Instructor time off");
+
+        const affectedAppts = get().appointments.filter(
+            (a) =>
+                !!a.instructorId &&
+                affectedStaff.has(a.instructorId) &&
+                a.dateISO >= winFrom &&
+                a.dateISO <= winTo &&
+                a.dateISO >= todayISO &&
+                a.status !== "Cancelled" &&
+                overlapsBlock(a.startTime, a.endTime),
+        );
+        for (const a of affectedAppts) get().cancelAppointment(a.id, true, "Instructor time off");
+
         return id;
     },
     updateBlockedTime: (id, patch) => {
@@ -12817,7 +12858,11 @@ export const useAppStore = create<AppState>()(persist(
         // v103 (2026-08): custom-amount gift card design added to the seed +
         //   shift assignments gained an optional `week_start` (weekly scoping).
         //   Bump so persisted demos reseed the gift-card catalog + shift scoping.
-        version: 103,
+        // v104 (2026-08-05): staff "Today's schedule" column rebuilt to the
+        //   Figma timeline (5 states). Added Liam's today class + today-relative
+        //   partial time off so the "shift + time off + schedule" state is
+        //   seeded/testable. blockedTimes + classSchedules are persisted → bump.
+        version: 104,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

@@ -23,15 +23,22 @@ export interface DateStripProps {
     /** When provided, days NOT in this set are disabled (e.g. no available
      *  appointment slots that day). */
     enabledDays?: Set<string>;
+    /** Hard cap on how many week-pages render (limits forward scroll). With
+     *  `bookingOpenDays`, `maxWeeks={2}` keeps scrolling to this week + next only. */
+    maxWeeks?: number;
+    /** Bump this when the host re-shows the strip (e.g. the appointment slot step
+     *  becomes active) to snap the scroll back to the selected week — otherwise a
+     *  previously drag-scrolled strip can open parked on a later week. */
+    resetSignal?: number;
 }
 
-export function DateStrip({ selectedISO, onSelect, bookingOpenDays, enabledDays }: DateStripProps) {
+export function DateStrip({ selectedISO, onSelect, bookingOpenDays, enabledDays, maxWeeks, resetSignal }: DateStripProps) {
     const ref = useRef<HTMLDivElement>(null);
     const start = mondayOfISO(REAL_TODAY_ISO);
     const lastBookable = bookingOpenDays != null ? addDaysISO(REAL_TODAY_ISO, bookingOpenDays) : null;
 
     const selectedWeek = Math.max(0, Math.floor(daysBetweenISO(start, selectedISO) / 7));
-    const weeks = Math.max(5, selectedWeek + 2);
+    const weeks = Math.min(maxWeeks ?? Infinity, Math.max(5, selectedWeek + 2));
 
     // Scroll the selected week into view when the selection changes (month picker, etc.).
     useEffect(() => {
@@ -40,6 +47,17 @@ export function DateStrip({ selectedISO, onSelect, bookingOpenDays, enabledDays 
         const page = el.querySelector<HTMLElement>(`[data-week="${selectedWeek}"]`);
         if (page) el.scrollTo({ left: page.offsetLeft, behavior: "smooth" });
     }, [selectedWeek]);
+
+    // Host-driven reset — snap (instantly) to the selected week's page when the
+    // strip is re-shown, regardless of where the user last drag-scrolled it.
+    useEffect(() => {
+        if (resetSignal == null) return;
+        const el = ref.current;
+        if (!el) return;
+        const page = el.querySelector<HTMLElement>(`[data-week="${selectedWeek}"]`);
+        if (page) el.scrollTo({ left: page.offsetLeft, behavior: "auto" });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [resetSignal]);
 
     return (
         <div

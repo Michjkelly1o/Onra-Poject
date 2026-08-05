@@ -22,6 +22,7 @@ import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelector
 import { Metrics } from "@/components/customer/home/Metrics";
 import { UpcomingBookings } from "@/components/customer/home/UpcomingBookings";
 import { PreviousBookings } from "@/components/customer/home/PreviousBookings";
+import { RateSheet } from "@/components/customer/bookings/RateSheet";
 import { WhatsOn } from "@/components/customer/home/WhatsOn";
 import { TrendingClasses } from "@/components/customer/home/TrendingClasses";
 import { RecommendedServices } from "@/components/customer/home/RecommendedServices";
@@ -39,6 +40,7 @@ export default function CustomerHomePage() {
 
     const isAuth = useIsAuthenticated();
     const [branchSheet, setBranchSheet] = useState(false);
+    const [rateHref, setRateHref] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
         // Admin preview iframe (`?preview=1`) always renders home as-is,
@@ -111,7 +113,7 @@ export default function CustomerHomePage() {
                                 <PreviousBookings
                                     items={pastMerged.filter((b) => b.canRate).slice(0, 1)}
                                     onSelect={(href) => router.push(href)}
-                                    onRate={(href) => router.push(href)}
+                                    onRate={(href) => setRateHref(href)}
                                 />
                             </>
                         )}
@@ -135,6 +137,7 @@ export default function CustomerHomePage() {
             </div>
 
             <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
+            <RateSheet open={rateHref != null} onClose={() => setRateHref(null)} rateHref={rateHref} />
         </div>
     );
 }

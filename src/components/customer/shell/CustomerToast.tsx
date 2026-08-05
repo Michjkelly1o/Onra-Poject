@@ -14,6 +14,7 @@
 // been returned to your account.", "success", "refresh").
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ComponentType, SVGProps } from "react";
 import { Archive, Bell01, Check, RefreshCcw01, SlashCircle01, Trash01 } from "@untitledui/icons";
 import { useAppStore, type ToastData } from "@/lib/store";
@@ -71,6 +72,10 @@ export function CustomerToastHost({ duration = 4000 }: { duration?: number }) {
     const toast = useAppStore((s) => s.toast);
     const clearToast = useAppStore((s) => s.clearToast);
     const [shown, setShown] = useState(false);
+    // Portal to <body> so the toast paints ABOVE bottom sheets (which are
+    // themselves body-level portals) instead of behind their dim overlay.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
 
     useEffect(() => {
         if (!toast) return;
@@ -85,11 +90,13 @@ export function CustomerToastHost({ duration = 4000 }: { duration?: number }) {
         };
     }, [toast?.id, duration, clearToast]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (!toast) return null;
+    if (!toast || !mounted) return null;
     const { Icon, color } = resolveIcon(toast.icon, toast.type);
 
-    return (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[100] px-4 pt-[max(12px,env(safe-area-inset-top))]">
+    // z-[120] clears the CustomerSheet portal (z-[60]); centred at the 402px
+    // phone-frame width so it reads inside the simulated device.
+    return createPortal(
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-[120] flex justify-center px-4 pt-[max(12px,env(safe-area-inset-top))]">
             <div
                 role="status"
                 aria-live="polite"
@@ -97,11 +104,12 @@ export function CustomerToastHost({ duration = 4000 }: { duration?: number }) {
                     setShown(false);
                     clearToast();
                 }}
-                className="pointer-events-auto transition-all duration-300 ease-out"
+                className="pointer-events-auto w-full max-w-[402px] transition-all duration-300 ease-out"
                 style={{ opacity: shown ? 1 : 0, transform: shown ? "translateY(0)" : "translateY(-8px)" }}
             >
                 <CustomerToast icon={Icon} iconColor={color} title={toast.title} subtext={toast.message} />
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }

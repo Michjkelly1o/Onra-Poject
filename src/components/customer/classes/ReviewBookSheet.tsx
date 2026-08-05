@@ -20,7 +20,7 @@
 
 import { useEffect, useMemo, useState, type ComponentType, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, BankNote01, ChevronRight, Clock, CoinsStacked03, Link01, MarkerPin01, ShoppingBag03, XClose } from "@untitledui/icons";
+import { AlertCircle, BankNote01, ChevronLeft, ChevronRight, Clock, CoinsStacked03, Link01, MarkerPin01, ShoppingBag03, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useClassDetail, useNeedsWaiver } from "@/lib/customer/search-data";
@@ -29,10 +29,15 @@ import { bookingDraft, ensureBookingDraft, DROP_IN_PRICE_AED, type GuestPayment 
 import { shortDate } from "@/lib/customer/profile-format";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { SpotPicker } from "@/components/customer/classes/SpotPicker";
-import { GuestDetailsSheet } from "@/components/customer/classes/GuestDetailsSheet";
 import { Button } from "@/components/ui/button";
 
 const CLASS_CREDIT_COST = 1;
+// Same slide feel as the appointment flow — one sheet, panels slide left/right.
+const SLIDE_MS = 360;
+const SLIDE_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+
+const GUEST_INPUT =
+    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[#667085] focus:border-[var(--brand-primary)] focus:outline-none";
 
 type BookTo = "myself" | "guest";
 /** Guest pay options (never the booker's own plan — client 2026-08). */
@@ -63,7 +68,10 @@ export function ReviewBookSheet({
     const [guestPay, setGuestPay] = useState<GuestPay>("drop_in");
     const [selectedSpots, setSelectedSpots] = useState<(string | undefined)[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-    const [guestSheet, setGuestSheet] = useState(false);
+    // 0 = main · 1 = guest details · 2 = payment methods ("See more"). Panels slide.
+    const [step, setStep] = useState<0 | 1 | 2>(0);
+    const [guestName, setGuestName] = useState("");
+    const [guestEmail, setGuestEmail] = useState("");
 
     // Reset the flow state each time the sheet opens for a class.
     useEffect(() => {
@@ -73,7 +81,17 @@ export function ReviewBookSheet({
         setGuest(null);
         setGuestPay("drop_in");
         setSelectedSpots([]);
+        setStep(0);
+        setGuestName("");
+        setGuestEmail("");
     }, [open, classId]);
+
+    // Enter the guest-details panel, seeding the form from any saved guest.
+    function openGuestPanel() {
+        setGuestName(guest?.name ?? "");
+        setGuestEmail(guest?.email ?? "");
+        setStep(1);
+    }
 
     // The member's eligible plan(s) for "Pay with" (Myself) — active/frozen,
     // non-complimentary, matching the held plan kind. Newest first.
@@ -165,12 +183,30 @@ export function ReviewBookSheet({
         router.push(`/customer/classes/${detail.id}/book/${next}?${params.toString()}`);
     }
 
+    const headerTitle = step === 1 ? "Guest details" : step === 2 ? "Payment method" : "Review and book";
     return (
-        <>
-            <CustomerSheet open={open} onClose={onClose} tall>
-                {/* Header */}
-                <div className="relative flex shrink-0 items-center justify-center pb-3">
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Review and book</p>
+        <CustomerSheet open={open} onClose={onClose} tall>
+            {/* Sticky header — title + back (sub-panels) / X close (main). */}
+            <div className="relative flex shrink-0 items-center justify-center pb-3">
+                {step !== 0 ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (step === 1 && !guest) setBookTo("myself");
+                            setStep(0);
+                        }}
+                        aria-label="Back"
+                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    >
+                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    </button>
+                ) : (
+                    <span aria-hidden className="absolute left-0 size-8" />
+                )}
+                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{headerTitle}</p>
+                {step !== 0 ? (
+                    <span aria-hidden className="absolute right-0 size-8" />
+                ) : (
                     <button
                         type="button"
                         onClick={onClose}
@@ -179,10 +215,18 @@ export function ReviewBookSheet({
                     >
                         <XClose className="size-5 text-[#344054]" aria-hidden />
                     </button>
-                </div>
+                )}
+            </div>
 
-                {/* Scroll body */}
-                <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* Sliding track — main → guest details → payment methods (seamless). */}
+            <div className="relative -mx-4 mt-1 min-h-0 flex-1 overflow-hidden">
+                <div
+                    className="flex h-full w-full"
+                    style={{ transform: `translateX(-${step * 100}%)`, transition: `transform ${SLIDE_MS}ms ${SLIDE_EASE}` }}
+                >
+                    {/* Panel 0 — main */}
+                    <div className="flex h-full w-full shrink-0 flex-col px-4">
+                        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {/* Class Summary */}
                     <div className="flex w-full items-start gap-3">
                         <div
@@ -248,8 +292,8 @@ export function ReviewBookSheet({
                                         type="button"
                                         onClick={() => {
                                             setBookTo(t);
-                                            // Switching to Guest with no guest yet → open the details sheet.
-                                            if (t === "guest" && !guest) setGuestSheet(true);
+                                            // Switching to Guest with no guest yet → slide to the details panel.
+                                            if (t === "guest" && !guest) openGuestPanel();
                                         }}
                                         className={`flex-1 rounded-full py-1 text-sm leading-5 transition-colors ${
                                             active
@@ -294,7 +338,7 @@ export function ReviewBookSheet({
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => setGuestSheet(true)}
+                                    onClick={openGuestPanel}
                                     className="shrink-0 text-sm font-semibold leading-5 text-[var(--brand-primary)]"
                                 >
                                     Edit
@@ -303,7 +347,7 @@ export function ReviewBookSheet({
                         ) : (
                             <button
                                 type="button"
-                                onClick={() => setGuestSheet(true)}
+                                onClick={openGuestPanel}
                                 className="flex w-full items-center justify-center rounded-xl border border-dashed border-[#d0d5dd] bg-white p-4 text-sm font-semibold leading-5 text-[var(--brand-primary)] transition-colors active:bg-gray-50"
                             >
                                 Add guest details
@@ -334,30 +378,34 @@ export function ReviewBookSheet({
                                 {bookTo === "myself" ? (
                                     hasEligiblePlan ? (
                                         <div className="flex flex-col gap-3">
-                                            {eligiblePlans.map((p) => {
-                                                const sel = selectedPlanId === p.id;
-                                                const sub =
-                                                    !hasCredits
-                                                        ? "Included in your membership"
-                                                        : `${creditsAfter} credits left after this booking`;
+                                            {/* Only the selected (most-recent by default) plan shows;
+                                                "See more" slides to the full list to switch. */}
+                                            {(() => {
+                                                const p = eligiblePlans.find((x) => x.id === selectedPlanId) ?? eligiblePlans[0];
+                                                const sub = !hasCredits
+                                                    ? "Included in your membership"
+                                                    : `${creditsAfter} credits left after this booking`;
                                                 return (
-                                                    <button
-                                                        key={p.id}
-                                                        type="button"
-                                                        onClick={() => setSelectedPlanId(p.id)}
-                                                        className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
-                                                            sel ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
-                                                        }`}
-                                                    >
+                                                    <div className="flex w-full items-center gap-3 rounded-xl border-2 border-[var(--brand-primary)] bg-white p-4 text-left">
                                                         <FeaturedIcon icon={CoinsStacked03} />
                                                         <span className="flex min-w-0 flex-1 flex-col">
                                                             <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{p.name}</span>
                                                             <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
                                                         </span>
-                                                        <RadioDot checked={sel} />
-                                                    </button>
+                                                        <RadioDot checked />
+                                                    </div>
                                                 );
-                                            })}
+                                            })()}
+                                            {eligiblePlans.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setStep(2)}
+                                                    className="flex items-center gap-1 self-start text-sm font-semibold leading-5 text-[var(--brand-primary)]"
+                                                >
+                                                    See more
+                                                    <ChevronRight className="size-4" aria-hidden />
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <button
@@ -414,6 +462,13 @@ export function ReviewBookSheet({
                         </>
                     )}
 
+                    {/* Cancellation policy — mirrors the Class Details section. */}
+                    <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
+                    <section className="flex w-full flex-col gap-2">
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Cancellation policy</p>
+                        <p className="text-sm font-normal leading-5 text-[#475467]">Full refund if you cancel 24 hours before.</p>
+                    </section>
+
                     {frozenMembership && (
                         <div className="flex w-full items-start gap-2 rounded-xl border border-[#fda29b] bg-[#fffbfa] p-4">
                             <AlertCircle className="mt-0.5 size-4 shrink-0 text-[#d92d20]" aria-hidden />
@@ -423,35 +478,93 @@ export function ReviewBookSheet({
                             </p>
                         </div>
                     )}
-                </div>
+                        </div>
 
-                {/* Sticky footer — credit cost + Book now (Class Details chrome). */}
-                <div className="flex shrink-0 items-center justify-between gap-6 pt-4">
-                    <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
-                        {CLASS_CREDIT_COST} credit{CLASS_CREDIT_COST === 1 ? "" : "s"}
-                    </span>
-                    <Button variant="primary" size="xl" className="rounded-full" disabled={!canConfirm} onClick={confirm}>
-                        {mode === "waitlist" ? "Join waitlist" : spotMissing ? "Select a spot" : "Book now"}
-                    </Button>
-                </div>
-            </CustomerSheet>
+                        {/* Footer — credit cost + Book now (Class Details chrome). */}
+                        <div className="flex shrink-0 items-center justify-between gap-6 pt-4">
+                            <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
+                                {CLASS_CREDIT_COST} credit{CLASS_CREDIT_COST === 1 ? "" : "s"}
+                            </span>
+                            <Button variant="primary" size="xl" className="rounded-full" disabled={!canConfirm} onClick={confirm}>
+                                {mode === "waitlist" ? "Join waitlist" : spotMissing ? "Select a spot" : "Book now"}
+                            </Button>
+                        </div>
+                    </div>
 
-            {/* Guest Details sub-sheet */}
-            <GuestDetailsSheet
-                open={guestSheet}
-                initial={guest}
-                onBack={() => {
-                    // Cancelling with no guest yet reverts to Myself.
-                    if (!guest) setBookTo("myself");
-                    setGuestSheet(false);
-                }}
-                onSave={(g) => {
-                    setGuest(g);
-                    setBookTo("guest");
-                    setGuestSheet(false);
-                }}
-            />
-        </>
+                    {/* Panel 1 — Guest details (slides in from the Guest tab). */}
+                    <div className="flex h-full w-full shrink-0 flex-col px-4">
+                        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            <label className="flex w-full flex-col gap-1.5">
+                                <span className="text-sm font-medium leading-5 text-[#344054]">Guest name</span>
+                                <input
+                                    className={GUEST_INPUT}
+                                    placeholder="Enter guest name"
+                                    value={guestName}
+                                    onChange={(e) => setGuestName(e.target.value)}
+                                />
+                            </label>
+                            <label className="flex w-full flex-col gap-1.5">
+                                <span className="text-sm font-medium leading-5 text-[#344054]">Email</span>
+                                <input
+                                    className={GUEST_INPUT}
+                                    type="email"
+                                    placeholder="Enter email address"
+                                    value={guestEmail}
+                                    onChange={(e) => setGuestEmail(e.target.value)}
+                                />
+                            </label>
+                        </div>
+                        <div className="shrink-0 pt-4">
+                            <Button
+                                variant="primary"
+                                size="xl"
+                                className="w-full rounded-full"
+                                disabled={!guestName.trim()}
+                                onClick={() => {
+                                    setGuest({ name: guestName.trim(), email: guestEmail.trim() });
+                                    setBookTo("guest");
+                                    setStep(0);
+                                }}
+                            >
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Panel 2 — Payment methods (all eligible plans; "See more"). */}
+                    <div className="flex h-full w-full shrink-0 flex-col px-4">
+                        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {eligiblePlans.map((p) => {
+                                const sel = selectedPlanId === p.id;
+                                const sub = !hasCredits
+                                    ? "Included in your membership"
+                                    : `${creditsAfter} credits left after this booking`;
+                                return (
+                                    <button
+                                        key={p.id}
+                                        type="button"
+                                        onClick={() => {
+                                            setSelectedPlanId(p.id);
+                                            setStep(0);
+                                        }}
+                                        className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
+                                            sel ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
+                                        }`}
+                                    >
+                                        <FeaturedIcon icon={CoinsStacked03} />
+                                        <span className="flex min-w-0 flex-1 flex-col">
+                                            <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{p.name}</span>
+                                            <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
+                                        </span>
+                                        <RadioDot checked={sel} />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </CustomerSheet>
     );
 }
 

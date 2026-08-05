@@ -33,6 +33,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type Staff, type Shift, type ShiftAssignment } from "@/lib/store";
 import { findShiftConflict, timeRangesOverlap } from "@/lib/staff/shift-conflict";
+import { timeOffTitle, timeOffDuration } from "@/lib/staff/time-off";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
 //
@@ -838,10 +839,10 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                         style={{ backgroundImage: "repeating-linear-gradient(45deg, #fafafb, #fafafb 5px, #f2f4f7 5px, #f2f4f7 10px)" }}
                                                         title="Staff on time off — shifts can't be assigned this day"
                                                     >
-                                                        <p className="text-[13px] font-semibold text-[#475467] leading-[18px]">Time Off</p>
-                                                        {/* Reason always shown (Sick / Vacation / Training /
-                                                            Other) — client 2026-07-28. */}
-                                                        <p className="text-[12px] text-[#98a2b3] leading-[16px] truncate">{TIME_OFF_REASON_LABEL[timeOff.reason ?? "other"]}</p>
+                                                        {/* Title = reason (Vacation / Sick / …), subtext =
+                                                            duration (All day / time range) — client 2026-08. */}
+                                                        <p className="text-[13px] font-semibold text-[#475467] leading-[18px] truncate">{timeOffTitle(timeOff)}</p>
+                                                        <p className="text-[12px] text-[#98a2b3] leading-[16px] truncate">{timeOffDuration(timeOff)}</p>
                                                     </div>
                                                 ) : (
                                                     <>

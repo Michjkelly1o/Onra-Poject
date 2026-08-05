@@ -9,14 +9,19 @@
 // 4567-119566) renders at the SAME height as a populated card so the layout never
 // shifts.
 
+"use client";
+
+import { useRouter } from "next/navigation";
 import { Calendar } from "@untitledui/icons";
 import { BookingCard } from "@/components/customer/bookings/BookingCard";
+import { Button } from "@/components/ui/button";
 import type { UpcomingCardVM } from "@/lib/customer/bookings-data";
 
 /** Figma "NEW Booking card" empty state (4567-119566) — a bordered card with a
  *  green calendar featured-icon tile + title + supporting text, centered. Fixed
  *  min-height matches a populated <BookingCard> so toggling doesn't shift the page. */
 function EmptyUpcoming() {
+    const router = useRouter();
     return (
         <div className="flex min-h-[124px] flex-col items-center justify-center gap-3 rounded-2xl border border-[#e4e7ec] bg-white px-4 pb-4 pt-3 text-center">
             {/* Featured icon — DS skeuomorphic tile (secondary/50 wash + calendar) */}
@@ -33,6 +38,15 @@ function EmptyUpcoming() {
                 <p className="text-sm font-semibold leading-5 text-[#101828]">Ready for your next session?</p>
                 <p className="text-xs font-normal leading-[18px] text-[#475467]">Book a session to see your upcoming bookings here.</p>
             </div>
+            {/* Same primary CTA (sm) as the "Rate class" button in Previous bookings. */}
+            <Button
+                variant="primary"
+                size="sm"
+                className="w-full rounded-full"
+                onClick={() => router.push("/customer/search")}
+            >
+                Browse schedule
+            </Button>
         </div>
     );
 }

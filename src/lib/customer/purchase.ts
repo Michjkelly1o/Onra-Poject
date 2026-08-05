@@ -24,9 +24,11 @@ export interface GiftCardMeta {
 }
 
 /** "AED 150/class" for a finite plan; undefined when there's no meaningful
- *  per-class price (unlimited credits, zero/absent credits, or a gift card). */
+ *  per-class price (unlimited credits, zero/absent credits, a gift card, or a
+ *  SINGLE-credit package — one credit IS one class, so a per-class price is
+ *  redundant). */
 export function perClassLabel(priceAed: number, credits: number | "unlimited" | undefined): string | undefined {
-    if (credits === "unlimited" || typeof credits !== "number" || credits <= 0) return undefined;
+    if (credits === "unlimited" || typeof credits !== "number" || credits <= 1) return undefined;
     // Round to the nearest dirham — prices/credits are whole numbers, but guard
     // against a fractional result regardless.
     return `AED ${Math.round(priceAed / credits)}/class`;

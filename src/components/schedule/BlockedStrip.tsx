@@ -50,6 +50,12 @@ interface BlockedStripProps {
      *  grid columns container. Defaults to 100 (full width). Pairs with
      *  `leftPct` for the per-span label rendering. */
     widthPct?: number;
+    /** Card title — the time-off REASON ("Vacation", "Sick"…) for a staff
+     *  time-off block. Defaults to "Blocked" (branch block-time windows). */
+    title?: string;
+    /** Card subtext — the DURATION ("All day" / "07:00 – 09:00 AM"). Defaults
+     *  to the block's start–end range. */
+    subtitle?: string;
 }
 
 function toMinutes(time: string): number {
@@ -73,7 +79,10 @@ export function BlockedStrip({
     hideLabel,
     leftPct,
     widthPct,
+    title,
+    subtitle,
 }: BlockedStripProps) {
+    const labelTitle = title ?? "Blocked";
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
     if (!mounted) return null;
@@ -103,9 +112,9 @@ export function BlockedStrip({
                 style={{ top, height, left, width }}
             >
                 <div className="flex flex-col items-center bg-white/90 backdrop-blur-[1px] px-2.5 py-1 rounded-[10px] shadow-[0px_1px_2px_rgba(16,24,40,0.05)] whitespace-nowrap">
-                    <span className="text-[12px] font-semibold text-[#475467] leading-4">Blocked</span>
+                    <span className="text-[12px] font-semibold text-[#475467] leading-4">{labelTitle}</span>
                     <span className="text-[11px] font-medium text-[#667085] leading-4">
-                        {fmt12(blockStart)} – {fmt12(blockEnd)}
+                        {subtitle ?? `${fmt12(blockStart)} – ${fmt12(blockEnd)}`}
                     </span>
                 </div>
             </div>
@@ -131,9 +140,9 @@ export function BlockedStrip({
         >
             {!hideLabel && (
                 <div className="flex flex-col items-center bg-white/90 backdrop-blur-[1px] px-2.5 py-1 rounded-[10px] shadow-[0px_1px_2px_rgba(16,24,40,0.05)] whitespace-nowrap">
-                    <span className="text-[12px] font-semibold text-[#475467] leading-4">Blocked</span>
+                    <span className="text-[12px] font-semibold text-[#475467] leading-4">{labelTitle}</span>
                     <span className="text-[11px] font-medium text-[#667085] leading-4">
-                        {fmt12(blockStart)} – {fmt12(blockEnd)}
+                        {subtitle ?? `${fmt12(blockStart)} – ${fmt12(blockEnd)}`}
                     </span>
                 </div>
             )}

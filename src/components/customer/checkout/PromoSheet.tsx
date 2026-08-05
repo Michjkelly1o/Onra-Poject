@@ -1,24 +1,22 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer — PromoSheet — "Apply promo" as a bottom sheet (list ↔ detail slide)
+// Customer — PromoPanel — "Apply promo" as an in-checkout slide (list ↔ detail)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Opens OVER the checkout sheet from CheckoutCart's "Apply promo" row so applying
-// a voucher stays continuous with the payment — no full-page navigation. One
-// CustomerSheet with a horizontal track: the voucher LIST (code field + cards)
-// slides left to a voucher DETAIL (terms + Apply) and Back slides it right. Apply
-// / remove sets `purchaseCart.promoId` (the same field CheckoutCart reads) and
-// closes the sheet; the checkout re-reads the promo on `onApplied`.
-//
-// Replaces the standalone promo pages (products + appointment) for the sheet flow.
+// Rendered as a horizontal sliding OVERLAY inside CheckoutCart (not its own
+// sheet), so opening promo from a payment sheet feels like navigating forward a
+// screen — and Back slides straight home. Internally the voucher LIST (code field
+// + cards) slides left to a voucher DETAIL (terms + Apply); the list-level Back
+// returns to the checkout via `onBack`. Apply / remove sets `purchaseCart.promoId`
+// (the field CheckoutCart reads) and calls `onBack`; the checkout re-reads on
+// `onApplied`.
 
 import { useEffect, useState } from "react";
 import type { ComponentType } from "react";
 import { AlertCircle, ChevronLeft, Clock, MarkerPin01, Percent03, Sale04, Tag01, Ticket01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { ensurePurchaseCart, purchaseCart, usePromo, usePromos, type PromoScope, type PromoVM } from "@/lib/customer/purchase";
-import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { PromoBanner, PromoCard } from "@/components/customer/products/PromoCard";
 import { Button } from "@/components/ui/button";
 
@@ -36,21 +34,23 @@ function TermRow({ icon: Icon, children }: { icon: ComponentType<{ className?: s
     );
 }
 
-export function PromoSheet({
-    open,
-    onClose,
+export function PromoPanel({
+    active,
     scope = "class",
     originId,
     onApplied,
+    onBack,
 }: {
-    open: boolean;
-    onClose: () => void;
+    /** True while this panel is the visible overlay — resets it to the list. */
+    active: boolean;
     /** "appointment" filters out class-only vouchers (mirrors the promo pages). */
     scope?: PromoScope;
     /** The purchase-cart origin to ensure before writing `promoId`. */
     originId: string;
     /** Re-render the checkout after the promo changes. */
     onApplied: () => void;
+    /** Return to the checkout (slide back). */
+    onBack: () => void;
 }) {
     const promos = usePromos(scope);
     const showToast = useAppStore((s) => s.showToast);
@@ -59,33 +59,32 @@ export function PromoSheet({
     const [code, setCode] = useState("");
     const [error, setError] = useState<string | null>(null);
     // `showDetail` drives the slide; `detailId` drives the CONTENT and is kept set
-    // through the slide-back so the detail panel doesn't blank out mid-animation
-    // (matches the always-mounted panels of the appointment flow).
+    // through the slide-back so the detail panel doesn't blank out mid-animation.
     const [detailId, setDetailId] = useState<string | null>(null);
     const [showDetail, setShowDetail] = useState(false);
     const detail = usePromo(detailId);
 
-    // Reset to the list (clean code field) every time the sheet is opened.
+    // Reset to the list (clean code field) every time this overlay opens.
     useEffect(() => {
-        if (open) {
+        if (active) {
             setShowDetail(false);
             setDetailId(null);
             setCode("");
             setError(null);
         }
-    }, [open]);
+    }, [active]);
 
     function apply(p: PromoVM) {
         purchaseCart.promoId = p.id;
         showToast("Promotion applied", `${p.label} has been applied.`, "success");
         onApplied();
-        onClose();
+        onBack();
     }
     function remove() {
         purchaseCart.promoId = null;
         showToast("Promotion removed", "The promotion has been removed.", "success");
         onApplied();
-        onClose();
+        onBack();
     }
     function applyCode() {
         const c = code.trim().toLowerCase();
@@ -105,13 +104,12 @@ export function PromoSheet({
     }
 
     const atDetail = showDetail;
-    // The one back button: from the detail it slides back to the list; from the
-    // list it closes the sheet and returns to the payment page.
-    const handleBack = () => (showDetail ? setShowDetail(false) : onClose());
+    // From the detail it slides back to the list; from the list it returns to the checkout.
+    const handleBack = () => (showDetail ? setShowDetail(false) : onBack());
 
     return (
-        <CustomerSheet open={open} onClose={onClose} tall>
-            {/* Sticky header — a single left Back button (list → payment, detail → list). */}
+        <div className="flex h-full w-full flex-col">
+            {/* Header — a single left Back button (list → checkout, detail → list). */}
             <div className="shrink-0">
                 <div className="relative flex items-center justify-center pb-3">
                     <button
@@ -130,13 +128,13 @@ export function PromoSheet({
             </div>
 
             {/* Sliding track — list ↔ detail. */}
-            <div className="relative -mx-4 mt-1 min-h-0 flex-1 overflow-hidden">
+            <div className="relative mt-1 min-h-0 flex-1 overflow-hidden">
                 <div
                     className="flex h-full w-full"
                     style={{ transform: `translateX(-${atDetail ? 100 : 0}%)`, transition: `transform ${SLIDE_MS}ms ${SLIDE_EASE}` }}
                 >
                     {/* LIST panel */}
-                    <div className="flex h-full w-full shrink-0 flex-col px-4">
+                    <div className="flex h-full w-full shrink-0 flex-col">
                         {/* Code field */}
                         <div className="shrink-0 pb-3">
                             <div
@@ -191,7 +189,7 @@ export function PromoSheet({
                     </div>
 
                     {/* DETAIL panel */}
-                    <div className="flex h-full w-full shrink-0 flex-col px-4">
+                    <div className="flex h-full w-full shrink-0 flex-col">
                         {detail && (
                             <>
                                 <div className="flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto pb-4 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -230,7 +228,7 @@ export function PromoSheet({
                                     </div>
                                 </div>
 
-                                <div className="shrink-0 pt-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+                                <div className="shrink-0 pt-4">
                                     <Button
                                         variant="primary"
                                         size="xl"
@@ -245,6 +243,6 @@ export function PromoSheet({
                     </div>
                 </div>
             </div>
-        </CustomerSheet>
+        </div>
     );
 }

@@ -35,7 +35,7 @@ import { usePaymentMethods } from "@/lib/customer/payment-methods";
 import { useAccountCreditBalance, useAccountCreditEnabled } from "@/lib/customer/account-credit";
 import { AccountCreditInfoSheet } from "@/components/customer/profile/AccountCreditInfoSheet";
 import { GiftCardMark } from "@/components/customer/products/GiftCardArt";
-import { PromoSheet } from "@/components/customer/checkout/PromoSheet";
+import { PromoPanel } from "@/components/customer/checkout/PromoSheet";
 import { Button } from "@/components/ui/button";
 
 interface PayMethod {
@@ -66,6 +66,10 @@ export interface CheckoutCartProps {
     /** Sheet mode only — suppress the internal "Payment" header when the host
      *  already renders one (e.g. embedded as a slide in the appointment flow). */
     hideHeader?: boolean;
+    /** Fires when a sub-panel (Payment method / Promo) slides in or out. Lets an
+     *  embedding host (the appointment flow) hide its own header while a sub-panel
+     *  covers the checkout, so there's never a double header. */
+    onSubviewChange?: (inSubview: boolean) => void;
 }
 
 /** Circular ± stepper button (DS Buttons/Secondary, scaled). */
@@ -100,7 +104,42 @@ function StepBtn({
 /** Title-case a free-text name: "bosa ahmed" / "BOSA AHMED" → "Bosa Ahmed". */
 const titleCase = (s: string) => s.trim().toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
-export function CheckoutCart({ originId, onBack, processingHref, summary, fixedSubtotal, taxRatePct, variant = "page", hideHeader = false }: CheckoutCartProps) {
+/** A single "Pay with" method row (72px, DS Checkbox Group / Payment). Shared by
+ *  the collapsed checkout row and the "Payment method" sheet. */
+function MethodRow({ m, selected, disabled = false, onClick }: { m: PayMethod; selected: boolean; disabled?: boolean; onClick: () => void }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className={`flex h-[72px] w-full shrink-0 items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors disabled:cursor-not-allowed ${
+                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec] active:bg-gray-50"
+            } ${disabled ? "opacity-50" : ""}`}
+        >
+            {m.icon === "gift" ? (
+                <GiftCardMark />
+            ) : m.icon === "google" ? (
+                <span className="flex h-8 w-[46px] shrink-0 items-center justify-center rounded border border-[#e4e7ec] bg-white text-[11px] font-semibold leading-none text-[#5f6368]">
+                    G Pay
+                </span>
+            ) : (
+                <span className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border border-[#e4e7ec] bg-white">
+                    <span className={`absolute ${m.inset}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={m.logo} alt="" className="size-full object-contain" />
+                    </span>
+                </span>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-sm font-medium leading-5 text-[#344054]">{m.label}</span>
+                {m.sub && <span className="truncate text-sm font-normal leading-5 text-[#475467]">{m.sub}</span>}
+            </div>
+            <RadioDot checked={selected} />
+        </button>
+    );
+}
+
+export function CheckoutCart({ originId, onBack, processingHref, summary, fixedSubtotal, taxRatePct, variant = "page", hideHeader = false, onSubviewChange }: CheckoutCartProps) {
     const isSheet = variant === "sheet";
     // In sheet mode the host CustomerSheet already supplies the 16px side padding
     // (exactly like Review & Book) — so the content must NOT add its own, or the
@@ -134,7 +173,21 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
         setRedeemState(v);
     };
     const [creditInfoOpen, setCreditInfoOpen] = useState(false);
-    const [promoOpen, setPromoOpen] = useState(false);
+    // In-checkout sub-panels slide in horizontally (forward/back) rather than
+    // opening a stacked sheet. `subview` drives the slide; `activeSub` drives
+    // WHICH panel renders and is retained through the slide-back so it doesn't
+    // blank out mid-animation.
+    const [subview, setSubview] = useState<"main" | "methods" | "promo">("main");
+    const [activeSub, setActiveSub] = useState<"methods" | "promo">("methods");
+    const openSub = (s: "methods" | "promo") => {
+        setActiveSub(s);
+        setSubview(s);
+    };
+    const backToMain = () => setSubview("main");
+    useEffect(() => {
+        onSubviewChange?.(subview !== "main");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [subview]);
     // Appointment origins ("appointment-<id>") filter out class-only vouchers.
     const promoScope = originId.startsWith("appointment") ? "appointment" : "class";
     const totals = computeTotals(fixedSubtotal ?? cartTotal(), promo, taxPct, redeemOn ? accountCredit : 0);
@@ -184,6 +237,9 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
     ];
     // Keep the selection valid as the method list changes (settings edits / gift card).
     const activeMethodId = methods.some((m) => m.id === method) ? method : methods[0]?.id ?? "";
+    // The currently-selected ("most recently used") method — the only one shown on
+    // the checkout; the rest live behind "See more" (the Payment method sheet).
+    const selectedMethod = methods.find((m) => m.id === activeMethodId) ?? methods[0];
 
     function setQty(lineId: string, next: number) {
         const it = purchaseCart.items.find((i) => i.lineId === lineId);
@@ -215,9 +271,9 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
         router.push(`${processingHref}?method=${encodeURIComponent(label)}`);
     }
 
-    return (
-        <div className={isSheet ? "flex h-full flex-col" : "flex min-h-full flex-col"}>
-            {!hideHeader && (
+    // ── Main checkout content, as three sections, so the sheet can host them in a
+    //    sliding track panel and the page can render them linearly. ─────────────
+    const mainHeader = !hideHeader && (
             <header
                 className={`z-20 flex w-full shrink-0 items-center gap-3 transition-colors ${
                     isSheet ? "pb-3" : `sticky top-0 px-4 py-3 ${scrolled ? "bg-white/80 backdrop-blur-md" : ""}`
@@ -251,8 +307,9 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                     <div className="size-10 shrink-0" aria-hidden />
                 )}
             </header>
-            )}
+    );
 
+    const mainBody = (
             <div className={`flex flex-1 flex-col gap-6 pb-4 pt-2 ${isSheet ? "min-h-0 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "px-4"}`}>
                 {/* Summary — products "Detail product" cart, or a caller-supplied summary (appointments). */}
                 {summary ?? (
@@ -314,59 +371,24 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                 </section>
                 )}
 
-                {/* Pay with — DS Checkbox Group / Payment (72px rows, 12px radius, 46×32 tiles) */}
+                {/* Pay with — only the selected (most-recent) method; "See more"
+                    (right of the header) opens the full "Payment method" sheet. */}
                 <section className="flex flex-col gap-3">
-                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Pay with</p>
-                    {methods.map((m) => {
-                        const selected = m.id === activeMethodId;
-                        const mDisabled = m.id === "gift" && giftDisabled;
-                        return (
+                    <div className="flex items-center justify-between gap-3">
+                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Pay with</p>
+                        {methods.length > 1 && (
                             <button
-                                key={m.id}
                                 type="button"
-                                onClick={() => setMethod(m.id)}
-                                disabled={mDisabled}
-                                className={`flex h-[72px] items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors disabled:cursor-not-allowed ${
-                                    selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec] active:bg-gray-50"
-                                } ${mDisabled ? "opacity-50" : ""}`}
+                                onClick={() => openSub("methods")}
+                                className="shrink-0 text-sm font-semibold leading-5 text-[var(--brand-primary)]"
                             >
-                                {m.icon === "gift" ? (
-                                    <GiftCardMark />
-                                ) : m.icon === "google" ? (
-                                    <span className="flex h-8 w-[46px] shrink-0 items-center justify-center rounded border border-[#e4e7ec] bg-white text-[11px] font-semibold leading-none text-[#5f6368]">
-                                        G Pay
-                                    </span>
-                                ) : (
-                                    <span className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border border-[#e4e7ec] bg-white">
-                                        <span className={`absolute ${m.inset}`}>
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img src={m.logo} alt="" className="size-full object-contain" />
-                                        </span>
-                                    </span>
-                                )}
-                                <div className="flex min-w-0 flex-1 flex-col">
-                                    <span className="truncate text-sm font-medium leading-5 text-[#344054]">{m.label}</span>
-                                    {m.sub && (
-                                        <span className="truncate text-sm font-normal leading-5 text-[#475467]">{m.sub}</span>
-                                    )}
-                                </div>
-                                <RadioDot checked={selected} />
+                                See more
                             </button>
-                        );
-                    })}
-
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        className="w-full rounded-full"
-                        onClick={() => {
-                            openGiftCardPicker();
-                            router.push("/customer/profile/gift-cards");
-                        }}
-                    >
-                        <Plus className="size-5" aria-hidden />
-                        Add gift card
-                    </Button>
+                        )}
+                    </div>
+                    {selectedMethod && (
+                        <MethodRow m={selectedMethod} selected onClick={() => openSub("methods")} />
+                    )}
                 </section>
 
                 {/* Detail payment */}
@@ -400,12 +422,14 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                     </div>
                 </section>
             </div>
+    );
 
-            {/* Sticky bottom — Apply promo + Total / Pay now (Primary Background) */}
+    // Sticky bottom — Apply promo + Total / Pay now (Primary Background)
+    const mainFooter = (
             <div className={`z-10 bg-white ${isSheet ? "shrink-0" : "sticky bottom-0"}`}>
                 <button
                     type="button"
-                    onClick={() => setPromoOpen(true)}
+                    onClick={() => openSub("promo")}
                     className={`flex w-full items-center gap-2 border-b border-[#f2f4f7] py-4 text-left ${hpad}`}
                 >
                     <Ticket01 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
@@ -448,7 +472,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                     </div>
                 )}
 
-                <div className={`flex items-center gap-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${hpad}`}>
+                <div className={`flex items-center gap-4 pt-4 ${isSheet ? "" : "pb-[max(16px,env(safe-area-inset-bottom))]"} ${hpad}`}>
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="text-sm font-normal leading-5 text-[#344054]">Total</span>
                         <span className="text-lg font-semibold leading-7 text-[var(--brand-text)]">AED {totals.total}</span>
@@ -458,16 +482,108 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                     </Button>
                 </div>
             </div>
+    );
 
-            <AccountCreditInfoSheet open={creditInfoOpen} onClose={() => setCreditInfoOpen(false)} />
-
-            <PromoSheet
-                open={promoOpen}
-                onClose={() => setPromoOpen(false)}
+    // Sub-panel — "Payment method" or "Promo". `activeSub` selects the content and
+    // is retained through the slide-back so it never blanks mid-animation.
+    const subPanel =
+        activeSub === "methods" ? (
+            <>
+                <div className="relative flex shrink-0 items-center justify-center pb-3">
+                    <button
+                        type="button"
+                        onClick={backToMain}
+                        aria-label="Back"
+                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    >
+                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    </button>
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Payment method</p>
+                    <span aria-hidden className="absolute right-0 size-8" />
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {methods.map((m) => (
+                        <MethodRow
+                            key={m.id}
+                            m={m}
+                            selected={m.id === activeMethodId}
+                            disabled={m.id === "gift" && giftDisabled}
+                            onClick={() => {
+                                setMethod(m.id);
+                                backToMain();
+                            }}
+                        />
+                    ))}
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full rounded-full"
+                        onClick={() => {
+                            openGiftCardPicker();
+                            router.push("/customer/profile/gift-cards");
+                        }}
+                    >
+                        <Plus className="size-5" aria-hidden />
+                        Add gift card
+                    </Button>
+                </div>
+            </>
+        ) : (
+            <PromoPanel
+                active={subview === "promo"}
                 scope={promoScope}
                 originId={originId}
                 onApplied={bump}
+                onBack={backToMain}
             />
+        );
+
+    // Sheet: main + sub-panel are two panels of ONE horizontal track — the main
+    // slides out to the left while the sub-panel slides in from the right (both
+    // move together), so opening "See more" / "Apply promo" feels exactly like the
+    // appointment flow's step-to-step slide, not a separate sheet dropped on top.
+    if (isSheet) {
+        return (
+            <div className="relative flex h-full flex-col overflow-hidden">
+                <div className="relative -mx-4 flex min-h-0 flex-1 overflow-hidden">
+                    <div
+                        className="flex h-full w-full"
+                        style={{
+                            transform: `translateX(${subview === "main" ? 0 : -100}%)`,
+                            transition: "transform 360ms cubic-bezier(0.32, 0.72, 0, 1)",
+                        }}
+                    >
+                        <div className="flex h-full w-full shrink-0 flex-col px-4">
+                            {mainHeader}
+                            {mainBody}
+                            {mainFooter}
+                        </div>
+                        <div className="flex h-full w-full shrink-0 flex-col px-4">{subPanel}</div>
+                    </div>
+                </div>
+                <AccountCreditInfoSheet open={creditInfoOpen} onClose={() => setCreditInfoOpen(false)} />
+            </div>
+        );
+    }
+
+    // Page: linear content with the sub-panel as an absolute slide-over.
+    return (
+        <div className="relative flex min-h-full flex-col overflow-hidden">
+            {mainHeader}
+            {mainBody}
+            {mainFooter}
+            <AccountCreditInfoSheet open={creditInfoOpen} onClose={() => setCreditInfoOpen(false)} />
+            <div
+                className="absolute inset-0 z-30 flex flex-col bg-white"
+                style={{
+                    transform: `translateX(${subview !== "main" ? 0 : 100}%)`,
+                    transition: "transform 360ms cubic-bezier(0.32, 0.72, 0, 1)",
+                    pointerEvents: subview !== "main" ? "auto" : "none",
+                }}
+                aria-hidden={subview === "main"}
+            >
+                <div className="flex h-full flex-col px-4 pt-3">{subPanel}</div>
+            </div>
         </div>
     );
 }

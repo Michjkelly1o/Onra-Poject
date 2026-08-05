@@ -363,6 +363,31 @@ export function useDaysWithAvailability(
     }, [appointment, instructorId, isFlexible, flexibleIds, data.businessHours, data.shifts, data.shiftAssignments, data.staff, data.blockedTimes, data.classSchedules, data.adminAppointments, data.classBookings, data.customerAppointments, data.member]);
 }
 
+/** Instructor ids that have ≥1 available slot within the CURRENT-WEEK window
+ *  (today … today+6). Used to HIDE instructors who have nothing bookable this
+ *  week from the private-appointment instructor picker (client 2026-08). */
+export function useInstructorsWithWeekAvailability(
+    appointment: AppointmentVM | null,
+    instructorIds: string[],
+): Set<string> {
+    const data = useSlotData();
+    return useMemo(() => {
+        const set = new Set<string>();
+        if (!appointment || appointment.type !== "private") return set;
+        for (const id of instructorIds) {
+            for (let i = 0; i < 7; i++) {
+                const d = addDaysISO(REAL_TODAY_ISO, i);
+                if (computeAvailableSlots(appointment, id, d, data).length > 0) {
+                    set.add(id);
+                    break;
+                }
+            }
+        }
+        return set;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [appointment, instructorIds.join(","), data.businessHours, data.shifts, data.shiftAssignments, data.staff, data.blockedTimes, data.classSchedules, data.adminAppointments, data.classBookings, data.customerAppointments, data.member]);
+}
+
 /** The earliest ISO day (from today) with availability, or today if the set is
  *  empty (the strip still renders; the day just shows "no available times"). */
 export function firstAvailableDay(days: Set<string>): string {

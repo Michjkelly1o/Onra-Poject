@@ -26,6 +26,7 @@ import { useHasRatedAppointment, useAppointmentReviews } from "@/lib/customer/bo
 import { ClassDetailLayout, DetailTimeRow, InfoRow } from "@/components/customer/classes/ClassDetailLayout";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirmSheet";
+import { RateSheet } from "@/components/customer/bookings/RateSheet";
 import { RatingsSection } from "@/components/customer/bookings/RatingsSection";
 import { Button } from "@/components/ui/button";
 import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
@@ -56,6 +57,7 @@ export default function AppointmentBookingDetailPage() {
     );
     const { timezone, localTimezone } = useCurrentCustomerContext();
     const [cancelOpen, setCancelOpen] = useState(false);
+    const [rateOpen, setRateOpen] = useState(false);
     // Rating state — keyed by the linked shared appointment (adminAppointmentId)
     // so the review + admin summary read one source. Mirrors the class flow.
     const ratedAppointmentId = booking?.adminAppointmentId;
@@ -325,7 +327,7 @@ export default function AppointmentBookingDetailPage() {
             variant="primary"
             size="xl"
             className="w-full rounded-full"
-            onClick={() => router.push(`/customer/bookings/appointment/${apptId}/rate`)}
+            onClick={() => setRateOpen(true)}
         >
             Rate appointment
         </Button>
@@ -351,6 +353,7 @@ export default function AppointmentBookingDetailPage() {
             afterLocation={afterLocation}
             onBack={goBack}
             actionZone={actionZone}
+            stickyAction={!isUpcoming}
         />
         <CancelConfirmSheet
             open={cancelOpen}
@@ -360,6 +363,11 @@ export default function AppointmentBookingDetailPage() {
             refundNote={cancelCopy.refundNote}
             confirmLabel={cancelCopy.confirmLabel}
             onConfirm={confirmCancel}
+        />
+        <RateSheet
+            open={rateOpen}
+            onClose={() => setRateOpen(false)}
+            rateHref={`/customer/bookings/appointment/${apptId}/rate`}
         />
         </>
     );

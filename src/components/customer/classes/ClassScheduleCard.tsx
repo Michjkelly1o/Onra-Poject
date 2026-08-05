@@ -112,11 +112,10 @@ export function ClassScheduleCard({
                     </div>
                 </div>
 
-                <span
-                    className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${TONE[badgeTone]}`}
-                >
-                    {badgeIcon === "users" && <Users01 className="size-3 shrink-0" aria-hidden />}
-                    {badgeIcon === "hourglass" && <Hourglass03 className="size-3 shrink-0" aria-hidden />}
+                {/* Capacity indicator — plain icon + XS text (no pill), less prominent. */}
+                <span className="flex shrink-0 items-center gap-1 text-xs font-medium leading-[18px] text-[#475467]">
+                    {badgeIcon === "users" && <Users01 className="size-3.5 shrink-0 text-[#667085]" aria-hidden />}
+                    {badgeIcon === "hourglass" && <Hourglass03 className="size-3.5 shrink-0 text-[#667085]" aria-hidden />}
                     {badgeLabel}
                 </span>
             </div>
