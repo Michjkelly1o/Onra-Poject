@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { usePathname } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { Toast } from "@/components/ui/Toast";
@@ -26,38 +25,12 @@ export default function AdminLayout({
     const { sidebarCollapsed } = useAppStore();
     const currentRole = useAppStore(s => s.currentRole);
     const setCurrentUser = useAppStore(s => s.setCurrentUser);
-    const pathname = usePathname() ?? "";
-
-    // Client 2026-07-27 (round 2) — bottom-padding is conditional.
-    //
-    // List routes (customer list, staff, schedule, POS, attendee,
-    // products, marketing, notifications) use a `flex-1 min-h-0`
-    // rounded-[20px] view card that fills the available viewport. Adding
-    // pb-24 to `main` on those pages shortens the card by ~96px and cuts
-    // off table rows — the customer list this week was down to 3 visible
-    // rows. Their pagination sits INSIDE the card, well above the
-    // floating button's ~90px overlap zone at the bottom-right corner.
-    //
-    // Every other route (dashboard, insights, KPI, reports, detail
-    // pages that scroll long profile tabs, settings sub-pages with long
-    // forms) gets `pb-24` so the last widget / row doesn't sit under the
-    // floating button when the user scrolls to the very bottom.
-    //
-    // Exact match on the list route path — a detail page like
-    // /admin/customers/[id] scrolls a long profile so it SHOULD get the
-    // padding.
-    const FIXED_CARD_LIST_ROUTES = [
-        "/admin/customers",
-        "/admin/staff",
-        "/admin/schedule",
-        "/admin/pos",
-        "/admin/products",
-        "/admin/marketing",
-        "/admin/notifications",
-    ];
-    const mainPaddingClass = FIXED_CARD_LIST_ROUTES.includes(pathname)
-        ? "p-6 pt-4"
-        : "p-6 pt-4 pb-24";
+    // Every route gets pb-24 on the scroll container so the last row / pagination /
+    // card edge clears the floating AI button (fixed bottom-right, ~90px overlap
+    // zone). The list modules use fixed-height view cards with natural page flow,
+    // so this bottom space also lets the main canvas scroll (like /admin/schedule
+    // List + /admin/customers); calendar/fill views are simply shortened by it.
+    const mainPaddingClass = "p-6 pt-4 pb-24";
 
     // URL-driven role reset — if the user came in from a previous
     // `/instructor/*` visit, flip `currentUser` back to the admin demo

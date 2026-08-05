@@ -327,9 +327,9 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
             {SHOW_MONTH_VIEW && viewMode === "month" ? (
                 <TimeOffMonthView branchId={branchId ?? ""} search={search} monthCursor={monthCursor} />
             ) : (
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1 min-h-0">
                 {filtered.length === 0 ? (
-                    <div className="relative" style={{ minHeight: 400 }}>
+                    <div className="relative flex-1" style={{ minHeight: 400 }}>
                         <EmptyState
                             title={isTrulyEmpty ? "No time off yet" : "No time off found"}
                             subtitle={isTrulyEmpty
@@ -339,7 +339,8 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                         />
                     </div>
                 ) : (
-                    <div className="px-6">
+                    <>
+                    <div className="px-6 flex-1 min-h-0 overflow-y-auto">
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
                                 <thead>
@@ -436,6 +437,8 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                    <div className="px-6 shrink-0">
                         <Pagination
                             page={clamped}
                             total={sortedRows.length}
@@ -444,6 +447,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                             onPageSize={n => { setPageSize(n); setPage(1); }}
                         />
                     </div>
+                    </>
                 )}
 
                 {/* Bulk delete action bar */}

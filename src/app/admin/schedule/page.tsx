@@ -401,6 +401,27 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
         pending.timeOfDay.length > 0 ||
         pending.instructors.length > 0 || pending.categories.length > 0;
 
+    // Apply is enabled whenever the pending selection DIFFERS from what's
+    // applied — including when the user has just CLEARED the last filter (e.g.
+    // switched Instructor back to "All instructors"). Gating Apply on `hasAny`
+    // meant an emptied filter couldn't be saved (the user had to re-pick then
+    // Clear). Order-insensitive compare since the multi-selects toggle-append.
+    const sameList = (a: string[], b: string[]) =>
+        a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
+    const changed =
+        !sameList(pending.types, applied.types) ||
+        !sameList(pending.statuses, applied.statuses) ||
+        !sameList(pending.timeOfDay, applied.timeOfDay) ||
+        !sameList(pending.instructors, applied.instructors) ||
+        !sameList(pending.categories, applied.categories);
+
+    // Clear is enabled whenever there's a filter to clear — the pending selection
+    // OR the currently-applied one — so you can still Clear after emptying pending
+    // (e.g. switched Instructor to "All" but the applied filter is still active).
+    const hasAppliedAny = applied.types.length > 0 || applied.statuses.length > 0 ||
+        applied.timeOfDay.length > 0 ||
+        applied.instructors.length > 0 || applied.categories.length > 0;
+
     const instructorOptions = INSTRUCTORS.map(i => ({ value: i.id, label: i.name, initials: i.initials, color: i.color }));
 
     const Divider = () => <div className="h-px w-full bg-[#e4e7ec] shrink-0" />;
@@ -499,11 +520,11 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 
                 {/* Footer */}
                 <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
-                    <Button variant="secondary-gray" disabled={!hasAny}
+                    <Button variant="secondary-gray" disabled={!hasAny && !hasAppliedAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
                     </Button>
-                    <Button variant="primary" disabled={!hasAny}
+                    <Button variant="primary" disabled={!changed}
                         onClick={() => { onApply(pending); onClose(); }}>
                         Apply
                     </Button>
@@ -1336,12 +1357,11 @@ function SchedulePage() {
     }
 
     return (
-        // List view scrolls the outer <main> canvas: the page flows to natural
-        // height with a fixed-height view card + pb-24 bottom clearance, so the
-        // pagination clears the floating AI button while the card keeps its own
-        // inner scroll (tabs pinned, table body scrolls). The date-grid views
-        // (day/week/month) keep the flex-1 fill so the calendar owns the height.
-        <div className={`flex flex-col gap-6 ${activeTab === "list" ? "pb-24" : "flex-1 min-h-0"}`}>
+        // Every tab (List + Day/Week/Month) uses the SAME fixed-height view card
+        // and flows to natural page height, so the outer <main> canvas scrolls and
+        // main's pb-24 (admin layout) clears the floating AI button. The card keeps
+        // its own inner scroll (tabs pinned; list body / calendar grid scrolls).
+        <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 {/* Schedule's pre-existing chrome hardcodes "classes" plural;
@@ -1395,10 +1415,10 @@ function SchedulePage() {
                 <AddSessionMenu router={router} />
             </div>
 
-            {/* ── View card ── List: fixed h-[760px] so the tab strip pins and only
-                the table body scrolls (the outer main canvas scrolls for the rest).
-                Day/Week/Month: flex-1 min-h-0 so the calendar fills the viewport. */}
-            <div className={`bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden ${activeTab === "list" ? "h-[760px]" : "flex-1 min-h-0"}`}>
+            {/* ── View card ── Fixed h-[760px] for EVERY tab so the tab strip pins
+                and only the inner body scrolls (list table or calendar grid); the
+                outer main canvas scrolls for the rest. */}
+            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-[760px]">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs */}

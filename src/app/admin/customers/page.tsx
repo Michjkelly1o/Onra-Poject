@@ -824,10 +824,11 @@ export default function CustomersPage() {
 
     return (
         // Main-canvas scroll: the page flows to natural height with a fixed-height
-        // (h-[760px]) view card + pb-24 bottom clearance, so the outer <main>
-        // scrolls and the pagination clears the floating AI button. The card keeps
-        // its own inner scroll — the tab strip stays pinned, only the table body scrolls.
-        <div className="flex flex-col gap-6 pb-24">
+        // (h-[760px]) view card; main's pb-24 (admin layout) gives the bottom
+        // clearance so the outer <main> scrolls and the pagination clears the
+        // floating AI button. The card keeps its own inner scroll — tab strip
+        // pinned, only the table body scrolls.
+        <div className="flex flex-col gap-6">
             {/* ── Toolbar ── matches /admin/staff (Total · Location · Search
                 · Export · Filter · Assigned-to-me chip). */}
             <div className="flex items-center gap-3">

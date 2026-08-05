@@ -1152,26 +1152,12 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             ? roleFilter.statuses.length > 0
             : staffFilter.statuses.length > 0 || staffFilter.roleIds.length > 0;
 
-    // The Staff-schedule WEEK view is a calendar that must fill the viewport
-    // (like /admin/schedule's Day/Week/Month). Every other non-roles view
-    // (Staff table, Shift list, Time off) is a LIST that scrolls the outer main
-    // canvas with pb-24 bottom clearance, so the pagination clears the floating
-    // AI button while the fixed-height card keeps its own inner scroll.
-    const isStaffScheduleCalendar =
-        forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "week";
-
     return (
-        <div className={cn(
-            "flex flex-col gap-6",
-            // Roles route keeps its content-height behaviour (no view card; the
-            // table flows in main's normal scroll). Calendar fills; lists get
-            // pb-24 so the main canvas scrolls and the pagination clears the AI button.
-            forceTab === "roles"
-                ? undefined
-                : isStaffScheduleCalendar
-                    ? "flex-1 min-h-0"
-                    : "pb-24",
-        )}>
+        // Every view (Staff / Shift / Time-off lists, Staff-schedule week, Roles)
+        // flows to natural page height so the outer <main> canvas scrolls and main's
+        // pb-24 (admin layout) clears the floating AI button. Non-roles views use a
+        // fixed-height card that keeps its own inner scroll (tabs pinned).
+        <div className="flex flex-col gap-6">
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
@@ -1258,9 +1244,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             <div className={cn(
                 forceTab === "roles"
                     ? "flex flex-col"
-                    : isStaffScheduleCalendar
-                        ? "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden"
-                        : "h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                    : "h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on
@@ -1353,7 +1337,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 <div className={cn(
                     forceTab === "roles"
                         ? "relative"            // flush, no scroll wrapper, no fill
-                        : "flex-1 overflow-y-auto scrollbar-hide relative",
+                        // flex-col so the Shift / Time-off tabs' table area (flex-1)
+                        // fills and their pagination pins to the card bottom — no empty
+                        // gap below it. overflow-y-auto still scrolls tall content as a
+                        // fallback, so Staff + the week view are unaffected.
+                        : "flex-1 overflow-y-auto scrollbar-hide relative flex flex-col",
                 )}>
                 {/* Shift management sub-tab — fully wired (Figma 6223:378535).
                     Reads `branchId` + `search` from the parent toolbar so
