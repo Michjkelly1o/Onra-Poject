@@ -1203,6 +1203,17 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         && locationId === editingRoomId
         && duration === calcMinutes(editing.startTime, editing.endTime);
 
+    // Looser sibling of the flag above: TRUE whenever we're editing this class
+    // on its own calendar day — regardless of instructor / room / duration /
+    // spot-selection edits (none of which change the day's open window, so the
+    // class's own start time stays a legal, offerable slot). This is the gate
+    // that GUARANTEES an edited class always shows its start time in the input.
+    // `editWindowUnchanged` was too brittle for that job: any single mismatch —
+    // or an async store rehydrate that resolved `editing` AFTER the useState
+    // initializers ran (leaving date/time blank) — silently dropped the time and
+    // the field went empty. This depends only on the day, which is stable.
+    const editSameDay = !!editing && selectedDate === editing.dateISO;
+
     // ─── Conflict scan ─────────────────────────────────────────────────────
     // Given a list of dates, return every start-time slot that would
     // double-book the picked INSTRUCTOR or ROOM. Duration-aware: a slot is
@@ -1472,7 +1483,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         // `editWindowUnchanged`) — even in the early-return paths below where
         // the branch/hours don't resolve, so the picker shows the class's time
         // instead of "Branch is closed" and the form stays saveable.
-        const editSlot = editWindowUnchanged && editing?.startTime ? [editing.startTime] : [];
+        const editSlot = editSameDay && editing?.startTime ? [editing.startTime] : [];
         if (!selectedDate || !selectedBranchGroup) return editSlot;
         let slots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration);
         if (selectedDate === todayISO()) {
@@ -1497,7 +1508,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         }
         return gated;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice, editWindowUnchanged, editing?.startTime]);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice, editSameDay, editing?.startTime]);
 
     // Per-weekday slot map for the repeat-weekly path. Each selected weekday
     // gets its own window since branches can have different hours per day —
@@ -1558,10 +1569,21 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // keeping that time in `singleDateSlots`, so the pair self-stabilises: the
     // restored time is a valid slot, the reset effect leaves it alone.
     useEffect(() => {
-        if (editWindowUnchanged && editing && !startTime) {
+        if (!editing) return;
+        // Async store rehydration can resolve `editing` AFTER the useState
+        // initializers ran, leaving date + time blank; the reset effects below
+        // can also wipe the time at a window edge. Re-seed BOTH from the class
+        // whenever they're empty and we're still on its own day — so an edited
+        // class ALWAYS opens with its real start time filled, for every class,
+        // not just some. Skips only when the class's own time would genuinely
+        // double-book (instructor swapped to a busy one), so it never fights the
+        // conflict-clear effect below into a loop.
+        if (!selectedDate) { setSelectedDate(editing.dateISO); return; }
+        if (selectedDate !== editing.dateISO) return;
+        if (!startTime && !unavailableTimes.includes(editing.startTime)) {
             setStartTime(editing.startTime);
         }
-    }, [editWindowUnchanged, editing, startTime]);
+    }, [editing, selectedDate, startTime, unavailableTimes]);
 
     // When the date/duration/branch changes the valid slot list reshapes —
     // any previously-picked start time outside the new window has to be
@@ -1572,7 +1594,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // in `singleDateSlots`, so it must never be wiped just because the
     // recomputed window omits it at a boundary.
     useEffect(() => {
-        if (editWindowUnchanged) return;
+        if (editSameDay) return;
         if (!startTime) return;
         if (singleDateSlots.length === 0) { setStartTime(""); return; }
         if (!singleDateSlots.includes(startTime)) setStartTime("");
@@ -2541,7 +2563,13 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                         disabled={!selectedDate}
                                                         emptyLabel={!selectedDate
                                                             ? "Pick a date first."
-                                                            : `Branch is closed on ${new Date(selectedDate + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}.`}
+                                                            : getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate) === null
+                                                                // Branch genuinely has no hours this weekday.
+                                                                ? `Branch is closed on ${new Date(selectedDate + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}.`
+                                                                // Branch IS open — the list is empty for another reason
+                                                                // (instructor has no shift that day, or every slot is
+                                                                // already past). Don't falsely blame the branch.
+                                                                : "No available times for this day."}
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-1.5">
