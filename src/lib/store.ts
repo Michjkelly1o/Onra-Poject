@@ -13125,7 +13125,12 @@ export const useAppStore = create<AppState>()(persist(
         //   the old round-robin, and no class lands on a day its branch is
         //   closed. classSchedules is persisted → bump so existing devices load
         //   the repaired schedule instead of the old invalid assignments.
-        version: 107,
+        // v108 — class-schedule audit Phase 3 (2026-08-05): reconciled Candice
+        //   Wu's payroll entry (pr_monthly→pr_standard, base 8000→294) so it
+        //   matches her canonical staff.ts rate. payrollEntries is persisted →
+        //   bump. (Notification seeds needed no change — all reference hand rows
+        //   or Liam's classes, none of which Phase 2 altered.)
+        version: 108,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
