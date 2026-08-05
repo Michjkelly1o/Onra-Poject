@@ -44,6 +44,8 @@ function ScheduleCheckoutInner() {
     const customers = useAppStore(s => s.customers);
     const staff = useAppStore(s => s.staff);
     const roles = useAppStore(s => s.roles);
+    // Signed-in staff running the sale — pre-fills "Credited to" (demo user id === staff id).
+    const currentUser = useAppStore(s => s.currentUser);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
     // Account credit — same shape as /admin/pos/checkout. No longer a
@@ -75,7 +77,10 @@ function ScheduleCheckoutInner() {
     );
 
     const [step, setStep] = useState<1 | 2>(1);
-    const [sellerStaffId, setSellerStaffId] = useState<string | null>(null);
+    // "Credited to" auto-fills to the signed-in user when they are active staff.
+    const [sellerStaffId, setSellerStaffId] = useState<string | null>(
+        () => (currentUser && staff.some(st => st.status === "active" && st.id === currentUser.id) ? currentUser.id : null),
+    );
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
 
     // "Credited to" — active staff labelled with their role (commission Phase 2).

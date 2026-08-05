@@ -45,6 +45,10 @@ function POSCheckoutInner() {
     const customers = useAppStore(s => s.customers);
     const staff = useAppStore(s => s.staff);
     const roles = useAppStore(s => s.roles);
+    // The signed-in staff member running the till — used to pre-fill "Credited
+    // to" so the sale is attributed to whoever is doing it (demo user id ===
+    // staff id, e.g. user_casey_desk is in both users + staff).
+    const currentUser = useAppStore(s => s.currentUser);
     const setPendingPurchase = useAppStore(s => s.setPendingPurchase);
     const applyPurchase = useAppStore(s => s.applyPurchase);
     const showToast = useAppStore(s => s.showToast);
@@ -86,7 +90,11 @@ function POSCheckoutInner() {
     // Local state — fully owned by this page so the POS redirect logic stays
     // isolated from the schedule mini-POS flow.
     const [step, setStep] = useState<1 | 2>(1);
-    const [sellerStaffId, setSellerStaffId] = useState<string | null>(null);
+    // "Credited to" auto-fills to the signed-in user when they're an active
+    // staff member (still editable / clearable — it stays optional).
+    const [sellerStaffId, setSellerStaffId] = useState<string | null>(
+        () => (currentUser && sellerOptions.some(o => o.value === currentUser.id) ? currentUser.id : null),
+    );
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [cashReceived, setCashReceived] = useState<string>("");
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);

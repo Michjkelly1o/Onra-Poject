@@ -884,7 +884,10 @@ export default function CustomersPage() {
                         />
                     ) : (
                         <div className="overflow-x-auto px-6">
-                            <table className="w-full border-collapse">
+                            {/* table-fixed — column widths follow the <th> widths, not the
+                                cell content, so the Contact (and every) column keeps a stable
+                                width when sorting reorders the rows (cells truncate instead). */}
+                            <table className="w-full border-collapse table-fixed">
                                 <thead>
                                     <tr>
                                         <th className={cn(TH, "w-[44px]")}>
@@ -945,7 +948,7 @@ export default function CustomersPage() {
                                                 <td className={TD}>
                                                     <div className="flex flex-col min-w-0">
                                                         <span className="text-[14px] text-[#475467] truncate">{r.email}</span>
-                                                        <span className="text-[13px] text-[#667085]">{r.phone || "—"}</span>
+                                                        <span className="text-[13px] text-[#667085] truncate">{r.phone || "—"}</span>
                                                     </div>
                                                 </td>
                                                 <td className={TD}><StatusBadge type="plan" status={r.planType} /></td>
