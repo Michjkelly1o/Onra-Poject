@@ -1017,7 +1017,8 @@ export default function AdminDashboard() {
                 value: `AED ${Math.round(revenuePeriod).toLocaleString("en-US")}`,
                 change: revD.change, positive: revD.positive, comparison: suffix,
                 icon: CurrencyDollar,
-                info: "Value earned as customers use what they bought.",
+                // Same copy as the Insights Revenue tile tooltip (consistency).
+                info: "Revenue earned (recognized) after refunds & discounts.",
             },
             {
                 label: "New customers",

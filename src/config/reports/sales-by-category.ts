@@ -57,11 +57,10 @@ export const SALES_BY_CATEGORY_REPORT: ReportDefinition = {
     ],
 
     // Break-down = ONLY revenue category (that's the report's identity).
-    // Location dim is exposed as a secondary breakdown for owners who
-    // want per-branch splits.
+    // Client 2026-08: no location grouping here — the report is defined by
+    // its revenue-category split; per-branch views live in other reports.
     dimensions: [
         { key: "revenue_category", label: "Revenue category", extract: r => String(r[K.revenueCategory] ?? "—") },
-        { key: "location",         label: "Location",         extract: r => String(r[K.location]        ?? "—") },
     ],
 
     measures: [

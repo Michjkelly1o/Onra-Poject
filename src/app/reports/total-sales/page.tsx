@@ -178,7 +178,7 @@ export default function TotalSalesReportPageV2() {
                 // narrower display type.
                 revenueCategory: r.kind as "membership" | "package",
                 revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind as "membership" | "package"] ?? r.kind,
-                saleItems: `${r.name} × 1`,
+                saleItems: r.name,
                 quantity: 1,
                 grossSales: signed,
                 discountCode: "",       // POS doesn't write back promo FK yet — Phase 4 wires when available

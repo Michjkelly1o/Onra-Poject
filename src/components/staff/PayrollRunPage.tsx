@@ -459,7 +459,9 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
     }
 
     const csv = [header.join(","), ...lines].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    // Prepend a UTF-8 BOM so Excel reads the file as UTF-8 — without it, Excel
+    // decodes the em-dashes (Basis / Rate "—") as Windows-1252 and shows "‚Äî".
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = `payroll-run-${new Date().toISOString().slice(0, 10)}.csv`;

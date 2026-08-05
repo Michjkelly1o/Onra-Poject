@@ -30,11 +30,12 @@ import { useEffect, useMemo, useRef, useState, type ComponentType, type SVGProps
 import { useRouter } from "next/navigation";
 import {
     XClose, ChevronDown, Check,
-    CurrencyDollar, Grid01, Columns01, MarkerPin01, CalendarPlus01,
+    Grid01, Columns01, MarkerPin01, CalendarPlus01, Download01,
     ArrowUp, ArrowDown, ChevronSelectorVertical,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
@@ -184,7 +185,9 @@ export function PivotableReportShell({
 
     const [period, setPeriod] = useState<PeriodKey>(defaultPeriod);
     const [dimIdx, setDimIdx] = useState<number>(-1);   // -1 = None
-    const [meaIdx, setMeaIdx] = useState<number>(0);
+    // Measure is always the report's primary measure. The measure dropdown was
+    // removed (client 2026-08 — switching it changed nothing on screen).
+    const meaIdx = 0;
     const [dateFilter, setDateFilter] = useState<DateFilter | undefined>(undefined);
     const [visibleBranchIds, setVisibleBranchIds] = useState<Set<string>>(
         () => new Set(branches.map(b => b.id)),
@@ -388,19 +391,6 @@ export function PivotableReportShell({
                                 ]}
                                 value={String(dimIdx)}
                                 onChange={v => setDimIdx(Number(v))}
-                            />
-                        )}
-
-                        {/* Measure */}
-                        {report.measures.length > 1 && (
-                            <SingleSelectDropdown
-                                icon={CurrencyDollar}
-                                label=""
-                                caption="Measure"
-                                active={false}
-                                options={report.measures.map((m, i) => ({ value: String(i), label: m.label }))}
-                                value={String(meaIdx)}
-                                onChange={v => setMeaIdx(Number(v))}
                             />
                         )}
 
@@ -615,10 +605,14 @@ function ExportInlineDropdown({ onExcel, onCsv }: { onExcel: () => void; onCsv: 
     }, []);
     return (
         <div ref={ref} className="relative">
-            <Button variant="primary" size="md" onClick={() => setOpen(p => !p)}
-                rightIcon={<ChevronDown className="w-4 h-4" />}>
-                Export
-            </Button>
+            {/* Icon-only trigger — matches ToolbarExport used across the other
+                modules (Download01 + hover tooltip), not a green text button. */}
+            <IconTooltip label="Export" disabled={open}>
+                <Button variant="secondary-gray" size="icon" aria-label="Export"
+                    onClick={() => setOpen(p => !p)}>
+                    <Download01 className="w-4 h-4" />
+                </Button>
+            </IconTooltip>
             {open && (
                 <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[180px]">
                     <button type="button" onClick={() => { onExcel(); setOpen(false); }}

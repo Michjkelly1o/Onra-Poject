@@ -615,11 +615,14 @@ export function selectBookings(state: AppState): BookingRow[] {
         no_show:    "No-show",
         late_cancel: "Late cancel",
     };
+    // Sales channel is only ever "Online" (self-service customer portal) or
+    // "POS" (any in-person sale — front desk / admin / till). Client 2026-08:
+    // no finer-grained channel labels in reports.
     const SOURCE_LABEL: Record<string, string> = {
         customer_portal: "Online",
-        pos:             "In person (POS)",
-        admin:           "Admin",
-        front_desk:      "In person (front desk)",
+        pos:             "POS",
+        admin:           "POS",
+        front_desk:      "POS",
     };
 
     function toMinutes(t: string): number {
