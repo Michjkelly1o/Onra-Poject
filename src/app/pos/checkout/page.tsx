@@ -90,11 +90,14 @@ function POSCheckoutInner() {
     // Local state — fully owned by this page so the POS redirect logic stays
     // isolated from the schedule mini-POS flow.
     const [step, setStep] = useState<1 | 2>(1);
-    // "Credited to" auto-fills to the signed-in user when they're an active
-    // staff member (still editable / clearable — it stays optional).
-    const [sellerStaffId, setSellerStaffId] = useState<string | null>(
-        () => (currentUser && sellerOptions.some(o => o.value === currentUser.id) ? currentUser.id : null),
-    );
+    // "Credited to" auto-fills to the signed-in user's linked staff record
+    // (the account's `staff_id`, e.g. the admin account → user_alex_owen;
+    // falls back to the user id). Only pre-fills when that staff is an active
+    // seller option. Still editable / clearable — it stays optional.
+    const [sellerStaffId, setSellerStaffId] = useState<string | null>(() => {
+        const candidate = currentUser?.staff_id ?? currentUser?.id ?? null;
+        return candidate && sellerOptions.some(o => o.value === candidate) ? candidate : null;
+    });
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [cashReceived, setCashReceived] = useState<string>("");
     const [selectedCardId, setSelectedCardId] = useState<string | null>(null);

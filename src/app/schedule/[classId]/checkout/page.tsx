@@ -77,10 +77,12 @@ function ScheduleCheckoutInner() {
     );
 
     const [step, setStep] = useState<1 | 2>(1);
-    // "Credited to" auto-fills to the signed-in user when they are active staff.
-    const [sellerStaffId, setSellerStaffId] = useState<string | null>(
-        () => (currentUser && staff.some(st => st.status === "active" && st.id === currentUser.id) ? currentUser.id : null),
-    );
+    // "Credited to" auto-fills to the signed-in user's linked staff record
+    // (account `staff_id`, falls back to the user id) when that staff is active.
+    const [sellerStaffId, setSellerStaffId] = useState<string | null>(() => {
+        const candidate = currentUser?.staff_id ?? currentUser?.id ?? null;
+        return candidate && staff.some(st => st.status === "active" && st.id === candidate) ? candidate : null;
+    });
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
 
     // "Credited to" — active staff labelled with their role (commission Phase 2).
