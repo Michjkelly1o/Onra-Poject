@@ -1462,8 +1462,31 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         // separately via `singleDateBlockedSlots` below + the
         // TimeDropdown's `unavailable` prop so the admin sees blocked
         // slots greyed out rather than as silent gaps.
-        return gateSlotsByShift(slots, selectedDate);
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice]);
+        const gated = gateSlotsByShift(slots, selectedDate);
+        // Editing an existing class: its OWN current start time is valid by
+        // definition (it passed these same checks when created). While NOTHING
+        // that shapes the window has changed — same date, same instructor, same
+        // duration — keep that original time offerable even if the recomputed
+        // window happens to exclude it at a boundary (class ending exactly at
+        // close, sitting on a shift edge, or an instructor shift edited since).
+        // Without this, opening the edit form silently cleared the start time
+        // and forced a re-pick (client 2026-08). Conflict detection
+        // (`unavailableTimes`) still runs, so a time that now clashes with
+        // ANOTHER class is still dropped — we only bypass the window gate, never
+        // the double-book guard.
+        if (
+            editing &&
+            editing.startTime &&
+            selectedDate === editing.dateISO &&
+            instructorId === (editing.instructorId ?? "") &&
+            duration === calcMinutes(editing.startTime, editing.endTime) &&
+            !gated.includes(editing.startTime)
+        ) {
+            return [...gated, editing.startTime].sort();
+        }
+        return gated;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice, editing?.startTime, editing?.endTime, editing?.dateISO, editing?.instructorId]);
 
     // Per-weekday slot map for the repeat-weekly path. Each selected weekday
     // gets its own window since branches can have different hours per day —
