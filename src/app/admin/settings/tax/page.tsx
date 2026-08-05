@@ -51,6 +51,7 @@ import { TaxRateModal } from "@/components/settings/TaxRateModal";
 import { ApplyTaxRatesView } from "@/components/settings/ApplyTaxRatesView";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { useAppStore, type TaxRate, type TaxRateStatus, type TaxRateKind, type TaxRoundingMode } from "@/lib/store";
+import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
@@ -402,6 +403,18 @@ export default function TaxPage() {
     const taxRates           = useAppStore(s => s.taxRates);
     const taxRules           = useAppStore(s => s.taxRules);
     const taxSettings          = useAppStore(s => s.taxSettings);
+    // Income tax = payroll withholding — only relevant where the studio's
+    // country charges personal income tax. For UAE/GCC (the demo default) the
+    // "Income tax" top-level tab is HIDDEN; it re-appears automatically for a
+    // studio whose country has payroll tax (client 2026-08 — "leave it out for
+    // Dubai, but it's an item for another market eventually").
+    const businessCountry      = useAppStore(s => s.businessProfile.country);
+    const showIncomeTax        = payrollTaxAppliesForCountry(businessCountry);
+    // Per-category "Apply tax rates" tab HIDDEN (client 2026-08 — one default
+    // 5% VAT for services + retail, gift cards exempt on redemption; no need to
+    // configure each item). The category→rate rules underneath still drive the
+    // POS tax calc — this only hides the admin surface. Flip to restore.
+    const showApplyTaxTab = false;
     const setPricesIncludeTax   = useAppStore(s => s.setPricesIncludeTax);
     const setRoundingMode       = useAppStore(s => s.setRoundingMode);
     const setTaxTrn             = useAppStore(s => s.setTaxTrn);
@@ -438,6 +451,12 @@ export default function TaxPage() {
     >(null);
 
     useEffect(() => { setPage(1); setSelectedIds(new Set()); }, [statusFilter, tab, topKind]);
+    // Income tax hidden (no payroll tax in the studio's country) → never leave
+    // the page on the income kind, and never on the hidden Apply-tax-rates tab.
+    useEffect(() => {
+        if (!showIncomeTax && topKind !== "vat") setTopKind("vat");
+        if (!showApplyTaxTab && tab !== "list") setTab("list");
+    }, [showIncomeTax, topKind, tab]);
 
     // ─── Apply filter + sort ────────────────────────────────────────────────
     //
@@ -654,15 +673,20 @@ export default function TaxPage() {
 
     return (
         <div className="flex flex-col gap-6">
-            {/* ── Top-level VAT vs Income tax tabs (Figma 5006:73920 / 5041:98666) */}
-            <SegmentedTabs
-                tabs={[
-                    { key: "vat",    label: "VAT"        },
-                    { key: "income", label: "Income tax" },
-                ]}
-                activeKey={topKind}
-                onChange={k => setTopKind(k as TaxRateKind)}
-            />
+            {/* ── Top-level VAT vs Income tax tabs (Figma 5006:73920 / 5041:98666).
+                The Income tax tab only shows when the studio's country charges
+                payroll tax — hidden for UAE/GCC. When it's hidden there's just
+                one kind (VAT), so the toggle itself is hidden too. */}
+            {showIncomeTax && (
+                <SegmentedTabs
+                    tabs={[
+                        { key: "vat",    label: "VAT"        },
+                        { key: "income", label: "Income tax" },
+                    ]}
+                    activeKey={topKind}
+                    onChange={k => setTopKind(k as TaxRateKind)}
+                />
+            )}
 
             {/* ── VAT-only TRN card (Figma 7769:106370) — sits above the
                 "Prices include tax" container per client feedback.
@@ -855,7 +879,9 @@ export default function TaxPage() {
                 </div>
             )}
 
-            {/* ── Tab strip ─────────────────────────────────────────────────── */}
+            {/* ── Tab strip ── Hidden while the Apply-tax-rates tab is off (only
+                the Tax rates list remains, so the strip is redundant). */}
+            {showApplyTaxTab && (
             <div className="border-b border-[#e4e7ec]">
                 <div className="flex gap-3 items-end">
                     <button type="button" onClick={() => setTab("list")}
@@ -878,6 +904,7 @@ export default function TaxPage() {
                     </button>
                 </div>
             </div>
+            )}
 
             {/* ── Tab content ───────────────────────────────────────────────── */}
             {tab === "list" ? (
