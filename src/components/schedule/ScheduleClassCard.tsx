@@ -149,6 +149,9 @@ function instructorShortName(full: string): string {
 
 export function ScheduleClassCard({ cls, size, onClick, className, absolute, moreCount }: Props) {
     const isFull = cls.booked >= cls.capacity;
+    // Private / recovery are 1-on-1 appointments — the "1/1 (FULL)" occupancy
+    // read-out (and the capacity bar) is meaningless for them, so hide it.
+    const isAppointment = cls.type === "private" || cls.type === "recovery";
     const startLabel = fmt12(cls.startTime);
     const rangeLabel = cls.displayTime
         ?? (cls.endTime ? `${fmt12(cls.startTime)} - ${fmt12(cls.endTime)}` : startLabel);
@@ -234,11 +237,15 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                             </div>
                         </>
                     )}
-                    <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
-                    <span className="shrink-0">
-                        {cls.booked}/{cls.capacity}
-                        {isFull && <span className="text-[#98a2b3] ml-1">(FULL)</span>}
-                    </span>
+                    {!isAppointment && (
+                        <>
+                            <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
+                            <span className="shrink-0">
+                                {cls.booked}/{cls.capacity}
+                                {isFull && <span className="text-[#98a2b3] ml-1">(FULL)</span>}
+                            </span>
+                        </>
+                    )}
                 </div>
                 {/* Capacity progress bar — inline at the bottom of the
                     card body with the same horizontal padding as the
@@ -247,12 +254,14 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     so it reads as an extension of the left accent
                     stripe. mt-auto pushes it to the bottom so short
                     cards still align their bars. */}
-                <div className="mt-auto w-full h-1.5 bg-white/70 rounded-full overflow-hidden">
-                    <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${fillPct}%`, backgroundColor: cls.color.border }}
-                    />
-                </div>
+                {!isAppointment && (
+                    <div className="mt-auto w-full h-1.5 bg-white/70 rounded-full overflow-hidden">
+                        <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${fillPct}%`, backgroundColor: cls.color.border }}
+                        />
+                    </div>
+                )}
             </button>
         );
     }
@@ -280,12 +289,16 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                         <Clock className="w-[12px] h-[12px] text-[#667085] shrink-0" />
                         <span className="text-[12px] text-[#667085]">{startLabel}</span>
                     </div>
-                    <span className="text-[#98a2b3] text-[12px]">•</span>
-                    <div className="flex items-center gap-1">
-                        <Users01 className="w-[12px] h-[12px] text-[#667085] shrink-0" />
-                        <span className="text-[12px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
-                    </div>
-                    {isFull && <span className="text-[11px] font-semibold text-[#b42318]">(FULL)</span>}
+                    {!isAppointment && (
+                        <>
+                            <span className="text-[#98a2b3] text-[12px]">•</span>
+                            <div className="flex items-center gap-1">
+                                <Users01 className="w-[12px] h-[12px] text-[#667085] shrink-0" />
+                                <span className="text-[12px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
+                            </div>
+                            {isFull && <span className="text-[11px] font-semibold text-[#b42318]">(FULL)</span>}
+                        </>
+                    )}
                 </div>
             </button>
         );
