@@ -823,7 +823,10 @@ export default function CustomersPage() {
     ];
 
     return (
-        <div className="flex-1 min-h-0 flex flex-col gap-6">
+        // pb-20 keeps the pagination row clear of the floating AI button, which
+        // is pinned to the viewport's bottom-right (fixed bottom-8 right-8) and
+        // otherwise sits over the page-size / next controls.
+        <div className="flex-1 min-h-0 flex flex-col gap-6 pb-20">
             {/* ── Toolbar ── matches /admin/staff (Total · Location · Search
                 · Export · Filter · Assigned-to-me chip). */}
             <div className="flex items-center gap-3">

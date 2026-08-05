@@ -1323,7 +1323,9 @@ function SchedulePage() {
         // below grow to absorb every remaining pixel between the toolbar and
         // the viewport bottom. Only the inner view body scrolls; the outer
         // page chrome (toolbar + tab nav + pagination) stays pinned.
-        <div className="flex flex-col gap-6 flex-1 min-h-0">
+        // pb-20 keeps the list pagination clear of the floating AI button pinned
+        // to the viewport's bottom-right (fixed bottom-8 right-8).
+        <div className="flex flex-col gap-6 flex-1 min-h-0 pb-20">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 {/* Schedule's pre-existing chrome hardcodes "classes" plural;
