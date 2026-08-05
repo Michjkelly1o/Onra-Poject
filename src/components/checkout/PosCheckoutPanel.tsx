@@ -14,10 +14,17 @@
 // reset needed. On complete it writes the sale + fires the toast, then signals
 // the POS page (onComplete) to wipe the cart; cancel just drops the pending sale.
 
-import { useEffect, useMemo, useState } from "react";
-import { XClose } from "@untitledui/icons";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { XClose, ChevronRight } from "@untitledui/icons";
+import { cn } from "@/lib/utils";
 import { useAppStore, walletBalanceAed } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+
+// The 2-step checkout, shown as a branding-style breadcrumb stepper.
+const CHECKOUT_STEPS = [
+    { n: 1, label: "Payment confirmation" },
+    { n: 2, label: "Receipt" },
+] as const;
 import {
     PaymentConfirmationStep, ReceiptStep, ProcessingPaymentCard,
     describePayment, computeTotals, enabledMethodsFromProviders,
@@ -222,6 +229,27 @@ function PosCheckoutBody({ onCancel, onComplete }: {
                     className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
                     <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
+            </div>
+            {/* Breadcrumb stepper — same chrome as the branding Customize
+                panel. Only backward navigation (can't skip ahead to Receipt). */}
+            <div className="shrink-0 border-b border-[#e4e7ec] px-6 py-4 flex items-center gap-2">
+                {CHECKOUT_STEPS.map((s, i) => (
+                    <Fragment key={s.n}>
+                        <button
+                            type="button"
+                            onClick={() => { if (s.n <= step) setStep(s.n as 1 | 2); }}
+                            className={cn(
+                                "text-[14px] font-semibold py-1 px-1 transition-colors",
+                                step === s.n ? "text-[#4f6e5d]" : "text-[#475467] hover:text-[#344054]",
+                            )}
+                        >
+                            {s.label}
+                        </button>
+                        {i < CHECKOUT_STEPS.length - 1 && (
+                            <ChevronRight className="w-4 h-4 text-[#98a2b3]" />
+                        )}
+                    </Fragment>
+                ))}
             </div>
             <div className="flex-1 min-h-0 flex flex-col px-6 py-5">
                 {body}

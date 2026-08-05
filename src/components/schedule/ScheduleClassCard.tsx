@@ -223,11 +223,17 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     7798:80399's compact density. */}
                 <div className="flex items-center gap-2 min-w-0 text-[14px] text-[#667085]">
                     <span className="shrink-0">{rangeLabel}</span>
-                    <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
-                    <div className="flex items-center gap-1.5 min-w-0">
-                        <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={16} />
-                        <span className="truncate">{instructorShortName(cls.instructorName)}</span>
-                    </div>
+                    {/* Instructor — hidden when there's none (e.g. an open
+                        recovery session), so no empty gray avatar shows. */}
+                    {cls.instructorName && (
+                        <>
+                            <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={16} />
+                                <span className="truncate">{instructorShortName(cls.instructorName)}</span>
+                            </div>
+                        </>
+                    )}
                     {cls.room && (
                         <>
                             <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
@@ -280,10 +286,12 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     <span className="block text-[14px] font-medium leading-[20px] truncate" style={{ color: cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                    <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={14} />
-                    <span className="text-[12px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
-                </div>
+                {cls.instructorName && (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={14} />
+                        <span className="text-[12px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
+                    </div>
+                )}
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <div className="flex items-center gap-1">
                         <Clock className="w-[12px] h-[12px] text-[#667085] shrink-0" />
