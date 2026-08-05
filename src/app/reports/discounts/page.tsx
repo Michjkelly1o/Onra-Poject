@@ -42,9 +42,10 @@ const REVENUE_CATEGORY_LABEL: Record<string, string> = {
     package:    "Package / Credits",
 };
 const SALES_CHANNEL_LABEL: Record<string, string> = {
-    pos:             "Point of Sale",
-    customer_portal: "Customer portal",
-    admin:           "Admin",
+    customer_portal: "Online",
+    pos:             "POS",
+    admin:           "POS",
+    front_desk:      "POS",
 };
 
 function orderNumberOf(txnId: string): string {
@@ -92,7 +93,7 @@ export default function DiscountsReportPage() {
                 discountValue:        discount,
                 discountPct:          pct,
                 netAfterDiscount:     net,
-                salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "Point of Sale",
+                salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "POS",
                 staffId:              r.staffId ?? "",
                 branchId:             r.branchId,
                 location:             r.location,

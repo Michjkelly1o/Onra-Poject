@@ -48,9 +48,10 @@ const ITEM_TYPE_LABEL: Record<string, string> = {
     package:    "Class package",
 };
 const SALES_CHANNEL_LABEL: Record<string, string> = {
-    pos:             "Point of Sale",
-    customer_portal: "Customer portal",
-    admin:           "Admin",
+    customer_portal: "Online",
+    pos:             "POS",
+    admin:           "POS",
+    front_desk:      "POS",
 };
 const TXN_TYPE_LABEL: Record<"sale" | "refund" | "write_off", "Sale" | "Refund" | "Write-off"> = {
     sale:      "Sale",
@@ -93,7 +94,7 @@ export default function SalesByItemReportPage() {
                 txnId:                orderNumberOf(r.id),
                 transactionType:      TXN_TYPE_LABEL[r.transactionType],
                 originalTxnId:        r.originalTransactionId ? orderNumberOf(r.originalTransactionId) : "",
-                salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "Point of Sale",
+                salesChannel:         SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "POS",
                 customerName:         r.customerName,
                 customerId:           r.customerId,
                 customerEmail:        r.customerEmail,

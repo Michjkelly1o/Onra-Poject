@@ -14,7 +14,7 @@ import { getReportById, resolveSelector } from "@/config/reports-registry";
 import type { RetailSalesRow } from "@/lib/reports/selectors";
 
 const CHANNEL_LABEL: Record<RetailSalesRow["salesChannel"], string> = {
-    "in-person": "In person",
+    "in-person": "POS",
     online:      "Online",
 };
 

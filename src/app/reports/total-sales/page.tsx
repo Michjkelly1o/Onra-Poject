@@ -77,10 +77,13 @@ interface TotalSalesDisplayRow {
 
 // ─── Label helpers ────────────────────────────────────────────────────────
 
+// Sales channel is only ever "Online" (self-service customer portal) or "POS"
+// (any in-person sale — till / front desk / admin). Client 2026-08.
 const SALES_CHANNEL_LABEL: Record<string, string> = {
-    pos:             "Point of Sale",
-    customer_portal: "Customer portal",
-    admin:           "Admin",
+    customer_portal: "Online",
+    pos:             "POS",
+    admin:           "POS",
+    front_desk:      "POS",
 };
 
 const REVENUE_CATEGORY_LABEL: Record<string, string> = {
@@ -158,7 +161,7 @@ export default function TotalSalesReportPageV2() {
             const netPaymentAmount = paid ? netInclTax : 0;
             const paymentAmountDue = paid ? 0 : netInclTax;
 
-            const salesChannel = SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "Point of Sale";
+            const salesChannel = SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "POS";
 
             return {
                 orderDateISO: r.createdAtISO.slice(0, 10),
