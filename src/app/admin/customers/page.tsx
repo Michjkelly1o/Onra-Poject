@@ -823,10 +823,11 @@ export default function CustomersPage() {
     ];
 
     return (
-        // pb-20 keeps the pagination row clear of the floating AI button, which
-        // is pinned to the viewport's bottom-right (fixed bottom-8 right-8) and
-        // otherwise sits over the page-size / next controls.
-        <div className="flex-1 min-h-0 flex flex-col gap-6 pb-20">
+        // Main-canvas scroll: the page flows to natural height with a fixed-height
+        // (h-[760px]) view card + pb-24 bottom clearance, so the outer <main>
+        // scrolls and the pagination clears the floating AI button. The card keeps
+        // its own inner scroll — the tab strip stays pinned, only the table body scrolls.
+        <div className="flex flex-col gap-6 pb-24">
             {/* ── Toolbar ── matches /admin/staff (Total · Location · Search
                 · Export · Filter · Assigned-to-me chip). */}
             <div className="flex items-center gap-3">
@@ -861,7 +862,7 @@ export default function CustomersPage() {
             {/* ── View card — rounded container hosting the SegmentedTabs
                    strip + the table. Fills the remaining viewport so only
                    the table body scrolls (matches /admin/staff's chrome). */}
-            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 px-6 py-4 flex items-center gap-3">
                     <SegmentedTabs
                         tabs={segmentTabDefs}

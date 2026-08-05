@@ -1152,15 +1152,25 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             ? roleFilter.statuses.length > 0
             : staffFilter.statuses.length > 0 || staffFilter.roleIds.length > 0;
 
+    // The Staff-schedule WEEK view is a calendar that must fill the viewport
+    // (like /admin/schedule's Day/Week/Month). Every other non-roles view
+    // (Staff table, Shift list, Time off) is a LIST that scrolls the outer main
+    // canvas with pb-24 bottom clearance, so the pagination clears the floating
+    // AI button while the fixed-height card keeps its own inner scroll.
+    const isStaffScheduleCalendar =
+        forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "week";
+
     return (
         <div className={cn(
             "flex flex-col gap-6",
-            // Staff & shift module — fill the remaining main-content viewport
-            // height so the outer page never scrolls, only the inner table
-            // body. Mirrors /admin/schedule's outer wrapper.
-            // Roles route keeps its content-height behaviour (it has no view
-            // card; the table flows in main's normal scroll).
-            forceTab !== "roles" && "flex-1 min-h-0",
+            // Roles route keeps its content-height behaviour (no view card; the
+            // table flows in main's normal scroll). Calendar fills; lists get
+            // pb-24 so the main canvas scrolls and the pagination clears the AI button.
+            forceTab === "roles"
+                ? undefined
+                : isStaffScheduleCalendar
+                    ? "flex-1 min-h-0"
+                    : "pb-24",
         )}>
             {/* Toolbar */}
             <div className="flex items-center gap-3">
@@ -1248,7 +1258,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             <div className={cn(
                 forceTab === "roles"
                     ? "flex flex-col"
-                    : "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                    : isStaffScheduleCalendar
+                        ? "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden"
+                        : "h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on

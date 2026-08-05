@@ -1336,13 +1336,12 @@ function SchedulePage() {
     }
 
     return (
-        // Fill the AdminLayout main height — `flex-1 min-h-0` lets the View card
-        // below grow to absorb every remaining pixel between the toolbar and
-        // the viewport bottom. Only the inner view body scrolls; the outer
-        // page chrome (toolbar + tab nav + pagination) stays pinned.
-        // pb-20 keeps the list pagination clear of the floating AI button pinned
-        // to the viewport's bottom-right (fixed bottom-8 right-8).
-        <div className="flex flex-col gap-6 flex-1 min-h-0 pb-20">
+        // List view scrolls the outer <main> canvas: the page flows to natural
+        // height with a fixed-height view card + pb-24 bottom clearance, so the
+        // pagination clears the floating AI button while the card keeps its own
+        // inner scroll (tabs pinned, table body scrolls). The date-grid views
+        // (day/week/month) keep the flex-1 fill so the calendar owns the height.
+        <div className={`flex flex-col gap-6 ${activeTab === "list" ? "pb-24" : "flex-1 min-h-0"}`}>
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 {/* Schedule's pre-existing chrome hardcodes "classes" plural;
@@ -1396,10 +1395,10 @@ function SchedulePage() {
                 <AddSessionMenu router={router} />
             </div>
 
-            {/* ── View card ── Fills the remaining viewport height (was a fixed 760px
-                surface before — now `flex-1 min-h-0` so a tall screen uses every
-                pixel and a short screen lets the inner view body scroll). */}
-            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            {/* ── View card ── List: fixed h-[760px] so the tab strip pins and only
+                the table body scrolls (the outer main canvas scrolls for the rest).
+                Day/Week/Month: flex-1 min-h-0 so the calendar fills the viewport. */}
+            <div className={`bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden ${activeTab === "list" ? "h-[760px]" : "flex-1 min-h-0"}`}>
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs */}
