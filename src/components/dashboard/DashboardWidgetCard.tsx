@@ -78,12 +78,11 @@ const STATIC: Record<string, object[]> = {
         { name: "30 Credit", v: 18 },
         { name: "Advanced",  v: 38 },
     ],
-    "class-by-popularity": [
-        { name: "Reformer Pilates", instructor: "Sara Al-Rashid", color: "#b892ba", bookings: 142, occupancy: 89 },
-        { name: "Mat Pilates",      instructor: "Liam Chen",      color: "#92baa4", bookings: 98,  occupancy: 78 },
-        { name: "Barre",            instructor: "Maya Johnson",   color: "#92d1de", bookings: 87,  occupancy: 72 },
-        { name: "Hot Yoga",         instructor: "Liam Chen",      color: "#dc6803", bookings: 45,  occupancy: 65 },
-    ],
+    // class-by-popularity: live-derived from `classSchedules` (see
+    // `computeClassPopularity`). STATIC entry retired 2026-08-05 (audit) — it
+    // invented a "Mat Pilates" class and mismatched instructors. Live
+    // derivation ranks the studio's REAL scheduled classes by bookings, with
+    // the real teaching instructor + occupancy, branch-scoped.
     // KPI · Marketing — funnel stages, descending. Values sized to the
     // demo seed's 20-lead scale.
     "kpi-lead-funnel": [
@@ -122,13 +121,11 @@ const STATIC: Record<string, object[]> = {
     // future pass can period-scope them if the client wants trailing-N-day
     // leaderboards. Colours picked from the existing widget palette so
     // charts read as one visual family.
-    "private-top-trainers": [
-        { name: "Sara Al-Rashid", v: 42 },
-        { name: "Liam Chen",      v: 36 },
-        { name: "Maya Johnson",   v: 28 },
-        { name: "Priya Nair",     v: 19 },
-        { name: "Dan Rivera",     v: 14 },
-    ],
+    // private-top-trainers: live-derived from private `appointments` (see
+    // `computeTopPrivateTrainers`). STATIC entry retired 2026-08-05 (audit) —
+    // it listed non-existent trainers "Priya Nair" / "Dan Rivera". Live
+    // derivation ranks the studio's REAL instructors by private-session count,
+    // branch-scoped.
     // recovery-top-services: live-derived from services + appointments,
     // see `computeTopServices()` below. STATIC entry retired 2026-07-20
     // (was invented names like "Ice bath" / "Cryo" that didn't match the
@@ -816,6 +813,74 @@ function computeTopServices(
     return ranked.sort((a, b) => b.v - a.v).slice(0, 5);
 }
 
+// Accent colours for the class-popularity rows, keyed by class category. Only
+// styling — the DATA (name / instructor / bookings / occupancy) is live.
+const _CLASS_ACCENT: Record<string, string> = {
+    Pilates: "#b892ba", Barre: "#92d1de", Yoga: "#dc6803",
+};
+
+/** Top classes ranked by total bookings, branch-scoped. Live-derived from
+ *  `classSchedules` (audit 2026-08-05 — replaces the static seed that invented
+ *  "Mat Pilates" + mismatched instructors). Groups every non-cancelled
+ *  scheduled class by template name, sums bookings, averages occupancy, and
+ *  attributes it to the instructor who teaches it most often. Period-agnostic
+ *  (a leaderboard reads as a snapshot); branch filter still applies. Top 4. */
+function computeClassPopularity(
+    schedules: Array<import("@/lib/store").ClassSchedule>,
+    branchIds: string[] | undefined,
+): Array<{ name: string; instructor: string; color: string; bookings: number; occupancy: number }> {
+    const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
+    interface Agg { name: string; category: string; booked: number; capacity: number; instr: Map<string, number>; }
+    const groups = new Map<string, Agg>();
+    for (const s of schedules) {
+        if (s.status === "Cancelled") continue;
+        if (scoped && !scoped.includes(s.branchId)) continue;
+        let g = groups.get(s.name);
+        if (!g) { g = { name: s.name, category: s.category, booked: 0, capacity: 0, instr: new Map() }; groups.set(s.name, g); }
+        g.booked += s.booked;
+        g.capacity += s.capacity;
+        if (s.instructorName) g.instr.set(s.instructorName, (g.instr.get(s.instructorName) ?? 0) + 1);
+    }
+    const rows = Array.from(groups.values()).map(g => {
+        let topInstr = "—", topN = -1;
+        g.instr.forEach((n, name) => { if (n > topN) { topN = n; topInstr = name; } });
+        return {
+            name: g.name,
+            instructor: topInstr,
+            color: _CLASS_ACCENT[g.category] ?? "#98a2b3",
+            bookings: g.booked,
+            occupancy: g.capacity > 0 ? Math.round((g.booked / g.capacity) * 100) : 0,
+        };
+    });
+    return rows.sort((a, b) => b.bookings - a.bookings).slice(0, 4);
+}
+
+/** Top trainers ranked by private-session bookings, branch-scoped. Live-derived
+ *  from private `appointments` (audit 2026-08-05 — replaces the static seed that
+ *  listed non-existent trainers "Priya Nair" / "Dan Rivera"). Counts each
+ *  trainer's private sessions in scope. Period-agnostic snapshot; branch filter
+ *  applies. Top 5. */
+function computeTopPrivateTrainers(
+    appointments: Array<import("@/lib/store").Appointment>,
+    branchIds: string[] | undefined,
+): Array<{ name: string; v: number }> {
+    const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
+    const totals = new Map<string, number>();
+    for (const a of appointments) {
+        if (a.type !== "private") continue;
+        if (scoped && !scoped.includes(a.branchId)) continue;
+        const name = a.instructorName;
+        if (!name) continue;
+        // Count every private session the trainer holds (a private appointment
+        // is one 1:1 booking), so the leaderboard reflects real workload even
+        // for slots still being filled.
+        totals.set(name, (totals.get(name) ?? 0) + 1);
+    }
+    const rows: Array<{ name: string; v: number }> = [];
+    totals.forEach((v, name) => rows.push({ name, v }));
+    return rows.sort((a, b) => b.v - a.v).slice(0, 5);
+}
+
 // ─── Referral share of new customers — live derivation ─────────────────────
 //
 // Stacked bar per period-bucket: "All new customers" (light grey background)
@@ -935,6 +1000,12 @@ function renderChart(
      *  (all new customers, new customers via referral) plus the header
      *  first-vs-last-period share numbers. Null on every other widget. */
     referralShareResult: ReferralShareResult | null = null,
+    /** Class-by-popularity widget only — live-derived ranked classes with real
+     *  instructor / bookings / occupancy. Null on every other widget. */
+    classPopularityRows: Array<{ name: string; instructor: string; color: string; bookings: number; occupancy: number }> | null = null,
+    /** Private-top-trainers widget only — live-derived ranked trainers by
+     *  private-session count. Null on every other widget. */
+    topTrainersRows: Array<{ name: string; v: number }> | null = null,
 ): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
@@ -954,7 +1025,11 @@ function renderChart(
             ? (topServicesRows as unknown as object[])
             : id === "referral-share" && referralShareResult
                 ? (referralShareResult.rows as unknown as object[])
-                : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
+                : id === "class-by-popularity" && classPopularityRows
+                    ? (classPopularityRows as unknown as object[])
+                    : id === "private-top-trainers" && topTrainersRows
+                        ? (topTrainersRows as unknown as object[])
+                        : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
@@ -2057,6 +2132,28 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
         widgetId === "referral-share" && referralCustomers
             ? computeReferralShare(referralCustomers, branchIds, period ?? DEFAULT_PERIOD)
             : null;
+
+    // Class-by-popularity — live-derived ranked classes from `classSchedules`
+    // (audit 2026-08-05, was a static seed with a phantom "Mat Pilates" +
+    // mismatched instructors). Only reads on this widget.
+    const popSchedules = useAppStore(s =>
+        widgetId === "class-by-popularity" ? s.classSchedules : null,
+    );
+    const classPopularityRows =
+        widgetId === "class-by-popularity" && popSchedules
+            ? computeClassPopularity(popSchedules, branchIds)
+            : null;
+
+    // Private-top-trainers — live-derived from private `appointments` (audit
+    // 2026-08-05, was a static seed listing non-existent trainers). Only reads
+    // on this widget.
+    const trainerAppts = useAppStore(s =>
+        widgetId === "private-top-trainers" ? s.appointments : null,
+    );
+    const topTrainersRows =
+        widgetId === "private-top-trainers" && trainerAppts
+            ? computeTopPrivateTrainers(trainerAppts, branchIds)
+            : null;
     if (!meta) return null;
 
     return (
@@ -2133,7 +2230,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                 fill (e.g. the intro funnel's `h-full flex justify-center`)
                 will stretch to close the gap and prevent visible white space. */}
             <div className="min-w-0 flex-1 flex flex-col">
-                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows, referralShareResult)}
+                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows, referralShareResult, classPopularityRows, topTrainersRows)}
             </div>
         </div>
     );
