@@ -10,7 +10,7 @@ import {
 } from "@untitledui/icons";
 import { cn, formatTimeRange12 } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess, type ClassCategory } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, deriveScheduleInstructors, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess, type ClassCategory } from "@/lib/store";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByShift as gateSlotsByShiftHelper, instructorBlockedSlots as instructorBlockedSlotsHelper } from "@/lib/instructor-availability";
 import { Toast } from "@/components/ui/Toast";
@@ -1180,8 +1180,13 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // + Spa branches onto South's business hours, which is a bug the moment
     // more than two branches exist. Falls back to the South branch id when
     // no room is picked yet, matching the pre-heuristic default.
-    const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
-    const selectedBranchId = selectedBranchGroup?.branchId ?? "branch_forma_south";
+    // When editing, the class's OWN branch is the authoritative source — fall
+    // back to it whenever the room can't be resolved (renamed / inactive room),
+    // so the branch scope never silently collapses to South and branch-excludes
+    // (then blanks) the class's real instructor. Audit Phase 5, 2026-08-05.
+    const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId))
+        ?? (editing?.branchId ? branchRooms.find(b => b.branchId === editing.branchId) : undefined);
+    const selectedBranchId = selectedBranchGroup?.branchId ?? editing?.branchId ?? "branch_forma_south";
 
     // True while editing an existing class and NOTHING that shapes its
     // time slot has been touched — same date, instructor, room and duration
@@ -1213,6 +1218,16 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // initializers ran (leaving date/time blank) — silently dropped the time and
     // the field went empty. This depends only on the day, which is stable.
     const editSameDay = !!editing && selectedDate === editing.dateISO;
+
+    // ── Keep-assigned instructor (mirrors the start-time keep-assigned guard) ──
+    // The class's own instructor is valid for the class's own category + branch
+    // by construction. While the admin hasn't moved the class to a different
+    // category or branch, keep that instructor selectable + never auto-clear it —
+    // a safety net so a legacy / edited / async-hydrated row can never blank the
+    // instructor on open (the "shown in the list, unavailable on edit" bug).
+    const originalInstructorId = editing?.instructorId ?? "";
+    const inOriginalCategory = !!editing && category === (editing.category ?? "");
+    const inOriginalBranch = !!editing && selectedBranchId === editing.branchId;
 
     // ─── Conflict scan ─────────────────────────────────────────────────────
     // Given a list of dates, return every start-time slot that would
@@ -1420,6 +1435,19 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         [staffSlice],
     );
 
+    // Live schedulable-instructor pool derived from the runtime `staff` slice
+    // (Phase 1 unification) — reflects staff edits (rename / re-category / branch
+    // move / deactivate) instead of a frozen seed const, and carries categoryIds
+    // so the pool the form SELECTS from and the CAN-TEACH gate read one source.
+    const activeBranchIdSet = useMemo(
+        () => new Set(liveBranches.filter(b => b.status === "active").map(b => b.id)),
+        [liveBranches],
+    );
+    const schedulePool = useMemo(
+        () => deriveScheduleInstructors(staffSlice, activeBranchIdSet),
+        [staffSlice, activeBranchIdSet],
+    );
+
     // ── Category-id resolved from the selected category NAME ─────────────
     const selectedCategoryId = useMemo(
         () => resolveCategoryId(category, classCategories),
@@ -1438,6 +1466,8 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // ineligible — no modal, the admin just notices the radio is reset.
     useEffect(() => {
         if (!instructorId) return;
+        // Never clear the class's own instructor while still in its own category.
+        if (instructorId === originalInstructorId && inOriginalCategory) return;
         if (!instructorTeachesCategory(instructorId)) {
             setInstructorId("");
         }
@@ -1585,6 +1615,23 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         }
     }, [editing, selectedDate, startTime, unavailableTimes]);
 
+    // Restore the class's SAVED spot layout on edit (async-safe, one-shot per
+    // edited id). Without this the customize-spot state stays at its defaults
+    // (4×2), so an unchanged edit's save would overwrite the class's real grid
+    // (e.g. a 5×3 grid for a 15-cap class) with the wrong 8-spot default —
+    // corrupting the customer-facing spot picker. Audit Phase 5, 2026-08-05.
+    const spotRestoredRef = useRef<string | null>(null);
+    useEffect(() => {
+        const sl = editing?.spotLayout;
+        if (!editing || !sl) return;
+        if (spotRestoredRef.current === editing.id) return;
+        spotRestoredRef.current = editing.id;
+        setCsCols(sl.cols); setCsRows(sl.rows);
+        setCsPendingCols(sl.cols); setCsPendingRows(sl.rows);
+        setCsBlocked(new Set(sl.blockedSpots ?? []));
+        if ((sl.blockedSpots?.length ?? 0) > 0) setCsCustomized(true);
+    }, [editing]);
+
     // When the date/duration/branch changes the valid slot list reshapes —
     // any previously-picked start time outside the new window has to be
     // cleared so the user can't submit a class that runs past close-time.
@@ -1647,7 +1694,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         setCsCols(dc); setCsRows(dr); setCsPendingCols(dc); setCsPendingRows(dr);
         setCsBlocked(new Set()); setCsCustomized(false); setCsSelected(null);
     }
-    const selectedInstructor = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
+    const selectedInstructor = schedulePool.find(i => i.id === instructorId);
     // Branch-scope guard: a class booked into branch X can only be taught
     // by an instructor of branch X (or a null-branch "all locations"
     // staff row, e.g. an Owner covering a class). Applied BEFORE the name
@@ -1655,11 +1702,11 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // no room is picked yet, the picker stays permissive so the admin
     // can eyeball the roster before committing to a room.
     const branchScopedInstructors = useMemo(() => {
-        if (!selectedBranchGroup) return SCHEDULE_INSTRUCTORS;
-        return SCHEDULE_INSTRUCTORS.filter(i =>
+        if (!selectedBranchGroup) return schedulePool;
+        return schedulePool.filter(i =>
             i.branchId === null || i.branchId === selectedBranchGroup.branchId,
         );
-    }, [selectedBranchGroup]);
+    }, [selectedBranchGroup, schedulePool]);
     const filteredInstructors = instrSearch
         ? branchScopedInstructors.filter(i => i.name.toLowerCase().includes(instrSearch.toLowerCase()))
         : branchScopedInstructors;
@@ -1670,6 +1717,8 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // needs to write back into `instructorId` — the stateful source of truth.
     useEffect(() => {
         if (!instructorId || !selectedBranchGroup) return;
+        // Never clear the class's own instructor while still on its own branch.
+        if (instructorId === originalInstructorId && inOriginalBranch) return;
         const stillValid = branchScopedInstructors.some(i => i.id === instructorId);
         if (!stillValid) setInstructorId("");
     }, [instructorId, selectedBranchGroup, branchScopedInstructors]);
@@ -1950,7 +1999,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Create class instances
     function handleCreate() {
         const instances: Omit<ClassInstance, "id">[] = [];
-        const instName     = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
+        const instName     = schedulePool.find(i => i.id === instructorId);
         const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
         // Read the ACTUAL branch id (was previously a broken heuristic that
@@ -2060,12 +2109,14 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
     function handleSaveEdit() {
         if (!editingId || !editing) return;
-        const instName = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
-        const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
+        const instName = schedulePool.find(i => i.id === instructorId);
+        // Resolve the branch from the picked room, falling back to the class's
+        // OWN branch when the room can't be resolved (renamed / inactive) — so a
+        // save never silently reassigns the class to South. Audit Phase 5.
+        const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId))
+            ?? branchRooms.find(b => b.branchId === editing.branchId);
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
-        // Same fix as handleCreate — use the actual `branchId` field on the
-        // group instead of a broken name-substring heuristic.
-        const branchId     = branchGroup?.branchId ?? "branch_forma_south";
+        const branchId     = branchGroup?.branchId ?? editing.branchId ?? "branch_forma_south";
 
         // ─── Date / time reschedule block ─────────────────────────────────
         // Only emitted when canReschedule AND the user actually changed the
@@ -2126,6 +2177,10 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         updateClassSchedule(editingId, {
             templateId, name, description: desc, category,
             branchId,
+            // Keep the denormalized branch display string in sync with branchId —
+            // handleCreate writes it but edit previously didn't, so moving a class
+            // to another branch's room left a stale `location`. Audit Phase 5.
+            location: branchGroup?.branch ?? editing.location,
             instructorId,
             instructorName: instName?.name ?? editing.instructorName,
             instructorInitials: instName?.initials ?? editing.instructorInitials,
@@ -2488,7 +2543,11 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                         {/* pt-2 pb-2 gives room for the focus ring not to be clipped */}
                                         <div className="flex gap-4 overflow-x-auto pt-2 pb-3 scrollbar-hide">
                                             {filteredInstructors.map(instr => {
-                                                const canTeach = instructorTeachesCategory(instr.id);
+                                                // The class's own instructor stays selectable in its own
+                                                // category even if the gate would otherwise grey them out —
+                                                // keep-assigned safety net (see originalInstructorId).
+                                                const canTeach = instructorTeachesCategory(instr.id)
+                                                    || (instr.id === originalInstructorId && inOriginalCategory);
                                                 return (
                                                     <InstructorCard key={instr.id} instructor={instr}
                                                         selected={instructorId === instr.id}
@@ -2903,7 +2962,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 if (currentKind === "datetime") {
                                     return (
                                         <Button variant="primary" size="md"
-                                            disabled={!selectedDate || !startTime}
+                                            disabled={!selectedDate || !startTime || !instructorId}
                                             onClick={handleSaveEdit}>
                                             Save changes
                                         </Button>
