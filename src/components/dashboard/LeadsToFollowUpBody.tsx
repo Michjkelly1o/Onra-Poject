@@ -134,6 +134,9 @@ export function LeadsToFollowUpBody() {
         // overflow inside — otherwise 6 ranked rows make this card taller than
         // its grid-row sibling, and `grid-auto-rows: 1fr` stretches the whole
         // row to match. Keeps the widget the same size as the charts beside it.
+        // The bottom white fade (same as the "Recent activity" widget) signals
+        // there's more to scroll to.
+        <div className="relative">
         <div className="max-h-[248px] overflow-y-auto scrollbar-hide">
         <div className="flex flex-col divide-y divide-[#f2f4f7]">
             {ranked.map(({ task, customer, liveTag }) => {
@@ -186,6 +189,8 @@ export function LeadsToFollowUpBody() {
                 );
             })}
         </div>
+        </div>
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none rounded-b-[20px]" />
         </div>
     );
 }
