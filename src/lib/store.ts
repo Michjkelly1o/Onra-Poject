@@ -13167,7 +13167,11 @@ export const useAppStore = create<AppState>()(persist(
         //   matches her canonical staff.ts rate. payrollEntries is persisted →
         //   bump. (Notification seeds needed no change — all reference hand rows
         //   or Liam's classes, none of which Phase 2 altered.)
-        version: 108,
+        // v109 — class-schedule audit Phase 7 (2026-08-05): verification sweep
+        //   fixed one pre-existing seed error — booking bk_mia_cancel_3 was
+        //   tagged South but its class is at East. classBookings is persisted →
+        //   bump so branch-scoped reports/dashboards filter it correctly.
+        version: 109,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
