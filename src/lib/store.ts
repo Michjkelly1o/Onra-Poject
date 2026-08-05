@@ -12819,7 +12819,7 @@ export const useAppStore = create<AppState>()(persist(
         // v102 — added a today EVENING demo class so the attendee console's
         //   Upcoming group reliably populates alongside the Ongoing ones.
         //   classSchedules are persisted → bump to re-seed today's classes.
-        version: 102,
+        version: 103,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

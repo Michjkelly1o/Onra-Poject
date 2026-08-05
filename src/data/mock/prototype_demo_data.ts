@@ -33,6 +33,8 @@ import type {
     CustomerPlan,
     CustomerReferral,
     IssuedGiftCard,
+    Appointment,
+    AppointmentBooking,
 } from "./_types";
 
 // ─── Time anchor ────────────────────────────────────────────────────────────
@@ -382,6 +384,49 @@ export const DEMO_TODAY_MEETING_BOOKINGS: ClassBooking[] = DEMO_TODAY_MEETING_SC
         booking_source: "customer_portal",
     }));
 });
+
+// Today's PRIVATE + RECOVERY appointments — so the dashboard's Today session
+// list (and the schedule day view) show a Private and a Recovery card, not just
+// classes. Each is booked with one customer so it clears the today-feed's
+// `booked > 0` gate. Reuses the same known-good SOUTH room/instructor as the
+// meeting classes (client 2026-08-05). No "1/1 (FULL)" is shown — the card hides
+// the occupancy read-out for 1-on-1 appointments.
+export const DEMO_TODAY_APPOINTMENTS: Appointment[] = [
+    {
+        id: "appt_demo_today_private",
+        service_id: "svc_private_reformer",
+        branch_id: SOUTH,
+        room_id: "room_south_reformer",
+        instructor_id: "staff_maya_johnson",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "16:00",
+        end_time: "17:00",
+        display_time: "16:00 – 17:00",
+        capacity: 1,
+        booked: 1,
+        status: "Upcoming",
+        created_at: isoStamp(daysAgo(2)),
+    },
+    {
+        id: "appt_demo_today_recovery",
+        service_id: "svc_massage",
+        branch_id: SOUTH,
+        room_id: "room_south_recovery",
+        instructor_id: "staff_maya_johnson",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "17:30",
+        end_time: "18:30",
+        display_time: "17:30 – 18:30",
+        capacity: 1,
+        booked: 1,
+        status: "Upcoming",
+        created_at: isoStamp(daysAgo(2)),
+    },
+];
+export const DEMO_TODAY_APPOINTMENT_BOOKINGS: AppointmentBooking[] = [
+    { id: "appt_book_demo_today_private", appointment_id: "appt_demo_today_private", customer_id: "cust_ahmed_zayn", status: "Booked", booked_at: isoStamp(daysAgo(2)) },
+    { id: "appt_book_demo_today_recovery", appointment_id: "appt_demo_today_recovery", customer_id: "cust_bosa_ahmed", status: "Booked", booked_at: isoStamp(daysAgo(2)) },
+];
 
 // ─── Bookings ───────────────────────────────────────────────────────────────
 //
