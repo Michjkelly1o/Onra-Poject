@@ -20,6 +20,7 @@ import { useAppStore, type FollowUpTask, type Customer } from "@/lib/store";
 import { TableAvatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { LEAD_ASSIGNMENT_ENABLED } from "@/lib/lead-assignment";
 import { cn } from "@/lib/utils";
 
 /** Trigger weights per the plan §Phase 5 rank formula. Enquiry_logged
@@ -160,12 +161,20 @@ export function LeadsToFollowUpBody() {
                             <p className="text-[13px] text-[#475467] line-clamp-2">{task.reason}</p>
                             <div className="flex items-center gap-3 text-[12px] text-[#667085]">
                                 <span>{formatAge(task.createdAt)}</span>
-                                <span className="text-[#d0d5dd]">·</span>
-                                <span>
-                                    {assignee
-                                        ? `Assigned to ${assignee.fullName || `${assignee.firstName} ${assignee.lastName}`.trim()}`
-                                        : "Unassigned"}
-                                </span>
+                                {/* Assignee chip hidden while lead assignment is
+                                    off — every task is team-owned, so a blanket
+                                    "Unassigned" reads as broken. See
+                                    @/lib/lead-assignment. */}
+                                {LEAD_ASSIGNMENT_ENABLED && (
+                                    <>
+                                        <span className="text-[#d0d5dd]">·</span>
+                                        <span>
+                                            {assignee
+                                                ? `Assigned to ${assignee.fullName || `${assignee.firstName} ${assignee.lastName}`.trim()}`
+                                                : "Unassigned"}
+                                        </span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </button>

@@ -158,4 +158,9 @@ export const DEFAULT_ACTIVE_WIDGETS = [
     "attendance-overview",
     "sales-by-product",
     "class-by-popularity",
+    // Client 2026-08-05 — surfaced by default so admins immediately see WHO
+    // has an open follow-up (auto-detected leads/lapsed trialists) without
+    // hunting through customer profiles. Row click → that customer's
+    // Follow-ups tab. Keeps the grid even (6 widgets).
+    "leads-to-follow-up",
 ];
