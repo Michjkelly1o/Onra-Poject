@@ -419,22 +419,27 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                     {/* Q3 (2026-07-27) — clearer, more contextual helper
                         copy under each field so the admin knows what
                         they're routing to and what the note becomes. */}
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-[14px] font-medium text-[#344054]">
-                            Assign to
-                        </label>
-                        <SelectInput
-                            value={assignTo}
-                            onChange={setAssignTo}
-                            options={staffOptions}
-                            width="w-full"
-                            disabled={!canSubmitEnquiry}
-                        />
-                        <p className="text-[13px] text-[#667085]">
-                            The new task shows up on this staff member&apos;s dashboard follow-up widget.
-                            Leave as &ldquo;Unassigned&rdquo; if nobody owns this lead yet.
-                        </p>
-                    </div>
+                    {/* "Assign to" on a new enquiry hidden while lead assignment
+                        is off — the task just logs unassigned (team-owned). See
+                        @/lib/lead-assignment. */}
+                    {LEAD_ASSIGNMENT_ENABLED && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[#344054]">
+                                Assign to
+                            </label>
+                            <SelectInput
+                                value={assignTo}
+                                onChange={setAssignTo}
+                                options={staffOptions}
+                                width="w-full"
+                                disabled={!canSubmitEnquiry}
+                            />
+                            <p className="text-[13px] text-[#667085]">
+                                The new task shows up on this staff member&apos;s dashboard follow-up widget.
+                                Leave as &ldquo;Unassigned&rdquo; if nobody owns this lead yet.
+                            </p>
+                        </div>
+                    )}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[14px] font-medium text-[#344054]">
                             Enquiry note
