@@ -4340,6 +4340,12 @@ export interface AppState {
      *  always available. */
     deleteBlockedTimes: (ids: string[]) => void;
     pendingPurchase: PendingPurchase | null;
+    /** Transient — a cover image the user uploaded in the AI Agent's
+     *  "create class from scratch" flow. Held here (not relayed through the
+     *  model) so the publish tool can read it off the request snapshot. Set on
+     *  upload, cleared after the class is published. Not persisted. */
+    aiScratchCoverImage: string | null;
+    setAiScratchCoverImage: (url: string | null) => void;
     toast: ToastData | null;
 
     /** Client 2026-07-31 — true while ANY admin list page has at least one
@@ -6195,6 +6201,7 @@ export const useAppStore = create<AppState>()(persist(
     instructorIntegrations: [...INITIAL_INSTRUCTOR_INTEGRATIONS],
     paymentProviders: [...INITIAL_PAYMENT_PROVIDERS],
     pendingPurchase: null,
+    aiScratchCoverImage: null,
     toast: null,
     bulkSelectionActive: false,
 
@@ -11560,6 +11567,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
+    setAiScratchCoverImage: (url) => set({ aiScratchCoverImage: url }),
     applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride, giftCardDebits) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
@@ -13466,6 +13474,7 @@ export const useAppStore = create<AppState>()(persist(
                 sidebarCollapsed: _sidebarCollapsed,
                 toast:          _toast,
                 pendingPurchase: _pendingPurchase,
+                aiScratchCoverImage: _aiScratchCoverImage,
                 // bulkSelectionActive is UI-only ephemeral state driven by
                 // the currently mounted list page. Persisting it would
                 // cause a stale "true" to survive across reloads and

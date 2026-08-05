@@ -22,9 +22,9 @@
 // can mount it and receive the collected answers via `onComplete`. This is the
 // SINGLE source for this pattern — do not inline a copy elsewhere.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, PencilLine, SearchLg, Star01, Check, Plus, Grid01, MarkerPin01, ClockFastForward, Users01, Building01 } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, PencilLine, SearchLg, Star01, Check, Plus, Grid01, MarkerPin01, ClockFastForward, Users01, Building01, Trash01, UploadCloud02 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -95,7 +95,7 @@ export interface AiQuestionOption {
  *  • `grouped`    — single-select, options bucketed by `groupLabel` headers.
  *  • `searchable` — single-select with a filter box above the list
  *                   (instructor / room / customer pickers). */
-export type AiQuestionKind = "radio" | "checkbox" | "grouped" | "searchable";
+export type AiQuestionKind = "radio" | "checkbox" | "grouped" | "searchable" | "image";
 
 export interface AiQuestionSpec {
     /** Header title — defaults to "Question" when omitted. */
@@ -123,11 +123,13 @@ export interface AiQuestionSpec {
     groupIcon?: "building";
 }
 
-/** One answer: a chosen option id, a multi-select set, free text, or skipped. */
+/** One answer: a chosen option id, a multi-select set, free text, an uploaded
+ *  image (data URL — never relayed through the model), or skipped. */
 export type AiQuestionAnswer =
     | { kind: "option"; optionId: string }
     | { kind: "options"; optionIds: string[]; otherText?: string }
     | { kind: "other"; text: string }
+    | { kind: "image"; dataUrl: string }
     | { kind: "skipped" };
 
 export interface AiQuestionPromptProps {
@@ -213,6 +215,8 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
     const [checkedIds, setCheckedIds] = useState<string[]>([]);        // multi-select
     const [otherText, setOtherText] = useState("");
     const [query, setQuery] = useState("");                            // searchable filter
+    const [imageDataUrl, setImageDataUrl] = useState<string | null>(null); // kind: "image"
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [answers, setAnswers] = useState<AiQuestionAnswer[]>([]);
 
     const q = questions[step];
@@ -220,7 +224,8 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
     const isMulti = kind === "checkbox";
     const isSearchable = kind === "searchable";
     const isGrouped = kind === "grouped";
-    const allowOther = q.allowOther ?? !isMulti; // checkbox opts in explicitly
+    const isImage = kind === "image";
+    const allowOther = isImage ? false : (q.allowOther ?? !isMulti); // checkbox opts in explicitly; image never
     const minSelected = q.minSelected ?? 1;
     const maxSelected = q.maxSelected;
     const otherSelected = selectedId === OTHER_ID;
@@ -236,6 +241,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
     const loadStep = (next: number) => {
         const prior = answers[next];
         setQuery("");
+        setImageDataUrl(prior?.kind === "image" ? prior.dataUrl : null);
         if (prior?.kind === "option") {
             setSelectedId(prior.optionId);
             setCheckedIds([]);
@@ -290,11 +296,24 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
         advance(buildAnswer());
     };
     const handleSkip = () => advance({ kind: "skipped" });
+    // Read a picked cover-image file as a data URL and hold it locally. The
+    // URL is committed as an { kind: "image" } answer on Continue — never as
+    // free text, so a base64 blob is never relayed through the model.
+    const handleImageFile = (file: File | undefined) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === "string") setImageDataUrl(reader.result);
+        };
+        reader.readAsDataURL(file);
+    };
     // Commit the current question's working answer WITHOUT advancing — so a
     // checkbox (equipment) is saved when the user pages away instead of needing
     // a Confirm button, and a radio selection is preserved when navigating.
     const commitCurrent = () => {
-        if (isMulti) {
+        if (isImage) {
+            if (imageDataUrl) commit({ kind: "image", dataUrl: imageDataUrl });
+        } else if (isMulti) {
             if (checkedIds.length > 0 || otherText.trim()) commit(buildAnswer());
         } else if (selectedId !== null) {
             commit(buildAnswer());
@@ -555,7 +574,61 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                 </div>
             )}
 
-            {/* Options list. */}
+            {/* Image upload body (kind: "image"). Own Skip / Continue buttons
+                since the shared footer is hidden for this kind — the picked
+                file is held locally and committed as an { kind: "image" }
+                answer, never relayed as text. */}
+            {isImage ? (
+                <div className="p-3.5 flex flex-col gap-3">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleImageFile(e.target.files?.[0])}
+                    />
+                    {imageDataUrl ? (
+                        <div className="relative w-full h-[140px] rounded-[10px] overflow-hidden border border-[#e4e7ec] bg-[#f2f4f7]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={imageDataUrl} alt="Class cover" className="w-full h-full object-cover" />
+                            <button
+                                type="button"
+                                onClick={() => { setImageDataUrl(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                                aria-label="Remove image"
+                                className="absolute top-2 right-2 size-8 flex items-center justify-center rounded-[8px] bg-white/90 hover:bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.15)] transition-colors"
+                            >
+                                <Trash01 className="size-4 text-[#b42318]" />
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full h-[140px] flex flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#d0d5dd] bg-[#f9fafb] hover:bg-[#f2f4f7] transition-colors"
+                        >
+                            <span className="size-10 rounded-full bg-white border border-[#e4e7ec] flex items-center justify-center">
+                                <UploadCloud02 className="size-5 text-[#475467]" />
+                            </span>
+                            <span className="text-[14px] font-medium text-[#344054]">Upload class image</span>
+                            <span className="text-[12px] text-[#667085]">PNG or JPG</span>
+                        </button>
+                    )}
+                    <div className="flex items-center justify-end gap-3 pt-0.5">
+                        <Button variant="secondary-gray" size="sm" onClick={() => advance({ kind: "skipped" })}>
+                            Skip
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={!imageDataUrl}
+                            onClick={() => advance(imageDataUrl ? { kind: "image", dataUrl: imageDataUrl } : { kind: "skipped" })}
+                        >
+                            Continue
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+            /* Options list. */
             <div className="flex flex-col py-1 max-h-[360px] overflow-y-auto">
                 {isGrouped && groups
                     ? groups.map((g, gi) => (
@@ -587,12 +660,16 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                     <p className="px-4 py-6 text-center text-[13px] text-[#667085]">No matches.</p>
                 )}
             </div>
+            )}
 
             {/* Footer. Hidden in the compact single-select panel (the composer
                 handles free text and option-clicks auto-advance). Checkbox
                 ALWAYS shows a footer, even compact — multi-select can't
                 auto-advance. */}
             {(() => {
+                // The image kind renders its own Skip / Continue inside the
+                // body — no shared footer.
+                if (isImage) return null;
                 // Free-text row: non-compact always (per allowOther); compact
                 // ONLY when the question opts in explicitly (q.allowOther===true)
                 // — e.g. "Custom X weeks" / "Type number of classes". Actions

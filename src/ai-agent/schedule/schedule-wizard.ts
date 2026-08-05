@@ -76,6 +76,8 @@ export interface WizardConfig {
 export interface WizardAnswers {
     // Step 1 — class details
     scratchName?: string;
+    scratchDescription?: string;
+    scratchCoverImage?: string;
     scratchCategory?: string;
     scratchDurationMinutes?: number;
     scratchCapacity?: number;
@@ -327,8 +329,8 @@ export function toPreview(config: WizardConfig, a: WizardAnswers, lk: WizardLook
 
     return {
         templateName: name,
-        templateDescription: config.isScratch ? undefined : t?.description,
-        coverImageUrl: config.isScratch ? undefined : t?.coverImage,
+        templateDescription: config.isScratch ? a.scratchDescription : t?.description,
+        coverImageUrl: config.isScratch ? a.scratchCoverImage : t?.coverImage,
         classType: config.isScratch ? "Group class" : t?.typeLabel,
         classCategory: category,
         duration: durationMin ? `${durationMin} minutes` : undefined,
@@ -432,12 +434,12 @@ export function toDraft(config: WizardConfig, a: WizardAnswers): ClassScheduleDr
         templateId: config.isScratch ? "" : t!.id, // scratch stores "", never a sentinel (plan §scratch)
         type: config.sessionType,
         name: config.isScratch ? a.scratchName! : t!.name,
-        description: config.isScratch ? "" : t!.description,
+        description: config.isScratch ? (a.scratchDescription ?? "") : t!.description,
         category: config.isScratch ? a.scratchCategory! : t!.category,
         classType: config.isScratch ? "Group" : t!.classType,
         capacity: config.isScratch ? a.scratchCapacity! : t!.capacity,
         coverColor: config.isScratch ? "#f1f2ed" : t!.coverColor,
-        coverImage: config.isScratch ? undefined : t!.coverImage,
+        coverImage: config.isScratch ? a.scratchCoverImage : t!.coverImage,
         applicableMembershipIds: config.isScratch ? a.applicableMembershipIds : t!.applicableMembershipIds,
         applicablePackageIds: config.isScratch ? a.applicablePackageIds : t!.applicablePackageIds,
         genderAccess: a.genderAccess!,

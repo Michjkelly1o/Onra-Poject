@@ -177,6 +177,10 @@ function pickStoreSnapshot(state: AppState): AiAgentStateSnapshot {
         customerReferrals:       state.customerReferrals,
         roles:                   state.roles,
         businessHours:           state.businessHours,
+        // Class-creation "from scratch" — the uploaded cover image, forwarded
+        // so publish_class_schedule reads it here instead of the model relaying
+        // a base64 blob.
+        aiScratchCoverImage:     state.aiScratchCoverImage,
     };
 }
 
@@ -1004,9 +1008,17 @@ export function ChatThread({
                     .map((id) => entry.spec.options.find((o) => o.id === id)?.label)
                     .filter((l): l is string => !!l);
                 if (answer.otherText) labels.push(answer.otherText);
-                return labels.length ? labels.join(", ") : null;
+                // Empty multi-select still relays a word so the model always
+                // sees the step was answered (e.g. applicable plans = none → the
+                // model sets empty arrays and the wizard node counts as done).
+                return labels.length ? labels.join(", ") : "None";
             }
             if (answer.kind === "other") return answer.text;
+            // Cover image (from-scratch class) — the base64 data URL is NEVER
+            // relayed to the model; it's stashed on the store below and read
+            // off the request snapshot at publish. The model only sees a short
+            // status word.
+            if (answer.kind === "image") return "uploaded";
             return null;
         };
         for (let i = 0; i < migQuestionEntries.length; i++) {
@@ -1016,6 +1028,14 @@ export function ChatThread({
             const label = answerLabel(entry, answer);
             if (label !== null) {
                 qaPairs.push(`Q: ${entry.spec.title ?? "Question"}\nA: ${label}`);
+            }
+            // Cover-image question — stash the uploaded data URL on the store
+            // (or clear it on skip) so publish_class_schedule reads it off the
+            // next request's snapshot. Kept out of the model's context entirely.
+            if (entry.spec.kind === "image") {
+                useAppStore.getState().setAiScratchCoverImage(
+                    answer.kind === "image" ? answer.dataUrl : null,
+                );
             }
             // Side effects only fire on option picks (skip / other don't
             // carry an option id we can act on).

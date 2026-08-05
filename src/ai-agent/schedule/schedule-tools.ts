@@ -30,6 +30,7 @@ import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 import type { SchedulePreviewData } from "@/ai-agent/components/SchedulePreviewCard";
 import {
     classDetailsQuestions,
+    scratchDetailsQuestions,
     locationInstructorQuestions,
     repeatQuestion,
     publishConfirmQuestion,
@@ -148,6 +149,8 @@ function hydrate(a: ScheduleArgs, seePayRate: boolean): { config: WizardConfig; 
         ...(a.isScratch
             ? {
                   scratchName: a.templateName,
+                  scratchDescription: a.templateDescription,
+                  scratchCoverImage: a.coverImage,
                   scratchCategory: a.category,
                   scratchDurationMinutes: a.durationMinutes,
                   scratchCapacity: a.capacity,
@@ -348,6 +351,14 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
             branches: snapshot.branches
                 .filter((b) => b.status === "active" && inScope(ctx, b.id))
                 .map((b) => ({ id: b.id, name: b.name })),
+            // Applicable-plans step (from scratch) — active memberships +
+            // packages, same products the admin class-template form offers.
+            memberships: snapshot.memberships
+                .filter((m) => m.status === "active")
+                .map((m) => ({ id: m.id, name: m.name })),
+            packages: snapshot.packages
+                .filter((p) => p.status === "active")
+                .map((p) => ({ id: p.id, name: p.name })),
         };
     };
 
@@ -388,6 +399,23 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     title: "Class details",
                     message: "Let's start building the class schedule.",
                     questions: classDetailsQuestions(buildOptions()),
+                };
+            },
+        }),
+        ask_scratch_details: tool({
+            description:
+                "STEP 1b (Create from scratch ONLY — skip entirely when a real template was picked). Returns the 7 code-driven class-template detail questions BUILT from live data — in order: cover image · class name · class description · class category · duration · capacity · applicable plans (memberships + packages). Same fields, order and options as the admin class-template form. Call this INSTEAD of composing the questions yourself. Read the answers: name/description are the free-text values; category → map its label to the category id; duration/capacity → the picked number (or the typed custom number); applicable plans → the picked membership + package ids. The cover image is handled by the app (do NOT pass it as text) — it arrives with publish. Then continue to ask_location_instructor (omit templateId).",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return {
+                    card: "questions" as const,
+                    stepLabel: "Step 1",
+                    title: "Class details",
+                    message: "Let's set up the class from scratch.",
+                    questions: scratchDetailsQuestions(buildOptions()),
                 };
             },
         }),
@@ -641,6 +669,12 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         args2.classTypeLabel = "Group class";
                     }
                 }
+                // From scratch — pull the cover image the user uploaded in the
+                // wizard (stashed on the snapshot, never relayed through the
+                // model as a base64 blob).
+                if (args.isScratch && !args2.coverImage && snapshot.aiScratchCoverImage) {
+                    args2.coverImage = snapshot.aiScratchCoverImage;
+                }
                 if (args.instructorId) {
                     const inst = snapshot.instructors.find((i) => i.id === args.instructorId);
                     if (inst) {
@@ -690,7 +724,13 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         reason: "You don't have permission to publish class schedules.",
                     };
                 }
-                const { config, answers } = hydrate(args, caps.seePayRate);
+                // From scratch — inject the uploaded cover image off the
+                // snapshot (never relayed through the model), same as preview.
+                const args2: ScheduleArgs = { ...args };
+                if (args.isScratch && !args2.coverImage && snapshot.aiScratchCoverImage) {
+                    args2.coverImage = snapshot.aiScratchCoverImage;
+                }
+                const { config, answers } = hydrate(args2, caps.seePayRate);
                 if (!isComplete(config, answers)) {
                     return { card: "class_empty", message: "Some details are still missing — let's finish the preview first." };
                 }

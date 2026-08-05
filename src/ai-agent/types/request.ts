@@ -94,6 +94,10 @@ export type AiAgentStateSnapshot = Pick<
     // window; appointments carry the live private/recovery bookings the conflict
     // scan checks against. `businessHours` also feeds getBusinessHours parity.
     | "businessHours"
+    // Class-creation "from scratch" (2026-08-05) — a cover image the user
+    // uploaded in the AI wizard. Forwarded so publish_class_schedule can read
+    // it off the snapshot instead of the model relaying a base64 blob.
+    | "aiScratchCoverImage"
 >;
 
 /** Thread mode. Insight = analytics chat; migration = 4-step CSV wizard;

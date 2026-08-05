@@ -58,6 +58,10 @@ export interface ClassOptionsData {
     categories: { id: string; name: string }[];
     payRates: { id: string; name: string }[];
     branches: { id: string; name: string }[];
+    /** Products a "from scratch" class can be booked with (applicable plans
+     *  step). Mirrors the admin class-template form's memberships + packages. */
+    memberships: { id: string; name: string }[];
+    packages: { id: string; name: string }[];
 }
 
 /** Fixed equipment choices — deterministic (was AI-personalised, which drifted).
@@ -96,6 +100,77 @@ export function classDetailsQuestions(opts: ClassOptionsData): AiQuestionSpec[] 
                 { id: "all", label: "All genders" },
                 { id: "female", label: "Women only" },
                 { id: "male", label: "Men only" },
+            ],
+        },
+    ];
+}
+
+// ── Step 1b (scratch only) — Class template details, built in code ───────────
+//
+// When the user picks "Create from scratch" in step 1, these 7 deterministic
+// cards collect the SAME fields the admin class-template form captures (image ·
+// name · description · category · duration · capacity · applicable plans), in
+// the same order, from the same live data. Gender is NOT here — it stays in
+// step 1 (ask_class_details), asked once for both the template and scratch
+// paths. Presets for duration/capacity + a free-text "custom" row mirror the
+// admin's numeric inputs while keeping the chat UX to a tap.
+const SCRATCH_DURATIONS = [30, 45, 60, 90];
+const SCRATCH_CAPACITIES = [8, 12, 16, 20];
+
+export function scratchDetailsQuestions(opts: ClassOptionsData): AiQuestionSpec[] {
+    return [
+        // 1 — cover image (optional upload tile)
+        {
+            title: "Class image",
+            kind: "image",
+            options: [],
+        },
+        // 2 — class name (free text)
+        {
+            title: "Class name",
+            kind: "radio",
+            options: [],
+            allowOther: true,
+            otherPlaceholder: "Enter class name",
+        },
+        // 3 — class description (free text)
+        {
+            title: "Class description",
+            kind: "radio",
+            options: [],
+            allowOther: true,
+            otherPlaceholder: "Enter class description",
+        },
+        // 4 — class category (live list)
+        {
+            title: "Which category is it?",
+            kind: "radio",
+            options: opts.categories.map((c) => ({ id: c.id, label: c.name })),
+        },
+        // 5 — duration (presets + custom minutes)
+        {
+            title: "How long is the class?",
+            kind: "radio",
+            allowOther: true,
+            otherPlaceholder: "Custom (minutes)",
+            options: SCRATCH_DURATIONS.map((d) => ({ id: String(d), label: `${d} min` })),
+        },
+        // 6 — capacity (presets + custom)
+        {
+            title: "What's the class capacity?",
+            kind: "radio",
+            allowOther: true,
+            otherPlaceholder: "Custom capacity",
+            options: SCRATCH_CAPACITIES.map((c) => ({ id: String(c), label: `${c} people` })),
+        },
+        // 7 — applicable plans (memberships + packages, multi-select, optional)
+        {
+            title: "Which plans can book it?",
+            kind: "checkbox",
+            minSelected: 0,
+            options: [
+                ...opts.memberships.map((m) => ({ id: m.id, label: m.name, metaLabel: "(Membership)" })),
+                ...opts.packages.map((p) => ({ id: p.id, label: p.name, metaLabel: "(Package)" })),
             ],
         },
     ];
