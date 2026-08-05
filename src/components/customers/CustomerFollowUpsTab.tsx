@@ -28,6 +28,7 @@ import { Check, ClockRefresh, XClose, MessageChatSquare, AlertCircle, Settings01
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 import { lookupStageLabel } from "@/lib/customer/follow-up-tasks";
+import { LEAD_ASSIGNMENT_ENABLED } from "@/lib/lead-assignment";
 
 /** Human copy per trigger — matches the plan §Phase 4 table's task lines
  *  and reads well as a "source" cell in the table. */
@@ -314,7 +315,11 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                 <th className={cn(TH, "min-w-[280px]")}>Reason</th>
                                 <th className={cn(TH, "w-[160px]")}>Trigger</th>
                                 <th className={cn(TH, "w-[160px]")}>Status</th>
-                                <th className={cn(TH, "w-[160px]")}>Assigned to</th>
+                                {/* Assignee column hidden while lead assignment
+                                    is off — see @/lib/lead-assignment. */}
+                                {LEAD_ASSIGNMENT_ENABLED && (
+                                    <th className={cn(TH, "w-[160px]")}>Assigned to</th>
+                                )}
                                 <th className={cn(TH, "w-[140px]")}>Last update</th>
                                 <th className={cn(TH, "w-[140px]")}>Actions</th>
                             </tr>
@@ -350,9 +355,11 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className={cn(TD, "whitespace-nowrap")}>
-                                                {assigneeLabel(task.assigneeId)}
-                                            </td>
+                                            {LEAD_ASSIGNMENT_ENABLED && (
+                                                <td className={cn(TD, "whitespace-nowrap")}>
+                                                    {assigneeLabel(task.assigneeId)}
+                                                </td>
+                                            )}
                                             <td className={cn(TD, "whitespace-nowrap text-[#667085]")}>
                                                 {formatAge(ageISO)}
                                             </td>
@@ -502,29 +509,35 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                         <p className="text-[14px] text-[#667085]">Customer</p>
                         <p className="text-[16px] font-medium text-[#101828]">{name}</p>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-[14px] font-medium text-[#344054]">
-                            Assigned to
-                        </label>
-                        <SelectInput
-                            value={customer.assignedTo ?? ""}
-                            onChange={(next) => {
-                                updateCustomer(customerId, { assignedTo: next || undefined });
-                                const label = next
-                                    ? staffOptions.find(o => o.value === next)?.label ?? "staff"
-                                    : "Unassigned";
-                                showToast(
-                                    "Assignment updated",
-                                    `${name} → ${label}.`,
-                                    "success",
-                                    "check",
-                                );
-                            }}
-                            options={staffOptions}
-                            width="w-full"
-                        />
-                        <p className="text-[13px] text-[#667085]">Owner of this customer&apos;s follow-up work.</p>
-                    </div>
+                    {/* Assignment dropdown hidden while lead assignment is off
+                        — boutique doesn't assign leads to a person. See
+                        @/lib/lead-assignment. Follow-up status + Source below
+                        stay; the panel is still the follow-up settings home. */}
+                    {LEAD_ASSIGNMENT_ENABLED && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[#344054]">
+                                Assigned to
+                            </label>
+                            <SelectInput
+                                value={customer.assignedTo ?? ""}
+                                onChange={(next) => {
+                                    updateCustomer(customerId, { assignedTo: next || undefined });
+                                    const label = next
+                                        ? staffOptions.find(o => o.value === next)?.label ?? "staff"
+                                        : "Unassigned";
+                                    showToast(
+                                        "Assignment updated",
+                                        `${name} → ${label}.`,
+                                        "success",
+                                        "check",
+                                    );
+                                }}
+                                options={staffOptions}
+                                width="w-full"
+                            />
+                            <p className="text-[13px] text-[#667085]">Owner of this customer&apos;s follow-up work.</p>
+                        </div>
+                    )}
                     {isPreConversion && (
                         <div className="flex flex-col gap-1.5">
                             <label className="text-[14px] font-medium text-[#344054]">

@@ -50,6 +50,7 @@ import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { LEAD_ASSIGNMENT_ENABLED } from "@/lib/lead-assignment";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
@@ -446,9 +447,13 @@ function exportCustomersCsv(rows: CustomerRow[], staffLookup: Map<string, string
     // per the plan's Phase 2 verify pass. Staff name resolved via a
     // caller-supplied lookup so the row's `assignedTo` id becomes a
     // human name in the CSV (a bare staff id isn't useful downstream).
+    // "Assigned to" column is included only while lead assignment is on —
+    // hidden for the boutique that doesn't assign leads (see
+    // @/lib/lead-assignment). Header + body gate together so columns align.
     const header = [
         "Name", "Email", "Phone", "Plan", "Lifecycle", "VIP",
-        "Assigned to", "Status", "Joined", "Last visit",
+        ...(LEAD_ASSIGNMENT_ENABLED ? ["Assigned to"] : []),
+        "Status", "Joined", "Last visit",
     ];
     const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
     const body = rows.map(r => [
@@ -456,7 +461,9 @@ function exportCustomersCsv(rows: CustomerRow[], staffLookup: Map<string, string
         PLAN_LABEL[r.planType],
         r.lifecycleTag ?? "Lead",
         r.isVip ? "Yes" : "No",
-        r.assignedTo ? (staffLookup.get(r.assignedTo) ?? "—") : "Unassigned",
+        ...(LEAD_ASSIGNMENT_ENABLED
+            ? [r.assignedTo ? (staffLookup.get(r.assignedTo) ?? "—") : "Unassigned"]
+            : []),
         STATUS_LABEL[r.status],
         fmtDate(r.joinedISO), r.lastVisitISO ? fmtDate(r.lastVisitISO) : "Never visited",
     ]);
@@ -863,10 +870,13 @@ export default function CustomersPage() {
                         secondary-gray Button so it reads as a scope
                         toggle for the visible tab, not a general filter. */}
                     <div className="flex-1" />
-                    {currentUser?.id && (
+                    {/* "Assigned to me" scope toggle — hidden while lead
+                        assignment is off (boutique doesn't assign leads to a
+                        person). See @/lib/lead-assignment. */}
+                    {LEAD_ASSIGNMENT_ENABLED && currentUser?.id && (
                         <Button
                             variant="secondary-gray"
-                           
+
                             onClick={() => setMineOnly(v => !v)}
                             className={mineOnly ? "bg-[#f2f4f7] text-[#101828]" : undefined}
                         >
