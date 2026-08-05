@@ -480,13 +480,17 @@ export default function TaxPage() {
         // which categories a rate can attach to in Apply tax rates +
         // seeds the modal's kind when creating a new rate from a tab.
         return taxRates
+            // Income (payroll) rates like "Pay rate tax" are hidden from the
+            // list when the studio's country has no payroll tax (UAE) — same
+            // gate as the Income-tax tab. They re-appear for an income-tax market.
+            .filter(r => showIncomeTax || r.kind !== "income")
             .filter(r => statusFilter === null ? true : r.status === statusFilter)
             .sort((a, b) => {
                 const s = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
                 if (s !== 0) return s;
                 return a.name.localeCompare(b.name);
             });
-    }, [taxRates, statusFilter]);
+    }, [taxRates, statusFilter, showIncomeTax]);
 
     // ── Tax rate sort — Name / Type / Rate (numeric) / Effective / Status. ──
     // Effective sorts by `validFromISO` ascending — earlier start dates
@@ -790,16 +794,16 @@ export default function TaxPage() {
                             </thead>
                             <tbody>
                                 <tr className="border-b border-[#e4e7ec]">
-                                    <td className="px-6 py-4 text-[14px] font-medium text-[#101828]">10% Exclusive</td>
+                                    <td className="px-6 py-4 text-[14px] font-medium text-[#101828]">5% Exclusive</td>
                                     <td className="px-6 py-4 text-[14px] text-[#667085]">AED 500</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 50</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 550 (AED 500 + AED 50)</td>
+                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 25</td>
+                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 525 (AED 500 + AED 25)</td>
                                 </tr>
                                 <tr>
-                                    <td className="px-6 py-4 text-[14px] font-medium text-[#101828]">10% Inclusive</td>
+                                    <td className="px-6 py-4 text-[14px] font-medium text-[#101828]">5% Inclusive</td>
                                     <td className="px-6 py-4 text-[14px] text-[#667085]">AED 500</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 50 (already included in total)</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 500 (AED 450 + AED 50)</td>
+                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 25 (already included in total)</td>
+                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 500 (AED 475 + AED 25)</td>
                                 </tr>
                             </tbody>
                         </table>
