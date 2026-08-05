@@ -58,10 +58,8 @@ export function FloatingAiButton() {
     };
 
     return (
-        // Client 2026-07-31 — pinned to the BOTTOM CENTRE of the viewport
-        // (was bottom-right). `left-1/2` + `-translate-x-1/2` on the
-        // wrapper horizontally centres the pill regardless of its width;
-        // 32px bottom padding stays per Figma spacing-4xl.
+        // Client 2026-08-04 — pinned to the BOTTOM RIGHT of the viewport
+        // (`right-8`), 32px from both edges per Figma spacing-4xl.
         //
         // z-40 (client 2026-08-04) — sits just BELOW the app's modal / side-
         // panel layer (every admin dialog, sheet, and filter panel is z-50 or
@@ -71,7 +69,7 @@ export function FloatingAiButton() {
         // floating over ordinary content. Was z-[60], which sat over z-50
         // modals — the bug the client reported on the Add-widget modal.
         <div
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40"
+            className="fixed bottom-8 right-8 z-40"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
