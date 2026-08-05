@@ -843,8 +843,13 @@ export function ChatThread({
     // commit_import lands (or errors), without wrestling with per-tool
     // invocation state that the AI SDK doesn't expose cleanly.
     const [isCommitInFlight, setIsCommitInFlight] = useState(false);
+    // Class-schedule / appointment publish — same fullscreen takeover as the
+    // migration import (client 2026-08-05). Holds the loader label while the
+    // publish round-trip runs; cleared when the model finishes (like the commit
+    // flag), then the success card renders in the revealed chat.
+    const [publishingLabel, setPublishingLabel] = useState<string | null>(null);
     useEffect(() => {
-        if (!isBusy) setIsCommitInFlight(false);
+        if (!isBusy) { setIsCommitInFlight(false); setPublishingLabel(null); }
     }, [isBusy]);
 
     // Step-4 mapping_summary chips — mirrors pendingMapping but for the
@@ -1028,6 +1033,15 @@ export function ChatThread({
             const label = answerLabel(entry, answer);
             if (label !== null) {
                 qaPairs.push(`Q: ${entry.spec.title ?? "Question"}\nA: ${label}`);
+            }
+            // Publish / Book confirmation — the terminal action. Raise the
+            // fullscreen "publishing…" takeover (same as the migration import)
+            // for the round-trip; it clears when the model finishes and the
+            // success card renders in the revealed chat.
+            if (answer.kind === "option") {
+                const pickedLabel = entry.spec.options.find((o) => o.id === answer.optionId)?.label;
+                if (pickedLabel === "Publish schedule") setPublishingLabel("Publishing your class schedule…");
+                else if (pickedLabel === "Book session") setPublishingLabel("Booking your session…");
             }
             // Cover-image question — stash the uploaded data URL on the store
             // (or clear it on skip) so publish_class_schedule reads it off the
@@ -1234,15 +1248,15 @@ export function ChatThread({
                         <InsightEmptyState onSend={send} composer={composerNode} query={input} />
                     )}
                 </div>
-            ) : isCommitInFlight ? (
-                // Migration commit round-trip — replace the whole content
-                // area with the fullscreen "Checking & importing data…"
-                // takeover per client 2026-07-23 review of Flow A image 22.
-                // The composer + chip panels also drop out (see the
-                // `!empty && !isCommitInFlight` guard on the composer block
-                // below) so the user can't queue a second message mid-flight.
+            ) : isCommitInFlight || publishingLabel ? (
+                // Migration commit OR class/appointment publish round-trip —
+                // replace the whole content area with the fullscreen takeover
+                // (client 2026-07-23 Flow A image 22; publish reuse 2026-08-05).
+                // The composer + chip panels also drop out (see the guard on
+                // the composer block below) so the user can't queue a second
+                // message mid-flight.
                 <div className="flex-1 min-h-0 flex items-center justify-center">
-                    <ImportingScreen />
+                    <ImportingScreen label={publishingLabel ?? undefined} />
                 </div>
             ) : (
                 <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
@@ -1292,7 +1306,7 @@ export function ChatThread({
                 above the input, matching the same width. Hidden during the
                 Phase-5 commit takeover so the user can't queue a second
                 message while the loader is up. */}
-            {!empty && !isCommitInFlight && (
+            {!empty && !isCommitInFlight && !publishingLabel && (
                 <div className="shrink-0 bg-transparent">
                     {/* Client 2026-07-23 — single question panel above the
                         composer. Migration branch/mapping/summary AND
@@ -1835,7 +1849,7 @@ function QuestionStepCard({
 // cluster on the left with the copy sitting to its right, both dark-green
 // against the standard migration canvas background. The parent container
 // centres this in the message-list slot so the sidebar stays visible.
-function ImportingScreen() {
+function ImportingScreen({ label = "Checking & importing data..." }: { label?: string }) {
     return (
         <div className="flex items-center gap-3">
             <div className="relative w-8 h-8 shrink-0">
@@ -1853,7 +1867,7 @@ function ImportingScreen() {
                 role="status"
                 aria-live="polite"
             >
-                Checking &amp; importing data...
+                {label}
             </span>
         </div>
     );
