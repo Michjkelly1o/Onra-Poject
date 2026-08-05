@@ -102,7 +102,10 @@ export const instructors: InstructorSeed[] = [
         email: "candice@email.com", phone: "+971 55 200 2009",
         joined_date: "Jun 14, 2024",
         branch_id: "branch_forma_east",
-        pay_rate_id: "pr_monthly", status: "active",
+        // Reconciled with the canonical staff.ts row (Phase 1 audit 2026-08-05):
+        // instructors can't be on the commission-bearing pr_monthly rate, so
+        // Candice sits on the flat pr_standard here too — the two tables now agree.
+        pay_rate_id: "pr_standard", status: "active",
     },
     {
         id: "staff_natali_craig",

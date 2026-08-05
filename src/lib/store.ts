@@ -753,6 +753,22 @@ export interface ScheduleInstructor {
      *  instructor picker by this so a class scheduled at Branch X can
      *  only pick instructors whose branch is X (or is null). */
     branchId: string | null;
+    /** Categories this instructor may teach (mirrors staff.categoryIds).
+     *  Phase 1 unification (2026-08-05): carried ON the schedule pool so the
+     *  form no longer has to reach into a SEPARATE staff table to judge
+     *  eligibility — the pool it SELECTS from and the data that judges
+     *  CAN-TEACH are now one and the same, killing the divergence that let a
+     *  class show a valid instructor in the list yet "unavailable" on edit.
+     *  Optional so the `Instructor` directory (which extends this) and any
+     *  legacy literal keep compiling; the schedule pool always sets it. */
+    categoryIds?: string[];
+    /** Assigned shift id (mirrors staff.shiftId) — lets the picker apply the
+     *  SAME shift gate the time-slot logic uses. */
+    shiftId?: string | null;
+    /** Whether the instructor is currently active (mirrors staff.status ===
+     *  "active"). Inactive instructors can still be RESOLVED for display but
+     *  should not be freshly selectable. */
+    active?: boolean;
 }
 
 /** Status for a directory instructor. Mirrors the customer/staff status model:
@@ -2455,16 +2471,78 @@ export interface PendingPurchase {
     saleBranchId?: string;
 }
 
-// ─── SCHEDULE_INSTRUCTORS — built from staff_profiles seed ──────────────────
+// ─── SCHEDULE_INSTRUCTORS — the ONE schedulable-instructor pool ─────────────
+//
+// Phase 1 unification (2026-08-05). Historically this pool was built from
+// `staff_profiles` (display only — no categories), the CAN-TEACH gate read
+// `staff.ts` (`staffById`), and the denormalized list name fell back to
+// `instructors.ts`. Three sources, never reconciled → a class could show a
+// valid instructor in the list yet grey/blank them on edit. Now ALL of it
+// derives from the canonical `staff.ts` table, so display / select / eligibility
+// agree by construction.
+//
+// Membership rule ("a schedulable instructor"): role instructor, active,
+// teaches ≥1 category, and based at an ACTIVE branch (or all-locations). That
+// reproduces exactly the 10 south/east instructors and deliberately excludes
+// West (inactive branch — its classes can't be scheduled), the two recovery
+// therapists (no class category), and pending invites — none of which should
+// clutter the schedule pickers or list filters.
 
-export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = SEED_STAFF_PROFILES.map(s => ({
-    id: s.id,
-    name: s.full_name,
-    initials: s.initials,
-    color: s.color_hex,
-    imageUrl: s.image_url,
-    branchId: s.branch_id,
-}));
+const ACTIVE_BRANCH_IDS: Set<string> = new Set(
+    SEED_BRANCHES.filter(b => b.status === "active").map(b => b.id),
+);
+
+/** True when a staff SEED row belongs in the schedulable-instructor pool. */
+function isSchedulableStaffSeed(s: (typeof SEED_STAFF)[number]): boolean {
+    return s.role_id === "role_instructor"
+        && s.status === "active"
+        && (s.category_ids?.length ?? 0) > 0
+        && (s.branch_id === null || ACTIVE_BRANCH_IDS.has(s.branch_id));
+}
+
+export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = SEED_STAFF
+    .filter(isSchedulableStaffSeed)
+    .map(s => ({
+        id: s.id,
+        name: s.full_name,
+        initials: s.initials,
+        color: s.color_hex,
+        imageUrl: s.image_url,
+        branchId: s.branch_id,
+        categoryIds: s.category_ids ?? [],
+        shiftId: s.shift_id ?? null,
+        active: s.status === "active",
+    }));
+
+/** Live equivalent of SCHEDULE_INSTRUCTORS, derived from the runtime `staff`
+ *  slice so instructor edits made during a demo (rename, re-category, branch
+ *  move, deactivate) reflect in the schedule pickers instead of silently
+ *  drifting from the frozen seed pool. Same membership rule as the seed pool
+ *  above, evaluated against the live branches for active-branch scope. Wired
+ *  into the create/edit form in Phase 5. */
+export function deriveScheduleInstructors(
+    staff: Staff[],
+    activeBranchIds: Set<string>,
+): ScheduleInstructor[] {
+    return staff
+        .filter(s =>
+            s.roleId === "role_instructor"
+            && s.status === "active"
+            && (s.categoryIds?.length ?? 0) > 0
+            && (s.branchId === null || activeBranchIds.has(s.branchId)),
+        )
+        .map(s => ({
+            id: s.id,
+            name: s.fullName,
+            initials: s.initials,
+            color: s.color,
+            imageUrl: s.imageUrl,
+            branchId: s.branchId,
+            categoryIds: s.categoryIds ?? [],
+            shiftId: s.shiftId ?? null,
+            active: s.status === "active",
+        }));
+}
 
 // ─── Adapters (snake_case seed → camelCase store shape) ─────────────────────
 
@@ -2764,11 +2842,13 @@ export function liveScheduleStatus<T extends string>(dateISO: string, startTime:
 
 function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): ClassSchedule {
     const tpl = templates.find(t => t.id === s.template_id);
-    // Resolve the instructor's denormalized name/initials/colour. staff_profiles
-    // only carries the 4 canonical staff rows, but demo schedules bind to all 10
-    // instructors — fall back to the full instructors seed so none render blank
-    // (otherwise the unmatched 6 got "" + the #e0e0e0 default → empty grey chip).
+    // Resolve the instructor's denormalized name/initials/colour from the
+    // canonical staff.ts table FIRST (Phase 1 unification 2026-08-05) so the
+    // list/grid/detail name always matches the pool the edit form selects from.
+    // Falls back to staff_profiles / the instructors directory only if an id
+    // somehow isn't in staff.ts, so nothing ever renders as a blank grey chip.
     const inst =
+        SEED_STAFF.find(p => p.id === s.instructor_id) ??
         SEED_STAFF_PROFILES.find(p => p.id === s.instructor_id) ??
         SEED_INSTRUCTORS.find(p => p.id === s.instructor_id);
     const branch = SEED_BRANCHES.find(b => b.id === s.branch_id);
@@ -13033,7 +13113,13 @@ export const useAppStore = create<AppState>()(persist(
         //   classBookings / followUpTasks are persisted → bump so the Follow-ups
         //   tab + "Leads to follow up" widget show a real list on existing
         //   devices instead of an empty tab.
-        version: 105,
+        // v106 — class-schedule audit Phase 1 (2026-08-05): unified the
+        //   instructor source of truth. Reconciled two seed contradictions
+        //   (Lana Steiner branch East→South in staff_profiles; Candice Wu rate
+        //   pr_monthly→pr_standard in instructors) so the instructors slice is
+        //   persisted → bump so existing devices pick up the reconciled data
+        //   instead of the stale divergent copies.
+        version: 106,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

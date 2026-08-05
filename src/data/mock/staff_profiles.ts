@@ -86,7 +86,12 @@ export const staff_profiles: StaffProfile[] = [
     // ── East branch — extra instructors from INSTRUCTORS_BY_BRANCH ────────
     {
         id: "staff_lana_steiner",
-        branch_id: "branch_forma_east",
+        // Reconciled with staff.ts + instructors.ts (Phase 1 audit 2026-08-05):
+        // Lana is a SOUTH instructor. This row previously said East, which
+        // diverged from the canonical staff.ts branch and let the schedule
+        // pool (built here) disagree with the eligibility gate (built from
+        // staff.ts) — one root of the "shown in list, unavailable on edit" bug.
+        branch_id: "branch_forma_south",
         full_name: "Lana Steiner",
         initials: "LS",
         color_hex: "#658774",
