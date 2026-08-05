@@ -863,6 +863,7 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
     onCancel: (id: string) => void;
 }) {
     const popupRef = useRef<HTMLDivElement>(null);
+    const router = useRouter();
     const WIDTH = 343;
 
     // Position: prefer right of anchor, flip left if near right edge
@@ -891,29 +892,57 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
     })();
     const isFull = cls.booked >= cls.capacity;
 
+    // Action visibility — mirror ScheduleRowActions (the list-view 3-dots menu)
+    // so the floating bar is consistent per status + type:
+    //   • Cancelled / Completed classes expose ONLY Duplicate.
+    //   • Appointments (private / recovery) never expose Edit / Add customer /
+    //     Duplicate — only Reassign (Flexible + still editable) and Cancel.
+    const isEditable = cls.status === "Upcoming" || cls.status === "Ongoing";
+    const isAppt = isAppointmentId(cls.id);
+    const showAddCustomer = isEditable && !isAppt;
+    const showEdit = isEditable && !isAppt;
+    const showReassign = isAppt && !!cls.flexible && isEditable;
+    const showDuplicate = !isAppt;
+    const showCancel = isEditable;
+
     return (
         <div ref={popupRef}
             style={{ position: "fixed", top, left, width: WIDTH, zIndex: 9999 }}
             className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
         >
-            {/* Header: action icons inline, close is last */}
+            {/* Header: action icons inline (status/type-gated), close is last */}
             <div className="flex items-center justify-end gap-1 px-4 pt-4 pb-3">
-                <button type="button" title="Add customer" onClick={() => { onClose(); onAddCustomer(cls.id); }}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
-                    <UserPlus01 className="w-5 h-5" />
-                </button>
-                <button type="button" title="Edit class" onClick={() => { onClose(); onEdit(cls.id); }}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
-                    <Edit02 className="w-5 h-5" />
-                </button>
-                <button type="button" title="Duplicate" onClick={() => { onClose(); onDuplicate(cls.id); }}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
-                    <Copy01 className="w-5 h-5" />
-                </button>
-                <button type="button" title="Cancel class" onClick={() => { onClose(); onCancel(cls.id); }}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#fff3f2] transition-colors text-[#d92d20]">
-                    <Trash01 className="w-5 h-5" />
-                </button>
+                {showAddCustomer && (
+                    <button type="button" title="Add customer" onClick={() => { onClose(); onAddCustomer(cls.id); }}
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                        <UserPlus01 className="w-5 h-5" />
+                    </button>
+                )}
+                {showEdit && (
+                    <button type="button" title="Edit class" onClick={() => { onClose(); onEdit(cls.id); }}
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                        <Edit02 className="w-5 h-5" />
+                    </button>
+                )}
+                {showReassign && (
+                    <button type="button" title="Reassign instructor"
+                        onClick={() => { onClose(); router.push(`/appointments/${cls.id}?returnTo=${encodeURIComponent("/admin/schedule")}&reassign=1`); }}
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                        <Shuffle01 className="w-5 h-5" />
+                    </button>
+                )}
+                {showDuplicate && (
+                    <button type="button" title="Duplicate" onClick={() => { onClose(); onDuplicate(cls.id); }}
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                        <Copy01 className="w-5 h-5" />
+                    </button>
+                )}
+                {showCancel && (
+                    <button type="button" title={isAppt ? "Cancel appointment" : "Cancel class"} onClick={() => { onClose(); onCancel(cls.id); }}
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#fff3f2] transition-colors text-[#d92d20]">
+                        <Trash01 className="w-5 h-5" />
+                    </button>
+                )}
                 <button type="button" onClick={onClose}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
                     <XClose className="w-5 h-5" />
