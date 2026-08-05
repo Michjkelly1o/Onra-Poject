@@ -81,6 +81,11 @@ export interface ClassOptionsCard {
     /** Active branches — so the model can offer a parent-location choice in the
      *  `+ Add room` sub-flow even for a branch with no rooms yet. */
     branches: { id: string; name: string }[];
+    /** Bookable plans for the from-scratch "applicable plans" step. The model
+     *  maps a picked plan NAME back here: a match in `memberships` →
+     *  applicableMembershipIds, a match in `packages` → applicablePackageIds. */
+    memberships: { id: string; name: string }[];
+    packages: { id: string; name: string }[];
 }
 
 /** Data-only card for the private/recovery flow: the studio's real services

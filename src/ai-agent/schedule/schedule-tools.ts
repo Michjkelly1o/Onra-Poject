@@ -188,6 +188,21 @@ function hydrate(a: ScheduleArgs, seePayRate: boolean): { config: WizardConfig; 
     return { config, answers, lookups };
 }
 
+/** Scratch classes carry a category NAME but no template, so toDraft can't set
+ *  a category-derived cover colour (it defaults to neutral). Resolve the
+ *  category's color_hex here so the created schedule's detail banner matches an
+ *  admin-created class — the admin schedule form sets coverColor =
+ *  category.color_hex too. No-op for the template path / unknown category. */
+function applyScratchCategoryColor(
+    draft: { category: string; coverColor: string },
+    config: { isScratch: boolean },
+    snapshot: AiAgentStateSnapshot,
+): void {
+    if (!config.isScratch || !draft.category) return;
+    const cat = snapshot.classCategories.find((c) => c.name === draft.category);
+    if (cat?.color_hex) draft.coverColor = cat.color_hex;
+}
+
 /** Per-instructor aggregate rating + review count from class ratings. */
 function instructorRatings(snapshot: AiAgentStateSnapshot): Map<string, { rating: number; count: number }> {
     const agg = new Map<string, { sum: number; n: number }>();
@@ -691,6 +706,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 const preview = toPreview(config, answers, lookups);
                 const ready = isComplete(config, answers);
                 const draft = ready ? toDraft(config, answers) : undefined;
+                if (draft) applyScratchCategoryColor(draft, config, snapshot);
                 // Recurring — expand to the session list for the preview (past
                 // occurrences pruned against the studio's local clock).
                 const sessions =
@@ -735,6 +751,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                     return { card: "class_empty", message: "Some details are still missing — let's finish the preview first." };
                 }
                 const draft = toDraft(config, answers);
+                applyScratchCategoryColor(draft, config, snapshot);
                 // Hard gate — the SAME rules the admin form enforces. Refuse the
                 // publish and explain exactly what to fix.
                 const { errors } = validateClassSchedule({ draft, snapshot, clock });
