@@ -130,6 +130,11 @@ export function LeadsToFollowUpBody() {
     }
 
     return (
+        // Cap to roughly a chart widget's body height (h=240) and scroll the
+        // overflow inside — otherwise 6 ranked rows make this card taller than
+        // its grid-row sibling, and `grid-auto-rows: 1fr` stretches the whole
+        // row to match. Keeps the widget the same size as the charts beside it.
+        <div className="max-h-[248px] overflow-y-auto scrollbar-hide">
         <div className="flex flex-col divide-y divide-[#f2f4f7]">
             {ranked.map(({ task, customer, liveTag }) => {
                 const assignee = task.assigneeId
@@ -180,6 +185,7 @@ export function LeadsToFollowUpBody() {
                     </button>
                 );
             })}
+        </div>
         </div>
     );
 }
