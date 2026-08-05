@@ -1183,6 +1183,23 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
     const selectedBranchId = selectedBranchGroup?.branchId ?? "branch_forma_south";
 
+    // True while editing an existing class and NOTHING that shapes its
+    // time slot has been touched — same date, instructor, room and duration
+    // as the stored class. In that state the class's own start time is valid
+    // by definition (it passed every check when created), so the form must
+    // keep it selected + saveable even if the recomputed window would exclude
+    // it (branch hours edited, shift edge, a room whose name no longer resolves
+    // to a slot list, etc.). Client 2026-08: turning off spot selection on an
+    // unchanged class was wiping its start time and blocking save. The moment
+    // the admin changes the date / instructor / room / duration this flips
+    // false and the normal availability gating takes over again.
+    const editWindowUnchanged = !!editing
+        && startTime === editing.startTime
+        && selectedDate === editing.dateISO
+        && instructorId === (editing.instructorId ?? "")
+        && locationId === editingRoomId
+        && duration === calcMinutes(editing.startTime, editing.endTime);
+
     // ─── Conflict scan ─────────────────────────────────────────────────────
     // Given a list of dates, return every start-time slot that would
     // double-book the picked INSTRUCTOR or ROOM. Duration-aware: a slot is
@@ -1448,7 +1465,12 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // whose start time has already passed is dropped — you can't create a
     // class that begins in the past. Slots on a future date are unaffected.
     const singleDateSlots = useMemo(() => {
-        if (!selectedDate || !selectedBranchGroup) return [];
+        // An unchanged edit's own time is ALWAYS offerable (see
+        // `editWindowUnchanged`) — even in the early-return paths below where
+        // the branch/hours don't resolve, so the picker shows the class's time
+        // instead of "Branch is closed" and the form stays saveable.
+        const editSlot = editWindowUnchanged && editing?.startTime ? [editing.startTime] : [];
+        if (!selectedDate || !selectedBranchGroup) return editSlot;
         let slots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration);
         if (selectedDate === todayISO()) {
             const now = new Date();
@@ -1463,30 +1485,16 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         // TimeDropdown's `unavailable` prop so the admin sees blocked
         // slots greyed out rather than as silent gaps.
         const gated = gateSlotsByShift(slots, selectedDate);
-        // Editing an existing class: its OWN current start time is valid by
-        // definition (it passed these same checks when created). While NOTHING
-        // that shapes the window has changed — same date, same instructor, same
-        // duration — keep that original time offerable even if the recomputed
-        // window happens to exclude it at a boundary (class ending exactly at
-        // close, sitting on a shift edge, or an instructor shift edited since).
-        // Without this, opening the edit form silently cleared the start time
-        // and forced a re-pick (client 2026-08). Conflict detection
-        // (`unavailableTimes`) still runs, so a time that now clashes with
-        // ANOTHER class is still dropped — we only bypass the window gate, never
-        // the double-book guard.
-        if (
-            editing &&
-            editing.startTime &&
-            selectedDate === editing.dateISO &&
-            instructorId === (editing.instructorId ?? "") &&
-            duration === calcMinutes(editing.startTime, editing.endTime) &&
-            !gated.includes(editing.startTime)
-        ) {
-            return [...gated, editing.startTime].sort();
+        // Keep the unchanged-edit time in the list even if the recomputed
+        // window would drop it at a boundary. Conflict detection
+        // (`unavailableTimes`) still runs, so a time that clashes with ANOTHER
+        // class is still flagged — we only ever bypass the window gate here.
+        if (editSlot.length && !gated.includes(editSlot[0])) {
+            return [...gated, editSlot[0]].sort();
         }
         return gated;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice, editing?.startTime, editing?.endTime, editing?.dateISO, editing?.instructorId]);
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice, editWindowUnchanged, editing?.startTime]);
 
     // Per-weekday slot map for the repeat-weekly path. Each selected weekday
     // gets its own window since branches can have different hours per day —
