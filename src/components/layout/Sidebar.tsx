@@ -110,10 +110,13 @@ const NAV_ITEMS: NavItemDef[] = [
         ],
     },
     {
+        // One Staff module. "Staff" opens the Staff · Staff Schedule tabs; "Shift"
+        // opens the Shift · Time off tabs (both on /admin/staff, section-scoped).
         label: "Staff", icon: Users01, permission: "manage_instructors",
         children: [
             { label: "Roles & permissions", href: "/admin/staff/roles"    },
-            { label: "Staff & shifts",      href: "/admin/staff"          },
+            { label: "Staff",               href: "/admin/staff?subtab=staff" },
+            { label: "Shift",               href: "/admin/staff?subtab=shift-management&view=list" },
             { label: "Pay rates",           href: "/admin/staff/pay-rate" },
             { label: "Payroll",             href: "/admin/compensation"   },
         ],

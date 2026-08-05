@@ -433,7 +433,7 @@ export default function ProfileInformationPage() {
 
             {/* Photo crop overlay */}
             {pendingPhoto && (
-                <div className="fixed inset-0 z-[80] mx-auto flex max-w-[500px] flex-col bg-[#4a4a4a]">
+                <div className="fixed inset-0 z-[80] mx-auto flex max-w-[402px] flex-col bg-[#4a4a4a]">
                     <div className="flex flex-1 items-center justify-center px-4">
                         <div className="aspect-square w-full overflow-hidden rounded-full ring-[3px] ring-white">
                             {/* eslint-disable-next-line @next/next/no-img-element */}

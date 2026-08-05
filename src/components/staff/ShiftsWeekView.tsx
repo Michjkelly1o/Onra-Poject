@@ -33,6 +33,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type Staff, type Shift, type ShiftAssignment } from "@/lib/store";
 import { findShiftConflict, timeRangesOverlap } from "@/lib/staff/shift-conflict";
+import { timeOffTitle, timeOffDuration } from "@/lib/staff/time-off";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
 //
@@ -495,6 +496,12 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     const weekStart = externalWeekStart ?? mondayOfWeek(new Date());
     const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
     const todayISO = isoDayLocal(new Date());
+    // The active week key — shift assignments are scoped to it so a staff member
+    // can hold different shifts each week (client 2026-08).
+    const weekStartISO = isoDayLocal(weekStart);
+    // The real current week. Existing seeded assignments (no `week_start`) are
+    // scoped to THIS week only, so they don't repeat on past/future weeks.
+    const currentWeekISO = isoDayLocal(mondayOfWeek(new Date()));
 
     // Role type lookup so we can group staff into Front Desk & Ops vs
     // Instructors. Owner rows are excluded — they have no branch/shift
@@ -548,12 +555,20 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     const assignmentsByStaff = useMemo(() => {
         const m = new Map<string, ShiftAssignment[]>();
         for (const a of shiftAssignments) {
+            // Week-scoped rows show only on their own week. A baseline row (no
+            // week_start — the existing seeded assignments) is scoped to THIS
+            // week only, so it disappears when you navigate to another week.
+            if (a.week_start) {
+                if (a.week_start !== weekStartISO) continue;
+            } else if (weekStartISO !== currentWeekISO) {
+                continue;
+            }
             const list = m.get(a.staff_id) ?? [];
             list.push(a);
             m.set(a.staff_id, list);
         }
         return m;
-    }, [shiftAssignments]);
+    }, [shiftAssignments, weekStartISO, currentWeekISO]);
 
     /** The staff member's Time Off entry covering `day`, if any — used to block
      *  shift assignment on that day (range-inclusive, mirrors the availability
@@ -572,14 +587,18 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     function shiftsForStaffOnDay(staffId: string, day: Date): { assignment: ShiftAssignment; shift: Shift }[] {
         const list = assignmentsByStaff.get(staffId) ?? [];
         const idx = jsDayIndex(day);
-        const out: { assignment: ShiftAssignment; shift: Shift }[] = [];
+        // Dedupe by shift so a week-scoped override and the recurring baseline for
+        // the same shift never render twice on one day (the override wins).
+        const byShift = new Map<string, { assignment: ShiftAssignment; shift: Shift }>();
         for (const a of list) {
             const sh = shiftsById.get(a.shift_id);
             if (!sh) continue;
             if (!a.days_of_week[idx]) continue;
             if (!sh.working_days[idx]) continue;
-            out.push({ assignment: a, shift: sh });
+            const prev = byShift.get(a.shift_id);
+            if (!prev || (a.week_start && !prev.assignment.week_start)) byShift.set(a.shift_id, { assignment: a, shift: sh });
         }
+        const out = Array.from(byShift.values());
         // Sort ascending by start time so Morning appears above Afternoon.
         out.sort((a, b) => a.shift.start_time.localeCompare(b.shift.start_time));
         return out;
@@ -605,7 +624,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
             );
             return;
         }
-        addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id });
+        addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, week_start: weekStartISO });
         showToast(
             "Shift assigned",
             `${newShift.name} assigned to ${staffMember.fullName}.`,
@@ -621,13 +640,15 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     function assignShiftDay(staffMember: Staff, shiftId: string, dayIdx: number, dayLabel: string) {
         const shift = shiftsById.get(shiftId);
         if (!shift) return;
-        const existing = shiftAssignments.find(a => a.staff_id === staffMember.id && a.shift_id === shiftId);
+        // Edit an EXISTING week-scoped row for this week; never the recurring
+        // baseline (that would bleed across every week — the bug we're fixing).
+        const existing = shiftAssignments.find(a => a.staff_id === staffMember.id && a.shift_id === shiftId && a.week_start === weekStartISO);
         if (existing) {
             updateShiftAssignmentDays(existing.id, existing.days_of_week.map((v, i) => i === dayIdx ? true : v));
         } else {
             const singleDay = [false, false, false, false, false, false, false];
             singleDay[dayIdx] = true;
-            addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, days_of_week: singleDay });
+            addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, days_of_week: singleDay, week_start: weekStartISO });
         }
         showToast("Shift assigned", `${shift.name} assigned to ${staffMember.fullName} on ${dayLabel}.`, "success", "check");
     }
@@ -818,10 +839,10 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                         style={{ backgroundImage: "repeating-linear-gradient(45deg, #fafafb, #fafafb 5px, #f2f4f7 5px, #f2f4f7 10px)" }}
                                                         title="Staff on time off — shifts can't be assigned this day"
                                                     >
-                                                        <p className="text-[13px] font-semibold text-[#475467] leading-[18px]">Time Off</p>
-                                                        {/* Reason always shown (Sick / Vacation / Training /
-                                                            Other) — client 2026-07-28. */}
-                                                        <p className="text-[12px] text-[#98a2b3] leading-[16px] truncate">{TIME_OFF_REASON_LABEL[timeOff.reason ?? "other"]}</p>
+                                                        {/* Title = reason (Vacation / Sick / …), subtext =
+                                                            duration (All day / time range) — client 2026-08. */}
+                                                        <p className="text-[13px] font-semibold text-[#475467] leading-[18px] truncate">{timeOffTitle(timeOff)}</p>
+                                                        <p className="text-[12px] text-[#98a2b3] leading-[16px] truncate">{timeOffDuration(timeOff)}</p>
                                                     </div>
                                                 ) : (
                                                     <>

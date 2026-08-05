@@ -19,7 +19,7 @@ import { loginHref } from "@/lib/customer/auth-flow";
 import { ChevronDown, Sliders02, MarkerPin01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { ALL_BRANCHES, useCurrentCustomerContext } from "@/lib/customer/context";
-import { addDaysISO, firstOfMonthISO, monthYearOf, REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
+import { addDaysISO, REAL_TODAY_ISO, to12h } from "@/lib/customer/dates";
 import {
     applyFilters,
     cardPresentation,
@@ -36,10 +36,11 @@ import { useFilterInstructors } from "@/lib/customer/instructors";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { NotificationBell } from "@/components/customer/shell/NotificationBell";
 import { ScheduleDateBar } from "@/components/customer/classes/ScheduleDateBar";
+import { ReviewBookSheet } from "@/components/customer/classes/ReviewBookSheet";
+import { AppointmentBookingFlow } from "@/components/customer/appointments/AppointmentBookingSheets";
 import { ClassScheduleCard } from "@/components/customer/classes/ClassScheduleCard";
 import { AppointmentCard } from "@/components/customer/appointments/AppointmentCard";
 import { resetAppointmentDraft } from "@/lib/customer/booking-flow";
-import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { ClassesFilterModal } from "@/components/customer/home/ClassesFilterModal";
 import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelectorSheet";
 import { TimeZoneSheet } from "@/components/customer/shell/TimeZoneSheet";
@@ -78,9 +79,12 @@ export default function SearchPage() {
     const [apptApplied, setApptAppliedState] = useState<SearchFilters>(() => searchUi.apptApplied);
     const [apptDraft, setApptDraftState] = useState<SearchFilters>(() => searchUi.apptDraft);
     const [filterOpen, setFilterOpenState] = useState<boolean>(() => searchUi.filterOpen);
-    const [monthOpen, setMonthOpen] = useState(false);
     const [branchSheet, setBranchSheet] = useState(false);
     const [tzOpen, setTzOpen] = useState(false);
+    // Review & Book bottom sheet, opened directly over Search from a class card.
+    const [bookSheet, setBookSheet] = useState<{ classId: string; mode: "book" | "waitlist" } | null>(null);
+    // Private/Recovery appointment booking, run as chained sheets over Search.
+    const [apptFlow, setApptFlow] = useState<string | null>(null);
     // Out-of-zone gate: when the customer's device zone differs from the branch,
     // show the Time Zone sheet ONCE on entry (their local zone pre-selected as
     // "Your time") so they confirm before browsing class times.
@@ -152,8 +156,6 @@ export default function SearchPage() {
     const unreadNotifs = useUnreadNotifCount();
     const isAuth = useIsAuthenticated();
     const fcount = filterCount(activeApplied);
-    const { month, year } = monthYearOf(selectedISO);
-    const todayYear = monthYearOf(REAL_TODAY_ISO).year;
 
     return (
         <div className="flex min-h-full flex-col">
@@ -223,7 +225,6 @@ export default function SearchPage() {
                             selectedISO={selectedISO}
                             onSelect={setSelectedISO}
                             timezone={timezone}
-                            onMonthClick={() => setMonthOpen(true)}
                             onTimezoneClick={() => setTzOpen(true)}
                             bookingOpenDays={bookingOpenDays}
                         />
@@ -256,6 +257,19 @@ export default function SearchPage() {
                                             ctaVariant={p.ctaVariant}
                                             ctaDisabled={false}
                                             onAction={() => router.push(`/customer/classes/${c.id}`)}
+                                            onBook={() => {
+                                                // Book now / Join waitlist open the Review & Book sheet right
+                                                // over Search (background stays); other states open details.
+                                                if (!isAuth) {
+                                                    router.push(loginHref(`/customer/classes/${c.id}`));
+                                                } else if (c.state === "available") {
+                                                    setBookSheet({ classId: c.id, mode: "book" });
+                                                } else if (c.state === "waitlist") {
+                                                    setBookSheet({ classId: c.id, mode: "waitlist" });
+                                                } else {
+                                                    router.push(`/customer/classes/${c.id}`);
+                                                }
+                                            }}
                                         />
                                     );
                                 })}
@@ -286,13 +300,10 @@ export default function SearchPage() {
                                         router.push(loginHref(pathname));
                                         return;
                                     }
-                                    // Fresh entry — clear any abandoned instructor/slot pick.
+                                    // Fresh entry — clear any abandoned instructor/slot pick,
+                                    // then open the booking flow as sheets over Search.
                                     resetAppointmentDraft();
-                                    router.push(
-                                        a.type === "private"
-                                            ? `/customer/appointments/${a.id}/instructor`
-                                            : `/customer/appointments/${a.id}/slot`,
-                                    );
+                                    setApptFlow(a.id);
                                 }}
                             />
                         ))}
@@ -306,6 +317,19 @@ export default function SearchPage() {
                     </div>
                 )}
             </div>
+
+            <ReviewBookSheet
+                open={bookSheet != null}
+                classId={bookSheet?.classId ?? ""}
+                mode={bookSheet?.mode ?? "book"}
+                onClose={() => setBookSheet(null)}
+            />
+
+            <AppointmentBookingFlow
+                appointmentId={apptFlow ?? ""}
+                open={apptFlow != null}
+                onClose={() => setApptFlow(null)}
+            />
 
             <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
 
@@ -327,19 +351,6 @@ export default function SearchPage() {
                 }}
             />
 
-            <MonthPickerSheet
-                open={monthOpen}
-                onClose={() => setMonthOpen(false)}
-                month={month}
-                year={year}
-                minYear={todayYear}
-                maxYear={todayYear + 1}
-                onApply={(m, y) => {
-                    const first = firstOfMonthISO(m, y);
-                    const lastBookable = addDaysISO(REAL_TODAY_ISO, bookingOpenDays);
-                    setSelectedISO(first < REAL_TODAY_ISO ? REAL_TODAY_ISO : first > lastBookable ? lastBookable : first);
-                }}
-            />
             <ClassesFilterModal
                 open={filterOpen}
                 onClose={() => setFilterOpen(false)}

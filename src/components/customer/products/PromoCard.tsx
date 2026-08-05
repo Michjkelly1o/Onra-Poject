@@ -28,7 +28,7 @@ export function PromoBanner({
         // Image-only banner — the voucher artwork carries all copy. Sized to the
         // 343x140 ratio so it never crops as the phone frame width changes.
         <div
-            className={`relative aspect-[343/140] w-full overflow-hidden bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467] ${
+            className={`relative aspect-[343/140] w-full shrink-0 overflow-hidden bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467] ${
                 rounded ? "rounded-2xl" : ""
             }`}
         >
@@ -76,7 +76,7 @@ export function PromoCard({ promo, disabled = false, onOpen, onApply, applied = 
                     onOpen();
                 }
             }}
-            className={`w-full overflow-hidden rounded-2xl bg-white text-left ${
+            className={`w-full shrink-0 overflow-hidden rounded-2xl bg-white text-left ${
                 applied ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec]"
             } ${disabled ? "cursor-default" : "cursor-pointer transition-shadow active:shadow-sm"}`}
         >

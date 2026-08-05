@@ -54,9 +54,10 @@ function BookingProcessing() {
         if (!wroteRef.current && member) {
             wroteRef.current = true;
             const status = mode === "waitlist" ? "waitlisted" : "booked";
-            // Spot per seat: index 0 = the member, 1 = the guest (empty → auto-assign).
+            // Reserve-to model: the booking is for EITHER the member OR one other
+            // person (never both). The single picked spot (spots[0]) goes to
+            // whoever the seat is reserved to.
             const spots = bookingDraft.spots;
-            // Book the member's own seat, then one seat per brought-along guest.
             if (bookingDraft.bookSelf) {
                 addClassBooking({ classScheduleId: id, customerId: member.id, status, spot: spots[0] ?? spot });
             }
@@ -65,7 +66,9 @@ function BookingProcessing() {
                     classScheduleId: id,
                     customerId: member.id,
                     status,
-                    spot: spots[i + 1],
+                    // When only the reservee is booked, they take the picked spot
+                    // (spots[0]); otherwise seats are offset past the member's.
+                    spot: bookingDraft.bookSelf ? spots[i + 1] : spots[i],
                     guestName: g.name,
                     chargeBookerCredit: g.payment === "booker_credit",
                 });

@@ -319,9 +319,12 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
         [filtered, selectedIds],
     );
 
+    // The monthly calendar view is hidden for now — the calendar lives under Staff
+    // Schedule (client 2026-08). Time Off always renders as the LIST.
+    const SHOW_MONTH_VIEW = false;
     return (
         <>
-            {viewMode === "month" ? (
+            {SHOW_MONTH_VIEW && viewMode === "month" ? (
                 <TimeOffMonthView branchId={branchId ?? ""} search={search} monthCursor={monthCursor} />
             ) : (
             <div className="flex flex-col">

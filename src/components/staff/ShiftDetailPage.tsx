@@ -767,7 +767,6 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
     const isActive   = shift.status === "active";
     const isInactive = shift.status === "inactive";
     const isArchive  = shift.status === "archive";
-    const canDelete  = !isArchive && totalStaffs === 0;
 
     return (
         <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
@@ -818,19 +817,19 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
                                 <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit shift" onClick={() => onAction("edit_details")} />
                                 <ActionBtn icon={<UserPlus01 className="w-5 h-5" />} label="Assign staff" onClick={() => onAction("assign_staff")} />
                                 <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive shift" onClick={() => onAction("archive")} />
-                                {canDelete
-                                    ? <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete shift" danger onClick={() => onAction("delete")} />
-                                    : <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate shift" danger onClick={() => onAction("deactivate")} />
-                                }
+                                {/* Deactivate stays as the soft option while staff are assigned;
+                                    Delete is always available and cascades (unassigns staff). */}
+                                {totalStaffs > 0 && (
+                                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate shift" danger onClick={() => onAction("deactivate")} />
+                                )}
+                                <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete shift" danger onClick={() => onAction("delete")} />
                             </>
                         )}
                         {isInactive && (
                             <>
                                 <ActionBtn icon={<Check className="w-5 h-5" />} label="Reactivate shift" onClick={() => onAction("reactivate")} />
                                 <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive shift" onClick={() => onAction("archive")} />
-                                {canDelete && (
-                                    <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete shift" danger onClick={() => onAction("delete")} />
-                                )}
+                                <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete shift" danger onClick={() => onAction("delete")} />
                             </>
                         )}
                         {isArchive && (

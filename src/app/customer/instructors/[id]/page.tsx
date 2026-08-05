@@ -19,13 +19,12 @@ import { Briefcase01, ChevronLeft, Mail01, Phone, Share02, Sun } from "@untitled
 import { useAppStore } from "@/lib/store";
 import { useCustomerInstructors } from "@/lib/customer/instructors";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
-import { firstOfMonthISO, monthYearOf, REAL_TODAY_ISO } from "@/lib/customer/dates";
+import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { cardPresentation, useInstructorDayClasses } from "@/lib/customer/search-data";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { ScheduleDateBar } from "@/components/customer/classes/ScheduleDateBar";
 import { TimeZoneSheet } from "@/components/customer/shell/TimeZoneSheet";
 import { timeInZoneLabel } from "@/lib/customer/class-time";
-import { MonthPickerSheet } from "@/components/customer/home/MonthPickerSheet";
 import { ClassScheduleCard } from "@/components/customer/classes/ClassScheduleCard";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { Button } from "@/components/ui/button";
@@ -79,7 +78,6 @@ export default function InstructorDetailPage() {
 
     const { timezone, setTimezone, localTimezone } = useCurrentCustomerContext();
     const [tab, setTab] = useState<"details" | "schedule">("details");
-    const [monthOpen, setMonthOpen] = useState(false);
     const [tzOpen, setTzOpen] = useState(false);
     const [descOpen, setDescOpen] = useState(false);
     // Default to today; restore the session's last pick for this instructor if any.
@@ -252,7 +250,6 @@ export default function InstructorDetailPage() {
                             selectedISO={selectedDate}
                             onSelect={selectDate}
                             timezone={timezone}
-                            onMonthClick={() => setMonthOpen(true)}
                             onTimezoneClick={() => setTzOpen(true)}
                         />
 
@@ -293,19 +290,6 @@ export default function InstructorDetailPage() {
                     </div>
                 )}
             </div>
-
-            <MonthPickerSheet
-                open={monthOpen}
-                onClose={() => setMonthOpen(false)}
-                month={monthYearOf(selectedDate).month}
-                year={monthYearOf(selectedDate).year}
-                minYear={monthYearOf(REAL_TODAY_ISO).year}
-                maxYear={monthYearOf(REAL_TODAY_ISO).year + 1}
-                onApply={(m, y) => {
-                    const first = firstOfMonthISO(m, y);
-                    selectDate(first < REAL_TODAY_ISO ? REAL_TODAY_ISO : first);
-                }}
-            />
 
             <TimeZoneSheet
                 open={tzOpen}

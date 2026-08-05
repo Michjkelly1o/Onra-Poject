@@ -38,6 +38,8 @@ export interface AppointmentVM {
     category: string;
     branchId: string;
     branchName: string;
+    /** Assigned room id (optional) — drives the "Room - Branch" location line. */
+    roomId?: string;
     /** True = recovery/wellness service (derived from `service.type`). */
     isRecovery: boolean;
     coverImage?: string;
@@ -57,6 +59,7 @@ function toVM(s: Service): AppointmentVM {
         category: s.category,
         branchId: s.branchId,
         branchName: s.branchName,
+        roomId: s.roomId,
         isRecovery: s.type === "recovery",
         coverImage: s.coverImage,
         coverColor: s.coverColor,

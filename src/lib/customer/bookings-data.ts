@@ -17,6 +17,7 @@ import { useCurrentCustomer } from "@/lib/customer/context";
 import { useClassDetail, type ClassDetailVM } from "@/lib/customer/search-data";
 import { useAppointmentBookings } from "@/lib/customer/appointment-bookings";
 import { formatShortDate, formatTime12 } from "@/lib/customer/format";
+import { REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { branchTzLabel } from "@/lib/branch-time";
 import type { BookingStatus } from "@/components/customer/bookings/BookingCard";
 
@@ -513,4 +514,117 @@ export function useUpcomingBookingsMerged(): UpcomingCardVM[] {
 
         return [...classCards, ...apptCards].sort((x, y) => x.sortKey.localeCompare(y.sortKey));
     }, [upcoming, apptBookings, appointments]);
+}
+
+
+// ─── Merged PAST bookings (classes + appointments) + Home stat counts ─────────
+//
+// The Home "Previous bookings" section mirrors "Upcoming bookings": the single
+// most-recent past booking regardless of type, rendered through the shared
+// <BookingCard>. Attended-and-not-yet-rated bookings expose a "Rate class" CTA.
+
+export interface PastCardVM extends UpcomingCardVM {
+    /** Attended & not yet rated → show the "Rate class" CTA. */
+    canRate: boolean;
+    /** Route to the rating flow for this booking. */
+    rateHref: string;
+}
+
+/** Every past booking (classes + private/recovery appointments), most-recent-first. */
+export function usePastBookingsMerged(): PastCardVM[] {
+    const member = useCurrentCustomer();
+    const { past } = useMemberBookings();
+    const apptBookings = useAppointmentBookings();
+    const appointments = useAppStore((s) => s.appointments);
+    const classRatings = useAppStore((s) => s.classRatings);
+    const appointmentRatings = useAppStore((s) => s.appointmentRatings);
+
+    return useMemo(() => {
+        const ratedSchedule = new Set(
+            classRatings.filter((r) => member && r.customerId === member.id && !r.deletedAt).map((r) => r.classScheduleId),
+        );
+        const ratedAppt = new Set(
+            appointmentRatings.filter((r) => member && r.customerId === member.id && !r.deletedAt).map((r) => r.appointmentId),
+        );
+
+        const classCards: PastCardVM[] = past.map((b) => {
+            const pres = BOOKING_STATUS[b.viewStatus];
+            return {
+                key: `class-${b.bookingId}`,
+                name: b.name,
+                dateShort: b.dateShort,
+                time: b.time,
+                location: b.location,
+                status: pres.card,
+                mutedCover: pres.mutedCover,
+                coverImage: b.coverImage,
+                coverColor: b.coverColor,
+                sortKey: b.sortKey,
+                href: `/customer/bookings/${b.bookingId}`,
+                canRate: b.viewStatus === "attended" && !ratedSchedule.has(b.scheduleId),
+                rateHref: `/customer/bookings/${b.bookingId}/rate`,
+            };
+        });
+
+        // A past appointment = not cancelled (by customer or admin) and its slot is
+        // in the past. Treated as attended, so it's rateable until rated.
+        const now = new Date();
+        const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const adminCancelled = new Map(appointments.map((a) => [a.id, a.status === "Cancelled"] as const));
+        const apptCards: PastCardVM[] = apptBookings
+            .filter(
+                (a) =>
+                    a.status !== "cancelled" &&
+                    !(a.adminAppointmentId != null && adminCancelled.get(a.adminAppointmentId)) &&
+                    a.slotISO < todayISO,
+            )
+            .map((a) => ({
+                key: `appt-${a.id}`,
+                name: a.name,
+                dateShort: formatShortDate(a.slotISO),
+                time: formatTime12(a.slotTime),
+                location: a.branchName,
+                status: { label: "Attended", tone: "success" as const },
+                mutedCover: false,
+                coverImage: a.coverImage,
+                coverColor: a.coverColor,
+                sortKey: `${a.slotISO}T${a.slotTime}`,
+                href: `/customer/bookings/appointment/${a.id}`,
+                canRate: !ratedAppt.has(a.adminAppointmentId ?? a.id),
+                rateHref: `/customer/bookings/appointment/${a.id}/rate`,
+            }));
+
+        return [...classCards, ...apptCards].sort((x, y) => y.sortKey.localeCompare(x.sortKey));
+    }, [past, apptBookings, appointments, classRatings, appointmentRatings, member]);
+}
+
+/**
+ * Home metric counts across ALL booking types (classes + private/recovery
+ * appointments). "Total bookings" excludes customer/admin-cancelled bookings;
+ * "this month" is scoped to the current calendar month (real clock).
+ */
+export function useMemberBookingStats(): { totalBookings: number; bookingsThisMonth: number } {
+    const { upcoming, past } = useMemberBookings();
+    const apptBookings = useAppointmentBookings();
+    const appointments = useAppStore((s) => s.appointments);
+
+    return useMemo(() => {
+        const classRows = [
+            ...upcoming,
+            ...past.filter((b) => b.viewStatus !== "cancelled_free" && b.viewStatus !== "cancelled_late"),
+        ];
+        const adminCancelled = new Map(appointments.map((a) => [a.id, a.status === "Cancelled"] as const));
+        const apptRows = apptBookings.filter(
+            (a) => a.status !== "cancelled" && !(a.adminAppointmentId != null && adminCancelled.get(a.adminAppointmentId)),
+        );
+
+        const monthKey = REAL_TODAY_ISO.slice(0, 7);
+        const inMonth = (iso: string) => iso.slice(0, 7) === monthKey;
+
+        return {
+            totalBookings: classRows.length + apptRows.length,
+            bookingsThisMonth:
+                classRows.filter((b) => inMonth(b.dateISO)).length + apptRows.filter((a) => inMonth(a.slotISO)).length,
+        };
+    }, [upcoming, past, apptBookings, appointments]);
 }

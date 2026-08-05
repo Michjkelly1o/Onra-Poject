@@ -105,6 +105,10 @@ export interface ClassDetailLayoutProps {
     afterLocation?: ReactNode;
     /** Sticky bottom thumb-zone content. */
     actionZone?: ReactNode;
+    /** When false the action renders inline at the end of the scroll content
+     *  (user must scroll to reach it) instead of pinned to the bottom — used for
+     *  destructive actions like Cancel booking. Defaults to sticky. */
+    stickyAction?: boolean;
     /** Back affordance — defaults to router.back(). */
     onBack?: () => void;
 }
@@ -120,6 +124,7 @@ export function ClassDetailLayout({
     statusBlock,
     afterLocation,
     actionZone,
+    stickyAction = true,
     onBack,
 }: ClassDetailLayoutProps) {
     const router = useRouter();
@@ -276,9 +281,13 @@ export function ClassDetailLayout({
                 <BranchLocationCard branch={branch} room={detail.room} heading="Location" />
 
                 {afterLocation}
+
+                {/* Non-sticky action (e.g. Cancel booking) — sits at the end of the
+                    content so it must be scrolled to, guarding against accidental taps. */}
+                {actionZone && !stickyAction && <div className="pt-2">{actionZone}</div>}
             </div>
 
-            {actionZone && (
+            {actionZone && stickyAction && (
                 <div
                     className={`sticky bottom-0 z-10 px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${
                         scrollable ? "bg-white" : ""

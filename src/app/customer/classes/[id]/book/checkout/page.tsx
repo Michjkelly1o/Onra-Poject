@@ -14,7 +14,6 @@ export default function CheckoutPage() {
         <CheckoutCart
             originId={id}
             onBack={() => router.back()}
-            promoHref={`${base}/promo`}
             processingHref={`${base}/processing`}
         />
     );

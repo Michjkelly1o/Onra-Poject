@@ -21,6 +21,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { CurrentCustomerProvider } from "@/lib/customer/context";
+import { useUpcomingBookingsMerged } from "@/lib/customer/bookings-data";
 import { useReconcileMemberPlans } from "@/lib/customer/products-catalog";
 import { CustomerBottomNav } from "@/components/customer/shell/BottomNav";
 import { CustomerBackground } from "@/components/customer/shell/Background";
@@ -31,6 +32,20 @@ import { ScrollRestoration } from "@/components/customer/shell/ScrollRestoration
 import { BrandTokens } from "@/components/customer/shell/BrandTokens";
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <CurrentCustomerProvider>
+            <PlanInvariantGuard />
+            <BrandTokens>
+                <CustomerShell>{children}</CustomerShell>
+            </BrandTokens>
+        </CurrentCustomerProvider>
+    );
+}
+
+// Inside the provider so it can read the member's upcoming bookings — the sticky
+// Home "Browse classes" button shows ONLY when there's at least one upcoming
+// booking (the empty state supplies its own "Browse schedule" CTA otherwise).
+function CustomerShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     // The "Book now" CTA is a Home-only element; other screens just show the nav.
     const isHome = pathname === "/customer";
@@ -60,20 +75,13 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         pathname.startsWith("/customer/marketing/") ||
         pathname.startsWith("/customer/notifications");
 
+    // Sticky Home CTA shows only when the member has an upcoming booking.
+    const upcoming = useUpcomingBookingsMerged();
+    const showBook = isHome && upcoming.length > 0;
+
     return (
-        <CurrentCustomerProvider>
-            <PlanInvariantGuard />
-            {/* Injects brand CSS variables (primary / bg / tertiary / text /
-                font) from `brandingSettings` AND exposes a preview context
-                so components rendering logo / display name can override
-                those from the admin panel's live iframe preview (postMessage
-                bridge). Wraps children so `usePreviewBrand()` reaches every
-                page — admin edits in Settings → Branding → Customize design
-                settings reflect here after Save; DRAFT edits reflect inside
-                the panel's iframe preview live, before Save. */}
-            <BrandTokens>
             <div data-brand-scope="customer" className="fixed inset-0 flex justify-center overflow-hidden bg-[#f2f4f7]">
-                <div className="relative flex h-full w-full max-w-[500px] flex-col overflow-hidden bg-[var(--brand-background)]">
+                <div className="relative flex h-full w-full max-w-[402px] flex-col overflow-hidden bg-[var(--brand-background)]">
                     {/* Shared decorative background — MAIN pages only (§3); level-2
                         pages omit it for a cleaner plain-background look. */}
                     {showBackground && <CustomerBackground />}
@@ -82,17 +90,18 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                         sticky cluster (taller on Home, which also has the Book now button). */}
                     <main
                         className={`relative z-10 flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-                            isFullScreen ? "pb-0" : isHome ? "pb-[172px]" : "pb-[93px]"
+                            isFullScreen ? "pb-0" : showBook ? "pb-[172px]" : "pb-[93px]"
                         }`}
                     >
                         {children}
                     </main>
-                    {/* Sticky bottom cluster — nav always; Book now only on Home. The linear
-                        white gradient overlay (transparent → white, no blur) fades content out.
-                        Hidden on full-screen flows, which supply their own footer. */}
+                    {/* Sticky bottom cluster — nav always; the Home CTA shows only when
+                        there's an upcoming booking. The linear white gradient overlay
+                        (transparent → white, no blur) fades content out. Hidden on
+                        full-screen flows, which supply their own footer. */}
                     {!isFullScreen && (
                         <div className="absolute inset-x-0 bottom-0 z-20">
-                            {isHome && (
+                            {showBook && (
                                 <div className="bg-gradient-to-b from-white/0 to-white p-4">
                                     <BookNowButton />
                                 </div>
@@ -107,8 +116,6 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
                     <PushNotificationToasts />
                 </div>
             </div>
-            </BrandTokens>
-        </CurrentCustomerProvider>
     );
 }
 

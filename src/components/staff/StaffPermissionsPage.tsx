@@ -51,6 +51,7 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
+import { TodayScheduleCell } from "@/components/staff/TodayScheduleCell";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
@@ -703,6 +704,15 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const setStaffStatus   = useAppStore(s => s.setStaffStatus);
     const deleteStaffAction = useAppStore(s => s.deleteStaff);
     const canDeleteStaff   = useAppStore(s => s.canDeleteStaff);
+    // "Today's schedule" column data.
+    const classSchedules   = useAppStore(s => s.classSchedules);
+    const appointmentsAll  = useAppStore(s => s.appointments);
+    const shiftAssignments = useAppStore(s => s.shiftAssignments);
+    const shifts           = useAppStore(s => s.shifts);
+    const blockedTimes     = useAppStore(s => s.blockedTimes);
+    const todayNow = new Date();
+    const todayISO = `${todayNow.getFullYear()}-${String(todayNow.getMonth() + 1).padStart(2, "0")}-${String(todayNow.getDate()).padStart(2, "0")}`;
+    const todayDow = todayNow.getDay();
     const resendStaffInvite = useAppStore(s => s.resendStaffInvite);
     const showToast        = useAppStore(s => s.showToast);
 
@@ -731,7 +741,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     // lifted UP to the sub-tab row (was inside the child tab body). One
     // state per sub-tab so switching Shifts→Time off→Shifts remembers the
     // previously picked view.
-    const [shiftsViewMode,  setShiftsViewMode]  = useState<"list" | "week">(staffUi.shiftsViewMode);
+    const [shiftsViewMode,  setShiftsViewMode]  = useState<"list" | "week">(() => {
+        const v = searchParams?.get("view");
+        return v === "week" || v === "list" ? v : staffUi.shiftsViewMode;
+    });
     const [timeOffViewMode, setTimeOffViewMode] = useState<"list" | "month">(staffUi.timeOffViewMode);
     // Date pointers ALSO lifted up so their prev/next/label buttons can
     // render on the sub-tab row next to the view toggle (client
@@ -751,6 +764,17 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const [staffFilter, setStaffFilter] = useState<StaffFilter>(staffUi.staffFilter);
     const [page, setPage] = useState(staffUi.page);
     const [pageSize, setPageSize] = useState(10);
+
+    // Sync the sub-tab + shift view with the sidebar deep-link (?subtab / ?view)
+    // when navigating between the Staff and Shift menus on the SAME route (the
+    // page stays mounted, so the initial useState above doesn't re-run).
+    useEffect(() => {
+        const sub = searchParams?.get("subtab");
+        const view = searchParams?.get("view");
+        if (sub === "staff" || sub === "shift-management" || sub === "blocked-time") setStaffSubTab(sub);
+        if (view === "week" || view === "list") setShiftsViewMode(view);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm>(null);
     // The Change role modal lives outside the confirm-modal flow because it
     // captures a form value (new role) rather than running a single action.
@@ -1256,17 +1280,47 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                 onChange={(k) => setTab(k as typeof tab)}
                             />
                         )}
-                        {forceTab === "staff" && (
-                            <SegmentedTabs
-                                tabs={[
-                                    { key: "staff",            label: "Staff" },
-                                    { key: "shift-management", label: "Shifts" },
-                                    { key: "blocked-time",     label: "Time off" },
-                                ]}
-                                activeKey={staffSubTab}
-                                onChange={(k) => setStaffSubTab(k as typeof staffSubTab)}
-                            />
-                        )}
+                        {forceTab === "staff" && (() => {
+                            // Two sidebar menus, two in-page sections:
+                            //   • Staff  → Staff · Staff Schedule (shift-management WEEK)
+                            //   • Shift  → Shift (shift-management LIST) · Time off
+                            const inStaffSection =
+                                staffSubTab === "staff" ||
+                                (staffSubTab === "shift-management" && shiftsViewMode === "week");
+                            const activeKey =
+                                staffSubTab === "staff"
+                                    ? "staff"
+                                    : staffSubTab === "blocked-time"
+                                      ? "blocked-time"
+                                      : shiftsViewMode === "week"
+                                        ? "schedule"
+                                        : "shifts";
+                            const tabs = inStaffSection
+                                ? [
+                                      { key: "staff", label: "Staff" },
+                                      { key: "schedule", label: "Staff schedule" },
+                                  ]
+                                : [
+                                      { key: "shifts", label: "Shift" },
+                                      { key: "blocked-time", label: "Time off" },
+                                  ];
+                            return (
+                                <SegmentedTabs
+                                    tabs={tabs}
+                                    activeKey={activeKey}
+                                    onChange={(k) => {
+                                        if (k === "staff") setStaffSubTab("staff");
+                                        else if (k === "schedule") {
+                                            setStaffSubTab("shift-management");
+                                            setShiftsViewMode("week");
+                                        } else if (k === "shifts") {
+                                            setStaffSubTab("shift-management");
+                                            setShiftsViewMode("list");
+                                        } else if (k === "blocked-time") setStaffSubTab("blocked-time");
+                                    }}
+                                />
+                            );
+                        })()}
                         <div className="flex-1" />
                         {/* Date navigator — center-aligned via `absolute
                             left-1/2 -translate-x-1/2` inside the relative
@@ -1278,34 +1332,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                 <ShiftsDateNav weekStart={shiftsWeekStart} setWeekStart={setShiftsWeekStart} />
                             </div>
                         )}
-                        {forceTab === "staff" && staffSubTab === "blocked-time" && timeOffViewMode === "month" && (
-                            <div className="absolute left-1/2 -translate-x-1/2">
-                                <TimeOffDateNav cursor={timeOffMonthCursor} setCursor={setTimeOffMonthCursor} />
-                            </div>
-                        )}
-                        {/* Per-sub-tab view toggle — lifted up here from the
-                            child tab body (client 2026-07-22). Shifts gets
-                            List / Week; Time off gets List / Month. */}
-                        {forceTab === "staff" && staffSubTab === "shift-management" && (
-                            <SegmentedTabs
-                                tabs={[
-                                    { key: "list", label: "List" },
-                                    { key: "week", label: "Week" },
-                                ]}
-                                activeKey={shiftsViewMode}
-                                onChange={k => setShiftsViewMode(k as "list" | "week")}
-                            />
-                        )}
-                        {forceTab === "staff" && staffSubTab === "blocked-time" && (
-                            <SegmentedTabs
-                                tabs={[
-                                    { key: "list",  label: "List"  },
-                                    { key: "month", label: "Month" },
-                                ]}
-                                activeKey={timeOffViewMode}
-                                onChange={k => setTimeOffViewMode(k as "list" | "month")}
-                            />
-                        )}
+                        {/* View toggles removed — Staff Schedule is always the Week
+                            calendar, Shift is the List, and Time off is the List
+                            (the month calendar now lives under Staff Schedule). */}
                     </div>
                 )}
 
@@ -1478,6 +1507,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         <th className={cn(TH, "w-[180px]")}>
                                             <SortableHeader sortKey="branch" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Branch location</SortableHeader>
                                         </th>
+                                        <th className={cn(TH, "w-[210px]")}>Today&apos;s schedule</th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Status</SortableHeader>
                                         </th>
@@ -1521,6 +1551,19 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                     )}
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
+                                                <td className={TD}>
+                                                    <TodayScheduleCell
+                                                        staff={s}
+                                                        isInstructor={role?.type === "instructor"}
+                                                        shifts={shifts}
+                                                        shiftAssignments={shiftAssignments}
+                                                        blockedTimes={blockedTimes}
+                                                        classSchedules={classSchedules}
+                                                        appointments={appointmentsAll}
+                                                        todayISO={todayISO}
+                                                        todayDow={todayDow}
+                                                    />
+                                                </td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
                                                         {STAFF_STATUS_LABEL[s.status]}

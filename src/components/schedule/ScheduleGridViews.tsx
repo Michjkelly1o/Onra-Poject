@@ -13,6 +13,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Calendar } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { BlockedStrip } from "@/components/schedule/BlockedStrip";
+import { timeOffTitle, timeOffDuration } from "@/lib/staff/time-off";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 import {
@@ -299,14 +300,21 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     // Base order (with-classes first), then move the focused instructor to the
     // very front so they're immediately visible — item 2.
     const columns: Instructor[] = useMemo(() => {
+        // A Filter selection (focusInstructorId) NARROWS the Day view to only that
+        // instructor's column. A search-name match just moves them to the front
+        // (all instructors stay visible).
+        if (focusInstructorId) {
+            const only = INSTRUCTORS.find(i => i.id === focusInstructorId);
+            return only ? [only] : [];
+        }
         let ordered = [...withClasses, ...withoutClasses];
-        if (focusId) {
-            const idx = ordered.findIndex(i => i.id === focusId);
+        if (searchMatchId) {
+            const idx = ordered.findIndex(i => i.id === searchMatchId);
             if (idx > 0) ordered = [ordered[idx], ...ordered.slice(0, idx), ...ordered.slice(idx + 1)];
         }
         return hasRecovery ? [...ordered, recoveryColumn] : ordered;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [instructorIds.join(","), focusId, hasRecovery]);
+    }, [instructorIds.join(","), focusInstructorId, searchMatchId, hasRecovery]);
 
     // ── Horizontal scroll (item 1) ──────────────────────────────────────────
     // Keep the "4 instructors fit the width" group layout by sizing each column
@@ -317,20 +325,24 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const headerScrollRef = useRef<HTMLDivElement>(null);
     const bodyScrollRef = useRef<HTMLDivElement>(null);
     const [colWidth, setColWidth] = useState(240);
+    const colCount = columns.length;
     useEffect(() => {
         const el = rootRef.current;
         if (!el) return;
         const measure = () => {
-            // root width − left pad (24) − time gutter (64) − right pad (24),
-            // split across 4 columns; clamped so columns never get too narrow.
+            // root width − left pad (24) − time gutter (64) − right pad (24).
+            // Split across up to 4 columns; when fewer instructors are shown
+            // (e.g. filtered to ONE), they widen to fill the container instead
+            // of hugging the left. Clamped so columns never get too narrow.
             const avail = el.clientWidth - 24 - 64 - 24;
-            setColWidth(Math.max(200, Math.floor(avail / 4)));
+            const divisor = Math.min(4, Math.max(1, colCount));
+            setColWidth(Math.max(200, Math.floor(avail / divisor)));
         };
         measure();
         const ro = new ResizeObserver(measure);
         ro.observe(el);
         return () => ro.disconnect();
-    }, []);
+    }, [colCount]);
     function syncScroll(from: "header" | "body") {
         const src = from === "header" ? headerScrollRef.current : bodyScrollRef.current;
         const dst = from === "header" ? bodyScrollRef.current : headerScrollRef.current;
@@ -462,10 +474,12 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                                         {instrBlocks.map(b => (
                                             <BlockedStrip
                                                 key={b.id}
-                                                blockStart={b.start_time}
-                                                blockEnd={b.end_time}
+                                                blockStart={b.all_day ? `${String(gridStartHour).padStart(2, "0")}:00` : b.start_time}
+                                                blockEnd={b.all_day ? `${String(gridEndHour).padStart(2, "0")}:00` : b.end_time}
                                                 gridStartHour={gridStartHour}
                                                 hourHeight={HOUR_HEIGHT}
+                                                title={timeOffTitle(b)}
+                                                subtitle={timeOffDuration(b)}
                                             />
                                         ))}
                                         {instrClasses.map(cls => (

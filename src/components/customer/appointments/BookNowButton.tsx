@@ -1,26 +1,36 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Customer — "Book now" CTA (PRD 13 §6.6 / bottom action)
+// Customer — Home sticky "Browse classes" CTA (PRD 13 §6.6 / bottom action)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Strictly the admin design-system primary Button (src/components/ui/button.tsx):
-// variant="primary", size="md", forced to a fully-rounded (999) pill, full width.
-// Figma: 9ByGNc4N7Vw3BLMHyaWJ1j node 3911-35896. Routes into the booking flow.
+// The admin DS primary Button, forced to a fully-rounded pill, full width. Only
+// shown on Home and only when the member HAS an upcoming booking (the empty
+// state carries its own "Browse schedule" CTA otherwise — see UpcomingBookings).
+// Appears once the page is scrolled away from the top and STAYS clickable while
+// scrolled; hides only when the member returns to the top (idle at the top).
 
 import { useRouter } from "next/navigation";
+import { useMainScrolled } from "@/lib/customer/use-scrollable";
 import { Button } from "@/components/ui/button";
 
 export function BookNowButton() {
     const router = useRouter();
+    const scrolled = useMainScrolled();
     return (
-        <Button
-            variant="primary"
-            size="md"
-            className="w-full rounded-full"
-            onClick={() => router.push("/customer/search")}
+        <div
+            className={`transition-opacity duration-300 ${
+                scrolled ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
         >
-            Book class
-        </Button>
+            <Button
+                variant="primary"
+                size="md"
+                className="w-full rounded-full"
+                onClick={() => router.push("/customer/search")}
+            >
+                Browse classes
+            </Button>
+        </div>
     );
 }

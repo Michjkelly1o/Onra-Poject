@@ -107,6 +107,10 @@ function daysSummary(workingDays: boolean[]): string {
     return picked.map(i => LABELS[i]).join(", ");
 }
 
+// Hide the Staffing column + the "Assigned staff · days" dropdown header for now
+// (client 2026-08). The staffing/assignment LOGIC is untouched — just gated here.
+const SHOW_STAFFING: boolean = false;
+
 // ─── Row expand — Assigned staff · days_of_week (client 2026-07-22) ───────
 //
 // Renders inside a `<tr><td colSpan={8}>` beneath the parent shift row.
@@ -171,10 +175,9 @@ function ShiftExpandBody({
     });
     return (
         <div className="flex flex-col gap-3">
-            {/* Header row — Assigned staff label on LEFT, Staffing
-                target stepper on RIGHT (client 2026-07-22 audit). Both
-                labels are normal case (no uppercase / no tracking-
-                wider) to match the rest of the app's section labels. */}
+            {/* Header row (label + staffing target) — hidden for now (SHOW_STAFFING);
+                logic kept. */}
+            {SHOW_STAFFING && (
             <div className="flex items-center gap-3">
                 <p className="text-[13px] font-semibold text-[#344054] flex-1">Assigned staff · days within the shift</p>
                 <div className="flex items-center gap-3 shrink-0">
@@ -198,6 +201,7 @@ function ShiftExpandBody({
                     </div>
                 </div>
             </div>
+            )}
 
             {rows.length === 0 ? (
                 <p className="text-[14px] text-[#667085]">No staff assigned yet. Use the row's "Assign staff" action to add one.</p>
@@ -324,7 +328,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         iconBg: "bg-[#fee4e2]", IconComp: Trash02, iconColor: "text-[#d92d20]",
         titleSingle: "Delete this shift?",
         titleBulk:   n => `Delete ${n} shifts?`,
-        description: subject => <>{subject} will be permanently removed. This action cannot be undone.</>,
+        description: subject => <>{subject} will be permanently removed and any assigned staff will be unassigned. This action cannot be undone.</>,
         confirmLabel: "Delete",
         tone: "destructive",
     },
@@ -768,7 +772,7 @@ export function ShiftManagementTab({
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
     const hasRecoverable   = selectedRows.some(r => r.status === "archive");
     const hasDeletable     = selectedRows.length > 0 &&
-        selectedRows.every(r => r.status === "active" && (staffCountByShift.get(r.id) ?? 0) === 0);
+        selectedRows.every(r => r.status === "active");
 
     // ── Row + bulk action plumbing ─────────────────────────────────────────
     function handleRowAction(row: Shift, kind: RowActionKind) {
@@ -787,7 +791,7 @@ export function ShiftManagementTab({
                 case "reactivate": return selectedRows.filter(r => r.status === "inactive");
                 case "archive":    return selectedRows.filter(r => r.status !== "archive");
                 case "recover":    return selectedRows.filter(r => r.status === "archive");
-                case "delete":     return selectedRows.filter(r => r.status === "active" && (staffCountByShift.get(r.id) ?? 0) === 0);
+                case "delete":     return selectedRows.filter(r => r.status === "active");
                 default:           return [];
             }
         })();
@@ -911,9 +915,11 @@ export function ShiftManagementTab({
                                             of Status + Enabled." Status column now hosts
                                             the enable/disable toggle inline (see
                                             the row below). */}
+                                        {SHOW_STAFFING && (
                                         <th className={cn(TH, "w-[160px]")}>
                                             <SortableHeader sortKey="staff"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Staffing</SortableHeader>
                                         </th>
+                                        )}
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
                                         </th>
@@ -941,10 +947,11 @@ export function ShiftManagementTab({
                                                 />
                                             </td>
                                             <td className={TD}>
-                                                {/* Client 2026-07-22 audit: chevron
-                                                    accordion replaces the "· details"
-                                                    text button. Click the chevron OR
-                                                    anywhere on the name to expand. */}
+                                                {/* The assigned-staff dropdown is hidden
+                                                    (SHOW_STAFFING) — shift assignment is
+                                                    done from the calendar / staff form. So
+                                                    the name is plain (no accordion). */}
+                                                {SHOW_STAFFING ? (
                                                 <button
                                                     type="button"
                                                     onClick={() => setExpandedShiftId(prev => prev === s.id ? null : s.id)}
@@ -960,16 +967,20 @@ export function ShiftManagementTab({
                                                     <ShiftAvatar />
                                                     <span className="text-[14px] font-medium text-[#101828]">{s.name}</span>
                                                 </button>
+                                                ) : (
+                                                    <div className="flex items-center gap-3">
+                                                        <ShiftAvatar />
+                                                        <span className="text-[14px] font-medium text-[#101828]">{s.name}</span>
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className={cn(TD, "whitespace-nowrap")}>{branch?.name ?? "—"}</td>
                                             <td className={cn(TD, "whitespace-nowrap")}>{daysSummary(s.working_days)}</td>
                                             <td className={cn(TD, "whitespace-nowrap")}>
                                                 {fmtTime12(s.start_time)} – {fmtTime12(s.end_time)}
                                             </td>
-                                            {/* Staffing cell — "N / M needed" + optional
-                                                Understaffed pill (amber tone matches
-                                                the range-chip color family so both
-                                                warnings read as one voice). */}
+                                            {/* Staffing cell — hidden for now (SHOW_STAFFING). */}
+                                            {SHOW_STAFFING && (
                                             <td className={cn(TD, "whitespace-nowrap")}>
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <span className={cn(
@@ -986,6 +997,7 @@ export function ShiftManagementTab({
                                                     )}
                                                 </div>
                                             </td>
+                                            )}
                                             <td className={TD}><StatusBadge type="shift" status={s.status} /></td>
                                             <td className={TD}>
                                                 <RowActions items={[
@@ -996,7 +1008,7 @@ export function ShiftManagementTab({
                                                     { label: "Reactivate", icon: Check, onClick: () => handleRowAction(s, "reactivate"), hidden: s.status !== "inactive" },
                                                     { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(s, "recover"), hidden: s.status !== "archive" },
                                                     { label: "Deactivate", icon: SlashCircle01, onClick: () => handleRowAction(s, "deactivate"), danger: true, hidden: !(s.status === "active" && assignedCount > 0) },
-                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true, hidden: !(s.status === "active" && assignedCount === 0) },
+                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true, hidden: s.status !== "active" },
                                                 ]} />
                                             </td>
                                         </tr>
@@ -1007,7 +1019,7 @@ export function ShiftManagementTab({
                                             "Staffing target" editor so admins can
                                             change the M in "N / M needed" without
                                             opening the form. */}
-                                        {isExpanded && (
+                                        {SHOW_STAFFING && isExpanded && (
                                             <tr className="bg-[#fafbfa]">
                                                 <td colSpan={8} className="px-6 py-4">
                                                     <ShiftExpandBody

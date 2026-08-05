@@ -367,6 +367,28 @@ export const DEMO_TODAY_MEETING_SCHEDULES: ClassSchedule[] = [
         class_type: "Group",
         waitlist_enabled: true,
     },
+    {
+        // Liam's morning class today — pairs with his partial time off
+        // (blocked_times) so the staff table's "Today's schedule" column can
+        // demo the "shift + time off + schedule" state. Client 2026-08-05.
+        id: "class_sched_demo_today_liam_10am",
+        template_id: "tpl_reformer_pilates",
+        branch_id: SOUTH,
+        room_id: "room_south_reformer",
+        instructor_id: "staff_liam_chen",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "10:00",
+        end_time: "11:00",
+        display_time: "10:00 – 11:00",
+        capacity: 8,
+        booked: 3,
+        rating: 0,
+        rating_count: 0,
+        status: "Upcoming",
+        gender_access: "all",
+        class_type: "Group",
+        waitlist_enabled: true,
+    },
 ];
 
 export const DEMO_TODAY_MEETING_BOOKINGS: ClassBooking[] = DEMO_TODAY_MEETING_SCHEDULES.flatMap((sched, sIdx) => {

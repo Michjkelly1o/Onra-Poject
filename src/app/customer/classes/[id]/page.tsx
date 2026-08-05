@@ -17,6 +17,7 @@ import { useClassDetail } from "@/lib/customer/search-data";
 import { formatLongDate, to12h } from "@/lib/customer/dates";
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { WaitlistClaimSheet } from "@/components/customer/classes/WaitlistClaimSheet";
+import { ReviewBookSheet } from "@/components/customer/classes/ReviewBookSheet";
 import { hasLiveWaitlistClaim, useAppStore } from "@/lib/store";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,15 @@ export default function ClassDetailPage() {
         : undefined;
     const [claimSheetOpen, setClaimSheetOpen] = useState(false);
     const [claimDismissed, setClaimDismissed] = useState(false);
+    // Review & Book bottom sheet — opened by "Book now" / "Join waitlist", or
+    // auto-opened when arriving from a Search card via `?book=1|waitlist`.
+    const [reviewMode, setReviewMode] = useState<null | "book" | "waitlist">(null);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const b = new URLSearchParams(window.location.search).get("book");
+        if (b === "1" || b === "book") setReviewMode("book");
+        else if (b === "waitlist") setReviewMode("waitlist");
+    }, []);
     useEffect(() => {
         if (myClaim && !claimDismissed) setClaimSheetOpen(true);
     }, [myClaim, claimDismissed]);
@@ -89,7 +99,7 @@ export default function ClassDetailPage() {
     // spots, Hourglass for waitlist; FULL / Closed / Booked stay text-only).
     const badge =
         detail.state === "available"
-            ? { icon: Users01, label: `${detail.booked}/${detail.capacity} spots`, cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
+            ? { icon: Users01, label: `${detail.booked}/${detail.capacity} spots`, cls: "border-[#e4e7ec] bg-[#f9fafb] text-[#344054]" }
             : detail.state === "waitlist"
               ? { icon: Hourglass03, label: "FULL", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
               : detail.state === "booked"
@@ -142,9 +152,6 @@ export default function ClassDetailPage() {
                                 <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                                     {CLASS_CREDIT_COST} credit{CLASS_CREDIT_COST === 1 ? "" : "s"}
                                 </span>
-                                <span className="text-sm font-normal leading-5 text-[#475467]">
-                                    {typeof credits === "number" ? `${credits} credits left` : " "}
-                                </span>
                             </span>
                             {detail.state === "available" ? (
                                 <Button
@@ -152,10 +159,10 @@ export default function ClassDetailPage() {
                                     size="xl"
                                     className="rounded-full"
                                     onClick={() =>
-                                        router.push(member ? `/customer/classes/${detail.id}/book` : loginHref(`/customer/classes/${detail.id}`))
+                                        member ? setReviewMode("book") : router.push(loginHref(`/customer/classes/${detail.id}`))
                                     }
                                 >
-                                    {member ? "Book class" : "Log in to book"}
+                                    {member ? "Book now" : "Log in to book"}
                                 </Button>
                             ) : detail.state === "waitlist" ? (
                                 <Button
@@ -163,11 +170,7 @@ export default function ClassDetailPage() {
                                     size="xl"
                                     className="rounded-full"
                                     onClick={() =>
-                                        router.push(
-                                            member
-                                                ? `/customer/classes/${detail.id}/book?mode=waitlist`
-                                                : loginHref(`/customer/classes/${detail.id}`),
-                                        )
+                                        member ? setReviewMode("waitlist") : router.push(loginHref(`/customer/classes/${detail.id}`))
                                     }
                                 >
                                     {member ? "Join waitlist" : "Log in to join"}
@@ -216,6 +219,12 @@ export default function ClassDetailPage() {
                 }}
             />
         )}
+        <ReviewBookSheet
+            open={reviewMode != null}
+            mode={reviewMode ?? "book"}
+            classId={id}
+            onClose={() => setReviewMode(null)}
+        />
         </>
     );
 }

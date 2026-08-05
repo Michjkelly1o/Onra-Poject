@@ -37,7 +37,10 @@ export interface ClassScheduleCardProps {
     ctaLabel: string;
     ctaVariant?: "primary" | "secondary";
     ctaDisabled?: boolean;
+    /** Tapping the card BODY — opens Class Details. */
     onAction?: () => void;
+    /** Tapping the CTA — opens Review & Book (falls back to onAction). */
+    onBook?: () => void;
 }
 
 const TONE: Record<BadgeTone, string> = {
@@ -62,6 +65,7 @@ export function ClassScheduleCard({
     ctaVariant = "primary",
     ctaDisabled = false,
     onAction,
+    onBook,
 }: ClassScheduleCardProps) {
     // Split "10:00 AM • 60 mins" so the start time reads medium and the duration
     // regular — matching the location line (room medium / branch regular).
@@ -108,11 +112,10 @@ export function ClassScheduleCard({
                     </div>
                 </div>
 
-                <span
-                    className={`flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${TONE[badgeTone]}`}
-                >
-                    {badgeIcon === "users" && <Users01 className="size-3 shrink-0" aria-hidden />}
-                    {badgeIcon === "hourglass" && <Hourglass03 className="size-3 shrink-0" aria-hidden />}
+                {/* Capacity indicator — plain icon + XS text (no pill), less prominent. */}
+                <span className="flex shrink-0 items-center gap-1 text-xs font-medium leading-[18px] text-[#475467]">
+                    {badgeIcon === "users" && <Users01 className="size-3.5 shrink-0 text-[#667085]" aria-hidden />}
+                    {badgeIcon === "hourglass" && <Hourglass03 className="size-3.5 shrink-0 text-[#667085]" aria-hidden />}
                     {badgeLabel}
                 </span>
             </div>
@@ -143,7 +146,7 @@ export function ClassScheduleCard({
                 className="w-full rounded-full"
                 onClick={(e) => {
                     e.stopPropagation();
-                    onAction?.();
+                    (onBook ?? onAction)?.();
                 }}
             >
                 {ctaLabel}

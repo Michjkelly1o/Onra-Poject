@@ -73,10 +73,14 @@ export function AppointmentCard({
                     <p className="truncate text-xs font-normal leading-[18px] text-[#667085]">AED {price}</p>
                 </div>
 
-                <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
-                    <BadgeIcon className="size-3 shrink-0" aria-hidden />
-                    {badgeLabel}
-                </span>
+                {/* Capacity — only for GROUP (open) sessions, e.g. Group Recovery
+                    ("Up to X"). Private 1-on-1 appointments show no indicator. */}
+                {!isPrivate && (
+                    <span className="flex shrink-0 items-center gap-1 text-xs font-medium leading-[18px] text-[#475467]">
+                        <BadgeIcon className="size-3.5 shrink-0 text-[#667085]" aria-hidden />
+                        {badgeLabel}
+                    </span>
+                )}
             </div>
 
             {/* Location + duration */}

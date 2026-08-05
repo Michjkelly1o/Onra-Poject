@@ -14,7 +14,7 @@
 import { useEffect, useReducer, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
-import { ChevronLeft, ChevronRight, Clock, CreditCard02, CurrencyDollarCircle, Gift01, Lightbulb02, MarkerPin01, Minus, Package, Plus, Tag03, Box } from "@untitledui/icons";
+import { ChevronLeft, ChevronRight, Clock, CreditCard02, CurrencyDollarCircle, Gift01, Lightbulb02, MarkerPin01, Minus, Package, Plus, Tag03, Box, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useCatalogProducts } from "@/lib/customer/products-catalog";
@@ -44,6 +44,9 @@ export function ProductDetailScreen({
     originId,
     onBack,
     afterAdd,
+    variant = "page",
+    onCheckout,
+    onGiftConfigure,
 }: {
     productId: string;
     /** Purchase-cart origin — keeps the cart tied to the right flow (the class id
@@ -54,7 +57,17 @@ export function ProductDetailScreen({
     /** Called after a successful add-to-cart (gift cards route themselves). The
      *  caller navigates onward — Products → catalog; booking → checkout / plans. */
     afterAdd: (kind: PlanKind) => void;
+    /** "sheet" hosts this inside a bottom sheet: full-height flex, scrollable
+     *  body, pinned footer, and an X-close over the hero (client 2026-08). */
+    variant?: "page" | "sheet";
+    /** When set, "Pay now" opens the checkout as a sheet (products) instead of
+     *  navigating to the checkout route. */
+    onCheckout?: () => void;
+    /** When set, gift-card Add/Pay opens the Gift card info sheet (products);
+     *  receives the intent so Pay-now can continue to checkout after configuring. */
+    onGiftConfigure?: (intent: "add" | "pay") => void;
 }) {
+    const isSheet = variant === "sheet";
     const router = useRouter();
     const pathname = usePathname();
     const { member } = useCurrentCustomerContext();
@@ -172,7 +185,8 @@ export function ProductDetailScreen({
 
     function onAdd() {
         if (isGift) {
-            router.push(`/customer/products/gift-card/${product!.id}`);
+            if (onGiftConfigure) onGiftConfigure("add");
+            else router.push(`/customer/products/gift-card/${product!.id}`);
             return;
         }
         // Packages + retail both open at their current cart qty and let the
@@ -195,6 +209,25 @@ export function ProductDetailScreen({
         afterAdd(product!.kind);
     }
 
+    // Pay now — add to cart then go straight to Payment Details (checkout). Gift
+    // cards must be configured first, so Pay now opens the Gift card info page with
+    // ?pay=1 (it continues to checkout after the details are filled).
+    function onPayNow() {
+        if (isGift) {
+            if (onGiftConfigure) onGiftConfigure("pay");
+            else router.push(`/customer/products/gift-card/${product!.id}?pay=1`);
+            return;
+        }
+        const existing =
+            isPackage || isRetail
+                ? purchaseCart.items.find((i) => i.id === product!.id && i.kind === product!.kind)
+                : null;
+        if (existing) existing.quantity = qty;
+        else addToCart(product!, isPackage || isRetail ? qty : 1);
+        if (onCheckout) onCheckout();
+        else router.push("/customer/products/checkout");
+    }
+
     // ── Hero content + type badge ──
     const heroBig = isGift ? String(gift?.fixed_value_aed ?? product.price) : product.creditBadge?.big ?? "";
     const heroSmall = isGift ? "AED" : product.creditBadge?.small ?? "credits";
@@ -212,7 +245,18 @@ export function ProductDetailScreen({
             : Gift01;
 
     return (
-        <div className="relative flex min-h-full flex-col">
+        <div className={isSheet ? "relative flex h-full flex-col" : "relative flex min-h-full flex-col"}>
+            {isSheet && (
+                <button
+                    type="button"
+                    onClick={onBack}
+                    aria-label="Close"
+                    className="absolute right-4 top-3 z-20 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                >
+                    <XClose className="size-5 text-[#344054]" aria-hidden />
+                </button>
+            )}
+            <div className={isSheet ? "flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "contents"}>
             {/* Hero — memberships/packages/gift cards render the 200px brand-
                 gradient banner with a big credit/value figure. Retail replaces
                 it with a real product photo (aspect-square, ~360px on the
@@ -221,6 +265,7 @@ export function ProductDetailScreen({
                 <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+{!isSheet && (
                     <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4">
                         <button
                             type="button"
@@ -235,6 +280,7 @@ export function ProductDetailScreen({
                             {typeLabel}
                         </span>
                     </div>
+                    )}
                 </div>
             ) : (
                 <div
@@ -244,6 +290,7 @@ export function ProductDetailScreen({
                     <Rings color={HERO.ring} opacity={0.4} scale={5} />
 
                     {/* Top row — back + type badge */}
+{!isSheet && (
                     <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4">
                         <button
                             type="button"
@@ -258,6 +305,7 @@ export function ProductDetailScreen({
                             {typeLabel}
                         </span>
                     </div>
+                    )}
 
                     {/* Credit / value — bottom-left, big number + unit on the baseline */}
                     <div className="relative flex items-end gap-2" style={{ color: HERO.text }}>
@@ -268,7 +316,7 @@ export function ProductDetailScreen({
             )}
 
             {/* Body */}
-            <div className="flex flex-1 flex-col gap-8 px-4 pb-[120px] pt-6">
+            <div className={`flex flex-1 flex-col gap-8 px-4 pt-6 ${isSheet ? "pb-6" : "pb-[120px]"}`}>
                 <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
                         <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{product.name}</p>
@@ -309,23 +357,11 @@ export function ProductDetailScreen({
                         </>
                     )}
                     {gift && (
-                        <>
-                            <InfoRow icon={CurrencyDollarCircle}>
-                                {gift.value_type === "custom"
-                                    ? `Custom amount from AED ${gift.min_value_aed ?? 0}`
-                                    : `AED ${gift.fixed_value_aed ?? product.price} value`}
-                            </InfoRow>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
-                            <InfoRow icon={Clock}>
-                                {gift.no_expiry ? (
-                                    <span className="font-medium text-[var(--brand-text)]">No expiry</span>
-                                ) : (
-                                    <>
-                                        Valid for <span className="font-medium text-[var(--brand-text)]">{gift.validity_days} days</span>
-                                    </>
-                                )}
-                            </InfoRow>
-                        </>
+                        <InfoRow icon={CurrencyDollarCircle}>
+                            {gift.value_type === "custom"
+                                ? `Custom amount from AED ${gift.min_value_aed ?? 0}`
+                                : `AED ${gift.fixed_value_aed ?? product.price} value`}
+                        </InfoRow>
                     )}
                     {isRetail && (
                         <>
@@ -410,17 +446,31 @@ export function ProductDetailScreen({
                     </section>
                 )}
             </div>
+            </div>
 
-            {/* Sticky footer — qty stepper (packages + retail) + Add to cart.
+            {/* Footer — Quantity row (packages + retail) ABOVE the actions.
                 Retail rows clamp the max at units-in-stock so a shopper can't
                 push past what the branch has left. */}
-            <div className="sticky bottom-0 z-10 flex items-center justify-between gap-4 bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4">
+            <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-[#f2f4f7] bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
                 {isGuest ? (
                     <Button variant="primary" size="xl" className="w-full rounded-full" onClick={() => router.push(loginHref(pathname))}>
                         Log in to purchase
                     </Button>
+                ) : isGift ? (
+                    // Gift cards run their own configure-amount flow (no quantity —
+                    // each card is filled in individually). Both actions open it.
+                    <div className="flex gap-3">
+                        <Button variant="secondary" size="xl" className="flex-1 rounded-full" disabled={addDisabled} onClick={onAdd}>
+                            Add to cart
+                        </Button>
+                        <Button variant="primary" size="xl" className="flex-1 rounded-full" disabled={addDisabled} onClick={onPayNow}>
+                            Pay now
+                        </Button>
+                    </div>
                 ) : (
                     (() => {
+                        // Quantity stepper for packages + retail only; memberships are
+                        // always a single purchase, so no stepper.
                         const qtyEditable = isPackage || isRetail;
                         const maxQty = isRetail ? Math.max(1, effectiveStock || 1) : Number.POSITIVE_INFINITY;
                         // Sized retail can't step qty until a size is chosen.
@@ -428,30 +478,40 @@ export function ProductDetailScreen({
                         const canIncrement = qtyActive && qty < maxQty;
                         return (
                             <>
-                                <div className="flex items-center gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setQty((q) => Math.max(1, q - 1))}
-                                        disabled={addDisabled || !qtyActive || qty <= 1}
-                                        aria-label="Decrease quantity"
-                                        className={STEP_BTN}
-                                    >
-                                        <Minus className="size-5 text-[#344054]" aria-hidden />
-                                    </button>
-                                    <span className="min-w-4 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{qty}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
-                                        disabled={addDisabled || !canIncrement}
-                                        aria-label="Increase quantity"
-                                        className={STEP_BTN}
-                                    >
-                                        <Plus className="size-5 text-[#344054]" aria-hidden />
-                                    </button>
+                                {qtyEditable && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-base font-medium leading-6 text-[var(--brand-text)]">Quantity</span>
+                                        <div className="flex items-center gap-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                                                disabled={addDisabled || qty <= 1}
+                                                aria-label="Decrease quantity"
+                                                className={STEP_BTN}
+                                            >
+                                                <Minus className="size-5 text-[#344054]" aria-hidden />
+                                            </button>
+                                            <span className="min-w-4 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{qty}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+                                                disabled={addDisabled || !canIncrement}
+                                                aria-label="Increase quantity"
+                                                className={STEP_BTN}
+                                            >
+                                                <Plus className="size-5 text-[#344054]" aria-hidden />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex gap-3">
+                                    <Button variant="secondary" size="xl" className="flex-1 rounded-full" disabled={addDisabled} onClick={onAdd}>
+                                        {isRetail && needsSize ? "Select a size" : "Add to cart"}
+                                    </Button>
+                                    <Button variant="primary" size="xl" className="flex-1 rounded-full" disabled={addDisabled} onClick={onPayNow}>
+                                        Pay now
+                                    </Button>
                                 </div>
-                                <Button variant="primary" size="xl" className="shrink-0 rounded-full" disabled={addDisabled} onClick={onAdd}>
-                                    {isGift ? "Buy gift card" : isRetail && needsSize ? "Select a size" : "Add to cart"}
-                                </Button>
                             </>
                         );
                     })()

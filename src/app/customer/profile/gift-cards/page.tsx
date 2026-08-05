@@ -73,7 +73,7 @@ export default function GiftCardPage() {
                 >
                     <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Gift card</h1>
+                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Gift cards</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
@@ -126,7 +126,7 @@ export default function GiftCardPage() {
                 </div>
 
                 {/* Redeemed */}
-                <p className="relative mb-3 mt-8 text-sm font-semibold leading-5 text-[var(--brand-text)]">Redeemed gift card</p>
+                <p className="relative mb-3 mt-8 text-sm font-semibold leading-5 text-[var(--brand-text)]">Redeemed gift cards</p>
                 {redeemed.length > 0 ? (
                     <div className="relative flex flex-col gap-3">
                         {redeemed.map((r) => (
@@ -172,7 +172,7 @@ export default function GiftCardPage() {
                     <div className="relative flex flex-col items-center py-8">
                         <SearchEmptyState
                             icon={Gift01}
-                            title="No redeemed gift card yet"
+                            title="No redeemed gift cards yet"
                             description="Redeemed gift cards will appear here."
                         />
                     </div>

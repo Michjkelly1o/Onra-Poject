@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     SearchMd, FilterLines, Plus,
-    ChevronLeft, ChevronRight, Eye, Edit02, Trash01,
+    ChevronLeft, ChevronRight, Eye, Edit02, Trash01, SlashCircle01,
     Download01, MarkerPin01, Clock, Users01, AlignLeft, XClose,
     Calendar, UserPlus01, Copy01, ClockFastForward, Tag01, Building01,
     ChevronDown, User01, HeartHand, Shuffle01,
@@ -167,16 +167,33 @@ function AdminCancelClassModal({ open, classInstance, bookedCount, onClose, onCo
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
-                        <Trash01 className="w-6 h-6 text-[#d92d20]" />
+                        <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this class?</h3>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
                             <span className="font-medium text-[#344054]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and credits refunded.</>}
+                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
                         </p>
                     </div>
                 </div>
+                {/* Refund class credit — same row as the Class Details cancel modal.
+                    Locked ON: a studio cancellation always refunds each customer. */}
+                {bookedCount > 0 && (
+                    <>
+                        <div className="h-5 shrink-0" />
+                        <div className="h-px w-full bg-[#e4e7ec]" />
+                        <div className="flex items-center justify-between gap-4 px-6 py-5">
+                            <div className="flex flex-col gap-1 min-w-0">
+                                <p className="text-[16px] font-medium text-[#101828]">Refund class credit</p>
+                                <p className="text-[14px] text-[#475467] leading-[20px]">When the studio cancels a class, each customer is always refunded.</p>
+                            </div>
+                            <span aria-hidden className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-[var(--brand-primary)] opacity-60">
+                                <span className="ml-auto mr-0.5 size-4 rounded-full bg-white shadow-[0px_1px_2px_rgba(16,24,40,0.1)]" />
+                            </span>
+                        </div>
+                    </>
+                )}
                 <div className="flex gap-3 px-6 pt-6 pb-6">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel

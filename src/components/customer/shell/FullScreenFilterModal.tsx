@@ -59,7 +59,7 @@ export function FullScreenFilterModal({
 
     return createPortal(
         <div className="fixed inset-0 z-[60] flex justify-center bg-[#f2f4f7]" role="dialog" aria-modal="true">
-            <div className="flex h-full w-full max-w-[500px] flex-col bg-white">
+            <div className="flex h-full w-full max-w-[402px] flex-col bg-white">
                 {/* Header — centred title + close. */}
                 <header className="flex items-center gap-3 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
                     <span aria-hidden className="size-10 shrink-0" />

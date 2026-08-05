@@ -1967,6 +1967,12 @@ export interface ShiftAssignment {
      *  the row is created; admins narrow from the shift's expanded
      *  row on the list. */
     days_of_week: boolean[];
+    /** ISO date (that week's Monday, `YYYY-MM-DD`) the assignment applies to.
+     *  Set → the assignment is scoped to THAT week only (staff can hold a
+     *  different shift each week). Absent → an existing seeded assignment,
+     *  scoped to the CURRENT week only (so it doesn't repeat on other weeks).
+     *  Client 2026-08. */
+    week_start?: string;
     created_at: string;       // ISO 8601
 }
 
