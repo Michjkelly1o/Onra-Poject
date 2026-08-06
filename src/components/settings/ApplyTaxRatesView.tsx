@@ -828,14 +828,14 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
 
             {/* Category stack */}
             <div className="flex flex-col gap-4">
-                {/* Services + Gift card render on BOTH tabs — the same
-                    underlying rules drive every surface. The difference:
-                    on the Income tax tab they start COLLAPSED with summary
-                    pills on their headers (matches Figma 5041:98666 read-
-                    only summary view), so admins can see the VAT setup at
-                    a glance while configuring Pay rate. Click to expand
-                    still works; rules remain editable. */}
-                {(kind === "vat" || kind === "income") && (() => {
+                {/* Sale-item categories — Services (membership / credit package /
+                    private / recovery), Retail, Gift card — render on the VAT tab
+                    ONLY. Client 2026-08: payroll / income tax is a withholding on
+                    SALARIES, not on what the studio sells, so the Income tax tab
+                    must never list memberships / retail / gift card. The Income
+                    tab's only category surface is the Pay rate editor, rendered at
+                    the top of the page via showOnly="pay_rate". */}
+                {kind === "vat" && (() => {
                     const inheritedRate = (() => {
                         for (const cat of SERVICES_SUBCATEGORIES) {
                             const inheritRule = rulesByCategory[cat].find(
@@ -865,9 +865,6 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                                 )
                             }
                             inheritedRate={inheritedRate}
-                            summaryPill={kind === "income" && inheritedRate !== undefined
-                                ? `Default · VAT ${inheritedRate}%`
-                                : undefined}
                         >
                             {SERVICES_SUBCATEGORIES.map(cat => (
                                 <CategoryAccordion
@@ -936,16 +933,13 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
                     );
                 })()}
 
-                {/* NB: Pay rate is intentionally NOT rendered in this
-                    Apply tax rates sub-tab. It lives in the top "Income
-                    / payroll tax" container of the Income tax tab
-                    (rendered via the page's inline ApplyTaxRatesView with
-                    showOnly="pay_rate"). Rendering it here too would
-                    duplicate the editor and confuse the admin. The
-                    Services + Gift card cards above DO render on both
-                    tabs so admins on the Income tax tab can see the VAT
-                    setup at a glance — just collapsed with summary
-                    pills (matches Figma 5041:98666). */}
+                {/* NB: Pay rate is intentionally NOT rendered in this Apply tax
+                    rates sub-tab — it lives in the top "Income / payroll tax"
+                    container of the Income tax tab (the page's inline
+                    ApplyTaxRatesView with showOnly="pay_rate"). The sale-item
+                    cards above are VAT-only (see the gate), so the Income tab
+                    never lists memberships / retail / gift card — payroll tax is
+                    on salaries only. */}
             </div>
 
             {pendingDelete && (
