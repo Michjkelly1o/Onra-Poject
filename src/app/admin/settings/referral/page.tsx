@@ -49,7 +49,7 @@ function Toggle({ on, onChange, ariaLabel }: {
             onClick={() => onChange(!on)}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -135,26 +135,26 @@ export default function ReferralSettingsPage() {
             ) : (
             <div className="flex w-full flex-col gap-4">
             {/* ── Card 1: Referral settings (master toggle) ────────────── */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex flex-col gap-1">
-                    <p className="text-[16px] font-semibold text-[#101828]">Referral settings</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">Turn on the rewards based referral program on or off.</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Referral settings</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Turn on the rewards based referral program on or off.</p>
                 </div>
 
                 <div className={cn(
                     "rounded-[12px] px-5 py-4 flex items-center gap-4 border-1 transition-colors",
-                    settings.programActive ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                    settings.programActive ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)]",
                 )}>
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="text-[14px] font-semibold text-[#101828]">Referral program is active</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">Customers can share a link and earn rewards when join.</p>
+                        <p className="text-[14px] font-semibold text-[var(--colors-text-primary)]">Referral program is active</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Customers can share a link and earn rewards when join.</p>
                     </div>
                     <Toggle on={settings.programActive} onChange={next => setPendingToggle({ next })} ariaLabel="Referral program master switch" />
                 </div>
             </div>
 
             {/* ── Card 2: Tabbed Rules + Fraud Controls ────────────────── */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <SegmentedTabs
                     tabs={[
                         { key: "rewards",      label: "Reward rules & limits"     },
@@ -168,8 +168,8 @@ export default function ReferralSettingsPage() {
                     <>
                         <div className="flex items-start gap-4">
                             <div className="flex-1 flex flex-col gap-1">
-                                <p className="text-[16px] font-semibold text-[#101828]">Reward rules &amp; limits</p>
-                                <p className="text-[14px] text-[#667085] leading-[20px]">
+                                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Reward rules &amp; limits</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                     Decide who qualifies &amp; block the common ways referral programs get gamed.
                                 </p>
                             </div>
@@ -202,8 +202,8 @@ export default function ReferralSettingsPage() {
                     <>
                         <div className="flex items-start gap-4">
                             <div className="flex-1 flex flex-col gap-1">
-                                <p className="text-[16px] font-semibold text-[#101828]">Eligibility &amp; safeguards</p>
-                                <p className="text-[14px] text-[#667085] leading-[20px]">
+                                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Eligibility &amp; safeguards</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                     Decide who qualifies &amp; block the common ways referral programs get gamed.
                                 </p>
                             </div>
@@ -245,11 +245,11 @@ export default function ReferralSettingsPage() {
             </div>
 
             {/* ── Card 3: Customize referral information ──────────────── */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex items-start gap-4">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="text-[16px] font-semibold text-[#101828]">Customize referral information</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">Use the text information to describe your referral offer to the customers.</p>
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Customize referral information</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Use the text information to describe your referral offer to the customers.</p>
                     </div>
                     <Button variant="secondary-gray" size="md"
                         leftIcon={<Edit02 className="w-4 h-4" />}
@@ -261,8 +261,8 @@ export default function ReferralSettingsPage() {
                 <div className="flex flex-col gap-3">
                     <SummaryField label="Title" value={settings.infoTitle} />
                     <div className="flex flex-col gap-1">
-                        <p className="text-[14px] text-[#667085]">Description</p>
-                        <p className="text-[14px] text-[#101828] leading-[20px]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Description</p>
+                        <p className="text-[14px] text-[var(--colors-text-primary)] leading-[20px]">
                             {/* Description preview renders the RAW description with
                                 variable tokens replaced for readability. Stored
                                 value keeps the {{tokens}} so the editor can
@@ -302,8 +302,8 @@ export default function ReferralSettingsPage() {
 function SummaryField({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <p className="text-[16px] font-semibold text-[#101828]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{value}</p>
         </div>
     );
 }
@@ -319,13 +319,13 @@ function EligibilityRow({ title, description, value, last }: {
     return (
         <div className={cn(
             "flex items-start gap-4 py-4",
-            !last && "border-b border-[#e4e7ec]",
+            !last && "border-b border-[var(--colors-border-secondary)]",
         )}>
             <div className="flex-1 min-w-0 flex flex-col gap-1">
-                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">{description}</p>
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{description}</p>
             </div>
-            <span className="text-[14px] text-[#475467] shrink-0">{value}</span>
+            <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">{value}</span>
         </div>
     );
 }
@@ -361,23 +361,23 @@ function ReferralToggleConfirmModal({ next, onCancel, onConfirm }: {
                     type="button"
                     onClick={onCancel}
                     aria-label="Close"
-                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-[1]"
+                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-[1]"
                 >
-                    <XClose className="w-6 h-6 text-[#98a2b3]" />
+                    <XClose className="w-6 h-6 text-[var(--colors-fg-quaternary)]" />
                 </button>
                 <div className="pt-6 px-6 flex flex-col items-center gap-4">
                     <div className={cn(
                         "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
-                        isActivate ? "bg-[#e9fff3]" : "bg-[#fee4e2]",
+                        isActivate ? "bg-[var(--colors-secondary-50)]" : "bg-[#fee4e2]",
                     )}>
                         {isActivate
-                            ? <Check className="w-6 h-6 text-[#658774]" />
+                            ? <Check className="w-6 h-6 text-[var(--colors-secondary-600)]" />
                             : <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                         }
                     </div>
                     <div className="flex flex-col gap-1 items-center text-center w-full">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">{title}</p>
-                        <p className="text-[14px] text-[#475467] leading-5 w-full">{supporting}</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 w-full">{title}</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 w-full">{supporting}</p>
                     </div>
                 </div>
                 <div className="flex gap-3 items-start p-6 pt-6 w-full">

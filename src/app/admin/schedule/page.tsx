@@ -88,7 +88,7 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
             <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map(i => <FilledStar key={i} filled={i <= Math.round(rating)} />)}
             </div>
-            <span className="text-[12px] text-[#667085]">{count > 0 ? `${rating.toFixed(1)} (${count} ratings)` : "0 (0 ratings)"}</span>
+            <span className="text-[12px] text-[var(--colors-text-quaternary)]">{count > 0 ? `${rating.toFixed(1)} (${count} ratings)` : "0 (0 ratings)"}</span>
         </div>
     );
 }
@@ -162,18 +162,18 @@ function AdminCancelClassModal({ open, classInstance, bookedCount, onClose, onCo
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this class?</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
-                            <span className="font-medium text-[#344054]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this class?</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
+                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
                         </p>
                     </div>
                 </div>
@@ -182,11 +182,11 @@ function AdminCancelClassModal({ open, classInstance, bookedCount, onClose, onCo
                 {bookedCount > 0 && (
                     <>
                         <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[#e4e7ec]" />
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                         <div className="flex items-center justify-between gap-4 px-6 py-5">
                             <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[#101828]">Refund class credit</p>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">When the studio cancels a class, each customer is always refunded.</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class credit</p>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">When the studio cancels a class, each customer is always refunded.</p>
                             </div>
                             <span aria-hidden className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-[var(--brand-primary)] opacity-60">
                                 <span className="ml-auto mr-0.5 size-4 rounded-full bg-white shadow-[0px_1px_2px_rgba(16,24,40,0.1)]" />
@@ -213,20 +213,20 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -295,22 +295,22 @@ function LocationDropdown({ value, onChange, branchLabel, locationGroups }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] text-[#344054] font-medium hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]">
-                <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[14px] text-[var(--colors-text-secondary)] font-medium hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]">
+                <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                 <span className="flex-1 text-left truncate">{display}</span>
-                <ChevronDown className="w-4 h-4 text-[#667085]" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[300px] overflow-y-auto">
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[300px] overflow-y-auto">
                     <button type="button" onClick={() => { onChange(""); setOpen(false); }}
                         className={cn("flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            !value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                            !value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
                         All locations
                     </button>
                     {rooms.map(room => (
                         <button key={room} type="button" onClick={() => { onChange(room); setOpen(false); }}
                             className={cn("flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                value === room ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                                value === room ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
                             {room}
                         </button>
                     ))}
@@ -339,29 +339,29 @@ function FilterDropdown({ label, value, options, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]">
+                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]">
                 {selected?.initials && (
                     <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
                         style={{ backgroundColor: selected.color }}>
                         {selected.initials}
                     </div>
                 )}
-                <span className="flex-1 text-left truncate text-[#344054]">
+                <span className="flex-1 text-left truncate text-[var(--colors-text-secondary)]">
                     {selected?.label ?? label}
                 </span>
-                <ChevronDown className="w-4 h-4 text-[#667085]" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[200px] overflow-y-auto">
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[200px] overflow-y-auto">
                     <button type="button" onClick={() => { onChange(""); setOpen(false); }}
                         className={cn("flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            !value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                            !value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
                         {label}
                     </button>
                     {options.map(o => (
                         <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); }}
                             className={cn("flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                value === o.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                                value === o.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
                             {o.initials && (
                                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
                                     style={{ backgroundColor: o.color }}>
@@ -424,18 +424,18 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 
     const instructorOptions = INSTRUCTORS.map(i => ({ value: i.id, label: i.name, initials: i.initials, color: i.color }));
 
-    const Divider = () => <div className="h-px w-full bg-[#e4e7ec] shrink-0" />;
+    const Divider = () => <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />;
     const SectionLabel = ({ label }: { label: string }) => (
-        <p className="text-[14px] font-medium text-[#344054]">{label}</p>
+        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
     );
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
                 {/* Header */}
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -463,8 +463,8 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                                         className={cn(
                                             "h-10 px-2 rounded-[8px] text-[13px] font-medium border transition-all text-center leading-tight",
                                             selected
-                                                ? "bg-[#f5fffa] border-2 border-[#7ba08c] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                                : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                                ? "bg-[#f5fffa] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                                : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                         )}>
                                         {SESSION_TYPE_FILTER_LABEL[t]}
                                     </button>
@@ -519,7 +519,7 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                 </div>
 
                 {/* Footer */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny && !hasAppliedAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
@@ -589,12 +589,12 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                     {classes.map(c => (
                         <tr key={c.id}
                             onClick={() => router.push(isAppointmentId(c.id) ? `/appointments/${c.id}?returnTo=${encodeURIComponent("/admin/schedule")}` : `/schedule/${c.id}?returnTo=${encodeURIComponent("/admin/schedule")}`)}
-                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
+                            className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
                             <td className={TD}>
-                                <div className="font-medium text-[#101828]">{c.date}</div>
-                                <div className="text-[13px] text-[#667085] mt-0.5">{c.displayTime}</div>
+                                <div className="font-medium text-[var(--colors-text-primary)]">{c.date}</div>
+                                <div className="text-[13px] text-[var(--colors-text-quaternary)] mt-0.5">{c.displayTime}</div>
                                 {branchTzById.get(c.branchId) && (
-                                    <div className="text-[12px] text-[#667085] mt-0.5">{branchTzById.get(c.branchId)}</div>
+                                    <div className="text-[12px] text-[var(--colors-text-quaternary)] mt-0.5">{branchTzById.get(c.branchId)}</div>
                                 )}
                             </td>
                             <td className={TD}>
@@ -603,8 +603,8 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                     the session; the image added noise without adding
                                     signal at this density. Card view keeps its cover. */}
                                 <div>
-                                    <div className="text-[14px] font-medium text-[#101828]">{c.name}</div>
-                                    <div className="text-[13px] text-[#667085]">
+                                    <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{c.name}</div>
+                                    <div className="text-[13px] text-[var(--colors-text-quaternary)]">
                                         {/* Appointment open sessions have no fixed instructor —
                                             surface "Open session" instead of a dangling "with ". */}
                                         {c.instructorName
@@ -680,9 +680,9 @@ function MonthView({ classes, monthYear, onClassClick, onMoreClick }: {
     return (
         <div className="flex flex-col overflow-y-auto scrollbar-hide flex-1">
             {/* Day headers */}
-            <div className="grid grid-cols-7 border-b border-[#e4e7ec] shrink-0 px-6">
+            <div className="grid grid-cols-7 border-b border-[var(--colors-border-secondary)] shrink-0 px-6">
                 {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map(d => (
-                    <div key={d} className="py-3 text-[11px] font-semibold text-[#667085] tracking-wider text-center">{d}</div>
+                    <div key={d} className="py-3 text-[11px] font-semibold text-[var(--colors-text-quaternary)] tracking-wider text-center">{d}</div>
                 ))}
             </div>
             {/* Calendar grid */}
@@ -691,13 +691,13 @@ function MonthView({ classes, monthYear, onClassClick, onMoreClick }: {
                     const dayClasses: ClassInstance[] = day ? (DAY_CLASSES[day.iso] || []) : [];
                     const isToday = day?.iso === TODAY_ISO;
                     return (
-                        <div key={i} className={cn("border-r border-b border-[#f2f4f7] p-2 min-h-[110px]", !day && "bg-[#fafafa]")}>
+                        <div key={i} className={cn("border-r border-b border-[var(--colors-bg-tertiary)] p-2 min-h-[110px]", !day && "bg-[#fafafa]")}>
                             {day && (
                                 <>
                                     {/* Date number — centered */}
                                     <div className="flex justify-center mb-1.5">
                                         <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-semibold",
-                                            isToday ? "bg-[#658774] text-white" : "text-[#344054]")}>
+                                            isToday ? "bg-[var(--colors-secondary-600)] text-white" : "text-[var(--colors-text-secondary)]")}>
                                             {day.num}
                                         </div>
                                     </div>
@@ -793,18 +793,18 @@ function DayClassListPopup({ dateISO, classes, anchor, onClose, onClassClick }: 
     return (
         <div ref={popupRef}
             style={{ position: "fixed", top, left, width: WIDTH, maxHeight: MAX_H, zIndex: 9999 }}
-            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+            className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
         >
             {/* Header — date + count + close */}
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#e4e7ec]">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--colors-border-secondary)]">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-semibold text-[#101828] truncate">{dateLabel}</p>
-                    <p className="text-[12px] text-[#667085] leading-[16px]">
+                    <p className="text-[15px] font-semibold text-[var(--colors-text-primary)] truncate">{dateLabel}</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[16px]">
                         {sorted.length} {sorted.length === 1 ? "class" : "classes"}
                     </p>
                 </div>
                 <button type="button" onClick={onClose} aria-label="Close"
-                    className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085] shrink-0">
+                    className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)] shrink-0">
                     <XClose className="w-4 h-4" />
                 </button>
             </div>
@@ -818,7 +818,7 @@ function DayClassListPopup({ dateISO, classes, anchor, onClose, onClassClick }: 
                             key={cls.id}
                             type="button"
                             onClick={(e) => { onClose(); onClassClick(cls, e); }}
-                            className="w-full flex items-start gap-3 px-2 py-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left"
+                            className="w-full flex items-start gap-3 px-2 py-2 rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-left"
                         >
                             {/* Colored dot on category so the row echoes the
                                 month tile's tinted cards */}
@@ -826,19 +826,19 @@ function DayClassListPopup({ dateISO, classes, anchor, onClose, onClassClick }: 
                                 style={{ backgroundColor: col.border }} aria-hidden />
                             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-[13px] font-medium text-[#344054] shrink-0">
+                                    <span className="text-[13px] font-medium text-[var(--colors-text-secondary)] shrink-0">
                                         {cls.displayTime}
                                     </span>
-                                    <span className="text-[13px] font-semibold text-[#101828] truncate">
+                                    <span className="text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">
                                         {cls.name}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 min-w-0">
                                     <SessionTypeTag type={cls.type} />
-                                    <span className="text-[12px] text-[#98a2b3] shrink-0">·</span>
-                                    <span className="text-[12px] text-[#667085] truncate">{cls.instructorName}</span>
-                                    <span className="text-[12px] text-[#98a2b3] shrink-0">·</span>
-                                    <span className="text-[12px] text-[#667085] shrink-0">{cls.booked}/{cls.capacity}</span>
+                                    <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">·</span>
+                                    <span className="text-[12px] text-[var(--colors-text-quaternary)] truncate">{cls.instructorName}</span>
+                                    <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">·</span>
+                                    <span className="text-[12px] text-[var(--colors-text-quaternary)] shrink-0">{cls.booked}/{cls.capacity}</span>
                                 </div>
                             </div>
                             <StatusBadge type="class" status={cls.status} />
@@ -908,32 +908,32 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
     return (
         <div ref={popupRef}
             style={{ position: "fixed", top, left, width: WIDTH, zIndex: 9999 }}
-            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+            className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
         >
             {/* Header: action icons inline (status/type-gated), close is last */}
             <div className="flex items-center justify-end gap-1 px-4 pt-4 pb-3">
                 {showAddCustomer && (
                     <button type="button" title="Add customer" onClick={() => { onClose(); onAddCustomer(cls.id); }}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)]">
                         <UserPlus01 className="w-5 h-5" />
                     </button>
                 )}
                 {showEdit && (
                     <button type="button" title="Edit class" onClick={() => { onClose(); onEdit(cls.id); }}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)]">
                         <Edit02 className="w-5 h-5" />
                     </button>
                 )}
                 {showReassign && (
                     <button type="button" title="Reassign instructor"
                         onClick={() => { onClose(); router.push(`/appointments/${cls.id}?returnTo=${encodeURIComponent("/admin/schedule")}&reassign=1`); }}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)]">
                         <Shuffle01 className="w-5 h-5" />
                     </button>
                 )}
                 {showDuplicate && (
                     <button type="button" title="Duplicate" onClick={() => { onClose(); onDuplicate(cls.id); }}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)]">
                         <Copy01 className="w-5 h-5" />
                     </button>
                 )}
@@ -944,7 +944,7 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
                     </button>
                 )}
                 <button type="button" onClick={onClose}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)]">
                     <XClose className="w-5 h-5" />
                 </button>
             </div>
@@ -957,7 +957,7 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
                 <div className="flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-3">
                         {/* Cover image / color tile */}
-                        <div className="w-[72px] h-[72px] rounded-[10px] border-1 border-[#e4e7ec] overflow-hidden shrink-0 flex items-center justify-center"
+                        <div className="w-[72px] h-[72px] rounded-[10px] border-1 border-[var(--colors-border-secondary)] overflow-hidden shrink-0 flex items-center justify-center"
                             style={{ backgroundColor: cls.coverColor }}>
                             {cls.coverImage ? (
                                 <img src={cls.coverImage} alt={cls.name} className="w-full h-full object-cover" />
@@ -971,38 +971,38 @@ function ClassPopup({ cls, anchor, onClose, onViewDetails, onAddCustomer, onEdit
                     </div>
                     <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{cls.name}</p>
+                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">{cls.name}</p>
                             <SessionTypeTag type={cls.type} />
                         </div>
-                        <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-2 mt-0.5">{cls.description}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] line-clamp-2 mt-0.5">{cls.description}</p>
                     </div>
                 </div>
 
                 {/* Info rows */}
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span className="text-[14px] text-[#667085]">{cls.date}</span>
-                        <span className="text-[12px] text-[#667085]">·</span>
-                        <span className="text-[14px] text-[#667085]">{cls.displayTime}</span>
+                        <Calendar className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">{cls.date}</span>
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)]">·</span>
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">{cls.displayTime}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Tag01 className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span className="text-[14px] text-[#667085]">{cls.category} · {cls.location}</span>
+                        <Tag01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">{cls.category} · {cls.location}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span className="text-[14px] text-[#667085]">{durationMin} min</span>
+                        <ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">{durationMin} min</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span className="text-[14px] text-[#667085]">
+                        <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">
                             {cls.booked}/{cls.capacity}{isFull ? " (FULL)" : ""}
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
-                        <span className="text-[14px] text-[#667085]">{cls.room}</span>
+                        <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">{cls.room}</span>
                     </div>
                 </div>
             </div>
@@ -1042,9 +1042,9 @@ function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
     //   • HeartHand for Recovery (wellness / care)
     // Neutral #667085 tone so the icons read as menu glyphs, not brand.
     const items: { label: string; icon: React.ReactNode; href: string }[] = [
-        { label: "Class",               icon: <Users01 className="w-4 h-4 text-[#667085]" />,  href: `/schedule/new?returnTo=${returnTo}` },
-        { label: "Private session",     icon: <User01 className="w-4 h-4 text-[#667085]" />,   href: `/services/new?returnTo=${returnTo}&type=private` },
-        { label: "Recovery", icon: <HeartHand className="w-4 h-4 text-[#667085]" />, href: `/services/new?returnTo=${returnTo}&type=recovery` },
+        { label: "Class",               icon: <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,  href: `/schedule/new?returnTo=${returnTo}` },
+        { label: "Private session",     icon: <User01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,   href: `/services/new?returnTo=${returnTo}&type=private` },
+        { label: "Recovery", icon: <HeartHand className="w-4 h-4 text-[var(--colors-text-quaternary)]" />, href: `/services/new?returnTo=${returnTo}&type=recovery` },
     ];
     return (
         <div ref={ref} className="relative">
@@ -1054,11 +1054,11 @@ function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
                 Add
             </Button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[220px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[220px]">
                     {items.map(it => (
                         <button key={it.label} type="button"
                             onClick={() => { setOpen(false); router.push(it.href); }}
-                            className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                             {it.icon}{it.label}
                         </button>
                     ))}
@@ -1345,7 +1345,7 @@ function SchedulePage() {
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -1390,7 +1390,7 @@ function SchedulePage() {
     function NavBtn({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) {
         return (
             <button type="button" onClick={onClick}
-                className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors">
+                className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-quaternary)] transition-colors">
                 {children}
             </button>
         );
@@ -1458,7 +1458,7 @@ function SchedulePage() {
             {/* ── View card ── Fixed h-[760px] for EVERY tab so the tab strip pins
                 and only the inner body scrolls (list table or calendar grid); the
                 outer main canvas scrolls for the rest. */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-[760px]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden h-[760px]">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs */}
@@ -1485,21 +1485,21 @@ function SchedulePage() {
                     {activeTab === "day" && (
                         <DateNav>
                             <NavBtn onClick={prevDay}><ChevronLeft className="w-4 h-4" /></NavBtn>
-                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[152px] text-center">{isoToDisplay(dayDateISO)}</span>
+                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[var(--colors-text-secondary)] min-w-[152px] text-center">{isoToDisplay(dayDateISO)}</span>
                             <NavBtn onClick={nextDay}><ChevronRight className="w-4 h-4" /></NavBtn>
                         </DateNav>
                     )}
                     {activeTab === "week" && (
                         <DateNav>
                             <NavBtn onClick={prevWeek}><ChevronLeft className="w-4 h-4" /></NavBtn>
-                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[168px] text-center">{formatWeekRange(weekStart)}</span>
+                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[var(--colors-text-secondary)] min-w-[168px] text-center">{formatWeekRange(weekStart)}</span>
                             <NavBtn onClick={nextWeek}><ChevronRight className="w-4 h-4" /></NavBtn>
                         </DateNav>
                     )}
                     {activeTab === "month" && (
                         <DateNav>
                             <NavBtn onClick={prevMonth}><ChevronLeft className="w-4 h-4" /></NavBtn>
-                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] min-w-[130px] text-center">{formatMonthYear(monthYear)}</span>
+                            <span className="px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[var(--colors-text-secondary)] min-w-[130px] text-center">{formatMonthYear(monthYear)}</span>
                             <NavBtn onClick={nextMonth}><ChevronRight className="w-4 h-4" /></NavBtn>
                         </DateNav>
                     )}

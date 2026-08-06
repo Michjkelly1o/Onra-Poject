@@ -273,7 +273,7 @@ function PerformanceTab({
                         "transition-all h-full",
                         dragIndex === idx && "opacity-40",
                         hoverIndex === idx && dragIndex !== null && dragIndex !== idx &&
-                        "ring-2 ring-[#4b8c9a] ring-offset-2 rounded-[20px]",
+                        "ring-2 ring-[var(--colors-brand-600)] ring-offset-2 rounded-[20px]",
                     )}
                 >
                     <DashboardWidgetCard
@@ -322,14 +322,14 @@ function PerformanceTab({
                 <button
                     type="button"
                     onClick={onOpenModal}
-                    className="self-start border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                    className="self-start border-1 border-dashed border-[var(--colors-border-primary)] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[var(--colors-brand-600)] hover:bg-[#fafeff] transition-colors group"
                 >
-                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
-                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
+                    <div className="w-10 h-10 rounded-xl bg-[var(--colors-tertiary-50)] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                        <BarChartSquare01 className="w-5 h-5 text-[var(--colors-text-quaternary)] group-hover:text-[var(--colors-brand-600)]" />
                     </div>
                     <div className="text-center">
-                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
-                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
+                        <p className="font-semibold text-sm text-[var(--colors-text-secondary)]">Add widget</p>
+                        <p className="text-xs text-[var(--colors-text-quaternary)] mt-0.5">Add widgets to customize your dashboard insights.</p>
                     </div>
                 </button>
             )}
@@ -346,14 +346,14 @@ function PerformanceTab({
                 <button
                     type="button"
                     onClick={onOpenModal}
-                    className="border-1 border-dashed border-[#d0d5dd] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[#4b8c9a] hover:bg-[#fafeff] transition-colors group"
+                    className="border-1 border-dashed border-[var(--colors-border-primary)] rounded-[20px] p-6 flex flex-col items-center justify-center gap-3 min-h-[180px] hover:border-[var(--colors-brand-600)] hover:bg-[#fafeff] transition-colors group"
                 >
-                    <div className="w-10 h-10 rounded-xl bg-[#f1f2ed] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
-                        <BarChartSquare01 className="w-5 h-5 text-[#667085] group-hover:text-[#4b8c9a]" />
+                    <div className="w-10 h-10 rounded-xl bg-[var(--colors-tertiary-50)] flex items-center justify-center group-hover:bg-[#e9fbff] transition-colors">
+                        <BarChartSquare01 className="w-5 h-5 text-[var(--colors-text-quaternary)] group-hover:text-[var(--colors-brand-600)]" />
                     </div>
                     <div className="text-center">
-                        <p className="font-semibold text-sm text-[#344054]">Add widget</p>
-                        <p className="text-xs text-[#667085] mt-0.5">Add widgets to customize your dashboard insights.</p>
+                        <p className="font-semibold text-sm text-[var(--colors-text-secondary)]">Add widget</p>
+                        <p className="text-xs text-[var(--colors-text-quaternary)] mt-0.5">Add widgets to customize your dashboard insights.</p>
                     </div>
                 </button>
             </div>
@@ -394,7 +394,7 @@ function NeedsAttentionRow({
     return (
         <div className={cn(
             "flex items-center gap-4 py-4",
-            !isLast && "border-b border-[#e4e7ec]",
+            !isLast && "border-b border-[var(--colors-border-secondary)]",
         )}>
             <div className={cn(
                 "shrink-0 w-10 h-10 rounded-[8px] flex items-center justify-center",
@@ -403,8 +403,8 @@ function NeedsAttentionRow({
                 <Icon className={cn("w-5 h-5", iconFg)} />
             </div>
             <div className="flex-1 min-w-0 flex flex-col">
-                <p className="text-sm font-semibold text-[#101828] leading-5">{title}</p>
-                <p className="text-sm text-[#667085] leading-5">{subtitle}</p>
+                <p className="text-sm font-semibold text-[var(--colors-text-primary)] leading-5">{title}</p>
+                <p className="text-sm text-[var(--colors-text-quaternary)] leading-5">{subtitle}</p>
             </div>
             <Button variant="secondary-gray" size="sm" onClick={onView}>
                 View
@@ -429,13 +429,13 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
             type={clickable ? "button" : undefined}
             onClick={metric.onClick}
             className={cn(
-                "bg-white border border-[#e4e7ec] flex flex-1 gap-4 items-start justify-end min-w-0 p-4 relative rounded-2xl text-left",
-                clickable && "cursor-pointer hover:border-[#d0d5dd] hover:shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-all",
+                "bg-white border border-[var(--colors-border-secondary)] flex flex-1 gap-4 items-start justify-end min-w-0 p-4 relative rounded-2xl text-left",
+                clickable && "cursor-pointer hover:border-[var(--colors-border-primary)] hover:shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-all",
             )}
         >
             <div className="flex flex-1 flex-col gap-1.5 items-start min-w-0 relative">
                 <div className="flex items-center gap-1 min-w-0">
-                    <p className="font-normal text-sm text-[#667085] whitespace-nowrap">
+                    <p className="font-normal text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap">
                         {metric.label}
                     </p>
                     {/* Info glyph — client 2026-07-23 added tooltip copy to
@@ -447,14 +447,14 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
                                 role="button"
                                 tabIndex={0}
                                 aria-label={`About ${metric.label}`}
-                                className="shrink-0 w-4 h-4 flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] transition-colors"
+                                className="shrink-0 w-4 h-4 flex items-center justify-center rounded-full text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-tertiary)] transition-colors"
                             >
                                 <InfoCircle className="w-3.5 h-3.5" />
                             </span>
                         </IconTooltip>
                     )}
                 </div>
-                <p className="font-semibold text-xl text-[#101828] leading-[28px] whitespace-nowrap">
+                <p className="font-semibold text-xl text-[var(--colors-text-primary)] leading-[28px] whitespace-nowrap">
                     {metric.value}
                 </p>
                 <div className="flex gap-1 items-center whitespace-nowrap">
@@ -479,14 +479,14 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
                             </span>
                         </div>
                     )}
-                    <p className="font-normal text-xs text-[#667085]">
+                    <p className="font-normal text-xs text-[var(--colors-text-quaternary)]">
                         {metric.comparison}
                     </p>
                 </div>
             </div>
             {/* Featured icon — shrunk to 32px to match the smaller card. */}
-            <div className="bg-[#f1f2ed] overflow-hidden relative rounded-full flex-shrink-0 w-8 h-8 flex items-center justify-center">
-                <Icon size={16} className="text-[#475467]" />
+            <div className="bg-[var(--colors-tertiary-50)] overflow-hidden relative rounded-full flex-shrink-0 w-8 h-8 flex items-center justify-center">
+                <Icon size={16} className="text-[var(--colors-text-tertiary)]" />
             </div>
         </Root>
     );
@@ -502,15 +502,15 @@ function ActivityRow({ item }: { item: TeamActivityItem }) {
     const Icon = item.icon;
     return (
         <div className="flex gap-3 items-center w-full">
-            <div className="bg-[#f9fafb] border border-[#e4e7ec] overflow-hidden relative rounded-xl flex-shrink-0 w-12 h-12 flex items-center justify-center shadow-sm">
-                <Icon size={24} className="text-[#475467]" />
+            <div className="bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-secondary)] overflow-hidden relative rounded-xl flex-shrink-0 w-12 h-12 flex items-center justify-center shadow-sm">
+                <Icon size={24} className="text-[var(--colors-text-tertiary)]" />
             </div>
             <div className="flex flex-1 flex-col gap-0.5 min-w-0">
                 <div className="flex gap-1.5 items-center whitespace-nowrap">
-                    <span className="font-semibold text-sm text-[#344054]">{item.name}</span>
-                    <span className="font-normal text-sm text-[#667085]">{item.timeAgo}</span>
+                    <span className="font-semibold text-sm text-[var(--colors-text-secondary)]">{item.name}</span>
+                    <span className="font-normal text-sm text-[var(--colors-text-quaternary)]">{item.timeAgo}</span>
                 </div>
-                <p className="font-normal text-sm text-[#475467]">{item.description}</p>
+                <p className="font-normal text-sm text-[var(--colors-text-tertiary)]">{item.description}</p>
             </div>
         </div>
     );
@@ -628,7 +628,7 @@ export default function AdminDashboard() {
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -1567,8 +1567,8 @@ export default function AdminDashboard() {
                             className={cn(
                                 "flex gap-2 h-10 items-center justify-center px-1 relative flex-shrink-0 transition-colors border-b-2",
                                 activeTab === "today"
-                                    ? "border-[#101828] text-[#101828] font-semibold"
-                                    : "border-transparent text-[#667085] font-semibold hover:text-[#344054]"
+                                    ? "border-[var(--colors-text-primary)] text-[var(--colors-text-primary)] font-semibold"
+                                    : "border-transparent text-[var(--colors-text-quaternary)] font-semibold hover:text-[var(--colors-text-secondary)]"
                             )}
                         >
                             <span className="text-sm">Today</span>
@@ -1578,8 +1578,8 @@ export default function AdminDashboard() {
                             className={cn(
                                 "flex gap-2 h-10 items-center justify-center px-1 relative flex-shrink-0 transition-colors border-b-2",
                                 activeTab === "coming"
-                                    ? "border-[#101828] text-[#101828] font-semibold"
-                                    : "border-transparent text-[#667085] font-semibold hover:text-[#344054]"
+                                    ? "border-[var(--colors-text-primary)] text-[var(--colors-text-primary)] font-semibold"
+                                    : "border-transparent text-[var(--colors-text-quaternary)] font-semibold hover:text-[var(--colors-text-secondary)]"
                             )}
                         >
                             <span className="text-sm">Coming Up</span>
@@ -1589,8 +1589,8 @@ export default function AdminDashboard() {
                             className={cn(
                                 "flex gap-2 h-10 items-center justify-center px-1 relative flex-shrink-0 transition-colors border-b-2",
                                 activeTab === "performance"
-                                    ? "border-[#101828] text-[#101828] font-semibold"
-                                    : "border-transparent text-[#667085] font-semibold hover:text-[#344054]"
+                                    ? "border-[var(--colors-text-primary)] text-[var(--colors-text-primary)] font-semibold"
+                                    : "border-transparent text-[var(--colors-text-quaternary)] font-semibold hover:text-[var(--colors-text-secondary)]"
                             )}
                         >
                             <span className="text-sm">Performance</span>
@@ -1650,7 +1650,7 @@ export default function AdminDashboard() {
 
                         {/* Coming-up range pill — Next 7 days | Next 30 days. */}
                         {activeTab === "coming" && (
-                            <div className="flex items-center gap-1 h-10 p-1 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px]">
+                            <div className="flex items-center gap-1 h-10 p-1 bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[10px]">
                                 {([7, 30] as const).map(n => (
                                     <button
                                         key={n}
@@ -1659,8 +1659,8 @@ export default function AdminDashboard() {
                                         className={cn(
                                             "h-8 px-3 rounded-[6px] text-[13px] font-medium transition-colors",
                                             comingRange === n
-                                                ? "bg-white text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                                : "text-[#667085] hover:text-[#344054]",
+                                                ? "bg-white text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                                : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                                         )}
                                     >
                                         Next {n} days
@@ -1801,11 +1801,11 @@ export default function AdminDashboard() {
             {activeTab === "today" && <div className="flex items-start gap-6">
 
                 {/* Today's Classes */}
-                <div className="bg-white border border-[#e4e7ec] flex flex-1 flex-col gap-4 h-[532px] items-start min-w-0 overflow-hidden pb-4 pt-6 px-6 relative rounded-[20px]">
+                <div className="bg-white border border-[var(--colors-border-secondary)] flex flex-1 flex-col gap-4 h-[532px] items-start min-w-0 overflow-hidden pb-4 pt-6 px-6 relative rounded-[20px]">
                     {/* Header — Today's classes title + See all button.
                         Click navigates to the schedule list per the brief. */}
                     <div className="flex gap-3 items-center w-full flex-shrink-0">
-                        <p className="font-semibold text-lg text-[#101828] flex-1 truncate">
+                        <p className="font-semibold text-lg text-[var(--colors-text-primary)] flex-1 truncate">
                             Today&apos;s sessions
                         </p>
                         {/* Attendee entry point removed — the attendance console
@@ -1829,16 +1829,16 @@ export default function AdminDashboard() {
                                     key={`${slot.time} ${slot.meridiem}`}
                                     className={cn(
                                         "flex items-stretch w-full flex-shrink-0",
-                                        !isLast && "border-b border-[#e4e7ec]"
+                                        !isLast && "border-b border-[var(--colors-border-secondary)]"
                                     )}
                                 >
                                     {/* Time cell */}
                                     <div className="w-[70px] flex items-center justify-end px-4 py-3 flex-shrink-0">
                                         <div className="flex flex-col items-end">
-                                            <p className="font-medium text-sm text-[#667085] whitespace-nowrap">
+                                            <p className="font-medium text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap">
                                                 {slot.time}
                                             </p>
-                                            <p className="font-medium text-sm text-[#667085] whitespace-nowrap">
+                                            <p className="font-medium text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap">
                                                 {slot.meridiem}
                                             </p>
                                         </div>
@@ -1882,13 +1882,13 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-white border-1 border-[#e4e7ec] flex flex-1 flex-col gap-4 h-[532px] items-start min-w-0 overflow-hidden pb-4 pt-6 px-6 relative rounded-[20px]">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] flex flex-1 flex-col gap-4 h-[532px] items-start min-w-0 overflow-hidden pb-4 pt-6 px-6 relative rounded-[20px]">
                     {/* Header — Recent activity title + See all button.
                         "See all" routes to the notifications module's
                         Team activity tab, which surfaces the full feed
                         (same data source). */}
                     <div className="flex gap-3 items-center w-full flex-shrink-0">
-                        <p className="font-semibold text-lg text-[#101828] flex-1 truncate">
+                        <p className="font-semibold text-lg text-[var(--colors-text-primary)] flex-1 truncate">
                             Recent activity
                         </p>
                         <Button
@@ -1906,7 +1906,7 @@ export default function AdminDashboard() {
                             <div key={item.id} className="w-full flex flex-col gap-4">
                                 <ActivityRow item={item} />
                                 {idx < recentActivity.length - 1 && (
-                                    <div className="w-full h-px bg-[#e4e7ec]" />
+                                    <div className="w-full h-px bg-[var(--colors-bg-quaternary)]" />
                                 )}
                             </div>
                         ))}
@@ -2004,8 +2004,8 @@ export default function AdminDashboard() {
                 if (rows.length === 0) return null;
 
                 return (
-                    <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3">
-                        <p className="font-semibold text-lg text-[#101828]">Needs Attention</p>
+                    <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3">
+                        <p className="font-semibold text-lg text-[var(--colors-text-primary)]">Needs Attention</p>
                         <div className="flex flex-col">
                             {rows.map((r, i) => (
                                 <NeedsAttentionRow

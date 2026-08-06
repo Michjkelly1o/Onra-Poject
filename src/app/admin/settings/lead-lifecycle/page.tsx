@@ -71,11 +71,11 @@ function LeadSourcesCard() {
 
     return (
         <>
-            <section className="rounded-[12px] border border-[#e4e7ec] bg-white overflow-hidden">
-                <header className="flex items-start justify-between gap-3 px-6 py-4 border-b border-[#e4e7ec]">
+            <section className="rounded-[12px] border border-[var(--colors-border-secondary)] bg-white overflow-hidden">
+                <header className="flex items-start justify-between gap-3 px-6 py-4 border-b border-[var(--colors-border-secondary)]">
                     <div className="flex flex-col gap-0.5">
-                        <p className="text-[16px] font-semibold text-[#101828]">Customer sources</p>
-                        <p className="text-[13px] text-[#667085]">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Customer sources</p>
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)]">
                             Where new leads and customers come from. Powers the lead form + Details tab
                             Source field + Acquisition report.
                         </p>
@@ -89,10 +89,10 @@ function LeadSourcesCard() {
                         Add
                     </Button>
                 </header>
-                <ul className="divide-y divide-[#f2f4f7]">
+                <ul className="divide-y divide-[var(--colors-bg-tertiary)]">
                     {leadSources.map(s => (
                         <li key={s.id} className="flex items-center gap-3 px-6 py-3">
-                            <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
+                            <span className="flex-1 text-[14px] text-[var(--colors-text-primary)]">{s.label}</span>
                             <IconButton
                                 label="Rename source"
                                 onClick={() => setEditing({ mode: "edit", id: s.id, label: s.label })}
@@ -126,7 +126,7 @@ function LeadSourcesCard() {
                 tone="danger"
                 title="Delete source?"
                 description={confirmDelete ? (
-                    <>Remove <span className="font-medium text-[#101828]">&ldquo;{confirmDelete.label}&rdquo;</span> from the lead intake list. Customers already tagged with this source keep their history but the value stops appearing in the picker.</>
+                    <>Remove <span className="font-medium text-[var(--colors-text-primary)]">&ldquo;{confirmDelete.label}&rdquo;</span> from the lead intake list. Customers already tagged with this source keep their history but the value stops appearing in the picker.</>
                 ) : ""}
                 confirmLabel="Delete"
                 onConfirm={() => confirmDelete && handleDelete(confirmDelete.id, confirmDelete.label)}
@@ -167,11 +167,11 @@ function FollowUpStagesCard() {
 
     return (
         <>
-            <section className="rounded-[12px] border border-[#e4e7ec] bg-white overflow-hidden">
-                <header className="flex items-start justify-between gap-3 px-6 py-4 border-b border-[#e4e7ec]">
+            <section className="rounded-[12px] border border-[var(--colors-border-secondary)] bg-white overflow-hidden">
+                <header className="flex items-start justify-between gap-3 px-6 py-4 border-b border-[var(--colors-border-secondary)]">
                     <div className="flex flex-col gap-0.5">
-                        <p className="text-[16px] font-semibold text-[#101828]">Follow-up stages</p>
-                        <p className="text-[13px] text-[#667085]">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Follow-up stages</p>
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)]">
                             The funnel your staff moves each lead through. Keep it tight — max {MAX_STAGES} stages.
                         </p>
                     </div>
@@ -185,10 +185,10 @@ function FollowUpStagesCard() {
                         Add
                     </Button>
                 </header>
-                <ul className="divide-y divide-[#f2f4f7]">
+                <ul className="divide-y divide-[var(--colors-bg-tertiary)]">
                     {followUpStages.map(s => (
                         <li key={s.id} className="flex items-center gap-3 px-6 py-3">
-                            <span className="flex-1 text-[14px] text-[#101828]">{s.label}</span>
+                            <span className="flex-1 text-[14px] text-[var(--colors-text-primary)]">{s.label}</span>
                             <IconButton
                                 label="Rename stage"
                                 onClick={() => setEditing({ mode: "edit", id: s.id, label: s.label })}
@@ -222,7 +222,7 @@ function FollowUpStagesCard() {
                 tone="danger"
                 title="Delete stage?"
                 description={confirmDelete ? (
-                    <>Remove <span className="font-medium text-[#101828]">&ldquo;{confirmDelete.label}&rdquo;</span> from the funnel. Customers currently on this stage are checked first — if any are, the delete is blocked and you&apos;ll be asked to move them off.</>
+                    <>Remove <span className="font-medium text-[var(--colors-text-primary)]">&ldquo;{confirmDelete.label}&rdquo;</span> from the funnel. Customers currently on this stage are checked first — if any are, the delete is blocked and you&apos;ll be asked to move them off.</>
                 ) : ""}
                 confirmLabel="Delete"
                 onConfirm={() => confirmDelete && handleDelete(confirmDelete.id, confirmDelete.label)}
@@ -251,8 +251,8 @@ function IconButton({
             disabled={disabled}
             className={cn(
                 "inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors",
-                "text-[#667085]",
-                !disabled && variant === "neutral" && "hover:bg-[#f2f4f7] hover:text-[#344054]",
+                "text-[var(--colors-text-quaternary)]",
+                !disabled && variant === "neutral" && "hover:bg-[var(--colors-bg-tertiary)] hover:text-[var(--colors-text-secondary)]",
                 !disabled && variant === "danger" && "hover:bg-[#fef3f2] hover:text-[#b42318]",
                 disabled && "opacity-40 cursor-not-allowed",
             )}

@@ -109,7 +109,7 @@ export default function KpiPage() {
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -211,8 +211,8 @@ export default function KpiPage() {
                                 className={cn(
                                     "flex gap-2 h-10 items-center justify-center px-1 relative flex-shrink-0 transition-colors border-b-2",
                                     tab === t.key
-                                        ? "border-[#101828] text-[#101828] font-semibold"
-                                        : "border-transparent text-[#667085] font-semibold hover:text-[#344054]",
+                                        ? "border-[var(--colors-text-primary)] text-[var(--colors-text-primary)] font-semibold"
+                                        : "border-transparent text-[var(--colors-text-quaternary)] font-semibold hover:text-[var(--colors-text-secondary)]",
                                 )}>
                                 <span className="text-sm">{t.label}</span>
                             </button>
@@ -250,11 +250,11 @@ export default function KpiPage() {
 
             {/* Coming-soon empty state (tabs not yet built). */}
             {showPhaseEmptyState && (
-                <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
-                    <p className="text-[16px] font-semibold text-[#101828]">
+                <div className="bg-white border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">
                         {activeTab.label} KPIs — coming soon
                     </p>
-                    <p className="text-[14px] text-[#475467]">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)]">
                         Metric cards land in the phase for this tab.
                     </p>
                 </div>
@@ -262,9 +262,9 @@ export default function KpiPage() {
 
             {/* Search empty state — same chrome as Insights. */}
             {q && filteredMetrics.length === 0 && (
-                <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
-                    <p className="text-[16px] font-semibold text-[#101828]">No KPIs found</p>
-                    <p className="text-[14px] text-[#475467]">Try a different search term.</p>
+                <div className="bg-white border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">No KPIs found</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)]">Try a different search term.</p>
                 </div>
             )}
         </div>

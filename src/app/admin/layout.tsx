@@ -41,7 +41,7 @@ export default function AdminLayout({
 
     return (
         <>
-            <div className="flex h-screen bg-[#f1f2ed]">
+            <div className="flex h-screen bg-[var(--colors-tertiary-50)]">
                 {/* Sidebar wrapper — drives width so content area reflows naturally */}
                 <div
                     className={cn(

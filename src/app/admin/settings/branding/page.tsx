@@ -145,11 +145,11 @@ export default function BrandingPage() {
                             <button
                                 type="button"
                                 onClick={openLivePortal}
-                                className="flex items-center gap-1 text-[16px] font-medium text-[#101828] leading-6 hover:text-[#475467] transition-colors"
+                                className="flex items-center gap-1 text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 hover:text-[var(--colors-text-tertiary)] transition-colors"
                                 title="Open live customer portal"
                             >
                                 <span>{b.portalUrl}</span>
-                                <Share04 className="w-5 h-5 text-[#475467]" />
+                                <Share04 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                             </button>
                         }
                     />
@@ -159,10 +159,10 @@ export default function BrandingPage() {
                     />
                 </div>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 <div className="flex flex-col gap-1 w-full">
-                    <p className="text-[14px] text-[#667085] leading-5">Visible menu items</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Visible menu items</p>
                     <div className="flex flex-wrap gap-2 w-full">
                         {b.menuItems.map(item => (
                             <MenuItemChip
@@ -201,11 +201,11 @@ function SectionCard({
     children: React.ReactNode;
 }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-6 w-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-6 w-full">
             <div className="flex items-center gap-6 w-full">
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-6">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-5">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{subtitle}</p>
                 </div>
                 <Button
                     variant="secondary-gray"
@@ -232,7 +232,7 @@ function PreviewRow({
 }) {
     return (
         <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
             <div className="flex items-center">{value}</div>
         </div>
     );
@@ -250,7 +250,7 @@ function SwatchValue({ color, label }: { color: string; label: string }) {
             >
                 <div className="absolute inset-0 rounded-full border border-[rgba(0,0,0,0.08)] pointer-events-none" />
             </div>
-            <p className="text-[16px] font-medium text-[#101828] leading-6">{label}</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">{label}</p>
         </div>
     );
 }
@@ -263,7 +263,7 @@ function VisibilityBadge({ visible }: { visible: boolean }) {
             className={
                 visible
                     ? "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-                    : "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]"
+                    : "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]"
             }
         >
             {visible ? "Visible" : "Hidden"}
@@ -279,8 +279,8 @@ function MenuItemChip({ label, enabled }: { label: string; enabled: boolean }) {
         <div
             className={
                 enabled
-                    ? "border-1 border-[#e4e7ec] bg-white rounded-[8px] px-4 py-2 text-[14px] font-medium text-[#344054] leading-5"
-                    : "border-1 border-[#d0d5dd] bg-[#f9fafb] rounded-[8px] px-4 py-2 text-[14px] font-medium text-[#667085] leading-5"
+                    ? "border-1 border-[var(--colors-border-secondary)] bg-white rounded-[8px] px-4 py-2 text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5"
+                    : "border-1 border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] rounded-[8px] px-4 py-2 text-[14px] font-medium text-[var(--colors-text-quaternary)] leading-5"
             }
         >
             {label}
@@ -294,8 +294,8 @@ function TextValue({ text, muted = false }: { text: string; muted?: boolean }) {
     return (
         <p className={
             muted
-                ? "text-[16px] font-medium text-[#98a2b3] leading-6"
-                : "text-[16px] font-medium text-[#101828] leading-6"
+                ? "text-[16px] font-medium text-[var(--colors-fg-quaternary)] leading-6"
+                : "text-[16px] font-medium text-[var(--colors-text-primary)] leading-6"
         }>
             {text}
         </p>
@@ -309,19 +309,19 @@ function AssetValue({ url }: { url: string }) {
     if (!url) {
         return (
             <div className="flex items-center gap-1">
-                <div className="w-5 h-5 rounded-[4px] bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
-                    <Image01 className="w-3 h-3 text-[#98a2b3]" />
+                <div className="w-5 h-5 rounded-[4px] bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0">
+                    <Image01 className="w-3 h-3 text-[var(--colors-fg-quaternary)]" />
                 </div>
-                <p className="text-[16px] font-medium text-[#101828] leading-6">Not uploaded</p>
+                <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">Not uploaded</p>
             </div>
         );
     }
     return (
         <div className="flex items-center gap-1">
-            <div className="w-5 h-5 rounded-[4px] bg-white border-1 border-[#e4e7ec] overflow-hidden shrink-0">
+            <div className="w-5 h-5 rounded-[4px] bg-white border-1 border-[var(--colors-border-secondary)] overflow-hidden shrink-0">
                 <img src={url} alt="" className="w-full h-full object-contain" />
             </div>
-            <p className="text-[16px] font-medium text-[#101828] leading-6">Uploaded</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">Uploaded</p>
         </div>
     );
 }
@@ -335,7 +335,7 @@ function NotificationChannelsSummary({ channels }: { channels: BrandingNotificat
     if (channels.whatsapp) active.push("WhatsApp");
     if (channels.sms)      active.push("SMS");
     if (active.length === 0) {
-        return <p className="text-[16px] font-medium text-[#98a2b3] leading-6">—</p>;
+        return <p className="text-[16px] font-medium text-[var(--colors-fg-quaternary)] leading-6">—</p>;
     }
-    return <p className="text-[16px] font-medium text-[#101828] leading-6">{active.join(" · ")}</p>;
+    return <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">{active.join(" · ")}</p>;
 }

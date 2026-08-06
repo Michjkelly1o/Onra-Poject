@@ -896,7 +896,7 @@ function POSInner() {
     const branchOptions = branches.filter(b => b.status === "active").map(b => ({
         value: b.id,
         label: b.name,
-        icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+        icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
     }));
 
     return (
@@ -910,8 +910,8 @@ function POSInner() {
                     {/* Toolbar: count (left) + branch + search + cart toggle (right) */}
                     <div className="flex items-end gap-3">
                         <div className="flex-1 flex flex-col">
-                            <p className="text-[14px] text-[#667085]">Total</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                 {filteredProducts.length} {TAB_LABEL[activeTab].unit}
                             </p>
                         </div>
@@ -919,7 +919,7 @@ function POSInner() {
                             options={[{ value: "", label: "All locations" }, ...branchOptions]}
                             value={branchId}
                             onChange={setBranchId}
-                            triggerIcon={<MarkerPin01 className="w-5 h-5 text-[#667085]" />}
+                            triggerIcon={<MarkerPin01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                             placeholder="Select location"
                             width="w-[180px]"
                         />
@@ -942,7 +942,7 @@ function POSInner() {
                         view card so left/right edges stay aligned with the
                         cart panel's fixed height.
                         ────────────────────────────────────────────────────────── */}
-                    <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden min-h-[760px]">
+                    <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden min-h-[760px]">
                         {/* Tab row */}
                         <div className="flex items-center px-6 py-4 gap-3">
                             <SegmentedTabs
@@ -1103,14 +1103,14 @@ function CartToggleButton({ open, onClick }: { open: boolean; onClick: () => voi
     if (open) {
         return (
             <button type="button" onClick={onClick} aria-label="Hide cart"
-                className="w-10 h-10 flex items-center justify-center bg-white border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
-                <ChevronRight className="w-4 h-4 text-[#344054]" />
+                className="w-10 h-10 flex items-center justify-center bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                <ChevronRight className="w-4 h-4 text-[var(--colors-text-secondary)]" />
             </button>
         );
     }
     return (
         <button type="button" onClick={onClick}
-            className="h-10 px-3 flex items-center gap-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
+            className="h-10 px-3 flex items-center gap-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
             <ChevronLeft className="w-4 h-4" />
             <span>Show cart</span>
         </button>
@@ -1202,10 +1202,10 @@ function PosCartPanel(props: {
         // CTA below the fold. `sticky top-6` so the cart stays anchored
         // while the catalog scrolls.
         // ──────────────────────────────────────────────────────────────────
-        <aside className="w-[400px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden sticky top-6 h-[860px] max-h-[calc(100vh-3rem)]">
+        <aside className="w-[400px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden sticky top-6 h-[860px] max-h-[calc(100vh-3rem)]">
             {/* Customer picker */}
             <div className="px-6 pt-6 pb-5 flex flex-col gap-3">
-                <label className="text-[14px] font-medium text-[#344054]">Add a customer</label>
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Add a customer</label>
                 <div className="flex items-end gap-2">
                     <div className="flex-1 min-w-0">
                         <CustomerPickerDropdown
@@ -1215,13 +1215,13 @@ function PosCartPanel(props: {
                         />
                     </div>
                     <button type="button" onClick={props.onNewCustomer}
-                        className="w-10 h-10 flex items-center justify-center bg-white border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors">
-                        <Plus className="w-5 h-5 text-[#344054]" />
+                        className="w-10 h-10 flex items-center justify-center bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <Plus className="w-5 h-5 text-[var(--colors-text-secondary)]" />
                     </button>
                 </div>
             </div>
 
-            <div className="mx-6 h-px bg-[#e4e7ec]" />
+            <div className="mx-6 h-px bg-[var(--colors-bg-quaternary)]" />
 
             {/* Line items */}
             <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3 relative">
@@ -1245,18 +1245,18 @@ function PosCartPanel(props: {
                 so both surfaces feel identical. The checkbox below swaps the
                 input + Apply button between promo and custom-discount modes;
                 discounts are mutually exclusive (applying one clears the other). */}
-            <div className="bg-[#f8f8f6] border-t border-[#e4e7ec] px-6 py-6 flex flex-col gap-5 shrink-0">
+            <div className="bg-[#f8f8f6] border-t border-[var(--colors-border-secondary)] px-6 py-6 flex flex-col gap-5 shrink-0">
                 <div className="flex flex-col gap-3">
                     {props.customDiscountOn ? (
                         <div className="flex items-end gap-3">
                             <div className="flex flex-col gap-1.5 flex-1">
-                                <label className="text-[14px] font-medium text-[#344054]">Custom discount</label>
-                                <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Custom discount</label>
+                                <div className="flex items-center h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                     <input type="number" min="0" max={props.allowedCustomPct} value={props.customDiscountPct}
                                         onChange={e => props.onCustomDiscountPct(e.target.value.replace(/^0+(?=\d)/, ""))}
                                         placeholder="0"
-                                        className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none" />
-                                    <span className="text-[16px] text-[#667085] ml-2">%</span>
+                                        className="flex-1 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder-[var(--colors-text-quaternary)] focus:outline-none" />
+                                    <span className="text-[16px] text-[var(--colors-text-quaternary)] ml-2">%</span>
                                 </div>
                             </div>
                             <Button variant="secondary-gray" size="md" onClick={props.onApplyCustomDiscount}>Apply</Button>
@@ -1265,23 +1265,23 @@ function PosCartPanel(props: {
                         <>
                             <div className="flex items-end gap-3">
                                 <div className="flex flex-col gap-1.5 flex-1">
-                                    <label className="text-[14px] font-medium text-[#344054]">Promotion</label>
-                                    <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                        <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
+                                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Promotion</label>
+                                    <div className="flex items-center h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                        <Sale04 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
                                         <input type="text" value={props.promoInput}
                                             onChange={e => props.onPromoInput(e.target.value)}
                                             placeholder="Enter promotion"
-                                            className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none ml-2" />
+                                            className="flex-1 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder-[var(--colors-text-quaternary)] focus:outline-none ml-2" />
                                     </div>
                                 </div>
                                 <Button variant="secondary-gray" size="md" onClick={props.onApplyPromo}>Apply</Button>
                             </div>
                             {props.appliedPromo && (
                                 <div className="flex flex-col gap-1.5">
-                                    <p className="text-[14px] text-[#667085]">Applied promotion</p>
-                                    <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
-                                        <span className="flex-1 text-[14px] font-medium text-[#344054]">{props.appliedPromo.code}</span>
-                                        <button type="button" onClick={props.onRemovePromo} className="text-[#667085] hover:text-[#101828]">
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Applied promotion</p>
+                                    <div className="bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
+                                        <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-secondary)]">{props.appliedPromo.code}</span>
+                                        <button type="button" onClick={props.onRemovePromo} className="text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)]">
                                             <XClose className="w-3 h-3" />
                                         </button>
                                     </div>
@@ -1299,18 +1299,18 @@ function PosCartPanel(props: {
                         <button type="button" onClick={() => props.onCustomDiscountToggle(!props.customDiscountOn)} className="flex items-start gap-2 text-left">
                             <span className={cn(
                                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center mt-0.5 shrink-0 transition-colors",
-                                props.customDiscountOn ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]"
+                                props.customDiscountOn ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]"
                             )}>
                                 {props.customDiscountOn && <Check className="w-3 h-3 text-white" />}
                             </span>
-                            <span className="text-[14px] font-medium text-[#344054]">Apply custom discount</span>
+                            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Apply custom discount</span>
                         </button>
                     )}
                 </div>
 
                 {/* Totals */}
                 <div className="flex flex-col gap-2">
-                    <p className="text-[14px] font-medium text-[#101828]">Detail payment</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Detail payment</p>
                     <Row label="Subtotal" value={props.subtotal} />
                     {props.appliedPromo && (
                         <Row label={`Promotion (${props.appliedPromo.code})`} value={-props.promoDiscount} />
@@ -1331,10 +1331,10 @@ function PosCartPanel(props: {
                         />
                     )}
                 </div>
-                <div className="h-px bg-[#e4e7ec]" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                 <div className="flex items-center">
-                    <p className="flex-1 text-[18px] font-medium text-[#101828]">Total</p>
-                    <p className="text-[18px] font-semibold text-[#101828]">AED {props.total.toLocaleString()}</p>
+                    <p className="flex-1 text-[18px] font-medium text-[var(--colors-text-primary)]">Total</p>
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">AED {props.total.toLocaleString()}</p>
                 </div>
 
                 <Button variant="primary" size="lg" className="w-full" disabled={!canProceed} onClick={props.onProceed}>
@@ -1349,8 +1349,8 @@ function Row({ label, value }: { label: string; value: number }) {
     const isNegative = value < 0;
     return (
         <div className="flex items-center">
-            <p className="flex-1 text-[14px] text-[#667085]">{label}</p>
-            <p className={cn("text-[16px] font-medium", isNegative ? "text-[#b42318]" : "text-[#101828]")}>
+            <p className="flex-1 text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className={cn("text-[16px] font-medium", isNegative ? "text-[#b42318]" : "text-[var(--colors-text-primary)]")}>
                 {isNegative ? "−" : ""}AED {Math.abs(value).toLocaleString()}
             </p>
         </div>
@@ -1366,39 +1366,39 @@ function CartLineRow({ line, onQty, onRemove }: {
         <div className="flex items-start gap-3">
             <CartIcon kind={line.kind} imageUrl={line.imageUrl} />
             <div className="flex-1 min-w-0 flex flex-col gap-1">
-                <p className="text-[14px] font-medium text-[#101828] line-clamp-2">{line.name}</p>
-                <div className="flex items-center gap-1.5 text-[14px] text-[#658774] flex-wrap">
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] line-clamp-2">{line.name}</p>
+                <div className="flex items-center gap-1.5 text-[14px] text-[var(--colors-secondary-600)] flex-wrap">
                     <span>AED {(line.unitPrice * line.quantity).toLocaleString()}</span>
                     {line.primaryMeta && (
                         <>
-                            <span className="text-[#d0d5dd]">|</span>
+                            <span className="text-[var(--colors-border-primary)]">|</span>
                             <span>{line.primaryMeta}</span>
                         </>
                     )}
                 </div>
                 {line.giftCard && (
-                    <p className="text-[12px] text-[#667085] truncate">
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate">
                         {line.giftCard.senderName
                             ? <>From {line.giftCard.senderName}</>
                             : <span className="text-[#dc6803]">Sender pending</span>}
                     </p>
                 )}
                 {line.appointment && (
-                    <p className="text-[12px] text-[#667085]">{fmtSessionWhen(line.appointment)}</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)]">{fmtSessionWhen(line.appointment)}</p>
                 )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
                 {/* Session lines are a single booked slot — no quantity stepper,
                     just remove. Every other line keeps the −/qty/+ control. */}
                 {!line.appointment && (
-                    <div className="flex items-center gap-2 border-1 border-[#e4e7ec] rounded-[8px] px-1.5 py-1">
+                    <div className="flex items-center gap-2 border-1 border-[var(--colors-border-secondary)] rounded-[8px] px-1.5 py-1">
                         <button type="button" onClick={() => line.kind === "membership" || line.quantity <= 1 ? onRemove() : onQty(-1)}
-                            className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828]">
+                            className="w-[18px] h-[18px] flex items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)]">
                             <span className="text-[16px] leading-none">−</span>
                         </button>
-                        <span className="text-[12px] font-semibold text-[#101828] min-w-[14px] text-center">{line.quantity}</span>
+                        <span className="text-[12px] font-semibold text-[var(--colors-text-primary)] min-w-[14px] text-center">{line.quantity}</span>
                         <button type="button" disabled={line.kind === "membership"} onClick={() => onQty(+1)}
-                            className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed">
+                            className="w-[18px] h-[18px] flex items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed">
                             <Plus className="w-[14px] h-[14px]" />
                         </button>
                     </div>
@@ -1420,7 +1420,7 @@ function CartIcon({ kind, imageUrl }: { kind: PosProductKind; imageUrl?: string 
     const isPhotoKind = kind === "retail" || kind === "private" || kind === "recovery";
     if (isPhotoKind && imageUrl) {
         return (
-            <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[#e4e7ec] bg-white">
+            <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[var(--colors-border-secondary)] bg-white">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imageUrl} alt="" className="w-full h-full object-cover" />
             </div>
@@ -1428,8 +1428,8 @@ function CartIcon({ kind, imageUrl }: { kind: PosProductKind; imageUrl?: string 
     }
     if (kind === "retail") {
         return (
-            <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[#e4e7ec] bg-white">
-                <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
+            <div className="relative shrink-0 w-10 h-10 rounded-[8.84px] overflow-hidden border-1 border-[var(--colors-border-secondary)] bg-white">
+                <div className="w-full h-full bg-gradient-to-br from-[var(--colors-secondary-50)] to-[#f5fffa]" />
             </div>
         );
     }
@@ -1437,10 +1437,10 @@ function CartIcon({ kind, imageUrl }: { kind: PosProductKind; imageUrl?: string 
     // "the same product" the buyer just clicked in the catalog.
     const tint =
         kind === "membership" ? { bg: "bg-[#e0eaff]", color: "text-[#3538cd]" } :
-        kind === "package"    ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[#658774]" } :
+        kind === "package"    ? { bg: "bg-[var(--brand-tertiary)]", color: "text-[var(--colors-secondary-600)]" } :
         kind === "private"    ? { bg: "bg-[#f4ebff]", color: "text-[#7f56d9]" } :
         kind === "recovery"   ? { bg: "bg-[#fef0c7]", color: "text-[#dc6803]" } :
-                                 { bg: "bg-[#e0f9f4]", color: "text-[#4b8c9a]" };
+                                 { bg: "bg-[#e0f9f4]", color: "text-[var(--colors-brand-600)]" };
     const Icon = kind === "membership" ? CreditCard02
         : kind === "package"  ? Package
         : kind === "private"  ? User01
@@ -1480,9 +1480,9 @@ function CustomerPickerDropdown({ customers, value, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(o => !o)}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
-                    open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]",
-                    selected ? "text-[#101828]" : "text-[#667085]")}>
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                    open ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-500)]",
+                    selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                 {selected ? (
                     <>
                         <TableAvatar initials={selected.initials} imageUrl={selected.imageUrl} size={24} />
@@ -1490,29 +1490,29 @@ function CustomerPickerDropdown({ customers, value, onChange }: {
                     </>
                 ) : (
                     <>
-                        <User01 className="w-4 h-4 text-[#667085]" />
+                        <User01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                         <span className="flex-1 text-left">Select customer</span>
                     </>
                 )}
-                {open ? <ChevronUp className="w-4 h-4 text-[#667085]" /> : <ChevronDown className="w-4 h-4 text-[#667085]" />}
+                {open ? <ChevronUp className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> : <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 max-h-[320px] overflow-hidden flex flex-col">
-                    <div className="p-2 border-b border-[#e4e7ec]">
+                <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 max-h-[320px] overflow-hidden flex flex-col">
+                    <div className="p-2 border-b border-[var(--colors-border-secondary)]">
                         <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder="Search customer..." autoFocus
-                            className="w-full h-9 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]" />
+                            className="w-full h-9 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)]" />
                     </div>
                     <div className="overflow-y-auto flex-1 py-1">
                         {filtered.length === 0 ? (
-                            <p className="px-4 py-3 text-[14px] text-[#667085]">No matching customers.</p>
+                            <p className="px-4 py-3 text-[14px] text-[var(--colors-text-quaternary)]">No matching customers.</p>
                         ) : filtered.map(c => (
                             <button key={c.id} type="button" onClick={() => { onChange(c.id); setOpen(false); setQ(""); }}
-                                className={cn("flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-[#f9fafb] transition-colors",
+                                className={cn("flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-[var(--colors-bg-secondary)] transition-colors",
                                     c.id === value && "bg-[#f0fff8]")}>
                                 <TableAvatar initials={c.initials} imageUrl={c.imageUrl} size={28} />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[14px] font-medium text-[#101828] truncate">{c.firstName} {c.lastName}</p>
-                                    <p className="text-[13px] text-[#667085] truncate">{c.email}</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{c.firstName} {c.lastName}</p>
+                                    <p className="text-[13px] text-[var(--colors-text-quaternary)] truncate">{c.email}</p>
                                 </div>
                             </button>
                         ))}
@@ -1544,11 +1544,11 @@ function PosFilterPanel({ open, onClose, applied, onApply, showCredits }: {
     return (
         <div className="fixed inset-0 z-[200] flex justify-end">
             <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
-            <div className="relative w-[400px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+            <div className="relative w-[400px] h-full bg-white border-l border-[var(--colors-border-secondary)] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col">
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
@@ -1562,7 +1562,7 @@ function PosFilterPanel({ open, onClose, applied, onApply, showCredits }: {
                             onMax={v => setPending(p => ({ ...p, creditsMax: v }))}
                         />
                     )}
-                    {showCredits && <div className="h-px bg-[#e4e7ec]" />}
+                    {showCredits && <div className="h-px bg-[var(--colors-bg-quaternary)]" />}
                     <RangeSection
                         label="Price range"
                         floor={0} ceiling={3000} step={50}
@@ -1573,7 +1573,7 @@ function PosFilterPanel({ open, onClose, applied, onApply, showCredits }: {
                         onMax={v => setPending(p => ({ ...p, priceMax: v }))}
                     />
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
@@ -1613,7 +1613,7 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
 
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[14px] font-medium text-[#344054]">{label}</p>
+            <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
             <div className="px-1">
                 <RangeSlider
                     floor={floor} ceiling={ceiling} step={step}
@@ -1624,11 +1624,11 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-[12px] text-[#667085] text-center">Minimum</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)] text-center">Minimum</p>
                     <ValueChip prefix={prefix} value={sliderMin} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-[12px] text-[#667085] text-center">Maximum</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)] text-center">Maximum</p>
                     <ValueChip prefix={prefix} value={sliderMax} />
                 </div>
             </div>
@@ -1638,7 +1638,7 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
 
 function ValueChip({ prefix, value }: { prefix: string; value: number }) {
     return (
-        <div className="h-11 px-4 flex items-center justify-center border-1 border-[#e4e7ec] rounded-[12px] text-[14px] font-medium text-[#101828]">
+        <div className="h-11 px-4 flex items-center justify-center border-1 border-[var(--colors-border-secondary)] rounded-[12px] text-[14px] font-medium text-[var(--colors-text-primary)]">
             {prefix}{value.toLocaleString()}
         </div>
     );
@@ -1677,12 +1677,12 @@ function SizePickerModal({ product, branchId, onClose, onPick }: {
             <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[420px] max-w-[calc(100vw-32px)] flex flex-col">
                 <div className="flex items-start gap-3 p-6 pb-4">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7">Choose a size</p>
-                        <p className="text-[14px] text-[#475467] leading-5 mt-0.5 truncate">{product.name}</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Choose a size</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5 truncate">{product.name}</p>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-1">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mt-1 -mr-1">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="px-6 pb-6 flex flex-col gap-2">
@@ -1698,12 +1698,12 @@ function SizePickerModal({ product, branchId, onClose, onPick }: {
                                 className={cn(
                                     "w-full flex items-center justify-between gap-3 px-4 h-12 rounded-[10px] border-1 text-left transition-colors",
                                     soldOut
-                                        ? "border-[#e4e7ec] bg-[#f9fafb] cursor-not-allowed"
-                                        : "border-[#d0d5dd] bg-white hover:border-[#7ba08c] hover:bg-[#f9fafb]",
+                                        ? "border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] cursor-not-allowed"
+                                        : "border-[var(--colors-border-primary)] bg-white hover:border-[var(--colors-secondary-500)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}
                             >
-                                <span className={cn("text-[15px] font-medium", soldOut ? "text-[#98a2b3]" : "text-[#101828]")}>{size}</span>
-                                <span className={cn("text-[13px] font-medium", soldOut ? "text-[#b42318]" : "text-[#667085]")}>
+                                <span className={cn("text-[15px] font-medium", soldOut ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-primary)]")}>{size}</span>
+                                <span className={cn("text-[13px] font-medium", soldOut ? "text-[#b42318]" : "text-[var(--colors-text-quaternary)]")}>
                                     {soldOut ? "Out of stock" : `${units} in stock`}
                                 </span>
                             </button>
@@ -1783,20 +1783,20 @@ function GiftCardRecipientModal({ open, designId, customer, onClose, onConfirm }
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6 pb-5">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Gift card recipient information</p>
-                        <p className="text-[14px] text-[#475467]">Add information and amount to the recipient</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Gift card recipient information</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)]">Add information and amount to the recipient</p>
                     </div>
-                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
-                <div className="h-px bg-[#e4e7ec]" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Body — boxed sections */}
                 <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
                     {/* Recipient information section */}
-                    <section className="border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-4">
-                        <p className="text-[16px] font-semibold text-[#101828]">Recipient information</p>
+                    <section className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-4">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Recipient information</p>
 
                         <div className="grid grid-cols-2 gap-4">
                             <Field label="Recipient name">
@@ -1814,7 +1814,7 @@ function GiftCardRecipientModal({ open, designId, customer, onClose, onConfirm }
                                 helpColor={amountValid ? "muted" : "error"}
                             >
                                 <div className="relative">
-                                    <span className="absolute left-[14px] top-1/2 -translate-y-1/2 text-[16px] text-[#667085]">AED</span>
+                                    <span className="absolute left-[14px] top-1/2 -translate-y-1/2 text-[16px] text-[var(--colors-text-quaternary)]">AED</span>
                                     <NumericStringInput
                                         value={amount} onChange={setAmount}
                                         min={design.min_value_aed} max={design.max_value_aed}
@@ -1825,7 +1825,7 @@ function GiftCardRecipientModal({ open, designId, customer, onClose, onConfirm }
                         )}
 
                         <Field
-                            label={<>Add personal message <span className="text-[#667085] font-normal">(optional)</span></>}
+                            label={<>Add personal message <span className="text-[var(--colors-text-quaternary)] font-normal">(optional)</span></>}
                             help={`${message.length}/${MESSAGE_MAX_LEN}`}
                             helpColor="muted"
                         >
@@ -1834,7 +1834,7 @@ function GiftCardRecipientModal({ open, designId, customer, onClose, onConfirm }
                                 onChange={e => setMessage(e.target.value.slice(0, MESSAGE_MAX_LEN))}
                                 rows={3}
                                 placeholder="e.g Happy birthday Paula! Enjoy your classes 🎉"
-                                className="w-full px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] resize-none shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                className="w-full px-3 py-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] resize-none shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                             />
                         </Field>
                     </section>
@@ -1842,31 +1842,31 @@ function GiftCardRecipientModal({ open, designId, customer, onClose, onConfirm }
                     {/* Sender information section — live-bound to the cart's
                         customer. Placeholder state when no customer selected
                         (gift-card line auto-fills senderName once one is). */}
-                    <section className="border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-4">
-                        <p className="text-[16px] font-semibold text-[#101828]">Sender information</p>
+                    <section className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-4">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Sender information</p>
                         {customer ? (
                             <div className="flex items-center">
-                                <p className="flex-1 text-[14px] text-[#667085]">Sender</p>
+                                <p className="flex-1 text-[14px] text-[var(--colors-text-quaternary)]">Sender</p>
                                 <div className="flex items-center gap-2">
                                     <TableAvatar
                                         initials={customer.initials}
                                         imageUrl={customer.imageUrl}
                                         size={28}
                                     />
-                                    <span className="text-[14px] font-medium text-[#101828]">{customer.firstName} {customer.lastName}</span>
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{customer.firstName} {customer.lastName}</span>
                                 </div>
                             </div>
                         ) : (
-                            <div className="bg-[#f9fafb] border-1 border-dashed border-[#d0d5dd] rounded-[8px] px-4 py-3 flex flex-col gap-0.5">
-                                <p className="text-[14px] font-medium text-[#344054]">No customer selected</p>
-                                <p className="text-[13px] text-[#667085]">Sender auto-fills from the customer you add to the cart.</p>
+                            <div className="bg-[var(--colors-bg-secondary)] border-1 border-dashed border-[var(--colors-border-primary)] rounded-[8px] px-4 py-3 flex flex-col gap-0.5">
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">No customer selected</p>
+                                <p className="text-[13px] text-[var(--colors-text-quaternary)]">Sender auto-fills from the customer you add to the cart.</p>
                             </div>
                         )}
                     </section>
                 </div>
 
                 {/* Footer */}
-                <div className="h-px bg-[#e4e7ec]" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                 <div className="flex gap-3 px-6 py-4 shrink-0">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="lg" className="flex-1" disabled={!canSubmit} onClick={handleSubmit}>
@@ -1886,12 +1886,12 @@ function Field({ label, help, helpColor = "muted", children }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
             {help && (
                 <p className={cn(
                     "text-[13px]",
-                    helpColor === "error" ? "text-[#b42318]" : "text-[#667085]",
+                    helpColor === "error" ? "text-[#b42318]" : "text-[var(--colors-text-quaternary)]",
                 )}>
                     {help}
                 </p>
@@ -1908,7 +1908,7 @@ function TextInput({ value, onChange, placeholder, type = "text", icon }: {
             {icon && <span className="absolute left-3 top-1/2 -translate-y-1/2">{icon}</span>}
             <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
                 className={cn(
-                    "w-full h-10 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    "w-full h-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                     icon ? "pl-9" : "pl-3",
                 )} />
         </div>

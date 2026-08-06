@@ -143,7 +143,7 @@ function PriceCell({ priceAed }: { priceAed: number }) {
     // header (see `PriceColumnHeaderTaxLine` below). One row in the header
     // says it once for the whole column instead of repeating per row.
     return (
-        <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">{formatAed(priceAed)}</span>
+        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{formatAed(priceAed)}</span>
     );
 }
 
@@ -164,7 +164,7 @@ function PriceColumnHeaderTaxLine({ rows }: { rows: ProductRow[] }) {
     const match = findActiveTaxRuleFor({ taxRules, taxRates }, category, undefined);
     if (!match) return null;
     return (
-        <span className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap">
+        <span className="text-[11px] font-normal text-[var(--colors-text-quaternary)] normal-case whitespace-nowrap">
             {pricesIncludeTax
                 ? `Inc. ${match.rate.ratePercentage}% tax`
                 : `+ ${match.rate.ratePercentage}% tax`}
@@ -201,7 +201,7 @@ const MODAL_CONFIG: Record<ModalAction, {
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Archive this product?",
         titleBulk: n => `Archive ${n} products?`,
         description: subject => <>{subject} will be hidden from the Point of Sale catalog and the class-types Applicable Plans list. You can recover archived products at any time.</>,
@@ -215,14 +215,14 @@ const MODAL_CONFIG: Record<ModalAction, {
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Recover this product?",
         titleBulk: n => `Recover ${n} products?`,
         description: subject => <>{subject} will be restored to Active status and become sellable again.</>,
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Check, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Reactivate this product?",
         titleBulk: n => `Reactivate ${n} products?`,
         description: subject => <>{subject} will become available again in the Point of Sale catalog.</>,
@@ -246,20 +246,20 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -292,17 +292,17 @@ function FilterPanel({ open, onClose, applied, onApply }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Status — multi-select pills */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {ALL_STATUSES.map(s => (
                                 <FilterPill key={s} label={STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
@@ -311,7 +311,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Price range — order per user spec: Status → Price → Credits */}
                     <RangeSection
@@ -324,7 +324,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         onMax={v => setPending(p => ({ ...p, priceMax: v }))}
                     />
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Credits range — same RangeSection / ValueChip pattern as POS */}
                     <RangeSection
@@ -337,7 +337,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                     />
                 </div>
 
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
@@ -375,7 +375,7 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
 
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[14px] font-medium text-[#344054]">{label}</p>
+            <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
             <div className="px-1">
                 <RangeSlider
                     floor={floor} ceiling={ceiling} step={step}
@@ -386,11 +386,11 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-[12px] text-[#667085] text-center">Minimum</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)] text-center">Minimum</p>
                     <ValueChip prefix={prefix} value={sliderMin} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-[12px] text-[#667085] text-center">Maximum</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)] text-center">Maximum</p>
                     <ValueChip prefix={prefix} value={sliderMax} />
                 </div>
             </div>
@@ -400,7 +400,7 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
 
 function ValueChip({ prefix, value }: { prefix: string; value: number }) {
     return (
-        <div className="h-11 px-4 flex items-center justify-center border-1 border-[#e4e7ec] rounded-[12px] text-[14px] font-medium text-[#101828]">
+        <div className="h-11 px-4 flex items-center justify-center border-1 border-[var(--colors-border-secondary)] rounded-[12px] text-[14px] font-medium text-[var(--colors-text-primary)]">
             {prefix}{value.toLocaleString()}
         </div>
     );
@@ -435,8 +435,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]"
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]"
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -461,19 +461,19 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+            <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 {/* Selection counter pill (click to clear) — whitespace-nowrap so
                     the "N selected" label stays on one line even when the
                     action button cluster grows. */}
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 {/* Actions */}
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -643,7 +643,7 @@ function ListView({
                                 onClick={() => onViewOrEdit(r, "view")}
                                 className={cn(
                                     "transition-colors cursor-pointer",
-                                    isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                    isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
                                 )}>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <CheckboxCell
@@ -655,7 +655,7 @@ function ListView({
                                 <td className={TD}>
                                     <div className="flex items-center gap-3">
                                         <IconAvatar icon={r.kind === "membership" ? CreditCard02 : PackageIcon} />
-                                        <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
+                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
                                     </div>
                                 </td>
                                 <td className={cn(TD, "whitespace-nowrap")}><PriceCell priceAed={r.priceAed} /></td>
@@ -739,7 +739,7 @@ export default function ProductsPage() {
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -930,11 +930,11 @@ export default function ProductsPage() {
     // ─── Modal subject (single name vs. "N selected products") ─────────────
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
         if (p.mode === "row") {
-            return { count: 1, subject: <span className="font-medium text-[#344054]">{p.row.name}</span> };
+            return { count: 1, subject: <span className="font-medium text-[var(--colors-text-secondary)]">{p.row.name}</span> };
         }
         return {
             count: p.rows.length,
-            subject: <><span className="font-medium text-[#344054]">{p.rows.length}</span> selected products</>,
+            subject: <><span className="font-medium text-[var(--colors-text-secondary)]">{p.rows.length}</span> selected products</>,
         };
     }
 
@@ -983,7 +983,7 @@ export default function ProductsPage() {
             </div>
 
             {/* ── View card ── */}
-            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     <SegmentedTabs

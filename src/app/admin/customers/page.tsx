@@ -179,20 +179,20 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[340px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -230,10 +230,10 @@ function FilterPanel({ open, onClose, applied, onApply }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={420}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -242,7 +242,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         Stacks on top of the segment tabs so "Members ∧ Loyal
                         Active" is a valid pinned scope. */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Lifecycle</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Lifecycle</p>
                         <div className="flex flex-wrap gap-2">
                             {ALL_LIFECYCLE_TAGS.map(t => (
                                 <FilterPill key={t} label={t} selected={pending.lifecycleTags.includes(t)}
@@ -251,11 +251,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {ALL_STATUSES.map(s => (
                                 <FilterPill key={s} label={STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
@@ -264,11 +264,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Plan expiry date range */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Plan expiry date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Plan expiry date range</p>
                         <div className="grid grid-cols-2 gap-3">
                             <DatePicker
                                 value={pending.planExpiryStart}
@@ -289,11 +289,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Plan type */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Plan type</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Plan type</p>
                         <div className="flex flex-wrap gap-2">
                             {ALL_PLAN_TYPES.map(t => (
                                 <FilterPill key={t} label={PLAN_LABEL[t]} selected={pending.planTypes.includes(t)}
@@ -302,7 +302,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* v83 audit-1 (2026-07-29) — Branch location filter
                         removed. Toolbar branch dropdown is now the single
@@ -312,7 +312,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
 
                     {/* Last visit date range */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Last visit date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Last visit date range</p>
                         <div className="flex flex-wrap gap-2">
                             {LAST_VISIT_OPTIONS.map(o => (
                                 <FilterPill key={o.value} label={o.label} selected={pending.lastVisit.includes(o.value)}
@@ -322,7 +322,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
@@ -350,8 +350,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]"
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]"
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -370,15 +370,15 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+            <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {flags.archive && (
-                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -800,11 +800,11 @@ export default function CustomersPage() {
     // ─── Modal subject ──────────────────────────────────────────────────────
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
         if (p.mode === "row") {
-            return { count: 1, subject: <span className="font-medium text-[#344054]">{p.row.name}</span> };
+            return { count: 1, subject: <span className="font-medium text-[var(--colors-text-secondary)]">{p.row.name}</span> };
         }
         return {
             count: p.rows.length,
-            subject: <><span className="font-medium text-[#344054]">{p.rows.length}</span> selected customers</>,
+            subject: <><span className="font-medium text-[var(--colors-text-secondary)]">{p.rows.length}</span> selected customers</>,
         };
     }
 
@@ -863,7 +863,7 @@ export default function CustomersPage() {
             {/* ── View card — rounded container hosting the SegmentedTabs
                    strip + the table. Fills the remaining viewport so only
                    the table body scrolls (matches /admin/staff's chrome). */}
-            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 px-6 py-4 flex items-center gap-3">
                     <SegmentedTabs
                         tabs={segmentTabDefs}
@@ -883,7 +883,7 @@ export default function CustomersPage() {
                             variant="secondary-gray"
 
                             onClick={() => setMineOnly(v => !v)}
-                            className={mineOnly ? "bg-[#f2f4f7] text-[#101828]" : undefined}
+                            className={mineOnly ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-primary)]" : undefined}
                         >
                             {mineOnly ? "Showing yours only" : "Assigned to me"}
                         </Button>
@@ -942,7 +942,7 @@ export default function CustomersPage() {
                                                 onClick={() => router.push(`/customers/${r.id}?returnTo=${encodeURIComponent("/admin/customers")}`)}
                                                 className={cn(
                                                     "transition-colors cursor-pointer",
-                                                    isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                                    isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
                                                 )}>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
@@ -955,15 +955,15 @@ export default function CustomersPage() {
                                                     <div className="flex items-center gap-3">
                                                         <TableAvatar initials={r.initials} imageUrl={r.imageUrl} size={40} />
                                                         <div className="flex flex-col min-w-0">
-                                                            <span className="text-[14px] font-medium text-[#101828] truncate">{r.name}</span>
-                                                            <span className="text-[13px] text-[#667085]">Joined {fmtDate(r.joinedISO)}</span>
+                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{r.name}</span>
+                                                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">Joined {fmtDate(r.joinedISO)}</span>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className={TD}>
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className="text-[14px] text-[#475467] truncate">{r.email}</span>
-                                                        <span className="text-[13px] text-[#667085] truncate">{r.phone || "—"}</span>
+                                                        <span className="text-[14px] text-[var(--colors-text-tertiary)] truncate">{r.email}</span>
+                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)] truncate">{r.phone || "—"}</span>
                                                     </div>
                                                 </td>
                                                 <td className={TD}><StatusBadge type="plan" status={r.planType} /></td>
@@ -974,7 +974,7 @@ export default function CustomersPage() {
                                                     </div>
                                                 </td>
                                                 <td className={TD}><StatusBadge type="customer" status={r.status} /></td>
-                                                <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
+                                                <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
                                                     {r.lastVisitISO ? fmtDate(r.lastVisitISO) : "—"}
                                                 </td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>

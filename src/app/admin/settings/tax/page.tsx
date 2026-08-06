@@ -121,7 +121,7 @@ function Toggle({ on, onChange, ariaLabel }: {
             onClick={() => onChange(!on)}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -161,7 +161,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Archive this tax rate?",
         titleBulk: n => `Archive ${n} tax rates?`,
         description: subject => <>{subject} will be hidden from the default list. All history is preserved — you can recover archived tax rates at any time.</>,
@@ -175,14 +175,14 @@ const MODAL_CONFIG: Record<RowActionKind, {
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Recover this tax rate?",
         titleBulk: n => `Recover ${n} tax rates?`,
         description: subject => <>{subject} will be restored to Active status and shown in the tax rate list again.</>,
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Check, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Reactivate this tax rate?",
         titleBulk: n => `Reactivate ${n} tax rates?`,
         description: subject => <>{subject} will be reactivated and applied to future sales again.</>,
@@ -234,8 +234,8 @@ function StatusFilterDropdown({ value, onChange }: {
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
-                    <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Status</p>
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
+                    <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">Status</p>
                     {OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => {
@@ -245,10 +245,10 @@ function StatusFilterDropdown({ value, onChange }: {
                             }}
                             className={cn(
                                 "w-full flex items-center justify-between text-left px-5 py-3 text-[15px] font-medium transition-colors",
-                                value === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
-                            {value === opt.value && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt.value && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -271,15 +271,15 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+            <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -327,8 +327,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -610,11 +610,11 @@ export default function TaxPage() {
 
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
         if (p.mode === "row") {
-            return { count: 1, subject: <span className="font-medium text-[#344054]">{p.row.name}</span> };
+            return { count: 1, subject: <span className="font-medium text-[var(--colors-text-secondary)]">{p.row.name}</span> };
         }
         return {
             count: p.rows.length,
-            subject: <><span className="font-medium text-[#344054]">{p.rows.length}</span> selected tax rates</>,
+            subject: <><span className="font-medium text-[var(--colors-text-secondary)]">{p.rows.length}</span> selected tax rates</>,
         };
     }
 
@@ -702,7 +702,7 @@ export default function TaxPage() {
                 now and enable display later.
             */}
             {topKind === "vat" && (
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col gap-4 p-6">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col gap-4 p-6">
                     <div className="flex items-center gap-4">
                         <Toggle
                             on={!!taxSettings.displayTrnOnInvoice}
@@ -710,10 +710,10 @@ export default function TaxPage() {
                             ariaLabel="Display tax registration in invoice"
                         />
                         <div className="flex flex-col gap-1 flex-1 min-w-0">
-                            <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">
+                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">
                                 Display tax registration in invoice
                             </p>
-                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                                 Show your Tax Registration Number (TRN) on customer invoices and receipts.
                             </p>
                         </div>
@@ -721,7 +721,7 @@ export default function TaxPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-[6px]">
-                            <label htmlFor="tax-trn-number" className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                            <label htmlFor="tax-trn-number" className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">
                                 TRN number
                             </label>
                             <input
@@ -730,11 +730,11 @@ export default function TaxPage() {
                                 value={taxSettings.trn ?? ""}
                                 onChange={e => setTaxTrn(e.target.value)}
                                 placeholder="Enter your TRN..."
-                                className="h-11 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:border-[#7ba08c] focus:ring-2 focus:ring-[#aad4bd] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                                className="h-11 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:border-[var(--colors-secondary-500)] focus:ring-2 focus:ring-[var(--colors-secondary-300)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
                             />
                         </div>
                         <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[#344054] leading-[20px]">Country</label>
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">Country</label>
                             {/* The option label already prefixes each row
                              *  with the country flag, so we do NOT pass
                              *  `triggerIcon` here — the selected option
@@ -759,7 +759,7 @@ export default function TaxPage() {
 
             {/* ── VAT-only container: "Prices include tax" + rounding mode ─── */}
             {topKind === "vat" && (
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col gap-6 p-6">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col gap-6 p-6">
                 {/* Toggle row */}
                 <div className="flex items-center gap-4">
                     <Toggle
@@ -768,10 +768,10 @@ export default function TaxPage() {
                         ariaLabel="Prices include tax"
                     />
                     <div className="flex flex-col gap-1 flex-1 min-w-0">
-                        <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">
                             Prices include tax
                         </p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             Tax rates can be exclusive or inclusive. This affects how prices are displayed to customer and calculated in invoices.
                         </p>
                     </div>
@@ -779,31 +779,31 @@ export default function TaxPage() {
 
                 {/* Exclusive vs Inclusive demo table */}
                 <div className="flex flex-col gap-2">
-                    <p className="text-[14px] text-[#475467] leading-[20px]">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                         The following table illustrates exclusive &amp; inclusive tax
                     </p>
-                    <div className="border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
+                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="border-b border-[#e4e7ec]">
-                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[#475467]">Tax type</th>
-                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[#475467]">Item subtotal</th>
-                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[#475467]">Tax due</th>
-                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[#475467]">Item total</th>
+                                <tr className="border-b border-[var(--colors-border-secondary)]">
+                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">Tax type</th>
+                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">Item subtotal</th>
+                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">Tax due</th>
+                                    <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">Item total</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr className="border-b border-[#e4e7ec]">
-                                    <td className="px-6 py-4 text-[14px] font-medium text-[#101828]">5% Exclusive</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 500</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 25</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 525 (AED 500 + AED 25)</td>
+                                <tr className="border-b border-[var(--colors-border-secondary)]">
+                                    <td className="px-6 py-4 text-[14px] font-medium text-[var(--colors-text-primary)]">5% Exclusive</td>
+                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 500</td>
+                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 25</td>
+                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 525 (AED 500 + AED 25)</td>
                                 </tr>
                                 <tr>
-                                    <td className="px-6 py-4 text-[14px] font-medium text-[#101828]">5% Inclusive</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 500</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 25 (already included in total)</td>
-                                    <td className="px-6 py-4 text-[14px] text-[#667085]">AED 500 (AED 475 + AED 25)</td>
+                                    <td className="px-6 py-4 text-[14px] font-medium text-[var(--colors-text-primary)]">5% Inclusive</td>
+                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 500</td>
+                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 25 (already included in total)</td>
+                                    <td className="px-6 py-4 text-[14px] text-[var(--colors-text-quaternary)]">AED 500 (AED 475 + AED 25)</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -815,7 +815,7 @@ export default function TaxPage() {
                     checkout + customer appointment checkout consume via
                     `computeTotals(..., { roundingMode })`. */}
                 <div className="flex flex-col gap-2">
-                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Tax calculation &amp; rounding</p>
+                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">Tax calculation &amp; rounding</p>
                     <div className="grid grid-cols-2 gap-3">
                         {([
                             { key: "per_line"    as const, title: "Per line item",     subtitle: "Round tax on each line, then total.",     Icon: ShoppingBag01 },
@@ -828,23 +828,23 @@ export default function TaxPage() {
                                     className={cn(
                                         "flex items-start gap-3 p-4 rounded-[12px] text-left transition-colors w-full",
                                         selected
-                                            ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                            : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                            ? "border-1 border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                                            : "border-1 border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-border-primary)]",
                                     )}
                                 >
                                     <div className={cn(
                                         "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
-                                        selected ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]" : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                                        selected ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]" : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
                                     )}>
                                         <opt.Icon className="w-4 h-4" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
-                                        <p className="text-[14px] text-[#475467] leading-[20px] mt-0.5">{opt.subtitle}</p>
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{opt.title}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px] mt-0.5">{opt.subtitle}</p>
                                     </div>
                                     <div className={cn(
                                         "w-4 h-4 rounded-full flex items-center justify-center shrink-0",
-                                        selected ? "bg-[#658774]" : "border-1 border-[#d0d5dd]",
+                                        selected ? "bg-[var(--colors-secondary-600)]" : "border-1 border-[var(--colors-border-primary)]",
                                     )}>
                                         {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                     </div>
@@ -863,10 +863,10 @@ export default function TaxPage() {
                 prototype) followed by the same Tax rates list / Apply tax
                 rates sub-tabs filtered to kind=income. */}
             {topKind === "income" && (
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col gap-4 p-6">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col gap-4 p-6">
                     <div className="flex flex-col gap-1">
-                        <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">Income / payroll tax</p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">Income / payroll tax</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             Apply withholding rates to staff pay where required.
                         </p>
                     </div>
@@ -886,14 +886,14 @@ export default function TaxPage() {
             {/* ── Tab strip ── Hidden while the Apply-tax-rates tab is off (only
                 the Tax rates list remains, so the strip is redundant). */}
             {showApplyTaxTab && (
-            <div className="border-b border-[#e4e7ec]">
+            <div className="border-b border-[var(--colors-border-secondary)]">
                 <div className="flex gap-3 items-end">
                     <button type="button" onClick={() => setTab("list")}
                         className={cn(
                             "h-[32px] flex items-center gap-2 pb-3 px-1 transition-colors whitespace-nowrap text-[14px] font-semibold",
                             tab === "list"
-                                ? "border-b-2 border-[#101828] text-[#101828]"
-                                : "text-[#667085] hover:text-[#344054]",
+                                ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                         )}>
                         Tax rates list
                     </button>
@@ -901,8 +901,8 @@ export default function TaxPage() {
                         className={cn(
                             "h-[32px] flex items-center gap-2 pb-3 px-1 transition-colors whitespace-nowrap text-[14px] font-semibold",
                             tab === "apply"
-                                ? "border-b-2 border-[#101828] text-[#101828]"
-                                : "text-[#667085] hover:text-[#344054]",
+                                ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                         )}>
                         Apply tax rates
                     </button>
@@ -913,7 +913,7 @@ export default function TaxPage() {
             {/* ── Tab content ───────────────────────────────────────────────── */}
             {tab === "list" ? (
                 // Tax rates list — h-[760px] view card, same as products module
-                <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                     {/* Toolbar */}
                     <div className="shrink-0 flex items-center gap-3 px-6 py-5">
                         <ToolbarTotal count={filtered.length} entitySingular="tax rate" />
@@ -976,7 +976,7 @@ export default function TaxPage() {
                                             const isSelected = selectedIds.has(r.id);
                                             return (
                                                 <tr key={r.id}
-                                                    className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                    className={cn("transition-colors", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
                                                     <td className={TD}>
                                                         <CheckboxCell
                                                             checked={isSelected}
@@ -987,20 +987,20 @@ export default function TaxPage() {
                                                     <td className={TD}>
                                                         <div className="flex items-center gap-3">
                                                             <IconAvatar icon={Percent03} />
-                                                            <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
+                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
                                                         </div>
                                                     </td>
-                                                    <td className={cn(TD, "text-[#475467]")}>{TYPE_LABEL[r.type]}</td>
+                                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{TYPE_LABEL[r.type]}</td>
                                                     {/* Exempt rates carry no charge — render an em-dash
                                                         instead of "0%" so the receipt-side semantic
                                                         (no tax line at all) reads at a glance. */}
-                                                    <td className={cn(TD, "text-[#475467]")}>
+                                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>
                                                         {r.type === "exempt" ? "—" : formatPct(r.ratePercentage)}
                                                     </td>
-                                                    <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>
+                                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>
                                                         {(() => {
                                                             const win = formatEffectiveWindow(r);
-                                                            return win ? win : <span className="text-[#98a2b3]">—</span>;
+                                                            return win ? win : <span className="text-[var(--colors-fg-quaternary)]">—</span>;
                                                         })()}
                                                     </td>
                                                     <td className={TD}><StatusBadge type="tax-rate" status={r.status} /></td>
@@ -1150,23 +1150,23 @@ function PricesIncludeTaxConfirmModal({ next, onCancel, onConfirm }: {
                     type="button"
                     onClick={onCancel}
                     aria-label="Close"
-                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-[1]"
+                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-[1]"
                 >
-                    <XClose className="w-6 h-6 text-[#98a2b3]" />
+                    <XClose className="w-6 h-6 text-[var(--colors-fg-quaternary)]" />
                 </button>
                 <div className="pt-6 px-6 flex flex-col items-center gap-4">
                     <div className={cn(
                         "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
-                        isEnable ? "bg-[#e9fff3]" : "bg-[#fee4e2]",
+                        isEnable ? "bg-[var(--colors-secondary-50)]" : "bg-[#fee4e2]",
                     )}>
                         {isEnable
-                            ? <Check className="w-6 h-6 text-[#658774]" />
+                            ? <Check className="w-6 h-6 text-[var(--colors-secondary-600)]" />
                             : <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                         }
                     </div>
                     <div className="flex flex-col gap-1 items-center text-center w-full">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">{title}</p>
-                        <p className="text-[14px] text-[#475467] leading-5 w-full">{supporting}</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 w-full">{title}</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 w-full">{supporting}</p>
                     </div>
                 </div>
                 <div className="flex gap-3 items-start p-6 pt-6 w-full">

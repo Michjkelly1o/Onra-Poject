@@ -161,16 +161,16 @@ export default function AccountSettingsPage() {
 
     return (
         <>
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full">
                 <div className="flex flex-col gap-6">
                     {/* ── Top: avatar + name + email + Edit profile ───────── */}
                     <div className="relative flex items-center gap-4 w-full">
                         <Avatar src={avatarFor(currentUser)} alt={fullNameOf(currentUser)} />
                         <div className="flex-1 min-w-0 flex flex-col">
-                            <p className="text-[20px] font-semibold text-[#101828] leading-[30px]">
+                            <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
                                 {fullNameOf(currentUser)}
                             </p>
-                            <p className="text-[14px] text-[#667085] leading-5 break-words">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 break-words">
                                 {currentUser.email || "—"}
                             </p>
                         </div>
@@ -252,7 +252,7 @@ export default function AccountSettingsPage() {
                                 />
                             ))}
                             {sessions.length === 0 && (
-                                <p className="text-[14px] text-[#667085]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                                     No other active sessions.
                                 </p>
                             )}
@@ -351,7 +351,7 @@ function Avatar({ src, alt }: { src: string; alt: string }) {
 function SectionBlock({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-4 w-full">
-            <p className="text-[18px] font-semibold text-[#101828] leading-7">
+            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">
                 {title}
             </p>
             <div className="flex flex-col gap-4 w-full">{children}</div>
@@ -371,8 +371,8 @@ function InfoRow({
     return (
         <div className="flex items-center gap-6 w-full">
             <div className="flex-1 min-w-0 flex flex-col gap-1">
-                <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-                <p className="text-[16px] font-medium text-[#101828] leading-6 break-words">
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+                <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 break-words">
                     {value}
                 </p>
             </div>
@@ -401,15 +401,15 @@ function PasswordRow({
     return (
         <div className="flex items-start gap-6 w-full">
             <div className="flex-1 min-w-0 flex flex-col gap-2">
-                <p className="text-[14px] text-[#667085] leading-5">Password</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Password</p>
                 <div className="flex items-center gap-2">
-                    <p className="text-[16px] font-medium text-[#101828] leading-6 break-all">
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 break-all">
                         {displayed}
                     </p>
                     <button
                         type="button"
                         onClick={() => setShow(s => !s)}
-                        className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[#475467] hover:text-[#101828] hover:bg-[#f2f4f7] transition-colors shrink-0"
+                        className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-tertiary)] transition-colors shrink-0"
                         aria-label={show ? "Hide password" : "Show password"}
                         title={show ? "Hide password" : "Show password"}
                     >
@@ -418,8 +418,8 @@ function PasswordRow({
                 </div>
                 {lastChangedAt && (
                     <div className="flex items-center gap-1.5">
-                        <AlertCircle className="w-4 h-4 text-[#98a2b3] shrink-0" />
-                        <p className="text-[13px] text-[#667085] leading-[18px]">
+                        <AlertCircle className="w-4 h-4 text-[var(--colors-fg-quaternary)] shrink-0" />
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">
                             Last changed {formatChangedOn(lastChangedAt)} · {formatDaysAgo(lastChangedAt)}
                         </p>
                     </div>
@@ -505,15 +505,15 @@ function ActiveSessionRow({
 }) {
     return (
         <div className="flex items-center gap-4 w-full">
-            <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center">
-                <Monitor01 className="w-5 h-5 text-[#475467]" />
+            <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center">
+                <Monitor01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
             </div>
             <div className="flex-1 min-w-0 flex flex-col">
-                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">
-                    {session.device} <span className="text-[#98a2b3] font-normal">·</span> {session.browser}
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">
+                    {session.device} <span className="text-[var(--colors-fg-quaternary)] font-normal">·</span> {session.browser}
                 </p>
-                <p className="text-[13px] text-[#667085] leading-[18px]">
-                    {session.location} <span className="text-[#98a2b3]">·</span> {session.lastActiveLabel}
+                <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">
+                    {session.location} <span className="text-[var(--colors-fg-quaternary)]">·</span> {session.lastActiveLabel}
                 </p>
             </div>
             {session.isCurrent ? (
@@ -537,5 +537,5 @@ function ActiveSessionRow({
 }
 
 function Divider() {
-    return <div className="h-px w-full bg-[#e4e7ec]" />;
+    return <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />;
 }

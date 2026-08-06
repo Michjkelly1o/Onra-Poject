@@ -67,17 +67,17 @@ function MetricCard({ label, value, period, Icon }: {
     label: string; value: string; period: string; Icon: React.ElementType;
 }) {
     return (
-        <div className="flex-1 min-w-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="flex-1 min-w-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-start justify-between gap-3">
-                <p className="text-[14px] text-[#667085] leading-[20px] flex-1 min-w-0">{label}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] flex-1 min-w-0">{label}</p>
                 {/* Featured icon — same chrome as the dashboard metric cards
                     (40px circle, warm cream bg, gray icon). */}
-                <div className="w-10 h-10 rounded-full bg-[#f1f2ed] flex items-center justify-center shrink-0 overflow-hidden">
-                    <Icon className="w-5 h-5 text-[#475467]" />
+                <div className="w-10 h-10 rounded-full bg-[var(--colors-tertiary-50)] flex items-center justify-center shrink-0 overflow-hidden">
+                    <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                 </div>
             </div>
-            <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">{value}</p>
-            <p className="text-[14px] text-[#667085] leading-[20px]">{period}</p>
+            <p className="font-semibold text-[24px] leading-[32px] text-[var(--colors-text-primary)]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{period}</p>
         </div>
     );
 }
@@ -161,8 +161,8 @@ function exportCompensationCsv(rows: CompRow[], branches: Branch[]) {
 
 // ─── Table header/cell constants ───────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
 
 // ─── Page ──────────────────────────────────────────────────────────────────
 
@@ -400,7 +400,7 @@ export default function CompensationPage() {
     const branchOptions = useMemo(
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id, label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -432,8 +432,8 @@ export default function CompensationPage() {
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
-                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                         {filteredRows.length} {filteredRows.length === 1 ? "staff member" : "staff"}
                     </p>
                 </div>
@@ -446,10 +446,10 @@ export default function CompensationPage() {
                     width="w-[220px]"
                 />
                 <div className="relative w-[240px]">
-                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+                    <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)]" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                         placeholder="Search..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
                 {/* Toolbar order (client 2026-07-22 sweep): Locations →
@@ -514,17 +514,17 @@ export default function CompensationPage() {
                                         return (
                                             <tr key={r.entryId}
                                                 onClick={() => handleViewDetails(r)}
-                                                className="transition-colors hover:bg-[#f9fafb] cursor-pointer">
+                                                className="transition-colors hover:bg-[var(--colors-bg-secondary)] cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <NeutralAvatar initials={r.instructor.initials} imageUrl={r.instructor.imageUrl} />
                                                         <div className="flex flex-col min-w-0">
-                                                            <span className="text-[14px] font-medium text-[#101828]">{r.instructor.name}</span>
-                                                            <span className="text-[13px] text-[#667085]">{r.instructor.email}</span>
+                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.instructor.name}</span>
+                                                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">{r.instructor.email}</span>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{branch?.name ?? "—"}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{branch?.name ?? "—"}</td>
                                                 <td className={TD}>{role ? <RoleBadge label={role.name} type={role.type} /> : "—"}</td>
                                                 <td className={TD}>{r.payRateName}</td>
                                                 <td className={TD}>{r.classesCount}</td>

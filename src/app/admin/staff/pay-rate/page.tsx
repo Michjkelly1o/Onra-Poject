@@ -55,7 +55,7 @@ const STATUS_LABEL: Record<PayRateStatus, string> = {
 
 const STATUS_BADGE_STYLE: Record<PayRateStatus, string> = {
     active:  "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    archive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    archive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const TYPE_LABEL: Record<PayRateType, string> = {
@@ -74,7 +74,7 @@ const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    monthly: "bg-[#f5fffa] border-1 border-[#aad4bd] text-[#3b5446]",
+    monthly: "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#3b5446]",
 };
 
 // ─── Filter state ────────────────────────────────────────────────────────────
@@ -110,14 +110,14 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         description: s => `${s} will be moved to the archive. You can recover it any time — staff already on this rate keep it until reassigned.`,
         confirmLabel: "Archive",
         destructive: false,
-        Icon: Archive, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        Icon: Archive, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
     recover: {
         title: s => `Recover ${s}?`,
         description: s => `${s} will be restored to Active and available again in the pay-rate list.`,
         confirmLabel: "Recover",
         destructive: false,
-        Icon: RefreshCcw01, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        Icon: RefreshCcw01, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
     delete: {
         title: s => `Delete ${s}?`,
@@ -164,8 +164,8 @@ function StatusFilterDropdown({ value, onChange }: {
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
-                    <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Status</p>
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
+                    <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">Status</p>
                     {OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => {
@@ -175,10 +175,10 @@ function StatusFilterDropdown({ value, onChange }: {
                             }}
                             className={cn(
                                 "w-full flex items-center justify-between text-left px-5 py-3 text-[15px] font-medium transition-colors",
-                                value === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
-                            {value === opt.value && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt.value && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -200,15 +200,15 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+            <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {flags.hasActive && (
-                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -239,20 +239,20 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -270,8 +270,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -288,8 +288,8 @@ type PendingConfirm =
     | { kind: "archive" | "recover" | "delete"; ids: string[] }
     | null;
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
 
 export default function PayRatePage() {
     const router = useRouter();
@@ -441,7 +441,7 @@ export default function PayRatePage() {
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -532,7 +532,7 @@ export default function PayRatePage() {
                                         return (
                                             <tr key={r.id}
                                                 onClick={() => router.push(`/staff/pay-rate/${r.id}?returnTo=${encodeURIComponent("/admin/staff/pay-rate")}`)}
-                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
@@ -541,7 +541,7 @@ export default function PayRatePage() {
                                                     />
                                                 </td>
                                                 <td className={TD}>
-                                                    <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
+                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
                                                 </td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", TYPE_BADGE_STYLE[r.type])}>
@@ -553,13 +553,13 @@ export default function PayRatePage() {
                                                         const d = computePayRateDisplay(r);
                                                         return (
                                                             <div className="flex flex-col">
-                                                                <span className="text-[14px] text-[#101828]">{d.main}</span>
-                                                                <span className="text-[13px] text-[#667085]">{d.subtitle}</span>
+                                                                <span className="text-[14px] text-[var(--colors-text-primary)]">{d.main}</span>
+                                                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">{d.subtitle}</span>
                                                             </div>
                                                         );
                                                     })()}
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>
                                                     {branches.find(b => b.id === r.branchId)?.name ?? "—"}
                                                 </td>
                                                 <td className={TD}>
