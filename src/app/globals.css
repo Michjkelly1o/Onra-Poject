@@ -32,6 +32,23 @@
   --brand-text: #101828;
   --brand-font: 'DM Sans', system-ui, sans-serif;
 
+  /* ── New brand palette · Rich blue green (2026-08 rebrand) ─────────────────
+     Centralized scale from new-color-brand.json. This is the single place the
+     new brand teal lives. Phase 1 wires ONLY the primary button to it (below);
+     later phases migrate the rest of the app (backgrounds, accents, borders) to
+     the new families, re-hued from these tokens. In :root so it applies on
+     every side (admin / instructor / attendee / customer). */
+  --rbg-50:  #e8edee;
+  --rbg-100: #b7c8c9;
+  --rbg-200: #94aeaf;
+  --rbg-300: #63888b;
+  --rbg-400: #457175;
+  --rbg-500: #164e52;   /* core brand — primary button background */
+  --rbg-600: #14474b;   /* primary button hover */
+  --rbg-700: #10373a;   /* primary button active */
+  --rbg-800: #0c2b2d;
+  --rbg-900: #092122;
+
   /* ── Design token color primitives (from tokens.json) ── */
   /* Spacing */
   --spacing-none: 0px;

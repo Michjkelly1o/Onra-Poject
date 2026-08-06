@@ -34,16 +34,22 @@ const buttonVariants = cva(
         variants: {
             variant: {
                 // ── Figma DS: Primary ──────────────────────────────────────
-                // bg: secondary/200 var(--brand-tertiary) | hover: secondary/300 #aad4bd | fg: black
+                // 2026-08 rebrand — Rich blue green: bg rbg/500 (#164e52) + white
+                // text, hover rbg/600, active rbg/700. Centralized in globals.css
+                // (--rbg-*) so the whole rebrand re-hues from one place.
+                // The 1px inset ring is LIGHT (white/20) not dark — a dark ring is
+                // invisible on the dark teal fill, so it carries the visible border
+                // the old light-mint primary got from its dark ring. Same structure,
+                // inverted ring colour for the dark bg.
                 primary: [
-                    "bg-[var(--brand-tertiary)] border-1 border-white/[0.12] text-[#0c2d34]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.10),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#aad4bd] active:bg-[#92baa4]",
+                    "bg-[var(--rbg-500)] border-1 border-white/[0.12] text-white",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(255,255,255,0.10),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[var(--rbg-600)] active:bg-[var(--rbg-700)]",
                 ],
                 default: [
-                    "bg-[var(--brand-tertiary)] border-1 border-white/[0.12] text-[#0c2d34]",
-                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#aad4bd] active:bg-[#92baa4]",
+                    "bg-[var(--rbg-500)] border-1 border-white/[0.12] text-white",
+                    "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(255,255,255,0.10),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
+                    "hover:bg-[var(--rbg-600)] active:bg-[var(--rbg-700)]",
                 ],
 
                 // ── Figma DS: Secondary gray ───────────────────────────────
