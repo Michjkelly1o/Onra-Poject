@@ -437,8 +437,14 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                         ))}
                     </div>
 
-                    {/* Instructor columns — horizontally scrollable (synced with header). */}
-                    <div ref={bodyScrollRef} onScroll={() => syncScroll("body")} className="flex-1 overflow-x-auto scrollbar-hide pr-6">
+                    {/* Instructor columns — horizontally scrollable (synced with header).
+                        overflow-y-hidden is REQUIRED: with only overflow-x-auto the browser
+                        computes overflow-y:auto too, so this box scrolls vertically on its
+                        own — the class cards then drift out of sync with the frozen time-
+                        label gutter (its sibling), making a 5pm class line up with 8am after
+                        a scroll. Pinning vertical scroll to the OUTER container keeps the
+                        labels + classes moving in lockstep. */}
+                    <div ref={bodyScrollRef} onScroll={() => syncScroll("body")} className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide pr-6">
                         <div className="relative" style={{ width: contentWidth, minHeight: gridHeight }}>
                             {hours.map((_, i) => (
                                 <div key={i} className="absolute left-0 right-0 border-t border-[var(--colors-bg-tertiary)]" style={{ top: i * HOUR_HEIGHT }} />
