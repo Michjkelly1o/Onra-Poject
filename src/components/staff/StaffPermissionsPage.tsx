@@ -1583,17 +1583,19 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     )
                 )}
 
-                {/* Pagination — rendered INSIDE the scrollable wrapper so
-                    it travels with the table on scroll (mirrors Shift
-                    management + Blocked time sub-tabs). Hidden on the
-                    placeholder sub-tabs since they don't have any rows
-                    to paginate yet. */}
+                </div>
+
+                {/* Pagination — PINNED below the scroll body (shrink-0) so it
+                    stays FIXED at the card bottom instead of travelling with the
+                    table on scroll (client 2026-08). Now a sibling OUTSIDE the
+                    flex-1 overflow-y-auto wrapper. Hidden on the Shift / Blocked
+                    time sub-tabs, which render their own pagination. */}
                 {(forceTab !== "staff" || staffSubTab === "staff") && (
                     // Pagination padding:
                     //   • Role & permissions route → no inner padding so it
                     //     aligns with the flush table above.
                     //   • Other routes → 24px L/R to match the card chrome.
-                    <div className={cn(forceTab !== "roles" && "px-6")}>
+                    <div className={cn("shrink-0", forceTab !== "roles" && "px-6")}>
                         <Pagination
                             page={clampedPage}
                             total={tab === "roles" ? filteredRoles.length : filteredStaff.length}
@@ -1603,7 +1605,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         />
                     </div>
                 )}
-                </div>
             </div>
 
             <FilterPanel
