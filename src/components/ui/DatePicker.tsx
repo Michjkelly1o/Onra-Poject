@@ -250,16 +250,16 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                 className={triggerClassName ?? cn(
                     "flex items-center gap-2 w-full h-10 px-[14px] border-1 rounded-[8px] text-[16px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     disabled
-                        ? "bg-[#f9fafb] border-[#d0d5dd] cursor-not-allowed"
-                        : cn("bg-white border-[#d0d5dd]", value ? "text-[#101828]" : "text-[#667085]", open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")
+                        ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-primary)] cursor-not-allowed"
+                        : cn("bg-white border-[var(--colors-border-primary)]", value ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]", open ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-500)]")
                 )}>
-                <Calendar className={cn("w-5 h-5 shrink-0", disabled ? "text-[#98a2b3]" : "text-[#667085]")} />
-                <span className={cn("flex-1 text-left", disabled && "text-[#667085]")}>{value ? formatDisplay(value) : placeholder}</span>
+                <Calendar className={cn("w-5 h-5 shrink-0", disabled ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-quaternary)]")} />
+                <span className={cn("flex-1 text-left", disabled && "text-[var(--colors-text-quaternary)]")}>{value ? formatDisplay(value) : placeholder}</span>
             </button>
 
             {open && !disabled && (
                 <div ref={popRef} style={menuStyle}
-                    className="w-[280px] bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] overflow-hidden">
+                    className="w-[280px] bg-white border border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] overflow-hidden">
                     <div className="px-[12px] py-[16px] flex flex-col gap-[10px]">
                         {/* Month + year navigation. The year is a clickable
                             pill that opens an inline year picker — lets the
@@ -267,20 +267,20 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                             spamming the month chevron. */}
                         <div className="flex items-center justify-between">
                             <button type="button" onClick={prevMonth}
-                                className="w-7 h-7 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                                <ChevronLeft className="w-5 h-5 text-[#344054]" />
+                                className="w-7 h-7 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <ChevronLeft className="w-5 h-5 text-[var(--colors-text-secondary)]" />
                             </button>
                             <button type="button"
                                 onClick={() => setYearPickerOpen(p => !p)}
-                                className="flex items-center gap-1 px-2 py-1 rounded-[6px] hover:bg-[#f9fafb] transition-colors">
-                                <span className="text-[16px] font-semibold text-[#344054]">
+                                className="flex items-center gap-1 px-2 py-1 rounded-[6px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <span className="text-[16px] font-semibold text-[var(--colors-text-secondary)]">
                                     {MONTHS_LONG[viewMonth]} {viewYear}
                                 </span>
-                                <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", yearPickerOpen && "rotate-180")} />
+                                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] transition-transform", yearPickerOpen && "rotate-180")} />
                             </button>
                             <button type="button" onClick={nextMonth}
-                                className="w-7 h-7 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                                <ChevronRight className="w-5 h-5 text-[#344054]" />
+                                className="w-7 h-7 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <ChevronRight className="w-5 h-5 text-[var(--colors-text-secondary)]" />
                             </button>
                         </div>
 
@@ -311,14 +311,14 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                                     "flex-1 min-w-0 h-9 px-3 border-1 rounded-[8px] text-[14px] bg-white outline-none transition-colors",
                                     manualError
                                         ? "border-[#fda29b] text-[#b42318] focus:border-[#f04438] focus:ring-2 focus:ring-[#fee4e2]"
-                                        : "border-[#d0d5dd] text-[#101828] placeholder:text-[#98a2b3] focus:border-[#7ba08c] focus:ring-2 focus:ring-[#aad4bd]",
+                                        : "border-[var(--colors-border-primary)] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-fg-quaternary)] focus:border-[var(--colors-secondary-500)] focus:ring-2 focus:ring-[var(--colors-secondary-300)]",
                                 )} />
                             <button type="button" onClick={handleToday} disabled={!isTodayInRange}
                                 className={cn(
                                     "h-9 px-4 border-1 rounded-[8px] text-[14px] font-semibold shrink-0 transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
                                     isTodayInRange
-                                        ? "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]"
-                                        : "border-[#e4e7ec] text-[#98a2b3] bg-white cursor-not-allowed",
+                                        ? "border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)]"
+                                        : "border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] bg-white cursor-not-allowed",
                                 )}>
                                 Today
                             </button>
@@ -336,8 +336,8 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                                         className={cn(
                                             "h-9 rounded-[8px] text-[14px] font-medium transition-colors",
                                             y === viewYear
-                                                ? "bg-[#658774] text-white"
-                                                : "text-[#344054] hover:bg-[#f9fafb]",
+                                                ? "bg-[var(--colors-secondary-600)] text-white"
+                                                : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                         )}>
                                         {y}
                                     </button>
@@ -349,7 +349,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                         <div className="flex">
                             {DAY_HDRS.map(d => (
                                 <div key={d} className="w-[36px] h-[32px] flex items-center justify-center">
-                                    <span className="text-[14px] font-medium text-[#344054]">{d}</span>
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{d}</span>
                                 </div>
                             ))}
                         </div>
@@ -373,17 +373,17 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                                                 onClick={() => handleSelect(cell.date)}
                                                 className={cn(
                                                     "relative w-[36px] h-[32px] flex items-center justify-center rounded-full transition-colors",
-                                                    isSel ? "bg-[#658774]"
+                                                    isSel ? "bg-[var(--colors-secondary-600)]"
                                                         : outOfRange ? "cursor-not-allowed"
                                                         : isTdy ? "bg-[#f5fffa]"
-                                                        : "hover:bg-[#f9fafb]",
+                                                        : "hover:bg-[var(--colors-bg-secondary)]",
                                                 )}>
                                                 <span className={cn("text-[14px] text-center w-[24px]",
                                                     isSel ? "font-medium text-white"
-                                                    : outOfRange ? "text-[#d0d5dd] font-normal"
-                                                    : !cell.cur ? "text-[#98a2b3] font-normal"
-                                                    : isTdy ? "font-medium text-[#658774]"
-                                                    : "text-[#344054] font-normal")}>
+                                                    : outOfRange ? "text-[var(--colors-border-primary)] font-normal"
+                                                    : !cell.cur ? "text-[var(--colors-fg-quaternary)] font-normal"
+                                                    : isTdy ? "font-medium text-[var(--colors-secondary-600)]"
+                                                    : "text-[var(--colors-text-secondary)] font-normal")}>
                                                     {cell.date.getDate()}
                                                 </span>
                                             </button>
@@ -397,13 +397,13 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
                     </div>
 
                     {/* Bottom panel */}
-                    <div className="border-t border-[#e4e7ec] px-3 py-3 flex gap-[10px]">
+                    <div className="border-t border-[var(--colors-border-secondary)] px-3 py-3 flex gap-[10px]">
                         <button type="button" onClick={handleCancel}
-                            className="flex-1 h-9 border border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors">
+                            className="flex-1 h-9 border border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors">
                             Cancel
                         </button>
                         <button type="button" onClick={handleApply}
-                            className="flex-1 h-9 rounded-[8px] text-[14px] font-semibold text-[#344054] bg-[var(--brand-tertiary)] hover:bg-[#aad4bd] transition-colors">
+                            className="flex-1 h-9 rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-[var(--brand-tertiary)] hover:bg-[var(--colors-secondary-300)] transition-colors">
                             Apply
                         </button>
                     </div>

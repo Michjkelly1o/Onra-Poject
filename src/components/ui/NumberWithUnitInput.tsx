@@ -125,8 +125,8 @@ export function NumberWithUnitInput({
             className={cn(
                 "flex items-stretch border-1 rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
                 disabled
-                    ? "bg-[#f9fafb] border-[#d0d5dd]"
-                    : "bg-white border-[#d0d5dd] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]",
+                    ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-primary)]"
+                    : "bg-white border-[var(--colors-border-primary)] focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)]",
             )}
         >
             <input
@@ -144,7 +144,7 @@ export function NumberWithUnitInput({
                 className={cn(
                     "flex-1 min-w-0 h-10 px-[14px] text-[16px] bg-transparent rounded-l-[8px]",
                     "focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                    disabled ? "text-[#667085] cursor-not-allowed" : "text-[#101828] placeholder:text-[#667085]",
+                    disabled ? "text-[var(--colors-text-quaternary)] cursor-not-allowed" : "text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)]",
                 )}
             />
             <button
@@ -159,10 +159,10 @@ export function NumberWithUnitInput({
                     disabled && "cursor-not-allowed",
                 )}
             >
-                <span className={cn("text-[16px]", disabled ? "text-[#667085]" : "text-[#344054]")}>
+                <span className={cn("text-[16px]", disabled ? "text-[var(--colors-text-quaternary)]" : "text-[var(--colors-text-secondary)]")}>
                     {selectedLabel}
                 </span>
-                <span className="w-5 h-5 flex items-center justify-center text-[#667085]">
+                <span className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)]">
                     {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </span>
             </button>
@@ -171,7 +171,7 @@ export function NumberWithUnitInput({
                 <div
                     ref={menuRef}
                     style={menuStyle}
-                    className="bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] p-[4px] max-h-[264px] overflow-y-auto scrollbar-hide"
+                    className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] p-[4px] max-h-[264px] overflow-y-auto scrollbar-hide"
                 >
                     {units.map(u => {
                         const isSelected = u.value === unit;
@@ -182,7 +182,7 @@ export function NumberWithUnitInput({
                                 onClick={() => { onUnitChange(u.value); setOpen(false); }}
                                 className={cn(
                                     "flex items-center w-full text-left px-[10px] py-[9px] rounded-[6px] text-[14px] font-medium transition-colors",
-                                    isSelected ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                    isSelected ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}
                             >
                                 {u.label}

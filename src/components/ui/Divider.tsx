@@ -7,7 +7,7 @@
 // Centralised 1px horizontal divider used across cards, modals, side panels,
 // and detail-page sections. The base styling is:
 //
-//   <div className="h-px w-full bg-[#e4e7ec]" />
+//   <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 //
 // 64+ inline copies exist in the codebase. Most callers are byte-identical;
 // the rest only add layout-positioning classes (e.g. `shrink-0` inside a
@@ -26,5 +26,5 @@ export interface DividerProps {
 }
 
 export function Divider({ className }: DividerProps) {
-    return <div className={cn("h-px w-full bg-[#e4e7ec]", className)} aria-hidden="true" />;
+    return <div className={cn("h-px w-full bg-[var(--colors-bg-quaternary)]", className)} aria-hidden="true" />;
 }

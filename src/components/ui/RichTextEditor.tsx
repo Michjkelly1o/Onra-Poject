@@ -107,8 +107,8 @@ function ToolbarBtn({ onClick, ariaLabel, active = false, children }: {
             className={cn(
                 "w-7 h-7 flex items-center justify-center rounded-[6px] transition-colors duration-75",
                 active
-                    ? "bg-[#f2f4f7] text-[#344054]"
-                    : "text-[#475467] hover:bg-[#f9fafb]",
+                    ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)]"
+                    : "text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-secondary)]",
             )}>
             {children}
         </button>
@@ -116,7 +116,7 @@ function ToolbarBtn({ onClick, ariaLabel, active = false, children }: {
 }
 
 function ToolbarDivider() {
-    return <span className="w-px h-5 bg-[#e4e7ec] shrink-0" />;
+    return <span className="w-px h-5 bg-[var(--colors-bg-quaternary)] shrink-0" />;
 }
 
 export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(function RichTextEditor(
@@ -392,22 +392,22 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
 
     return (
         <div className={cn(
-            "w-full bg-white border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden flex flex-col",
+            "w-full bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden flex flex-col",
             className,
         )}>
             {/* Toolbar */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-[#e4e7ec]">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--colors-border-secondary)]">
                 {/* Paragraph / heading dropdown */}
                 <div ref={dropdownRef} className="relative">
                     <button type="button"
                         onMouseDown={e => e.preventDefault()}
                         onClick={() => setParagraphOpen(p => !p)}
-                        className="flex items-center gap-1.5 px-3 h-8 rounded-[6px] border-1 border-[#d0d5dd] bg-white text-[14px] text-[#344054] hover:bg-[#f9fafb] transition-colors min-w-[140px] justify-between">
+                        className="flex items-center gap-1.5 px-3 h-8 rounded-[6px] border-1 border-[var(--colors-border-primary)] bg-white text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors min-w-[140px] justify-between">
                         <span>{currentBlockLabel}</span>
-                        <ChevronDown className="w-4 h-4 text-[#667085]" />
+                        <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                     </button>
                     {paragraphOpen && (
-                        <div className="absolute left-0 top-[calc(100%+4px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 min-w-[160px]">
+                        <div className="absolute left-0 top-[calc(100%+4px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 min-w-[160px]">
                             {PARAGRAPH_OPTIONS.map(opt => (
                                 <button key={opt.value} type="button"
                                     onMouseDown={e => e.preventDefault()}
@@ -415,8 +415,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
                                     className={cn(
                                         "w-full text-left px-3 py-2 text-[14px] transition-colors duration-75",
                                         active.block === opt.value
-                                            ? "bg-[#f2f4f7] text-[#344054] font-semibold"
-                                            : "text-[#344054] hover:bg-[#f9fafb]",
+                                            ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)] font-semibold"
+                                            : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                     )}>
                                     {opt.label}
                                 </button>
@@ -460,7 +460,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
                     onDrop={handleDrop}
                     style={{ minHeight }}
                     className={cn(
-                        "flex-1 min-h-0 w-full px-4 py-3 text-[14px] text-[#101828] focus:outline-none leading-[20px] overflow-y-auto",
+                        "flex-1 min-h-0 w-full px-4 py-3 text-[14px] text-[var(--colors-text-primary)] focus:outline-none leading-[20px] overflow-y-auto",
                         "[&_h1]:text-[28px] [&_h1]:font-bold     [&_h1]:leading-[36px] [&_h1]:my-2",
                         "[&_h2]:text-[24px] [&_h2]:font-bold     [&_h2]:leading-[32px] [&_h2]:my-2",
                         "[&_h3]:text-[20px] [&_h3]:font-semibold [&_h3]:leading-[28px] [&_h3]:my-2",
@@ -474,7 +474,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
                 {isEmpty && placeholder && (
                     <span
                         style={{ top: placeholderTop }}
-                        className="absolute left-4 text-[14px] text-[#667085] pointer-events-none select-none">
+                        className="absolute left-4 text-[14px] text-[var(--colors-text-quaternary)] pointer-events-none select-none">
                         {placeholder}
                     </span>
                 )}
@@ -487,27 +487,27 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
                     <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                         <div className="px-6 pt-6 pb-4 flex items-start gap-4">
                             <div className="flex-1 flex flex-col gap-1">
-                                <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Insert link</h3>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">Enter the URL to link to your selected text.</p>
+                                <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Insert link</h3>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Enter the URL to link to your selected text.</p>
                             </div>
                             <button type="button" onClick={() => setLinkModalOpen(false)}
                                 aria-label="Close"
-                                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
-                                <XClose className="w-5 h-5 text-[#667085]" />
+                                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mt-1 -mr-2">
+                                <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                             </button>
                         </div>
                         <div className="px-6 pb-5 flex flex-col gap-1.5">
-                            <p className="text-[14px] font-medium text-[#344054]">URL</p>
+                            <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">URL</p>
                             <input type="url"
                                 value={linkUrl}
                                 onChange={e => setLinkUrl(e.target.value)}
                                 onKeyDown={e => { if (e.key === "Enter" && linkUrl.trim()) applyLink(); }}
                                 placeholder="https://"
                                 autoFocus
-                                className="h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                className="h-10 w-full px-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                             />
                         </div>
-                        <div className="flex gap-3 px-6 pt-4 pb-6 border-t border-[#e4e7ec]">
+                        <div className="flex gap-3 px-6 pt-4 pb-6 border-t border-[var(--colors-border-secondary)]">
                             <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setLinkModalOpen(false)}>Cancel</Button>
                             <Button variant="primary" size="lg" className="flex-1" disabled={!linkUrl.trim()} onClick={applyLink}>Apply</Button>
                         </div>

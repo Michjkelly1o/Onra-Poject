@@ -120,14 +120,14 @@ function CalendarPicker({
         <div className="w-[340px]">
             {/* Date range inputs */}
             <div className="flex items-center gap-2 px-4 pt-5 pb-4">
-                <div className="flex-1 h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 flex items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
-                    <span className={cn("text-[15px]", from ? "text-[#101828]" : "text-[#667085]")}>
+                <div className="flex-1 h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 flex items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                    <span className={cn("text-[15px]", from ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                         {from ? format(from, "MMM d, yyyy") : "Start date"}
                     </span>
                 </div>
-                <span className="text-[#667085] text-[15px] shrink-0">–</span>
-                <div className="flex-1 h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 flex items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
-                    <span className={cn("text-[15px]", to ? "text-[#101828]" : "text-[#667085]")}>
+                <span className="text-[var(--colors-text-quaternary)] text-[15px] shrink-0">–</span>
+                <div className="flex-1 h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 flex items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                    <span className={cn("text-[15px]", to ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                         {to ? format(to, "MMM d, yyyy") : "End date"}
                     </span>
                 </div>
@@ -138,19 +138,19 @@ function CalendarPicker({
                 <button
                     type="button"
                     onClick={() => setView(v => subMonths(v, 1))}
-                    className="w-8 h-8 rounded-[8px] flex items-center justify-center hover:bg-[#f9fafb] transition-colors"
+                    className="w-8 h-8 rounded-[8px] flex items-center justify-center hover:bg-[var(--colors-bg-secondary)] transition-colors"
                 >
-                    <ChevronLeft className="w-5 h-5 text-[#667085]" />
+                    <ChevronLeft className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
-                <span className="font-semibold text-[16px] text-[#344054]">
+                <span className="font-semibold text-[16px] text-[var(--colors-text-secondary)]">
                     {MONTH_NAMES[month]} {year}
                 </span>
                 <button
                     type="button"
                     onClick={() => setView(v => addMonths(v, 1))}
-                    className="w-8 h-8 rounded-[8px] flex items-center justify-center hover:bg-[#f9fafb] transition-colors"
+                    className="w-8 h-8 rounded-[8px] flex items-center justify-center hover:bg-[var(--colors-bg-secondary)] transition-colors"
                 >
-                    <ChevronRight className="w-5 h-5 text-[#667085]" />
+                    <ChevronRight className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
             </div>
 
@@ -158,7 +158,7 @@ function CalendarPicker({
             <div className="flex justify-between px-4 pb-1">
                 {DAY_HEADERS.map(h => (
                     <div key={h} className="w-[36px] h-[36px] flex items-center justify-center">
-                        <span className="text-[14px] font-medium text-[#344054]">{h}</span>
+                        <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{h}</span>
                     </div>
                 ))}
             </div>
@@ -187,31 +187,31 @@ function CalendarPicker({
                                 >
                                     {/* Range band (green strip, behind circles) */}
                                     {inBand && (
-                                        <div className="absolute inset-y-0 inset-x-0 bg-[#e9fff3]" />
+                                        <div className="absolute inset-y-0 inset-x-0 bg-[var(--colors-secondary-50)]" />
                                     )}
                                     {/* Half-pill on start side (right half) */}
                                     {start && hasRange && !isSameDay(normalFrom!, normalTo!) && (
-                                        <div className="absolute inset-y-0 right-0 w-1/2 bg-[#e9fff3]" />
+                                        <div className="absolute inset-y-0 right-0 w-1/2 bg-[var(--colors-secondary-50)]" />
                                     )}
                                     {/* Half-pill on end side (left half) */}
                                     {end && hasRange && !isSameDay(normalFrom!, normalTo!) && (
-                                        <div className="absolute inset-y-0 left-0 w-1/2 bg-[#e9fff3]" />
+                                        <div className="absolute inset-y-0 left-0 w-1/2 bg-[var(--colors-secondary-50)]" />
                                     )}
                                     {/* Selected endpoint circle */}
                                     {sel && (
-                                        <div className="absolute inset-0 rounded-full bg-[#658774]" />
+                                        <div className="absolute inset-0 rounded-full bg-[var(--colors-secondary-600)]" />
                                     )}
                                     {/* Hover ring — suppressed for cells that
                                         can't be a valid end (before start). */}
                                     {!sel && !inR && !beforeStart && (
-                                        <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 bg-[#f2f4f7] transition-opacity" />
+                                        <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 bg-[var(--colors-bg-tertiary)] transition-opacity" />
                                     )}
                                     <span className={cn(
                                         "relative z-10 text-[14px] select-none leading-none",
                                         sel ? "text-white font-medium" : "",
-                                        !sel && beforeStart ? "text-[#d0d5dd]" : "",
-                                        !sel && !beforeStart && current ? "text-[#344054]" : "",
-                                        !sel && !beforeStart && !current ? "text-[#98a2b3]" : "",
+                                        !sel && beforeStart ? "text-[var(--colors-border-primary)]" : "",
+                                        !sel && !beforeStart && current ? "text-[var(--colors-text-secondary)]" : "",
+                                        !sel && !beforeStart && !current ? "text-[var(--colors-fg-quaternary)]" : "",
                                     )}>
                                         {date.getDate()}
                                     </span>
@@ -316,26 +316,26 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
                 onClick={() => setOpen(p => !p)}
                 className={cn(
                     "flex items-center gap-[8px] h-[40px] px-[14px]",
-                    "bg-white border-1 border-[#d0d5dd] rounded-[8px] whitespace-nowrap",
+                    "bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] whitespace-nowrap",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all",
+                    "focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] transition-all",
                 )}
             >
-                <Calendar className="w-5 h-5 text-[#667085] shrink-0" />
-                <span className="text-[14px] font-semibold text-[#344054]">{triggerLabel}</span>
+                <Calendar className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
+                <span className="text-[14px] font-semibold text-[var(--colors-text-secondary)]">{triggerLabel}</span>
             </button>
 
             {/* Dropdown panel */}
             {open && (
                 <div className={cn(
                     "absolute right-0 top-[calc(100%+4px)] z-50",
-                    "bg-white border-1 border-[#e4e7ec] rounded-[12px]",
+                    "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]",
                     "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
                     "flex items-stretch",
                 )}>
                     {/* Left — period type list */}
-                    <div className="flex flex-col gap-[4px] px-[16px] py-[12px] border-r border-[#e4e7ec] shrink-0">
-                        <p className="px-[16px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Date range</p>
+                    <div className="flex flex-col gap-[4px] px-[16px] py-[12px] border-r border-[var(--colors-border-secondary)] shrink-0">
+                        <p className="px-[16px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">Date range</p>
                         {PERIOD_TYPES.map(pt => (
                             <button
                                 key={pt.value}
@@ -345,8 +345,8 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
                                     "w-[160px] h-[40px] text-left px-[16px] rounded-[6px]",
                                     "text-[14px] font-medium transition-colors",
                                     periodType === pt.value
-                                        ? "bg-[#f9fafb] text-[#182230]"
-                                        : "text-[#344054] hover:bg-[#f9fafb]",
+                                        ? "bg-[var(--colors-bg-secondary)] text-[#182230]"
+                                        : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}
                             >
                                 {pt.label}
@@ -362,7 +362,7 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
                                 to={pendingTo}
                                 onSelect={handleCalendarSelect}
                             />
-                            <div className="flex gap-3 px-4 pb-4 pt-3 border-t border-[#e4e7ec]">
+                            <div className="flex gap-3 px-4 pb-4 pt-3 border-t border-[var(--colors-border-secondary)]">
                                 <Button variant="secondary-gray" size="md" className="flex-1" onClick={handleCancel}>
                                     Cancel
                                 </Button>
@@ -382,8 +382,8 @@ export function DateRangeFilter({ value, onChange, className }: DateRangeFilterP
                                         "w-[160px] h-[40px] text-left px-[16px] rounded-[6px]",
                                         "text-[14px] font-medium transition-colors",
                                         value?.label === opt
-                                            ? "bg-[#f9fafb] text-[#182230]"
-                                            : "text-[#344054] hover:bg-[#f9fafb]",
+                                            ? "bg-[var(--colors-bg-secondary)] text-[#182230]"
+                                            : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                     )}
                                 >
                                     {opt}

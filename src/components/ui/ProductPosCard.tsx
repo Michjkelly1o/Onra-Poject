@@ -73,13 +73,13 @@ export interface ProductPosCardProps {
 
 const TYPE_TOKENS: Record<ProductPosCardType, { iconBg: string; iconColor: string; patternBorder: string }> = {
     membership: { iconBg: "bg-[#e0eaff]", iconColor: "text-[#3538cd]", patternBorder: "border-[#c7d7fe]" },
-    package:    { iconBg: "bg-[var(--brand-tertiary)]", iconColor: "text-[#658774]", patternBorder: "border-[#aad4bd]" },
+    package:    { iconBg: "bg-[var(--brand-tertiary)]", iconColor: "text-[var(--colors-secondary-600)]", patternBorder: "border-[var(--colors-secondary-300)]" },
     // Gift cards use the cyan family — same tint as the gift-card create/edit
     // preview + detail sidebar so the card reads consistently everywhere.
     "gift-card":{ iconBg: "bg-[#ccf6ff]", iconColor: "text-[#0e7090]", patternBorder: "border-[#92d1de]" },
     // Retail (2026-07-29) — banner is a real product image; tokens still
     // needed for the tiny name-row bag icon when no bannerImageUrl is set.
-    retail:     { iconBg: "bg-[var(--brand-tertiary)]", iconColor: "text-[#658774]", patternBorder: "border-[#aad4bd]" },
+    retail:     { iconBg: "bg-[var(--brand-tertiary)]", iconColor: "text-[var(--colors-secondary-600)]", patternBorder: "border-[var(--colors-secondary-300)]" },
     // Session products (client 2026-08-04) — Private = purple, Recovery =
     // orange, matching the session-type tag palette used across schedule /
     // services so a POS session card reads as the same colour family.
@@ -152,19 +152,19 @@ export function ProductPosCard({
     // button when not yet in the cart.
     const actionEl =
         inCart && quantityDisplay === "stepper" ? (
-            <div className="border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-3 px-1.5 py-1.5 shrink-0">
-                <button type="button" onClick={onDecrement} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] transition-colors">
+            <div className="border-1 border-[var(--colors-border-secondary)] rounded-[8px] flex items-center gap-3 px-1.5 py-1.5 shrink-0">
+                <button type="button" onClick={onDecrement} className="w-[18px] h-[18px] flex items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] transition-colors">
                     <Minus className="w-[18px] h-[18px]" />
                 </button>
-                <span className="text-[12px] font-semibold text-[#101828] min-w-[16px] text-center">{quantity}</span>
-                <button type="button" onClick={onIncrement} disabled={effectiveDisabled} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                <span className="text-[12px] font-semibold text-[var(--colors-text-primary)] min-w-[16px] text-center">{quantity}</span>
+                <button type="button" onClick={onIncrement} disabled={effectiveDisabled} className="w-[18px] h-[18px] flex items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <Plus className="w-[18px] h-[18px]" />
                 </button>
             </div>
         ) : inCart && quantityDisplay === "badge" ? (
             <div
                 aria-label={`${name} added (${quantity})`}
-                className="w-9 h-9 rounded-full border-1 border-[#658774] flex items-center justify-center text-[14px] font-semibold text-[#658774] shrink-0"
+                className="w-9 h-9 rounded-full border-1 border-[var(--colors-secondary-600)] flex items-center justify-center text-[14px] font-semibold text-[var(--colors-secondary-600)] shrink-0"
             >
                 {quantity}
             </div>
@@ -174,9 +174,9 @@ export function ProductPosCard({
                 onClick={onAdd}
                 disabled={effectiveDisabled}
                 aria-label={`Add ${name}`}
-                className="border-1 border-[#d0d5dd] bg-[#f9fafb] rounded-[8px] p-2 shrink-0 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#f2f4f7] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="border-1 border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] rounded-[8px] p-2 shrink-0 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-tertiary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-                <Plus className="w-5 h-5 text-[#344054]" />
+                <Plus className="w-5 h-5 text-[var(--colors-text-secondary)]" />
             </button>
         );
 
@@ -189,7 +189,7 @@ export function ProductPosCard({
         return (
             <div
                 className={cn(
-                    "bg-white border-1 border-[#e4e7ec] rounded-[16px] flex items-center gap-4 px-4 h-[96px] w-full overflow-hidden",
+                    "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex items-center gap-4 px-4 h-[96px] w-full overflow-hidden",
                     outOfStock && "opacity-60",
                     className,
                 )}
@@ -198,7 +198,7 @@ export function ProductPosCard({
                 <div
                     className={cn(
                         "relative shrink-0 size-[64px] rounded-[12px] overflow-hidden flex items-center justify-center border-1",
-                        isImageBanner ? "border-[#e4e7ec]" : cn(tokens.iconBg, tokens.patternBorder),
+                        isImageBanner ? "border-[var(--colors-border-secondary)]" : cn(tokens.iconBg, tokens.patternBorder),
                     )}
                 >
                     {isImageBanner ? (
@@ -206,7 +206,7 @@ export function ProductPosCard({
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={bannerImageUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
+                            <div className="w-full h-full bg-gradient-to-br from-[var(--colors-secondary-50)] to-[#f5fffa]" />
                         )
                     ) : (
                         <TypeIcon type={type} className={cn(tokens.iconColor, "w-[28px] h-[28px]")} />
@@ -215,11 +215,11 @@ export function ProductPosCard({
 
                 {/* Middle — name, dot-joined meta, price. */}
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                    <p className="text-[16px] font-medium text-[#101828] leading-[24px] truncate">{name}</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-[24px] truncate">{name}</p>
                     {metaLine && (
-                        <p className="text-[14px] font-medium text-[#667085] leading-[20px] truncate">{metaLine}</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-quaternary)] leading-[20px] truncate">{metaLine}</p>
                     )}
-                    <p className="text-[16px] font-semibold text-[#658774] leading-[24px]">{price}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-secondary-600)] leading-[24px]">{price}</p>
                 </div>
 
                 {/* Right — out-of-stock pill, otherwise the cart control. */}
@@ -239,7 +239,7 @@ export function ProductPosCard({
             className={cn(
                 // h-full + flex-col so siblings stretch to the tallest card in
                 // the row; long product names no longer leave neighbours short.
-                "bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col overflow-hidden h-full",
+                "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex flex-col overflow-hidden h-full",
                 isSmall ? "w-[188px]" : "w-full",
                 outOfStock && "opacity-60",
                 className,
@@ -252,7 +252,7 @@ export function ProductPosCard({
                 gradient placeholder when no image was uploaded). */}
             <div className={cn(
                 "relative flex items-center justify-center shrink-0 overflow-hidden",
-                !isImageBanner && "bg-[#f9fafb]",
+                !isImageBanner && "bg-[var(--colors-bg-secondary)]",
                 isSmall ? "h-[64px]" : (isImageBanner ? "h-[120px]" : "h-[80px]"),
             )}>
                 {isImageBanner ? (
@@ -260,7 +260,7 @@ export function ProductPosCard({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={bannerImageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
+                        <div className="w-full h-full bg-gradient-to-br from-[var(--colors-secondary-50)] to-[#f5fffa]" />
                     )
                 ) : (
                     <>
@@ -288,7 +288,7 @@ export function ProductPosCard({
                 isSmall ? "px-4 pt-3" : "px-5 pt-4",
             )}>
                 <div className="flex flex-col gap-2 w-full flex-1">
-                    <p className="text-[16px] font-medium text-[#101828] leading-[24px]">
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-[24px]">
                         {name}
                     </p>
                     {(primaryMeta || secondaryMeta) && (
@@ -301,13 +301,13 @@ export function ProductPosCard({
                                         the "Category" row);
                                         memberships/packages lead with class count. */}
                                     {type === "gift-card"
-                                        ? <BankNote01 className="w-4 h-4 text-[#667085] shrink-0" />
+                                        ? <BankNote01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                         : type === "retail"
-                                            ? <Tag03 className="w-4 h-4 text-[#667085] shrink-0" />
+                                            ? <Tag03 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                             : (type === "private" || type === "recovery")
-                                                ? <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
-                                                : <CalendarCheck01 className="w-4 h-4 text-[#667085] shrink-0" />}
-                                    <span className="text-[14px] font-medium text-[#667085]">{primaryMeta}</span>
+                                                ? <ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                                : <CalendarCheck01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />}
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)]">{primaryMeta}</span>
                                 </div>
                             )}
                             {secondaryMeta && (
@@ -315,11 +315,11 @@ export function ProductPosCard({
                                     {/* Retail shows a "box" for total-stock units; other
                                         types keep the clock-fast-forward duration icon. */}
                                     {type === "retail"
-                                        ? <Box className="w-4 h-4 text-[#667085] shrink-0" />
+                                        ? <Box className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                         : (type === "private" || type === "recovery")
-                                            ? <User01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                            : <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />}
-                                    <span className="text-[14px] font-medium text-[#667085]">{secondaryMeta}</span>
+                                            ? <User01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                            : <ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />}
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)]">{secondaryMeta}</span>
                                 </div>
                             )}
                         </div>
@@ -332,7 +332,7 @@ export function ProductPosCard({
                       • badge  (POS module) — passive sage circle showing qty;
                                               the cart panel owns the stepper */}
                 <div className="flex items-end gap-4 h-9 w-full mt-auto">
-                    <p className="flex-1 text-[16px] font-semibold text-[#658774]">
+                    <p className="flex-1 text-[16px] font-semibold text-[var(--colors-secondary-600)]">
                         {price}
                     </p>
                     {actionEl}

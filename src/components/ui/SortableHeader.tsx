@@ -70,12 +70,12 @@ export function SortableHeader({
     return (
         <button type="button" onClick={() => onSort(sortKey)}
             className={cn(
-                "inline-flex items-center gap-1 hover:text-[#101828] transition-colors select-none",
+                "inline-flex items-center gap-1 hover:text-[var(--colors-text-primary)] transition-colors select-none",
                 align === "right" && "flex-row-reverse",
                 className,
             )}>
             <span>{children}</span>
-            <Icon className={cn("w-3.5 h-3.5 shrink-0", active ? "text-[#475467]" : "text-[#98a2b3]")} />
+            <Icon className={cn("w-3.5 h-3.5 shrink-0", active ? "text-[var(--colors-text-tertiary)]" : "text-[var(--colors-fg-quaternary)]")} />
         </button>
     );
 }

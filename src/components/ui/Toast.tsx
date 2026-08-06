@@ -9,7 +9,7 @@ import { useAppStore, type ToastData } from "@/lib/store";
 function ringFor(type: ToastData["type"]): string {
     if (type === "error")   return "#d92d20";
     if (type === "warning") return "#dc6803";
-    return "#658774";
+    return "var(--colors-secondary-600)";
 }
 
 function ToastIcon({ icon, type }: { icon?: ToastData["icon"]; type: ToastData["type"] }) {
@@ -54,7 +54,7 @@ export function Toast() {
     const containerCls =
         toast.type === "error"   ? "bg-[#fef3f2] border-[#fecdca]"
       : toast.type === "warning" ? "bg-[#fffaeb] border-[#fedf89]"
-      :                            "bg-[#fbfffd] border-[#7ba08c]";
+      :                            "bg-[#fbfffd] border-[var(--colors-secondary-500)]";
 
     return (
         <div className="fixed top-4 right-4 z-[200] w-[380px]">
@@ -67,14 +67,14 @@ export function Toast() {
                     onClick={clearToast}
                     className="absolute top-[7px] right-[7px] w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-black/5 transition-colors"
                 >
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
 
                 <ToastIcon icon={toast.icon} type={toast.type} />
 
                 <div className="flex flex-col gap-1 pr-8 flex-1 min-w-0 pt-[2px]">
-                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{toast.title}</p>
-                    <p className="text-[14px] font-normal text-[#344054] leading-[20px]">{toast.message}</p>
+                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">{toast.title}</p>
+                    <p className="text-[14px] font-normal text-[var(--colors-text-secondary)] leading-[20px]">{toast.message}</p>
                 </div>
             </div>
         </div>

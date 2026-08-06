@@ -128,18 +128,18 @@ export function TimeDropdown({ value, onChange, slots, unavailable = [], placeho
     return (
         <div ref={ref} className="relative">
             <button ref={triggerRef} type="button" onClick={() => { if (!disabled) setOpen(p => !p); }} disabled={disabled}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
-                    value ? "text-[#101828]" : "text-[#667085]",
-                    disabled ? "opacity-60 cursor-not-allowed" : open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")}>
-                <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
+                    value ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
+                    disabled ? "opacity-60 cursor-not-allowed" : open ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-500)]")}>
+                <ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                 <span className="flex-1 text-left truncate">{value ? (displayValue ?? fmtTime(value)) : placeholder}</span>
-                {open ? <ChevronUp className="w-4 h-4 text-[#667085] shrink-0" /> : <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />}
+                {open ? <ChevronUp className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" /> : <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />}
             </button>
             {open && menuStyle && (
                 <div ref={listRef} style={menuStyle}
-                    className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] max-h-[220px] overflow-y-auto py-1">
+                    className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] max-h-[220px] overflow-y-auto py-1">
                     {visibleSlots.length === 0 ? (
-                        <p className="px-4 py-3 text-[14px] text-[#667085]">{emptyLabel ?? "No time slots available."}</p>
+                        <p className="px-4 py-3 text-[14px] text-[var(--colors-text-quaternary)]">{emptyLabel ?? "No time slots available."}</p>
                     ) : visibleSlots.map(slot => {
                         const isUnavail = unavailable.includes(slot) || (minAfter !== undefined && minAfter !== "" && slot <= minAfter);
                         const isSel = value === slot;
@@ -148,16 +148,16 @@ export function TimeDropdown({ value, onChange, slots, unavailable = [], placeho
                                 disabled={isUnavail}
                                 onClick={() => { if (!isUnavail) { onChange(slot); setOpen(false); } }}
                                 className={cn("flex items-center justify-between w-full px-4 py-3 text-left transition-colors",
-                                    isUnavail ? "cursor-not-allowed bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                    isUnavail ? "cursor-not-allowed bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
                                     !isUnavail && isSel && "bg-[#f0fff8]")}>
                                 <span className={cn(
                                     "text-[16px]",
-                                    isUnavail ? "text-[#98a2b3]" : isSel ? "font-semibold text-[#101828]" : "text-[#344054]",
+                                    isUnavail ? "text-[var(--colors-fg-quaternary)]" : isSel ? "font-semibold text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)]",
                                 )}>
                                     {fmtTime(slot)}
                                 </span>
                                 {isUnavail && (
-                                    <span className="text-[12px] font-medium text-[#667085] bg-[#f2f4f7] rounded-full px-3 py-[2px]">Unavailable</span>
+                                    <span className="text-[12px] font-medium text-[var(--colors-text-quaternary)] bg-[var(--colors-bg-tertiary)] rounded-full px-3 py-[2px]">Unavailable</span>
                                 )}
                             </button>
                         );

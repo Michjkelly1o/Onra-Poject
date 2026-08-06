@@ -145,10 +145,12 @@
   --colors-text-tertiary: #475467;
   --colors-text-quaternary: #667085;
   --colors-text-placeholder: #667085;
+  --colors-fg-quaternary: #98a2b3;   /* lightest muted text / inactive icon */
 
   /* Semantic border colors */
   --colors-border-primary: #d0d5dd;
   --colors-border-secondary: #e4e7ec;
+  --colors-border-tertiary: #eaecf0;  /* faint dividers */
 
   /* Semantic background colors */
   --colors-bg-primary: #ffffff;

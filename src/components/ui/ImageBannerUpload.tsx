@@ -56,20 +56,20 @@ export function ImageBannerUpload({
                 onDrop={handleDrop}
                 onDragOver={e => e.preventDefault()}
                 className={cn(
-                    "w-[282px] aspect-[4/3] shrink-0 bg-[#f2f4f7] border border-black/[0.08] rounded-[11px] overflow-hidden flex items-center justify-center",
+                    "w-[282px] aspect-[4/3] shrink-0 bg-[var(--colors-bg-tertiary)] border border-black/[0.08] rounded-[11px] overflow-hidden flex items-center justify-center",
                     tileClassName,
                 )}
             >
                 {preview
                     ? <img src={preview} alt="Banner" className="w-full h-full object-cover" />
-                    : <Image01 className="w-13 h-13 text-[#98a2b3]" style={{ width: 52, height: 52 }} />}
+                    : <Image01 className="w-13 h-13 text-[var(--colors-fg-quaternary)]" style={{ width: 52, height: 52 }} />}
             </div>
 
             {/* Right column — label / copy / size-guide / button stack. */}
             <div className="flex flex-col gap-5">
                 <div className="flex flex-col gap-2">
-                    <p className="text-[16px] leading-[24px] font-medium text-[#101828]">{title}</p>
-                    <p className="text-[14px] leading-[20px] text-[#475467]">{subtitle}</p>
+                    <p className="text-[16px] leading-[24px] font-medium text-[var(--colors-text-primary)]">{title}</p>
+                    <p className="text-[14px] leading-[20px] text-[var(--colors-text-tertiary)]">{subtitle}</p>
                     {/* Size guide — opt-in via `sizeGuide` prop. Semibold
                         label draws the admin's eye; the HelpCircle icon
                         opens a dark floating tooltip on hover / focus with
@@ -78,21 +78,21 @@ export function ImageBannerUpload({
                         the same tooltip pattern as InsightMetricCard. */}
                     {sizeGuide ? (
                         <div className="relative inline-flex items-center gap-1.5 self-start group/tip">
-                            <span className="text-[14px] leading-[20px] font-semibold text-[#344054]">
+                            <span className="text-[14px] leading-[20px] font-semibold text-[var(--colors-text-secondary)]">
                                 Image size guide
                             </span>
                             <button
                                 type="button"
                                 aria-label="Image size guide"
-                                className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd]"
+                                className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--colors-secondary-300)]"
                             >
-                                <HelpCircle className="w-4 h-4 text-[#98a2b3]" />
+                                <HelpCircle className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
                             </button>
                             <div
                                 role="tooltip"
                                 className={cn(
                                     "pointer-events-none absolute z-20 left-0 top-full mt-2 w-[280px]",
-                                    "rounded-[8px] bg-[#101828] px-3 py-2 text-[12px] leading-[18px] text-white",
+                                    "rounded-[8px] bg-[var(--colors-text-primary)] px-3 py-2 text-[12px] leading-[18px] text-white",
                                     "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
                                     "opacity-0 translate-y-[-2px] transition-all duration-150",
                                     "group-hover/tip:opacity-100 group-hover/tip:translate-y-0",
@@ -107,7 +107,7 @@ export function ImageBannerUpload({
                 <button
                     type="button"
                     onClick={() => ref.current?.click()}
-                    className="inline-flex items-center gap-1 self-start h-9 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] leading-[20px] font-semibold text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors"
+                    className="inline-flex items-center gap-1 self-start h-9 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] leading-[20px] font-semibold text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                 >
                     <UploadCloud01 className="w-5 h-5" />
                     Upload image

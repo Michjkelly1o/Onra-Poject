@@ -34,7 +34,7 @@ function StepperHandle({ onUp, onDown, disabled, canUp = true, canDown = true }:
 }) {
     return (
         <div className="relative w-4 h-4 shrink-0 select-none">
-            <ChevronSelectorVertical className={cn("absolute inset-0 w-4 h-4 pointer-events-none", disabled ? "text-[#d0d5dd]" : "text-[#667085]")} />
+            <ChevronSelectorVertical className={cn("absolute inset-0 w-4 h-4 pointer-events-none", disabled ? "text-[var(--colors-border-primary)]" : "text-[var(--colors-text-quaternary)]")} />
             <button type="button" tabIndex={-1} aria-label="Increase" disabled={disabled || !canUp}
                 onMouseDown={e => e.preventDefault()} onClick={onUp}
                 className="absolute inset-x-0 top-0 h-1/2 cursor-pointer disabled:cursor-not-allowed" />
@@ -45,7 +45,7 @@ function StepperHandle({ onUp, onDown, disabled, canUp = true, canDown = true }:
     );
 }
 
-const DEFAULT_INPUT = "h-10 w-full px-[14px] border border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const DEFAULT_INPUT = "h-10 w-full px-[14px] border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 /** Numeric input bound to a number-typed state. Placeholder "0", strips leading zeros, native stepper hidden + Untitled UI chevron-selector handle on the right. */
 export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
@@ -82,10 +82,10 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
         onChange(next);
     };
     return (
-        <div className={cn("flex items-stretch border border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all", disabled && "bg-[#f9fafb]", className)}>
+        <div className={cn("flex items-stretch border border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all", disabled && "bg-[var(--colors-bg-secondary)]", className)}>
             <div className="flex flex-1 items-center gap-2 pl-[14px] pr-[10px]">
                 {prefix !== undefined && (
-                    <span className="shrink-0 flex items-center text-[#667085]">{prefix}</span>
+                    <span className="shrink-0 flex items-center text-[var(--colors-text-quaternary)]">{prefix}</span>
                 )}
                 <input
                     ref={ref}
@@ -101,8 +101,8 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
                     max={max}
                     aria-label={rest["aria-label"]}
                     className={cn(
-                        "flex-1 min-w-0 h-10 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                        disabled && "text-[#667085] cursor-not-allowed",
+                        "flex-1 min-w-0 h-10 text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                        disabled && "text-[var(--colors-text-quaternary)] cursor-not-allowed",
                         inputClassName
                     )}
                 />
@@ -116,7 +116,7 @@ export const NumericInput = forwardRef<HTMLInputElement, SharedProps & {
                 )}
             </div>
             {suffix !== undefined && (
-                <div className="flex items-center px-[14px] border-l border-[#d0d5dd] text-[16px] text-[#344054] shrink-0">
+                <div className="flex items-center px-[14px] border-l border-[var(--colors-border-primary)] text-[16px] text-[var(--colors-text-secondary)] shrink-0">
                     {suffix}
                 </div>
             )}
@@ -156,7 +156,7 @@ export const NumericStringInput = forwardRef<HTMLInputElement, SharedProps & {
         onChange(next === 0 ? "" : String(next));
     };
     return (
-        <div className={cn("flex items-stretch border border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all", disabled && "bg-[#f9fafb]", className)}>
+        <div className={cn("flex items-stretch border border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all", disabled && "bg-[var(--colors-bg-secondary)]", className)}>
             <div className="flex flex-1 items-center gap-2 pl-[14px] pr-[10px]">
                 <input
                     ref={ref}
@@ -172,8 +172,8 @@ export const NumericStringInput = forwardRef<HTMLInputElement, SharedProps & {
                     max={max}
                     aria-label={rest["aria-label"]}
                     className={cn(
-                        "flex-1 min-w-0 h-10 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                        disabled && "text-[#667085] cursor-not-allowed",
+                        "flex-1 min-w-0 h-10 text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                        disabled && "text-[var(--colors-text-quaternary)] cursor-not-allowed",
                         inputClassName
                     )}
                 />
@@ -183,7 +183,7 @@ export const NumericStringInput = forwardRef<HTMLInputElement, SharedProps & {
                 />
             </div>
             {suffix !== undefined && (
-                <div className="flex items-center px-[14px] border-l border-[#d0d5dd] text-[16px] text-[#344054] shrink-0">
+                <div className="flex items-center px-[14px] border-l border-[var(--colors-border-primary)] text-[16px] text-[var(--colors-text-secondary)] shrink-0">
                     {suffix}
                 </div>
             )}

@@ -26,7 +26,7 @@ const buttonVariants = cva(
         "font-semibold text-[14px] leading-[20px] whitespace-nowrap",
         "rounded-[8px]",
         "transition-colors duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4b8c9a] focus-visible:ring-offset-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--colors-brand-600)] focus-visible:ring-offset-2",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         "[&_svg]:pointer-events-none [&_svg]:shrink-0",
     ].join(" "),
@@ -55,30 +55,30 @@ const buttonVariants = cva(
                 // ── Figma DS: Secondary gray ───────────────────────────────
                 // bg: white | border: #d0d5dd | fg: #344054
                 "secondary-gray": [
-                    "bg-white border-1 border-[#d0d5dd] text-[#344054]",
+                    "bg-white border-1 border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] hover:text-[#18212f] active:bg-[#f2f4f7]",
+                    "hover:bg-[var(--colors-bg-secondary)] hover:text-[#18212f] active:bg-[var(--colors-bg-tertiary)]",
                 ],
                 outline: [
-                    "bg-white border-1 border-[#d0d5dd] text-[#344054]",
+                    "bg-white border-1 border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] hover:text-[#18212f] active:bg-[#f2f4f7]",
+                    "hover:bg-[var(--colors-bg-secondary)] hover:text-[#18212f] active:bg-[var(--colors-bg-tertiary)]",
                 ],
                 secondary: [
-                    "bg-white border-1 border-[#d0d5dd] text-[#344054]",
+                    "bg-white border-1 border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] hover:text-[#18212f] active:bg-[#f2f4f7]",
+                    "hover:bg-[var(--colors-bg-secondary)] hover:text-[#18212f] active:bg-[var(--colors-bg-tertiary)]",
                 ],
 
                 // ── Figma DS: Tertiary gray ────────────────────────────────
                 // fg: #475467 | hover fg: #344054 | hover bg: #f9fafb
                 "tertiary-gray": [
-                    "bg-transparent text-[#475467]",
-                    "hover:bg-[#f9fafb] hover:text-[#344054] active:bg-[#f2f4f7]",
+                    "bg-transparent text-[var(--colors-text-tertiary)]",
+                    "hover:bg-[var(--colors-bg-secondary)] hover:text-[var(--colors-text-secondary)] active:bg-[var(--colors-bg-tertiary)]",
                 ],
                 ghost: [
-                    "bg-transparent text-[#475467]",
-                    "hover:bg-[#f9fafb] hover:text-[#344054] active:bg-[#f2f4f7]",
+                    "bg-transparent text-[var(--colors-text-tertiary)]",
+                    "hover:bg-[var(--colors-bg-secondary)] hover:text-[var(--colors-text-secondary)] active:bg-[var(--colors-bg-tertiary)]",
                 ],
 
                 // ── Figma DS: Destructive Primary ──────────────────────────
@@ -108,18 +108,18 @@ const buttonVariants = cva(
 
                 // ── Figma DS: Link color ───────────────────────────────────
                 "link-color": [
-                    "bg-transparent text-[#4b8c9a] rounded-none h-auto px-0",
-                    "hover:text-[#306b78] hover:underline underline-offset-4",
+                    "bg-transparent text-[var(--colors-brand-600)] rounded-none h-auto px-0",
+                    "hover:text-[var(--colors-brand-700)] hover:underline underline-offset-4",
                 ],
                 link: [
-                    "bg-transparent text-[#4b8c9a] rounded-none h-auto px-0",
-                    "hover:text-[#306b78] hover:underline underline-offset-4",
+                    "bg-transparent text-[var(--colors-brand-600)] rounded-none h-auto px-0",
+                    "hover:text-[var(--colors-brand-700)] hover:underline underline-offset-4",
                 ],
 
                 // ── Figma DS: Link gray ────────────────────────────────────
                 "link-gray": [
-                    "bg-transparent text-[#667085] rounded-none h-auto px-0",
-                    "hover:text-[#344054] hover:underline underline-offset-4",
+                    "bg-transparent text-[var(--colors-text-quaternary)] rounded-none h-auto px-0",
+                    "hover:text-[var(--colors-text-secondary)] hover:underline underline-offset-4",
                 ],
 
                 // ── Figma DS: Destructive Link ─────────────────────────────

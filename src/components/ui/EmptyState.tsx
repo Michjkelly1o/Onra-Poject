@@ -34,20 +34,20 @@ export function EmptyState({ title, subtitle, icon: Icon = AlignLeft, absolute =
             className,
         )}>
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <Icon className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <Icon className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>

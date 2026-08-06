@@ -66,7 +66,7 @@ export function FixedDropdown({ triggerRef, open, onClose, children, minWidth = 
     if (!open) return null;
     return (
         <div ref={dropRef} style={{ ...style, minWidth }}
-            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1">
+            className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1">
             {children}
         </div>
     );

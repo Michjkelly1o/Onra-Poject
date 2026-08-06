@@ -192,17 +192,17 @@ export function SelectInput({
                 onClick={() => !disabled && setOpen((p) => !p)}
                 className={cn(
                     "flex items-center gap-[8px] w-full h-[40px]",
-                    "bg-white border-1 border-[#d0d5dd] rounded-[8px]",
+                    "bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px]",
                     "px-[12px]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                    "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]",
+                    "focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)]",
                     "transition-all",
-                    disabled && "opacity-60 cursor-not-allowed bg-[#f9fafb]",
+                    disabled && "opacity-60 cursor-not-allowed bg-[var(--colors-bg-secondary)]",
                 )}
             >
                 {/* Leading icon */}
                 {triggerIcon && (
-                    <span className="w-5 h-5 flex items-center justify-center shrink-0 text-[#667085]">
+                    <span className="w-5 h-5 flex items-center justify-center shrink-0 text-[var(--colors-text-quaternary)]">
                         {triggerIcon}
                     </span>
                 )}
@@ -211,14 +211,14 @@ export function SelectInput({
                 <span
                     className={cn(
                         "flex-1 text-left text-[14px] leading-[20px] truncate",
-                        isPlaceholder ? "text-[#667085] font-normal" : "text-[#344054] font-medium",
+                        isPlaceholder ? "text-[var(--colors-text-quaternary)] font-normal" : "text-[var(--colors-text-secondary)] font-medium",
                     )}
                 >
                     {displayLabel}
                 </span>
 
                 {/* Chevron */}
-                <span className="w-4 h-4 flex items-center justify-center shrink-0 text-[#667085]">
+                <span className="w-4 h-4 flex items-center justify-center shrink-0 text-[var(--colors-text-quaternary)]">
                     {open ? (
                         <ChevronUp className="w-4 h-4" />
                     ) : (
@@ -236,7 +236,7 @@ export function SelectInput({
                         // Solid bg matters here — without it, scrolling the
                         // option list lets the layer underneath bleed through
                         // when the menu floats over a modal.
-                        "bg-white border-1 border-[#e4e7ec] rounded-[8px]",
+                        "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px]",
                         "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
                         // `overflow-hidden` clips the sticky menuHeader +
                         // search input to the rounded corners AND enforces
@@ -250,14 +250,14 @@ export function SelectInput({
                     )}
                 >
                     {menuHeader && (
-                        <div className="border-b border-[#e4e7ec] shrink-0">
+                        <div className="border-b border-[var(--colors-border-secondary)] shrink-0">
                             {menuHeader({ close: () => setOpen(false) })}
                         </div>
                     )}
                     {searchable && (
-                        <div className="p-2 border-b border-[#e4e7ec] shrink-0">
+                        <div className="p-2 border-b border-[var(--colors-border-secondary)] shrink-0">
                             <div className="relative">
-                                <SearchMd className="absolute left-[10px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
+                                <SearchMd className="absolute left-[10px] top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)] pointer-events-none" />
                                 <input
                                     ref={searchInputRef}
                                     type="text"
@@ -275,14 +275,14 @@ export function SelectInput({
                                         }
                                     }}
                                     placeholder={searchPlaceholder}
-                                    className="w-full h-8 pl-8 pr-2 border-1 border-[#d0d5dd] rounded-[6px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
+                                    className="w-full h-8 pl-8 pr-2 border-1 border-[var(--colors-border-primary)] rounded-[6px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)]"
                                 />
                             </div>
                         </div>
                     )}
                     <div className="p-[4px] max-h-[264px] overflow-y-auto scrollbar-hide flex-1">
                         {filteredOptions.length === 0 ? (
-                            <p className="px-[10px] py-3 text-[13px] text-[#667085]">No results</p>
+                            <p className="px-[10px] py-3 text-[13px] text-[var(--colors-text-quaternary)]">No results</p>
                         ) : filteredOptions.map((option) => {
                             const isSelected = option.value === value;
                             return (
@@ -293,20 +293,20 @@ export function SelectInput({
                                     className={cn(
                                         "flex items-center gap-[8px] w-full",
                                         "px-[10px] py-[9px] rounded-[6px]",
-                                        "text-[14px] font-medium text-[#344054]",
-                                        "hover:bg-[#f9fafb] transition-colors",
-                                        isSelected && "bg-[#f9fafb] text-[#101828]",
+                                        "text-[14px] font-medium text-[var(--colors-text-secondary)]",
+                                        "hover:bg-[var(--colors-bg-secondary)] transition-colors",
+                                        isSelected && "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]",
                                     )}
                                 >
                                     {option.icon && (
-                                        <span className="w-4 h-4 flex items-center justify-center shrink-0 text-[#667085]">
+                                        <span className="w-4 h-4 flex items-center justify-center shrink-0 text-[var(--colors-text-quaternary)]">
                                             {option.icon}
                                         </span>
                                     )}
                                     <span className="flex-1 min-w-0 flex items-center gap-2 text-left">
                                         <span className="truncate">{option.label}</span>
                                         {option.secondary && (
-                                            <span className="text-[12px] font-normal text-[#667085] truncate">
+                                            <span className="text-[12px] font-normal text-[var(--colors-text-quaternary)] truncate">
                                                 {option.secondary}
                                             </span>
                                         )}
@@ -315,7 +315,7 @@ export function SelectInput({
                                         filter-dropdown pattern used by pay-rate /
                                         gift-cards. */}
                                     {isSelected && (
-                                        <Check className="w-4 h-4 text-[#658774] shrink-0" />
+                                        <Check className="w-4 h-4 text-[var(--colors-secondary-600)] shrink-0" />
                                     )}
                                 </button>
                             );
