@@ -152,12 +152,33 @@ export async function POST(req: Request) {
         system = buildInsightPrompt(ctx, today, catalog);
     }
 
+    // Prompt caching (2026-08) — the system prompt (schema + instructions) is a
+    // large, mostly-static prefix re-sent on EVERY request + tool-loop step, and
+    // was billed at full input price each time. Marking it with Anthropic's
+    // ephemeral `cache_control` makes repeat requests within ~5 min bill that
+    // prefix at ~10% of input price (cache read) instead of full — a pure cost +
+    // latency win with ZERO effect on output quality: the model reads the exact
+    // same tokens; caching only changes how the repeated prefix is billed.
+    //
+    // It MUST be delivered as a single leading role:"system" message (not the
+    // top-level `system` param — @ai-sdk/anthropic rejects combining the two).
+    // The provider emits it into the request's top-level `system` block with
+    // `cache_control`; the model.ts fetch shim only rewrites `body.messages`, so
+    // `body.system` (where the cache marker lives) passes through untouched.
+    const cachedMessages = [
+        {
+            role: "system" as const,
+            content: system,
+            providerOptions: { anthropic: { cacheControl: { type: "ephemeral" as const } } },
+        },
+        ...(messages as unknown[]),
+    ] as unknown as Parameters<typeof streamText>[0]["messages"];
+
     const result = streamText({
         model: claude(AI_AGENT_MODEL_ID),
-        system,
         tools,
         maxSteps: AI_AGENT_MAX_STEPS,
-        messages: messages as Parameters<typeof streamText>[0]["messages"],
+        messages: cachedMessages,
         onError: ({ error }) => {
             console.error("[ai-agent] streamText error:", error);
         },

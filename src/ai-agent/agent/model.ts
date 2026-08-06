@@ -1,6 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra AI Agent · Anthropic provider (Claude 5 family)
+// Onra AI Agent · Anthropic provider
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// Model is pinned in flags.ts (`AI_AGENT_MODEL_ID`) — currently Haiku 4.5. The
+// shim below still applies cleanly: `thinking: disabled` keeps Haiku's stream
+// single-track (which `@ai-sdk/anthropic@1.x` parses fine) and stripping
+// temperature/top_p/top_k just falls back to API defaults.
 //
 // Ported verbatim from ONRA AI-Agent/lib/agent/model.ts. Kept because
 // `@ai-sdk/anthropic@1.x` (what we're on — see AI_AGENT_MODEL_ID and the

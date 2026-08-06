@@ -37,8 +37,12 @@ export const AI_AGENT_MAX_DURATION_SECONDS = 10;
  *  when Vercel plan bumps. */
 export const AI_AGENT_MAX_STEPS = 3;
 
-/** Model id. Pinned so an SDK upgrade doesn't silently swap models. */
-export const AI_AGENT_MODEL_ID = "claude-sonnet-5";
+/** Model id. Pinned so an SDK upgrade doesn't silently swap models.
+ *  2026-08-06 — switched from claude-sonnet-5 to Haiku 4.5 to cut token cost
+ *  during testing (Haiku is a fraction of Sonnet's per-token price). The
+ *  provider shim in agent/model.ts (strip temperature, disable thinking) keeps
+ *  the stream single-track, which is exactly what a fast Haiku agent wants. */
+export const AI_AGENT_MODEL_ID = "claude-haiku-4-5-20251001";
 
 /** Max upload size, single source of truth for /api/ai-agent/upload and the
  *  ChatThread client-side pre-flight. Client 2026-07-24 audit — the two
