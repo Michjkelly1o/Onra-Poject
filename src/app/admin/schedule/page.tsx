@@ -714,6 +714,7 @@ function MonthView({ classes, monthYear, onClassClick, onMoreClick }: {
                                                         instructorInitials: cls.instructorInitials,
                                                         instructorColor: cls.instructorColor,
                                                         booked: cls.booked, capacity: cls.capacity,
+                                                        status: cls.status,
                                                     }}
                                                     onClick={(e) => onClassClick(cls, e)}
                                                 />
@@ -1301,16 +1302,11 @@ function SchedulePage() {
         return true;
     });
 
-    // Day / Week / Month grid views hide Cancelled + Completed classes by
-    // DEFAULT (client 2026-08) — past / dead classes clutter the calendar and
-    // the admin rarely wants them on the grid. They reappear only when the
-    // admin explicitly includes that status in the Filter panel. The List view
-    // is unaffected — it has its own Upcoming / Past tabs and keeps everything.
-    const gridClasses = filteredClasses.filter(c => {
-        if (c.status === "Cancelled" && !applied.statuses.includes("Cancelled")) return false;
-        if (c.status === "Completed" && !applied.statuses.includes("Completed")) return false;
-        return true;
-    });
+    // Day / Week / Month grid views show ALL classes by default, including
+    // Cancelled + Completed (client 2026-08 update — reversed the earlier hide).
+    // Cancelled classes render struck-through in red so they read as dead at a
+    // glance; the Filter panel's status pills still narrow the grid when used.
+    const gridClasses = filteredClasses;
 
     const STATUS_ORDER: Record<ClassStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
     const listComparators: Record<string, (a: ClassInstance, b: ClassInstance) => number> = {

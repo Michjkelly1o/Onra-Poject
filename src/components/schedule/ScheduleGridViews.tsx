@@ -231,6 +231,7 @@ function ClassBlock({ cls, onClick, gridStartHour, gridHeight }: {
                 room: cls.room,
                 booked: cls.booked,
                 capacity: cls.capacity,
+                status: cls.status,
             }}
             absolute={{ top, height }}
             onClick={onClick}
@@ -324,6 +325,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const rootRef = useRef<HTMLDivElement>(null);
     const headerScrollRef = useRef<HTMLDivElement>(null);
     const bodyScrollRef = useRef<HTMLDivElement>(null);
+    const vScrollRef = useRef<HTMLDivElement>(null);
     const [colWidth, setColWidth] = useState(240);
     const colCount = columns.length;
     useEffect(() => {
@@ -373,6 +375,17 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const currentTop = (currentMinutes * HOUR_HEIGHT) / 60;
     const showCurrentTime = currentMinutes > 0 && currentMinutes < (gridEndHour - gridStartHour) * 60;
 
+    // On load (and when the viewed day changes) scroll the grid so the orange
+    // "now" line sits ~⅓ down the viewport, instead of opening pinned at the
+    // top — otherwise the current time is off-screen in the afternoon. Keyed on
+    // dateISO only, so it never fights the user's scroll on a minute re-render.
+    useEffect(() => {
+        const el = vScrollRef.current;
+        if (!el) return;
+        el.scrollTop = showCurrentTime ? Math.max(0, currentTop - el.clientHeight / 3) : 0;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dateISO]);
+
     return (
         <div ref={rootRef} className="flex flex-col overflow-hidden flex-1">
             {/* Instructor column headers — horizontally scrollable (synced). */}
@@ -412,7 +425,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
             </div>
 
             {/* Scrollable time grid */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide">
+            <div ref={vScrollRef} className="flex-1 overflow-y-auto scrollbar-hide">
                 <div className="flex pl-6" style={{ minHeight: gridHeight }}>
                     {/* Time labels — fixed left gutter */}
                     <div className="w-16 shrink-0 flex flex-col">
@@ -517,6 +530,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
     // strip there couldn't tell the admin WHO is blocked. Blocks render
     // only in Day view where each column is an instructor.
     const cols = buildWeekCols(weekStart);
+    const vScrollRef = useRef<HTMLDivElement>(null);
 
     // Grid range = widest envelope of the branch's open hours across the 7
     // visible days (some weekdays may open earlier/close later than others).
@@ -544,6 +558,17 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
     const currentTop = (currentMinutes * WEEK_HOUR_HEIGHT) / 60;
     const showCurrentTime = currentMinutes > 0 && currentMinutes < (gridEndHour - gridStartHour) * 60;
 
+    // Same as Day view: open scrolled to the orange "now" line, keyed on the
+    // visible week (first column's date) so it re-centres when the week changes
+    // but never on a minute re-render.
+    const weekKey = cols[0]?.iso ?? "";
+    useEffect(() => {
+        const el = vScrollRef.current;
+        if (!el) return;
+        el.scrollTop = showCurrentTime ? Math.max(0, currentTop - el.clientHeight / 3) : 0;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [weekKey]);
+
     return (
         <div className="flex flex-col overflow-hidden flex-1">
             {/* Day column headers */}
@@ -562,7 +587,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
             </div>
 
             {/* Scrollable time grid */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6">
+            <div ref={vScrollRef} className="flex-1 overflow-y-auto scrollbar-hide px-6">
                 <div className="flex" style={{ minHeight: gridHeight }}>
                     {/* Time labels */}
                     <div className="w-16 shrink-0 flex flex-col">
@@ -619,6 +644,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
                                                         instructorImageUrl: SCHEDULE_INSTRUCTORS.find(i => i.id === cls.instructorId)?.imageUrl,
                                                         room: cls.room,
                                                         booked: cls.booked, capacity: cls.capacity,
+                                                        status: cls.status,
                                                     }}
                                                     absolute={{ top, height, leftPct, widthPct }}
                                                     moreCount={lane?.moreCount ?? 0}

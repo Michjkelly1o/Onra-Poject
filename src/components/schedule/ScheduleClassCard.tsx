@@ -156,6 +156,11 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
     const rangeLabel = cls.displayTime
         ?? (cls.endTime ? `${fmt12(cls.startTime)} - ${fmt12(cls.endTime)}` : startLabel);
     const hasMore = !!moreCount && moreCount > 0;
+    // Cancelled classes render their name struck-through in red across every
+    // size variant (client 2026-08) so a dead class reads at a glance on the
+    // day/week/month grid without being hidden.
+    const isCancelled = cls.status === "Cancelled";
+    const CANCELLED_RED = "#d92c20";
 
     // `minHeight: 72` guarantees a 45-min class still has room for title +
     // instructor + meta row at the current 88px-per-hour week-view scale
@@ -208,7 +213,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 )}>
                 {/* Title row + type tag + Ongoing pill / participant glyph. */}
                 <div className="flex items-start gap-2 w-full">
-                    <span className="min-w-0 block text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
+                    <span className={cn("min-w-0 block text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px] truncate shrink", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} className="mt-px" />}
                     <span className="flex-1" />
                     {isOngoing && (
@@ -283,7 +288,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     className,
                 )}>
                 <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="block text-[14px] font-medium leading-[20px] truncate" style={{ color: cls.color.text }}>{cls.name}</span>
+                    <span className={cn("block text-[14px] font-medium leading-[20px] truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
                 {cls.instructorName && (
@@ -323,7 +328,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     className,
                 )}>
                 <div className="flex items-center gap-1 min-w-0">
-                    <span className="block text-[13px] font-medium leading-[18px] truncate" style={{ color: cls.color.text }}>{cls.name}</span>
+                    <span className={cn("block text-[13px] font-medium leading-[18px] truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
                 <div className="flex items-center gap-1 min-w-0">
@@ -349,7 +354,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
             )}>
             <span className="text-[11px] font-medium whitespace-nowrap shrink-0" style={{ color: cls.color.border }}>{cls.leadLabel ?? startLabel}</span>
             <span className="text-[11px] text-[var(--colors-fg-quaternary)] shrink-0">•</span>
-            <span className="text-[11px] font-medium truncate" style={{ color: cls.color.text }}>{cls.name}</span>
+            <span className={cn("text-[11px] font-medium truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
         </button>
     );
 }
