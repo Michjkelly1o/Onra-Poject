@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Clock, MarkerPin01, Users01 } from "@untitledui/icons";
+import { Check, Clock, MarkerPin01, Users01, XClose } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import type { SessionType } from "@/lib/store";
 import { SESSION_TYPE_TAG_LABEL, SESSION_TYPE_TAG_COLORS } from "@/lib/session-type";
@@ -161,6 +161,11 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
     // day/week/month grid without being hidden.
     const isCancelled = cls.status === "Cancelled";
     const CANCELLED_RED = "#d92c20";
+    // Completed classes get a small green ✓ before the name so past/done classes
+    // read as finished — distinct from cancelled, which gets a red ✕ + red
+    // strikethrough name (the class did NOT happen). (client 2026-08)
+    const isCompleted = cls.status === "Completed";
+    const COMPLETED_GREEN = "#067647";
 
     // `minHeight: 72` guarantees a 45-min class still has room for title +
     // instructor + meta row at the current 88px-per-hour week-view scale
@@ -213,6 +218,8 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 )}>
                 {/* Title row + type tag + Ongoing pill / participant glyph. */}
                 <div className="flex items-start gap-2 w-full">
+                    {isCompleted && <Check className="w-4 h-4 shrink-0 mt-[2px]" style={{ color: COMPLETED_GREEN }} />}
+                    {isCancelled && <XClose className="w-4 h-4 shrink-0 mt-[2px]" style={{ color: CANCELLED_RED }} />}
                     <span className={cn("min-w-0 block text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px] truncate shrink", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} className="mt-px" />}
                     <span className="flex-1" />
@@ -288,6 +295,8 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     className,
                 )}>
                 <div className="flex items-center gap-1.5 min-w-0">
+                    {isCompleted && <Check className="w-[13px] h-[13px] shrink-0" style={{ color: COMPLETED_GREEN }} />}
+                    {isCancelled && <XClose className="w-[13px] h-[13px] shrink-0" style={{ color: CANCELLED_RED }} />}
                     <span className={cn("block text-[14px] font-medium leading-[20px] truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
@@ -328,6 +337,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     className,
                 )}>
                 <div className="flex items-center gap-1 min-w-0">
+                    {isCompleted && <Check className="w-3 h-3 shrink-0" style={{ color: COMPLETED_GREEN }} />}{isCancelled && <XClose className="w-3 h-3 shrink-0" style={{ color: CANCELLED_RED }} />}
                     <span className={cn("block text-[13px] font-medium leading-[18px] truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
@@ -352,6 +362,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 "w-full rounded-[4px] px-1.5 py-[3px] flex items-center gap-1 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden",
                 className,
             )}>
+            {isCompleted && <Check className="w-3 h-3 shrink-0" style={{ color: COMPLETED_GREEN }} />}{isCancelled && <XClose className="w-3 h-3 shrink-0" style={{ color: CANCELLED_RED }} />}
             <span className="text-[11px] font-medium whitespace-nowrap shrink-0" style={{ color: cls.color.border }}>{cls.leadLabel ?? startLabel}</span>
             <span className="text-[11px] text-[var(--colors-fg-quaternary)] shrink-0">•</span>
             <span className={cn("text-[11px] font-medium truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
