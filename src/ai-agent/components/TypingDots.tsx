@@ -19,7 +19,7 @@ export function TypingDots({ label = "Thinking" }: { label?: string }) {
             {[0, 1, 2].map((i) => (
                 <span
                     key={i}
-                    className="inline-block size-1.5 rounded-full bg-[#7ba08c]"
+                    className="inline-block size-1.5 rounded-full bg-[var(--colors-secondary-500)]"
                     style={{
                         animation: "onra-typing-dot 1.2s ease-in-out infinite",
                         animationDelay: `${i * 0.15}s`,

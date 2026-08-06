@@ -48,13 +48,13 @@ export default function TimezonePage() {
     }
 
     const searchBar = (
-        <div className="flex items-center gap-2 rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <SearchLg className="size-5 shrink-0 text-[#667085]" aria-hidden />
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <SearchLg className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
             <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search timezone…"
-                className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
+                className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
             />
         </div>
     );
@@ -66,9 +66,9 @@ export default function TimezonePage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Timezone</h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -87,21 +87,21 @@ export default function TimezonePage() {
                                 {/* City + its badge grouped on the LEFT (badge sticks to
                                     the city, not the UTC offset). */}
                                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                                    <span className="min-w-0 truncate text-sm font-medium leading-5 text-[#344054]">
+                                    <span className="min-w-0 truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                                         {z.city}
                                     </span>
                                     {z.city === branchCity && (
-                                        <span className="shrink-0 rounded-md border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#0c2d34]">
+                                        <span className="shrink-0 rounded-md border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[var(--colors-brand-900)]">
                                             Branch time
                                         </span>
                                     )}
                                     {z.city === deviceCity && (
-                                        <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#475467]">
+                                        <span className="shrink-0 rounded-md border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[var(--colors-text-tertiary)]">
                                             Your time
                                         </span>
                                     )}
                                 </div>
-                                <span className="shrink-0 text-sm font-normal leading-5 text-[#475467]">{z.offset}</span>
+                                <span className="shrink-0 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{z.offset}</span>
                                 <RadioDot checked={z.city === timezone} />
                             </button>
                         ))}

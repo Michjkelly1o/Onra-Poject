@@ -59,9 +59,9 @@ export default function AppointmentSuccessPage() {
                     type="button"
                     onClick={() => router.push("/customer/search")}
                     aria-label="Close"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <XClose className="size-5 text-[#344054]" aria-hidden />
+                    <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
             </header>
 
@@ -80,7 +80,7 @@ export default function AppointmentSuccessPage() {
                 </p>
 
                 {/* Summary card */}
-                <div className="flex w-full flex-col gap-4 rounded-[20px] border border-[#e4e7ec] bg-white p-4 shadow-[0px_24px_48px_-12px_rgba(16,24,40,0.12)]">
+                <div className="flex w-full flex-col gap-4 rounded-[20px] border border-[var(--colors-border-secondary)] bg-white p-4 shadow-[0px_24px_48px_-12px_rgba(16,24,40,0.12)]">
                     <div
                         className="relative h-[200px] w-full overflow-hidden rounded-2xl"
                         style={!appointment.coverImage ? { backgroundColor: appointment.coverColor } : undefined}
@@ -98,22 +98,22 @@ export default function AppointmentSuccessPage() {
                     <div className="flex w-full flex-col gap-5">
                         <div className="flex w-full flex-col gap-1">
                             <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{appointment.name}</p>
-                            <p className="text-sm font-normal leading-5 text-[#475467]">
+                            <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                 {fullDate}
                                 {slotTime ? ` at ${to12h(slotTime)}` : ""}
                             </p>
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
-                                <span className="flex items-center gap-1 text-sm font-normal leading-5 text-[#475467]">
-                                    <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                                <span className="flex items-center gap-1 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
+                                    <Clock className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                                     {appointment.durationMins} mins
                                 </span>
                                 {isPrivate && instructor && (
                                     <>
-                                        <span className="text-sm leading-5 text-[#475467]" aria-hidden>
+                                        <span className="text-sm leading-5 text-[var(--colors-text-tertiary)]" aria-hidden>
                                             •
                                         </span>
-                                        <span className="flex items-center gap-1.5 text-sm font-normal leading-5 text-[#475467]">
-                                            <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                        <span className="flex items-center gap-1.5 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
+                                            <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                                                 {instructor.imageUrl ? (
                                                     // eslint-disable-next-line @next/next/no-img-element
                                                     <img
@@ -122,7 +122,7 @@ export default function AppointmentSuccessPage() {
                                                         className="size-full scale-[1.4] object-cover"
                                                     />
                                                 ) : (
-                                                    <span className="text-[9px] font-semibold leading-none text-[#667085]">
+                                                    <span className="text-[9px] font-semibold leading-none text-[var(--colors-text-quaternary)]">
                                                         {instructor.initials}
                                                     </span>
                                                 )}
@@ -135,8 +135,8 @@ export default function AppointmentSuccessPage() {
                         </div>
 
                         <div className="flex w-full items-start gap-1.5">
-                            <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
-                            <p className="min-w-0 flex-1 text-sm font-normal leading-5 text-[#475467]">
+                            <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                            <p className="min-w-0 flex-1 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                 {appointment.branchName}
                             </p>
                         </div>

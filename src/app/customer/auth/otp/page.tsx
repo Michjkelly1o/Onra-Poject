@@ -92,7 +92,7 @@ export default function AuthOtpPage() {
             <div className={`flex flex-1 flex-col items-center gap-6 px-4 pb-8 ${AUTH_CONTENT_OFFSET}`}>
                 <div className="flex w-full flex-col gap-2">
                     <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Enter OTP</h1>
-                    <p className="text-base leading-6 text-[#667085]">
+                    <p className="text-base leading-6 text-[var(--colors-text-quaternary)]">
                         Enter the 4 digit OTP code we just sent to start using Onra.
                     </p>
                 </div>
@@ -111,12 +111,12 @@ export default function AuthOtpPage() {
                     </Button>
 
                     <div className="flex items-center justify-center gap-1">
-                        <span className="text-sm leading-5 text-[#475467]">Didn&rsquo;t receive the code?</span>
+                        <span className="text-sm leading-5 text-[var(--colors-text-tertiary)]">Didn&rsquo;t receive the code?</span>
                         <button
                             type="button"
                             onClick={resend}
                             disabled={cooldown > 0}
-                            className="text-sm font-semibold leading-5 text-[var(--brand-primary)] disabled:text-[#98a2b3]"
+                            className="text-sm font-semibold leading-5 text-[var(--brand-primary)] disabled:text-[var(--colors-fg-quaternary)]"
                         >
                             {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
                         </button>

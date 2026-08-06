@@ -158,7 +158,7 @@ function fmtReviews(n: number): string {
 }
 
 const BADGE_TONE: Record<AiOptionBadgeTone, string> = {
-    neutral: "bg-[#f2f4f7] text-[#344054]",
+    neutral: "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)]",
     success: "bg-[#ecfdf3] text-[#067647]",
     warning: "bg-[#fffaeb] text-[#b54708]",
     danger: "bg-[#fef3f2] text-[#b42318]",
@@ -178,28 +178,28 @@ function initialsFromLabel(label: string): string {
 function OptionMedia({ opt }: { opt: AiQuestionOption }) {
     if (opt.thumbnailUrl) {
         return (
-            <span className="shrink-0 size-14 rounded-[8px] overflow-hidden bg-[#f2f4f7] relative">
+            <span className="shrink-0 size-14 rounded-[8px] overflow-hidden bg-[var(--colors-bg-tertiary)] relative">
                 <Image src={opt.thumbnailUrl} alt="" fill sizes="56px" className="object-cover" />
             </span>
         );
     }
     if (opt.iconTile) {
         return (
-            <span className="shrink-0 size-14 rounded-[8px] border border-[#e4e7ec] bg-[#f9fafb] flex items-center justify-center">
-                <Plus className="size-5 text-[#667085]" />
+            <span className="shrink-0 size-14 rounded-[8px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] flex items-center justify-center">
+                <Plus className="size-5 text-[var(--colors-text-quaternary)]" />
             </span>
         );
     }
     if (opt.avatarUrl) {
         return (
-            <span className="shrink-0 size-8 rounded-full overflow-hidden bg-[#f2f4f7] relative">
+            <span className="shrink-0 size-8 rounded-full overflow-hidden bg-[var(--colors-bg-tertiary)] relative">
                 <Image src={opt.avatarUrl} alt="" fill sizes="32px" className="object-cover" />
             </span>
         );
     }
     if (opt.avatarInitials) {
         return (
-            <span className="shrink-0 size-8 rounded-full bg-[#f2f4f7] flex items-center justify-center text-[12px] font-semibold text-[#475467]">
+            <span className="shrink-0 size-8 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center text-[12px] font-semibold text-[var(--colors-text-tertiary)]">
                 {opt.avatarInitials}
             </span>
         );
@@ -395,7 +395,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         onChange={(iso) => advance({ kind: "other", text: iso })}
                         minDate={opt.minDateISO}
                         placeholder={opt.label}
-                        triggerClassName="w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left text-[14px] font-medium text-[#667085] hover:bg-[#f9fafb] transition-colors"
+                        triggerClassName="w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left text-[14px] font-medium text-[var(--colors-text-quaternary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     />
                 </div>
             );
@@ -433,7 +433,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                             ? "opacity-50 cursor-not-allowed"
                             : active
                               ? "bg-[#f1f7f4]"
-                              : "hover:bg-[#f9fafb]",
+                              : "hover:bg-[var(--colors-bg-secondary)]",
                     )}
                 >
                     {/* Leading selector. Multi → checkbox square. Single with
@@ -442,7 +442,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         <span
                             className={cn(
                                 "shrink-0 size-5 flex items-center justify-center rounded-[5px] border transition-colors",
-                                active ? "border-[#3f8f68] bg-[#3f8f68]" : "border-[#d0d5dd] bg-white",
+                                active ? "border-[#3f8f68] bg-[#3f8f68]" : "border-[var(--colors-border-primary)] bg-white",
                             )}
                         >
                             {active && <Check className="size-3.5 text-white" strokeWidth={3} />}
@@ -453,7 +453,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         <span
                             className={cn(
                                 "shrink-0 size-6 flex items-center justify-center rounded-[6px] border text-[12px] font-medium",
-                                active ? "border-[#aad4bd] text-[#344054] bg-white" : "border-[#e4e7ec] text-[#667085] bg-white",
+                                active ? "border-[var(--colors-secondary-300)] text-[var(--colors-text-secondary)] bg-white" : "border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)] bg-white",
                             )}
                         >
                             {badgeNumber}
@@ -464,22 +464,22 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
 
                     <span className="flex-1 min-w-0 flex flex-col gap-0.5">
                         <span className="flex items-center gap-1.5 text-[14px] leading-5 min-w-0">
-                            {opt.lead && <span className="text-[#667085] font-normal shrink-0">{opt.lead}</span>}
-                            <span className="text-[#344054] font-medium truncate">{opt.label}</span>
-                            {opt.metaLabel && <span className="shrink-0 text-[13px] font-normal text-[#98a2b3]">{opt.metaLabel}</span>}
+                            {opt.lead && <span className="text-[var(--colors-text-quaternary)] font-normal shrink-0">{opt.lead}</span>}
+                            <span className="text-[var(--colors-text-secondary)] font-medium truncate">{opt.label}</span>
+                            {opt.metaLabel && <span className="shrink-0 text-[13px] font-normal text-[var(--colors-fg-quaternary)]">{opt.metaLabel}</span>}
                             {/* Person rows (searchable instructor picker) always
                                 show a rating — a new instructor with no reviews
                                 yet reads as "0 (0 reviews)" rather than nothing. */}
                             {(opt.rating != null || (isSearchable && hasMedia)) && (
-                                <span className="shrink-0 inline-flex items-center gap-0.5 text-[12px] font-medium text-[#667085]">
+                                <span className="shrink-0 inline-flex items-center gap-0.5 text-[12px] font-medium text-[var(--colors-text-quaternary)]">
                                     <Star01 className="size-3 text-[#f79009] fill-[#f79009]" />
                                     {(opt.rating ?? 0).toFixed(1)}
-                                    <span className="text-[#98a2b3] font-normal">({fmtReviews(opt.ratingCount ?? 0)} reviews)</span>
+                                    <span className="text-[var(--colors-fg-quaternary)] font-normal">({fmtReviews(opt.ratingCount ?? 0)} reviews)</span>
                                 </span>
                             )}
                         </span>
                         {opt.subtitle && (
-                            <span className="text-[12px] leading-[18px] text-[#667085] truncate">{opt.subtitle}</span>
+                            <span className="text-[12px] leading-[18px] text-[var(--colors-text-quaternary)] truncate">{opt.subtitle}</span>
                         )}
                         {opt.disabled && opt.disabledReason && (
                             <span className="text-[12px] leading-[18px] text-[#b42318] truncate">{opt.disabledReason}</span>
@@ -489,7 +489,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                                 {opt.attributes.map((a, ai) => {
                                     const AttrIcon = ATTR_ICONS[ai];
                                     return (
-                                        <span key={ai} className="inline-flex items-center gap-1 text-[12px] text-[#667085] leading-[18px]">
+                                        <span key={ai} className="inline-flex items-center gap-1 text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">
                                             {AttrIcon && <AttrIcon className="size-4 shrink-0" />}
                                             {a}
                                         </span>
@@ -509,7 +509,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                             {opt.badge.label}
                         </span>
                     )}
-                    {!isMulti && active && !opt.badge && <ChevronRight className="size-4 text-[#667085] shrink-0" />}
+                    {!isMulti && active && !opt.badge && <ChevronRight className="size-4 text-[var(--colors-text-quaternary)] shrink-0" />}
                 </button>
             </div>
         );
@@ -522,14 +522,14 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
     return (
         <div
             className={cn(
-                "w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden",
+                "w-full bg-white border border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden",
                 "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
                 className,
             )}
         >
             {/* Header — title + pager. */}
-            <div className="h-[52px] flex items-center gap-2 px-3.5 border-b border-[#e4e7ec]">
-                <p className="flex-1 min-w-0 text-[16px] font-semibold text-[#101828] leading-6 truncate">
+            <div className="h-[52px] flex items-center gap-2 px-3.5 border-b border-[var(--colors-border-secondary)]">
+                <p className="flex-1 min-w-0 text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6 truncate">
                     {q.title ?? "Question"}
                 </p>
                 {total > 1 && (
@@ -539,11 +539,11 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                             onClick={handlePrev}
                             disabled={step === 0}
                             aria-label="Previous question"
-                            className="size-6 flex items-center justify-center rounded-[3px] text-[#667085] enabled:hover:bg-[#f9fafb] disabled:opacity-40 transition-colors"
+                            className="size-6 flex items-center justify-center rounded-[3px] text-[var(--colors-text-quaternary)] enabled:hover:bg-[var(--colors-bg-secondary)] disabled:opacity-40 transition-colors"
                         >
                             <ChevronLeft className="size-3.5" />
                         </button>
-                        <span className="text-[14px] font-medium text-[#667085] tabular-nums px-1">
+                        <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] tabular-nums px-1">
                             {pager}
                         </span>
                         <button
@@ -551,7 +551,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                             onClick={canGoNext ? goNext : undefined}
                             disabled={!canGoNext}
                             aria-label="Next question"
-                            className="size-6 flex items-center justify-center rounded-[3px] text-[#667085] enabled:hover:bg-[#f9fafb] disabled:opacity-40 transition-colors"
+                            className="size-6 flex items-center justify-center rounded-[3px] text-[var(--colors-text-quaternary)] enabled:hover:bg-[var(--colors-bg-secondary)] disabled:opacity-40 transition-colors"
                         >
                             <ChevronRight className="size-3.5" />
                         </button>
@@ -562,13 +562,13 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
             {/* Search box (searchable kind). */}
             {isSearchable && (
                 <div className="px-3.5 pt-3 pb-1">
-                    <div className="flex items-center gap-2 h-10 px-3 rounded-[8px] border border-[#d0d5dd] bg-white">
-                        <SearchLg className="size-4 text-[#667085] shrink-0" />
+                    <div className="flex items-center gap-2 h-10 px-3 rounded-[8px] border border-[var(--colors-border-primary)] bg-white">
+                        <SearchLg className="size-4 text-[var(--colors-text-quaternary)] shrink-0" />
                         <input
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder={q.searchPlaceholder ?? "Search…"}
-                            className="flex-1 min-w-0 bg-transparent text-[14px] text-[#344054] placeholder:text-[#667085] outline-none"
+                            className="flex-1 min-w-0 bg-transparent text-[14px] text-[var(--colors-text-secondary)] placeholder:text-[var(--colors-text-quaternary)] outline-none"
                         />
                     </div>
                 </div>
@@ -588,7 +588,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         onChange={(e) => handleImageFile(e.target.files?.[0])}
                     />
                     {imageDataUrl ? (
-                        <div className="relative w-full h-[140px] rounded-[10px] overflow-hidden border border-[#e4e7ec] bg-[#f2f4f7]">
+                        <div className="relative w-full h-[140px] rounded-[10px] overflow-hidden border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-tertiary)]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={imageDataUrl} alt="Class cover" className="w-full h-full object-cover" />
                             <button
@@ -604,13 +604,13 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-full h-[140px] flex flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-[#d0d5dd] bg-[#f9fafb] hover:bg-[#f2f4f7] transition-colors"
+                            className="w-full h-[140px] flex flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] hover:bg-[var(--colors-bg-tertiary)] transition-colors"
                         >
-                            <span className="size-10 rounded-full bg-white border border-[#e4e7ec] flex items-center justify-center">
-                                <UploadCloud02 className="size-5 text-[#475467]" />
+                            <span className="size-10 rounded-full bg-white border border-[var(--colors-border-secondary)] flex items-center justify-center">
+                                <UploadCloud02 className="size-5 text-[var(--colors-text-tertiary)]" />
                             </span>
-                            <span className="text-[14px] font-medium text-[#344054]">Upload class image</span>
-                            <span className="text-[12px] text-[#667085]">PNG or JPG</span>
+                            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Upload class image</span>
+                            <span className="text-[12px] text-[var(--colors-text-quaternary)]">PNG or JPG</span>
                         </button>
                     )}
                     <div className="flex items-center justify-end gap-3 pt-0.5">
@@ -632,18 +632,18 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
             <div className="flex flex-col py-1 max-h-[360px] overflow-y-auto">
                 {isGrouped && groups
                     ? groups.map((g, gi) => (
-                          <div key={g.label} className={cn("flex flex-col", gi > 0 && "border-t border-[#e4e7ec]")}>
+                          <div key={g.label} className={cn("flex flex-col", gi > 0 && "border-t border-[var(--colors-border-secondary)]")}>
                               {g.label && (
                                   <div className="flex items-center justify-between px-4 pt-3 pb-1.5">
-                                      <span className="flex items-center gap-2 text-[14px] font-semibold text-[#101828]">
-                                          {q.groupIcon === "building" && <Building01 className="size-4 text-[#667085]" />}
+                                      <span className="flex items-center gap-2 text-[14px] font-semibold text-[var(--colors-text-primary)]">
+                                          {q.groupIcon === "building" && <Building01 className="size-4 text-[var(--colors-text-quaternary)]" />}
                                           {g.label}
                                       </span>
                                       {q.groupActionLabel && onGroupAction && (
                                           <button
                                               type="button"
                                               onClick={() => onGroupAction(g.label)}
-                                              className="flex items-center gap-1 text-[13px] font-semibold text-[#344054] hover:text-[#101828] transition-colors"
+                                              className="flex items-center gap-1 text-[13px] font-semibold text-[var(--colors-text-secondary)] hover:text-[var(--colors-text-primary)] transition-colors"
                                           >
                                               <Plus className="size-3.5" />
                                               {q.groupActionLabel}
@@ -657,7 +657,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                     : visibleOptions.map((opt) => renderOption(opt, nextBadge()))}
 
                 {isSearchable && visibleOptions.length === 0 && (
-                    <p className="px-4 py-6 text-center text-[13px] text-[#667085]">No matches.</p>
+                    <p className="px-4 py-6 text-center text-[13px] text-[var(--colors-text-quaternary)]">No matches.</p>
                 )}
             </div>
             )}
@@ -693,11 +693,11 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                             <div
                                 className={cn(
                                     "w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] transition-colors",
-                                    otherSelected ? "bg-[#f1f7f4]" : "hover:bg-[#f9fafb]",
+                                    otherSelected ? "bg-[#f1f7f4]" : "hover:bg-[var(--colors-bg-secondary)]",
                                 )}
                             >
-                                <span className="shrink-0 size-6 flex items-center justify-center rounded-[6px] border border-[#e4e7ec] bg-white">
-                                    <PencilLine className="size-3 text-[#667085]" />
+                                <span className="shrink-0 size-6 flex items-center justify-center rounded-[6px] border border-[var(--colors-border-secondary)] bg-white">
+                                    <PencilLine className="size-3 text-[var(--colors-text-quaternary)]" />
                                 </span>
                                 <input
                                     value={isMulti ? otherText : otherSelected ? otherText : ""}
@@ -713,7 +713,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                                         q.otherPlaceholder ??
                                         (isMulti ? "Something else (comma-separated)…" : "Type your own answer…")
                                     }
-                                    className="flex-1 min-w-0 bg-transparent text-[14px] text-[#344054] placeholder:text-[#667085] outline-none"
+                                    className="flex-1 min-w-0 bg-transparent text-[14px] text-[var(--colors-text-secondary)] placeholder:text-[var(--colors-text-quaternary)] outline-none"
                                 />
                             </div>
                         </div>

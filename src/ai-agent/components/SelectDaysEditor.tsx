@@ -178,10 +178,10 @@ export function SelectDaysEditor({ durationMinutes, instructorId, roomId, onConf
     if (confirmed) {
         const total = confirmed.reduce((n, d) => n + d.slots.length, 0);
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-secondary-300)] bg-[#f1f7f4] px-4 py-3">
                 <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">
                         Days set — {confirmed.map((d) => d.day).join(", ")}
                         {total ? ` · ${total} time slot${total === 1 ? "" : "s"}` : ""}
                     </p>
@@ -191,12 +191,12 @@ export function SelectDaysEditor({ durationMinutes, instructorId, roomId, onConf
     }
 
     return (
-        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-6 shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]">
+        <div className="w-full bg-white border border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-6 shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]">
             {/* ── Select days (horizontal, same as the admin form) ── */}
             <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-0.5">
-                    <p className="text-[16px] font-semibold text-[#101828]">Select days</p>
-                    <p className="text-[14px] text-[#667085]">Pick the days, then set a start time for each one. You can add multiple slots per day.</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Select days</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Pick the days, then set a start time for each one. You can add multiple slots per day.</p>
                 </div>
                 <div className="flex gap-2 sm:gap-3">
                     {WEEK_DAYS.map((d) => {
@@ -209,8 +209,8 @@ export function SelectDaysEditor({ durationMinutes, instructorId, roomId, onConf
                                 className={cn(
                                     "flex-1 h-11 flex items-center justify-center rounded-[8px] text-[15px] font-medium transition-all",
                                     isSel
-                                        ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                        : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:border-[#aad4bd]",
+                                        ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                                        : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:border-[var(--colors-secondary-300)]",
                                 )}
                             >
                                 {d}
@@ -223,14 +223,14 @@ export function SelectDaysEditor({ durationMinutes, instructorId, roomId, onConf
             {/* ── General schedule — horizontal-scroll day cards with the shared TimeDropdown ── */}
             {selectedDays.length > 0 && (
                 <div className="flex flex-col gap-4">
-                    <p className="text-[16px] font-semibold text-[#101828]">General schedule</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">General schedule</p>
                     <div className="relative">
                         <div className="flex gap-4 overflow-x-auto pb-2">
                             {selectedDays.map((day) => (
-                                <div key={day} className="w-[300px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
+                                <div key={day} className="w-[300px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3">
                                     <div className="flex flex-col">
-                                        <p className="text-[14px] font-medium text-[#101828]">{DAY_FULL[day] ?? day}</p>
-                                        <p className="text-[14px] text-[#667085]">Set schedule for this day.</p>
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{DAY_FULL[day] ?? day}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Set schedule for this day.</p>
                                     </div>
                                     <div className="flex flex-col gap-3">
                                         {(byDay[day] ?? []).map((s, i) => (
@@ -250,7 +250,7 @@ export function SelectDaysEditor({ durationMinutes, instructorId, roomId, onConf
                                                     type="button"
                                                     onClick={() => removeSlot(day, i)}
                                                     aria-label="Remove time slot"
-                                                    className="w-11 h-11 flex items-center justify-center rounded-[8px] border-1 border-[#e4e7ec] bg-white shrink-0 text-[#d92d20] hover:bg-[#fef3f2] hover:border-[#fda29b] transition-colors"
+                                                    className="w-11 h-11 flex items-center justify-center rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white shrink-0 text-[#d92d20] hover:bg-[#fef3f2] hover:border-[#fda29b] transition-colors"
                                                 >
                                                     <Trash01 className="w-5 h-5" />
                                                 </button>
@@ -260,7 +260,7 @@ export function SelectDaysEditor({ durationMinutes, instructorId, roomId, onConf
                                     <button
                                         type="button"
                                         onClick={() => addSlot(day)}
-                                        className="self-start flex items-center gap-1 px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] font-semibold text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                                        className="self-start flex items-center gap-1 px-3 py-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[14px] font-semibold text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                                     >
                                         <Plus className="w-5 h-5" />
                                         <span className="px-0.5">Add time slot</span>

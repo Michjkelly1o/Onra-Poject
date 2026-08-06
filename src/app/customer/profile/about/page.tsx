@@ -44,7 +44,7 @@ function readDevice(): { os: string; model: string } {
 function InfoRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex items-center justify-between gap-3 text-sm leading-5">
-            <span className="font-normal text-[#475467]">{label}</span>
+            <span className="font-normal text-[var(--colors-text-tertiary)]">{label}</span>
             <span className="font-medium text-[var(--brand-text)]">{value}</span>
         </div>
     );
@@ -64,9 +64,9 @@ export default function AboutPage() {
                     type="button"
                     onClick={goBack}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">About</h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -84,16 +84,16 @@ export default function AboutPage() {
                     </div>
                     <div className="flex flex-col items-center gap-1">
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Onra</p>
-                        <p className="text-sm font-normal leading-5 text-[#667085]">Version {APP_VERSION}</p>
+                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">Version {APP_VERSION}</p>
                     </div>
                 </div>
 
                 {/* Device / app info */}
-                <div className="flex w-full flex-col gap-4 rounded-2xl border border-[#e4e7ec] bg-white p-4">
+                <div className="flex w-full flex-col gap-4 rounded-2xl border border-[var(--colors-border-secondary)] bg-white p-4">
                     <InfoRow label="OS version" value={device.os} />
-                    <div className="h-px w-full bg-[#f2f4f7]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-tertiary)]" />
                     <InfoRow label="Device model" value={device.model} />
-                    <div className="h-px w-full bg-[#f2f4f7]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-tertiary)]" />
                     <InfoRow label="App developer" value={APP_DEVELOPER} />
                 </div>
 
@@ -101,11 +101,11 @@ export default function AboutPage() {
                 <button
                     type="button"
                     onClick={() => router.push("/customer/profile/privacy-policy")}
-                    className="flex w-full items-center gap-4 rounded-xl border border-[#e4e7ec] bg-white px-4 py-4 text-left transition-colors active:bg-gray-50"
+                    className="flex w-full items-center gap-4 rounded-xl border border-[var(--colors-border-secondary)] bg-white px-4 py-4 text-left transition-colors active:bg-gray-50"
                 >
-                    <FileShield02 className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                    <FileShield02 className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
                     <span className="flex-1 text-sm font-semibold leading-5 text-[var(--brand-text)]">Privacy policy</span>
-                    <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
+                    <ChevronRight className="size-5 shrink-0 text-[var(--colors-fg-quaternary)]" aria-hidden />
                 </button>
             </div>
         </div>

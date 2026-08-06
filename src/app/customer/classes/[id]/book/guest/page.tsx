@@ -28,7 +28,7 @@ export default function ReserveToPage() {
 }
 
 const INPUT =
-    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[#667085] focus:border-[var(--brand-primary)] focus:outline-none";
+    "w-full rounded-xl border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[var(--colors-text-quaternary)] focus:border-[var(--brand-primary)] focus:outline-none";
 
 function ReserveTo() {
     const router = useRouter();
@@ -75,9 +75,9 @@ function ReserveTo() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Reserve to
@@ -87,7 +87,7 @@ function ReserveTo() {
                         type="button"
                         onClick={removeAndBack}
                         aria-label="Remove reservee"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
                         <Trash01 className="size-5 text-[#b42318]" aria-hidden />
                     </button>
@@ -97,12 +97,12 @@ function ReserveTo() {
             </header>
 
             <div className="flex flex-1 flex-col gap-6 px-4 pb-6 pt-6">
-                <p className="text-sm font-normal leading-5 text-[#475467]">
+                <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                     Book this class for someone else. The seat is reserved in their name and paid from your plan.
                 </p>
                 <div className="flex w-full flex-col gap-4">
                     <label className="flex w-full flex-col gap-1.5">
-                        <span className="text-sm font-medium leading-5 text-[#344054]">Full name</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Full name</span>
                         <input
                             className={INPUT}
                             placeholder="Enter their name"
@@ -111,7 +111,7 @@ function ReserveTo() {
                         />
                     </label>
                     <label className="flex w-full flex-col gap-1.5">
-                        <span className="text-sm font-medium leading-5 text-[#344054]">Email (optional)</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Email (optional)</span>
                         <input
                             className={INPUT}
                             type="email"

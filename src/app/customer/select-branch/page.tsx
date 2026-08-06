@@ -75,9 +75,9 @@ export default function SelectBranchPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">
                     Select branch
@@ -109,8 +109,8 @@ export default function SelectBranchPage() {
             {/* Sticky footer — hint + Confirm. */}
             <div className="sticky bottom-0 z-10 flex flex-col gap-4 bg-gradient-to-b from-white/0 via-white to-white px-5 pb-6 pt-4">
                 <div className="flex items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
-                    <Lightbulb02 className="size-5 shrink-0 text-[#475467]" aria-hidden />
-                    <p className="text-sm font-normal leading-5 text-[#475467]">
+                    <Lightbulb02 className="size-5 shrink-0 text-[var(--colors-text-tertiary)]" aria-hidden />
+                    <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         This location will be set as your main branch.
                     </p>
                 </div>

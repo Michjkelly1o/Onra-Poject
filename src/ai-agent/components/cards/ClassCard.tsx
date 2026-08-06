@@ -50,13 +50,13 @@ function SpotEditorCard({ capacity, send }: { capacity: number; send: (text: str
  *  card renders in the revealed chat. */
 function ResultCard({ noun, summary, verb }: { noun: string; summary: string; verb: string }) {
     return (
-        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-white px-4 py-3">
+        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-white px-4 py-3">
             <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
             <div className="min-w-0">
-                <p className="text-[14px] font-medium text-[#101828] leading-5">
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">
                     Your {noun} has been {verb}.
                 </p>
-                <p className="text-[13px] text-[#475467] leading-5 mt-0.5">{summary}</p>
+                <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5">{summary}</p>
             </div>
         </div>
     );
@@ -78,9 +78,9 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
 
     if (data.card === "class_room_created") {
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-secondary-300)] bg-[#f1f7f4] px-4 py-3">
                 <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
-                <p className="text-[14px] text-[#101828] leading-5">
+                <p className="text-[14px] text-[var(--colors-text-primary)] leading-5">
                     Added <span className="font-medium">{data.room.name}</span> to {data.branchName} (capacity{" "}
                     {data.room.capacity}). It&rsquo;s selected for this class.
                 </p>
@@ -90,18 +90,18 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
 
     if (data.card === "class_denied") {
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f1f2ed] px-4 py-3">
-                <Lightbulb02 className="size-4 text-[#475467] shrink-0 mt-0.5" />
-                <p className="text-[14px] text-[#475467] leading-5 whitespace-pre-line">{data.reason}</p>
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-[var(--colors-tertiary-50)] px-4 py-3">
+                <Lightbulb02 className="size-4 text-[var(--colors-text-tertiary)] shrink-0 mt-0.5" />
+                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 whitespace-pre-line">{data.reason}</p>
             </div>
         );
     }
 
     if (data.card === "class_empty") {
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
-                <Lightbulb02 className="size-4 text-[#475467] shrink-0 mt-0.5" />
-                <p className="text-[14px] text-[#475467] leading-5">{data.message}</p>
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-4 py-3">
+                <Lightbulb02 className="size-4 text-[var(--colors-text-tertiary)] shrink-0 mt-0.5" />
+                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{data.message}</p>
             </div>
         );
     }

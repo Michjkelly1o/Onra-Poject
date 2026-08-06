@@ -51,7 +51,7 @@ function CardShell({
     return (
         <div
             className={cn(
-                "bg-white border border-[#e4e7ec] rounded-xl p-4",
+                "bg-white border border-[var(--colors-border-secondary)] rounded-xl p-4",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                 "flex flex-col gap-3",
                 className,
@@ -64,7 +64,7 @@ function CardShell({
 
 function CardTitle({ children }: { children: React.ReactNode }) {
     return (
-        <h4 className="text-[14px] font-semibold text-[#101828] leading-5">
+        <h4 className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">
             {children}
         </h4>
     );
@@ -73,7 +73,7 @@ function CardTitle({ children }: { children: React.ReactNode }) {
 function CardNote({ children }: { children?: React.ReactNode }) {
     if (!children) return null;
     return (
-        <p className="text-[13px] text-[#667085] leading-5">{children}</p>
+        <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-5">{children}</p>
     );
 }
 
@@ -101,7 +101,7 @@ function RankedListRow({
     const body = (
         <>
             {hasAvatar && (
-                <div className="w-8 h-8 rounded-full bg-[#f2f4f7] flex items-center justify-center overflow-hidden shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center overflow-hidden shrink-0">
                     {r.avatarImageUrl ? (
                         <Image
                             src={r.avatarImageUrl}
@@ -112,18 +112,18 @@ function RankedListRow({
                             unoptimized
                         />
                     ) : (
-                        <span className="text-[12px] font-medium text-[#667085]">
+                        <span className="text-[12px] font-medium text-[var(--colors-text-quaternary)]">
                             {r.avatarInitials}
                         </span>
                     )}
                 </div>
             )}
             <div className="min-w-0 flex-1">
-                <div className="text-[14px] font-medium text-[#101828] leading-5 truncate">
+                <div className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 truncate">
                     {r.title}
                 </div>
                 {r.subtitle && (
-                    <div className="text-[13px] text-[#667085] leading-5 truncate">
+                    <div className="text-[13px] text-[var(--colors-text-quaternary)] leading-5 truncate">
                         {r.subtitle}
                     </div>
                 )}
@@ -138,16 +138,16 @@ function RankedListRow({
             <div className="text-right shrink-0 flex flex-col items-end">
                 <div className="flex items-center gap-1.5">
                     {r.right1 && (
-                        <span className="text-[14px] font-medium text-[#101828] leading-5 tabular-nums">
+                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 tabular-nums">
                             {r.right1}
                         </span>
                     )}
                     {clickable && (
-                        <ArrowUpRight className="size-3.5 text-[#4b8c9a] shrink-0" />
+                        <ArrowUpRight className="size-3.5 text-[var(--colors-brand-600)] shrink-0" />
                     )}
                 </div>
                 {r.right2 && (
-                    <div className="text-[13px] text-[#667085] leading-5 tabular-nums">
+                    <div className="text-[13px] text-[var(--colors-text-quaternary)] leading-5 tabular-nums">
                         {r.right2}
                     </div>
                 )}
@@ -162,7 +162,7 @@ function RankedListRow({
                 rel="noopener noreferrer"
                 className={cn(
                     "w-full text-left flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0 -mx-2 px-2 rounded-md",
-                    "hover:bg-[#f9fafb] transition-colors",
+                    "hover:bg-[var(--colors-bg-secondary)] transition-colors",
                 )}
             >
                 {body}
@@ -190,7 +190,7 @@ function DeepLink({ link }: { link?: DeepLinkData }) {
             href={normalizeAdminHref(link.href)}
             target="_blank"
             rel="noopener noreferrer"
-            className="self-start inline-flex items-center gap-1 text-[13px] font-medium text-[#4b8c9a] hover:text-[#306b78] hover:underline underline-offset-4"
+            className="self-start inline-flex items-center gap-1 text-[13px] font-medium text-[var(--colors-brand-600)] hover:text-[var(--colors-brand-700)] hover:underline underline-offset-4"
         >
             <ArrowUpRight className="size-3.5" />
             {link.label}
@@ -247,12 +247,12 @@ export function Card({ data }: { data: InsightCard }) {
                     {data.tiles.map((t, i) => (
                         <div
                             key={i}
-                            className="rounded-lg bg-[#f9fafb] border border-[#eaecf0] p-3 flex flex-col gap-1"
+                            className="rounded-lg bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-tertiary)] p-3 flex flex-col gap-1"
                         >
-                            <div className="text-[12px] text-[#667085] leading-4">
+                            <div className="text-[12px] text-[var(--colors-text-quaternary)] leading-4">
                                 {t.label}
                             </div>
-                            <div className="text-[18px] font-semibold text-[#101828] leading-6 tabular-nums">
+                            <div className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-6 tabular-nums">
                                 {t.value}
                             </div>
                         </div>
@@ -268,7 +268,7 @@ export function Card({ data }: { data: InsightCard }) {
         return (
             <CardShell>
                 <CardTitle>{data.title}</CardTitle>
-                <div className="flex flex-col divide-y divide-[#eaecf0]">
+                <div className="flex flex-col divide-y divide-[var(--colors-border-tertiary)]">
                     {data.rows.map((r, i) => (
                         <RankedListRow key={i} row={r} />
                     ))}
@@ -285,11 +285,11 @@ export function Card({ data }: { data: InsightCard }) {
                 <div className="overflow-x-auto -mx-4 px-4">
                     <table className="w-full text-[13px] border-collapse">
                         <thead>
-                            <tr className="border-b border-[#eaecf0]">
+                            <tr className="border-b border-[var(--colors-border-tertiary)]">
                                 {data.columns.map((c, i) => (
                                     <th
                                         key={i}
-                                        className="text-left font-medium text-[#667085] py-2 px-3 whitespace-nowrap"
+                                        className="text-left font-medium text-[var(--colors-text-quaternary)] py-2 px-3 whitespace-nowrap"
                                     >
                                         {c}
                                     </th>
@@ -298,11 +298,11 @@ export function Card({ data }: { data: InsightCard }) {
                         </thead>
                         <tbody>
                             {data.rows.map((row, i) => (
-                                <tr key={i} className="border-b border-[#f2f4f7] last:border-b-0">
+                                <tr key={i} className="border-b border-[var(--colors-bg-tertiary)] last:border-b-0">
                                     {row.map((cell, j) => (
                                         <td
                                             key={j}
-                                            className="text-[#344054] py-2 px-3 whitespace-nowrap tabular-nums"
+                                            className="text-[var(--colors-text-secondary)] py-2 px-3 whitespace-nowrap tabular-nums"
                                         >
                                             {cell}
                                         </td>
@@ -331,7 +331,7 @@ export function Card({ data }: { data: InsightCard }) {
 
     if (data.card === "empty") {
         return (
-            <CardShell className="text-center text-[13px] text-[#667085] py-6">
+            <CardShell className="text-center text-[13px] text-[var(--colors-text-quaternary)] py-6">
                 {data.message}
             </CardShell>
         );

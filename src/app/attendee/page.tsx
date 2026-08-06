@@ -90,12 +90,12 @@ function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => vo
             tabIndex={0}
             onClick={onView}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onView(); } }}
-            className="group flex items-center gap-6 p-5 bg-white border border-[#e4e7ec] rounded-[20px] cursor-pointer transition-shadow hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.10),0px_2px_4px_-2px_rgba(16,24,40,0.06)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd]"
+            className="group flex items-center gap-6 p-5 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] cursor-pointer transition-shadow hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.10),0px_2px_4px_-2px_rgba(16,24,40,0.06)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--colors-secondary-300)]"
         >
             {/* Time block */}
             <div className="flex flex-col gap-1 shrink-0 whitespace-nowrap">
-                <p className="text-[16px] font-semibold leading-6 text-[#101828]">{to12h(ci.startTime)}</p>
-                <p className="text-[14px] font-medium leading-5 text-[#667085]">{duration} minutes</p>
+                <p className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)]">{to12h(ci.startTime)}</p>
+                <p className="text-[14px] font-medium leading-5 text-[var(--colors-text-quaternary)]">{duration} minutes</p>
             </div>
 
             {/* Circular class image */}
@@ -113,32 +113,32 @@ function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => vo
             <div className="flex-1 min-w-0 flex flex-col gap-2">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2 min-w-0">
-                        <p className="text-[16px] font-semibold leading-6 text-[#101828] truncate">{ci.name}</p>
+                        <p className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)] truncate">{ci.name}</p>
                         <span className={cn(
                             "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium border-1 shrink-0",
-                            ongoing ? "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                            ongoing ? "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
                         )}>
                             {ongoing ? "Ongoing" : "Upcoming"}
                         </span>
                     </div>
-                    <p className="text-[14px] leading-5 text-[#667085] truncate">with {ci.instructorName || "Open session"}</p>
+                    <p className="text-[14px] leading-5 text-[var(--colors-text-quaternary)] truncate">with {ci.instructorName || "Open session"}</p>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap text-[14px]">
-                    <span className="flex items-center gap-2 text-[#475467]">
-                        <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
+                    <span className="flex items-center gap-2 text-[var(--colors-text-tertiary)]">
+                        <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                         {ci.booked}/{ci.capacity} spots
                     </span>
-                    <span className="w-px h-4 bg-[#e4e7ec] shrink-0" />
-                    <span className="flex items-center gap-1.5 text-[#475467] min-w-0">
+                    <span className="w-px h-4 bg-[var(--colors-bg-quaternary)] shrink-0" />
+                    <span className="flex items-center gap-1.5 text-[var(--colors-text-tertiary)] min-w-0">
                         <span className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
                             style={{ backgroundColor: ci.instructorColor }}>
                             {ci.instructorInitials}
                         </span>
                         <span className="truncate">{ci.instructorName || "Open session"}</span>
                     </span>
-                    <span className="w-px h-4 bg-[#e4e7ec] shrink-0" />
-                    <span className="flex items-center gap-2 text-[#667085] min-w-0">
-                        <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                    <span className="w-px h-4 bg-[var(--colors-bg-quaternary)] shrink-0" />
+                    <span className="flex items-center gap-2 text-[var(--colors-text-quaternary)] min-w-0">
+                        <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                         <span className="truncate">{ci.room || ci.location}</span>
                     </span>
                 </div>
@@ -173,14 +173,14 @@ function BranchDropdown({ value, options, onChange }: {
             <button
                 type="button"
                 onClick={() => setOpen(p => !p)}
-                className="flex items-center gap-2 rounded-full border border-[#d0d5dd] bg-white pl-3 pr-2.5 py-2 text-left transition-colors hover:bg-[#f9fafb] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                className="flex items-center gap-2 rounded-full border border-[var(--colors-border-primary)] bg-white pl-3 pr-2.5 py-2 text-left transition-colors hover:bg-[var(--colors-bg-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
             >
-                <MarkerPin01 className="w-5 h-5 text-[#667085] shrink-0" />
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">{selected?.label ?? "Select branch"}</span>
-                <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
+                <MarkerPin01 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] whitespace-nowrap">{selected?.label ?? "Select branch"}</span>
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+6px)] right-0 min-w-[220px] bg-white border border-[#e4e7ec] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1">
+                <div className="absolute top-[calc(100%+6px)] right-0 min-w-[220px] bg-white border border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1">
                     {options.map(o => (
                         <button
                             key={o.value || "all"}
@@ -188,10 +188,10 @@ function BranchDropdown({ value, options, onChange }: {
                             onClick={() => { onChange(o.value); setOpen(false); }}
                             className={cn(
                                 "flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium text-left transition-colors",
-                                o.value === value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                o.value === value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}
                         >
-                            <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                            <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                             {o.label}
                         </button>
                     ))}
@@ -219,27 +219,27 @@ function FilterDropdown({ label, value, options, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                className="w-full h-10 flex items-center gap-2 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 {selected?.initials && (
                     <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
                         style={{ backgroundColor: selected.color }}>
                         {selected.initials}
                     </div>
                 )}
-                <span className="flex-1 text-left truncate text-[#344054]">{selected?.label ?? label}</span>
-                <ChevronDown className="w-4 h-4 text-[#667085]" />
+                <span className="flex-1 text-left truncate text-[var(--colors-text-secondary)]">{selected?.label ?? label}</span>
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[200px] overflow-y-auto">
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 py-1 max-h-[200px] overflow-y-auto">
                     <button type="button" onClick={() => { onChange(""); setOpen(false); }}
                         className={cn("flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            !value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                            !value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
                         {label}
                     </button>
                     {options.map(o => (
                         <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); }}
                             className={cn("flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                value === o.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                                value === o.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
                             {o.initials && (
                                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
                                     style={{ backgroundColor: o.color }}>
@@ -279,17 +279,17 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
 
     const instructorOptions = INSTRUCTORS.map(i => ({ value: i.id, label: i.name, initials: i.initials, color: i.color }));
 
-    const Divider = () => <div className="h-px w-full bg-[#e4e7ec] shrink-0" />;
+    const Divider = () => <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />;
     const SectionLabel = ({ label }: { label: string }) => (
-        <p className="text-[14px] font-medium text-[#344054]">{label}</p>
+        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
     );
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
-            <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+            <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
             </div>
 
@@ -341,7 +341,7 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                 </div>
             </div>
 
-            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+            <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                 <Button variant="secondary-gray" size="md" disabled={!hasAny}
                     onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                     Clear filter
@@ -544,7 +544,7 @@ function AttendeePage() {
     );
     const NavBtn = ({ onClick, children, label, disabled }: { onClick?: () => void; children: React.ReactNode; label?: string; disabled?: boolean }) => (
         <button type="button" onClick={onClick} aria-label={label} disabled={disabled}
-            className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] transition-colors enabled:hover:bg-[#e4e7ec] disabled:opacity-40 disabled:cursor-not-allowed">
+            className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] transition-colors enabled:hover:bg-[var(--colors-bg-quaternary)] disabled:opacity-40 disabled:cursor-not-allowed">
             {children}
         </button>
     );
@@ -554,7 +554,7 @@ function AttendeePage() {
         // white panel sits directly on it. `min-h-screen` + a `flex-1 min-h-0`
         // panel + `flex-1 min-h-0` inner card make the surface fill the viewport
         // height instead of hugging content.
-        <div className="h-screen bg-[#f1f2ed] p-[12px] flex flex-col overflow-hidden">
+        <div className="h-screen bg-[var(--colors-tertiary-50)] p-[12px] flex flex-col overflow-hidden">
             {/* Admin-standard white panel — ONE container (bg-white + border +
                 rounded), identical to every other admin surface. The header is
                 pinned at the top of the panel; only the calendar content below
@@ -573,7 +573,7 @@ function AttendeePage() {
                                         </svg>
                                     )}
                                 </span>
-                                <p className="text-[24px] font-bold leading-[28px] text-[#0c2d34] truncate">{studioName}</p>
+                                <p className="text-[24px] font-bold leading-[28px] text-[var(--colors-brand-900)] truncate">{studioName}</p>
                             </div>
                         </div>
                         <BranchDropdown value={location} options={locationOptions} onChange={setLocation} />
@@ -588,8 +588,8 @@ function AttendeePage() {
                                     {/* Today section header — date + upcoming-class count.
                                         Today-only view: no Day/Week toggle, no date navigator. */}
                                     <div className="flex flex-col gap-0.5 min-w-0">
-                                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px] truncate">{todayLabel}</p>
-                                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px] truncate">{todayLabel}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                             {schedulesCount} class{schedulesCount === 1 ? "" : "es"} today
                                         </p>
                                     </div>

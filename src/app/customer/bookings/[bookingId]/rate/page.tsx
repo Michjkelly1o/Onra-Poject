@@ -48,13 +48,13 @@ export default function RateBookingPage() {
                         type="button"
                         onClick={back}
                         aria-label="Close"
-                        className="flex size-10 items-center justify-center rounded-full border border-[#e4e7ec] bg-white"
+                        className="flex size-10 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white"
                     >
-                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 </header>
                 <div className="flex flex-1 items-center justify-center px-6 text-center">
-                    <p className="text-sm text-[#475467]">This class can't be rated.</p>
+                    <p className="text-sm text-[var(--colors-text-tertiary)]">This class can't be rated.</p>
                 </div>
             </div>
         );
@@ -99,9 +99,9 @@ export default function RateBookingPage() {
                     type="button"
                     onClick={back}
                     aria-label="Close"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <XClose className="size-5 text-[#344054]" aria-hidden />
+                    <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
             </header>
 
@@ -109,7 +109,7 @@ export default function RateBookingPage() {
                 {/* Overview */}
                 <div className="flex items-center gap-3">
                     <div
-                        className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[#e4e7ec]"
+                        className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--colors-border-secondary)]"
                         style={!detail.coverImage ? { backgroundColor: detail.coverColor } : undefined}
                     >
                         {detail.coverImage && (
@@ -120,23 +120,23 @@ export default function RateBookingPage() {
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <div className="flex flex-col">
                             <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.name}</p>
-                            <p className="text-sm font-normal leading-5 text-[#475467]">{heroSubtitle}</p>
+                            <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{heroSubtitle}</p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-normal leading-5 text-[#475467]">
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                             <span className="flex items-center gap-1">
-                                <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                                <Clock className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                                 {detail.durationMins} mins
                             </span>
                             {detail.instructorName && (
                                 <>
                                     <span aria-hidden>•</span>
                                     <span className="flex items-center gap-1.5">
-                                        <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                        <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                                             {detail.instructorImageUrl ? (
                                                 // eslint-disable-next-line @next/next/no-img-element
                                                 <img src={detail.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                                             ) : (
-                                                <span className="text-[8px] font-semibold leading-none text-[#667085]">
+                                                <span className="text-[8px] font-semibold leading-none text-[var(--colors-text-quaternary)]">
                                                     {detail.instructorInitials}
                                                 </span>
                                             )}
@@ -149,13 +149,13 @@ export default function RateBookingPage() {
                     </div>
                 </div>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Stars */}
                 <section className="flex flex-col gap-4">
                     <div className="flex flex-col gap-2">
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">How was your class?</p>
-                        <p className="text-sm font-normal leading-5 text-[#475467]">
+                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                             Your feedback helps improve future classes.
                         </p>
                     </div>
@@ -175,7 +175,7 @@ export default function RateBookingPage() {
                     </div>
                 </section>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* What stood out */}
                 <section className="flex flex-col gap-4">
@@ -188,8 +188,8 @@ export default function RateBookingPage() {
                                     key={t}
                                     type="button"
                                     onClick={() => toggleTag(t)}
-                                    className={`rounded-lg px-4 py-2 text-sm font-medium leading-5 text-[#344054] transition-colors ${
-                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
+                                    className={`rounded-lg px-4 py-2 text-sm font-medium leading-5 text-[var(--colors-text-secondary)] transition-colors ${
+                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[var(--colors-border-secondary)] bg-white"
                                     }`}
                                 >
                                     {t}
@@ -202,7 +202,7 @@ export default function RateBookingPage() {
                         onChange={(e) => setComment(e.target.value.slice(0, 200))}
                         placeholder="Add a comment (optional)"
                         rows={4}
-                        className="w-full resize-none rounded-md border border-[#d0d5dd] px-3.5 py-3 text-base font-normal leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[#667085]"
+                        className="w-full resize-none rounded-md border border-[var(--colors-border-primary)] px-3.5 py-3 text-base font-normal leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
                     />
                 </section>
             </div>
@@ -215,7 +215,7 @@ export default function RateBookingPage() {
             >
                 <button type="button" onClick={() => setAnonymous((v) => !v)} className="flex items-center gap-2 self-start">
                     <CheckBox checked={anonymous} />
-                    <span className="text-sm font-medium leading-5 text-[#344054]">Rate as anonymous</span>
+                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Rate as anonymous</span>
                 </button>
                 <Button variant="primary" size="xl" className="w-full rounded-full" disabled={score < 1} onClick={submit}>
                     Submit

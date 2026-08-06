@@ -36,7 +36,7 @@ export default function CreatePasswordPage() {
             <div className={`flex flex-1 flex-col gap-6 px-4 pb-8 ${AUTH_CONTENT_OFFSET}`}>
                 <div className="flex w-full flex-col gap-2">
                     <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Create password</h1>
-                    <p className="text-base leading-6 text-[#667085]">Set a password to get started.</p>
+                    <p className="text-base leading-6 text-[var(--colors-text-quaternary)]">Set a password to get started.</p>
                 </div>
 
                 <div className="flex w-full flex-col gap-5">
@@ -52,7 +52,7 @@ export default function CreatePasswordPage() {
                             placeholder="Confirm your password"
                             error={confirm.length > 0 && confirm !== pw}
                         />
-                        <p className="text-xs leading-[18px] text-[#667085]">Make sure it matches your password.</p>
+                        <p className="text-xs leading-[18px] text-[var(--colors-text-quaternary)]">Make sure it matches your password.</p>
                     </div>
                 </div>
             </div>

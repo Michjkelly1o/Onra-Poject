@@ -47,12 +47,12 @@ export interface StatusPresentation {
 
 const GREEN_PILL = "border-[#abefc6] bg-[#ecfdf3] text-[#067647]";
 const RED_PILL = "border-[#fecdca] bg-[#fef3f2] text-[#b42318]";
-const GRAY_PILL = "border-[#e4e7ec] bg-white/90 text-[#344054]";
+const GRAY_PILL = "border-[var(--colors-border-secondary)] bg-white/90 text-[var(--colors-text-secondary)]";
 // Status card tints — Figma 3696-33904 uses the brand secondary palette for the
 // confirmed (green) card; red/gray follow the error/neutral families.
-const GREEN_CARD = "border-[var(--brand-tertiary)] bg-[#e9fff3]";
+const GREEN_CARD = "border-[var(--brand-tertiary)] bg-[var(--colors-secondary-50)]";
 const RED_CARD = "border-[#fecdca] bg-[#fef3f2]";
-const GRAY_CARD = "border-[#eaecf0] bg-[#f9fafb]";
+const GRAY_CARD = "border-[var(--colors-border-tertiary)] bg-[var(--colors-bg-secondary)]";
 /** Concentric-ring decoration colour per card tint. */
 export const STATUS_RING: Record<BookingViewStatus, string> = {
     booked: "var(--brand-tertiary)",

@@ -41,7 +41,7 @@ const STATUS_ORDER: Record<ClassSchedule["status"], number> = {
 };
 
 const STATUS_STYLES: Record<ClassSchedule["status"], string> = {
-    Upcoming: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    Upcoming: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     Ongoing:  "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     Completed:"bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     Cancelled:"bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
@@ -102,16 +102,16 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
         >
             <div className="px-6 pb-6">
                     {/* Header row */}
-                    <div className="grid grid-cols-[1.6fr_1fr_120px_100px] gap-4 items-center pb-3 border-b-1 border-[#e4e7ec] sticky top-0 bg-white z-10">
-                        <div className="text-sm font-normal text-[#475467] leading-5">Class</div>
-                        <SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Date</SortableHeader>
-                        <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Status</SortableHeader>
-                        <SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Booked</SortableHeader>
+                    <div className="grid grid-cols-[1.6fr_1fr_120px_100px] gap-4 items-center pb-3 border-b-1 border-[var(--colors-border-secondary)] sticky top-0 bg-white z-10">
+                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Class</div>
+                        <SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Date</SortableHeader>
+                        <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Status</SortableHeader>
+                        <SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Booked</SortableHeader>
                     </div>
 
                     {/* Body */}
                     {sortedClasses.length === 0 ? (
-                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[#667085]">
+                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[var(--colors-text-quaternary)]">
                             No classes in this period.
                         </div>
                     ) : (
@@ -120,15 +120,15 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
                                 key={c.id}
                                 type="button"
                                 onClick={() => handleRowClick(c)}
-                                className="w-full grid grid-cols-[1.6fr_1fr_120px_100px] gap-4 items-center py-3 border-b-1 border-[#f2f4f7] last:border-b-0 hover:bg-[#f9fafb] transition-colors text-left cursor-pointer"
+                                className="w-full grid grid-cols-[1.6fr_1fr_120px_100px] gap-4 items-center py-3 border-b-1 border-[var(--colors-bg-tertiary)] last:border-b-0 hover:bg-[var(--colors-bg-secondary)] transition-colors text-left cursor-pointer"
                             >
                                 {/* Class name + time */}
                                 <div className="min-w-0">
-                                    <p className="text-sm font-medium text-[#101828] leading-5 truncate">{c.name}</p>
-                                    <p className="text-sm font-normal text-[#475467] leading-5 truncate">{c.displayTime}</p>
+                                    <p className="text-sm font-medium text-[var(--colors-text-primary)] leading-5 truncate">{c.name}</p>
+                                    <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{c.displayTime}</p>
                                 </div>
                                 {/* Date */}
-                                <div className="text-sm font-normal text-[#475467] leading-5 truncate">
+                                <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">
                                     {formatDate(c.dateISO)}
                                 </div>
                                 {/* Status */}
@@ -141,7 +141,7 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
                                     </span>
                                 </div>
                                 {/* Booked */}
-                                <div className="text-sm font-medium text-[#101828] leading-5">
+                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">
                                     {c.booked} / {c.capacity}
                                 </div>
                             </button>

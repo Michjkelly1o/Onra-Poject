@@ -113,7 +113,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}>
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
@@ -132,7 +132,7 @@ const MODAL_CONFIG: Record<ModalAction, {
     title: string; description: string; confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Archive this promotion?",
         description: "This promotion will be hidden from the promotions list and stop being redeemable. You can recover archived promotions at any time.",
         confirmLabel: "Archive",
@@ -144,13 +144,13 @@ const MODAL_CONFIG: Record<ModalAction, {
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Recover this promotion?",
         description: "This promotion will be restored to Active status and become redeemable again.",
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Check, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Reactivate this promotion?",
         description: "This promotion will become redeemable at checkout again.",
         confirmLabel: "Reactivate",
@@ -171,8 +171,8 @@ const MODAL_CONFIG: Record<ModalAction, {
 function SidebarField({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <p className="text-[16px] font-medium text-[#101828]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{value}</p>
         </div>
     );
 }
@@ -180,8 +180,8 @@ function SidebarField({ label, value }: { label: string; value: string }) {
 function PromoSidebarBanner({ vm }: { vm: PromoDetailVM }) {
     const isActive = vm.effectiveStatus === "active";
     const bannerClass = isActive
-        ? "bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]"
-        : "bg-gradient-to-br from-[#475467] via-[#667085] to-[#98a2b3]";
+        ? "bg-gradient-to-br from-[#1d2939] via-[var(--colors-text-secondary)] to-[var(--colors-text-tertiary)]"
+        : "bg-gradient-to-br from-[var(--colors-text-tertiary)] via-[var(--colors-text-quaternary)] to-[var(--colors-fg-quaternary)]";
     // Banner — verbatim match for the customer PromoCard
     // (`src/components/customer/products/PromoCard.tsx`): same
     // aspect-[343/140] tile + `object-cover` fit. Admin preview and
@@ -240,15 +240,15 @@ function LeftSidebar({ vm, onAction, branches }: {
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <div className="w-[320px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             <PromoSidebarBanner vm={vm} />
 
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div className="flex flex-col gap-1">
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{vm.name}</h2>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{vm.name}</h2>
                         {vm.description && (
-                            <p className="text-[14px] text-[#667085] leading-5">{vm.description}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{vm.description}</p>
                         )}
                     </div>
 
@@ -263,8 +263,8 @@ function LeftSidebar({ vm, onAction, branches }: {
                 </div>
 
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Promotion actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Promotion actions</p>
                     <div className="flex flex-col gap-4">{actions}</div>
                 </div>
             </div>
@@ -283,7 +283,7 @@ function HelpTooltip({ text }: { text: string }) {
                 onMouseLeave={() => setOpen(false)}
                 onFocus={() => setOpen(true)}
                 onBlur={() => setOpen(false)}
-                className="text-[#98a2b3] hover:text-[#667085] transition-colors">
+                className="text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-quaternary)] transition-colors">
                 <HelpCircle className="w-4 h-4" />
             </button>
             {open && (
@@ -303,15 +303,15 @@ function InlineStat({ icon, label, value, tooltip }: {
 }) {
     return (
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center shrink-0 text-[#475467]">
+            <div className="w-10 h-10 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center shrink-0 text-[var(--colors-text-tertiary)]">
                 {icon}
             </div>
             <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1.5">
-                    <p className="text-[14px] text-[#667085] leading-5">{label}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
                     {tooltip && <HelpTooltip text={tooltip} />}
                 </div>
-                <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{value}</p>
+                <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">{value}</p>
             </div>
         </div>
     );
@@ -320,23 +320,23 @@ function InlineStat({ icon, label, value, tooltip }: {
 // ─── Section heading (small gray label, no border) ──────────────────────────
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
-    return <p className="text-[14px] text-[#667085] mt-2 first:mt-0">{children}</p>;
+    return <p className="text-[14px] text-[var(--colors-text-quaternary)] mt-2 first:mt-0">{children}</p>;
 }
 
 // ─── Disabled-state checkbox / radio (read-only Figma treatment) ────────────
 
 function DisabledCheckbox() {
     return (
-        <div className="w-4 h-4 rounded-[4px] border border-[#d0d5dd] bg-[#f9fafb] flex items-center justify-center shrink-0">
-            <Check className="w-[10px] h-[10px] text-[#d0d5dd]" />
+        <div className="w-4 h-4 rounded-[4px] border border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] flex items-center justify-center shrink-0">
+            <Check className="w-[10px] h-[10px] text-[var(--colors-border-primary)]" />
         </div>
     );
 }
 
 function DisabledRadio({ selected }: { selected: boolean }) {
     return (
-        <div className="w-4 h-4 rounded-full bg-[#f9fafb] border border-[#d0d5dd] flex items-center justify-center shrink-0">
-            {selected && <div className="w-1.5 h-1.5 rounded-full bg-[#98a2b3]" />}
+        <div className="w-4 h-4 rounded-full bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-primary)] flex items-center justify-center shrink-0">
+            {selected && <div className="w-1.5 h-1.5 rounded-full bg-[var(--colors-fg-quaternary)]" />}
         </div>
     );
 }
@@ -348,18 +348,18 @@ function VisibilityCard({ title, subtitle, badge, children }: {
 }) {
     const [open, setOpen] = useState(true);
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-5">{subtitle}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{subtitle}</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0 whitespace-nowrap">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0 whitespace-nowrap">
                     {badge}
                 </span>
                 <button type="button" onClick={() => setOpen(p => !p)}
                     aria-label={open ? "Collapse" : "Expand"}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 hover:text-[#344054] transition-colors">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0 hover:text-[var(--colors-text-secondary)] transition-colors">
                     {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
@@ -373,8 +373,8 @@ function CheckRow({ label, trailing }: { label: string; trailing?: string }) {
     return (
         <div className="flex items-center gap-2">
             <DisabledCheckbox />
-            <span className="text-[14px] font-medium text-[#101828] flex-1 truncate">{label}</span>
-            {trailing && <span className="text-[14px] text-[#667085] shrink-0">{trailing}</span>}
+            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1 truncate">{label}</span>
+            {trailing && <span className="text-[14px] text-[var(--colors-text-quaternary)] shrink-0">{trailing}</span>}
         </div>
     );
 }
@@ -383,7 +383,7 @@ function CheckRow({ label, trailing }: { label: string; trailing?: string }) {
 
 function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] }) {
     return (
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[var(--colors-border-secondary)] rounded-[20px]">
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
                 {/* ── Promo configuration ── */}
                 <SectionHeading>Promotion configuration</SectionHeading>
@@ -435,14 +435,14 @@ function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] })
                     badge={`${vm.products.length} selected`}
                 >
                     {vm.products.length === 0 ? (
-                        <p className="text-[14px] text-[#667085]">No packages selected.</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">No packages selected.</p>
                     ) : (
                         (["Membership", "Class package"] as const).map(group => {
                             const rows = vm.products.filter(p => p.group === group);
                             if (rows.length === 0) return null;
                             return (
                                 <div key={group} className="flex flex-col gap-3">
-                                    <p className="text-[12px] text-[#667085] leading-[18px]">{group}</p>
+                                    <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{group}</p>
                                     {rows.map(p => <CheckRow key={p.id} label={p.name} />)}
                                 </div>
                             );
@@ -457,7 +457,7 @@ function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] })
                     badge={`${vm.classes.length} selected`}
                 >
                     {vm.classes.length === 0 ? (
-                        <p className="text-[14px] text-[#667085]">No classes selected.</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">No classes selected.</p>
                     ) : (
                         vm.classes.map(c => <CheckRow key={c.id} label={c.name} trailing={c.category} />)
                     )}
@@ -472,11 +472,11 @@ function RightPanel({ vm, branches }: { vm: PromoDetailVM; branches: Branch[] })
                 >
                     <div className="flex items-center gap-2">
                         <DisabledRadio selected={vm.customerTargeting === "all"} />
-                        <span className="text-[14px] font-medium text-[#101828]">Everyone</span>
+                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">Everyone</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <DisabledRadio selected={vm.customerTargeting === "new_users"} />
-                        <span className="text-[14px] font-medium text-[#101828]">New user only</span>
+                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">New user only</span>
                     </div>
                 </VisibilityCard>
             </div>
@@ -537,9 +537,9 @@ function PromoDetailPageInner() {
     if (!promo) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">Promotion not found</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Promotion not found</p>
                 <button type="button" onClick={() => router.push(returnTo)}
-                    className="mt-4 text-[14px] text-[#658774] hover:underline">
+                    className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                     Back to promos
                 </button>
             </div>
@@ -646,11 +646,11 @@ function PromoDetailPageInner() {
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Promotion details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Promotion details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>

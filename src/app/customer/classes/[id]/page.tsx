@@ -99,15 +99,15 @@ export default function ClassDetailPage() {
     // spots, Hourglass for waitlist; FULL / Closed / Booked stay text-only).
     const badge =
         detail.state === "available"
-            ? { icon: Users01, label: `${detail.booked}/${detail.capacity} spots`, cls: "border-[#e4e7ec] bg-[#f9fafb] text-[#344054]" }
+            ? { icon: Users01, label: `${detail.booked}/${detail.capacity} spots`, cls: "border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] text-[var(--colors-text-secondary)]" }
             : detail.state === "waitlist"
-              ? { icon: Hourglass03, label: "FULL", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
+              ? { icon: Hourglass03, label: "FULL", cls: "border-[var(--colors-border-secondary)] bg-white/90 text-[var(--colors-text-secondary)]" }
               : detail.state === "booked"
                 ? { icon: null, label: "Booked", cls: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]" }
                 : detail.state === "waitlisted"
-                  ? { icon: null, label: "Waitlisted", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
+                  ? { icon: null, label: "Waitlisted", cls: "border-[var(--colors-border-secondary)] bg-white/90 text-[var(--colors-text-secondary)]" }
                   : detail.state === "closed"
-                    ? { icon: null, label: "Closed", cls: "border-[#e4e7ec] bg-white/90 text-[#344054]" }
+                    ? { icon: null, label: "Closed", cls: "border-[var(--colors-border-secondary)] bg-white/90 text-[var(--colors-text-secondary)]" }
                     : { icon: null, label: "FULL", cls: "border-[#fecdca] bg-[#fef3f2] text-[#b42318]" };
     const BadgeIcon = badge.icon;
 

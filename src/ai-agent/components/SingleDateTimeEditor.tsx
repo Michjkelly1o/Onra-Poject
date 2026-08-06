@@ -144,11 +144,11 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
 
     if (confirmed) {
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-secondary-300)] bg-[#f1f7f4] px-4 py-3">
                 <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Session scheduled</p>
-                    <p className="text-[13px] text-[#475467] leading-5 mt-0.5">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Session scheduled</p>
+                    <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5">
                         {fmtDateLabel(confirmed.dateISO)} · {fmtTime(confirmed.startTime)}
                     </p>
                 </div>
@@ -157,11 +157,11 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
     }
 
     return (
-        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]">
+        <div className="w-full bg-white border border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]">
             {/* Header — title + pager. Matches the AiQuestionPrompt chrome so
                 the date/time step reads as the same kind of question panel. */}
-            <div className="h-[52px] flex items-center gap-2 px-3.5 border-b border-[#e4e7ec]">
-                <p className="flex-1 min-w-0 text-[16px] font-semibold text-[#101828] leading-6 truncate">
+            <div className="h-[52px] flex items-center gap-2 px-3.5 border-b border-[var(--colors-border-secondary)]">
+                <p className="flex-1 min-w-0 text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6 truncate">
                     {step === 1 ? "When is the session?" : "When does the class start?"}
                 </p>
                 <div className="flex items-center gap-1 shrink-0">
@@ -170,11 +170,11 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
                         onClick={() => setStep(1)}
                         disabled={step === 1}
                         aria-label="Previous question"
-                        className="size-6 flex items-center justify-center rounded-[3px] text-[#667085] enabled:hover:bg-[#f9fafb] disabled:opacity-40 transition-colors"
+                        className="size-6 flex items-center justify-center rounded-[3px] text-[var(--colors-text-quaternary)] enabled:hover:bg-[var(--colors-bg-secondary)] disabled:opacity-40 transition-colors"
                     >
                         <ChevronLeft className="size-3.5" />
                     </button>
-                    <span className="text-[14px] font-medium text-[#667085] tabular-nums px-1">
+                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] tabular-nums px-1">
                         {step} of 2
                     </span>
                     <button
@@ -182,7 +182,7 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
                         onClick={step === 1 && dateISO ? () => setStep(2) : undefined}
                         disabled={!(step === 1 && dateISO)}
                         aria-label="Next question"
-                        className="size-6 flex items-center justify-center rounded-[3px] text-[#667085] enabled:hover:bg-[#f9fafb] disabled:opacity-40 transition-colors"
+                        className="size-6 flex items-center justify-center rounded-[3px] text-[var(--colors-text-quaternary)] enabled:hover:bg-[var(--colors-bg-secondary)] disabled:opacity-40 transition-colors"
                     >
                         <ChevronRight className="size-3.5" />
                     </button>
@@ -207,9 +207,9 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
                         </div>
                     </>
                 ) : times.length === 0 ? (
-                    <div className="mx-3 my-1 rounded-[10px] border border-dashed border-[#e4e7ec] bg-[#f9fafb] py-8 px-4 flex flex-col items-center gap-1 text-center">
-                        <p className="text-[14px] font-medium text-[#475467]">No times available on {fmtDateLabel(dateISO)}</p>
-                        <p className="text-[12px] text-[#98a2b3]">The instructor is fully booked or off that day — go back and pick another date.</p>
+                    <div className="mx-3 my-1 rounded-[10px] border border-dashed border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] py-8 px-4 flex flex-col items-center gap-1 text-center">
+                        <p className="text-[14px] font-medium text-[var(--colors-text-tertiary)]">No times available on {fmtDateLabel(dateISO)}</p>
+                        <p className="text-[12px] text-[var(--colors-fg-quaternary)]">The instructor is fully booked or off that day — go back and pick another date.</p>
                     </div>
                 ) : (
                     <div className="max-h-[280px] overflow-y-auto">
@@ -235,15 +235,15 @@ function OptionRow({ index, label, selected, onClick }: {
             <button type="button" onClick={onClick} aria-pressed={selected}
                 className={cn(
                     "w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left transition-colors",
-                    selected ? "bg-[#f1f7f4]" : "hover:bg-[#f9fafb]",
+                    selected ? "bg-[#f1f7f4]" : "hover:bg-[var(--colors-bg-secondary)]",
                 )}>
                 <span className={cn(
                     "shrink-0 size-6 flex items-center justify-center rounded-[6px] border text-[12px] font-medium",
-                    selected ? "border-[#aad4bd] text-[#344054] bg-white" : "border-[#e4e7ec] text-[#667085] bg-white",
+                    selected ? "border-[var(--colors-secondary-300)] text-[var(--colors-text-secondary)] bg-white" : "border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)] bg-white",
                 )}>
                     {index}
                 </span>
-                <span className="flex-1 min-w-0 text-[14px] leading-5 font-medium text-[#344054] truncate">{label}</span>
+                <span className="flex-1 min-w-0 text-[14px] leading-5 font-medium text-[var(--colors-text-secondary)] truncate">{label}</span>
             </button>
         </div>
     );

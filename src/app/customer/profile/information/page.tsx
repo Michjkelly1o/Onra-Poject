@@ -33,8 +33,8 @@ import {
 } from "@/lib/data/locales";
 
 const FIELD =
-    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
-const LABEL = "text-sm font-medium leading-5 text-[#344054]";
+    "w-full rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[var(--colors-text-quaternary)] focus:border-[var(--brand-primary)]";
+const LABEL = "text-sm font-medium leading-5 text-[var(--colors-text-secondary)]";
 const SECTION = "text-base font-semibold leading-6 text-[var(--brand-text)]";
 const RELATIONS = ["Siblings", "Parent", "Spouse", "Child", "Friend", "Other"];
 
@@ -43,7 +43,7 @@ function dobLabel(iso: string): string {
 }
 
 function Divider() {
-    return <div className="h-px w-full bg-[#e4e7ec]" />;
+    return <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />;
 }
 
 export default function ProfileInformationPage() {
@@ -144,9 +144,9 @@ export default function ProfileInformationPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <span aria-hidden className="flex-1" />
             </CustomerHeader>
@@ -159,7 +159,7 @@ export default function ProfileInformationPage() {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={avatar} alt="" className="size-24 rounded-full object-cover ring-4 ring-white" />
                         ) : (
-                            <div className="flex size-24 items-center justify-center rounded-full bg-[#f2f4f7] text-2xl font-semibold text-[#475467] ring-4 ring-white">
+                            <div className="flex size-24 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)] text-2xl font-semibold text-[var(--colors-text-tertiary)] ring-4 ring-white">
                                 {member?.initials}
                             </div>
                         )}
@@ -169,7 +169,7 @@ export default function ProfileInformationPage() {
                             aria-label="Change photo"
                             className="absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full border-2 border-white bg-white shadow-[0px_1px_3px_rgba(16,24,40,0.18)]"
                         >
-                            <Camera01 className="size-4 text-[#344054]" aria-hidden />
+                            <Camera01 className="size-4 text-[var(--colors-text-secondary)]" aria-hidden />
                         </button>
                         <input
                             ref={fileRef}
@@ -198,19 +198,19 @@ export default function ProfileInformationPage() {
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Date of birth</span>
                     <button type="button" onClick={() => setDobOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                        <span className={`flex-1 ${dob ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                        <span className={`flex-1 ${dob ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                             {dob ? dobLabel(dob) : "Enter date of birth"}
                         </span>
-                        <Calendar className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                        <Calendar className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                     </button>
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Gender</span>
                     <button type="button" onClick={() => setGenderOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                        <span className={`flex-1 ${gender ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                        <span className={`flex-1 ${gender ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                             {gender || "Select gender"}
                         </span>
-                        <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                        <ChevronDown className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                     </button>
                 </div>
                 <label className="flex flex-col gap-1.5">
@@ -251,20 +251,20 @@ export default function ProfileInformationPage() {
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Country</span>
                     <button type="button" onClick={() => setPicker("country")} className={`${FIELD} flex items-center text-left`}>
-                        <span className={`flex-1 truncate ${country ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                        <span className={`flex-1 truncate ${country ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                             {country ? `${countryByName(country)?.flag ?? ""} ${country}` : "Select country"}
                         </span>
-                        <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                        <ChevronDown className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                     </button>
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>{stateLabel}</span>
                     {stateOptions ? (
                         <button type="button" onClick={() => setPicker("state")} className={`${FIELD} flex items-center text-left`}>
-                            <span className={`flex-1 truncate ${stateRegion ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                            <span className={`flex-1 truncate ${stateRegion ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                                 {stateRegion || `Select ${stateLabel.toLowerCase()}`}
                             </span>
-                            <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                            <ChevronDown className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                         </button>
                     ) : (
                         <input
@@ -319,10 +319,10 @@ export default function ProfileInformationPage() {
                 <div className="flex flex-col gap-1.5">
                     <span className={LABEL}>Relation</span>
                     <button type="button" onClick={() => setRelationOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                        <span className={`flex-1 ${ecRelation ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                        <span className={`flex-1 ${ecRelation ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                             {ecRelation || "Select relation"}
                         </span>
-                        <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                        <ChevronDown className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                     </button>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -410,7 +410,7 @@ export default function ProfileInformationPage() {
                     </div>
                     <div>
                         <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Delete your account?</p>
-                        <p className="mt-1 text-sm leading-5 text-[#475467]">
+                        <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             This permanently removes your profile, plans, and bookings. This can&apos;t be undone.
                         </p>
                     </div>

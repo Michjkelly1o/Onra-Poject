@@ -39,7 +39,7 @@ export default function LoginPasswordPage() {
             <div className={`flex flex-1 flex-col gap-6 px-4 pb-8 ${AUTH_CONTENT_OFFSET}`}>
                 <div className="flex w-full flex-col gap-2">
                     <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Welcome back</h1>
-                    <p className="text-base leading-6 text-[#667085]">Enter your password to log in as {authDraft.email}.</p>
+                    <p className="text-base leading-6 text-[var(--colors-text-quaternary)]">Enter your password to log in as {authDraft.email}.</p>
                 </div>
 
                 <div className="flex w-full flex-col gap-3">

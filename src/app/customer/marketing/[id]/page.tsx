@@ -26,9 +26,9 @@ function TermRow({ icon: Icon, children }: { icon: ComponentType<{ className?: s
     return (
         <div className="flex items-start gap-2">
             <span className="flex items-center py-0.5">
-                <Icon className="size-4 shrink-0 text-[#475467]" />
+                <Icon className="size-4 shrink-0 text-[var(--colors-text-tertiary)]" />
             </span>
-            <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">{children}</p>
+            <p className="flex-1 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{children}</p>
         </div>
     );
 }
@@ -83,9 +83,9 @@ export default function MarketingDetailPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]" />
                 <div className="size-10 shrink-0" aria-hidden />
@@ -93,7 +93,7 @@ export default function MarketingDetailPage() {
 
             {!item ? (
                 <div className="flex flex-1 items-center justify-center px-6 text-center">
-                    <p className="text-sm font-normal text-[#475467]">This campaign is no longer available.</p>
+                    <p className="text-sm font-normal text-[var(--colors-text-tertiary)]">This campaign is no longer available.</p>
                 </div>
             ) : (
                 <>
@@ -115,23 +115,23 @@ export default function MarketingDetailPage() {
                                     </span>
                                 </span>
                             </div>
-                            <p className="text-sm font-normal leading-5 text-[#475467]">{item.description}</p>
+                            <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{item.description}</p>
                         </div>
 
                         <div className="flex flex-col gap-4">
                             <TermRow icon={CursorBox}>{item.actionLabel}</TermRow>
                             {item.actionType === "buy_ticket" && item.ticketPrice != null && (
                                 <>
-                                    <div className="h-px w-full bg-[#e4e7ec]" />
+                                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                                     <TermRow icon={Ticket01}>
                                         Ticket price:{" "}
                                         <span className="font-medium text-[var(--brand-text)]">AED {item.ticketPrice}</span>
                                     </TermRow>
                                 </>
                             )}
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <TermRow icon={MarkerPin01}>Applicable for {item.locationsLabel}</TermRow>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <TermRow icon={Clock}>
                                 Valid until <span className="font-medium text-[var(--brand-text)]">{item.validUntil}</span>
                             </TermRow>

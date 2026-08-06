@@ -128,8 +128,8 @@ export function Donut({
                             className="size-2.5 rounded-sm shrink-0"
                             style={{ background: a.color }}
                         />
-                        <span className="flex-1 text-[#344054] truncate">{a.label}</span>
-                        <span className="text-[#667085] tabular-nums shrink-0">
+                        <span className="flex-1 text-[var(--colors-text-secondary)] truncate">{a.label}</span>
+                        <span className="text-[var(--colors-text-quaternary)] tabular-nums shrink-0">
                             {fmt(a.value, unit)} · {Math.round(a.pct)}%
                         </span>
                     </div>

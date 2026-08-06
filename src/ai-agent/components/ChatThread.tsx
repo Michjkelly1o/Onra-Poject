@@ -1359,7 +1359,7 @@ function InsightEmptyState({
                         >
                             How can I assist you today?
                         </h1>
-                        <p className="text-[16px] leading-6 text-[#667085]">
+                        <p className="text-[16px] leading-6 text-[var(--colors-text-quaternary)]">
                             Manage bookings, customers, and schedules with ease.
                         </p>
                     </div>
@@ -1435,7 +1435,7 @@ function StudioSetupEmptyState({
                     >
                         Set up your studio
                     </h1>
-                    <p className="text-[15px] leading-6 text-[#667085]">
+                    <p className="text-[15px] leading-6 text-[var(--colors-text-quaternary)]">
                         I&apos;ll walk you through branches, rooms, classes,
                         memberships, and the rest — step by step. I can
                         also show you what&apos;s already configured.
@@ -1479,7 +1479,7 @@ function MigrationEmptyState({
                     >
                         Migrate your data
                     </h1>
-                    <p className="text-[15px] leading-6 text-[#667085]">
+                    <p className="text-[15px] leading-6 text-[var(--colors-text-quaternary)]">
                         I&apos;ll guide you through importing your data from
                         another platform — step by step, using your actual
                         export. Attach a CSV any time with the paperclip.
@@ -1555,21 +1555,21 @@ function SuggestedPromptList({
         // Floating dropdown — absolutely positioned under the composer so it
         // overlays whatever is below (cards / buttons) instead of pushing the
         // layout taller. The parent wraps the composer in `relative`.
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 w-full bg-white border border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
             <div className="flex flex-col py-1">
                 {shown.map((p, i) => (
                     <div key={i} className="px-1.5 py-0.5">
                         <button
                             type="button"
                             onClick={() => onSend(p.send)}
-                            className="w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left hover:bg-[#f9fafb] transition-colors"
+                            className="w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left hover:bg-[var(--colors-bg-secondary)] transition-colors"
                         >
-                            <span className="shrink-0 size-6 flex items-center justify-center rounded-[6px] border border-[#e4e7ec] bg-white">
-                                <ArrowNarrowRight className="size-3 text-[#667085]" />
+                            <span className="shrink-0 size-6 flex items-center justify-center rounded-[6px] border border-[var(--colors-border-secondary)] bg-white">
+                                <ArrowNarrowRight className="size-3 text-[var(--colors-text-quaternary)]" />
                             </span>
                             <span className="flex-1 min-w-0 flex items-center gap-1 text-[14px] leading-5 truncate">
-                                <span className="text-[#667085] font-normal">{p.lead}</span>
-                                <span className="text-[#344054] font-medium truncate">{p.label}</span>
+                                <span className="text-[var(--colors-text-quaternary)] font-normal">{p.lead}</span>
+                                <span className="text-[var(--colors-text-secondary)] font-medium truncate">{p.label}</span>
                             </span>
                         </button>
                     </div>
@@ -1596,26 +1596,26 @@ function SuggestionCard({
             onClick={onClick}
             className={cn(
                 "flex-1 min-w-0 p-4 rounded-xl text-left",
-                "bg-white border border-[#e4e7ec]",
+                "bg-white border border-[var(--colors-border-secondary)]",
                 "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
-                "hover:border-[#d0d5dd] hover:shadow-[0px_16px_20px_-4px_rgba(16,24,40,0.12),0px_6px_8px_-2px_rgba(16,24,40,0.04)] transition-all",
+                "hover:border-[var(--colors-border-primary)] hover:shadow-[0px_16px_20px_-4px_rgba(16,24,40,0.12),0px_6px_8px_-2px_rgba(16,24,40,0.04)] transition-all",
             )}
         >
             <div className="flex flex-col gap-2 items-start">
                 <div
                     className={cn(
                         "size-8 flex items-center justify-center rounded-[6px]",
-                        "bg-white border border-[#e4e7ec]",
+                        "bg-white border border-[var(--colors-border-secondary)]",
                         "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
                     )}
                 >
-                    <Icon className="size-4 text-[#344054]" />
+                    <Icon className="size-4 text-[var(--colors-text-secondary)]" />
                 </div>
                 <div className="flex flex-col w-full">
-                    <span className="text-[14px] font-medium leading-5 text-[#344054]">
+                    <span className="text-[14px] font-medium leading-5 text-[var(--colors-text-secondary)]">
                         {title}
                     </span>
-                    <span className="text-[14px] leading-5 text-[#475467]">
+                    <span className="text-[14px] leading-5 text-[var(--colors-text-tertiary)]">
                         {description}
                     </span>
                 </div>
@@ -1700,7 +1700,7 @@ function UserMessageBubble({
                 <div
                     className={cn(
                         "w-full p-4 flex",
-                        "bg-[#c4edd6] border border-[#aad4bd]",
+                        "bg-[var(--colors-secondary-200)] border border-[var(--colors-secondary-300)]",
                         "rounded-tl-[16px] rounded-bl-[16px] rounded-br-[16px] rounded-tr-[2px]",
                         "shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]",
                     )}
@@ -1718,7 +1718,7 @@ function UserMessageBubble({
                             }
                         }}
                         rows={Math.min(6, Math.max(1, draft.split("\n").length))}
-                        className="w-full resize-none bg-transparent text-[14px] font-medium leading-5 text-[#344054] outline-none placeholder:text-[#658774]"
+                        className="w-full resize-none bg-transparent text-[14px] font-medium leading-5 text-[var(--colors-text-secondary)] outline-none placeholder:text-[var(--colors-secondary-600)]"
                     />
                 </div>
                 {/* Actions live outside the bubble — icon-only. */}
@@ -1727,7 +1727,7 @@ function UserMessageBubble({
                         type="button"
                         onClick={cancelEdit}
                         aria-label="Cancel edit"
-                        className="size-9 flex items-center justify-center rounded-[8px] text-[#344054] bg-white border border-[#d0d5dd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors"
+                        className="size-9 flex items-center justify-center rounded-[8px] text-[var(--colors-text-secondary)] bg-white border border-[var(--colors-border-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
                         <XClose className="size-5" />
                     </button>
@@ -1736,7 +1736,7 @@ function UserMessageBubble({
                         onClick={saveEdit}
                         disabled={!draft.trim()}
                         aria-label="Send edit"
-                        className="size-9 flex items-center justify-center rounded-[8px] text-white bg-[#658774] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#577665] disabled:opacity-50 transition-colors"
+                        className="size-9 flex items-center justify-center rounded-[8px] text-white bg-[var(--colors-secondary-600)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#577665] disabled:opacity-50 transition-colors"
                     >
                         <Send03 className="size-5" />
                     </button>
@@ -1753,7 +1753,7 @@ function UserMessageBubble({
                     <div
                         className={cn(
                             "flex items-center gap-2 px-3 py-2 rounded-lg max-w-[400px]",
-                            "bg-white border border-[#e4e7ec]",
+                            "bg-white border border-[var(--colors-border-secondary)]",
                             "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                         )}
                     >
@@ -1766,7 +1766,7 @@ function UserMessageBubble({
                                 className="w-full h-full"
                             />
                         </div>
-                        <span className="text-[13px] font-medium text-[#344054] truncate">
+                        <span className="text-[13px] font-medium text-[var(--colors-text-secondary)] truncate">
                             {attachment.filename}
                         </span>
                     </div>
@@ -1778,16 +1778,16 @@ function UserMessageBubble({
                         type="button"
                         onClick={copy}
                         aria-label={copied ? "Copied" : "Copy message"}
-                        className="text-[#667085] hover:text-[#344054] transition-colors"
+                        className="text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)] transition-colors"
                     >
-                        {copied ? <Check className="size-5 text-[#658774]" /> : <Copy03 className="size-5" />}
+                        {copied ? <Check className="size-5 text-[var(--colors-secondary-600)]" /> : <Copy03 className="size-5" />}
                     </button>
                     {editable && onSubmitEdit && (
                         <button
                             type="button"
                             onClick={startEdit}
                             aria-label="Edit message"
-                            className="text-[#667085] hover:text-[#344054] transition-colors"
+                            className="text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)] transition-colors"
                         >
                             <Edit02 className="size-5" />
                         </button>
@@ -1796,12 +1796,12 @@ function UserMessageBubble({
                 <div
                     className={cn(
                         "min-h-[56px] max-w-[400px] p-4 flex items-center",
-                        "bg-[#c4edd6] border border-[#aad4bd]",
+                        "bg-[var(--colors-secondary-200)] border border-[var(--colors-secondary-300)]",
                         "rounded-tl-[16px] rounded-bl-[16px] rounded-br-[16px] rounded-tr-[2px]",
                         "shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)]",
                     )}
                 >
-                    <p className="text-[14px] font-medium leading-5 text-[#344054] whitespace-pre-wrap [word-break:break-word]">
+                    <p className="text-[14px] font-medium leading-5 text-[var(--colors-text-secondary)] whitespace-pre-wrap [word-break:break-word]">
                         {text}
                     </p>
                 </div>
@@ -1824,19 +1824,19 @@ function QuestionStepCard({
     // is nothing to show and an empty bordered box would just look like a bug.
     if (!data.stepLabel && !data.title && !data.message) return null;
     return (
-        <div className="w-full max-w-[560px] bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-1.5">
+        <div className="w-full max-w-[560px] bg-white border border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-1.5">
             {data.stepLabel && (
-                <span className="self-start inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 border-[#aad4bd] bg-[#eafaf1] text-[#3f6350]">
+                <span className="self-start inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 border-[var(--colors-secondary-300)] bg-[#eafaf1] text-[#3f6350]">
                     {data.stepLabel}
                 </span>
             )}
             {data.title && (
-                <p className="text-[16px] font-semibold text-[#101828] leading-6">
+                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">
                     {humanizeAgentText(data.title)}
                 </p>
             )}
             {data.message && (
-                <p className="text-[14px] text-[#475467] leading-5">
+                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                     {humanizeAgentText(data.message)}
                 </p>
             )}
@@ -1863,7 +1863,7 @@ function ImportingScreen({ label = "Checking & importing data..." }: { label?: s
                 />
             </div>
             <span
-                className="text-[16px] font-semibold text-[#101828]"
+                className="text-[16px] font-semibold text-[var(--colors-text-primary)]"
                 role="status"
                 aria-live="polite"
             >
@@ -1933,11 +1933,11 @@ function parseScheduleConfirmation(
 /** White confirmation bubble — mirrors the published-result card style. */
 function ScheduleConfirmationBubble({ title, detail }: { title: string; detail: string }) {
     return (
-        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-white px-4 py-3">
+        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-white px-4 py-3">
             <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
             <div className="min-w-0">
-                <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
-                {detail && <p className="text-[13px] text-[#475467] leading-5 mt-0.5">{detail}</p>}
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
+                {detail && <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5">{detail}</p>}
             </div>
         </div>
     );
@@ -2019,7 +2019,7 @@ function MessageRow({
                         or a plain-text answer when no tool was called).
                         Sanitised so any stray markdown reads as plain text. */}
                     {m.content && (
-                        <div className="text-[14px] text-[#344054] leading-6 whitespace-pre-wrap">
+                        <div className="text-[14px] text-[var(--colors-text-secondary)] leading-6 whitespace-pre-wrap">
                             {humanizeAgentText(m.content)}
                         </div>
                     )}
@@ -2068,9 +2068,9 @@ function ErrorBanner({
                 onClick={onRetry}
                 className={cn(
                     "shrink-0 h-8 px-3 inline-flex items-center gap-1.5 rounded-md",
-                    "bg-white text-[#344054] text-[13px] font-medium border border-[#d0d5dd]",
+                    "bg-white text-[var(--colors-text-secondary)] text-[13px] font-medium border border-[var(--colors-border-primary)]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] transition-colors",
+                    "hover:bg-[var(--colors-bg-secondary)] transition-colors",
                 )}
             >
                 <RefreshCw01 className="size-3.5" />
@@ -2082,7 +2082,7 @@ function ErrorBanner({
 
 function AssistantAvatar() {
     return (
-        <div className="size-8 shrink-0 rounded-[8px] border border-[#d0d5dd] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
+        <div className="size-8 shrink-0 rounded-[8px] border border-[var(--colors-border-primary)] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
             <Image
                 src="/Logomark.webp"
                 alt="Onra"
@@ -2150,8 +2150,8 @@ function Composer({
                 "flex flex-col gap-3 p-2.5 bg-white rounded-xl transition-colors",
                 "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
                 hasFile
-                    ? "border-2 border-[#7ba08c]"
-                    : "border border-[#d0d5dd] focus-within:border-[#7ba08c] focus-within:ring-4 focus-within:ring-[#7ba08c]/[0.12]",
+                    ? "border-2 border-[var(--colors-secondary-500)]"
+                    : "border border-[var(--colors-border-primary)] focus-within:border-[var(--colors-secondary-500)] focus-within:ring-4 focus-within:ring-[var(--colors-secondary-500)]/[0.12]",
             )}
         >
             {/* File chip row — Figma 18716:5616 "Added file". Only the CSV
@@ -2162,7 +2162,7 @@ function Composer({
                 </div>
             )}
             {isUploading && !hasFile && (
-                <div className="flex items-center gap-2 text-[13px] text-[#667085]">
+                <div className="flex items-center gap-2 text-[13px] text-[var(--colors-text-quaternary)]">
                     <RefreshCw01
                         className="size-4 animate-spin text-[#4f6e5d]"
                         aria-hidden="true"
@@ -2181,10 +2181,10 @@ function Composer({
                     disabled={!attachActive}
                     className={cn(
                         "size-9 flex-shrink-0 flex items-center justify-center rounded-lg",
-                        "bg-white border border-[#d0d5dd] text-[#344054]",
+                        "bg-white border border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)]",
                         SKEUO,
                         attachActive
-                            ? "hover:bg-[#f9fafb] transition-colors"
+                            ? "hover:bg-[var(--colors-bg-secondary)] transition-colors"
                             : "disabled:opacity-60 disabled:cursor-not-allowed",
                     )}
                 >
@@ -2195,7 +2195,7 @@ function Composer({
                     value={value}
                     onChange={onChange}
                     placeholder={mode === "migration" ? "Reply, or attach a CSV…" : "Ask me anything"}
-                    className="flex-1 min-w-0 h-9 px-1 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none leading-6"
+                    className="flex-1 min-w-0 h-9 px-1 text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-transparent outline-none leading-6"
                     style={{ fontFamily: DM_SANS_STACK }}
                 />
             </div>
@@ -2208,9 +2208,9 @@ function Composer({
                     onClick={onStop}
                     className={cn(
                         "size-9 flex-shrink-0 flex items-center justify-center rounded-lg",
-                        "bg-[#c4edd6] text-[#0c2d34] border-2 border-white/[0.12]",
+                        "bg-[var(--colors-secondary-200)] text-[var(--colors-brand-900)] border-2 border-white/[0.12]",
                         SKEUO,
-                        "hover:bg-[#aad4bd] transition-colors",
+                        "hover:bg-[var(--colors-secondary-300)] transition-colors",
                     )}
                 >
                     <span className="size-3.5 rounded-[4px] border-2 border-current" aria-hidden />
@@ -2222,10 +2222,10 @@ function Composer({
                     disabled={!canSend}
                     className={cn(
                         "size-9 flex-shrink-0 flex items-center justify-center rounded-lg",
-                        "bg-[#c4edd6] text-[#0c2d34] border-2 border-white/[0.12]",
+                        "bg-[var(--colors-secondary-200)] text-[var(--colors-brand-900)] border-2 border-white/[0.12]",
                         SKEUO,
-                        "hover:bg-[#aad4bd] transition-colors",
-                        "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-[#c4edd6]",
+                        "hover:bg-[var(--colors-secondary-300)] transition-colors",
+                        "disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-[var(--colors-secondary-200)]",
                     )}
                 >
                     <Send03 className="size-5" />
@@ -2244,19 +2244,19 @@ function FileChip({ name, onRemove }: { name: string; onRemove?: () => void }) {
     // "FILE" pill so we never mislabel an image as a CSV.
     const type = getFileType(name);
     return (
-        <div className="relative flex items-center gap-3 pl-4 pr-6 py-3 bg-white border border-[#e4e7ec] rounded-[12px] max-w-[240px]">
+        <div className="relative flex items-center gap-3 pl-4 pr-6 py-3 bg-white border border-[var(--colors-border-secondary)] rounded-[12px] max-w-[240px]">
             <div className="relative size-8 shrink-0">
                 <FileTypeIcon type={type} className="w-full h-full" />
             </div>
-            <p className="min-w-0 truncate text-[14px] font-medium leading-5 text-[#344054]">{name}</p>
+            <p className="min-w-0 truncate text-[14px] font-medium leading-5 text-[var(--colors-text-secondary)]">{name}</p>
             {onRemove && (
                 <button
                     type="button"
                     onClick={onRemove}
                     aria-label="Remove file"
-                    className="absolute top-[7px] right-[7px] size-4 flex items-center justify-center rounded-full bg-[#f2f4f7] hover:bg-[#e4e7ec] transition-colors"
+                    className="absolute top-[7px] right-[7px] size-4 flex items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)] hover:bg-[var(--colors-bg-quaternary)] transition-colors"
                 >
-                    <XClose className="size-3 text-[#667085]" />
+                    <XClose className="size-3 text-[var(--colors-text-quaternary)]" />
                 </button>
             )}
         </div>
@@ -2292,8 +2292,8 @@ function FileTypeIcon({
     // uppercase pill so the reader knows it's a file of some kind.
     return (
         <div className={cn("relative", className)}>
-            <div className="absolute inset-0 rounded-[3px] border border-[#e4e7ec] bg-[#f9fafb]" />
-            <span className="absolute left-[2px] bottom-[3px] px-[3px] py-[1px] rounded-[2px] bg-[#667085] text-white text-[6px] font-bold leading-none tracking-wide">
+            <div className="absolute inset-0 rounded-[3px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)]" />
+            <span className="absolute left-[2px] bottom-[3px] px-[3px] py-[1px] rounded-[2px] bg-[var(--colors-text-quaternary)] text-white text-[6px] font-bold leading-none tracking-wide">
                 {fileTypeLabel(type)}
             </span>
         </div>

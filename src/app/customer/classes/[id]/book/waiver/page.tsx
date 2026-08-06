@@ -59,7 +59,7 @@ const WAIVER_SECTIONS: { heading: string; body: string; bullets?: string[] }[] =
 const RELATIONSHIPS = ["Mother", "Father", "Legal guardian", "Grandparent", "Other"];
 
 const INPUT_CLS =
-    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[#667085] focus:border-[var(--brand-primary)] focus:outline-none";
+    "w-full rounded-xl border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[var(--colors-text-quaternary)] focus:border-[var(--brand-primary)] focus:outline-none";
 
 /** Whole-year age from an ISO DOB, measured against the demo "today". */
 function ageFrom(dob: string | undefined, todayISO: string): number | null {
@@ -132,9 +132,9 @@ function Waiver() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Waiver &amp; Liability Agreement
@@ -147,22 +147,22 @@ function Waiver() {
                 {/* Hint */}
                 <div className="flex w-full items-center gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                     <Lightbulb02 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
-                    <p className="text-sm font-normal leading-5 text-[#475467]">
+                    <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         Before you book this class, please read and agree to our waiver and liability terms.
                     </p>
                 </div>
 
                 {/* Waiver content */}
-                <div className="flex w-full flex-col gap-3.5 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                <div className="flex w-full flex-col gap-3.5 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
                     <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">Waiver</p>
                     {WAIVER_SECTIONS.map((s) => (
                         <div key={s.heading} className="flex flex-col gap-3.5">
                             <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">{s.heading}</p>
-                            <p className="text-sm font-normal leading-5 text-[#475467]">{s.body}</p>
+                            <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{s.body}</p>
                             {s.bullets && (
                                 <ul className="list-disc pl-5">
                                     {s.bullets.map((b) => (
-                                        <li key={b} className="text-sm font-normal leading-5 text-[#475467]">
+                                        <li key={b} className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                             {b}
                                         </li>
                                     ))}
@@ -175,15 +175,15 @@ function Waiver() {
                 {/* Parent / guardian consent — shown automatically only when the
                     customer is under 18 (based on their date of birth). */}
                 {isMinor && (
-                    <div className="flex w-full flex-col gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                    <div className="flex w-full flex-col gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
                         <div className="flex flex-col gap-0.5">
                             <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">Parent / guardian consent</p>
-                            <p className="text-xs font-normal leading-[18px] text-[#667085]">
+                            <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">
                                 The attendee is under 18 — a parent or legal guardian must consent and sign below.
                             </p>
                         </div>
                         <div className="flex flex-col gap-1.5">
-                            <label htmlFor="guardian-name" className="text-sm font-medium leading-5 text-[#344054]">
+                            <label htmlFor="guardian-name" className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                                 Parent / guardian full name
                             </label>
                             <input
@@ -196,7 +196,7 @@ function Waiver() {
                             />
                         </div>
                         <div className="flex flex-col gap-1.5">
-                            <label htmlFor="guardian-relation" className="text-sm font-medium leading-5 text-[#344054]">
+                            <label htmlFor="guardian-relation" className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                                 Relationship to minor
                             </label>
                             <button
@@ -205,10 +205,10 @@ function Waiver() {
                                 onClick={() => setRelOpen(true)}
                                 className={`${INPUT_CLS} flex items-center text-left`}
                             >
-                                <span className={`flex-1 ${relationship ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                                <span className={`flex-1 ${relationship ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                                     {relationship || "Select relationship"}
                                 </span>
-                                <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                                <ChevronDown className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                             </button>
                         </div>
                     </div>
@@ -236,7 +236,7 @@ function Waiver() {
                     <span className="pt-0.5">
                         <CheckBox checked={checked} />
                     </span>
-                    <span className="text-sm font-medium leading-5 text-[#344054]">
+                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                         {isMinor
                             ? "I am the parent / legal guardian and I consent to the terms on behalf of the minor"
                             : "I have read and agree to the terms"}

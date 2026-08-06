@@ -53,12 +53,12 @@ function PaymentRow({ r, onClick }: { r: PaymentRecord; onClick: () => void }) {
     return (
         <button type="button" onClick={onClick} className="flex w-full items-center gap-3 text-left transition-opacity active:opacity-70">
             <div className="flex min-w-0 flex-1 items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]">
-                    <Icon className="size-5 text-[#344054]" aria-hidden />
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.04)]">
+                    <Icon className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <p className="truncate text-sm font-semibold leading-5 text-[#344054]">{PAYMENT_TYPE_LABEL[r.type]}</p>
-                    <p className="text-xs font-normal leading-[18px] text-[#475467]">
+                    <p className="truncate text-sm font-semibold leading-5 text-[var(--colors-text-secondary)]">{PAYMENT_TYPE_LABEL[r.type]}</p>
+                    <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
                         {fmtRowDate(r.dateISO)} • {r.timeLabel}
                     </p>
                     <span className="flex items-center gap-1">
@@ -67,11 +67,11 @@ function PaymentRow({ r, onClick }: { r: PaymentRecord; onClick: () => void }) {
                         ) : (
                             <XCircle className="size-3.5 shrink-0 text-[#d92d20]" aria-hidden />
                         )}
-                        <span className="text-xs font-normal leading-[18px] text-[#475467]">{ok ? "Success" : "Failed"}</span>
+                        <span className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">{ok ? "Success" : "Failed"}</span>
                     </span>
                 </div>
             </div>
-            <p className="shrink-0 text-sm font-semibold leading-5 text-[#344054]">−AED {fmtAmount(r.amount)}</p>
+            <p className="shrink-0 text-sm font-semibold leading-5 text-[var(--colors-text-secondary)]">−AED {fmtAmount(r.amount)}</p>
         </button>
     );
 }
@@ -116,9 +116,9 @@ export default function PaymentHistoryPage() {
                     type="button"
                     onClick={goBack}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Payment history</h1>
                 <button
@@ -128,9 +128,9 @@ export default function PaymentHistoryPage() {
                         setFilterOpen(true);
                     }}
                     aria-label="Filter"
-                    className="relative flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="relative flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <Sliders02 className="size-5 text-[#344054]" aria-hidden />
+                    <Sliders02 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     {fcount > 0 && (
                         <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-primary)] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                             {fcount}
@@ -142,7 +142,7 @@ export default function PaymentHistoryPage() {
             <div className="flex flex-1 flex-col px-4 pb-8 pt-[80px]">
                 {/* Result total — shown whenever a filter narrows the list. */}
                 {fcount > 0 && (
-                    <p className="pb-3 text-sm font-normal leading-5 text-[#475467]">
+                    <p className="pb-3 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         {filteredCount} result{filteredCount === 1 ? "" : "s"}
                     </p>
                 )}
@@ -166,7 +166,7 @@ export default function PaymentHistoryPage() {
                                 <div className="flex flex-col gap-3">
                                     {rows.map((r, i) => (
                                         <div key={r.id} className="flex flex-col gap-3">
-                                            {i > 0 && <div className="h-px w-full bg-[#e4e7ec]" />}
+                                            {i > 0 && <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />}
                                             <PaymentRow r={r} onClick={() => router.push(`/customer/profile/payment-history/${r.id}`)} />
                                         </div>
                                     ))}

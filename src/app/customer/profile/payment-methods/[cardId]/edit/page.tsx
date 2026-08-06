@@ -33,7 +33,7 @@ export default function EditCardPage() {
     if (!card) {
         return (
             <div className="flex min-h-full items-center justify-center px-6 text-center">
-                <p className="text-base leading-6 text-[#475467]">This card is no longer available.</p>
+                <p className="text-base leading-6 text-[var(--colors-text-tertiary)]">This card is no longer available.</p>
             </div>
         );
     }
@@ -82,12 +82,12 @@ export default function EditCardPage() {
                     <>
                         <SheetToolbar title="" onClose={() => setSheetOpen(false)} />
                         <div className="flex flex-col items-center gap-4 text-center">
-                            <div className="flex size-12 items-center justify-center rounded-full bg-[#f2f4f7]">
-                                <Trash01 className="size-6 text-[#667085]" aria-hidden />
+                            <div className="flex size-12 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)]">
+                                <Trash01 className="size-6 text-[var(--colors-text-quaternary)]" aria-hidden />
                             </div>
                             <div>
                                 <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">You can&apos;t delete this payment method</p>
-                                <p className="mt-1 text-sm leading-5 text-[#475467]">
+                                <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                                     Your membership has recurring payments. Please add a new card before removing this one.
                                 </p>
                             </div>
@@ -113,7 +113,7 @@ export default function EditCardPage() {
                             </div>
                             <div>
                                 <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Delete this payment method?</p>
-                                <p className="mt-1 text-sm leading-5 text-[#475467]">
+                                <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                                     This will remove all of the payment information and no longer can be use.
                                 </p>
                             </div>

@@ -98,7 +98,7 @@ function SessionList({ sessions }: { sessions: PreviewSession[] }) {
     }, [sessions]);
 
     return (
-        <div className="mt-4 bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] p-4 flex flex-col gap-4">
+        <div className="mt-4 bg-white border border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] p-4 flex flex-col gap-4">
             {/* Header — title + supporting text + "N classes" badge + chevron */}
             <button
                 type="button"
@@ -106,22 +106,22 @@ function SessionList({ sessions }: { sessions: PreviewSession[] }) {
                 className="w-full flex items-center gap-4 text-left"
             >
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Preview of scheduled classes</p>
-                    <p className="text-[14px] text-[#667085] leading-5 truncate">Review all upcoming scheduled dates and time slots.</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Preview of scheduled classes</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 truncate">Review all upcoming scheduled dates and time slots.</p>
                 </div>
-                <span className="shrink-0 inline-flex items-center rounded-full bg-[#f9fafb] border border-[#e4e7ec] px-2 py-0.5 text-[12px] font-medium text-[#344054]">
+                <span className="shrink-0 inline-flex items-center rounded-full bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-secondary)] px-2 py-0.5 text-[12px] font-medium text-[var(--colors-text-secondary)]">
                     {sessions.length} {sessions.length === 1 ? "class" : "classes"}
                 </span>
                 {open
-                    ? <ChevronUp className="size-5 text-[#667085] shrink-0" />
-                    : <ChevronDown className="size-5 text-[#667085] shrink-0" />}
+                    ? <ChevronUp className="size-5 text-[var(--colors-text-quaternary)] shrink-0" />
+                    : <ChevronDown className="size-5 text-[var(--colors-text-quaternary)] shrink-0" />}
             </button>
             {open && (
                 <div className="flex flex-col gap-4 max-h-[360px] overflow-y-auto">
                     {groups.map((g, gi) => (
                         <div key={g.month} className="flex flex-col gap-2">
-                            {gi > 0 && <div className="h-px w-full bg-[#e4e7ec] -mt-2 mb-2" />}
-                            <p className="text-[12px] text-[#667085] leading-[18px]">{g.month}</p>
+                            {gi > 0 && <div className="h-px w-full bg-[var(--colors-bg-quaternary)] -mt-2 mb-2" />}
+                            <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{g.month}</p>
                             {/* 4-column grid of date blocks — each a green day
                                 circle above its stacked time-slot pills. */}
                             <div className="grid grid-cols-4 gap-y-1">
@@ -130,7 +130,7 @@ function SessionList({ sessions }: { sessions: PreviewSession[] }) {
                                     return (
                                         <div key={d.dateISO} className="flex flex-col self-start">
                                             <div className="flex justify-center px-3 py-1">
-                                                <span className="size-6 rounded-full bg-[#658774] flex items-center justify-center text-[14px] font-semibold text-white leading-5">
+                                                <span className="size-6 rounded-full bg-[var(--colors-secondary-600)] flex items-center justify-center text-[14px] font-semibold text-white leading-5">
                                                     {dt.getDate()}
                                                 </span>
                                             </div>
@@ -138,13 +138,13 @@ function SessionList({ sessions }: { sessions: PreviewSession[] }) {
                                                 {d.slots.map((s, i) => (
                                                     <div
                                                         key={i}
-                                                        className="relative w-full h-6 flex items-center overflow-hidden rounded-[4px] bg-[#e9fff3] px-2"
+                                                        className="relative w-full h-6 flex items-center overflow-hidden rounded-[4px] bg-[var(--colors-secondary-50)] px-2"
                                                     >
                                                         <span
                                                             aria-hidden
-                                                            className="absolute left-0 top-1/2 -translate-y-1/2 h-[90px] w-1 bg-[#92baa4] rounded-tl-[24px] rounded-bl-[8px]"
+                                                            className="absolute left-0 top-1/2 -translate-y-1/2 h-[90px] w-1 bg-[var(--colors-secondary-400)] rounded-tl-[24px] rounded-bl-[8px]"
                                                         />
-                                                        <span className="text-[12px] text-[#667085] leading-[18px] whitespace-nowrap">
+                                                        <span className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px] whitespace-nowrap">
                                                             {fmtSlotRange(s.startTime, s.endTime)}
                                                         </span>
                                                     </div>
@@ -179,10 +179,10 @@ function Field({
     const filled = hasValue(value) || !!children;
     return (
         <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-[13px] leading-[18px] text-[#667085]">{label}</p>
+            <p className="text-[13px] leading-[18px] text-[var(--colors-text-quaternary)]">{label}</p>
             {filled ? (
                 children ?? (
-                    <p className="text-[14px] leading-5 font-medium text-[#101828] truncate">{value}</p>
+                    <p className="text-[14px] leading-5 font-medium text-[var(--colors-text-primary)] truncate">{value}</p>
                 )
             ) : (
                 <p className="text-[14px] leading-5 font-medium text-[#b54708]">Awaiting your answer</p>
@@ -224,15 +224,15 @@ export function SchedulePreviewCard({
             {hasValue(instructorName) && (
                 <div className="flex items-center gap-2 min-w-0">
                     {hasValue(instructorAvatarUrl) ? (
-                        <span className="shrink-0 size-6 rounded-full overflow-hidden bg-[#f2f4f7] relative">
+                        <span className="shrink-0 size-6 rounded-full overflow-hidden bg-[var(--colors-bg-tertiary)] relative">
                             <Image src={instructorAvatarUrl} alt="" fill sizes="24px" className="object-cover" />
                         </span>
                     ) : (
-                        <span className="shrink-0 size-6 rounded-full bg-[#f2f4f7] flex items-center justify-center text-[10px] font-semibold text-[#475467]">
+                        <span className="shrink-0 size-6 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center text-[10px] font-semibold text-[var(--colors-text-tertiary)]">
                             {instructorInitials ?? instructorName.slice(0, 1)}
                         </span>
                     )}
-                    <span className="text-[14px] leading-5 font-medium text-[#101828] truncate">{instructorName}</span>
+                    <span className="text-[14px] leading-5 font-medium text-[var(--colors-text-primary)] truncate">{instructorName}</span>
                 </div>
             )}
         </Field>
@@ -243,30 +243,30 @@ export function SchedulePreviewCard({
     return (
         <div
             className={cn(
-                "w-full bg-white border border-[#e4e7ec] rounded-[12px] p-5",
+                "w-full bg-white border border-[var(--colors-border-secondary)] rounded-[12px] p-5",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]",
                 className,
             )}
         >
             {/* Header. */}
-            <p className="text-[16px] font-semibold text-[#101828] leading-6">{title}</p>
-            <p className="mt-0.5 text-[14px] text-[#667085] leading-5">{subtitle}</p>
+            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{title}</p>
+            <p className="mt-0.5 text-[14px] text-[var(--colors-text-quaternary)] leading-5">{subtitle}</p>
 
             {/* Template row — cover + name + description. */}
             <div className="mt-4 flex items-start gap-3">
-                <span className="shrink-0 size-12 rounded-[8px] overflow-hidden bg-[#f2f4f7] relative flex items-center justify-center">
+                <span className="shrink-0 size-12 rounded-[8px] overflow-hidden bg-[var(--colors-bg-tertiary)] relative flex items-center justify-center">
                     {hasValue(coverImageUrl) ? (
                         <Image src={coverImageUrl} alt="" fill sizes="48px" className="object-cover" />
                     ) : (
-                        <Image01 className="size-5 text-[#98a2b3]" />
+                        <Image01 className="size-5 text-[var(--colors-fg-quaternary)]" />
                     )}
                 </span>
                 <div className="flex-1 min-w-0">
                     {templateFilled ? (
                         <>
-                            <p className="text-[14px] font-semibold text-[#101828] leading-5 truncate">{templateName}</p>
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5 truncate">{templateName}</p>
                             {hasValue(templateDescription) && (
-                                <p className="mt-0.5 text-[13px] text-[#667085] leading-[18px] line-clamp-2">
+                                <p className="mt-0.5 text-[13px] text-[var(--colors-text-quaternary)] leading-[18px] line-clamp-2">
                                     {templateDescription}
                                 </p>
                             )}

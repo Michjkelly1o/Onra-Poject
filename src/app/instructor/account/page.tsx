@@ -198,7 +198,7 @@ export default function InstructorAccountPage() {
         <>
             <div className="flex flex-col gap-6">
                 {/* ── Tab strip — admin underline-with-no-badge style ─────── */}
-                <div className="border-b border-[#e4e7ec]">
+                <div className="border-b border-[var(--colors-border-secondary)]">
                     <div className="flex gap-1 items-end">
                         {TABS.map(t => (
                             <button
@@ -208,8 +208,8 @@ export default function InstructorAccountPage() {
                                 className={cn(
                                     "h-[48px] flex items-center px-3 transition-colors whitespace-nowrap text-[14px] font-semibold",
                                     tab === t.key
-                                        ? "border-b-2 border-[#101828] text-[#101828]"
-                                        : "text-[#667085] hover:text-[#344054]",
+                                        ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                        : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                                 )}
                             >
                                 {t.label}
@@ -372,7 +372,7 @@ function PersonalInformationTab({
     })();
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full">
             <div className="flex flex-col gap-6">
                 {/* ── Avatar + name + email + Edit profile ─────────────── */}
                 <div className="flex items-center gap-4 w-full">
@@ -380,16 +380,16 @@ function PersonalInformationTab({
                         {avatarSrc ? (
                             <img src={avatarSrc} alt="" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[#667085] text-[24px] font-semibold">
+                            <div className="w-full h-full flex items-center justify-center text-[var(--colors-text-quaternary)] text-[24px] font-semibold">
                                 {initials || "?"}
                             </div>
                         )}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <p className="text-[20px] font-semibold text-[#101828] leading-[30px]">
+                        <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
                             {fullName}
                         </p>
-                        <p className="text-[14px] text-[#667085] leading-5 break-words">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 break-words">
                             {user.email || "—"}
                         </p>
                     </div>
@@ -420,7 +420,7 @@ function PersonalInformationTab({
                         <ReadOnlyField label="Work experience" value={workExpLabel} />
                         <ReadOnlyField label="Categories"      value={categoriesLabel} />
                         <div className="flex flex-col gap-1.5 min-w-0">
-                            <p className="text-[14px] text-[#667085] leading-5">Working days</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Working days</p>
                             <div className="flex items-center gap-4">
                                 {DAY_ROW.map((d, idx) => {
                                     const isOn = workingDaySet.has(d.code);
@@ -429,7 +429,7 @@ function PersonalInformationTab({
                                             key={idx}
                                             className={cn(
                                                 "text-[16px] font-medium leading-6",
-                                                isOn ? "text-[#101828]" : "text-[#98a2b3]",
+                                                isOn ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-fg-quaternary)]",
                                             )}
                                         >
                                             {d.glyph}
@@ -458,7 +458,7 @@ function PersonalInformationTab({
                     <FieldGrid>
                         <ReadOnlyField label="Branch"  value={branchName ?? "—"} />
                         <div className="flex flex-col gap-1.5 min-w-0">
-                            <p className="text-[14px] text-[#667085] leading-5">Working days</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Working days</p>
                             <div className="flex items-center gap-4">
                                 {DAY_ROW.map((d, idx) => {
                                     const isOn = branchWorkingDays
@@ -469,7 +469,7 @@ function PersonalInformationTab({
                                             key={idx}
                                             className={cn(
                                                 "text-[16px] font-medium leading-6",
-                                                isOn ? "text-[#101828]" : "text-[#98a2b3]",
+                                                isOn ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-fg-quaternary)]",
                                             )}
                                         >
                                             {d.glyph}
@@ -511,7 +511,7 @@ function SecurityTab({
     onChangePassword,
 }: SecurityTabProps) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full">
             <div className="flex flex-col gap-6">
                 {/* ── Password ─────────────────────────────────────────── */}
                 <Section title="Password">
@@ -538,13 +538,13 @@ function SecurityTab({
 // ────────────────────────────────────────────────────────────────────────────
 
 function Divider() {
-    return <div className="h-px w-full bg-[#e4e7ec]" />;
+    return <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-5 w-full">
-            <p className="text-[18px] font-semibold text-[#101828] leading-7">{title}</p>
+            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{title}</p>
             {children}
         </div>
     );
@@ -557,8 +557,8 @@ function FieldGrid({ children }: { children: React.ReactNode }) {
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex flex-col gap-1.5 min-w-0">
-            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-            <p className="text-[16px] font-medium text-[#101828] leading-6 break-words">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 break-words">{value}</p>
         </div>
     );
 }
@@ -572,10 +572,10 @@ function IntroductionCard({ text }: { text: string }) {
         // padding. "Introduction" label sits flush to the top edge in muted
         // gray; body text directly below; "See more" link in sage-green at
         // the bottom-left.
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] px-5 py-4 flex flex-col gap-1.5 w-full">
-            <p className="text-[14px] text-[#667085] leading-5">Introduction</p>
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-5 py-4 flex flex-col gap-1.5 w-full">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Introduction</p>
             <p className={cn(
-                "text-[16px] text-[#101828] leading-6 break-words",
+                "text-[16px] text-[var(--colors-text-primary)] leading-6 break-words",
                 truncated && "line-clamp-2",
             )}>
                 {text || "—"}
@@ -584,7 +584,7 @@ function IntroductionCard({ text }: { text: string }) {
                 <button
                     type="button"
                     onClick={() => setExpanded(e => !e)}
-                    className="self-start text-[14px] font-semibold text-[#7ba08c] hover:text-[#5b8270] transition-colors"
+                    className="self-start text-[14px] font-semibold text-[var(--colors-secondary-500)] hover:text-[#5b8270] transition-colors"
                 >
                     {expanded ? "See less" : "See more"}
                 </button>
@@ -607,24 +607,24 @@ function PasswordRow({
     return (
         <div className="flex items-start gap-6 w-full">
             <div className="flex-1 min-w-0 flex flex-col gap-2">
-                <p className="text-[14px] text-[#667085] leading-5">Password</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Password</p>
                 <div className="flex items-center gap-2">
-                    <p className="text-[16px] font-medium text-[#101828] leading-6 break-all">
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 break-all">
                         {displayed}
                     </p>
                     <button
                         type="button"
                         onClick={() => setShow(s => !s)}
                         aria-label={show ? "Hide password" : "Show password"}
-                        className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[#475467] hover:text-[#101828] hover:bg-[#f2f4f7] transition-colors shrink-0"
+                        className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-tertiary)] transition-colors shrink-0"
                     >
                         {show ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                     </button>
                 </div>
                 {lastChangedAt && (
                     <div className="flex items-center gap-1.5">
-                        <AlertCircle className="w-4 h-4 text-[#98a2b3] shrink-0" />
-                        <p className="text-[13px] text-[#667085] leading-[18px]">
+                        <AlertCircle className="w-4 h-4 text-[var(--colors-fg-quaternary)] shrink-0" />
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">
                             Last changed {formatChangedOn(lastChangedAt)} · {formatDaysAgo(lastChangedAt)}
                         </p>
                     </div>
@@ -703,15 +703,15 @@ function ActiveSessionsBlock() {
         <div className="flex flex-col gap-4 w-full">
             {sessions.map(s => (
                 <div key={s.id} className="flex items-center gap-4 w-full">
-                    <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center">
-                        <Monitor01 className="w-5 h-5 text-[#475467]" />
+                    <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center">
+                        <Monitor01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">
-                            {s.device} <span className="text-[#98a2b3] font-normal">·</span> {s.browser}
+                        <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">
+                            {s.device} <span className="text-[var(--colors-fg-quaternary)] font-normal">·</span> {s.browser}
                         </p>
-                        <p className="text-[13px] text-[#667085] leading-[18px]">
-                            {s.location} <span className="text-[#98a2b3]">·</span> {s.lastActiveLabel}
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">
+                            {s.location} <span className="text-[var(--colors-fg-quaternary)]">·</span> {s.lastActiveLabel}
                         </p>
                     </div>
                     {s.isCurrent ? (
@@ -738,7 +738,7 @@ function ActiveSessionsBlock() {
                 </div>
             ))}
             {sessions.length === 0 && (
-                <p className="text-[14px] text-[#667085]">No other active sessions.</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">No other active sessions.</p>
             )}
         </div>
     );

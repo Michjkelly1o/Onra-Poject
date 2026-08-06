@@ -270,7 +270,7 @@ export default function ProductsPage() {
                                     className={`flex h-8 flex-1 items-center justify-center px-2 pb-3 text-sm leading-5 transition-colors ${
                                         active
                                             ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
-                                            : "font-medium text-[#667085]"
+                                            : "font-medium text-[var(--colors-text-quaternary)]"
                                     }`}
                                 >
                                     {t.label}

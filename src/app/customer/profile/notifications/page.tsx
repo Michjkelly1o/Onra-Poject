@@ -77,15 +77,15 @@ export default function NotificationSettingsPage() {
 
     function Group({ rows }: { rows: NotifRow[] }) {
         return (
-            <div className="overflow-hidden rounded-2xl border border-[#eaecf0] bg-white">
+            <div className="overflow-hidden rounded-2xl border border-[var(--colors-border-tertiary)] bg-white">
                 {rows.map((row, i) => (
                     <div
                         key={row.key}
-                        className={`flex items-center gap-3 px-4 py-4 ${i > 0 ? "border-t border-[#f2f4f7]" : ""}`}
+                        className={`flex items-center gap-3 px-4 py-4 ${i > 0 ? "border-t border-[var(--colors-bg-tertiary)]" : ""}`}
                     >
                         <div className="min-w-0 flex-1">
                             <p className="text-base font-medium leading-6 text-[var(--brand-text)]">{row.title}</p>
-                            <p className="text-sm leading-5 text-[#475467]">{row.sub}</p>
+                            <p className="text-sm leading-5 text-[var(--colors-text-tertiary)]">{row.sub}</p>
                         </div>
                         <Switch
                             checked={member ? isOn(member, row.key) : false}
@@ -105,9 +105,9 @@ export default function NotificationSettingsPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">
                     Notification settings
@@ -122,9 +122,9 @@ export default function NotificationSettingsPage() {
                         <Group rows={MARKETING} />
                     </>
                 ) : (
-                    <div className="overflow-hidden rounded-2xl border border-[#eaecf0] bg-white p-6 text-center">
+                    <div className="overflow-hidden rounded-2xl border border-[var(--colors-border-tertiary)] bg-white p-6 text-center">
                         <p className="text-base font-semibold text-[var(--brand-text)]">Sign in required</p>
-                        <p className="mt-1 text-sm leading-5 text-[#475467]">
+                        <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             Log in to manage your notification preferences.
                         </p>
                     </div>

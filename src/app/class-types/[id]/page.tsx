@@ -101,15 +101,15 @@ function instanceToSession(ci: { id: string; name: string; date: string; display
 
 function EmptyTableIllustration() {
     return (
-        <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
+        <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
             <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02),-3px_4.4px_10.2px_rgba(0,0,0,0.02)]">
-                <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center shadow-[0px_1.5px_1.5px_rgba(0,0,0,0.04)]">
-                    <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center shadow-[0px_1.5px_1.5px_rgba(0,0,0,0.04)]">
+                    <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                 </div>
             </div>
             <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
             </div>
         </div>
     );
@@ -140,7 +140,7 @@ function StarRating({ rating, count }: { rating: number; count: number }) {
             <div className="flex items-center gap-0.5">
                 {[1, 2, 3, 4, 5].map(i => <FilledStar key={i} filled={i <= filled} />)}
             </div>
-            <span className="text-[12px] text-[#667085]">
+            <span className="text-[12px] text-[var(--colors-text-quaternary)]">
                 {count > 0 ? `${rating.toFixed(1)} (${count} ratings)` : "0 (0 ratings)"}
             </span>
         </div>
@@ -163,7 +163,7 @@ function ActionBtn({
             onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}
         >
             <span className="w-5 h-5 shrink-0">{icon}</span>
@@ -190,14 +190,14 @@ function ConfirmDialog({
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
-            <div className="relative bg-white rounded-[16px] border border-[#e4e7ec] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] p-6 w-[400px] flex flex-col gap-5">
+            <div className="relative bg-white rounded-[16px] border border-[var(--colors-border-secondary)] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] p-6 w-[400px] flex flex-col gap-5">
                 <div className="flex flex-col gap-1">
-                    <p className="font-semibold text-[18px] text-[#101828]">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">{message}</p>
+                    <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{message}</p>
                 </div>
                 <div className="flex gap-3">
                     <button type="button" onClick={onCancel}
-                        className="flex-1 h-10 border border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors">
+                        className="flex-1 h-10 border border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         Cancel
                     </button>
                     <button type="button" onClick={onConfirm}
@@ -205,7 +205,7 @@ function ConfirmDialog({
                             "flex-1 h-10 rounded-[8px] text-[14px] font-semibold transition-colors",
                             danger
                                 ? "bg-[#d92d20] text-white hover:bg-[#b42318]"
-                                : "bg-[var(--brand-tertiary)] text-[#0c2d34] hover:bg-[#aad4bd]",
+                                : "bg-[var(--brand-tertiary)] text-[var(--colors-brand-900)] hover:bg-[var(--colors-secondary-300)]",
                         )}>
                         {confirmLabel}
                     </button>
@@ -261,7 +261,7 @@ function LeftPanel({
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <div className="w-[320px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
             <div className="relative h-[155px] shrink-0 overflow-hidden"
                 style={{ backgroundColor: template.coverColor }}>
@@ -284,31 +284,31 @@ function LeftPanel({
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     {/* Name + description */}
                     <div>
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{template.name}</h2>
-                        <p className="text-[14px] text-[#667085] leading-[20px] mt-1 line-clamp-2">{template.description}</p>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{template.name}</h2>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] mt-1 line-clamp-2">{template.description}</p>
                     </div>
 
                     {/* Info fields — Class type row removed (always Group). */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Class category</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{template.category}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Class category</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{template.category}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Duration</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{template.durationMin} minutes</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Duration</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{template.durationMin} minutes</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Class capacity</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{template.capacity} participants</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Class capacity</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{template.capacity} participants</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Actions */}
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Class template actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Class template actions</p>
                     <div className="flex flex-col gap-4">
                         {actions}
                     </div>
@@ -332,8 +332,8 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
     if (sessions.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
-                <p className="text-[15px] font-medium text-[#344054]">No sessions found</p>
-                <p className="text-[14px] text-[#667085]">No sessions scheduled for this template.</p>
+                <p className="text-[15px] font-medium text-[var(--colors-text-secondary)]">No sessions found</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">No sessions scheduled for this template.</p>
             </div>
         );
     }
@@ -368,10 +368,10 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
                     {sessions.map(s => (
                         <tr key={s.id}
                             onClick={() => onViewSession(s.id)}
-                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
+                            className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
                             <td className={TD}>
-                                <div className="text-[14px] font-medium text-[#101828]">{s.date}</div>
-                                <div className="text-[13px] text-[#667085] mt-0.5">{s.timeRange}</div>
+                                <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s.date}</div>
+                                <div className="text-[13px] text-[var(--colors-text-quaternary)] mt-0.5">{s.timeRange}</div>
                             </td>
                             <td className={TD}>
                                 <div className="flex items-center gap-3">
@@ -381,8 +381,8 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
                                         size={36}
                                     />
                                     <div>
-                                        <div className="text-[14px] font-medium text-[#101828]">{s.className}</div>
-                                        <div className="text-[13px] text-[#667085]">with {s.instructor}</div>
+                                        <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s.className}</div>
+                                        <div className="text-[13px] text-[var(--colors-text-quaternary)]">with {s.instructor}</div>
                                     </div>
                                 </div>
                             </td>
@@ -394,7 +394,7 @@ function SessionsTable({ sessions, sortKey, sortDir, onSort, onViewSession, onEd
                                 {/* Rating only shown once the class has happened —
                                     Upcoming / Ongoing rows show a dash per client Jul 2026. */}
                                 {s.status === "Upcoming" || s.status === "Ongoing"
-                                    ? <span className="text-[14px] text-[#98a2b3]">—</span>
+                                    ? <span className="text-[14px] text-[var(--colors-fg-quaternary)]">—</span>
                                     : <StarRating rating={s.rating} count={s.ratingCount} />}
                             </td>
                             <td className={TD}>
@@ -467,18 +467,18 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
 {/* Header */}
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="grid grid-cols-2 gap-2">
                             {(["Upcoming", "Ongoing", "Cancelled", "Completed"] as SessionStatus[]).map(s => (
                                 <FilterPill key={s} label={s} selected={pending.statuses.includes(s)}
@@ -486,10 +486,10 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Custom date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Custom date range</p>
                         <div className="flex gap-2">
                             <DatePicker className="flex-1" value={pending.startDate}
                                 onChange={v => setPending(p => {
@@ -504,10 +504,10 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
                                 minDate={pending.startDate || undefined} />
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Day of week</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Day of week</p>
                         <div className="flex flex-wrap gap-2">
                             {(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as DayKey[]).map(d => (
                                 <FilterPill key={d} label={d} selected={pending.days.includes(d)}
@@ -515,10 +515,10 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Time of the day</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Time of the day</p>
                         <div className="flex flex-wrap gap-2">
                             {(["Morning", "Afternoon", "Evening"] as TimeKey[]).map(t => (
                                 <FilterPill key={t} label={t} selected={pending.times.includes(t)}
@@ -529,7 +529,7 @@ function ClassFilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 {/* Footer */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
@@ -555,7 +555,7 @@ const MODAL_CONFIG: Record<ModalAction, {
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Archive this class template?",
         description: "Are you sure you want to archive this class template? This will archive all of class template access.",
         confirmLabel: "Archive",
@@ -567,13 +567,13 @@ const MODAL_CONFIG: Record<ModalAction, {
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Recover this class template?",
         description: "Are you sure you want to recover this class template from archive? This will enable all of class template access.",
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Check, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Reactivate this class template?",
         description: "Are you sure you want to reactivate this class template? This will restore access to all classes associated with it.",
         confirmLabel: "Reactivate",
@@ -742,17 +742,17 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
 
     return (
         <>
-            <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
+            <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[var(--colors-border-secondary)] rounded-[20px]">
                 {/* Tabs — pt-6 */}
-                <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                     <div className="flex gap-1">
                         {TABS.map(t => (
                             <button key={t.id} type="button" onClick={() => handleTabChange(t.id)}
                                 className={cn(
                                     "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
                                     tab === t.id
-                                        ? "border-b-2 border-[#101828] text-[#101828]"
-                                        : "text-[#667085] hover:text-[#344054]",
+                                        ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                        : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                                 )}>
                                 {t.label}
                             </button>
@@ -763,8 +763,8 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                 {/* Toolbar */}
                 <div className="shrink-0 flex items-center gap-3 px-6 py-4">
                     <div className="flex-1">
-                        <p className="text-[14px] text-[#667085]">Total</p>
-                        <p className="text-[14px] font-medium text-[#101828]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">
                             {total} {tab === "classes" ? "classes" : tab === "memberships" ? "memberships" : "packages"}
                         </p>
                     </div>
@@ -800,8 +800,8 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                 <div className="flex flex-col items-center gap-6 pointer-events-auto">
                                     <EmptyTableIllustration />
                                     <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                                        <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">No classes yet</p>
-                                        <p className="text-[14px] text-[#475467] leading-[20px]">Classes created from this template will appear here.</p>
+                                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">No classes yet</p>
+                                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Classes created from this template will appear here.</p>
                                     </div>
                                 </div>
                             </div>
@@ -826,13 +826,13 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                         {paginatedMemberships.map(m => (
                                             <tr key={m.id}
                                                 onClick={() => router.push(`/products/${m.id}?returnTo=${encodeURIComponent(pathname)}`)}
-                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
+                                                className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-full border border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
-                                                            <CreditCard01 className="w-4 h-4 text-[#667085]" />
+                                                        <div className="w-9 h-9 rounded-full border border-gray-200 bg-[var(--colors-bg-tertiary)] flex items-center justify-center shrink-0">
+                                                            <CreditCard01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                                                         </div>
-                                                        <span className="font-medium text-[#101828]">{m.name}</span>
+                                                        <span className="font-medium text-[var(--colors-text-primary)]">{m.name}</span>
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{m.active}</td>
@@ -847,8 +847,8 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                 <div className="flex flex-col items-center gap-6 pointer-events-auto">
                                     <EmptyTableIllustration />
                                     <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                                        <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">No memberships applicable</p>
-                                        <p className="text-[14px] text-[#475467] leading-[20px]">No memberships are linked to this class template yet.</p>
+                                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">No memberships applicable</p>
+                                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">No memberships are linked to this class template yet.</p>
                                     </div>
                                 </div>
                             </div>
@@ -873,13 +873,13 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                         {paginatedPackages.map(p => (
                                             <tr key={p.id}
                                                 onClick={() => router.push(`/products/${p.id}?returnTo=${encodeURIComponent(pathname)}`)}
-                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
+                                                className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-full border border-gray-200 bg-[#f2f4f7] flex items-center justify-center shrink-0">
-                                                            <Package className="w-4 h-4 text-[#667085]" />
+                                                        <div className="w-9 h-9 rounded-full border border-gray-200 bg-[var(--colors-bg-tertiary)] flex items-center justify-center shrink-0">
+                                                            <Package className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                                                         </div>
-                                                        <span className="font-medium text-[#101828]">{p.name}</span>
+                                                        <span className="font-medium text-[var(--colors-text-primary)]">{p.name}</span>
                                                     </div>
                                                 </td>
                                                 <td className={cn(TD, "text-right")}>{p.active || "—"}</td>
@@ -894,8 +894,8 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                                 <div className="flex flex-col items-center gap-6 pointer-events-auto">
                                     <EmptyTableIllustration />
                                     <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                                        <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">No packages applicable</p>
-                                        <p className="text-[14px] text-[#475467] leading-[20px]">No packages are linked to this class template yet.</p>
+                                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">No packages applicable</p>
+                                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">No packages are linked to this class template yet.</p>
                                     </div>
                                 </div>
                             </div>
@@ -927,16 +927,16 @@ function RightPanel({ hasData, template }: { hasData: boolean; template: ClassTe
                     <div className="absolute inset-0 bg-[#0c111d]/60" onClick={() => setCancelSessionId(null)} />
                     <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                         <button type="button" onClick={() => setCancelSessionId(null)}
-                            className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                            <XClose className="w-6 h-6 text-[#667085]" />
+                            className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                            <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                         </button>
                         <div className="flex flex-col items-center gap-4 pt-6 px-6">
                             <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                                 <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                             </div>
                             <div className="flex flex-col gap-1 text-center w-full">
-                                <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this class?</h3>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">
+                                <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this class?</h3>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                                     {cancelTarget.name} on {cancelTarget.date} will be cancelled
                                     {cancelTargetBookedCount > 0
                                         ? <>, and credits will be refunded to {cancelTargetBookedCount} booked customer{cancelTargetBookedCount === 1 ? "" : "s"}.</>
@@ -977,9 +977,9 @@ function ClassTemplateDetailPageInner() {
         return (
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-[18px] font-semibold text-[#101828]">Template not found</p>
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Template not found</p>
                     <button type="button" onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] text-[#658774] hover:underline">
+                        className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                         Back to class templates
                     </button>
                 </div>
@@ -1035,12 +1035,12 @@ function ClassTemplateDetailPageInner() {
                 <button
                     type="button"
                     onClick={() => router.push(returnTo)}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                 >
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class template details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Class template details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>

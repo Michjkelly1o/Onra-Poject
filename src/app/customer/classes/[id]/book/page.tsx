@@ -71,7 +71,7 @@ function BookingConfirmation() {
         return (
             <div className="flex min-h-full flex-col items-center justify-center gap-3 px-6 text-center">
                 <p className="text-base font-semibold text-[var(--brand-text)]">Class not found</p>
-                <p className="text-sm text-[#667085]">This class is no longer available.</p>
+                <p className="text-sm text-[var(--colors-text-quaternary)]">This class is no longer available.</p>
                 <Button variant="secondary" size="sm" className="rounded-full" onClick={() => router.push("/customer/search")}>
                     Back to Search
                 </Button>
@@ -199,9 +199,9 @@ function BookingConfirmation() {
                     type="button"
                     onClick={() => router.replace(`/customer/classes/${detail.id}`)}
                     aria-label="Close"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <XClose className="size-5 text-[#344054]" aria-hidden />
+                    <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
             </header>
 
@@ -210,7 +210,7 @@ function BookingConfirmation() {
                 {/* Overview */}
                 <div className="flex w-full items-center gap-3">
                     <div
-                        className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[#e4e7ec]"
+                        className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--colors-border-secondary)]"
                         style={!detail.coverImage ? { backgroundColor: detail.coverColor } : undefined}
                     >
                         {detail.coverImage && (
@@ -220,22 +220,22 @@ function BookingConfirmation() {
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{detail.name}</p>
-                        <p className="text-sm font-normal leading-5 text-[#475467]">
+                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                             {fullDate} at {to12h(detail.startTime)}
                         </p>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
-                            <span className="flex items-center gap-1 text-sm font-normal leading-5 text-[#475467]">
-                                <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                            <span className="flex items-center gap-1 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
+                                <Clock className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                                 {detail.durationMins} mins
                             </span>
                             {detail.instructorName && (
-                                <span className="text-sm leading-5 text-[#475467]" aria-hidden>
+                                <span className="text-sm leading-5 text-[var(--colors-text-tertiary)]" aria-hidden>
                                     •
                                 </span>
                             )}
                             {detail.instructorName && (
-                                <span className="flex items-center gap-1.5 text-sm font-normal leading-5 text-[#475467]">
-                                    <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                <span className="flex items-center gap-1.5 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
+                                    <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                                         {detail.instructorImageUrl ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img
@@ -244,7 +244,7 @@ function BookingConfirmation() {
                                                 className="size-full scale-[1.4] object-cover"
                                             />
                                         ) : (
-                                            <span className="text-[9px] font-semibold leading-none text-[#667085]">
+                                            <span className="text-[9px] font-semibold leading-none text-[var(--colors-text-quaternary)]">
                                                 {detail.instructorInitials}
                                             </span>
                                         )}
@@ -256,21 +256,21 @@ function BookingConfirmation() {
                     </div>
                 </div>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Location */}
                 <section className="flex w-full flex-col gap-3">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Location</p>
                     <div className="flex w-full items-start gap-2">
-                        <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
+                        <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                         <div className="flex min-w-0 flex-1 flex-col gap-1">
                             <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">{detail.branchName}</p>
-                            <p className="text-sm font-normal leading-5 text-[#475467]">{detail.branchAddress}</p>
+                            <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{detail.branchAddress}</p>
                         </div>
                     </div>
                 </section>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Spot — picker when the admin enabled spot selection, else an
                     auto-assign note. */}
@@ -302,7 +302,7 @@ function BookingConfirmation() {
                     )}
                 </section>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Reserve to — the single seat is for you by default, or you can
                     reserve it for someone else instead. */}
@@ -322,13 +322,13 @@ function BookingConfirmation() {
 
                     {reservee ? (
                         // Reserved for another person — the seat is booked in their name.
-                        <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-xs font-semibold text-[#667085]">
+                        <div className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)] text-xs font-semibold text-[var(--colors-text-quaternary)]">
                                 {reservee.name.trim().slice(0, 1).toUpperCase() || "G"}
                             </span>
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{reservee.name}</span>
-                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">
+                                <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">
                                     {reservee.email || "Reserved on your plan"}
                                 </span>
                             </div>
@@ -355,20 +355,20 @@ function BookingConfirmation() {
                     ) : (
                         // Default — the seat is booked under your own account.
                         member && (
-                            <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
-                                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                            <div className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
+                                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                                     {member.imageUrl ? (
                                         // eslint-disable-next-line @next/next/no-img-element
                                         <img src={member.imageUrl} alt="" className="size-full object-cover" />
                                     ) : (
-                                        <span className="text-xs font-semibold leading-none text-[#667085]">{member.initials}</span>
+                                        <span className="text-xs font-semibold leading-none text-[var(--colors-text-quaternary)]">{member.initials}</span>
                                     )}
                                 </span>
                                 <div className="flex min-w-0 flex-1 flex-col">
                                     <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
-                                        {`${member.firstName} ${member.lastName}`.trim()} <span className="font-normal text-[#667085]">(You)</span>
+                                        {`${member.firstName} ${member.lastName}`.trim()} <span className="font-normal text-[var(--colors-text-quaternary)]">(You)</span>
                                     </span>
-                                    <span className="truncate text-sm font-normal leading-5 text-[#667085]">{member.email}</span>
+                                    <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{member.email}</span>
                                 </div>
                             </div>
                         )
@@ -379,17 +379,17 @@ function BookingConfirmation() {
                     in credits instead of AED. Waitlist joins charge nothing. */}
                 {(mode === "book" || mode === "waitlist") && (
                     <>
-                        <div className="h-px w-full bg-[#e4e7ec]" />
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                         <section className="flex w-full flex-col gap-3">
                             <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
                             <div className="flex items-center justify-between gap-3 text-sm leading-5">
-                                <span className="min-w-0 truncate font-normal text-[#475467]">
+                                <span className="min-w-0 truncate font-normal text-[var(--colors-text-tertiary)]">
                                     {detail.name} x{memberCreditSeats}
                                 </span>
                                 <span className="shrink-0 font-medium text-[var(--brand-text)]">{myLineValue}</span>
                             </div>
                             <div className="flex items-center justify-between gap-3 text-sm leading-5">
-                                <span className="font-normal text-[#475467]">Total</span>
+                                <span className="font-normal text-[var(--colors-text-tertiary)]">Total</span>
                                 <span className="shrink-0 font-semibold text-[var(--brand-text)]">{totalValue}</span>
                             </div>
                         </section>
@@ -425,32 +425,32 @@ function BookingConfirmation() {
                     hasEligiblePlan ? (
                         <div className="flex w-full items-center gap-3 rounded-xl border-2 border-[var(--brand-primary)] bg-white p-4">
                             <span className="flex size-8 shrink-0 items-center justify-center rounded-[7px] bg-[#feebff]">
-                                <CoinsStacked03 className="size-4 text-[#344054]" aria-hidden />
+                                <CoinsStacked03 className="size-4 text-[var(--colors-text-secondary)]" aria-hidden />
                             </span>
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{member?.planName}</p>
-                                <p className="text-sm font-normal leading-5 text-[#475467]">{planLine}</p>
+                                <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{planLine}</p>
                             </div>
                         </div>
                     ) : (
                         <button
                             type="button"
                             onClick={() => router.push(`/customer/classes/${detail.id}/book/plans`)}
-                            className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4 text-left transition-colors active:bg-gray-50"
+                            className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4 text-left transition-colors active:bg-gray-50"
                         >
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                                <ShoppingBag03 className="size-5 text-[#344054]" aria-hidden />
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[var(--colors-border-secondary)] bg-white">
+                                <ShoppingBag03 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                             </span>
                             <span className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--brand-text)]">
                                 Purchase plan
                             </span>
-                            <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                            <ChevronRight className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
                         </button>
                     )
                 ) : (
-                    <div className="flex w-full items-start gap-2 rounded-xl border border-[#e4e7ec] bg-[#f9fafb] p-4">
-                        <Clock className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
-                        <p className="text-sm font-normal leading-5 text-[#475467]">
+                    <div className="flex w-full items-start gap-2 rounded-xl border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] p-4">
+                        <Clock className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                             You&apos;ll be notified if a spot opens up. No credit is charged until you&apos;re promoted.
                         </p>
                     </div>

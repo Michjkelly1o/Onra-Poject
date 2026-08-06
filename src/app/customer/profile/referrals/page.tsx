@@ -93,9 +93,9 @@ export default function ReferralsPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Invite friends</h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -120,7 +120,7 @@ export default function ReferralsPage() {
                 />
 
                 <div className="relative flex items-center gap-2">
-                    <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)]">
+                    <div className="flex flex-1 items-center rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)]">
                         {code}
                     </div>
                     <Button
@@ -143,7 +143,7 @@ export default function ReferralsPage() {
                 </Button>
 
                 {/* Program steps — connector line runs between the step icons. */}
-                <div className="relative flex flex-col rounded-2xl border border-[#eaecf0] bg-white p-4">
+                <div className="relative flex flex-col rounded-2xl border border-[var(--colors-border-tertiary)] bg-white p-4">
                     {steps.map((text, i) => {
                         const Icon = STEP_ICONS[i];
                         const last = i === steps.length - 1;
@@ -157,7 +157,7 @@ export default function ReferralsPage() {
                                         <div className="my-1 w-0.5 flex-1 rounded-full bg-gradient-to-b from-[#a9efc5] to-[var(--brand-tertiary)]" />
                                     )}
                                 </div>
-                                <p className={`flex-1 pt-1 text-sm leading-5 text-[#344054] ${last ? "" : "pb-5"}`}>
+                                <p className={`flex-1 pt-1 text-sm leading-5 text-[var(--colors-text-secondary)] ${last ? "" : "pb-5"}`}>
                                     {text}
                                 </p>
                             </div>
@@ -166,31 +166,31 @@ export default function ReferralsPage() {
                 </div>
 
                 {/* Metrics — Class credit + Total referrals progress (studio uses class-credit rewards only) */}
-                <div className="relative flex flex-col gap-4 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                <div className="relative flex flex-col gap-4 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
                     <div className="flex items-center gap-5">
                         <div className="flex min-w-0 flex-1 items-center gap-2">
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb]">
-                                <CurrencyDollarCircle className="size-5 text-[#344054]" aria-hidden />
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)]">
+                                <CurrencyDollarCircle className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                             </span>
                             <div className="flex min-w-0 flex-col gap-0.5">
-                                <p className="text-xs font-normal leading-[18px] text-[#667085]">Class credit</p>
+                                <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">Class credit</p>
                                 <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{classCreditTotal} credits</p>
                             </div>
                         </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                        <p className="text-xs font-normal leading-[18px] text-[#667085]">Total referrals</p>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
+                        <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">Total referrals</p>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--colors-bg-quaternary)]">
                             <div
-                                className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[#7ba08c]"
+                                className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--colors-secondary-500)]"
                                 style={{ width: `${referralPct}%` }}
                             />
                         </div>
                         <div className="flex items-center justify-between">
                             <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">
-                                {totalReferrals}/{maxReferrals} <span className="text-xs font-normal text-[#667085]">referrals</span>
+                                {totalReferrals}/{maxReferrals} <span className="text-xs font-normal text-[var(--colors-text-quaternary)]">referrals</span>
                             </p>
-                            <p className="text-xs font-medium leading-[18px] text-[#344054]">{referralPct}%</p>
+                            <p className="text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">{referralPct}%</p>
                         </div>
                     </div>
                 </div>
@@ -205,16 +205,16 @@ export default function ReferralsPage() {
                                 return (
                                     <div
                                         key={r.id}
-                                        className="flex items-center gap-3 rounded-2xl border border-[#eaecf0] bg-white p-3"
+                                        className="flex items-center gap-3 rounded-2xl border border-[var(--colors-border-tertiary)] bg-white p-3"
                                     >
-                                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-sm font-semibold text-[#475467]">
+                                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)] text-sm font-semibold text-[var(--colors-text-tertiary)]">
                                             {initialsOf(r.referredName)}
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <p className="truncate text-base font-medium leading-6 text-[var(--brand-text)]">
                                                 {r.referredName}
                                             </p>
-                                            <p className="truncate text-sm leading-5 text-[#475467]">
+                                            <p className="truncate text-sm leading-5 text-[var(--colors-text-tertiary)]">
                                                 {success
                                                     ? `Expiry until ${ddmmyyyy(r.expiresAtISO)}`
                                                     : `Joined ${ddmmyyyy(r.referredAtISO)}`}
@@ -225,7 +225,7 @@ export default function ReferralsPage() {
                                                 +{r.benefitCredits} credits
                                             </span>
                                         ) : (
-                                            <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium leading-5 text-[#475467] ring-1 ring-inset ring-[#d0d5dd]">
+                                            <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium leading-5 text-[var(--colors-text-tertiary)] ring-1 ring-inset ring-[var(--colors-border-primary)]">
                                                 Pending
                                             </span>
                                         )}
@@ -234,9 +234,9 @@ export default function ReferralsPage() {
                             })}
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center gap-1 rounded-2xl border border-dashed border-[#eaecf0] py-10 text-center">
+                        <div className="flex flex-col items-center gap-1 rounded-2xl border border-dashed border-[var(--colors-border-tertiary)] py-10 text-center">
                             <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">No referrals yet</p>
-                            <p className="text-sm leading-5 text-[#475467]">Refer friends and get free credits!</p>
+                            <p className="text-sm leading-5 text-[var(--colors-text-tertiary)]">Refer friends and get free credits!</p>
                         </div>
                     )}
                 </div>
@@ -250,9 +250,9 @@ export default function ReferralsPage() {
                 url={signupLink}
                 preview={
                     <div className="flex flex-col gap-4">
-                        <div className="rounded-xl bg-[#f9fafb] p-4 text-sm leading-5 text-[#344054]">{resolvedMessage}</div>
+                        <div className="rounded-xl bg-[var(--colors-bg-secondary)] p-4 text-sm leading-5 text-[var(--colors-text-secondary)]">{resolvedMessage}</div>
                         <div className="flex items-center gap-2">
-                            <div className="flex flex-1 items-center rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)]">
+                            <div className="flex flex-1 items-center rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)]">
                                 {code}
                             </div>
                             <Button

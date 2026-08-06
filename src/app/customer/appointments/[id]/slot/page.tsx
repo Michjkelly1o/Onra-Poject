@@ -140,16 +140,16 @@ export default function SelectSlotPage() {
                                     setSlot(appointmentDraft.slotISO === d ? appointmentDraft.slotTime : null);
                                 }}
                                 className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl p-2 transition-colors ${
-                                    active ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
+                                    active ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[var(--colors-border-secondary)] bg-white"
                                 }`}
                             >
                                 <span
-                                    className={`text-xs font-normal leading-[18px] ${active ? "text-[var(--brand-primary)]" : "text-[#667085]"}`}
+                                    className={`text-xs font-normal leading-[18px] ${active ? "text-[var(--brand-primary)]" : "text-[var(--colors-text-quaternary)]"}`}
                                 >
                                     {weekdayAbbr(d)}
                                 </span>
                                 <span
-                                    className={`text-xs font-medium leading-[18px] ${active ? "text-[var(--brand-primary)]" : "text-[#344054]"}`}
+                                    className={`text-xs font-medium leading-[18px] ${active ? "text-[var(--brand-primary)]" : "text-[var(--colors-text-secondary)]"}`}
                                 >
                                     {dayNum(d)}
                                 </span>
@@ -182,17 +182,17 @@ export default function SelectSlotPage() {
                                     type="button"
                                     onClick={() => pickSlot(s.time)}
                                     className={`relative flex w-full items-center justify-center rounded-xl p-4 transition-all duration-300 ease-out ${
-                                        isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
+                                        isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[var(--colors-border-secondary)] bg-white"
                                     }`}
                                 >
-                                    <span className="text-sm font-medium leading-5 text-[#344054]">{timeInZoneLabel(dateISO, s.time, branch, timezone, true)}</span>
+                                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">{timeInZoneLabel(dateISO, s.time, branch, timezone, true)}</span>
                                     {/* Open sessions surface remaining capacity; Private is 1:1 (no badge). */}
                                     {isOpen && s.spotsLeft != null && (
                                         <span
                                             className={`absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium leading-[18px] ${
                                                 isSel
                                                     ? "border-[var(--brand-tertiary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]"
-                                                    : "border-[#e4e7ec] bg-[#f9fafb] text-[#344054]"
+                                                    : "border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] text-[var(--colors-text-secondary)]"
                                             }`}
                                         >
                                             <Users01 className="size-3 shrink-0" aria-hidden />

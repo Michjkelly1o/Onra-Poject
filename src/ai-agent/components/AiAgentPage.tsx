@@ -303,7 +303,7 @@ export function AiAgentPage() {
 
     return (
         <div
-            className="flex flex-col h-screen w-screen bg-white text-[#101828]"
+            className="flex flex-col h-screen w-screen bg-white text-[var(--colors-text-primary)]"
             style={{ fontFamily: DM_SANS_STACK }}
         >
             {/* ── Header ─────────────────────────────────────────────────── */}
@@ -315,14 +315,14 @@ export function AiAgentPage() {
                         type="button"
                         aria-label="Close AI Agent"
                         onClick={handleClose}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
 
                     {/* Logomark + title */}
                     <div className="flex items-center gap-2">
-                        <div className="size-6 rounded-[6px] border border-[#d0d5dd] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
+                        <div className="size-6 rounded-[6px] border border-[var(--colors-border-primary)] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
                             <Image
                                 src="/Logomark.webp"
                                 alt="Onra"
@@ -332,7 +332,7 @@ export function AiAgentPage() {
                                 priority
                             />
                         </div>
-                        <span className="text-[18px] font-semibold text-[#344054] leading-7">
+                        <span className="text-[18px] font-semibold text-[var(--colors-text-secondary)] leading-7">
                             AI Agent
                         </span>
                     </div>
@@ -380,16 +380,16 @@ export function AiAgentPage() {
 
 function NotAvailableForRoleState({ onClose }: { onClose: () => void }) {
     return (
-        <div className="flex-1 h-full bg-white border border-[#e4e7ec] rounded-[24px] flex items-center justify-center px-6">
+        <div className="flex-1 h-full bg-white border border-[var(--colors-border-secondary)] rounded-[24px] flex items-center justify-center px-6">
             <div className="flex flex-col items-center gap-4 max-w-md text-center">
-                <div className="size-12 rounded-full bg-[#f9fafb] border border-[#eaecf0] flex items-center justify-center">
-                    <Lock01 className="size-6 text-[#667085]" />
+                <div className="size-12 rounded-full bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-tertiary)] flex items-center justify-center">
+                    <Lock01 className="size-6 text-[var(--colors-text-quaternary)]" />
                 </div>
                 <div className="flex flex-col gap-1">
-                    <div className="text-[18px] font-semibold text-[#101828]">
+                    <div className="text-[18px] font-semibold text-[var(--colors-text-primary)]">
                         Onra Agent isn&apos;t available for this role.
                     </div>
-                    <div className="text-[14px] text-[#475467]">
+                    <div className="text-[14px] text-[var(--colors-text-tertiary)]">
                         The AI assistant is admin-only. Switch to an admin
                         persona to open it.
                     </div>
@@ -399,9 +399,9 @@ function NotAvailableForRoleState({ onClose }: { onClose: () => void }) {
                     onClick={onClose}
                     className={cn(
                         "h-9 px-4 rounded-md",
-                        "bg-white text-[#344054] text-[14px] font-medium border border-[#d0d5dd]",
+                        "bg-white text-[var(--colors-text-secondary)] text-[14px] font-medium border border-[var(--colors-border-primary)]",
                         "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                        "hover:bg-[#f9fafb] transition-colors",
+                        "hover:bg-[var(--colors-bg-secondary)] transition-colors",
                     )}
                 >
                     Go back
@@ -467,17 +467,17 @@ function AgentSidebar({
     }, [showArchived, archivedConvos, activeConvos, q]);
 
     return (
-        <aside className="flex-none w-[288px] min-w-[288px] max-w-[288px] h-full bg-white border border-[#e4e7ec] rounded-[24px] flex flex-col overflow-hidden">
+        <aside className="flex-none w-[288px] min-w-[288px] max-w-[288px] h-full bg-white border border-[var(--colors-border-secondary)] rounded-[24px] flex flex-col overflow-hidden">
             {/* Search input */}
-            <div className="p-4 border-b border-[#e4e7ec]">
-                <div className="flex items-center gap-2 h-10 px-4 rounded-lg border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                    <SearchLg className="size-5 text-[#667085] flex-shrink-0" />
+            <div className="p-4 border-b border-[var(--colors-border-secondary)]">
+                <div className="flex items-center gap-2 h-10 px-4 rounded-lg border border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <SearchLg className="size-5 text-[var(--colors-text-quaternary)] flex-shrink-0" />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search chat..."
-                        className="flex-1 min-w-0 text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent outline-none leading-6"
+                        className="flex-1 min-w-0 text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-transparent outline-none leading-6"
                     />
                 </div>
             </div>
@@ -496,8 +496,8 @@ function AgentSidebar({
                                 onClick={() => t.enabled && onSelectThread(t.key)}
                                 className={cn(
                                     "flex items-center gap-3 px-2 py-3 rounded-md text-left transition-colors",
-                                    isActive && "bg-[#f9fafb]",
-                                    !isActive && t.enabled && "hover:bg-[#f9fafb]",
+                                    isActive && "bg-[var(--colors-bg-secondary)]",
+                                    !isActive && t.enabled && "hover:bg-[var(--colors-bg-secondary)]",
                                     !t.enabled && "cursor-not-allowed",
                                 )}
                             >
@@ -506,7 +506,7 @@ function AgentSidebar({
                                     {t.label}
                                 </span>
                                 {!t.enabled && (
-                                    <span className="text-[10px] uppercase tracking-wide text-[#98a2b3] border border-[#eaecf0] rounded px-1.5 py-0.5">
+                                    <span className="text-[10px] uppercase tracking-wide text-[var(--colors-fg-quaternary)] border border-[var(--colors-border-tertiary)] rounded px-1.5 py-0.5">
                                         Soon
                                     </span>
                                 )}
@@ -519,11 +519,11 @@ function AgentSidebar({
             {/* Recents / Archived list. Each row carries a 3-dot menu with
                 Rename (dialog) / Pin / Archive / Delete (confirm modals). */}
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-                <p className="px-2 pt-2 pb-1 text-[12px] font-medium text-[#667085]">
+                <p className="px-2 pt-2 pb-1 text-[12px] font-medium text-[var(--colors-text-quaternary)]">
                     {showArchived ? "Archived" : "Recents"}
                 </p>
                 {list.length === 0 ? (
-                    <p className="px-2 py-6 text-[13px] text-[#98a2b3] text-center">
+                    <p className="px-2 py-6 text-[13px] text-[var(--colors-fg-quaternary)] text-center">
                         {q
                             ? `No chats match "${search.trim()}".`
                             : showArchived
@@ -567,7 +567,7 @@ function AgentSidebar({
             </div>
 
             {/* Archive drawer toggle. */}
-            <div className="p-4 border-t border-[#e4e7ec]">
+            <div className="p-4 border-t border-[var(--colors-border-secondary)]">
                 <button
                     type="button"
                     onClick={() => {
@@ -576,7 +576,7 @@ function AgentSidebar({
                     }}
                     className={cn(
                         "w-full flex items-center gap-3 px-2 py-3 rounded-md transition-colors",
-                        showArchived ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                        showArchived ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
                     )}
                 >
                     <Archive className="size-4 flex-shrink-0 text-[#182230]" />
@@ -584,7 +584,7 @@ function AgentSidebar({
                         {showArchived ? "Back to chats" : "Archive"}
                     </span>
                     {archivedConvos.length > 0 && (
-                        <span className="text-[12px] font-medium text-[#667085]">
+                        <span className="text-[12px] font-medium text-[var(--colors-text-quaternary)]">
                             {archivedConvos.length}
                         </span>
                     )}
@@ -657,7 +657,7 @@ function RecentRow({
         <div
             className={cn(
                 "group relative flex items-center gap-2 pl-2 pr-1 py-2.5 rounded-md transition-colors",
-                isActive || menuOpen ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                isActive || menuOpen ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
             )}
         >
             <button
@@ -665,7 +665,7 @@ function RecentRow({
                 onClick={onOpen}
                 className="flex-1 min-w-0 flex items-center gap-3 text-left"
             >
-                <MessageSquare02 className="size-4 flex-shrink-0 text-[#667085]" />
+                <MessageSquare02 className="size-4 flex-shrink-0 text-[var(--colors-text-quaternary)]" />
                 <span className="flex-1 text-[14px] font-normal text-[#182230] leading-5 truncate">
                     {conv.title}
                 </span>
@@ -678,7 +678,7 @@ function RecentRow({
             {conv.pinned && (
                 <Pin01
                     className={cn(
-                        "size-4 flex-shrink-0 text-[#658774] transition-opacity",
+                        "size-4 flex-shrink-0 text-[var(--colors-secondary-600)] transition-opacity",
                         // Hidden under the 3-dot on hover so they don't crowd.
                         menuOpen ? "hidden" : "group-hover:hidden",
                     )}
@@ -691,11 +691,11 @@ function RecentRow({
                 aria-label="Chat options"
                 className={cn(
                     "flex-shrink-0 size-7 flex items-center justify-center rounded-md transition-all",
-                    "hover:bg-[#eaecf0]",
+                    "hover:bg-[var(--colors-border-tertiary)]",
                     menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100",
                 )}
             >
-                <DotsVertical className="size-4 text-[#667085]" />
+                <DotsVertical className="size-4 text-[var(--colors-text-quaternary)]" />
             </button>
 
             {menuOpen && (
@@ -780,20 +780,20 @@ function RowMenu({
             ref={menuRef}
             role="menu"
             style={{ position: "fixed", top: pos.top, left: pos.left, width: 200 }}
-            className="z-[400] bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] p-1.5 flex flex-col"
+            className="z-[400] bg-white border border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] p-1.5 flex flex-col"
         >
-            <button type="button" onClick={onRename} className={cn(item, "text-[#344054] hover:bg-[#f9fafb]")}>
-                <Edit02 className="size-4 text-[#667085]" />
+            <button type="button" onClick={onRename} className={cn(item, "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
+                <Edit02 className="size-4 text-[var(--colors-text-quaternary)]" />
                 Rename
             </button>
             {!archived && (
-                <button type="button" onClick={onTogglePin} className={cn(item, "text-[#344054] hover:bg-[#f9fafb]")}>
-                    <Pin01 className="size-4 text-[#667085]" />
+                <button type="button" onClick={onTogglePin} className={cn(item, "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
+                    <Pin01 className="size-4 text-[var(--colors-text-quaternary)]" />
                     {pinned ? "Unpin" : "Pin"}
                 </button>
             )}
-            <button type="button" onClick={onArchive} className={cn(item, "text-[#344054] hover:bg-[#f9fafb]")}>
-                <Archive className="size-4 text-[#667085]" />
+            <button type="button" onClick={onArchive} className={cn(item, "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
+                <Archive className="size-4 text-[var(--colors-text-quaternary)]" />
                 {archived ? "Unarchive" : "Archive"}
             </button>
             <button type="button" onClick={onDelete} className={cn(item, "text-[#d92d20] hover:bg-[#fef3f2]")}>
@@ -834,7 +834,7 @@ function RenameConversationDialog({
                 sides of the modal frame. */}
             <Modal.Body scrollable={false} className="px-6 pb-1 overflow-visible">
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Chat name</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Chat name</label>
                     <input
                         autoFocus
                         value={value}
@@ -845,7 +845,7 @@ function RenameConversationDialog({
                         }}
                         onFocus={(e) => e.currentTarget.select()}
                         placeholder="e.g. Create a class schedule"
-                        className="h-10 w-full px-3.5 rounded-lg border border-[#d0d5dd] bg-white text-[16px] text-[#101828] placeholder:text-[#667085] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none focus:border-[#7ba08c] focus:ring-2 focus:ring-[#aad4bd] transition-all"
+                        className="h-10 w-full px-3.5 rounded-lg border border-[var(--colors-border-primary)] bg-white text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none focus:border-[var(--colors-secondary-500)] focus:ring-2 focus:ring-[var(--colors-secondary-300)] transition-all"
                     />
                 </div>
             </Modal.Body>
@@ -881,7 +881,7 @@ function AgentChatSurface({
             className={cn(
                 // Fill the available width (Figma 413:460177) — no fixed cap.
                 "flex-1 min-w-0 h-full",
-                "bg-white border border-[#e4e7ec] rounded-[24px] overflow-hidden relative",
+                "bg-white border border-[var(--colors-border-secondary)] rounded-[24px] overflow-hidden relative",
             )}
         >
             {/* Mint gradient bg + concentric squares — grouped in one
