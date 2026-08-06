@@ -1329,7 +1329,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                         <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">{creditDisplay}</p>
                                     </div>
                                     <div className="h-2 w-full rounded-full bg-[var(--colors-bg-tertiary)] overflow-hidden">
-                                        <div className="h-full rounded-full bg-[var(--colors-secondary-600)]" style={{ width: `${barPct}%` }} />
+                                        <div className="h-full rounded-full bg-[var(--colors-secondary-400)]" style={{ width: `${barPct}%` }} />
                                     </div>
                                     {creditRows.length > 0 && (
                                         <div className="flex gap-4">
@@ -1481,7 +1481,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                         // normal color — status is already conveyed by the badge.
                                                         const isDisabled = p.status === "expired" || p.status === "removed" || p.status === "cancelled";
                                                         const creditTextCls = isDisabled ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-primary)]";
-                                                        const barFill       = isDisabled ? "bg-[var(--colors-border-primary)]" : "bg-[var(--colors-secondary-600)]";
+                                                        const barFill       = isDisabled ? "bg-[var(--colors-border-primary)]" : "bg-[var(--colors-secondary-400)]";
                                                         return (
                                                         <tr key={p.id} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                                             <td className={TD}>

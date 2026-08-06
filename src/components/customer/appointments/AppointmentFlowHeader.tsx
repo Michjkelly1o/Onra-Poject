@@ -61,7 +61,7 @@ export function AppointmentFlowHeader({ title, progress, onBack, onClose }: Appo
             {progress !== undefined && (
                 <div className="h-1 w-full bg-[var(--colors-bg-quaternary)]">
                     <div
-                        className="h-full rounded-r-full bg-[var(--brand-primary)] transition-all duration-300"
+                        className="h-full rounded-r-full bg-[var(--colors-secondary-400)] transition-all duration-300"
                         style={{ width: `${progress}%` }}
                     />
                 </div>

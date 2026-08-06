@@ -129,7 +129,7 @@ function CoverageCell({ coverage }: { coverage: AgreementCoverage | undefined })
     return (
         <div className="flex items-center gap-2">
             <div className="w-[64px] h-[6px] rounded-full bg-[var(--colors-border-tertiary)] overflow-hidden shrink-0">
-                <div className="h-full bg-[var(--colors-secondary-600)] transition-[width]" style={{ width: `${pct}%` }} />
+                <div className="h-full bg-[var(--colors-secondary-400)] transition-[width]" style={{ width: `${pct}%` }} />
             </div>
             <span className="text-[14px] text-[var(--colors-text-primary)] shrink-0">{pct}%</span>
             {coverage.pendingReAccept > 0 && (

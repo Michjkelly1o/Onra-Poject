@@ -1125,7 +1125,7 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
                                     <td className={TD}>
                                         <div className="flex items-center gap-2 min-w-[100px]">
                                             <div className="flex-1 h-1.5 bg-[var(--colors-bg-quaternary)] rounded-full overflow-hidden">
-                                                <div className="h-full bg-[var(--colors-secondary-600)] transition-all" style={{ width: `${fillPct}%` }} />
+                                                <div className="h-full bg-[var(--colors-secondary-400)] transition-all" style={{ width: `${fillPct}%` }} />
                                             </div>
                                             <span className="text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap">{s.booked}/{s.capacity}</span>
                                         </div>

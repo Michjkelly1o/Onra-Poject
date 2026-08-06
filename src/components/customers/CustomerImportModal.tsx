@@ -406,7 +406,7 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                                                 <p className="text-[14px] text-[var(--colors-text-tertiary)]">{file.sizeLabel}</p>
                                                 <div className="flex items-center gap-3 mt-0.5">
                                                     <div className="flex-1 h-2 rounded-full bg-[var(--colors-bg-quaternary)] overflow-hidden">
-                                                        <div className="h-full rounded-full bg-[var(--colors-secondary-600)] w-full" />
+                                                        <div className="h-full rounded-full bg-[var(--colors-secondary-400)] w-full" />
                                                     </div>
                                                     <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">100%</span>
                                                 </div>

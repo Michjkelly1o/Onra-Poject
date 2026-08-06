@@ -151,7 +151,7 @@ export default function GiftCardPage() {
                                     </div>
                                     <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--colors-bg-quaternary)]">
                                         <div
-                                            className="h-full rounded-full bg-[var(--brand-primary)]"
+                                            className="h-full rounded-full bg-[var(--colors-secondary-400)]"
                                             style={{ width: `${(r.balance / r.faceValue) * 100}%` }}
                                         />
                                     </div>

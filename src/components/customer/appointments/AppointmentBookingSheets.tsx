@@ -301,7 +301,7 @@ export function AppointmentBookingFlow({ appointmentId, open, onClose }: {
                 </div>
                 <div className="-mx-4 h-1 w-[calc(100%+32px)] overflow-hidden bg-[var(--colors-bg-quaternary)]">
                     <div
-                        className="h-full rounded-r-full bg-[var(--brand-primary)]"
+                        className="h-full rounded-r-full bg-[var(--colors-secondary-400)]"
                         style={{ width: `${progress}%`, transition: `width ${SLIDE_MS}ms ${SLIDE_EASE}` }}
                     />
                 </div>

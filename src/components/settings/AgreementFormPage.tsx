@@ -595,7 +595,7 @@ export function UploadZone({ value, onChange }: {
                         <div className="flex items-center gap-3">
                             <div className="flex-1 h-2 rounded-full bg-[var(--colors-bg-quaternary)] overflow-hidden">
                                 <div className={cn(
-                                    "h-full bg-[var(--colors-secondary-600)] rounded-full transition-all",
+                                    "h-full bg-[var(--colors-secondary-400)] rounded-full transition-all",
                                     value.parsing ? "w-[40%] animate-pulse" : "w-full",
                                 )} />
                             </div>

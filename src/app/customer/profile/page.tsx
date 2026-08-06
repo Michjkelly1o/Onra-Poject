@@ -209,7 +209,7 @@ export default function ProfilePage() {
                         <div className="flex flex-col gap-2">
                             <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{creditLabel}</p>
                             <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--colors-bg-quaternary)]">
-                                <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${progressPct}%` }} />
+                                <div className="h-full rounded-full bg-[var(--colors-secondary-400)]" style={{ width: `${progressPct}%` }} />
                             </div>
                         </div>
                         <div className="flex items-start gap-4">

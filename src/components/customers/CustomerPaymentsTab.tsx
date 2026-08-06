@@ -264,7 +264,7 @@ function GiftCardWidget({ card, design }: { card: IssuedGiftCard; design?: GiftC
                         <p>End {fmtDate(card.expires_at)}</p>
                     </div>
                     <div className="h-1 w-full rounded-full bg-[var(--colors-bg-quaternary)] overflow-hidden">
-                        <div className="h-full rounded-full bg-[var(--colors-brand-600)]" style={{ width: `${pct}%` }} />
+                        <div className="h-full rounded-full bg-[var(--colors-secondary-400)]" style={{ width: `${pct}%` }} />
                     </div>
                 </div>
             </div>

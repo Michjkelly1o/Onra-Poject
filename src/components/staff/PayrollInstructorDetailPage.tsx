@@ -572,7 +572,7 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, defaultRa
             {showClasses ? (
                 <>
                     <div className="w-full h-1.5 rounded-full bg-[var(--colors-bg-quaternary)] overflow-hidden">
-                        <div className="h-full bg-[var(--colors-secondary-600)]" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-[var(--colors-secondary-400)]" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex flex-col gap-1">
