@@ -26,10 +26,7 @@ function EmptyPrevious() {
             >
                 <ClockRewind className="size-4 text-[var(--brand-primary)]" aria-hidden />
             </span>
-            <div className="flex flex-col gap-1">
-                <p className="text-sm font-semibold leading-5 text-[#101828]">No previous bookings yet</p>
-                <p className="text-xs font-normal leading-[18px] text-[#475467]">Your past bookings will appear here.</p>
-            </div>
+            <p className="text-sm font-semibold leading-5 text-[#101828]">No previous bookings yet</p>
         </div>
     );
 }

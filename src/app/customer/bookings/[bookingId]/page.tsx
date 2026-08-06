@@ -20,7 +20,9 @@ import { BOOKING_STATUS, useBookingDetail, useClassReviews, useHasRated } from "
 import { ClassDetailLayout } from "@/components/customer/classes/ClassDetailLayout";
 import { BookingStatusCard } from "@/components/customer/bookings/BookingStatusCard";
 import { RatingsSection } from "@/components/customer/bookings/RatingsSection";
-import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
+import { BookingDetailSections, type BookingRefund } from "@/components/customer/bookings/GuestBookToSection";
+import { useCurrentCustomer } from "@/lib/customer/context";
+import { DROP_IN_PRICE_AED } from "@/lib/customer/booking-flow";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirmSheet";
 import { RateSheet } from "@/components/customer/bookings/RateSheet";
@@ -30,6 +32,7 @@ export default function BookingDetailPage() {
     const router = useRouter();
     const { bookingId } = useParams<{ bookingId: string }>();
     const vm = useBookingDetail(bookingId);
+    const member = useCurrentCustomer();
     // A cancelled / past booking lives in the Past tab — Back returns there, so
     // it never lands on the Upcoming list the record just left.
     const goBack = useCustomerBack(vm?.tab === "past" ? "/customer/bookings/past" : "/customer/bookings/upcoming");
@@ -95,29 +98,51 @@ export default function BookingDetailPage() {
     const p = BOOKING_STATUS[viewStatus];
     const HeroIcon = p.heroIcon;
     const isAttended = viewStatus === "attended";
-    // Classes are credit-based — the view status already encodes the outcome:
-    // cancelled_free → 1 credit returned; cancelled_late / no_show → forfeited.
-    const refundLines: RefundLine[] | null =
+
+    // ── Book to + Payment detail (shown for every booking — Myself & Guest) ──
+    const isGuestBooking = !!booking.guestName;
+    const bookToName = isGuestBooking
+        ? booking.guestName!
+        : `${member?.firstName ?? ""} ${member?.lastName ?? ""}`.trim() || "You";
+    const bookToEmail = isGuestBooking ? booking.guestEmail : member?.email;
+    const bookToInitial = isGuestBooking ? undefined : member?.initials;
+    // Real portrait only for a self booking — guests have no photo.
+    const bookToImage = isGuestBooking ? undefined : member?.imageUrl;
+    // A class always costs 1 credit; a guest drop-in / invite pays differently.
+    const payAmount = isGuestBooking
+        ? booking.guestPayment === "drop_in"
+            ? `AED ${DROP_IN_PRICE_AED}`
+            : booking.guestPayment === "invite_link"
+              ? "Pending"
+              : "1 credit"
+        : "1 credit";
+    // "Pay with" — never "—": self → the plan its credit came from; guest → how
+    // the guest seat was paid.
+    const selfPayWith = booking.planName && booking.planName !== "—" ? booking.planName : "Class credit";
+    const payWith = isGuestBooking
+        ? booking.guestPayment === "drop_in"
+            ? "Guest pays drop-in"
+            : booking.guestPayment === "booker_credit"
+              ? selfPayWith
+              : booking.guestPayment === "guest_package"
+                ? "Guest's plan"
+                : booking.guestPayment === "invite_link"
+                  ? "Guest completes payment"
+                  : selfPayWith
+        : selfPayWith;
+
+    // Refund folds into Payment detail for a cancelled booking — credits are
+    // returned on an on-time cancel, forfeited on a late cancel / no-show.
+    const paidIsCredit = payAmount.includes("credit");
+    const zeroRefund = paidIsCredit ? "0 credit" : "AED 0";
+    const refund: BookingRefund | null =
         viewStatus === "cancelled_free"
-            ? [
-                  { label: "You've paid", value: "1 credit" },
-                  { label: "Your refund", value: "1 credit" },
-                  { label: "Status", value: "Returned to your account" },
-              ]
-            : viewStatus === "cancelled_late" || viewStatus === "no_show"
-              ? [
-                    { label: "You've paid", value: "1 credit" },
-                    { label: "Your refund", value: "0 credit", tone: "muted" },
-                    {
-                        label: "Status",
-                        value:
-                            viewStatus === "no_show"
-                                ? "Forfeited — no show"
-                                : "Not returned — cancelled within 24 hours",
-                        tone: "muted",
-                    },
-                ]
-              : null;
+            ? { amount: payAmount, status: "Returned to your account" }
+            : viewStatus === "cancelled_late"
+              ? { amount: zeroRefund, status: "Not returned — cancelled within 24 hours" }
+              : viewStatus === "no_show"
+                ? { amount: zeroRefund, status: "Forfeited — no show" }
+                : null;
 
     const actionZone =
         tab === "upcoming" ? (
@@ -127,7 +152,11 @@ export default function BookingDetailPage() {
                 className="w-full rounded-full border-[#fda29b] bg-[#fef3f2] text-[#b42318] hover:bg-[#fee4e2] hover:text-[#912018] active:bg-[#fee4e2] active:text-[#912018]"
                 onClick={() => setCancelOpen(true)}
             >
-                {viewStatus === "waitlisted" ? "Leave waitlist" : "Cancel booking"}
+                {viewStatus === "waitlisted"
+                    ? "Leave waitlist"
+                    : booking.guestName
+                      ? `Cancel ${booking.guestName}'s booking`
+                      : "Cancel booking"}
             </Button>
         ) : isAttended && !hasRated ? (
             <Button
@@ -156,14 +185,24 @@ export default function BookingDetailPage() {
             }
             statusBlock={<BookingStatusCard viewStatus={viewStatus} spot={spot} waitlistPosition={booking.waitlistPosition} />}
             afterLocation={
-                isAttended ? (
-                    <RatingsSection
-                        reviews={reviews}
-                        onMoreReviews={() => router.push(`/customer/bookings/${bookingId}/reviews`)}
+                <>
+                    <BookingDetailSections
+                        name={bookToName}
+                        email={bookToEmail}
+                        isGuest={isGuestBooking}
+                        initial={bookToInitial}
+                        imageUrl={bookToImage}
+                        amount={payAmount}
+                        payWith={payWith}
+                        refund={refund}
                     />
-                ) : refundLines ? (
-                    <RefundDetailsSection lines={refundLines} />
-                ) : undefined
+                    {isAttended && (
+                        <RatingsSection
+                            reviews={reviews}
+                            onMoreReviews={() => router.push(`/customer/bookings/${bookingId}/reviews`)}
+                        />
+                    )}
+                </>
             }
             actionZone={actionZone}
             stickyAction={tab !== "upcoming"}
@@ -171,7 +210,7 @@ export default function BookingDetailPage() {
         <CancelConfirmSheet
             open={cancelOpen}
             onClose={() => setCancelOpen(false)}
-            title={cancelCopy.title}
+            title={booking.guestName && !isWaitlist ? `Cancel ${booking.guestName}'s booking?` : cancelCopy.title}
             description={cancelCopy.description}
             refundNote={cancelCopy.refundNote}
             confirmLabel={cancelCopy.confirmLabel}

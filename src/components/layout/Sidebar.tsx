@@ -414,19 +414,28 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                     {brandingSettings.displayName || studio.name || "Forma Studio"}
                                 </p>
                             </div>
-                            {/* Powered by row */}
-                            <div className="flex items-center gap-[2px]">
+                            {/* Powered by row — Onra wordmark (masked so it renders in
+                                the same #667085 as the "powered by" label). */}
+                            <div className="flex items-center gap-[5px]">
                                 <span className="text-[12px] font-normal text-[#667085] leading-[18px]">powered by</span>
-                                <div className="flex items-center gap-[2px] ml-[2px]">
-                                    {/* Onra platform logomark — 16px */}
-                                    <svg width="11" height="16" viewBox="0 0 11 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <g opacity="0.84">
-                                            <path d="M2.96925 5.73799L7.91797 2.88085L4.94874 1.16656L0.000110827 4.02366L0 9.73788L2.96923 11.4522L2.96925 5.73799Z" fill="#667085" />
-                                            <path d="M10.9655 5.9283L10.9655 11.6426L6.01675 14.4996L3.04752 12.7853L7.99623 9.92819L7.99625 4.21402L10.9655 5.9283Z" fill="#667085" />
-                                        </g>
-                                    </svg>
-                                    <span className="text-[12px] font-normal text-[#667085] leading-[18px]">Onra</span>
-                                </div>
+                                <span
+                                    role="img"
+                                    aria-label="Onra"
+                                    className="block shrink-0"
+                                    style={{
+                                        width: "42px",
+                                        height: "11px",
+                                        backgroundColor: "#667085",
+                                        WebkitMaskImage: "url('/brand-logo/wordmark/Wordmark%20-%20Black.svg')",
+                                        maskImage: "url('/brand-logo/wordmark/Wordmark%20-%20Black.svg')",
+                                        WebkitMaskRepeat: "no-repeat",
+                                        maskRepeat: "no-repeat",
+                                        WebkitMaskSize: "contain",
+                                        maskSize: "contain",
+                                        WebkitMaskPosition: "left center",
+                                        maskPosition: "left center",
+                                    }}
+                                />
                             </div>
                         </div>
                         {/* Collapse button */}

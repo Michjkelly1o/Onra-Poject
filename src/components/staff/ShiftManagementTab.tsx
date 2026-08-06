@@ -938,8 +938,9 @@ export function ShiftManagementTab({
                                     return (
                                         <React.Fragment key={s.id}>
                                         <tr
-                                            className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                            <td className={TD}>
+                                            onClick={() => handleRowAction(s, "view")}
+                                            className={cn("cursor-pointer transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                            <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <CheckboxCell
                                                     checked={isSelected}
                                                     onChange={() => toggleOne(s.id)}
@@ -999,7 +1000,7 @@ export function ShiftManagementTab({
                                             </td>
                                             )}
                                             <td className={TD}><StatusBadge type="shift" status={s.status} /></td>
-                                            <td className={TD}>
+                                            <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <RowActions items={[
                                                     { label: "View details", icon: Eye, onClick: () => handleRowAction(s, "view") },
                                                     { label: "Edit details", icon: Edit02, onClick: () => handleRowAction(s, "edit"), hidden: s.status !== "active" },

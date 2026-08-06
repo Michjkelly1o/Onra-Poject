@@ -1166,6 +1166,9 @@ export interface ClassBooking {
     /** Set when this seat was booked by `customerId` FOR another person (a guest
      *  without their own account). The seat still bumps the class count. */
     guestName?: string;
+    /** Guest contact + chosen payment, for the booking-detail "Book to" section. */
+    guestEmail?: string;
+    guestPayment?: "drop_in" | "guest_package" | "invite_link" | "booker_credit";
     branchId: string;
     /** Plan id used to pay (FK to memberships or packages). Empty string if no plan. */
     planId: string;
@@ -4607,7 +4610,7 @@ export interface AppState {
      *  row propagates to the admin roster, the customer profile, the member's
      *  Bookings list, and the class detail state in the same render cycle.
      *  Returns the new booking id. */
-    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string; guestName?: string; chargeBookerCredit?: boolean }) => string;
+    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string; guestName?: string; guestEmail?: string; guestPayment?: "drop_in" | "guest_package" | "invite_link" | "booker_credit"; chargeBookerCredit?: boolean }) => string;
     /** Insert a booking VERBATIM — no frozen-plan guard, no credit deduction,
      *  no notifications. Used by the AI Agent migration importer to bring
      *  across historical bookings without triggering the "you're frozen" gate
@@ -7072,7 +7075,7 @@ export const useAppStore = create<AppState>()(persist(
             }
         },
 
-    addClassBooking: ({ classScheduleId, customerId, status, spot, guestName, chargeBookerCredit }) => {
+    addClassBooking: ({ classScheduleId, customerId, status, spot, guestName, guestEmail, guestPayment, chargeBookerCredit }) => {
         const s0 = get();
         const schedule = s0.classSchedules.find(x => x.id === classScheduleId);
         const customer = s0.customers.find(c => c.id === customerId);
@@ -7129,6 +7132,8 @@ export const useAppStore = create<AppState>()(persist(
             classScheduleId,
             customerId,
             guestName,
+            guestEmail,
+            guestPayment,
             branchId: schedule?.branchId ?? customer?.branchId ?? "",
             planId,
             planName: usesBookerPlan ? (customer?.planName ?? "") : "",
@@ -12862,7 +12867,10 @@ export const useAppStore = create<AppState>()(persist(
         //   Figma timeline (5 states). Added Liam's today class + today-relative
         //   partial time off so the "shift + time off + schedule" state is
         //   seeded/testable. blockedTimes + classSchedules are persisted → bump.
-        version: 104,
+        // v105 (2026-08-06): classesSettings gained guest-booking flags
+        //   (guests_use_plan_enabled / guests_allow_unlimited) for the Bring a
+        //   friend flow. Bump so persisted demos pick up the new defaults.
+        version: 105,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

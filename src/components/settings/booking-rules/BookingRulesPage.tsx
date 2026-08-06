@@ -137,6 +137,33 @@ export default function BookingRulesPage() {
         );
     }
 
+    // Guest bookings — defaults handle a persisted store from before these
+    // flags existed (v104 and earlier).
+    const guestsUsePlan   = classesSettings.guests_use_plan_enabled ?? true;
+    const guestsUnlimited = classesSettings.guests_allow_unlimited ?? false;
+    function handleToggleGuestsUsePlan(next: boolean) {
+        updateClassesSettings({ guests_use_plan_enabled: next });
+        showToast(
+            next ? "Members can use their plan for guests" : "Guests must pay drop-in",
+            next
+                ? "Customers can use an eligible plan to pay for a guest booking."
+                : "The “Use my plan” option is hidden; guests pay the drop-in price by card.",
+            next ? "success" : "error",
+            next ? "check"   : "slash",
+        );
+    }
+    function handleToggleGuestsUnlimited(next: boolean) {
+        updateClassesSettings({ guests_allow_unlimited: next });
+        showToast(
+            next ? "Unlimited plans allowed for guests" : "Unlimited plans excluded for guests",
+            next
+                ? "Unlimited memberships can now be used to book guests."
+                : "Only credit packages and limited memberships can book guests.",
+            next ? "success" : "error",
+            next ? "check"   : "slash",
+        );
+    }
+
     return (
         <div className="flex w-full flex-col gap-4">
             {/* ── Card 1: Booking window ────────────────────────────── */}
@@ -200,6 +227,45 @@ export default function BookingRulesPage() {
                     </div>
                 )}
             </SettingsCard>
+
+            {/* ── Card: Guest bookings (Bring a friend) — same row/toggle
+                structure as the Services config (no icon, 1-line subtext). ── */}
+            <div className="flex flex-col rounded-[16px] border-1 border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <div className="flex flex-col gap-1 p-6 pb-4">
+                    <p className="text-[16px] font-semibold text-[#101828]">Guest bookings</p>
+                    <p className="text-[14px] leading-[20px] text-[#667085]">
+                        Control how members can bring and pay for a guest.
+                    </p>
+                </div>
+
+                {/* Setting 1 — Members can use their plan for guests */}
+                <div className="flex items-center gap-4 border-t border-[#eaecf0] px-6 py-5">
+                    <div className="flex flex-1 flex-col gap-1 min-w-0">
+                        <p className="text-[15px] font-semibold text-[#101828]">Members can use their plan for guests</p>
+                        <p className="text-[13px] leading-[19px] text-[#667085]">Pay for a guest with an eligible plan — 1 credit per guest.</p>
+                    </div>
+                    <Toggle
+                        on={guestsUsePlan}
+                        onChange={handleToggleGuestsUsePlan}
+                        ariaLabel="Members can use their plan for guests"
+                    />
+                </div>
+
+                {/* Setting 2 — Allow unlimited plans for guests (only when 1 is on) */}
+                {guestsUsePlan && (
+                    <div className="flex items-center gap-4 border-t border-[#eaecf0] px-6 py-5">
+                        <div className="flex flex-1 flex-col gap-1 min-w-0">
+                            <p className="text-[15px] font-semibold text-[#101828]">Allow unlimited plans for guests</p>
+                            <p className="text-[13px] leading-[19px] text-[#667085]">Unlimited memberships can also be used to book guests.</p>
+                        </div>
+                        <Toggle
+                            on={guestsUnlimited}
+                            onChange={handleToggleGuestsUnlimited}
+                            ariaLabel="Allow unlimited plans for guests"
+                        />
+                    </div>
+                )}
+            </div>
 
             {/* ── Card 3: Cancellation policy ──────────────────────── */}
             <SettingsCard>

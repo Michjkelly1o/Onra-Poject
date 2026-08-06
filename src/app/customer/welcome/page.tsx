@@ -126,9 +126,25 @@ export default function WelcomePage() {
                 </div>
                 <div className="absolute bottom-[max(24px,env(safe-area-inset-bottom))] flex items-center gap-1.5">
                     <span className="text-sm leading-5 text-[#98a2b3]">powered by</span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/images/pay/forma-logomark.svg" alt="" className="size-4 opacity-60" aria-hidden />
-                    <span className="text-sm font-semibold leading-5 text-[#667085]">Onra</span>
+                    {/* Onra wordmark, masked to the subtle powered-by gray. */}
+                    <span
+                        role="img"
+                        aria-label="Onra"
+                        className="block shrink-0"
+                        style={{
+                            width: "50px",
+                            height: "13px",
+                            backgroundColor: "#667085",
+                            WebkitMaskImage: "url('/brand-logo/wordmark/Wordmark%20-%20Black.svg')",
+                            maskImage: "url('/brand-logo/wordmark/Wordmark%20-%20Black.svg')",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskPosition: "left center",
+                            maskPosition: "left center",
+                        }}
+                    />
                 </div>
             </button>
         );

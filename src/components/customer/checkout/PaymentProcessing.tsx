@@ -20,7 +20,8 @@ import {
     ensurePurchaseCart,
     lastOrder,
     purchaseCart,
-    TAX_RATE_PCT,
+    useStandardVatPct,
+    usePricesIncludeTax,
     usePromo,
 } from "@/lib/customer/purchase";
 import { addPaymentRecord, methodKind } from "@/lib/customer/payment-history";
@@ -55,6 +56,8 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
     // that has been dropped to prevent double-debiting the wallet).
     const walletTxns = useAppStore((s) => s.walletTransactions);
     const promo = usePromo(purchaseCart.promoId);
+    const vatPct = useStandardVatPct();
+    const inclusive = usePricesIncludeTax();
     const [step, setStep] = useState(0);
     const wroteRef = useRef(false);
 
@@ -71,7 +74,7 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
             // wallet ledger + stamps the credit on the transaction so a later
             // refund can restore it — no separate `debitWallet` call needed.
             const balance = walletBalanceAed(walletTxns, member.id);
-            const totals = computeTotals(cartTotal(), promo, TAX_RATE_PCT, purchaseCart.redeemAccountCredit ? balance : 0);
+            const totals = computeTotals(cartTotal(), promo, vatPct, purchaseCart.redeemAccountCredit ? balance : 0, inclusive);
             const kinds = Array.from(new Set(items.map((it) => it.kind)));
 
             applyPurchase(

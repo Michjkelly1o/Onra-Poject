@@ -34,10 +34,7 @@ function EmptyUpcoming() {
             >
                 <Calendar className="size-4 text-[var(--brand-primary)]" aria-hidden />
             </span>
-            <div className="flex flex-col gap-1">
-                <p className="text-sm font-semibold leading-5 text-[#101828]">Ready for your next session?</p>
-                <p className="text-xs font-normal leading-[18px] text-[#475467]">Book a session to see your upcoming bookings here.</p>
-            </div>
+            <p className="text-sm font-semibold leading-5 text-[#101828]">Ready for your next session?</p>
             {/* Same primary CTA (sm) as the "Rate class" button in Previous bookings. */}
             <Button
                 variant="primary"

@@ -1179,24 +1179,11 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 </>
                             )}
 
-                            {/* Assign shift — ALL roles (client 2026-07-24).
-                                Multi-select, scoped to the person's branch,
-                                overlapping shifts disabled. Optional. */}
-                            <div className="flex flex-col gap-[6px]">
-                                <FieldLabel label="Assign shift (optional)" />
-                                <MultiShiftDropdown
-                                    options={shiftOptions}
-                                    selectedIds={form.shiftIds}
-                                    onChange={ids => set({ shiftIds: ids })}
-                                    disabled={!isOwnerRole && !form.branchId}
-                                    emptyLabel={
-                                        !isOwnerRole && !form.branchId
-                                            ? "Select a branch first."
-                                            : "No active shifts at this branch."
-                                    }
-                                />
-                                <p className="text-[14px] text-[#475467]">A staff member can hold multiple shifts from their own branch. Overlapping shifts can't be selected.</p>
-                            </div>
+                            {/* Assign shift removed from the form (client 2026-08) —
+                                shifts are assigned ONLY via the "Assign shift" quick
+                                action + the Staff Schedule module. Existing
+                                assignments are preserved on save (see handleSave),
+                                the form just no longer edits them. */}
 
                             {/* Categories — instructor-only multi-select
                                 dropdown. Drives the cross-module instructor

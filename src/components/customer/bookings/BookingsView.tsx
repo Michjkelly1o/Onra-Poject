@@ -167,7 +167,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
             el: (
                 <BookingCard
                     key={b.bookingId}
-                    name={b.guestName ? `${b.name} · Guest: ${b.guestName}` : b.name}
+                    name={b.name}
                     date={b.dateShort}
                     time={b.time}
                     location={b.location}

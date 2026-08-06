@@ -359,7 +359,7 @@ export function ProductDetailScreen({
                     {gift && (
                         <InfoRow icon={CurrencyDollarCircle}>
                             {gift.value_type === "custom"
-                                ? `Custom amount from AED ${gift.min_value_aed ?? 0}`
+                                ? `Custom amount from AED ${(gift.min_value_aed ?? 0).toLocaleString()} to AED ${(gift.max_value_aed ?? 0).toLocaleString()}`
                                 : `AED ${gift.fixed_value_aed ?? product.price} value`}
                         </InfoRow>
                     )}

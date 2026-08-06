@@ -27,6 +27,7 @@ function validityLabel(plan: CustomerPlan): string {
 export function PlanCard({
     plan,
     creditsRemaining,
+    priceAed,
     onFreeze,
     onUnfreeze,
     onCancel,
@@ -36,7 +37,12 @@ export function PlanCard({
     freezeMode = "direct",
 }: {
     plan: CustomerPlan;
+    /** Credits remaining for THIS plan (a membership → its balance; a package →
+     *  its share of the customer's balance so all cards sum to Credit Balance). */
     creditsRemaining?: number;
+    /** Resolved price — the plan's own price, or the product price when the plan
+     *  row didn't snapshot one (avoids "AED 0"). */
+    priceAed?: number;
     onFreeze: () => void;
     onUnfreeze: () => void;
     onCancel: () => void;
@@ -55,9 +61,15 @@ export function PlanCard({
     freezeMode?: "direct" | "request";
 }) {
     const isMembership = plan.kind === "membership";
-    const total = totalCredits(plan.creditsLabel);
+    // Total credits — prefer the normalized field, fall back to parsing the label.
+    const total = /unlimited/i.test(plan.creditsLabel) ? null : (plan.totalCredits ?? totalCredits(plan.creditsLabel));
     const bigCredits = total === null ? "∞" : String(total);
-    const remaining = isMembership ? (creditsRemaining ?? total ?? 0) : (total ?? 0);
+    // Remaining — use the caller-supplied per-plan value (so packages sum to the
+    // Credit Balance); fall back to total − used, then to total.
+    const remaining =
+        total === null
+            ? 0
+            : creditsRemaining ?? Math.max(0, total - (plan.creditsUsed ?? 0));
     // A finite plan with 0 credits left is spent → history: no actions, muted card
     // (you can't freeze / cancel a run-out plan). Unlimited plans never exhaust.
     const exhausted = total !== null && remaining <= 0;
@@ -106,7 +118,7 @@ export function PlanCard({
                 </div>
                 <div className="shrink-0 text-right">
                     <p className={`text-sm font-semibold leading-5 ${disabled ? "text-[#667085]" : "text-[var(--brand-primary)]"}`}>
-                        {aed(plan.priceAed ?? 0)}
+                        {aed(priceAed ?? plan.priceAed ?? 0)}
                     </p>
                     <p className="text-sm font-normal leading-5 text-[#667085]">
                         {isMembership ? "per month" : validityLabel(plan)}

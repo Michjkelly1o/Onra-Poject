@@ -30,7 +30,7 @@ import {
     SearchMd, Download01, Plus, DotsVertical, ChevronLeft, ChevronRight, ChevronDown,
     MarkerPin01, FilterLines, XClose, Eye, Edit02, Archive, Trash01,
     Trash02, RefreshCcw01, SlashCircle01, Check, User01, Send01, UserPlus01,
-    UserSquare, ClockPlus, AlarmClockOff,
+    UserSquare, ClockPlus, AlarmClockOff, Settings01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
+import { AssignShiftModal } from "@/components/staff/AssignShiftModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
 import { TodayScheduleCell } from "@/components/staff/TodayScheduleCell";
@@ -172,7 +173,7 @@ function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
 // Designs for Shift / Blocked time forms land next pass — the dropdown
 // items toast a friendly "coming soon" until then so the click isn't dead.
 
-type AddNewVariant = "combined" | "role-only" | "staff-only";
+type AddNewVariant = "combined" | "role-only" | "staff-only" | "staff-add-only" | "shift-only";
 
 function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTime }: {
     variant: AddNewVariant;
@@ -189,17 +190,32 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
-    // Roles page — single primary button, no dropdown. Per Figma 7413:239946.
-    if (variant === "role-only") {
+    // Single primary button, no dropdown:
+    //   • Roles page → Add role (Figma 7413:239946).
+    //   • Staff section → Add staff (Staff and Shift are separate menus now, so
+    //     the Staff Add opens Add staff directly — client 2026-08-06).
+    if (variant === "role-only" || variant === "staff-add-only") {
         return (
-            <Button variant="primary" size="md" leftIcon={<Plus className="w-4 h-4" />} onClick={onAddRole}>
+            <Button
+                variant="primary"
+                size="md"
+                leftIcon={<Plus className="w-4 h-4" />}
+                onClick={variant === "role-only" ? onAddRole : onAddStaff}
+            >
                 Add
             </Button>
         );
     }
 
     const items: { label: string; icon: React.ReactNode; onClick: () => void }[] =
-        variant === "staff-only"
+        // Shift section → Add shift + Add time off only (no Add staff — that
+        // lives in the Staff menu now). Client 2026-08-06.
+        variant === "shift-only"
+            ? [
+                { label: "Add shift",         icon: <ClockPlus className="w-4 h-4 text-[#667085]" />,     onClick: () => onAddShift?.() },
+                { label: "Add time off",  icon: <AlarmClockOff className="w-4 h-4 text-[#667085]" />, onClick: () => onAddBlockedTime?.() },
+            ]
+            : variant === "staff-only"
             ? [
                 { label: "Add staff",         icon: <UserPlus01 className="w-4 h-4 text-[#667085]" />,    onClick: onAddStaff },
                 { label: "Add shift",         icon: <ClockPlus className="w-4 h-4 text-[#667085]" />,     onClick: () => onAddShift?.() },
@@ -560,25 +576,39 @@ function TimeOffDateNav({ cursor, setCursor }: {
 // must be Deactivated rather than Deleted. New-account staff that never
 // logged in have no history and qualify for Delete.
 
-type StaffRowActionKind = "view" | "edit_details" | "change_role" | "resend_invite" | "archive" | "deactivate" | "reactivate" | "recover" | "delete";
+type StaffRowActionKind = "view" | "edit_details" | "change_role" | "assign_shift" | "account_settings" | "resend_invite" | "archive" | "deactivate" | "reactivate" | "recover" | "delete";
 
 // Thin wrapper around the canonical `<RowActions>` — items array is
 // computed here based on staff status + hasHistory, then delegated.
-function StaffRowActions({ staff, hasHistory, onAction }: {
+function StaffRowActions({ staff, hasHistory, isOwner = false, onAction }: {
     staff: Staff;
     hasHistory: boolean;
+    /** Owners don't work shifts → no "Assign shift" action. */
+    isOwner?: boolean;
     onAction: (kind: StaffRowActionKind) => void;
 }) {
     const isPending  = staff.status === "pending";
     const isActive   = staff.status === "active";
     const isInactive = staff.status === "inactive";
     const isArchive  = staff.status === "archive";
+    // Owner is the studio account holder — no lifecycle actions. Only view +
+    // "Account settings" (edits the owner's details from Settings → Account, the
+    // single source of truth). Client 2026-08.
+    if (isOwner) {
+        return (
+            <RowActions items={[
+                { label: "View details", icon: Eye, onClick: () => onAction("view") },
+                { label: "Account settings", icon: Settings01, onClick: () => onAction("account_settings") },
+            ]} />
+        );
+    }
     return (
         <RowActions items={[
             { label: "View details", icon: Eye, onClick: () => onAction("view") },
             { label: "Resend invitation", icon: Send01, onClick: () => onAction("resend_invite"), hidden: !isPending },
             { label: "Edit details", icon: Edit02, onClick: () => onAction("edit_details"), hidden: !isActive },
             { label: "Change role", icon: UserSquare, onClick: () => onAction("change_role"), hidden: !isActive },
+            { label: "Assign shift", icon: ClockPlus, onClick: () => onAction("assign_shift"), hidden: !isActive },
             { label: "Archive", icon: Archive, onClick: () => onAction("archive"), hidden: !(isActive || isInactive) },
             { label: "Reactivate", icon: Check, onClick: () => onAction("reactivate"), hidden: !isInactive },
             { label: "Recover", icon: RefreshCcw01, onClick: () => onAction("recover"), hidden: !isArchive },
@@ -710,6 +740,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
     const shifts           = useAppStore(s => s.shifts);
     const blockedTimes     = useAppStore(s => s.blockedTimes);
+    // Account profile — the single source of truth for the OWNER's identity, so
+    // the owner row mirrors Settings → Account (edited via the row's Account
+    // settings action) instead of its stale seed record. Client 2026-08.
+    const currentUser      = useAppStore(s => s.currentUser);
     const todayNow = new Date();
     const todayISO = `${todayNow.getFullYear()}-${String(todayNow.getMonth() + 1).padStart(2, "0")}-${String(todayNow.getDate()).padStart(2, "0")}`;
     const todayDow = todayNow.getDay();
@@ -779,6 +813,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     // The Change role modal lives outside the confirm-modal flow because it
     // captures a form value (new role) rather than running a single action.
     const [changingRoleFor, setChangingRoleFor] = useState<Staff | null>(null);
+    const [assignShiftStaff, setAssignShiftStaff] = useState<Staff | null>(null);
     // Bulk selection — separate sets per tab so switching tabs preserves work.
     const [selectedRoleIds,  setSelectedRoleIds]  = useState<Set<string>>(new Set());
     const [selectedStaffIds, setSelectedStaffIds] = useState<Set<string>>(new Set());
@@ -1001,6 +1036,13 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         if (kind === "change_role") {
             setChangingRoleFor(s);
             return;
+        }
+        if (kind === "assign_shift") {
+            setAssignShiftStaff(s);
+            return;
+        }
+        if (kind === "account_settings") {
+            return router.push("/admin/settings/account");
         }
         if (kind === "resend_invite") {
             const ok = resendStaffInvite(s.id);
@@ -1228,7 +1270,15 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     <ToolbarImportButton visible={totalCount === 0 && !search.trim() && !hasActiveFilter} />
                 )}
                 <AddNewMenu
-                    variant={forceTab === "roles" ? "role-only" : forceTab === "staff" ? "staff-only" : "combined"}
+                    variant={
+                        forceTab === "roles"
+                            ? "role-only"
+                            : forceTab === "staff"
+                                ? staffSubTab === "staff" || (staffSubTab === "shift-management" && shiftsViewMode === "week")
+                                    ? "staff-add-only"
+                                    : "shift-only"
+                                : "combined"
+                    }
                     onAddRole={handleAddRole}
                     onAddStaff={handleAddStaff}
                     onAddShift={() => openStaffFormPanel({ kind: "shift", mode: "create" })}
@@ -1523,6 +1573,20 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         // rating references before allowing the Delete branch.
                                         const hasHistory = !canDeleteStaff(s.id);
                                         const isSelected = selectedStaffIds.has(s.id);
+                                        // Owner identity is mirrored from the account profile.
+                                        const isOwnerRow = role?.type === "owner";
+                                        const cuName = `${currentUser.first_name ?? ""} ${currentUser.last_name ?? ""}`.trim();
+                                        const disp = isOwnerRow
+                                            ? {
+                                                  fullName: cuName || s.fullName,
+                                                  email: currentUser.email || s.email,
+                                                  imageUrl: currentUser.avatar_url ?? s.imageUrl,
+                                                  initials:
+                                                      `${(currentUser.first_name?.[0] ?? "").toUpperCase()}${(currentUser.last_name?.[0] ?? "").toUpperCase()}` ||
+                                                      s.initials,
+                                                  color: s.color,
+                                              }
+                                            : { fullName: s.fullName, email: s.email, imageUrl: s.imageUrl, initials: s.initials, color: s.color };
                                         return (
                                             <tr key={s.id}
                                                 onClick={() => router.push(`/staff/members/${s.id}?returnTo=${encodeURIComponent(returnTo)}`)}
@@ -1536,10 +1600,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                 </td>
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
-                                                        <Avatar a={{ imageUrl: s.imageUrl, initials: s.initials, color: s.color, name: s.fullName }} />
+                                                        <Avatar a={{ imageUrl: disp.imageUrl, initials: disp.initials, color: disp.color, name: disp.fullName }} />
                                                         <div className="flex flex-col">
-                                                            <span className="text-[14px] font-medium text-[#101828]">{s.fullName}</span>
-                                                            <span className="text-[13px] text-[#667085]">{s.email}</span>
+                                                            <span className="text-[14px] font-medium text-[#101828]">{disp.fullName}</span>
+                                                            <span className="text-[13px] text-[#667085]">{disp.email}</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1571,6 +1635,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                 </td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <StaffRowActions staff={s} hasHistory={hasHistory}
+                                                        isOwner={role?.type === "owner"}
                                                         onAction={k => handleStaffAction(s, k)} />
                                                 </td>
                                             </tr>
@@ -1784,6 +1849,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         setChangingRoleFor(null);
                     }}
                 />
+            )}
+
+            {assignShiftStaff && (
+                <AssignShiftModal staff={assignShiftStaff} onClose={() => setAssignShiftStaff(null)} />
             )}
         </div>
     );

@@ -28,6 +28,7 @@ export function GiftCardInfoContent({
     variant = "page",
     payNow = false,
     onDone,
+    onBack,
     onCheckout,
 }: {
     designId: string;
@@ -36,6 +37,9 @@ export function GiftCardInfoContent({
     payNow?: boolean;
     /** Close / go back (route: navigate to catalog; sheet: close). */
     onDone: () => void;
+    /** Sheet mode — slide BACK to the product detail (forward/back flow). When
+     *  set, the sheet header shows a Back button instead of a spacer. */
+    onBack?: () => void;
     /** Sheet mode — open the checkout sheet after adding when payNow. */
     onCheckout?: () => void;
 }) {
@@ -56,39 +60,53 @@ export function GiftCardInfoContent({
     const [message, setMessage] = useState("");
 
     function Header() {
-        return (
-            <header
-                className={`z-20 flex w-full shrink-0 items-center gap-3 transition-colors ${
-                    isSheet ? "pb-3" : `sticky top-0 px-4 py-3 ${scrolled ? "bg-white/80 backdrop-blur-md" : ""}`
-                }`}
-            >
-                {isSheet ? (
-                    <span aria-hidden className="size-8 shrink-0" />
-                ) : (
-                    <button
-                        type="button"
-                        onClick={onDone}
-                        aria-label="Back"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
-                    >
-                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
-                    </button>
-                )}
-                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
-                    Gift card information
-                </p>
-                {isSheet ? (
+        // Sheet: centered header (standard bottom-sheet pattern) — Back (slides
+        // to the product detail) on the left, X-close on the right.
+        if (isSheet) {
+            return (
+                <div className="relative flex shrink-0 items-center justify-center pb-3">
+                    {onBack ? (
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            aria-label="Back"
+                            className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        >
+                            <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                        </button>
+                    ) : (
+                        <span aria-hidden className="absolute left-0 size-8" />
+                    )}
+                    <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Gift card information</p>
                     <button
                         type="button"
                         onClick={onDone}
                         aria-label="Close"
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="absolute right-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                     >
                         <XClose className="size-5 text-[#344054]" aria-hidden />
                     </button>
-                ) : (
-                    <span aria-hidden className="size-10 shrink-0" />
-                )}
+                </div>
+            );
+        }
+        return (
+            <header
+                className={`z-20 sticky top-0 flex w-full shrink-0 items-center gap-3 px-4 py-3 transition-colors ${
+                    scrolled ? "bg-white/80 backdrop-blur-md" : ""
+                }`}
+            >
+                <button
+                    type="button"
+                    onClick={onDone}
+                    aria-label="Back"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                >
+                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                </button>
+                <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
+                    Gift card information
+                </p>
+                <span aria-hidden className="size-10 shrink-0" />
             </header>
         );
     }
@@ -184,7 +202,7 @@ export function GiftCardInfoContent({
                             <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="AED gift card amount" className={`${FIELD} pr-10 ${amountError ? FIELD_ERR : FIELD_OK}`} />
                             <ChevronSelectorVertical className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#667085]" aria-hidden />
                         </div>
-                        <p className={`text-sm font-normal leading-5 ${amountError ? "text-[#b42318]" : "text-[#475467]"}`}>Enter an amount between AED {min} and AED {max}</p>
+                        <p className={`text-sm font-normal leading-5 ${amountError ? "text-[#b42318]" : "text-[#475467]"}`}>Enter an amount between AED {min.toLocaleString()} and AED {max.toLocaleString()}</p>
                     </div>
                 )}
 
