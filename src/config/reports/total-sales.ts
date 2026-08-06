@@ -65,7 +65,7 @@ export const TOTAL_SALES_REPORT: ReportDefinition = {
     // Client 2026-07-20: drop "(orders)" from the visible title; also
     // renamed the description away from "order-level" for consistency
     // with the new "Sale category" vocabulary on the dimension dropdown.
-    title:       "Total Sales",
+    title:       "Sales",
     description: "Row-level list of everything sold — the financial source of truth. Refunds land in their own period; voids are erased.",
     type:        "lookback",
     route:       "/reports/total-sales",
