@@ -2151,7 +2151,7 @@ function Composer({
                 "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
                 hasFile
                     ? "border-2 border-[var(--colors-secondary-500)]"
-                    : "border border-[var(--colors-border-primary)] focus-within:border-[var(--colors-secondary-500)] focus-within:ring-4 focus-within:ring-[var(--colors-secondary-500)]/[0.12]",
+                    : "border border-[var(--colors-border-primary)] focus-within:border-[var(--colors-secondary-500)] focus-within:ring-4 focus-within:ring-[var(--colors-secondary-100)]",
             )}
         >
             {/* File chip row — Figma 18716:5616 "Added file". Only the CSV

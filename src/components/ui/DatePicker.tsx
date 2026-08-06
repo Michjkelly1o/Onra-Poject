@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { Calendar, ChevronLeft, ChevronRight, ChevronDown } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 const MONTHS_LONG = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -398,14 +399,12 @@ export function DatePicker({ value, onChange, placeholder = "Select date", class
 
                     {/* Bottom panel */}
                     <div className="border-t border-[var(--colors-border-secondary)] px-3 py-3 flex gap-[10px]">
-                        <button type="button" onClick={handleCancel}
-                            className="flex-1 h-9 border border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <Button type="button" variant="secondary-gray" size="sm" onClick={handleCancel} className="flex-1">
                             Cancel
-                        </button>
-                        <button type="button" onClick={handleApply}
-                            className="flex-1 h-9 rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-[var(--brand-tertiary)] hover:bg-[var(--colors-secondary-300)] transition-colors">
+                        </Button>
+                        <Button type="button" variant="primary" size="sm" onClick={handleApply} className="flex-1">
                             Apply
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
