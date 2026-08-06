@@ -1301,6 +1301,17 @@ function SchedulePage() {
         return true;
     });
 
+    // Day / Week / Month grid views hide Cancelled + Completed classes by
+    // DEFAULT (client 2026-08) — past / dead classes clutter the calendar and
+    // the admin rarely wants them on the grid. They reappear only when the
+    // admin explicitly includes that status in the Filter panel. The List view
+    // is unaffected — it has its own Upcoming / Past tabs and keeps everything.
+    const gridClasses = filteredClasses.filter(c => {
+        if (c.status === "Cancelled" && !applied.statuses.includes("Cancelled")) return false;
+        if (c.status === "Completed" && !applied.statuses.includes("Completed")) return false;
+        return true;
+    });
+
     const STATUS_ORDER: Record<ClassStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
     const listComparators: Record<string, (a: ClassInstance, b: ClassInstance) => number> = {
         date: (a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`),
@@ -1396,7 +1407,7 @@ function SchedulePage() {
                 {/* Schedule's pre-existing chrome hardcodes "classes" plural;
                     preserve that with identical entitySingular + entityPlural. */}
                 <ToolbarTotal
-                    count={activeTab === "list" ? tabbedClasses.length : filteredClasses.length}
+                    count={activeTab === "list" ? tabbedClasses.length : gridClasses.length}
                     entitySingular="classes"
                     entityPlural="classes"
                 />
@@ -1536,15 +1547,15 @@ function SchedulePage() {
                 })()}
 
                 {activeTab === "day" && (
-                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} blockedTimes={blockedTimes} classes={filteredClasses} focusInstructorId={applied.instructors[0]} searchQuery={search} onClassClick={handleClassClick} />
+                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} blockedTimes={blockedTimes} classes={gridClasses} focusInstructorId={applied.instructors[0]} searchQuery={search} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "week" && (
-                    <WeekView weekStart={weekStart} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} classes={filteredClasses} onClassClick={handleClassClick} />
+                    <WeekView weekStart={weekStart} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} classes={gridClasses} onClassClick={handleClassClick} />
                 )}
 
                 {activeTab === "month" && (
-                    <MonthView monthYear={monthYear} classes={filteredClasses} onClassClick={handleClassClick} onMoreClick={handleMoreClick} />
+                    <MonthView monthYear={monthYear} classes={gridClasses} onClassClick={handleClassClick} onMoreClick={handleMoreClick} />
                 )}
             </div>
 
