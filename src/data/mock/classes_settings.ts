@@ -41,4 +41,8 @@ export const classes_settings: ClassesSettings = {
     stop_auto_promoting_value: 12,
     stop_auto_promoting_unit: "hours",
     after_cutoff_mode: "reopens_first_come",
+
+    // ── Guest bookings (Bring a friend) ────────────────────────────────
+    guests_use_plan_enabled: true,
+    guests_allow_unlimited: false,
 };

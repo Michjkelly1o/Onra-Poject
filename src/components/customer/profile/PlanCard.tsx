@@ -27,6 +27,7 @@ function validityLabel(plan: CustomerPlan): string {
 export function PlanCard({
     plan,
     creditsRemaining,
+    priceAed,
     onFreeze,
     onUnfreeze,
     onCancel,
@@ -36,7 +37,12 @@ export function PlanCard({
     freezeMode = "direct",
 }: {
     plan: CustomerPlan;
+    /** Credits remaining for THIS plan (a membership → its balance; a package →
+     *  its share of the customer's balance so all cards sum to Credit Balance). */
     creditsRemaining?: number;
+    /** Resolved price — the plan's own price, or the product price when the plan
+     *  row didn't snapshot one (avoids "AED 0"). */
+    priceAed?: number;
     onFreeze: () => void;
     onUnfreeze: () => void;
     onCancel: () => void;
@@ -55,9 +61,15 @@ export function PlanCard({
     freezeMode?: "direct" | "request";
 }) {
     const isMembership = plan.kind === "membership";
-    const total = totalCredits(plan.creditsLabel);
+    // Total credits — prefer the normalized field, fall back to parsing the label.
+    const total = /unlimited/i.test(plan.creditsLabel) ? null : (plan.totalCredits ?? totalCredits(plan.creditsLabel));
     const bigCredits = total === null ? "∞" : String(total);
-    const remaining = isMembership ? (creditsRemaining ?? total ?? 0) : (total ?? 0);
+    // Remaining — use the caller-supplied per-plan value (so packages sum to the
+    // Credit Balance); fall back to total − used, then to total.
+    const remaining =
+        total === null
+            ? 0
+            : creditsRemaining ?? Math.max(0, total - (plan.creditsUsed ?? 0));
     // A finite plan with 0 credits left is spent → history: no actions, muted card
     // (you can't freeze / cancel a run-out plan). Unlimited plans never exhaust.
     const exhausted = total !== null && remaining <= 0;
@@ -89,7 +101,7 @@ export function PlanCard({
                       : "Active";
 
     return (
-        <div className="flex flex-col gap-4 rounded-2xl border border-[var(--colors-border-tertiary)] bg-white p-4">
+        <div className="flex flex-col gap-4 rounded-2xl border border-[#eaecf0] bg-white p-4">
             <div className="flex items-center gap-3">
                 <ProductCreditTile
                     kind={isMembership ? "membership" : "package"}
@@ -100,15 +112,15 @@ export function PlanCard({
                 />
                 <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{plan.name}</p>
-                    <p className={`text-sm font-normal leading-5 ${disabled ? "text-[var(--colors-text-quaternary)]" : "text-[var(--brand-primary)]"}`}>
+                    <p className={`text-sm font-normal leading-5 ${disabled ? "text-[#667085]" : "text-[var(--brand-primary)]"}`}>
                         {statusLine}
                     </p>
                 </div>
                 <div className="shrink-0 text-right">
-                    <p className={`text-sm font-semibold leading-5 ${disabled ? "text-[var(--colors-text-quaternary)]" : "text-[var(--brand-primary)]"}`}>
-                        {aed(plan.priceAed ?? 0)}
+                    <p className={`text-sm font-semibold leading-5 ${disabled ? "text-[#667085]" : "text-[var(--brand-primary)]"}`}>
+                        {aed(priceAed ?? plan.priceAed ?? 0)}
                     </p>
-                    <p className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">
+                    <p className="text-sm font-normal leading-5 text-[#667085]">
                         {isMembership ? "per month" : validityLabel(plan)}
                     </p>
                 </div>
@@ -117,7 +129,7 @@ export function PlanCard({
             {!isLive ? (
                 <div className="flex items-start gap-2 rounded-xl border border-[#fee4e2] bg-[#fffbfa] p-3">
                     <AlertCircle className="mt-0.5 size-4 shrink-0 text-[#d92d20]" aria-hidden />
-                    <p className="text-sm leading-5 text-[var(--colors-text-quaternary)]">
+                    <p className="text-sm leading-5 text-[#667085]">
                         {plan.status === "cancelled"
                             ? `Your subscription ends on ${shortDate(plan.expiryISO)}. You will keep access until then.`
                             : plan.status === "expired"
@@ -128,16 +140,16 @@ export function PlanCard({
                     </p>
                 </div>
             ) : (
-                <div className="flex flex-col gap-2 rounded-[10px] bg-[var(--colors-bg-tertiary)] px-3 pb-4 pt-3">
+                <div className="flex flex-col gap-2 rounded-[10px] bg-[#f2f4f7] px-3 pb-4 pt-3">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{creditLine}</span>
+                        <span className="text-sm font-normal leading-5 text-[#667085]">{creditLine}</span>
                         {!isMembership && (
-                            <span className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">End {shortDate(plan.expiryISO)}</span>
+                            <span className="text-sm font-normal leading-5 text-[#667085]">End {shortDate(plan.expiryISO)}</span>
                         )}
                     </div>
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--colors-bg-quaternary)]">
+                    <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
                         <div
-                            className={`h-full rounded-full ${plan.status === "frozen" ? "bg-[var(--colors-fg-quaternary)]" : "bg-[var(--brand-primary)]"}`}
+                            className={`h-full rounded-full ${plan.status === "frozen" ? "bg-[#98a2b3]" : "bg-[var(--brand-primary)]"}`}
                             style={{ width: `${pct}%` }}
                         />
                     </div>
@@ -147,11 +159,11 @@ export function PlanCard({
             {isMembership && isLive && (
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">Next billing date</span>
+                        <span className="text-sm font-normal leading-5 text-[#667085]">Next billing date</span>
                         <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{nextBilling}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                        <span className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">Expiry date</span>
+                        <span className="text-sm font-normal leading-5 text-[#667085]">Expiry date</span>
                         <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{shortDate(plan.expiryISO)}</span>
                     </div>
                 </div>

@@ -46,11 +46,23 @@ function BookingProcessing() {
 
     const { member } = useCurrentCustomerContext();
     const addClassBooking = useAppStore((s) => s.addClassBooking);
+    // Guest → Lead capture: a guest we book for is a prospect. If their email
+    // isn't already a customer / lead, we create a Lead so admin's Customer
+    // module surfaces them (addLead dual-writes a `lifecycleTag: "Lead"` row).
+    const addLead = useAppStore((s) => s.addLead);
+    const customers = useAppStore((s) => s.customers);
+    const leads = useAppStore((s) => s.leads);
+    const schedules = useAppStore((s) => s.classSchedules);
     const [step, setStep] = useState(0);
     const wroteRef = useRef(false);
 
+    // Perform the booking write exactly once — but only after `member` resolves.
+    // Depending on `member` (not `[]`) means a first paint where the customer
+    // context hasn't hydrated yet doesn't permanently skip the write; it re-runs
+    // and writes the moment `member` is available (guarded by `wroteRef` so it
+    // still fires only once). This is what guarantees the guest booking — and the
+    // Lead it creates — are actually persisted.
     useEffect(() => {
-        // Perform the write once (synchronous), then sequence the steps over it.
         if (!wroteRef.current && member) {
             wroteRef.current = true;
             const status = mode === "waitlist" ? "waitlisted" : "booked";
@@ -61,6 +73,7 @@ function BookingProcessing() {
             if (bookingDraft.bookSelf) {
                 addClassBooking({ classScheduleId: id, customerId: member.id, status, spot: spots[0] ?? spot });
             }
+            const classBranchId = schedules.find((s) => s.id === id)?.branchId ?? member.branchId;
             bookingDraft.guests.forEach((g, i) => {
                 addClassBooking({
                     classScheduleId: id,
@@ -70,14 +83,41 @@ function BookingProcessing() {
                     // (spots[0]); otherwise seats are offset past the member's.
                     spot: bookingDraft.bookSelf ? spots[i + 1] : spots[i],
                     guestName: g.name,
+                    guestEmail: g.email,
+                    guestPayment: g.payment,
                     chargeBookerCredit: g.payment === "booker_credit",
                 });
+                // Link to an existing profile by email, else create a new Lead so
+                // the guest shows up under the admin Customer module.
+                const email = (g.email ?? "").trim();
+                if (email) {
+                    const lower = email.toLowerCase();
+                    const known =
+                        customers.some((c) => c.email && c.email.toLowerCase() === lower) ||
+                        leads.some((l) => l.contact_email && l.contact_email.toLowerCase() === lower);
+                    if (!known) {
+                        addLead({
+                            contact_name: g.name.trim() || email,
+                            contact_email: email,
+                            source: "Referral",
+                            stage: "new",
+                            engagement_status: "warm",
+                            branch_id: classBranchId,
+                        });
+                    }
+                }
             });
             bookingDraft.classId = null;
             bookingDraft.guests = [];
             bookingDraft.bookSelf = true;
             bookingDraft.spots = [];
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [member]);
+
+    // Sequence the 3-step status then route to Success — independent of the
+    // write so the loader animation runs on a fixed cadence.
+    useEffect(() => {
         const t1 = setTimeout(() => setStep(1), STEP_MS);
         const t2 = setTimeout(() => setStep(2), STEP_MS * 2);
         const t3 = setTimeout(

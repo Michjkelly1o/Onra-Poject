@@ -191,30 +191,30 @@ function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry; onChan
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="h-10 flex items-center gap-1.5 px-[14px] border-r border-[var(--colors-border-primary)] text-[16px] text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                className="h-10 flex items-center gap-1.5 px-[14px] border-r border-[#d0d5dd] text-[16px] text-[#101828] hover:bg-[#f9fafb] transition-colors">
                 <span className="text-[16px]">{value.flag}</span>
                 {value.dial}
-                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                <ChevronDown className="w-4 h-4 text-[#667085]" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 z-50 w-[280px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden flex flex-col max-h-[320px]">
-                    <div className="p-2 border-b border-[var(--colors-border-secondary)]">
+                <div className="absolute top-[calc(100%+4px)] left-0 z-50 w-[280px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden flex flex-col max-h-[320px]">
+                    <div className="p-2 border-b border-[#e4e7ec]">
                         <div className="relative">
-                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)] pointer-events-none" />
+                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
                             <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
                                 placeholder="Search country or code"
-                                className="w-full h-9 pl-9 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]" />
+                                className="w-full h-9 pl-9 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]" />
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto py-1">
                         {filtered.map(c => (
                             <button key={c.code} type="button"
                                 onClick={() => { onChange(c); setOpen(false); setSearch(""); }}
-                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[var(--colors-bg-secondary)] text-left">
+                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[#f9fafb] text-left">
                                 <span className="text-[16px]">{c.flag}</span>
-                                <span className="flex-1 text-[14px] text-[var(--colors-text-secondary)] truncate">{c.name}</span>
-                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">{c.dial}</span>
-                                {c.code === value.code && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
+                                <span className="flex-1 text-[14px] text-[#344054] truncate">{c.name}</span>
+                                <span className="text-[13px] text-[#667085]">{c.dial}</span>
+                                {c.code === value.code && <Check className="w-4 h-4 text-[#658774]" />}
                             </button>
                         ))}
                     </div>
@@ -321,30 +321,30 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
         <div ref={ref} className="relative w-full">
             <button type="button" onClick={() => setOpen(p => !p)}
                 className={cn(
-                    "flex items-center gap-2 w-full min-h-[40px] px-[14px] py-[6px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
-                    open ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-300)]",
+                    "flex items-center gap-2 w-full min-h-[40px] px-[14px] py-[6px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                    open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#aad4bd]",
                 )}>
                 <div className="flex-1 flex flex-wrap items-center gap-1.5">
                     {selectedOptions.length === 0 ? (
-                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">Select categories</span>
+                        <span className="text-[14px] text-[#667085]">Select categories</span>
                     ) : (
                         selectedOptions.map(o => (
                             <span key={o.id}
-                                className="inline-flex items-center gap-1.5 pl-2 pr-1 py-[2px] rounded-full text-[13px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]">
+                                className="inline-flex items-center gap-1.5 pl-2 pr-1 py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
                                 {o.name}
                                 <span role="button" tabIndex={0} aria-label={`Remove ${o.name}`}
                                     onClick={e => { e.stopPropagation(); remove(o.id); }}
                                     onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); remove(o.id); } }}
-                                    className="w-4 h-4 inline-flex items-center justify-center rounded-full text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-tertiary)] transition-colors text-[16px] leading-none cursor-pointer">×</span>
+                                    className="w-4 h-4 inline-flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] hover:bg-[#f2f4f7] transition-colors text-[16px] leading-none cursor-pointer">×</span>
                             </span>
                         ))
                     )}
                 </div>
-                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", open && "rotate-180")} />
+                <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
             </button>
             {open && (
                 <div ref={menuRef} style={menuStyle}
-                    className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                    className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                     {/* Client 2026-07-31 — "+ Create class category" is
                         always the first row so admins can add a missing
                         category without leaving the staff form. Mirrors
@@ -355,7 +355,7 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
                         <button
                             type="button"
                             onClick={() => { setOpen(false); onCreateCategory(); }}
-                            className="shrink-0 flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-secondary-600)] hover:bg-[var(--colors-bg-secondary)] transition-colors text-left"
+                            className="shrink-0 flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors text-left"
                         >
                             <Plus className="w-4 h-4" />
                             Create class category
@@ -363,16 +363,16 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
                     )}
                     <div className="py-1.5 overflow-y-auto flex-1">
                         {options.length === 0 ? (
-                            <p className="px-4 py-3 text-[14px] text-[var(--colors-text-quaternary)]">No categories available.</p>
+                            <p className="px-4 py-3 text-[14px] text-[#667085]">No categories available.</p>
                         ) : (
                             options.map(opt => {
                                 const selected = selectedIds.includes(opt.id);
                                 return (
                                     <button key={opt.id} type="button" onClick={() => toggle(opt.id)}
-                                        className="flex items-center gap-3 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors text-left">
+                                        className="flex items-center gap-3 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors text-left">
                                         <span className={cn(
                                             "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                                            selected ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]",
+                                            selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
                                         )}>
                                             {selected && <Check className="w-3 h-3 text-white" />}
                                         </span>
@@ -474,35 +474,35 @@ function MultiShiftDropdown({ options, selectedIds, onChange, disabled, emptyLab
                 className={cn(
                     "flex items-center gap-2 w-full min-h-[40px] px-[14px] py-[6px] border-1 rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
                     disabled
-                        ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] cursor-not-allowed"
+                        ? "bg-[#f9fafb] border-[#e4e7ec] cursor-not-allowed"
                         : open
-                            ? "bg-white border-[var(--colors-secondary-500)] ring-2 ring-[var(--colors-secondary-300)]"
-                            : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-300)]",
+                            ? "bg-white border-[#7ba08c] ring-2 ring-[#aad4bd]"
+                            : "bg-white border-[#d0d5dd] hover:border-[#aad4bd]",
                 )}>
                 <div className="flex-1 flex flex-wrap items-center gap-1.5">
                     {selectedOptions.length === 0 ? (
-                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">
+                        <span className="text-[14px] text-[#667085]">
                             {disabled ? "Select a branch first" : "No shift assigned"}
                         </span>
                     ) : (
                         selectedOptions.map(o => (
                             <span key={o.id}
-                                className="inline-flex items-center gap-1.5 pl-2 pr-1 py-[2px] rounded-full text-[13px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]">
+                                className="inline-flex items-center gap-1.5 pl-2 pr-1 py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
                                 {o.name}
                                 <span role="button" tabIndex={0} aria-label={`Remove ${o.name}`}
                                     onClick={e => { e.stopPropagation(); remove(o.id); }}
                                     onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); remove(o.id); } }}
-                                    className="w-4 h-4 inline-flex items-center justify-center rounded-full text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-tertiary)] transition-colors text-[16px] leading-none cursor-pointer">×</span>
+                                    className="w-4 h-4 inline-flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] hover:bg-[#f2f4f7] transition-colors text-[16px] leading-none cursor-pointer">×</span>
                             </span>
                         ))
                     )}
                 </div>
-                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", open && "rotate-180")} />
+                <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
             </button>
             {open && !disabled && (
-                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 max-h-[300px] overflow-y-auto">
+                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 max-h-[300px] overflow-y-auto">
                     {options.length === 0 ? (
-                        <p className="px-4 py-3 text-[14px] text-[var(--colors-text-quaternary)]">{emptyLabel ?? "No shifts available."}</p>
+                        <p className="px-4 py-3 text-[14px] text-[#667085]">{emptyLabel ?? "No shifts available."}</p>
                     ) : (
                         options.map(opt => {
                             const selected = selectedIds.includes(opt.id);
@@ -513,17 +513,17 @@ function MultiShiftDropdown({ options, selectedIds, onChange, disabled, emptyLab
                                     onClick={() => !overlap && toggle(opt.id)}
                                     className={cn(
                                         "flex items-center gap-3 w-full px-4 py-[10px] text-left transition-colors",
-                                        overlap ? "cursor-not-allowed opacity-60" : "hover:bg-[var(--colors-bg-secondary)]",
+                                        overlap ? "cursor-not-allowed opacity-60" : "hover:bg-[#f9fafb]",
                                     )}>
                                     <span className={cn(
                                         "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors mt-[2px]",
-                                        selected ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]",
+                                        selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
                                     )}>
                                         {selected && <Check className="w-3 h-3 text-white" />}
                                     </span>
                                     <span className="flex-1 min-w-0">
-                                        <span className="block text-[14px] font-medium text-[var(--colors-text-secondary)]">{opt.name}</span>
-                                        <span className="block text-[13px] text-[var(--colors-text-quaternary)]">
+                                        <span className="block text-[14px] font-medium text-[#344054]">{opt.name}</span>
+                                        <span className="block text-[13px] text-[#667085]">
                                             {shiftDaysLabel(opt.working_days)} • {to12h(opt.start_time)} - {to12h(opt.end_time)}
                                         </span>
                                     </span>
@@ -550,7 +550,7 @@ function TextInput({ value, onChange, placeholder, type = "text" }: {
 }) {
     return (
         <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-            className="h-10 w-full px-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+            className="h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
         />
     );
 }
@@ -570,13 +570,13 @@ function ImageUpload({ value, initials, onChange }: {
     }
     return (
         <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center shrink-0 border-1 border-[var(--colors-border-secondary)]"
+            <div className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center shrink-0 border-1 border-[#e4e7ec]"
                 style={{ backgroundColor: NEUTRAL_AVATAR_BG }}>
                 {value
                     ? <img src={value} alt="" className="w-full h-full object-cover" />
                     : initials === "?"
-                        ? <User01 className="w-10 h-10 text-[var(--colors-text-tertiary)]" />
-                        : <span className="font-semibold text-[24px] text-[var(--colors-text-tertiary)]">{initials}</span>
+                        ? <User01 className="w-10 h-10 text-[#475467]" />
+                        : <span className="font-semibold text-[24px] text-[#475467]">{initials}</span>
                 }
             </div>
             <Button variant="secondary-gray" size="md"
@@ -603,31 +603,31 @@ function StaffPreview({ form, roleName, payRateName, branchLabel, joinedLabel }:
     const passwordMask = form.tempPassword ? "•".repeat(Math.min(12, form.tempPassword.length)) : "";
     const phoneDisplay = form.phone.trim() ? `${form.phoneCountry.dial} ${form.phone.trim()}` : "Phone number";
     return (
-        <div className="w-[400px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shrink-0">
+        <div className="w-[400px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shrink-0">
             <div className="p-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">User preview</p>
-                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">This is how user overview will look like.</p>
+                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">User preview</p>
+                <p className="text-[14px] text-[#667085] leading-[20px]">This is how user overview will look like.</p>
             </div>
             <div className="bg-[#f6f6f3] flex flex-col gap-5 p-6 w-full">
-                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-4">
+                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-4">
                     {/* Avatar top-left — same chrome as the role preview. */}
-                    <div className="w-[80px] h-[80px] rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0 overflow-hidden">
+                    <div className="w-[80px] h-[80px] rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0 overflow-hidden">
                         {form.imageUrl
                             ? <img src={form.imageUrl} alt="" className="w-full h-full object-cover" />
                             : initials === "?"
-                                ? <User01 className="w-9 h-9 text-[var(--colors-text-tertiary)]" />
-                                : <span className="font-semibold text-[28px] text-[var(--colors-text-tertiary)]">{initials}</span>
+                                ? <User01 className="w-9 h-9 text-[#475467]" />
+                                : <span className="font-semibold text-[28px] text-[#475467]">{initials}</span>
                         }
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
+                        <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">
                             {fullName || "User name"}
                         </p>
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">{form.email.trim() || "User email"}</p>
+                        <p className="text-[14px] text-[#667085]">{form.email.trim() || "User email"}</p>
                     </div>
 
-                    <div className="flex flex-col gap-2.5 text-[14px] text-[var(--colors-text-quaternary)]">
+                    <div className="flex flex-col gap-2.5 text-[14px] text-[#667085]">
                         <div className="flex items-center gap-2"><Calendar className="w-4 h-4 shrink-0" />{joinedLabel || "Joined date"}</div>
                         <div className="flex items-center gap-2"><Mail01 className="w-4 h-4 shrink-0" />{form.email.trim() || "Email"}</div>
                         <div className="flex items-center gap-2">
@@ -671,7 +671,7 @@ function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n
             onClick={() => !disabled && onChange(!value)}
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
-                value ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
+                value ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -683,11 +683,11 @@ function PayConfigCard({ title, subtitle, enabled, onToggle, toggleDisabled, chi
     title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; toggleDisabled?: boolean; children?: React.ReactNode;
 }) {
     return (
-        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)]")}>
+        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]")}>
             <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
-                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>
+                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
+                    <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
                 </div>
                 <PayToggle value={enabled} onChange={onToggle} disabled={toggleDisabled} />
             </div>
@@ -699,12 +699,12 @@ function PayConfigCard({ title, subtitle, enabled, onToggle, toggleDisabled, chi
 /** AED-prefixed amount input (matches PayRateFormPage's AedInput chrome). */
 function PayAedInput({ value, onChange, placeholder = "Enter amount" }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
     return (
-        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all overflow-hidden">
-            <span className="flex items-center px-[14px] text-[16px] text-[var(--colors-text-tertiary)] leading-[24px] border-r border-[var(--colors-border-primary)] shrink-0 select-none">AED</span>
+        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all overflow-hidden">
+            <span className="flex items-center px-[14px] text-[16px] text-[#475467] leading-[24px] border-r border-[#d0d5dd] shrink-0 select-none">AED</span>
             <input type="text" inputMode="numeric" value={value}
                 onChange={e => onChange(e.target.value.replace(/[^\d.]/g, ""))}
                 placeholder={placeholder}
-                className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent" />
+                className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent" />
         </div>
     );
 }
@@ -1010,13 +1010,13 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     return (
         <>
             {/* Side-panel header */}
-            <div className="flex items-center justify-between px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
+            <div className="flex items-center justify-between px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
+                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
                     {mode === "create" ? "Add new staff" : "Edit staff"}
                 </h2>
                 <button type="button" onClick={exit} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
             </div>
 
@@ -1030,7 +1030,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
 
             <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 py-5">
                         <div className="flex flex-col gap-5 w-full">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{step === 1 ? "Staff details" : "Pay rate"}</p>
+                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{step === 1 ? "Staff details" : "Pay rate"}</p>
 
                             {step === 1 && (<>
                             <ImageUpload
@@ -1068,7 +1068,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
 
                             <div className="flex flex-col gap-[6px]">
                                 <FieldLabel label="Phone number" />
-                                <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                     <PhoneCountryDropdown
                                         value={form.phoneCountry}
                                         onChange={c => set({ phoneCountry: c })}
@@ -1079,7 +1079,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                         value={form.phone}
                                         onChange={e => set({ phone: e.target.value.replace(/\D/g, "") })}
                                         placeholder="Phone number..."
-                                        className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent rounded-r-[8px]"
+                                        className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent rounded-r-[8px]"
                                     />
                                 </div>
                             </div>
@@ -1115,9 +1115,9 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                         />
                                     </div>
 
-                                    <div className="flex gap-3 items-start bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                        <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0 mt-[2px]" />
-                                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                                    <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                        <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
+                                        <p className="text-[14px] text-[#475467] leading-[20px]">
                                             This staff will inherit all permissions from the selected role. Their branch is set below.
                                         </p>
                                     </div>
@@ -1131,7 +1131,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                             <div className="flex flex-col gap-[6px]">
                                 <FieldLabel label="Branch" />
                                 {isOwnerRole ? (
-                                    <div className="h-10 w-full px-[14px] flex items-center border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-[var(--colors-bg-secondary)] text-[14px] text-[var(--colors-text-quaternary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                    <div className="h-10 w-full px-[14px] flex items-center border-1 border-[#d0d5dd] rounded-[8px] bg-[#f9fafb] text-[14px] text-[#667085] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                         All locations
                                     </div>
                                 ) : (
@@ -1160,7 +1160,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                             onChange={e => set({ shortIntro: e.target.value })}
                                             placeholder="Briefly introduce this instructor — surfaces on the customer-facing profile."
                                             rows={4}
-                                            className="w-full px-[14px] py-[10px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none"
+                                            className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none"
                                         />
                                     </div>
 
@@ -1172,31 +1172,18 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                             onChange={e => set({ workingExperienceYears: e.target.value.replace(/[^\d]/g, "") })}
                                             placeholder="0"
                                             min={0}
-                                            className="h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                                            className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
                                         />
-                                        <p className="text-[14px] text-[var(--colors-text-tertiary)]">in year</p>
+                                        <p className="text-[14px] text-[#475467]">in year</p>
                                     </div>
                                 </>
                             )}
 
-                            {/* Assign shift — ALL roles (client 2026-07-24).
-                                Multi-select, scoped to the person's branch,
-                                overlapping shifts disabled. Optional. */}
-                            <div className="flex flex-col gap-[6px]">
-                                <FieldLabel label="Assign shift (optional)" />
-                                <MultiShiftDropdown
-                                    options={shiftOptions}
-                                    selectedIds={form.shiftIds}
-                                    onChange={ids => set({ shiftIds: ids })}
-                                    disabled={!isOwnerRole && !form.branchId}
-                                    emptyLabel={
-                                        !isOwnerRole && !form.branchId
-                                            ? "Select a branch first."
-                                            : "No active shifts at this branch."
-                                    }
-                                />
-                                <p className="text-[14px] text-[var(--colors-text-tertiary)]">A staff member can hold multiple shifts from their own branch. Overlapping shifts can't be selected.</p>
-                            </div>
+                            {/* Assign shift removed from the form (client 2026-08) —
+                                shifts are assigned ONLY via the "Assign shift" quick
+                                action + the Staff Schedule module. Existing
+                                assignments are preserved on save (see handleSave),
+                                the form just no longer edits them. */}
 
                             {/* Categories — instructor-only multi-select
                                 dropdown. Drives the cross-module instructor
@@ -1211,7 +1198,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                         onChange={ids => set({ categoryIds: ids })}
                                         onCreateCategory={() => setCreatingCategory(true)}
                                     />
-                                    <p className="text-[14px] text-[var(--colors-text-tertiary)]">Instructors can only be assigned to classes whose category they hold.</p>
+                                    <p className="text-[14px] text-[#475467]">Instructors can only be assigned to classes whose category they hold.</p>
                                 </div>
                             )}
                             </>)}
@@ -1276,7 +1263,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                                     value={form.payConfig.perClass.substitutionAmountAed != null ? String(form.payConfig.perClass.substitutionAmountAed) : ""}
                                                     onChange={v => setPayTrack("perClass", { substitutionAmountAed: v === "" ? undefined : Number(v) })}
                                                 />
-                                                <p className="text-[14px] text-[var(--colors-text-tertiary)]">Per class for which the instructor is added as a substitute.</p>
+                                                <p className="text-[14px] text-[#475467]">Per class for which the instructor is added as a substitute.</p>
                                             </div>
                                         </PayConfigCard>
                                     )}
@@ -1306,7 +1293,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                     </div>
 
             {/* Side-panel footer — Cancel + Back/Continue/Save. */}
-            <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
+            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
                 <Button variant="secondary-gray" size="md" onClick={exit}>Cancel</Button>
                 <div className="flex items-center gap-3">
                     {step === 2 && (
