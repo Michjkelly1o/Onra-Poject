@@ -137,8 +137,8 @@ function parseCredits(label: string): number {
 function CustomerStatusBadge({ status }: { status: Customer["status"] }) {
     const styles: Record<Customer["status"], string> = {
         active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-        archived: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+        inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+        archived: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     };
     const label = status.charAt(0).toUpperCase() + status.slice(1);
     return (
@@ -160,12 +160,12 @@ const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
 function PlanStatusBadge({ status }: { status: PlanStatus }) {
     const styles: Record<PlanStatus, string> = {
         active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        expired: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+        expired: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         frozen: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
         // Amber for "waiting on us" — matches the pending-approval convention
         // used by refund requests (needs-attention row on the dashboard).
         freeze_requested: "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
-        cancelled: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+        cancelled: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         removed: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
     return (
@@ -188,8 +188,8 @@ function RoleBadge({ role }: { role: string }) {
 function PlanIcon({ kind }: { kind: PlanKind }) {
     const Icon = kind === "membership" ? CreditCard02 : kind === "package" ? Package : Gift01;
     return (
-        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-            <Icon className="w-5 h-5 text-[#475467]" />
+        <div className="relative shrink-0 size-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center">
+            <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
         </div>
     );
@@ -211,21 +211,21 @@ function ModalShell({ width = "w-[480px]", title, subtitle, onClose, children, f
             <div className={cn("relative bg-white rounded-[16px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden max-h-[90vh]", width)}>
                 <div className="relative shrink-0">
                     <button type="button" onClick={onClose}
-                        className="absolute right-3 top-3 w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        className="absolute right-3 top-3 w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <div className="flex flex-col gap-1 px-6 pt-6 pb-5 pr-14">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-4">
                     {children}
                 </div>
                 {footer && (
                     <div className="shrink-0">
-                        <div className="h-px w-full bg-[#e4e7ec]" />
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                         <div className="px-6 pt-6 pb-6 flex gap-3">{footer}</div>
                     </div>
                 )}
@@ -238,8 +238,8 @@ function ModalShell({ width = "w-[480px]", title, subtitle, onClose, children, f
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex items-center justify-between gap-4">
-            <p className="text-[14px] text-[#667085] whitespace-nowrap">{label}</p>
-            <div className="text-[16px] font-medium text-[#101828] text-right flex items-center gap-2">{children}</div>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] whitespace-nowrap">{label}</p>
+            <div className="text-[16px] font-medium text-[var(--colors-text-primary)] text-right flex items-center gap-2">{children}</div>
         </div>
     );
 }
@@ -319,18 +319,18 @@ function FreezeModal({ plan, onClose, onConfirm }: {
         >
             <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Start date</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Start date</label>
                     {/* Freeze can only start today or later (Brief: start from current date). */}
                     <DatePicker value={start} onChange={v => setStart(v)} placeholder="Start date" minDate={today} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">End date</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">End date</label>
                     <DatePicker value={end} onChange={setEnd} placeholder="End date" minDate={start || today} />
                 </div>
             </div>
-            <div className="flex items-center gap-4 p-4 rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec]">
-                <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
-                <p className={`text-[14px] leading-[20px] ${underMin || overMax ? "text-[#b42318]" : "text-[#475467]"}`}>
+            <div className="flex items-center gap-4 p-4 rounded-[12px] bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)]">
+                <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0" />
+                <p className={`text-[14px] leading-[20px] ${underMin || overMax ? "text-[#b42318]" : "text-[var(--colors-text-tertiary)]"}`}>
                     {durationHelper}
                 </p>
             </div>
@@ -338,7 +338,7 @@ function FreezeModal({ plan, onClose, onConfirm }: {
                 Hidden when the policy has none (exceptions off, or all deleted). */}
             {showReason && (
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Freeze reason</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Freeze reason</label>
                     <SelectInput
                         value={reason}
                         onChange={setReason}
@@ -352,8 +352,8 @@ function FreezeModal({ plan, onClose, onConfirm }: {
                 when the picked reason waives it (so the admin sees BOTH the
                 policy default AND the exception at a glance). */}
             {policy.fee_enabled && policy.fee_amount_aed > 0 && (
-                <div className={`rounded-[12px] border-1 p-4 ${feeWaived ? "bg-[#f9fafb] border-[#e4e7ec]" : "bg-[#fffaf5] border-[#f9dbaf]"}`}>
-                    <p className={`text-[14px] leading-[20px] ${feeWaived ? "text-[#667085]" : "text-[#b93815]"}`}>
+                <div className={`rounded-[12px] border-1 p-4 ${feeWaived ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)]" : "bg-[#fffaf5] border-[#f9dbaf]"}`}>
+                    <p className={`text-[14px] leading-[20px] ${feeWaived ? "text-[var(--colors-text-quaternary)]" : "text-[#b93815]"}`}>
                         {feeWaived
                             ? <>Freeze fee <span className="font-semibold">waived</span> for this reason (AED {policy.fee_amount_aed} normally applies).</>
                             : <>A {policy.fee_type === "recurring" ? "recurring" : "one-time"} freeze fee of <span className="font-semibold">AED {policy.fee_amount_aed}</span> will be charged on confirm.</>
@@ -386,19 +386,19 @@ function UnfreezeModal({ plan, onClose, onConfirm }: {
                 plan was frozen and can't be changed at unfreeze time. */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Start date</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Start date</label>
                     <DatePicker value={plan.freezeStartISO ?? ""} onChange={() => {}} placeholder="—" disabled />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">End date</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">End date</label>
                     <DatePicker value={plan.freezeEndISO ?? ""} onChange={() => {}} placeholder="—" disabled />
                 </div>
             </div>
             {/* Reason the customer gave when self-freezing (customer portal). */}
             {plan.freezeReason && (
                 <div className="mt-4 flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Freeze reason</label>
-                    <div className="rounded-[8px] border-1 border-[#e4e7ec] bg-[#f9fafb] px-3.5 py-2.5 text-[14px] text-[#475467]">
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Freeze reason</label>
+                    <div className="rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-3.5 py-2.5 text-[14px] text-[var(--colors-text-tertiary)]">
                         {plan.freezeReason}
                     </div>
                 </div>
@@ -457,31 +457,31 @@ function FreezeRequestReviewModal({ plan, onClose, onApprove, onReject }: {
             {/* Requested window — read-only. Dates come straight off the plan. */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Requested start</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Requested start</label>
                     <DatePicker value={plan.freezeRequestStartISO ?? ""} onChange={() => {}} placeholder="—" disabled />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Requested end</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Requested end</label>
                     <DatePicker value={plan.freezeRequestEndISO ?? ""} onChange={() => {}} placeholder="—" disabled />
                 </div>
             </div>
             {plan.freezeRequestReason && (
                 <div className="mt-4 flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Reason</label>
-                    <div className="rounded-[8px] border-1 border-[#e4e7ec] bg-[#f9fafb] px-3.5 py-2.5 text-[14px] text-[#475467]">
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Reason</label>
+                    <div className="rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-3.5 py-2.5 text-[14px] text-[var(--colors-text-tertiary)]">
                         {plan.freezeRequestReason}
                     </div>
                 </div>
             )}
             {rejectMode && (
                 <div className="mt-4 flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Note to customer (optional)</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Note to customer (optional)</label>
                     <textarea
                         value={note}
                         onChange={e => setNote(e.target.value)}
                         rows={3}
                         placeholder="e.g. Freeze window falls in our peak season — please pick dates after Sep 1."
-                        className="w-full rounded-[8px] border-1 border-[#d0d5dd] bg-white px-3.5 py-2.5 text-[14px] text-[#101828] placeholder:text-[#98a2b3] focus:outline-none focus:ring-2 focus:ring-[#7ba08c]/40"
+                        className="w-full rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-fg-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-500)]/40"
                     />
                 </div>
             )}
@@ -519,14 +519,14 @@ function CancelPlanModal({ plan, onClose, onConfirm }: {
         return (
             <button type="button" onClick={() => setMode(value)}
                 className={cn("flex-1 flex items-center gap-3 p-4 rounded-[12px] text-left transition-all",
-                    selected ? "border-2 border-[#7ba08c] bg-white" : "border-1 border-[#e4e7ec] bg-white hover:border-[#aad4bd]")}>
+                    selected ? "border-2 border-[var(--colors-secondary-500)] bg-white" : "border-1 border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-secondary-300)]")}>
                 <div className="flex-1 min-w-0 flex flex-col">
-                    <span className="text-[14px] font-medium text-[#344054]">{title}</span>
-                    <span className="text-[14px] text-[#475467]">{sub}</span>
+                    <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{title}</span>
+                    <span className="text-[14px] text-[var(--colors-text-tertiary)]">{sub}</span>
                 </div>
                 <span className={cn("w-4 h-4 rounded-full border flex items-center justify-center shrink-0",
-                    selected ? "border-[#658774]" : "border-[#d0d5dd]")}>
-                    {selected && <span className="w-1.5 h-1.5 rounded-full bg-[#658774]" />}
+                    selected ? "border-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)]")}>
+                    {selected && <span className="w-1.5 h-1.5 rounded-full bg-[var(--colors-secondary-600)]" />}
                 </span>
             </button>
         );
@@ -543,19 +543,19 @@ function CancelPlanModal({ plan, onClose, onConfirm }: {
                 <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(mode, reason)}>Cancel plan</Button>
             </>}
         >
-            <div className="border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <p className="text-[18px] font-semibold text-[#101828]">Plan details</p>
+            <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Plan details</p>
                 <div className="flex flex-col">
-                    <p className="text-[14px] text-[#667085]">{plan.planTypeLabel}</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{plan.name}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">{plan.planTypeLabel}</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{plan.name}</p>
                 </div>
                 <div className="flex flex-col">
-                    <p className="text-[14px] text-[#667085]">Customer since</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{fmtDate(plan.purchasedAtISO)}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Customer since</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{fmtDate(plan.purchasedAtISO)}</p>
                 </div>
                 <div className="flex flex-col">
-                    <p className="text-[14px] text-[#667085]">{billingLabel}</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{billingValue}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">{billingLabel}</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{billingValue}</p>
                 </div>
             </div>
             <div className="flex gap-4">
@@ -566,7 +566,7 @@ function CancelPlanModal({ plan, onClose, onConfirm }: {
                 reasons — cancel then proceeds without one. */}
             {showReason && (
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[14px] font-medium text-[#344054]">Cancellation reason</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Cancellation reason</label>
                     <SelectInput value={reason} onChange={setReason} placeholder="Select a reason"
                         options={availableReasons.map(r => ({ value: r, label: r }))} width="w-full" />
                 </div>
@@ -597,8 +597,8 @@ function RemoveComplimentaryModal({ plan, customer, onClose, onConfirm }: {
                     onClick={() => onConfirm(reason)}>Remove</Button>
             </>}
         >
-            <div className="border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <p className="text-[18px] font-semibold text-[#101828]">Details</p>
+            <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
                 <div className="flex flex-col gap-2">
                     <InfoRow label="Issued by">
                         <span>{plan.grantIssuedBy ?? "—"}</span>
@@ -615,7 +615,7 @@ function RemoveComplimentaryModal({ plan, customer, onClose, onConfirm }: {
                 </div>
             </div>
             <div className="flex flex-col gap-1.5">
-                <label className="text-[14px] font-medium text-[#344054]">Remove reason</label>
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Remove reason</label>
                 <SelectInput value={reason} onChange={setReason} placeholder="Select a reason"
                     options={REMOVE_REASONS.map(r => ({ value: r, label: r }))} width="w-full" />
             </div>
@@ -637,8 +637,8 @@ function ViewComplimentaryModal({ plan, customer, onClose }: {
             subtitle="Remove free credit access from customer."
             onClose={onClose}
         >
-            <div className="border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <p className="text-[18px] font-semibold text-[#101828]">Details</p>
+            <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
                 <div className="flex flex-col gap-2">
                     <InfoRow label="Status">
                         <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]">
@@ -651,7 +651,7 @@ function ViewComplimentaryModal({ plan, customer, onClose }: {
                         {plan.removedByRole && <RoleBadge role={plan.removedByRole} />}
                     </InfoRow>
                 </div>
-                <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                 <div className="flex flex-col gap-2">
                     <InfoRow label="Issued by">
                         <span>{plan.grantIssuedBy ?? "—"}</span>
@@ -682,7 +682,7 @@ const CUSTOMER_ACTION_CFG: Record<CustomerAction, {
         title: "Archive this customer?",
         description: n => `${n} will be hidden from the default customer list. All history is preserved — you can recover them anytime.`,
         confirmLabel: "Archive", destructive: false,
-        IconComp: Archive, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        IconComp: Archive, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
     deactivate: {
         title: "Deactivate this customer?",
@@ -694,13 +694,13 @@ const CUSTOMER_ACTION_CFG: Record<CustomerAction, {
         title: "Recover this customer?",
         description: n => `${n} will be restored to Active status and shown in the customer list again.`,
         confirmLabel: "Recover", destructive: false,
-        IconComp: RefreshCcw01, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        IconComp: RefreshCcw01, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
     reactivate: {
         title: "Reactivate this customer?",
         description: n => `${n} will be reactivated — login is re-enabled and they can book classes again.`,
         confirmLabel: "Reactivate", destructive: false,
-        IconComp: Check, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        IconComp: Check, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
 };
 
@@ -713,16 +713,16 @@ function CustomerStatusModal({ action, customerName, onClose, onConfirm }: {
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
                         <cfg.IconComp className={cn("w-6 h-6", cfg.iconColor)} />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.description(customerName)}</p>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{cfg.title}</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{cfg.description(customerName)}</p>
                     </div>
                 </div>
                 <div className="flex gap-3 px-6 pt-6 pb-6">
@@ -770,32 +770,32 @@ function PlanRowActions({ plan, onAction }: {
     return (
         <div className="relative">
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
+                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-tertiary)] transition-colors">
+                <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
                 {actions.includes("freeze") && (
                     <button type="button" onClick={() => trigger("freeze")}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <PauseCircle className="w-4 h-4 text-[#667085]" />Freeze
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <PauseCircle className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Freeze
                     </button>
                 )}
                 {actions.includes("unfreeze") && (
                     <button type="button" onClick={() => trigger("unfreeze")}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <PlayCircle className="w-4 h-4 text-[#667085]" />Unfreeze
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <PlayCircle className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Unfreeze
                     </button>
                 )}
                 {actions.includes("freeze_review") && (
                     <button type="button" onClick={() => trigger("freeze_review")}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <PauseCircle className="w-4 h-4 text-[#667085]" />Review freeze request
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <PauseCircle className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Review freeze request
                     </button>
                 )}
                 {actions.includes("view") && (
                     <button type="button" onClick={() => trigger("view")}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <AlignLeft className="w-4 h-4 text-[#667085]" />View details
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <AlignLeft className="w-4 h-4 text-[var(--colors-text-quaternary)]" />View details
                     </button>
                 )}
                 {actions.includes("cancel") && (
@@ -848,16 +848,16 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Date range — filters on plan expiry date */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date range</p>
                         <div className="grid grid-cols-2 gap-3">
                             <DatePicker value={pending.dateStart} placeholder="Start date"
                                 onChange={v => setPending(p => ({
@@ -869,9 +869,9 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
                                 onChange={v => setPending(p => ({ ...p, dateEnd: v }))} />
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Plan type</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Plan type</p>
                         <div className="flex flex-wrap gap-2">
                             {(["membership", "package", "complimentary"] as PlanKind[]).map(k => (
                                 <FilterPill key={k} label={PLAN_KIND_LABEL[k]} selected={pending.kinds.includes(k)}
@@ -879,9 +879,9 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {(["active", "expired"] as PlanFilterStatus[]).map(s => (
                                 <FilterPill key={s} label={PLAN_STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
@@ -890,7 +890,7 @@ function PlanFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_PLAN_FILTER); onApply(EMPTY_PLAN_FILTER); onClose(); }}>Clear filter</Button>
                     <Button variant="primary" size="md" disabled={!hasAny}
@@ -908,20 +908,20 @@ function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -937,7 +937,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}>
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
@@ -1134,7 +1134,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     if (!customer) {
         return (
             <div className="h-screen flex flex-col items-center justify-center gap-4 bg-white">
-                <p className="text-[16px] text-[#667085]">This customer could not be found.</p>
+                <p className="text-[16px] text-[var(--colors-text-quaternary)]">This customer could not be found.</p>
                 <Button variant="secondary-gray" size="md" onClick={() => router.push(returnTo)}>
                     Back to customers
                 </Button>
@@ -1238,11 +1238,11 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Customer details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Customer details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -1251,7 +1251,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
             <DetailPageShell
                 sidebar={
                     /* ── Left panel ── */
-                    <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                    <div className="w-[320px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                         <div className="flex flex-col flex-1">
                             <div className="flex flex-col gap-5 px-6 pt-6 pb-6 flex-1">
                                 {/* Avatar + status */}
@@ -1262,8 +1262,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
 
                                 {/* Name + email */}
                                 <div>
-                                    <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{customerName}</h2>
-                                    <p className="text-[14px] text-[#667085] mt-0.5">{customer.email}</p>
+                                    <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{customerName}</h2>
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mt-0.5">{customer.email}</p>
                                     {/* v83 lifecycle — pill row under the email.
                                         Click opens the reasoning drawer. Hover shows
                                         the primary reason via IconTooltip anchored
@@ -1323,20 +1323,20 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 </div>
 
                                 {/* Credit balance */}
-                                <div className="border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
+                                <div className="border border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3">
                                     <div className="flex flex-col gap-0.5">
-                                        <p className="text-[14px] text-[#667085]">Total credits</p>
-                                        <p className="text-[18px] font-semibold text-[#101828]">{creditDisplay}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total credits</p>
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">{creditDisplay}</p>
                                     </div>
-                                    <div className="h-2 w-full rounded-full bg-[#f2f4f7] overflow-hidden">
-                                        <div className="h-full rounded-full bg-[#658774]" style={{ width: `${barPct}%` }} />
+                                    <div className="h-2 w-full rounded-full bg-[var(--colors-bg-tertiary)] overflow-hidden">
+                                        <div className="h-full rounded-full bg-[var(--colors-secondary-600)]" style={{ width: `${barPct}%` }} />
                                     </div>
                                     {creditRows.length > 0 && (
                                         <div className="flex gap-4">
                                             {creditRows.map(r => (
                                                 <div key={r.label} className="flex flex-col flex-1 min-w-0">
-                                                    <p className="text-[13px] text-[#667085]">{r.label}</p>
-                                                    <p className="text-[14px] font-medium text-[#101828]">{r.value}</p>
+                                                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">{r.label}</p>
+                                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.value}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -1346,16 +1346,16 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 {/* Info fields */}
                                 <div className="flex flex-col gap-3">
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[14px] text-[#667085]">Joined</p>
-                                        <p className="text-[16px] font-medium text-[#101828]">{fmtDate(customer.createdAt)}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Joined</p>
+                                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{fmtDate(customer.createdAt)}</p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[14px] text-[#667085]">Phone</p>
-                                        <p className="text-[16px] font-medium text-[#101828]">{customer.phone || "—"}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Phone</p>
+                                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{customer.phone || "—"}</p>
                                     </div>
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[14px] text-[#667085]">Emergency contact</p>
-                                        <p className="text-[16px] font-medium text-[#101828]">
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Emergency contact</p>
+                                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                             {customer.emergencyContactName
                                                 ? customer.emergencyContactRelation
                                                     ? `${customer.emergencyContactName} (${customer.emergencyContactRelation})`
@@ -1368,8 +1368,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
 
                             {/* Customer actions */}
                             <div className="px-6 pb-6 mt-auto">
-                                <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                                <p className="text-[14px] text-[#667085] mb-4">Customer actions</p>
+                                <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Customer actions</p>
                                 <div className="flex flex-col gap-4">
                                     {/* Edit + Add credit are Active-only.
                                         Inactive customers must be Reactivated,
@@ -1405,17 +1405,17 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                 }
                 main={
                     /* ── Right panel ── */
-                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
+                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[var(--colors-border-secondary)] rounded-[20px]">
                         {/* Tab strip */}
-                        <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                        <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                             <div className="flex gap-1">
                                 {TABS.map(t => (
                                     <button key={t} type="button" onClick={() => setTab(t)}
                                         className={cn(
                                             "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
                                             tab === t
-                                                ? "border-b-2 border-[#101828] text-[#101828]"
-                                                : "text-[#667085] hover:text-[#344054]",
+                                                ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                                : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                                         )}>
                                         {t}
                                     </button>
@@ -1428,8 +1428,8 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 {/* Toolbar */}
                                 <div className="shrink-0 flex items-center gap-3 px-6 py-4">
                                     <div className="flex-1">
-                                        <p className="text-[14px] text-[#667085] leading-5">Total</p>
-                                        <p className="text-[16px] font-medium text-[#101828] leading-6">
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
+                                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">
                                             {filteredPlans.length} purchased {filteredPlans.length === 1 ? "plan" : "plans"}
                                         </p>
                                     </div>
@@ -1480,29 +1480,29 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                         // count). Transaction name / Plan type / Expiry date stay at
                                                         // normal color — status is already conveyed by the badge.
                                                         const isDisabled = p.status === "expired" || p.status === "removed" || p.status === "cancelled";
-                                                        const creditTextCls = isDisabled ? "text-[#98a2b3]" : "text-[#101828]";
-                                                        const barFill       = isDisabled ? "bg-[#d0d5dd]" : "bg-[#658774]";
+                                                        const creditTextCls = isDisabled ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-primary)]";
+                                                        const barFill       = isDisabled ? "bg-[var(--colors-border-primary)]" : "bg-[var(--colors-secondary-600)]";
                                                         return (
-                                                        <tr key={p.id} className="hover:bg-[#f9fafb] transition-colors">
+                                                        <tr key={p.id} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                                             <td className={TD}>
                                                                 <div className="flex items-center gap-3">
                                                                     <PlanIcon kind={p.kind} />
                                                                     <div className="flex flex-col min-w-0">
                                                                         <div className="flex items-center gap-2">
-                                                                            <span className="text-[14px] font-medium text-[#101828]">{p.name}</span>
+                                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{p.name}</span>
                                                                             {p.kind === "complimentary" && (
                                                                                 <span className="inline-flex items-center px-[8px] py-[1px] rounded-full text-[12px] font-medium bg-[#ecfdf3] border border-[#abefc6] text-[#067647]">
                                                                                     Complimentary
                                                                                 </span>
                                                                             )}
                                                                         </div>
-                                                                        <span className="text-[13px] text-[#667085]">
+                                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)]">
                                                                             {p.creditsLabel}{p.kind === "complimentary" ? " · Given by staff" : ""}
                                                                         </span>
                                                                     </div>
                                                                 </div>
                                                             </td>
-                                                            <td className={cn(TD, "text-[#475467]")}>{p.planTypeLabel}</td>
+                                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{p.planTypeLabel}</td>
                                                             <td className={TD}>
                                                                 {(() => {
                                                                     const bal = planBalances.get(p.id) ?? { isUnlimited: false, left: 0, total: 0 };
@@ -1517,7 +1517,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                     const pct = bal.total > 0 ? Math.min(100, Math.round((bal.left / bal.total) * 100)) : 0;
                                                                     return (
                                                                         <div className="flex items-center gap-3 min-w-0">
-                                                                            <div className="flex-1 h-1.5 rounded-full bg-[#f2f4f7] overflow-hidden">
+                                                                            <div className="flex-1 h-1.5 rounded-full bg-[var(--colors-bg-tertiary)] overflow-hidden">
                                                                                 <div className={cn("h-full rounded-full", barFill)} style={{ width: `${pct}%` }} />
                                                                             </div>
                                                                             <span className={cn("w-[72px] text-left shrink-0 text-[14px] font-medium whitespace-nowrap", creditTextCls)}>{bal.left}/{bal.total}</span>
@@ -1526,7 +1526,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                 })()}
                                                             </td>
                                                             <td className={TD}><PlanStatusBadge status={p.status} /></td>
-                                                            <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(p.expiryISO)}</td>
+                                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(p.expiryISO)}</td>
                                                             <td className={TD}>
                                                                 <PlanRowActions plan={p}
                                                                     onAction={kind => setPlanModal({ kind, plan: p })} />
@@ -1609,15 +1609,15 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                 rest of the app. */}
             {lifecycleResult && (
                 <SlidePanel open={lifecycleDrawerOpen} onClose={() => setLifecycleDrawerOpen(false)} width={440}>
-                    <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                        <p className="flex-1 font-semibold text-[18px] text-[#101828]">Lifecycle stage</p>
+                    <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                        <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Lifecycle stage</p>
                         <button
                             type="button"
                             onClick={() => setLifecycleDrawerOpen(false)}
-                            className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                            className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                             aria-label="Close"
                         >
-                            <XClose className="w-5 h-5 text-[#667085]" />
+                            <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                         </button>
                     </div>
                     <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
@@ -1629,33 +1629,33 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                             container shape as the "Why they landed on X"
                             block below, so both sections read as a set. */}
                         <div className="flex flex-col gap-3">
-                            <p className="text-[14px] font-semibold text-[#344054]">
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-secondary)]">
                                 Current stage
                             </p>
-                            <div className="flex flex-col gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
+                            <div className="flex flex-col gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-4 py-3">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <StatusBadge type="lifecycle" status={lifecycleResult.tag} size="lg" />
                                     {lifecycleResult.isVip && <StatusBadge type="vip" status="vip" size="lg" />}
                                 </div>
-                                <p className="text-[13px] leading-[18px] text-[#475467]">
-                                    Set to <span className="text-[#344054] font-medium">{lifecycleResult.tag}</span> on{" "}
-                                    <span className="text-[#344054] font-medium">{(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}</span>. Updates automatically when this customer&apos;s activity changes.
+                                <p className="text-[13px] leading-[18px] text-[var(--colors-text-tertiary)]">
+                                    Set to <span className="text-[var(--colors-text-secondary)] font-medium">{lifecycleResult.tag}</span> on{" "}
+                                    <span className="text-[var(--colors-text-secondary)] font-medium">{(customer.lifecycleTag === lifecycleResult.tag ? (customer.lifecycleTaggedOn ?? lifecycleResult.computedOn) : lifecycleResult.computedOn)}</span>. Updates automatically when this customer&apos;s activity changes.
                                 </p>
                             </div>
                         </div>
 
                         {/* Why this stage */}
                         <div className="flex flex-col gap-3">
-                            <p className="text-[14px] font-semibold text-[#344054]">
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-secondary)]">
                                 Why they landed on {lifecycleResult.tag}
                             </p>
                             {/* Client 2026-07-28 — bullets stripped. Reasons
                                 render as plain sentence lines; the group
                                 already reads as a list via the card + gap
                                 spacing, no •-glyph needed. */}
-                            <div className="flex flex-col gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
+                            <div className="flex flex-col gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-4 py-3">
                                 {lifecycleResult.reasons.map((r, i) => (
-                                    <p key={i} className="text-[13px] leading-[18px] text-[#475467]">
+                                    <p key={i} className="text-[13px] leading-[18px] text-[var(--colors-text-tertiary)]">
                                         {r}
                                     </p>
                                 ))}
@@ -1664,14 +1664,14 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
 
                         {/* Info footer — canonical DS info alert
                             (bg #f1f2ed + Lightbulb02 + #475467 text). */}
-                        <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] flex items-center gap-4 p-4">
-                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
-                            <p className="text-[14px] text-[#475467]">
+                        <div className="bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] flex items-center gap-4 p-4">
+                            <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0" />
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)]">
                                 Set automatically from the customer&apos;s activity. To edit follow-up status manually, open the Follow-up settings panel from the Follow-ups tab (Leads and Trialists only).
                             </p>
                         </div>
                     </div>
-                    <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end">
+                    <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-end">
                         <Button variant="secondary-gray" size="md" onClick={() => setLifecycleDrawerOpen(false)}>
                             Close
                         </Button>

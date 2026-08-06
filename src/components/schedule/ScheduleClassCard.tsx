@@ -208,7 +208,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 )}>
                 {/* Title row + type tag + Ongoing pill / participant glyph. */}
                 <div className="flex items-start gap-2 w-full">
-                    <span className="min-w-0 block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
+                    <span className="min-w-0 block text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} className="mt-px" />}
                     <span className="flex-1" />
                     {isOngoing && (
@@ -216,18 +216,18 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                             Ongoing
                         </span>
                     )}
-                    <Users01 className="w-4 h-4 text-[#667085] shrink-0 mt-0.5" />
+                    <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 mt-0.5" />
                 </div>
                 {/* Meta row — time · instructor · room · count. Single
                     line separated by bullets so the card matches Figma
                     7798:80399's compact density. */}
-                <div className="flex items-center gap-2 min-w-0 text-[14px] text-[#667085]">
+                <div className="flex items-center gap-2 min-w-0 text-[14px] text-[var(--colors-text-quaternary)]">
                     <span className="shrink-0">{rangeLabel}</span>
                     {/* Instructor — hidden when there's none (e.g. an open
                         recovery session), so no empty gray avatar shows. */}
                     {cls.instructorName && (
                         <>
-                            <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
+                            <span className="w-px h-3 bg-[var(--colors-border-primary)] shrink-0" />
                             <div className="flex items-center gap-1.5 min-w-0">
                                 <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={16} />
                                 <span className="truncate">{instructorShortName(cls.instructorName)}</span>
@@ -236,19 +236,19 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     )}
                     {cls.room && (
                         <>
-                            <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
+                            <span className="w-px h-3 bg-[var(--colors-border-primary)] shrink-0" />
                             <div className="flex items-center gap-1 min-w-0">
-                                <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                                <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                 <span className="truncate">{cls.room}</span>
                             </div>
                         </>
                     )}
                     {!isAppointment && (
                         <>
-                            <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
+                            <span className="w-px h-3 bg-[var(--colors-border-primary)] shrink-0" />
                             <span className="shrink-0">
                                 {cls.booked}/{cls.capacity}
-                                {isFull && <span className="text-[#98a2b3] ml-1">(FULL)</span>}
+                                {isFull && <span className="text-[var(--colors-fg-quaternary)] ml-1">(FULL)</span>}
                             </span>
                         </>
                     )}
@@ -289,20 +289,20 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 {cls.instructorName && (
                     <div className="flex items-center gap-1.5 min-w-0">
                         <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={14} />
-                        <span className="text-[12px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)] truncate">{instructorShortName(cls.instructorName)}</span>
                     </div>
                 )}
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <div className="flex items-center gap-1">
-                        <Clock className="w-[12px] h-[12px] text-[#667085] shrink-0" />
-                        <span className="text-[12px] text-[#667085]">{startLabel}</span>
+                        <Clock className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)]">{startLabel}</span>
                     </div>
                     {!isAppointment && (
                         <>
-                            <span className="text-[#98a2b3] text-[12px]">•</span>
+                            <span className="text-[var(--colors-fg-quaternary)] text-[12px]">•</span>
                             <div className="flex items-center gap-1">
-                                <Users01 className="w-[12px] h-[12px] text-[#667085] shrink-0" />
-                                <span className="text-[12px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
+                                <Users01 className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)] shrink-0" />
+                                <span className="text-[12px] text-[var(--colors-text-quaternary)]">{cls.booked}/{cls.capacity}</span>
                             </div>
                             {isFull && <span className="text-[11px] font-semibold text-[#b42318]">(FULL)</span>}
                         </>
@@ -328,10 +328,10 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 </div>
                 <div className="flex items-center gap-1 min-w-0">
                     <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={12} />
-                    <span className="text-[11px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
+                    <span className="text-[11px] text-[var(--colors-text-quaternary)] truncate">{instructorShortName(cls.instructorName)}</span>
                 </div>
                 {hasMore && (
-                    <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[#475467] bg-white border border-[#e4e7ec] rounded-full px-2 py-[1px]">
+                    <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[var(--colors-text-tertiary)] bg-white border border-[var(--colors-border-secondary)] rounded-full px-2 py-[1px]">
                         +{moreCount} more
                     </span>
                 )}
@@ -348,7 +348,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 className,
             )}>
             <span className="text-[11px] font-medium whitespace-nowrap shrink-0" style={{ color: cls.color.border }}>{cls.leadLabel ?? startLabel}</span>
-            <span className="text-[11px] text-[#98a2b3] shrink-0">•</span>
+            <span className="text-[11px] text-[var(--colors-fg-quaternary)] shrink-0">•</span>
             <span className="text-[11px] font-medium truncate" style={{ color: cls.color.text }}>{cls.name}</span>
         </button>
     );
@@ -364,7 +364,7 @@ export function ScheduleMorePill({ count, onClick }: {
 }) {
     return (
         <button type="button" onClick={onClick}
-            className="text-[11px] font-medium text-[#475467] hover:text-[#101828] px-1.5 py-[3px] w-full text-left transition-colors">
+            className="text-[11px] font-medium text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] px-1.5 py-[3px] w-full text-left transition-colors">
             + {count} more
         </button>
     );

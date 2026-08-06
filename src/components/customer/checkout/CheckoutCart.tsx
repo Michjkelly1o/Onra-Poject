@@ -92,8 +92,8 @@ function StepBtn({
             aria-label={label}
             className={`flex size-7 shrink-0 items-center justify-center rounded-full border bg-white transition-colors ${
                 disabled
-                    ? "border-[#e4e7ec]"
-                    : "border-[#d0d5dd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] active:bg-gray-50"
+                    ? "border-[var(--colors-border-secondary)]"
+                    : "border-[var(--colors-border-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] active:bg-gray-50"
             }`}
         >
             {children}
@@ -113,17 +113,17 @@ function MethodRow({ m, selected, disabled = false, onClick }: { m: PayMethod; s
             onClick={onClick}
             disabled={disabled}
             className={`flex h-[72px] w-full shrink-0 items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors disabled:cursor-not-allowed ${
-                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec] active:bg-gray-50"
+                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[var(--colors-border-secondary)] active:bg-gray-50"
             } ${disabled ? "opacity-50" : ""}`}
         >
             {m.icon === "gift" ? (
                 <GiftCardMark />
             ) : m.icon === "google" ? (
-                <span className="flex h-8 w-[46px] shrink-0 items-center justify-center rounded border border-[#e4e7ec] bg-white text-[11px] font-semibold leading-none text-[#5f6368]">
+                <span className="flex h-8 w-[46px] shrink-0 items-center justify-center rounded border border-[var(--colors-border-secondary)] bg-white text-[11px] font-semibold leading-none text-[#5f6368]">
                     G Pay
                 </span>
             ) : (
-                <span className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border border-[#e4e7ec] bg-white">
+                <span className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border border-[var(--colors-border-secondary)] bg-white">
                     <span className={`absolute ${m.inset}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={m.logo} alt="" className="size-full object-contain" />
@@ -131,8 +131,8 @@ function MethodRow({ m, selected, disabled = false, onClick }: { m: PayMethod; s
                 </span>
             )}
             <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium leading-5 text-[#344054]">{m.label}</span>
-                {m.sub && <span className="truncate text-sm font-normal leading-5 text-[#475467]">{m.sub}</span>}
+                <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">{m.label}</span>
+                {m.sub && <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{m.sub}</span>}
             </div>
             <RadioDot checked={selected} />
         </button>
@@ -286,9 +286,9 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                         type="button"
                         onClick={onBack}
                         aria-label="Back"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 )}
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
@@ -299,9 +299,9 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                         type="button"
                         onClick={onBack}
                         aria-label="Close"
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 ) : (
                     <div className="size-10 shrink-0" aria-hidden />
@@ -341,7 +341,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                                         <div className="flex flex-col">
                                             <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{it.name}</span>
-                                            <span className="truncate text-sm font-normal leading-5 text-[#475467]">
+                                            <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                                 {it.kind === "gift_card" && it.recipientName
                                                     ? `${titleCase(it.recipientName)} • ${it.sub.replace("Valid until ", "")}`
                                                     : it.kind === "retail" && it.size
@@ -354,7 +354,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                                 </div>
                                 <div className="flex w-[72px] shrink-0 items-center justify-between">
                                     <StepBtn onClick={() => decrement(it.lineId)} disabled={false} label="Decrease quantity">
-                                        <Minus className="size-3 text-[#344054]" aria-hidden />
+                                        <Minus className="size-3 text-[var(--colors-text-secondary)]" aria-hidden />
                                     </StepBtn>
                                     <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{it.quantity}</span>
                                     <StepBtn
@@ -362,7 +362,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                                         disabled={!canIncrement}
                                         label="Increase quantity"
                                     >
-                                        <Plus className={`size-3 ${canIncrement ? "text-[#344054]" : "text-[#d0d5dd]"}`} aria-hidden />
+                                        <Plus className={`size-3 ${canIncrement ? "text-[var(--colors-text-secondary)]" : "text-[var(--colors-border-primary)]"}`} aria-hidden />
                                     </StepBtn>
                                 </div>
                             </div>
@@ -395,29 +395,29 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                 <section className="flex flex-col gap-3">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
                     <div className="flex items-center justify-between text-sm leading-5">
-                        <span className="font-normal text-[#475467]">Subtotal</span>
+                        <span className="font-normal text-[var(--colors-text-tertiary)]">Subtotal</span>
                         <span className="font-medium text-[var(--brand-text)]">AED {totals.subtotal}</span>
                     </div>
                     {taxPct > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
-                            <span className="font-normal text-[#475467]">Tax rate ({taxPct}%)</span>
+                            <span className="font-normal text-[var(--colors-text-tertiary)]">Tax rate ({taxPct}%)</span>
                             <span className="font-medium text-[var(--brand-text)]">AED {totals.tax}</span>
                         </div>
                     )}
                     {promo && totals.discount > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
-                            <span className="font-normal text-[#475467]">Discount ({promo.label})</span>
+                            <span className="font-normal text-[var(--colors-text-tertiary)]">Discount ({promo.label})</span>
                             <span className="font-medium text-[var(--brand-primary)]">−AED {totals.discount}</span>
                         </div>
                     )}
                     {totals.accountCredit > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
-                            <span className="font-normal text-[#475467]">Account credit</span>
+                            <span className="font-normal text-[var(--colors-text-tertiary)]">Account credit</span>
                             <span className="font-medium text-[var(--brand-primary)]">−AED {totals.accountCredit}</span>
                         </div>
                     )}
                     <div className="flex items-center justify-between text-sm leading-5">
-                        <span className="font-normal text-[#475467]">Total</span>
+                        <span className="font-normal text-[var(--colors-text-tertiary)]">Total</span>
                         <span className="font-semibold text-[var(--brand-text)]">AED {totals.total}</span>
                     </div>
                 </section>
@@ -430,7 +430,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                 <button
                     type="button"
                     onClick={() => openSub("promo")}
-                    className={`flex w-full items-center gap-2 border-b border-[#f2f4f7] py-4 text-left ${hpad}`}
+                    className={`flex w-full items-center gap-2 border-b border-[var(--colors-bg-tertiary)] py-4 text-left ${hpad}`}
                 >
                     <Ticket01 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
                     {promo ? (
@@ -440,18 +440,18 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                             </span>
                         </span>
                     ) : (
-                        <span className="flex-1 text-sm font-normal leading-5 text-[#667085]">Apply promo</span>
+                        <span className="flex-1 text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">Apply promo</span>
                     )}
-                    <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                    <ChevronRight className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
 
                 {canRedeem && (
-                    <div className={`flex w-full items-center gap-2 border-b border-[#f2f4f7] py-4 ${hpad}`}>
+                    <div className={`flex w-full items-center gap-2 border-b border-[var(--colors-bg-tertiary)] py-4 ${hpad}`}>
                         <Wallet02 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
-                        <span className="flex flex-1 items-center gap-1.5 text-sm font-normal leading-5 text-[#344054]">
+                        <span className="flex flex-1 items-center gap-1.5 text-sm font-normal leading-5 text-[var(--colors-text-secondary)]">
                             Redeem AED {accountCredit} credits
                             <button type="button" onClick={() => setCreditInfoOpen(true)} aria-label="What is account credit?">
-                                <HelpCircle className="size-4 text-[#98a2b3]" aria-hidden />
+                                <HelpCircle className="size-4 text-[var(--colors-fg-quaternary)]" aria-hidden />
                             </button>
                         </span>
                         <button
@@ -460,7 +460,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                             aria-checked={redeemOn}
                             onClick={() => setRedeem(!redeemOn)}
                             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                                redeemOn ? "bg-[var(--brand-primary)]" : "bg-[#e4e7ec]"
+                                redeemOn ? "bg-[var(--brand-primary)]" : "bg-[var(--colors-bg-quaternary)]"
                             }`}
                         >
                             <span
@@ -474,7 +474,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
 
                 <div className={`flex items-center gap-4 pt-4 ${isSheet ? "" : "pb-[max(16px,env(safe-area-inset-bottom))]"} ${hpad}`}>
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="text-sm font-normal leading-5 text-[#344054]">Total</span>
+                        <span className="text-sm font-normal leading-5 text-[var(--colors-text-secondary)]">Total</span>
                         <span className="text-lg font-semibold leading-7 text-[var(--brand-text)]">AED {totals.total}</span>
                     </div>
                     <Button variant="primary" size="xl" className="shrink-0 rounded-full px-[18px]" onClick={payNow}>
@@ -494,9 +494,9 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                         type="button"
                         onClick={backToMain}
                         aria-label="Back"
-                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Payment method</p>
                     <span aria-hidden className="absolute right-0 size-8" />

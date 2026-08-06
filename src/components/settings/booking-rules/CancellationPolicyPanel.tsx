@@ -43,7 +43,7 @@ const OUTCOME_OPTIONS = [
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
+            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{title}</p>
             {children}
         </div>
     );
@@ -56,7 +56,7 @@ function ReasonCheckbox({ checked, onChange }: { checked: boolean; onChange: () 
         <button type="button" role="checkbox" aria-checked={checked} onClick={onChange}
             className={cn(
                 "w-5 h-5 rounded-[6px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#98a2b3]",
+                checked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-fg-quaternary)]",
             )}>
             {checked && (
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -70,7 +70,7 @@ function ReasonCheckbox({ checked, onChange }: { checked: boolean; onChange: () 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
         </div>
     );
@@ -89,7 +89,7 @@ function Toggle({ on, onChange, ariaLabel, disabled = false }: {
             onClick={() => { if (!disabled) onChange(!on); }}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
                 disabled && "opacity-50 cursor-not-allowed",
             )}>
             <div className={cn(
@@ -107,7 +107,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
     suffixSlot?: React.ReactNode;
 }) {
     return (
-        <div className="flex items-stretch h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
+        <div className="flex items-stretch h-10 w-full border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all">
             <input
                 type="number"
                 min={0}
@@ -122,7 +122,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
                     const parsed = parseInt(stripped, 10);
                     if (!Number.isNaN(parsed)) onChange(parsed);
                 }}
-                className="flex-1 min-w-0 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent"
+                className="flex-1 min-w-0 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent"
             />
             {suffixSlot}
         </div>
@@ -133,8 +133,8 @@ function AedInput({ value, onChange, ariaLabel }: {
     value: number; onChange: (n: number) => void; ariaLabel: string;
 }) {
     return (
-        <div className="flex items-stretch h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
-            <span className="px-3 flex items-center text-[14px] text-[#667085] border-r border-[#d0d5dd] bg-[#f9fafb]">
+        <div className="flex items-stretch h-10 w-full border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all">
+            <span className="px-3 flex items-center text-[14px] text-[var(--colors-text-quaternary)] border-r border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)]">
                 AED
             </span>
             <input
@@ -151,7 +151,7 @@ function AedInput({ value, onChange, ariaLabel }: {
                     const parsed = parseInt(stripped, 10);
                     if (!Number.isNaN(parsed)) onChange(parsed);
                 }}
-                className="flex-1 min-w-0 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent"
+                className="flex-1 min-w-0 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent"
             />
         </div>
     );
@@ -193,7 +193,7 @@ function CreditWindowRow({
                     />
                 </Field>
             </div>
-            <div className="h-10 flex items-center text-[16px] text-[#98a2b3]">→</div>
+            <div className="h-10 flex items-center text-[16px] text-[var(--colors-fg-quaternary)]">→</div>
             <div className="min-w-0">
                 <Field label="Cancellation outcome">
                     <SelectInput
@@ -369,21 +369,21 @@ export function CancellationPolicyPanel({ open, onClose }: {
             <div
                 style={{ right: shown ? 0 : -600 }}
                 className={cn(
-                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[var(--colors-border-secondary)] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
                     "transition-[right] duration-300 ease-out",
                 )}
             >
                 {/* Header */}
-                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4 select-none">
+                <div className="flex items-start gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[#101828]">Cancellation policy</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Cancellation policy</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Build one or more cutoff tiers. Add graduated penalties if you want.
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -419,12 +419,12 @@ export function CancellationPolicyPanel({ open, onClose }: {
                             7790:27893. */}
                         <div className={cn(
                             "rounded-[12px] border-1 px-4 py-3 flex flex-col gap-3 transition-colors",
-                            penaltyOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                            penaltyOn ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)]",
                         )}>
                             <div className="flex items-start gap-4">
                                 <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Charge penalty after X cancellations</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px]">
+                                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">Charge penalty after X cancellations</p>
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                         For unlimited memberships, apply a penalty after the specified number of late cancellations or no-shows.
                                     </p>
                                 </div>
@@ -441,7 +441,7 @@ export function CancellationPolicyPanel({ open, onClose }: {
                                         onChange={setPenaltyCount}
                                         ariaLabel="Number of cancellation"
                                         suffixSlot={
-                                            <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                            <span className="px-3 flex items-center text-[14px] text-[var(--colors-text-quaternary)] border-l border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)]">
                                                 cancellation
                                             </span>
                                         }
@@ -452,16 +452,16 @@ export function CancellationPolicyPanel({ open, onClose }: {
 
                         <div className={cn(
                             "rounded-[12px] border-1 px-4 py-3 flex flex-col gap-3 transition-colors",
-                            !penaltyOn && "bg-[#f9fafb]",
-                            penaltyOn && lateFeeOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                            !penaltyOn && "bg-[var(--colors-bg-secondary)]",
+                            penaltyOn && lateFeeOn ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)]",
                         )}>
                             <div className="flex items-start gap-4">
                                 <div className={cn(
                                     "flex-1 flex flex-col gap-1 min-w-0",
                                     !penaltyOn && "opacity-50",
                                 )}>
-                                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Charge a late cancel fee</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px]">For unlimited customers.</p>
+                                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">Charge a late cancel fee</p>
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">For unlimited customers.</p>
                                 </div>
                                 <Toggle
                                     on={lateFeeOn}
@@ -479,16 +479,16 @@ export function CancellationPolicyPanel({ open, onClose }: {
 
                         <div className={cn(
                             "rounded-[12px] border-1 px-4 py-3 flex flex-col gap-3 transition-colors",
-                            !penaltyOn && "bg-[#f9fafb]",
-                            penaltyOn && noShowOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                            !penaltyOn && "bg-[var(--colors-bg-secondary)]",
+                            penaltyOn && noShowOn ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)]",
                         )}>
                             <div className="flex items-start gap-4">
                                 <div className={cn(
                                     "flex-1 flex flex-col gap-1 min-w-0",
                                     !penaltyOn && "opacity-50",
                                 )}>
-                                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Charge a no show fee</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px]">Can differ from late cancel</p>
+                                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">Charge a no show fee</p>
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Can differ from late cancel</p>
                                 </div>
                                 <Toggle
                                     on={noShowOn}
@@ -533,28 +533,28 @@ export function CancellationPolicyPanel({ open, onClose }: {
                     <Section title="Cancellation reasons">
                         {/* Neutral info banner — matches the canonical
                             info-alert style used across the app. */}
-                        <div className="flex items-start gap-3 px-4 py-3 rounded-[12px] bg-[#f1f2ed] border-1 border-[#e4e7ec]">
-                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
-                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <div className="flex items-start gap-3 px-4 py-3 rounded-[12px] bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)]">
+                            <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0 mt-[2px]" />
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                                 Customers will only see the reasons enabled below when they cancel a plan.
                             </p>
                         </div>
 
-                        <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white p-4 flex flex-col gap-2">
+                        <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] bg-white p-4 flex flex-col gap-2">
                             {reasons.length === 0 ? (
-                                <p className="text-[13px] text-[#667085] italic py-1">
+                                <p className="text-[13px] text-[var(--colors-text-quaternary)] italic py-1">
                                     No reasons yet — add one below.
                                 </p>
                             ) : (
                                 reasons.map(r => (
                                     <div key={r.id} className="flex items-center gap-3 min-h-[32px]">
                                         <ReasonCheckbox checked={r.enabled} onChange={() => toggleReason(r.id)} />
-                                        <span className="flex-1 text-[14px] text-[#344054]">{r.label}</span>
+                                        <span className="flex-1 text-[14px] text-[var(--colors-text-secondary)]">{r.label}</span>
                                         <button
                                             type="button"
                                             onClick={() => removeReason(r.id)}
                                             aria-label="Remove reason"
-                                            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318] transition-colors"
+                                            className="w-8 h-8 flex items-center justify-center rounded-[8px] text-[var(--colors-text-quaternary)] hover:bg-[var(--colors-bg-secondary)] hover:text-[#b42318] transition-colors"
                                         >
                                             <Trash01 className="w-4 h-4" />
                                         </button>
@@ -563,7 +563,7 @@ export function CancellationPolicyPanel({ open, onClose }: {
                             )}
 
                             {reasons.length > 0 && (
-                                <div className="h-px w-full bg-[#f2f4f7] my-1" />
+                                <div className="h-px w-full bg-[var(--colors-bg-tertiary)] my-1" />
                             )}
 
                             <div className="flex items-center gap-2">
@@ -573,7 +573,7 @@ export function CancellationPolicyPanel({ open, onClose }: {
                                     onChange={e => setNewReason(e.target.value)}
                                     onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addNewReason(); } }}
                                     placeholder="Add a custom reason"
-                                    className="flex-1 h-10 px-3.5 text-[14px] text-[#101828] placeholder:text-[#667085] border-1 border-[#d0d5dd] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]"
+                                    className="flex-1 h-10 px-3.5 text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)]"
                                 />
                                 <Button variant="secondary-gray" size="md" disabled={!newReason.trim()} onClick={addNewReason}>
                                     Add
@@ -584,7 +584,7 @@ export function CancellationPolicyPanel({ open, onClose }: {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0 select-none">
+                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[var(--colors-border-secondary)] shrink-0 select-none">
                     <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
                 </div>

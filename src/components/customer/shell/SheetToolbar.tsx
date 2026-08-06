@@ -20,9 +20,9 @@ export function SheetToolbar({ title, onClose }: { title: string; onClose: () =>
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="absolute right-4 top-4 z-10 flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                className="absolute right-4 top-4 z-10 flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
             >
-                <XClose className="size-5 text-[#344054]" aria-hidden />
+                <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
             </button>
         );
     }
@@ -34,9 +34,9 @@ export function SheetToolbar({ title, onClose }: { title: string; onClose: () =>
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
             >
-                <XClose className="size-5 text-[#344054]" aria-hidden />
+                <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
             </button>
         </div>
     );

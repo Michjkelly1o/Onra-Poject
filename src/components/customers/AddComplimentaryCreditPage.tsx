@@ -73,14 +73,14 @@ function StepItem({ step, current, total }: { step: { n: number; label: string }
         <div className={cn("flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full", active && "bg-[#f5fffa]")}>
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                    : complete ? "bg-[#658774] text-white"
-                    : "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#98a2b3]")}>
+                    active ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    : complete ? "bg-[var(--colors-secondary-600)] text-white"
+                    : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]")}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
-                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />}
+                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {step.label}
             </span>
         </div>
@@ -94,7 +94,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (next: boolean) => vo
         <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -114,18 +114,18 @@ function ExpiryCard({ title, subtitle, selected, onClick }: {
             className={cn(
                 "flex items-center gap-3 p-4 rounded-[12px] text-left transition-all",
                 selected
-                    ? "border-2 border-[#7ba08c] bg-[#f5fffa]"
-                    : "border-1 border-[#e4e7ec] bg-white hover:border-[#aad4bd]",
+                    ? "border-2 border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                    : "border-1 border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-secondary-300)]",
             )}>
             <div className="flex-1 min-w-0 flex flex-col">
-                <span className="text-[14px] font-medium text-[#344054]">{title}</span>
-                <span className="text-[14px] text-[#475467]">{subtitle}</span>
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{title}</span>
+                <span className="text-[14px] text-[var(--colors-text-tertiary)]">{subtitle}</span>
             </div>
             <span className={cn(
                 "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
-                selected ? "border-[#658774]" : "border-[#d0d5dd]",
+                selected ? "border-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)]",
             )}>
-                {selected && <span className="w-1.5 h-1.5 rounded-full bg-[#658774]" />}
+                {selected && <span className="w-1.5 h-1.5 rounded-full bg-[var(--colors-secondary-600)]" />}
             </span>
         </button>
     );
@@ -133,7 +133,7 @@ function ExpiryCard({ title, subtitle, selected, onClick }: {
 
 // ─── Field wrapper ────────────────────────────────────────────────────────────
 
-const labelCls = "text-[14px] font-medium text-[#344054]";
+const labelCls = "text-[14px] font-medium text-[var(--colors-text-secondary)]";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -149,8 +149,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex items-center justify-between gap-4">
-            <p className="text-[14px] text-[#667085] whitespace-nowrap">{label}</p>
-            <div className="text-[16px] font-medium text-[#101828] text-right">{children}</div>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] whitespace-nowrap">{label}</p>
+            <div className="text-[16px] font-medium text-[var(--colors-text-primary)] text-right">{children}</div>
         </div>
     );
 }
@@ -246,7 +246,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
     if (!customer) {
         return (
             <div className="h-screen flex flex-col items-center justify-center gap-4 bg-white">
-                <p className="text-[16px] text-[#667085]">This customer could not be found.</p>
+                <p className="text-[16px] text-[var(--colors-text-quaternary)]">This customer could not be found.</p>
                 <Button variant="secondary-gray" size="md" onClick={() => router.push("/admin/customers")}>
                     Back to customers
                 </Button>
@@ -289,11 +289,11 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
             {/* Header */}
             <div className="shrink-0 h-[72px] flex items-center px-6 gap-3">
                 <button type="button" onClick={() => router.back()}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <p className="text-[20px] font-semibold text-[#101828]">Add complimentary credit</p>
+                    <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">Add complimentary credit</p>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -306,11 +306,11 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                 </div>
 
                 {/* Form card */}
-                <div className="flex-1 max-w-[628px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <div className="flex-1 max-w-[628px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-8">
                         {/* ─── Complimentary configuration ─── */}
                         <div className="flex flex-col gap-4">
-                            <p className="text-[18px] font-semibold text-[#101828]">Complimentary configuration</p>
+                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Complimentary configuration</p>
 
                             <Field label="Number of free credit">
                                 {/* `max` follows the role's per-grant value cap
@@ -332,7 +332,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                                 <Field label="Reason note">
                                     <textarea value={reasonNote} onChange={e => setReasonNote(e.target.value)}
                                         rows={3} placeholder="Describe the reason for this complimentary credit..."
-                                        className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none" />
+                                        className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none" />
                                 </Field>
                             )}
 
@@ -364,11 +364,11 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
 
                         {/* ─── Notification ─── */}
                         <div className="flex flex-col gap-4">
-                            <p className="text-[18px] font-semibold text-[#101828]">Notification</p>
-                            <div className="flex items-center gap-4 border-1 border-[#e4e7ec] rounded-[12px] p-4">
+                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Notification</p>
+                            <div className="flex items-center gap-4 border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4">
                                 <div className="flex-1 min-w-0 flex flex-col">
-                                    <span className="text-[14px] font-medium text-[#101828]">Notification to customer</span>
-                                    <span className="text-[14px] text-[#667085]">
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">Notification to customer</span>
+                                    <span className="text-[14px] text-[var(--colors-text-quaternary)]">
                                         Send notification &ldquo;You&apos;ve received {credits || 0} {credits === 1 ? "credit" : "credits"} on your account&rdquo; to customer.
                                     </span>
                                 </div>
@@ -394,34 +394,34 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                         {/* Header */}
                         <div className="relative flex flex-col gap-1 px-6 pt-6 pb-5">
                             <button type="button" onClick={() => setSummaryOpen(false)}
-                                className="absolute right-3 top-3 w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                                <XClose className="w-6 h-6 text-[#667085]" />
+                                className="absolute right-3 top-3 w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                             </button>
-                            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Complimentary summary</h3>
-                            <p className="text-[14px] text-[#475467] leading-[20px]">Review your summary before adding the complimentary credit.</p>
+                            <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Complimentary summary</h3>
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Review your summary before adding the complimentary credit.</p>
                         </div>
-                        <div className="h-px bg-[#e4e7ec]" />
+                        <div className="h-px bg-[var(--colors-bg-quaternary)]" />
 
                         {/* Content */}
                         <div className="flex flex-col gap-4 px-6 py-5">
                             {/* Role + grant limit — live values driven by the
                                 current Staff role's `grantLimits` config. */}
-                            <div className="border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-4">
+                            <div className="border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6 flex flex-col gap-4">
                                 <span className="self-start inline-flex items-center px-2 py-[2px] rounded-full text-[14px] font-medium bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]">
                                     {currentStaffRole?.name ?? "Owner"}
                                 </span>
                                 <div className="flex gap-4">
                                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                        <p className="text-[16px] font-semibold text-[#101828]">Grants this month</p>
-                                        <p className="text-[16px] text-[#475467]">
+                                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Grants this month</p>
+                                        <p className="text-[16px] text-[var(--colors-text-tertiary)]">
                                             {grantsUnlimited
                                                 ? "Unlimited"
                                                 : `${grantsUsedThisMonth} / ${grantsPerMonthCap} used`}
                                         </p>
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                        <p className="text-[16px] font-semibold text-[#101828]">Max per grant</p>
-                                        <p className="text-[16px] text-[#475467]">
+                                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Max per grant</p>
+                                        <p className="text-[16px] text-[var(--colors-text-tertiary)]">
                                             {grantsUnlimited
                                                 ? "Unlimited"
                                                 : `AED ${maxValuePerGrantCap.toLocaleString("en-US")}`}
@@ -448,8 +448,8 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                             </div>
 
                             {/* Details */}
-                            <div className="border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                <p className="text-[18px] font-semibold text-[#101828]">Details</p>
+                            <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Details</p>
                                 <div className="flex flex-col gap-2">
                                     <InfoRow label="Granting to">
                                         <div className="flex items-center gap-2">
@@ -470,7 +470,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
                         </div>
 
                         {/* Footer */}
-                        <div className="border-t border-[#e4e7ec] px-6 pt-6 pb-6 flex gap-3">
+                        <div className="border-t border-[var(--colors-border-secondary)] px-6 pt-6 pb-6 flex gap-3">
                             <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setSummaryOpen(false)}>
                                 Cancel
                             </Button>

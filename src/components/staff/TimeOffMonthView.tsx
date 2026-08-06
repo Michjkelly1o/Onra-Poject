@@ -110,17 +110,17 @@ function DayTimeOffPopup({ dateISO, entries, anchor, staffLabel, onClose, onPick
     return (
         <div ref={popupRef}
             style={{ position: "fixed", top, left, width: WIDTH, maxHeight: MAX_H, zIndex: 9999 }}
-            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+            className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
         >
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#e4e7ec]">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--colors-border-secondary)]">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-semibold text-[#101828] truncate">{dateLabel}</p>
-                    <p className="text-[12px] text-[#667085] leading-[16px]">
+                    <p className="text-[15px] font-semibold text-[var(--colors-text-primary)] truncate">{dateLabel}</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[16px]">
                         {entries.length} {entries.length === 1 ? "entry" : "entries"}
                     </p>
                 </div>
                 <button type="button" onClick={onClose} aria-label="Close"
-                    className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085] shrink-0">
+                    className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)] shrink-0">
                     <XClose className="w-4 h-4" />
                 </button>
             </div>
@@ -130,12 +130,12 @@ function DayTimeOffPopup({ dateISO, entries, anchor, staffLabel, onClose, onPick
                     return (
                         <button key={e.id} type="button"
                             onClick={() => { onClose(); onPick(e); }}
-                            className="w-full flex items-start gap-3 px-2 py-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left"
+                            className="w-full flex items-start gap-3 px-2 py-2 rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-left"
                         >
                             <span className="mt-1.5 w-2 h-2 rounded-full shrink-0"
                                 style={{ backgroundColor: col.border }} aria-hidden />
                             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                <span className="text-[13px] font-semibold text-[#101828] truncate">
+                                <span className="text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">
                                     {staffLabel(e)}
                                 </span>
                                 <span className="text-[12px] font-medium" style={{ color: col.text }}>
@@ -233,9 +233,9 @@ export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonth
     return (
         <div className="flex flex-col">
             {/* Weekday header — same MON…SUN row as the schedule month view. */}
-            <div className="grid grid-cols-7 border-b border-[#e4e7ec] shrink-0">
+            <div className="grid grid-cols-7 border-b border-[var(--colors-border-secondary)] shrink-0">
                 {WEEKDAY_HEAD.map(d => (
-                    <div key={d} className="py-3 text-[11px] font-semibold text-[#667085] tracking-wider text-center">{d}</div>
+                    <div key={d} className="py-3 text-[11px] font-semibold text-[var(--colors-text-quaternary)] tracking-wider text-center">{d}</div>
                 ))}
             </div>
 
@@ -245,13 +245,13 @@ export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonth
                     const dayEntries: BlockedTime[] = day ? (entriesByDay.get(day.iso) ?? []) : [];
                     const isToday = day?.iso === todayISO;
                     return (
-                        <div key={i} className={cn("border-r border-b border-[#f2f4f7] p-2 min-h-[110px]", !day && "bg-[#fafafa]")}>
+                        <div key={i} className={cn("border-r border-b border-[var(--colors-bg-tertiary)] p-2 min-h-[110px]", !day && "bg-[#fafafa]")}>
                             {day && (
                                 <>
                                     {/* Date number — centered circle, today = sage fill. */}
                                     <div className="flex justify-center mb-1.5">
                                         <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-semibold",
-                                            isToday ? "bg-[#658774] text-white" : "text-[#344054]")}>
+                                            isToday ? "bg-[var(--colors-secondary-600)] text-white" : "text-[var(--colors-text-secondary)]")}>
                                             {day.num}
                                         </div>
                                     </div>

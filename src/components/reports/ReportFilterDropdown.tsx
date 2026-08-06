@@ -51,28 +51,28 @@ export function ReportFilterDropdown({
             <button type="button"
                 onClick={() => setOpen(p => !p)}
                 className={cn(
-                    "h-[40px] bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors",
+                    "h-[40px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                 )}>
-                <Icon className="w-4 h-4 text-[#667085]" />
+                <Icon className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                 <span>{label}</span>
                 <ChevronDown className={cn(
-                    "w-4 h-4 text-[#667085] transition-transform",
+                    "w-4 h-4 text-[var(--colors-text-quaternary)] transition-transform",
                     open && "rotate-180",
                 )} />
             </button>
 
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px]">
                     {options.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => { onChange(opt.value); setOpen(false); }}
-                            className="w-full flex items-center justify-between gap-3 px-3 py-2 hover:bg-[#f9fafb] transition-colors text-left">
-                            <span className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                            className="w-full flex items-center justify-between gap-3 px-3 py-2 hover:bg-[var(--colors-bg-secondary)] transition-colors text-left">
+                            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">
                                 {opt.label}
                             </span>
                             {opt.value === value && (
-                                <Check className="w-4 h-4 text-[#658774]" strokeWidth={2.5} />
+                                <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" strokeWidth={2.5} />
                             )}
                         </button>
                     ))}

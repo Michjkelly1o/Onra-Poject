@@ -165,12 +165,12 @@ export function LeadLifecycleItemModal({
     }
 
     const inputCls = [
-        "h-10 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085]",
-        "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all",
+        "h-10 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)]",
+        "focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] transition-all",
         "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white",
         showError
             ? "border-[#fda29b] focus:border-[#f04438]"
-            : "border-[#d0d5dd] focus:border-[#7ba08c]",
+            : "border-[var(--colors-border-primary)] focus:border-[var(--colors-secondary-500)]",
     ].join(" ");
 
     return (
@@ -181,10 +181,10 @@ export function LeadLifecycleItemModal({
                 <div className="flex flex-col">
                     <div className="px-6 pt-6 flex items-start gap-4">
                         <div className="flex-1 flex flex-col gap-1">
-                            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                            <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                                 {copy.title}
                             </h3>
-                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                                 {copy.subtitle}
                             </p>
                         </div>
@@ -193,18 +193,18 @@ export function LeadLifecycleItemModal({
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <div className="h-5 shrink-0" />
-                    <div className="h-px bg-[#e4e7ec] w-full" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)] w-full" />
                 </div>
 
                 {/* Body */}
                 <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex flex-col gap-5">
                     <div className="flex flex-col gap-[6px]">
-                        <label className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">
                             {copy.inputLabel}
                         </label>
                         <input
@@ -228,7 +228,7 @@ export function LeadLifecycleItemModal({
                 {/* Footer — full-width buttons (client 2026-07-27) so
                     the two actions balance the modal edge-to-edge, same
                     weight as the ConfirmModal footer layout. */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center gap-3">
                     <Button variant="secondary-gray" size="md" onClick={onClose} className="flex-1">
                         Cancel
                     </Button>

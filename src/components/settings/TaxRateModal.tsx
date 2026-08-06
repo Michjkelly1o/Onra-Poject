@@ -203,10 +203,10 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                 <div className="flex flex-col">
                     <div className="px-6 pt-6 flex items-start gap-4">
                         <div className="flex-1 flex flex-col gap-1">
-                            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                            <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                                 {isEdit ? "Edit tax rate" : "Add new tax rate"}
                             </h3>
-                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                                 {isEdit
                                     ? "Update the tax name or rate. Existing tax rules using this rate update immediately."
                                     : "Define a new tax percentage for products and services"}
@@ -215,11 +215,11 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                     </div>
                     <button type="button" onClick={onClose}
                         aria-label="Close"
-                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <div className="h-5 shrink-0" />
-                    <div className="h-px bg-[#e4e7ec] w-full" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)] w-full" />
                 </div>
 
                 {/* Body — scrolls independently so the frame stays a
@@ -231,7 +231,7 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                 <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 flex flex-col gap-5">
                     {/* Tax name */}
                     <div className="flex flex-col gap-[6px]">
-                        <label htmlFor="tax-name" className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                        <label htmlFor="tax-name" className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">
                             Tax name
                         </label>
                         <input
@@ -243,10 +243,10 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                             onKeyDown={e => { if (e.key === "Enter" && canSubmit) handleSubmit(); }}
                             placeholder="Enter tax name..."
                             className={cn(
-                                "h-11 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white",
+                                "h-11 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white",
                                 showNameError
                                     ? "border-[#fda29b] focus:border-[#f04438] focus:ring-[#fee4e2]"
-                                    : "border-[#d0d5dd] focus:border-[#7ba08c] focus:ring-[#aad4bd]",
+                                    : "border-[var(--colors-border-primary)] focus:border-[var(--colors-secondary-500)] focus:ring-[var(--colors-secondary-300)]",
                             )}
                         />
                         {showNameError && (
@@ -259,7 +259,7 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                         Edit mode locks the radio (type can't change once
                         downstream tax rules depend on it). */}
                     <div className="flex flex-col gap-[6px]">
-                        <p className="text-[14px] font-medium text-[#344054] leading-[20px]">Tax rate type</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">Tax rate type</p>
                         <div className="grid grid-cols-2 gap-3">
                             {TYPE_OPTIONS.map(opt => {
                                 const selected = type === opt.value;
@@ -272,18 +272,18 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                                         className={cn(
                                             "flex items-start gap-2 p-4 rounded-[12px] text-left transition-colors w-full relative",
                                             selected
-                                                ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                                : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                                ? "border-1 border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                                                : "border-1 border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-border-primary)]",
                                             isEdit && "cursor-not-allowed opacity-70",
                                         )}
                                     >
                                         <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                            <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
-                                            <p className="text-[13px] text-[#475467] leading-[18px]">{opt.subtitle}</p>
+                                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{opt.title}</p>
+                                            <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-[18px]">{opt.subtitle}</p>
                                         </div>
                                         <div className={cn(
                                             "w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                                            selected ? "bg-[#658774]" : "border-1 border-[#d0d5dd]",
+                                            selected ? "bg-[var(--colors-secondary-600)]" : "border-1 border-[var(--colors-border-primary)]",
                                         )}>
                                             {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                         </div>
@@ -301,7 +301,7 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                         no rate to enter). Zero-rated locks the input at 0. */}
                     {showRateInput && (
                         <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">
                                 Tax rate
                             </label>
                             <NumericInput
@@ -331,7 +331,7 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                         `formatEffectiveWindow` in the list page). */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">
                                 Valid from
                             </label>
                             <DatePicker
@@ -341,7 +341,7 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                             />
                         </div>
                         <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[#344054] leading-[20px]">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">
                                 Valid until
                             </label>
                             <DatePicker
@@ -360,7 +360,7 @@ export function TaxRateModal({ mode, existing, defaultKind, onClose, onSubmitted
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-[#e4e7ec] px-6 pt-5 pb-6 flex gap-3">
+                <div className="border-t border-[var(--colors-border-secondary)] px-6 pt-5 pb-6 flex gap-3">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
                     </Button>

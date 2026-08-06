@@ -28,16 +28,16 @@ function RoleRadioCard({ role, selected, onSelect }: {
             className={cn(
                 "w-full flex items-center gap-4 px-4 py-3 rounded-[12px] border-1 text-left transition-colors",
                 selected
-                    ? "bg-[#f5fffa] border-[#7ba08c]"
-                    : "bg-white border-[#e4e7ec] hover:bg-[#f9fafb]",
+                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)]"
+                    : "bg-white border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
             )}
         >
-            <div className="w-9 h-9 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
-                <User01 className="w-5 h-5 text-[#475467]" />
+            <div className="w-9 h-9 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0">
+                <User01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                <p className="text-[14px] font-semibold text-[#101828] leading-[20px] truncate">{role.name}</p>
-                <p className="text-[13px] text-[#667085] leading-[18px] line-clamp-1">
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px] truncate">{role.name}</p>
+                <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px] line-clamp-1">
                     {role.description || "—"}
                 </p>
             </div>
@@ -45,10 +45,10 @@ function RoleRadioCard({ role, selected, onSelect }: {
                 aria-hidden
                 className={cn(
                     "w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
-                    selected ? "border-[#658774] bg-white" : "border-[#d0d5dd] bg-white",
+                    selected ? "border-[var(--colors-secondary-600)] bg-white" : "border-[var(--colors-border-primary)] bg-white",
                 )}
             >
-                {selected && <span className="w-2.5 h-2.5 rounded-full bg-[#658774]" />}
+                {selected && <span className="w-2.5 h-2.5 rounded-full bg-[var(--colors-secondary-600)]" />}
             </span>
         </button>
     );
@@ -117,10 +117,10 @@ export default function ChangeRoleModal({ staff, onCancel, onConfirmed }: {
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6 pb-5">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                             Change role for &ldquo;{staff.fullName}&rdquo;
                         </h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             Select a new role to update {firstName}&rsquo;s access and permissions.
                         </p>
                     </div>
@@ -128,9 +128,9 @@ export default function ChangeRoleModal({ staff, onCancel, onConfirmed }: {
                         type="button"
                         onClick={onCancel}
                         aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mr-2 -mt-1"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mr-2 -mt-1"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -152,9 +152,9 @@ export default function ChangeRoleModal({ staff, onCancel, onConfirmed }: {
 
                 {/* Inheritance disclaimer */}
                 <div className="px-6 pt-5">
-                    <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                    <div className="flex gap-3 items-start bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0 mt-[2px]" />
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             This staff will inherit all permissions from the selected role and locations.
                         </p>
                     </div>

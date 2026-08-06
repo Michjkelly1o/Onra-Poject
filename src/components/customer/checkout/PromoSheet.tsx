@@ -27,9 +27,9 @@ function TermRow({ icon: Icon, children }: { icon: ComponentType<{ className?: s
     return (
         <div className="flex items-start gap-2">
             <span className="flex items-center py-0.5">
-                <Icon className="size-4 shrink-0 text-[#475467]" />
+                <Icon className="size-4 shrink-0 text-[var(--colors-text-tertiary)]" />
             </span>
-            <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">{children}</p>
+            <p className="flex-1 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{children}</p>
         </div>
     );
 }
@@ -116,9 +116,9 @@ export function PromoPanel({
                         type="button"
                         onClick={handleBack}
                         aria-label="Back"
-                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">
                         {atDetail ? "Promo detail" : "Promo"}
@@ -139,10 +139,10 @@ export function PromoPanel({
                         <div className="shrink-0 pb-3">
                             <div
                                 className={`flex items-center gap-2 rounded-lg border bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] ${
-                                    error ? "border-[#fda29b]" : "border-[#d0d5dd]"
+                                    error ? "border-[#fda29b]" : "border-[var(--colors-border-primary)]"
                                 }`}
                             >
-                                <Ticket01 className={`size-5 shrink-0 ${error ? "text-[#d92d20]" : "text-[#667085]"}`} aria-hidden />
+                                <Ticket01 className={`size-5 shrink-0 ${error ? "text-[#d92d20]" : "text-[var(--colors-text-quaternary)]"}`} aria-hidden />
                                 <input
                                     value={code}
                                     onChange={(e) => {
@@ -151,7 +151,7 @@ export function PromoPanel({
                                     }}
                                     onKeyDown={(e) => e.key === "Enter" && applyCode()}
                                     placeholder="Enter promo code"
-                                    className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
+                                    className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[var(--brand-text)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
                                 />
                                 {error ? (
                                     <AlertCircle className="size-5 shrink-0 text-[#d92d20]" aria-hidden />
@@ -203,25 +203,25 @@ export function PromoPanel({
                                                 <span className="text-xs font-medium leading-[18px] text-[var(--brand-primary)]">1x</span>
                                             </span>
                                         </div>
-                                        <p className="text-sm font-normal leading-5 text-[#475467]">{detail.description}</p>
+                                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{detail.description}</p>
                                     </div>
 
                                     <div className="flex flex-col gap-4">
                                         <TermRow icon={Tag01}>
                                             {scope === "appointment" ? "Eligible for appointment bookings" : "Eligible for package purchases"}
                                         </TermRow>
-                                        <div className="h-px w-full bg-[#e4e7ec]" />
+                                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                                         <TermRow icon={Percent03}>
                                             Discount:{" "}
                                             {detail.discountType === "fixed"
                                                 ? `AED ${detail.discountValue} off`
                                                 : `${detail.discountValue}% off`}
                                         </TermRow>
-                                        <div className="h-px w-full bg-[#e4e7ec]" />
+                                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                                         <TermRow icon={Ticket01}>Promotion: {detail.code}</TermRow>
-                                        <div className="h-px w-full bg-[#e4e7ec]" />
+                                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                                         <TermRow icon={MarkerPin01}>Applicable for {detail.locations}</TermRow>
-                                        <div className="h-px w-full bg-[#e4e7ec]" />
+                                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                                         <TermRow icon={Clock}>
                                             Valid until <span className="font-medium text-[var(--brand-text)]">{detail.validUntil}</span>
                                         </TermRow>

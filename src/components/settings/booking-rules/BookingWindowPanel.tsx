@@ -43,7 +43,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
     suffixSlot?: React.ReactNode;
 }) {
     return (
-        <div className="flex items-stretch h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
+        <div className="flex items-stretch h-10 w-full border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all">
             <input
                 type="number"
                 min={0}
@@ -58,7 +58,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
                     const parsed = parseInt(stripped, 10);
                     if (!Number.isNaN(parsed)) onChange(parsed);
                 }}
-                className="flex-1 min-w-0 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent"
+                className="flex-1 min-w-0 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent"
             />
             {suffixSlot}
         </div>
@@ -68,7 +68,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
+            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{title}</p>
             {children}
         </div>
     );
@@ -79,9 +79,9 @@ function Field({ label, children, subtitle }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
-            {subtitle && <p className="text-[13px] text-[#667085] leading-[18px]">{subtitle}</p>}
+            {subtitle && <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">{subtitle}</p>}
         </div>
     );
 }
@@ -94,7 +94,7 @@ function Toggle({ on, onChange, ariaLabel }: {
             onClick={() => onChange(!on)}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -172,21 +172,21 @@ export function BookingWindowPanel({ open, onClose }: {
             <div
                 style={{ right: shown ? 0 : -600 }}
                 className={cn(
-                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[var(--colors-border-secondary)] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
                     "transition-[right] duration-300 ease-out",
                 )}
             >
                 {/* Header */}
-                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4 select-none">
+                <div className="flex items-start gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[#101828]">Booking window</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Booking window</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Define when bookings open and the cutoff time before the scheduled start.
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -212,13 +212,13 @@ export function BookingWindowPanel({ open, onClose }: {
                     <Section title="Booking cutoff">
                         <div className={cn(
                             "rounded-[12px] border-1 px-4 py-3 flex items-start gap-4 bg-white transition-colors",
-                            cutoffOn ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                            cutoffOn ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)]",
                         )}>
                             <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">
+                                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">
                                     Allow bookings until the class starts
                                 </p>
-                                <p className="text-[14px] text-[#667085] leading-[20px]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                     Customer can book right up to the last minute.
                                 </p>
                             </div>
@@ -252,7 +252,7 @@ export function BookingWindowPanel({ open, onClose }: {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0 select-none">
+                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[var(--colors-border-secondary)] shrink-0 select-none">
                     <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
                 </div>

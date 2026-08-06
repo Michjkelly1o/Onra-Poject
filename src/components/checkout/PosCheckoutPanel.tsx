@@ -221,21 +221,21 @@ function PosCheckoutBody({ onCancel, onComplete }: {
         <>
             {/* Header — title + close X (top-right). Same chrome as the branding
                 Customize-portal panel; no step rail / breadcrumb. */}
-            <div className="relative shrink-0 border-b border-[#e4e7ec] px-6 py-4">
+            <div className="relative shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4">
                 <div className="pr-10">
-                    <p className="text-[18px] font-medium leading-[28px] text-[#101828]">Checkout</p>
-                    <p className="text-[14px] text-[#475467] leading-5 mt-1">
+                    <p className="text-[18px] font-medium leading-[28px] text-[var(--colors-text-primary)]">Checkout</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 mt-1">
                         Confirm and take payment for this sale.
                     </p>
                 </div>
                 <button type="button" onClick={onCancel} aria-label="Close"
-                    className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
             </div>
             {/* Breadcrumb stepper — same chrome as the branding Customize
                 panel. Only backward navigation (can't skip ahead to Receipt). */}
-            <div className="shrink-0 border-b border-[#e4e7ec] px-6 py-4 flex items-center gap-2">
+            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4 flex items-center gap-2">
                 {CHECKOUT_STEPS.map((s, i) => (
                     <Fragment key={s.n}>
                         <button
@@ -243,13 +243,13 @@ function PosCheckoutBody({ onCancel, onComplete }: {
                             onClick={() => { if (s.n <= step) setStep(s.n as 1 | 2); }}
                             className={cn(
                                 "text-[14px] font-semibold py-1 px-1 transition-colors",
-                                step === s.n ? "text-[#4f6e5d]" : "text-[#475467] hover:text-[#344054]",
+                                step === s.n ? "text-[#4f6e5d]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
                             )}
                         >
                             {s.label}
                         </button>
                         {i < CHECKOUT_STEPS.length - 1 && (
-                            <ChevronRight className="w-4 h-4 text-[#98a2b3]" />
+                            <ChevronRight className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
                         )}
                     </Fragment>
                 ))}
@@ -261,7 +261,7 @@ function PosCheckoutBody({ onCancel, onComplete }: {
                 on the left, primary action on the right. Hidden during the
                 processing spinner. */}
             {!loading && (
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between">
                     {step === 1 ? (
                         <>
                             <Button variant="secondary-gray" size="lg" onClick={onCancel}>Cancel</Button>

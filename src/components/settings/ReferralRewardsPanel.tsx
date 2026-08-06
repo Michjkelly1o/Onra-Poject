@@ -35,7 +35,7 @@ import {
     type ReferralUnlockTrigger,
 } from "@/lib/store";
 
-const labelCls = "text-[14px] font-medium text-[#344054]";
+const labelCls = "text-[14px] font-medium text-[var(--colors-text-secondary)]";
 
 // Two shipped reward types — a class credit or an AED account-credit top-up.
 // The Amount field's unit suffix (see `amountUnitLabel`) flips to "credit(s)"
@@ -54,7 +54,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
     suffixSlot?: React.ReactNode;
 }) {
     return (
-        <div className="flex items-stretch gap-0 h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
+        <div className="flex items-stretch gap-0 h-10 w-full border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all">
             <input
                 type="number"
                 min={0}
@@ -69,7 +69,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
                     const parsed = parseInt(stripped, 10);
                     if (!Number.isNaN(parsed)) onChange(parsed);
                 }}
-                className="flex-1 min-w-0 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent"
+                className="flex-1 min-w-0 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent"
             />
             {suffixSlot}
         </div>
@@ -79,7 +79,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
+            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{title}</p>
             {children}
         </div>
     );
@@ -234,21 +234,21 @@ export function ReferralRewardsPanel({ open, onClose }: {
             <div
                 style={{ right: shown ? 0 : -600 }}
                 className={cn(
-                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[var(--colors-border-secondary)] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
                     "transition-[right] duration-300 ease-out",
                 )}
             >
                 {/* Header */}
-                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4 select-none">
+                <div className="flex items-start gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[#101828]">Reward rules &amp; limits</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Reward rules &amp; limits</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Decide who qualifies &amp; block the common ways referral programs get gamed.
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -265,9 +265,9 @@ export function ReferralRewardsPanel({ open, onClose }: {
                             cascades the other AND resets both amounts. Uses
                             the same neutral `#f1f2ed` info chrome the freeze
                             policy panel + cancel-plan modal use. */}
-                        <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
-                            <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <div className="flex gap-3 items-start bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                            <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0 mt-[2px]" />
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                                 Studios use one reward type at a time — switching resets both amounts.
                             </p>
                         </div>
@@ -287,7 +287,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                     />
                                 </Field>
                             </div>
-                            <div className="h-10 flex items-center text-[16px] text-[#98a2b3]">→</div>
+                            <div className="h-10 flex items-center text-[16px] text-[var(--colors-fg-quaternary)]">→</div>
                             <div className="min-w-0">
                                 <Field label="Amount">
                                     <NumberField
@@ -295,7 +295,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                         onChange={setReferrerAmount}
                                         ariaLabel="Referrer reward amount"
                                         suffixSlot={
-                                            <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                            <span className="px-3 flex items-center text-[14px] text-[var(--colors-text-quaternary)] border-l border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)]">
                                                 {amountUnitLabel(referrerType)}
                                             </span>
                                         }
@@ -315,7 +315,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                     />
                                 </Field>
                             </div>
-                            <div className="h-10 flex items-center text-[16px] text-[#98a2b3]">→</div>
+                            <div className="h-10 flex items-center text-[16px] text-[var(--colors-fg-quaternary)]">→</div>
                             <div className="min-w-0">
                                 <Field label="Amount">
                                     <NumberField
@@ -323,7 +323,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                         onChange={setFriendAmount}
                                         ariaLabel="Friend reward amount"
                                         suffixSlot={
-                                            <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                            <span className="px-3 flex items-center text-[14px] text-[var(--colors-text-quaternary)] border-l border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)]">
                                                 {amountUnitLabel(friendType)}
                                             </span>
                                         }
@@ -348,15 +348,15 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                             className={cn(
                                                 "text-left rounded-[12px] border-1 px-4 py-3 flex items-center gap-3 transition-colors",
                                                 selected
-                                                    ? "border-[#7ba08c] bg-white"
-                                                    : "border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                                    ? "border-[var(--colors-secondary-500)] bg-white"
+                                                    : "border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-border-primary)]",
                                             )}
                                         >
-                                            <p className="flex-1 min-w-0 text-[14px] font-semibold text-[#101828] leading-[20px]">{opt.title}</p>
+                                            <p className="flex-1 min-w-0 text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">{opt.title}</p>
                                             {/* Radio dot — outer ring + inner sage circle when selected. */}
                                             <div className={cn(
                                                 "w-4 h-4 rounded-full border-1 flex items-center justify-center shrink-0",
-                                                selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white",
+                                                selected ? "border-[var(--colors-secondary-600)] bg-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)] bg-white",
                                             )}>
                                                 {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                             </div>
@@ -376,7 +376,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                     onChange={setMaxReferrals}
                                     ariaLabel="Max referrals per customer"
                                     suffixSlot={
-                                        <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                        <span className="px-3 flex items-center text-[14px] text-[var(--colors-text-quaternary)] border-l border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)]">
                                             friends
                                         </span>
                                     }
@@ -395,7 +395,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                     onChange={setExpiryDays}
                                     ariaLabel="Earned reward expiry days"
                                     suffixSlot={
-                                        <span className="px-3 flex items-center text-[14px] text-[#667085] border-l border-[#d0d5dd] bg-[#f9fafb]">
+                                        <span className="px-3 flex items-center text-[14px] text-[var(--colors-text-quaternary)] border-l border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)]">
                                             days
                                         </span>
                                     }
@@ -404,8 +404,8 @@ export function ReferralRewardsPanel({ open, onClose }: {
                         </div>
 
                         <Field label="Monthly program budget">
-                            <div className="flex items-stretch h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
-                                <span className="px-3 flex items-center text-[14px] text-[#667085] border-r border-[#d0d5dd] bg-[#f9fafb]">
+                            <div className="flex items-stretch h-10 w-full border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all">
+                                <span className="px-3 flex items-center text-[14px] text-[var(--colors-text-quaternary)] border-r border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)]">
                                     AED
                                 </span>
                                 <input
@@ -421,7 +421,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                                         const parsed = parseInt(stripped, 10);
                                         if (!Number.isNaN(parsed)) setBudget(parsed);
                                     }}
-                                    className="flex-1 min-w-0 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent"
+                                    className="flex-1 min-w-0 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent"
                                 />
                             </div>
                         </Field>
@@ -429,7 +429,7 @@ export function ReferralRewardsPanel({ open, onClose }: {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0 select-none">
+                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[var(--colors-border-secondary)] shrink-0 select-none">
                     <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="md" onClick={handleSave} disabled={!formValid}>
                         Save changes

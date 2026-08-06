@@ -118,7 +118,7 @@ export function WhatsOn({ items }: { items: HomeWhatsOnVM[] }) {
                                 className={
                                     i === active
                                         ? "h-[6px] w-6 rounded-full bg-[var(--brand-primary)]"
-                                        : "size-[6px] rounded-full bg-[#e4e7ec]"
+                                        : "size-[6px] rounded-full bg-[var(--colors-bg-quaternary)]"
                                 }
                             />
                         ))}

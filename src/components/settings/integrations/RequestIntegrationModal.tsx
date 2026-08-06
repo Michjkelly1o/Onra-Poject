@@ -75,14 +75,14 @@ export function RequestIntegrationModal({ onClose, onSubmitted }: RequestIntegra
                 {/* Header */}
                 <div className="pt-6 px-6 pb-5 relative">
                     <div className="flex flex-col gap-1 pr-10">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Request integration</h3>
-                        <p className="text-[14px] text-[#475467] leading-5">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Request integration</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                             Tell us which tool you&apos;d like to connect with.
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -93,20 +93,20 @@ export function RequestIntegrationModal({ onClose, onSubmitted }: RequestIntegra
                         <input
                             type="text" value={name} onChange={e => setName(e.target.value)}
                             placeholder="e.g. HubSpot, Zapier etc."
-                            className="h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            className="h-10 w-full px-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </FormField>
 
                     {/* Integration website — split input with http:// prefix */}
                     <FormField label="Integration website">
-                        <div className="flex w-full h-10 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
-                            <span className="inline-flex items-center justify-center px-[14px] text-[14px] font-medium text-[#475467] bg-[#f9fafb] border-r border-[#d0d5dd] shrink-0">
+                        <div className="flex w-full h-10 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
+                            <span className="inline-flex items-center justify-center px-[14px] text-[14px] font-medium text-[var(--colors-text-tertiary)] bg-[var(--colors-bg-secondary)] border-r border-[var(--colors-border-primary)] shrink-0">
                                 http://
                             </span>
                             <input
                                 type="text" value={website} onChange={e => setWebsite(e.target.value)}
                                 placeholder="example.com"
-                                className="flex-1 px-[14px] text-[14px] text-[#101828] placeholder:text-[#667085] bg-transparent focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:ring-inset transition-all"
+                                className="flex-1 px-[14px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:ring-inset transition-all"
                             />
                         </div>
                     </FormField>
@@ -117,17 +117,17 @@ export function RequestIntegrationModal({ onClose, onSubmitted }: RequestIntegra
                             <button
                                 type="button"
                                 onClick={() => setCategoryOpen(p => !p)}
-                                className="h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] flex items-center justify-between text-left hover:border-[#7ba08c] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                className="h-10 w-full px-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] flex items-center justify-between text-left hover:border-[var(--colors-secondary-500)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                             >
-                                <span className={cn(category ? "text-[#101828] font-medium" : "text-[#667085]")}>
+                                <span className={cn(category ? "text-[var(--colors-text-primary)] font-medium" : "text-[var(--colors-text-quaternary)]")}>
                                     {category
                                         ? INTEGRATION_CATEGORIES.find(c => c.key === category)?.label
                                         : "Select category"}
                                 </span>
-                                <ChevronDown className="w-4 h-4 text-[#667085]" />
+                                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                             </button>
                             {categoryOpen && (
-                                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
+                                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
                                     {INTEGRATION_CATEGORIES.map(cat => {
                                         const selected = category === cat.key;
                                         return (
@@ -136,12 +136,12 @@ export function RequestIntegrationModal({ onClose, onSubmitted }: RequestIntegra
                                                 type="button"
                                                 onClick={() => { setCategory(cat.key); setCategoryOpen(false); }}
                                                 className={cn(
-                                                    "flex items-center justify-between w-full px-4 py-[10px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors",
-                                                    selected ? "text-[#101828] font-semibold" : "text-[#344054]",
+                                                    "flex items-center justify-between w-full px-4 py-[10px] text-[14px] font-medium hover:bg-[var(--colors-bg-secondary)] transition-colors",
+                                                    selected ? "text-[var(--colors-text-primary)] font-semibold" : "text-[var(--colors-text-secondary)]",
                                                 )}
                                             >
                                                 <span>{cat.label}</span>
-                                                {selected && <Check className="w-4 h-4 text-[#658774]" />}
+                                                {selected && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                                             </button>
                                         );
                                     })}
@@ -156,7 +156,7 @@ export function RequestIntegrationModal({ onClose, onSubmitted }: RequestIntegra
                             value={useCase} onChange={e => setUseCase(e.target.value)}
                             placeholder="Describe your use case and how this integration would help your studio..."
                             rows={4}
-                            className="w-full px-[14px] py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-y"
+                            className="w-full px-[14px] py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-y"
                         />
                     </FormField>
 
@@ -164,8 +164,8 @@ export function RequestIntegrationModal({ onClose, onSubmitted }: RequestIntegra
                     <div className="bg-[#fefdf2] border-1 border-[#fef0c7] rounded-[10px] p-3 flex items-start gap-2">
                         <Lightbulb05 className="w-5 h-5 text-[#dc6803] shrink-0 mt-px" />
                         <div className="flex flex-col gap-0.5">
-                            <p className="text-[14px] font-semibold text-[#344054] leading-5">What happens next?</p>
-                            <p className="text-[14px] text-[#475467] leading-5">
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-secondary)] leading-5">What happens next?</p>
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                                 Our team will review request and reach out within 2-3 business days. Popular requests are prioritized first.
                             </p>
                         </div>
@@ -173,7 +173,7 @@ export function RequestIntegrationModal({ onClose, onSubmitted }: RequestIntegra
                 </div>
 
                 {/* Footer — Cancel + Submit request */}
-                <div className="border-t border-[#e4e7ec] px-6 py-4 flex gap-3 items-center">
+                <div className="border-t border-[var(--colors-border-secondary)] px-6 py-4 flex gap-3 items-center">
                     <Button variant="secondary-gray" size="md" className="flex-1" onClick={onClose}>
                         Cancel
                     </Button>
@@ -197,7 +197,7 @@ export function RequestIntegrationModal({ onClose, onSubmitted }: RequestIntegra
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
         </div>
     );

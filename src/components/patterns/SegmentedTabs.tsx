@@ -12,9 +12,9 @@
 //   • Container:  `flex items-center bg-surface-secondary border-1
 //                 border-gray-200 rounded-[10px] p-1 gap-1`
 //   • Button:     `px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all`
-//   • Active:     `bg-white text-[#101828]
+//   • Active:     `bg-white text-[var(--colors-text-primary)]
 //                 shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]`
-//   • Inactive:   `text-[#667085] hover:text-[#344054]`
+//   • Inactive:   `text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]`
 //
 // API mirrors DetailPageTabs — tabs / activeKey / onChange. Counts can be
 // inlined inside the label string (e.g. "Membership (3)") since the
@@ -71,14 +71,14 @@ export function SegmentedTabs({ tabs, activeKey, onChange, className, fullWidth 
                             fullWidth && "flex-1 justify-center",
                             "px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all inline-flex items-center gap-2",
                             active
-                                ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                : "text-[#667085] hover:text-[#344054]",
+                                ? "bg-white text-[var(--colors-text-primary)] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                             t.disabled && "opacity-50 cursor-not-allowed",
                         )}
                     >
                         {t.label}
                         {t.count !== undefined && (
-                            <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#f9fafb] border-1 border-[#e4e7ec] text-[12px] font-medium text-[#475467]">
+                            <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[12px] font-medium text-[var(--colors-text-tertiary)]">
                                 {t.count}
                             </span>
                         )}

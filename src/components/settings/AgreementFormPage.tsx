@@ -78,15 +78,15 @@ function StepItem({ step, current, isLast }: {
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
                         : complete
-                            ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#98a2b3]",
+                            ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
                 {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />
                 )}
             </div>
             <span className={cn(
@@ -94,8 +94,8 @@ function StepItem({ step, current, isLast }: {
                 active
                     ? "font-semibold text-[#3b5446]"
                     : complete
-                        ? "font-medium text-[#344054]"
-                        : "font-medium text-[#667085]",
+                        ? "font-medium text-[var(--colors-text-secondary)]"
+                        : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {step.label}
             </span>
@@ -111,10 +111,10 @@ function FormCard({ title, children, footer }: {
     footer: React.ReactNode;
 }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
                 {title && (
-                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h2>
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h2>
                 )}
                 {children}
             </div>
@@ -126,7 +126,7 @@ function FormCard({ title, children, footer }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-4 w-full">
-            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+            <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
             <div className="flex flex-col gap-4 w-full">{children}</div>
         </div>
     );
@@ -135,13 +135,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
         </div>
     );
 }
 
-const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 function TextInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder?: string;
@@ -166,7 +166,7 @@ function Textarea({ value, onChange, placeholder, minHeight = 120 }: {
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
             style={{ minHeight }}
-            className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
+            className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
         />
     );
 }
@@ -181,7 +181,7 @@ function LargeToggle({ on, onChange, ariaLabel }: {
             onClick={() => onChange(!on)}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -210,20 +210,20 @@ function EffectiveDateModeCard({ selected, title, subtitle, icon, onSelect }: {
             className={cn(
                 "text-left rounded-[12px] border-1 p-4 flex items-start gap-3 transition-colors bg-white",
                 selected
-                    ? "border-[#7ba08c]"
-                    : "border-[#e4e7ec] hover:border-[#d0d5dd]",
+                    ? "border-[var(--colors-secondary-500)]"
+                    : "border-[var(--colors-border-secondary)] hover:border-[var(--colors-border-primary)]",
             )}
         >
             <div className="shrink-0 w-9 h-9 rounded-[8px] bg-[#f5fffa] flex items-center justify-center">
                 {icon}
             </div>
             <div className="flex-1 flex flex-col gap-1 min-w-0">
-                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>
             </div>
             <div className={cn(
                 "w-4 h-4 rounded-full border-1 flex items-center justify-center shrink-0 mt-0.5",
-                selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white",
+                selected ? "border-[var(--colors-secondary-600)] bg-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)] bg-white",
             )}>
                 {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
@@ -244,11 +244,11 @@ function ToggleCard({ title, subtitle, on, onChange, ariaLabel }: {
     return (
         <div className={cn(
             "rounded-[12px] border-1 px-4 py-3 flex items-start gap-4 bg-white transition-colors",
-            on ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+            on ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)]",
         )}>
             <div className="flex-1 flex flex-col gap-1 min-w-0">
-                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>
             </div>
             <LargeToggle on={on} onChange={onChange} ariaLabel={ariaLabel} />
         </div>
@@ -271,7 +271,7 @@ function FilledCheckbox({ checked, onChange }: { checked: boolean; onChange: () 
         <button type="button" onClick={onChange}
             className={cn(
                 "w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 transition-colors border",
-                checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#658774]",
+                checked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-600)]",
             )}>
             {checked && <Check className="w-[10px] h-[10px] text-white" />}
         </button>
@@ -294,7 +294,7 @@ function RowFilterDropdown({ active, onChange }: {
     return (
         <div className="shrink-0">
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== "all" && (
@@ -309,7 +309,7 @@ function RowFilterDropdown({ active, onChange }: {
                         onClick={() => { onChange(opt.value); setOpen(false); }}
                         className={cn(
                             "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            active === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                            active === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                         )}>
                         {opt.label}
                     </button>
@@ -354,17 +354,17 @@ function MultiSelectCard({ title, subtitle, options, selected, onChange }: {
     const groups = Array.from(new Set(visibleOptions.map(o => o.group ?? "")));
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
                     <p className="text-[14px] text-[#6e776f] leading-5 truncate">{subtitle}</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {selected.length} selected
                 </span>
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0">
                     {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
@@ -373,24 +373,24 @@ function MultiSelectCard({ title, subtitle, options, selected, onChange }: {
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-2">
                         <FilledCheckbox checked={allVisibleSelected} onChange={toggleAll} />
-                        <span className="flex-1 text-[14px] font-medium text-[#101828]">Select all</span>
+                        <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-primary)]">Select all</span>
                         <RowFilterDropdown active={filter} onChange={setFilter} />
                     </div>
-                    <div className="h-px bg-[#e4e7ec]" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                     {groups.map(g => (
                         <div key={g || "_"} className="flex flex-col gap-3">
-                            {g && <p className="text-[12px] text-[#667085] leading-[18px]">{g}</p>}
+                            {g && <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{g}</p>}
                             {visibleOptions.filter(o => (o.group ?? "") === g).map(o => (
                                 <div key={o.id} className="flex items-center gap-2">
                                     <FilledCheckbox checked={selected.includes(o.id)} onChange={() => toggleOne(o.id)} />
-                                    <span className="text-[14px] font-medium text-[#101828] flex-1 truncate">{o.label}</span>
-                                    {o.sublabel && <span className="text-[14px] text-[#667085] shrink-0">{o.sublabel}</span>}
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1 truncate">{o.label}</span>
+                                    {o.sublabel && <span className="text-[14px] text-[var(--colors-text-quaternary)] shrink-0">{o.sublabel}</span>}
                                 </div>
                             ))}
                         </div>
                     ))}
                     {visibleOptions.length === 0 && (
-                        <p className="text-[14px] text-[#667085]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                             {options.length === 0 ? "Nothing available yet."
                                 : filter === "enabled" ? "No options selected yet."
                                     : "All options are selected."}
@@ -415,16 +415,16 @@ export function ContentTypeCard({ title, selected, onSelect }: {
             className={cn(
                 "flex-1 flex items-center gap-3 p-4 rounded-[12px] bg-white transition-all text-left",
                 selected
-                    ? "border-2 border-[#7ba08c]"
-                    : "border-1 border-[#e4e7ec] hover:bg-[#fafafa]",
+                    ? "border-2 border-[var(--colors-secondary-500)]"
+                    : "border-1 border-[var(--colors-border-secondary)] hover:bg-[#fafafa]",
             )}>
             <span className={cn(
                 "flex-1 text-[14px] font-medium",
-                selected ? "text-[#101828]" : "text-[#667085]",
+                selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
             )}>{title}</span>
             <span className={cn(
                 "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                selected ? "bg-[#658774]" : "border-1 border-[#d0d5dd] bg-white",
+                selected ? "bg-[var(--colors-secondary-600)]" : "border-1 border-[var(--colors-border-primary)] bg-white",
             )}>
                 {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
             </span>
@@ -564,16 +564,16 @@ export function UploadZone({ value, onChange }: {
                 onClick={() => inputRef.current?.click()}
                 onDrop={handleDrop}
                 onDragOver={e => e.preventDefault()}
-                className="border-1 border-[#e4e7ec] rounded-[12px] bg-white px-6 py-4 flex flex-col items-center gap-3 cursor-pointer hover:bg-[#fafafa] transition-colors">
-                <div className="w-10 h-10 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                    <UploadCloud02 className="w-5 h-5 text-[#475467]" />
+                className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] bg-white px-6 py-4 flex flex-col items-center gap-3 cursor-pointer hover:bg-[#fafafa] transition-colors">
+                <div className="w-10 h-10 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <UploadCloud02 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                 </div>
                 <div className="flex flex-col items-center gap-1">
                     <p className="text-[14px] leading-[20px]">
                         <span className="font-semibold text-[#4f6e5d]">Click to upload</span>
-                        <span className="text-[#475467]"> or drag and drop</span>
+                        <span className="text-[var(--colors-text-tertiary)]"> or drag and drop</span>
                     </p>
-                    <p className="text-[12px] text-[#475467]">PDF or DOC (max. 1mb)</p>
+                    <p className="text-[12px] text-[var(--colors-text-tertiary)]">PDF or DOC (max. 1mb)</p>
                 </div>
                 <input
                     ref={inputRef}
@@ -585,21 +585,21 @@ export function UploadZone({ value, onChange }: {
             </div>
 
             {value && (
-                <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-white p-4 flex items-start gap-3 relative">
-                    <div className="w-10 h-10 rounded-[6px] bg-white border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
-                        <File02 className="w-5 h-5 text-[#475467]" />
+                <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] bg-white p-4 flex items-start gap-3 relative">
+                    <div className="w-10 h-10 rounded-[6px] bg-white border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0">
+                        <File02 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                     </div>
                     <div className="flex-1 flex flex-col gap-1 min-w-0">
-                        <p className="text-[14px] font-medium text-[#344054] truncate">{value.fileName}</p>
-                        <p className="text-[14px] text-[#475467]">{formatBytes(value.sizeBytes)}</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] truncate">{value.fileName}</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)]">{formatBytes(value.sizeBytes)}</p>
                         <div className="flex items-center gap-3">
-                            <div className="flex-1 h-2 rounded-full bg-[#e4e7ec] overflow-hidden">
+                            <div className="flex-1 h-2 rounded-full bg-[var(--colors-bg-quaternary)] overflow-hidden">
                                 <div className={cn(
-                                    "h-full bg-[#658774] rounded-full transition-all",
+                                    "h-full bg-[var(--colors-secondary-600)] rounded-full transition-all",
                                     value.parsing ? "w-[40%] animate-pulse" : "w-full",
                                 )} />
                             </div>
-                            <span className="text-[14px] font-medium text-[#344054]">
+                            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                                 {value.parsing ? "Parsing…" : "100%"}
                             </span>
                         </div>
@@ -609,8 +609,8 @@ export function UploadZone({ value, onChange }: {
                             if (value.fileUrl) URL.revokeObjectURL(value.fileUrl);
                             onChange(null);
                         }}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <Trash01 className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <Trash01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
             )}
@@ -915,11 +915,11 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
             {/* Header (72px) */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={handleClose} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                         {title}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
@@ -990,11 +990,11 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
                             {/* Agreements applies to */}
                             <Section title="Agreements applies to">
                                 {/* Multi-branch toggle card */}
-                                <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4">
+                                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4">
                                     <div className="flex items-center justify-between gap-4">
                                         <div className="flex flex-col flex-1 min-w-0">
-                                            <p className="text-[14px] font-medium text-[#101828]">Multi-branch locations</p>
-                                            <p className="text-[14px] text-[#667085]">Agreement can be use on multiple branches</p>
+                                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Multi-branch locations</p>
+                                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Agreement can be use on multiple branches</p>
                                         </div>
                                         <LargeToggle
                                             on={rules.multiBranch}
@@ -1062,14 +1062,14 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
                                             selected={rules.effectiveDatesMode === "ongoing"}
                                             title="Ongoing (no expiry)"
                                             subtitle="The agreement stays in effect until it is updated."
-                                            icon={<RefreshCcw01 className="w-5 h-5 text-[#658774]" />}
+                                            icon={<RefreshCcw01 className="w-5 h-5 text-[var(--colors-secondary-600)]" />}
                                             onSelect={() => setRules(p => ({ ...p, effectiveDatesMode: "ongoing" }))}
                                         />
                                         <EffectiveDateModeCard
                                             selected={rules.effectiveDatesMode === "expiry"}
                                             title="Set an expiry date"
                                             subtitle="The agreement is valid until the selected expiry date."
-                                            icon={<Calendar className="w-5 h-5 text-[#658774]" />}
+                                            icon={<Calendar className="w-5 h-5 text-[var(--colors-secondary-600)]" />}
                                             onSelect={() => setRules(p => ({ ...p, effectiveDatesMode: "expiry" }))}
                                         />
                                     </div>
@@ -1128,9 +1128,9 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
                             </Section>
 
                             {/* Info banner (Figma 5773:223106) */}
-                            <div className="bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] p-4 flex items-start gap-4">
-                                <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-0.5" />
-                                <p className="text-[14px] text-[#475467] leading-[20px] flex-1">
+                            <div className="bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex items-start gap-4">
+                                <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0 mt-0.5" />
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px] flex-1">
                                     Agreements are sent automatically on a customer's first booking. You can also republish new agreement version manually.
                                 </p>
                             </div>

@@ -43,11 +43,11 @@ function FilledCheckbox({ checked, disabled, onChange }: {
     // in every other module).
     const palette = disabled
         ? checked
-            ? { bg: "bg-[#e4e7ec]", border: "border-[#d0d5dd]", tick: "text-[#98a2b3]" }
-            : { bg: "bg-[#f2f4f7]", border: "border-[#e4e7ec]", tick: "text-[#98a2b3]" }
+            ? { bg: "bg-[var(--colors-bg-quaternary)]", border: "border-[var(--colors-border-primary)]", tick: "text-[var(--colors-fg-quaternary)]" }
+            : { bg: "bg-[var(--colors-bg-tertiary)]", border: "border-[var(--colors-border-secondary)]", tick: "text-[var(--colors-fg-quaternary)]" }
         : checked
-            ? { bg: "bg-[#658774]", border: "border-[#658774]", tick: "text-white" }
-            : { bg: "bg-white",     border: "border-[#d0d5dd] hover:border-[#658774]", tick: "text-white" };
+            ? { bg: "bg-[var(--colors-secondary-600)]", border: "border-[var(--colors-secondary-600)]", tick: "text-white" }
+            : { bg: "bg-white",     border: "border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-600)]", tick: "text-white" };
     return (
         <button type="button" onClick={disabled ? undefined : onChange} disabled={disabled}
             className={cn(
@@ -73,7 +73,7 @@ function RowFilterDropdown({ active, onChange }: {
     return (
         <div className="shrink-0">
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== "all" && (
@@ -88,7 +88,7 @@ function RowFilterDropdown({ active, onChange }: {
                         onClick={() => { onChange(opt.value); setOpen(false); }}
                         className={cn(
                             "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            active === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                            active === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                         )}>
                         {opt.label}
                     </button>
@@ -148,17 +148,17 @@ export function MultiSelectCard({
     const groups = Array.from(new Set(visibleOptions.map(o => o.group ?? "")));
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
                     <p className="text-[14px] text-[#6e776f] leading-5 truncate">{subtitle}</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {selected.length} selected
                 </span>
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0">
                     {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
@@ -173,14 +173,14 @@ export function MultiSelectCard({
                         />
                         <span className={cn(
                             "flex-1 text-[14px] font-medium",
-                            readOnly ? "text-[#667085]" : "text-[#101828]",
+                            readOnly ? "text-[var(--colors-text-quaternary)]" : "text-[var(--colors-text-primary)]",
                         )}>Select all</span>
                         {!readOnly && <RowFilterDropdown active={filter} onChange={setFilter} />}
                     </div>
-                    <div className="h-px bg-[#e4e7ec]" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                     {groups.map(g => (
                         <div key={g || "_"} className="flex flex-col gap-3">
-                            {g && <p className="text-[12px] text-[#667085] leading-[18px]">{g}</p>}
+                            {g && <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{g}</p>}
                             {visibleOptions.filter(o => (o.group ?? "") === g).map(o => (
                                 <div key={o.id} className="flex items-center gap-2">
                                     <FilledCheckbox
@@ -190,12 +190,12 @@ export function MultiSelectCard({
                                     />
                                     <span className={cn(
                                         "text-[14px] font-medium flex-1 truncate",
-                                        readOnly ? "text-[#475467]" : "text-[#101828]",
+                                        readOnly ? "text-[var(--colors-text-tertiary)]" : "text-[var(--colors-text-primary)]",
                                     )}>{o.label}</span>
                                     {o.sublabel && (
                                         <span className={cn(
                                             "text-[14px] shrink-0",
-                                            readOnly ? "text-[#98a2b3]" : "text-[#667085]",
+                                            readOnly ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-quaternary)]",
                                         )}>{o.sublabel}</span>
                                     )}
                                 </div>
@@ -203,7 +203,7 @@ export function MultiSelectCard({
                         </div>
                     ))}
                     {visibleOptions.length === 0 && (
-                        <p className="text-[14px] text-[#667085]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                             {options.length === 0 ? "Nothing available yet."
                                 : filter === "enabled" ? "No options selected yet."
                                     : "All options are selected."}

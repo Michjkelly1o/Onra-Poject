@@ -97,9 +97,9 @@ export function CustomerSheet({ open, onClose, children, tall = false, heightCla
                 }}
             >
                 {bleed ? (
-                    <div className="pointer-events-none absolute left-1/2 top-2 z-30 h-1.5 w-9 -translate-x-1/2 rounded-full bg-[#d0d5dd]" />
+                    <div className="pointer-events-none absolute left-1/2 top-2 z-30 h-1.5 w-9 -translate-x-1/2 rounded-full bg-[var(--colors-border-primary)]" />
                 ) : (
-                    <div className="mx-auto mb-4 h-1.5 w-9 shrink-0 rounded-full bg-[#e4e7ec]" />
+                    <div className="mx-auto mb-4 h-1.5 w-9 shrink-0 rounded-full bg-[var(--colors-bg-quaternary)]" />
                 )}
                 {tall || heightClass ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
             </div>

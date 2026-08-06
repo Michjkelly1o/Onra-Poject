@@ -95,7 +95,7 @@ function InstructorAvatar({ instructor, size = 40 }: { instructor: Instructor; s
 function ActionBtn({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
     return (
         <button type="button" onClick={onClick}
-            className="flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] text-[#475467] hover:text-[#344054] transition-colors text-left">
+            className="flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)] transition-colors text-left">
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
         </button>
@@ -108,7 +108,7 @@ function InstructorStatusBadge({ status }: { status: Instructor["status"] }) {
     const styles: Record<Instructor["status"], string> = {
         active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
         inactive: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-        archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+        archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     };
     const labels = { active: "Active", inactive: "Inactive", archive: "Archive" };
     return (
@@ -168,16 +168,16 @@ function ClassStatusFilterDropdown({ value, onChange }: {
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[180px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[180px]">
                     {OPTIONS.map(opt => (
                         <button key={opt} type="button"
                             onClick={() => { onChange(value === opt ? null : opt); setOpen(false); }}
                             className={cn(
                                 "w-full flex items-center justify-between text-left px-5 py-3 text-[15px] font-medium transition-colors",
-                                value === opt ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === opt ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt}
-                            {value === opt && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -197,24 +197,24 @@ function PayRateSnapshotCard({ payRate }: { payRate: PayRate | undefined }) {
     const rateAmount = display ? `${display.main}/${display.subtitle.replace(/^per /, "")}` : "-";
     const rateName = payRate?.name ?? "-";
     return (
-        <div className="flex-[1.5] min-w-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col justify-between gap-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="flex-[1.5] min-w-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col justify-between gap-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             {/* Header — title + featured icon */}
             <div className="flex items-start gap-4 w-full">
-                <p className="flex-1 min-w-0 text-[16px] font-medium text-[#667085] leading-6">Pay rate</p>
-                <div className="w-10 h-10 rounded-full bg-[#f1f2ed] flex items-center justify-center shrink-0">
-                    <Calendar className="w-5 h-5 text-[#475467]" />
+                <p className="flex-1 min-w-0 text-[16px] font-medium text-[var(--colors-text-quaternary)] leading-6">Pay rate</p>
+                <div className="w-10 h-10 rounded-full bg-[var(--colors-tertiary-50)] flex items-center justify-center shrink-0">
+                    <Calendar className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                 </div>
             </div>
             {/* Default rate | Rate */}
             <div className="flex items-center gap-[18px] w-full">
                 <div className="flex-1 min-w-0 flex flex-col">
-                    <p className="text-[14px] font-normal text-[#667085] leading-5">Default rate</p>
-                    <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{rateName}</p>
+                    <p className="text-[14px] font-normal text-[var(--colors-text-quaternary)] leading-5">Default rate</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">{rateName}</p>
                 </div>
-                <div className="self-stretch w-px bg-[#e4e7ec] shrink-0" aria-hidden />
+                <div className="self-stretch w-px bg-[var(--colors-bg-quaternary)] shrink-0" aria-hidden />
                 <div className="flex-1 min-w-0 flex flex-col">
-                    <p className="text-[14px] font-normal text-[#667085] leading-5">Rate</p>
-                    <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{rateAmount}</p>
+                    <p className="text-[14px] font-normal text-[var(--colors-text-quaternary)] leading-5">Rate</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">{rateAmount}</p>
                 </div>
             </div>
         </div>
@@ -227,14 +227,14 @@ function MetricCard({ label, value, hint, Icon }: {
     label: string; value: string; hint?: string; Icon: React.ElementType;
 }) {
     return (
-        <div className="flex-1 min-w-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="flex-1 min-w-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-start justify-between gap-3">
-                <p className="text-[14px] text-[#667085] leading-[20px] flex-1 min-w-0">{label}</p>
-                <div className="w-10 h-10 rounded-full bg-[#f1f2ed] flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5 text-[#475467]" />
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] flex-1 min-w-0">{label}</p>
+                <div className="w-10 h-10 rounded-full bg-[var(--colors-tertiary-50)] flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                 </div>
             </div>
-            <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">{value}</p>
+            <p className="font-semibold text-[24px] leading-[32px] text-[var(--colors-text-primary)]">{value}</p>
             {hint && <p className="text-[14px] text-[#067647] leading-[20px]">{hint}</p>}
         </div>
     );
@@ -254,7 +254,7 @@ function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n
             title={disabled ? "At least one pay rate must stay enabled" : undefined}
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
-                value ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                value ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -267,17 +267,17 @@ function PayTrackCard({ title, subtitle, enabled, onToggle, toggleDisabled, rate
     rateValue: string; rateOptions: { value: string; label: string }[]; onRateChange: (v: string) => void;
 }) {
     return (
-        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]")}>
+        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)]")}>
             <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>
                 </div>
                 <PayToggle value={enabled} onChange={onToggle} disabled={toggleDisabled} />
             </div>
             {enabled && (
                 <div className="flex flex-col gap-[6px]">
-                    <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Pay rate</p>
                     <SelectInput placeholder="Select pay rate" options={rateOptions} value={rateValue} onChange={onRateChange} width="w-full" />
                 </div>
             )}
@@ -348,14 +348,14 @@ function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates,
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
             <div className="relative bg-white rounded-[12px] w-[560px] max-h-[88vh] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1 pt-6 px-6 shrink-0">
-                    <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                    <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                         Change pay rate for &quot;{instructor.name}&quot;
                     </h3>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                         {isInstructor
                             ? "Update the pay configuration. At least one pay rate must stay enabled — and disabling the Default rate keeps both Pay per class and Pay per private on."
                             : "Update the pay configuration. At least one pay rate must stay enabled."}
@@ -378,15 +378,15 @@ function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates,
                     )}
 
                     {/* Info banner — bg #f1f2ed warm-cream per Figma 7093-347698 */}
-                    <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                    <div className="flex gap-3 items-start bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0 mt-[2px]" />
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             The updated pay configuration applies to all future classes and bookings.
                         </p>
                     </div>
                 </div>
 
-                <div className="flex gap-3 px-6 pt-4 pb-6 border-t border-[#e4e7ec] shrink-0">
+                <div className="flex gap-3 px-6 pt-4 pb-6 border-t border-[var(--colors-border-secondary)] shrink-0">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
                     <Button variant="primary" size="lg" className="flex-1" disabled={!canSave} onClick={() => onConfirm(cfg)}>
                         Update pay rate
@@ -563,34 +563,34 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, defaultRa
         ? Math.min(100, Math.round((classesCount! / classCap!) * 100))
         : 0;
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3">
             <div className="flex flex-col gap-1">
-                <p className="text-[13px] text-[#667085] leading-[18px]">Total earnings this month</p>
-                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{aed(totalThisMonth)}</p>
+                <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">Total earnings this month</p>
+                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{aed(totalThisMonth)}</p>
                 {showTax && <TaxSuffix category="pay_rate" branchId={branchId} />}
             </div>
             {showClasses ? (
                 <>
-                    <div className="w-full h-1.5 rounded-full bg-[#e4e7ec] overflow-hidden">
-                        <div className="h-full bg-[#658774]" style={{ width: `${pct}%` }} />
+                    <div className="w-full h-1.5 rounded-full bg-[var(--colors-bg-quaternary)] overflow-hidden">
+                        <div className="h-full bg-[var(--colors-secondary-600)]" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[12px] text-[#667085]">Classes</p>
-                            <p className="text-[13px] font-medium text-[#344054]">{classesCount}/{classCap} classes</p>
+                            <p className="text-[12px] text-[var(--colors-text-quaternary)]">Classes</p>
+                            <p className="text-[13px] font-medium text-[var(--colors-text-secondary)]">{classesCount}/{classCap} classes</p>
                         </div>
                         <div className="flex flex-col gap-1 text-right">
-                            <p className="text-[12px] text-[#667085]">Default pay rate</p>
-                            <p className="text-[13px] font-medium text-[#344054]">{defaultRateName}</p>
+                            <p className="text-[12px] text-[var(--colors-text-quaternary)]">Default pay rate</p>
+                            <p className="text-[13px] font-medium text-[var(--colors-text-secondary)]">{defaultRateName}</p>
                         </div>
                     </div>
                 </>
             ) : (
                 <>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                     <div className="flex flex-col gap-1">
-                        <p className="text-[12px] text-[#667085]">Default pay rate</p>
-                        <p className="text-[13px] font-medium text-[#344054]">{defaultRateName}</p>
+                        <p className="text-[12px] text-[var(--colors-text-quaternary)]">Default pay rate</p>
+                        <p className="text-[13px] font-medium text-[var(--colors-text-secondary)]">{defaultRateName}</p>
                     </div>
                 </>
             )}
@@ -602,8 +602,8 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, defaultRa
 function SidebarRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[13px] text-[#667085] leading-[18px]">{label}</p>
-            <p className="text-[15px] font-medium text-[#101828] leading-[22px]">{value}</p>
+            <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">{label}</p>
+            <p className="text-[15px] font-medium text-[var(--colors-text-primary)] leading-[22px]">{value}</p>
         </div>
     );
 }
@@ -612,8 +612,8 @@ function SidebarRow({ label, value }: { label: string; value: string }) {
 
 // ─── Table chrome ──────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
 
 // ─── Page ──────────────────────────────────────────────────────────────────
 
@@ -974,11 +974,11 @@ export default function PayrollInstructorDetailPage({
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Staff details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -987,15 +987,15 @@ export default function PayrollInstructorDetailPage({
             <DetailPageShell
                 sidebar={
                     /* LEFT — sidebar */
-                    <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                    <aside className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                         <div className="px-6 pt-6 pb-4 flex flex-col gap-3">
                             <div className="flex items-start justify-between gap-3">
                                 <InstructorAvatar instructor={instructor} size={64} />
                                 <InstructorStatusBadge status={instructor.status} />
                             </div>
                             <div className="flex flex-col gap-1.5 items-start">
-                                <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">{instructor.name}</p>
-                                <p className="text-[14px] text-[#667085]">{instructor.email}</p>
+                                <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{instructor.name}</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{instructor.email}</p>
                             </div>
                         </div>
 
@@ -1020,7 +1020,7 @@ export default function PayrollInstructorDetailPage({
                                         header). Reuses the shared RoleBadge. */}
                                     {roleRow && (
                                         <div className="flex flex-col gap-1">
-                                            <p className="text-[13px] text-[#667085] leading-[18px]">Role</p>
+                                            <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">Role</p>
                                             <div className="flex"><RoleBadge label={roleRow.name} type={roleRow.type} /></div>
                                         </div>
                                     )}
@@ -1030,8 +1030,8 @@ export default function PayrollInstructorDetailPage({
                             </div>
 
                             <div className="px-6 pb-6 shrink-0 mt-auto">
-                                <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                                <p className="text-[14px] text-[#667085] mb-4">Pay rate actions</p>
+                                <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Pay rate actions</p>
                                 <div className="flex flex-col gap-4">
                                     <ActionBtn icon={<Edit02 className="w-5 h-5" />}    label="Change pay rate"      onClick={() => setChangeRateOpen(true)} />
                                     <ActionBtn icon={<Download01 className="w-5 h-5" />} label="Export payout report" onClick={handleExportPayout} />
@@ -1042,11 +1042,11 @@ export default function PayrollInstructorDetailPage({
                 }
                 main={
                     /* RIGHT — earnings card */
-                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
+                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px]">
                         {/* Tabs — single "Earnings" tab (future tabs land here) */}
-                        <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                        <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                             <div className="flex gap-1">
-                                <span className="h-[48px] px-3 text-[14px] font-semibold border-b-2 border-[#101828] text-[#101828]">
+                                <span className="h-[48px] px-3 text-[14px] font-semibold border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]">
                                     Earnings
                                 </span>
                             </div>
@@ -1160,11 +1160,11 @@ export default function PayrollInstructorDetailPage({
                                                 {pageRows.map(r => (
                                                     <tr key={`${r.kind}-${r.id}`}
                                                         onClick={() => handleViewBooking(r)}
-                                                        className="transition-colors hover:bg-[#f9fafb] cursor-pointer">
+                                                        className="transition-colors hover:bg-[var(--colors-bg-secondary)] cursor-pointer">
                                                         <td className={TD}>
                                                             <div className="flex flex-col">
-                                                                <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                                <span className="text-[13px] text-[#667085]">
+                                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
+                                                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">
                                                                     {r.dateISO}, {r.displayTime}
                                                                 </span>
                                                             </div>
@@ -1176,15 +1176,15 @@ export default function PayrollInstructorDetailPage({
                                                                     <div className="flex items-center gap-1">
                                                                         {[0, 1, 2, 3, 4].map(i => (
                                                                             <Star01 key={i}
-                                                                                className={cn("w-3.5 h-3.5", i < Math.round(r.rating) ? "text-[#fdb022] fill-[#fdb022]" : "text-[#e4e7ec]")} />
+                                                                                className={cn("w-3.5 h-3.5", i < Math.round(r.rating) ? "text-[#fdb022] fill-[#fdb022]" : "text-[var(--colors-border-secondary)]")} />
                                                                         ))}
                                                                     </div>
-                                                                    <span className="text-[12px] text-[#667085]">
+                                                                    <span className="text-[12px] text-[var(--colors-text-quaternary)]">
                                                                         {r.rating.toFixed(1)} ({r.ratingCount} ratings)
                                                                     </span>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-[13px] text-[#667085]">No ratings</span>
+                                                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">No ratings</span>
                                                             )}
                                                         </td>
                                                         <td className={TD}><ClassStatusBadge status={r.status} /></td>

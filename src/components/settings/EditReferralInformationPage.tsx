@@ -103,11 +103,11 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Customize referral information</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Customize referral information</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -117,7 +117,7 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                 {/* ── Left rail (single step) ────────────────────────── */}
                 <div className="w-[220px] shrink-0">
                     <div className="flex items-center gap-4 h-[52px] p-4 rounded-[12px] bg-[#f5fffa]">
-                        <div className="w-6 h-6 rounded-full bg-[#658774] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c] flex items-center justify-center text-[14px] font-medium">1</div>
+                        <div className="w-6 h-6 rounded-full bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c] flex items-center justify-center text-[14px] font-medium">1</div>
                         <p className="flex-1 text-[14px] font-semibold text-[#3b5446] leading-[20px]">Referral information</p>
                     </div>
                 </div>
@@ -126,24 +126,24 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                        the left stepper rail and the right preview rail,
                        no max-width clamp so the editor stretches as the
                        window grows. ─────────────────────────────────── */}
-                <div className="flex-1 min-w-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 p-6 flex flex-col gap-5 overflow-y-auto scrollbar-hide">
                         {/* Title */}
                         <div className="flex flex-col gap-1.5 shrink-0">
-                            <label className="text-[14px] font-medium text-[#344054]">Title</label>
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Title</label>
                             <input
                                 type="text"
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
                                 placeholder="Refer friends, get free credits"
-                                className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                                className="h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
                             />
                         </div>
 
                         {/* Variables strip */}
                         <div className="flex flex-col gap-2 shrink-0">
-                            <p className="text-[14px] font-medium text-[#344054]">Variables (drag or click into the description)</p>
-                            <div className="flex flex-wrap gap-2 px-3 py-3 border-1 border-[#e4e7ec] rounded-[8px] bg-[#fafafa]">
+                            <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Variables (drag or click into the description)</p>
+                            <div className="flex flex-wrap gap-2 px-3 py-3 border-1 border-[var(--colors-border-secondary)] rounded-[8px] bg-[#fafafa]">
                                 {VARIABLE_CHIPS.map(chip => (
                                     <button
                                         key={chip.token}
@@ -167,7 +167,7 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
 
                         {/* Description */}
                         <div className="flex flex-col gap-1.5 flex-1 min-h-0">
-                            <label className="text-[14px] font-medium text-[#344054] shrink-0">Referral information</label>
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)] shrink-0">Referral information</label>
                             <RichTextEditor
                                 ref={editorRef}
                                 value={description}
@@ -192,36 +192,36 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                 {/* ── Right preview rail — matches Membership create
                        Template-preview chrome (header + divider + #f6f6f3
                        stage + inner mock card with DecorativeBanner). ── */}
-                <div className="w-[400px] shrink-0 self-start bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                <div className="w-[400px] shrink-0 self-start bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                     {/* Header */}
                     <div className="flex flex-col">
                         <div className="pt-6 px-6 flex flex-col gap-1">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Referral preview</p>
+                            <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Referral preview</p>
                             <p className="text-[14px] text-[#6e776f] leading-5">This is how your referral will look like.</p>
                         </div>
                         <div className="h-5" />
-                        <div className="h-px bg-[#e4e7ec]" />
+                        <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                     </div>
                     {/* Stage */}
                     <div className="bg-[#f6f6f3] px-6 py-10">
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
                             <DecorativeBanner bannerHeight={120} iconBox={56} icon={HeartHand} {...BANNER_TINTS.package} />
                             <div className="flex flex-col gap-4 px-5">
                                 <div className="flex flex-col gap-2 text-center">
-                                    <p className="text-[18px] leading-[24px] font-semibold text-[#101828]">
+                                    <p className="text-[18px] leading-[24px] font-semibold text-[var(--colors-text-primary)]">
                                         {previewTitle}
                                     </p>
-                                    <p className="text-[13px] text-[#475467] leading-[18px]">
+                                    <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-[18px]">
                                         {previewBody || "Description preview shows once you start typing."}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 w-full">
-                                    <div className="flex-1 h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white flex items-center text-[14px] text-[#101828]">
+                                    <div className="flex-1 h-10 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white flex items-center text-[14px] text-[var(--colors-text-primary)]">
                                         Jtr.888
                                     </div>
                                     <button
                                         type="button"
-                                        className="h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white flex items-center gap-1.5 text-[14px] text-[#344054]"
+                                        className="h-10 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white flex items-center gap-1.5 text-[14px] text-[var(--colors-text-secondary)]"
                                     >
                                         <Copy01 className="w-3.5 h-3.5" />
                                         Copy

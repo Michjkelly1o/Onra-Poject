@@ -72,15 +72,15 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
                         : complete
-                            ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3]",
+                            ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
                 {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />
                 )}
             </div>
             {/* Label */}
@@ -89,8 +89,8 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 active
                     ? "font-semibold text-[#3b5446]"
                     : complete
-                        ? "font-medium text-[#344054]"
-                        : "font-medium text-[#667085]",
+                        ? "font-medium text-[var(--colors-text-secondary)]"
+                        : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {step.label}
             </span>
@@ -111,18 +111,18 @@ function ProductOptionCard({ title, description, selected, onSelect }: {
             className={cn(
                 "w-full text-left bg-white border-1 rounded-[12px] p-4 flex items-center gap-1 transition-all",
                 selected
-                    ? "border-[#7ba08c] ring-2 ring-[#aad4bd] bg-[#f5fffa]"
-                    : "border-[#e4e7ec] hover:bg-[#fafafa]",
+                    ? "border-[var(--colors-secondary-500)] ring-2 ring-[var(--colors-secondary-300)] bg-[#f5fffa]"
+                    : "border-[var(--colors-border-secondary)] hover:bg-[#fafafa]",
             )}>
             <div className="flex-1 flex items-center gap-3">
                 <div className="flex flex-col">
-                    <span className="text-[14px] font-medium text-[#344054] leading-5">{title}</span>
-                    <span className="text-[14px] text-[#475467] leading-5">{description}</span>
+                    <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">{title}</span>
+                    <span className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{description}</span>
                 </div>
             </div>
             <div className={cn(
                 "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors",
-                selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white",
+                selected ? "border-[var(--colors-secondary-600)] bg-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)] bg-white",
             )}>
                 {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
@@ -362,7 +362,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
             onClick={() => onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full transition-colors shrink-0",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <span className={cn(
                 "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all",
@@ -382,11 +382,11 @@ function ToggleCard({ title, subtitle, on, onChange }: {
     return (
         <div className={cn(
             "bg-white rounded-[12px] p-4 flex items-center justify-between gap-3 transition-colors w-full",
-            on ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]",
+            on ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)]",
         )}>
             <div className="flex flex-col min-w-0 flex-1">
-                <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-5">{subtitle}</p>
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{subtitle}</p>
             </div>
             <Toggle on={on} onChange={onChange} />
         </div>
@@ -458,18 +458,18 @@ function BranchMultiSelect({ kind, selected, onChange, branches }: {
         : "The package can be use on multiple branches";
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             {/* Header */}
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Branches</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Branches</p>
                     <p className="text-[14px] text-[#6e776f] leading-5 truncate">{subtitle}</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {selected.length} selected
                 </span>
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0">
                     {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
@@ -479,14 +479,14 @@ function BranchMultiSelect({ kind, selected, onChange, branches }: {
                     {/* Select all + filter row */}
                     <div className="flex items-center gap-2">
                         <FilledCheckbox checked={allSelected} onChange={toggleAll} />
-                        <span className="flex-1 text-[14px] font-medium text-[#101828]">Select all</span>
+                        <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-primary)]">Select all</span>
                         <BranchFilterDropdown active={filter} onChange={setFilter} />
                     </div>
 
                     {/* Divider */}
-                    <div className="h-px bg-[#e4e7ec]" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)]" />
 
-                    <p className="text-[12px] text-[#667085] leading-[18px]">Branches</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">Branches</p>
 
                     {visible.map(b => (
                         <div key={b.id} className="flex items-center gap-2">
@@ -494,12 +494,12 @@ function BranchMultiSelect({ kind, selected, onChange, branches }: {
                                 checked={selected.includes(b.id)}
                                 onChange={() => toggleOne(b.id)}
                             />
-                            <span className="text-[14px] font-medium text-[#101828] flex-1">{b.name}</span>
+                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1">{b.name}</span>
                         </div>
                     ))}
 
                     {visible.length === 0 && (
-                        <p className="text-[14px] text-[#667085]">No branches match the filter.</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">No branches match the filter.</p>
                     )}
                 </div>
             )}
@@ -528,7 +528,7 @@ function BranchFilterDropdown({ active, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== "all" && (
@@ -539,13 +539,13 @@ function BranchFilterDropdown({ active, onChange }: {
             </button>
 
             {open && (
-                <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
+                <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[180px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
                     {OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => { onChange(opt.value); setOpen(false); }}
                             className={cn(
                                 "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                active === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                active === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
                         </button>
@@ -561,7 +561,7 @@ function FilledCheckbox({ checked, onChange }: { checked: boolean; onChange: () 
         <button type="button" onClick={onChange}
             className={cn(
                 "w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 transition-colors border",
-                checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#658774]",
+                checked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-600)]",
             )}>
             {checked && <Check className="w-[10px] h-[10px] text-white" />}
         </button>
@@ -587,26 +587,26 @@ function BranchSingleSelect({ value, onChange, branches }: {
     return (
         <div ref={ref} className="relative w-full">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[16px] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]">
-                <MarkerPin01 className="w-5 h-5 text-[#667085] shrink-0" />
+                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[16px] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]">
+                <MarkerPin01 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
                 <span className={cn(
                     "flex-1 text-left truncate",
-                    selected ? "text-[#101828]" : "text-[#667085]",
+                    selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
                 )}>
                     {selected ? selected.name : "Select location"}
                 </span>
-                <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 max-h-[240px] overflow-y-auto">
+                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 max-h-[240px] overflow-y-auto">
                     {branches.map(b => (
                         <button key={b.id} type="button"
                             onClick={() => { onChange(b.id); setOpen(false); }}
                             className={cn(
                                 "flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                value === b.id ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === b.id ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
-                            <MarkerPin01 className="w-4 h-4 text-[#667085]" />
+                            <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                             {b.name}
                         </button>
                     ))}
@@ -731,20 +731,20 @@ function UnitDropdown({ value, onChange }: {
     return (
         <div ref={ref} className="relative w-full">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[16px] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]">
-                <span className="flex-1 text-left truncate text-[#101828]">
+                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[16px] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]">
+                <span className="flex-1 text-left truncate text-[var(--colors-text-primary)]">
                     {selected?.label ?? "Day"}
                 </span>
-                <ChevronDown className="w-5 h-5 text-[#667085] shrink-0" />
+                <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
+                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
                     {UNIT_OPTIONS.map(o => (
                         <button key={o.value} type="button"
                             onClick={() => { onChange(o.value); setOpen(false); }}
                             className={cn(
                                 "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                value === o.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === o.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {o.label}
                         </button>
@@ -964,7 +964,7 @@ function PurchaseRulesStep({ kind, data, onChange, onBack, onCreate, submitLabel
                         on={data.timeBound.dayOfWeek.on}
                         onChange={v => patchTime({ dayOfWeek: { ...data.timeBound.dayOfWeek, on: v } })}
                     >
-                        <p className="text-[14px] font-medium text-[#344054]">Only available on:</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Only available on:</p>
                         <DayPills
                             value={data.timeBound.dayOfWeek.days}
                             onChange={days => patchTime({ dayOfWeek: { ...data.timeBound.dayOfWeek, days } })}
@@ -1000,7 +1000,7 @@ function PurchaseRulesStep({ kind, data, onChange, onBack, onCreate, submitLabel
                         on={data.eligibility.newCustomers.on}
                         onChange={v => patchElig({ newCustomers: { ...data.eligibility.newCustomers, on: v } })}
                     >
-                        <p className="text-[14px] font-medium text-[#344054]">Define &ldquo;new customer&rdquo; as:</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Define &ldquo;new customer&rdquo; as:</p>
 
                         {/* Sub-option 1: never purchased — full-width checkbox card */}
                         <SubCheckboxCard
@@ -1149,8 +1149,8 @@ function MasterToggleSection({ title, subtitle, on, onChange, children }: {
         <div className="flex flex-col gap-4 w-full">
             <div className="flex items-center gap-4 w-full">
                 <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-5">{subtitle}</p>
+                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{subtitle}</p>
                 </div>
                 <Toggle on={on} onChange={onChange} />
             </div>
@@ -1169,12 +1169,12 @@ function RuleCard({ title, subtitle, on, onChange, children }: {
     return (
         <div className={cn(
             "bg-white rounded-[12px] p-4 flex flex-col gap-3 transition-colors w-full",
-            on ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]",
+            on ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)]",
         )}>
             <div className="flex items-center gap-3 w-full">
                 <div className="flex flex-col min-w-0 flex-1">
-                    <p className="text-[14px] font-medium text-[#344054] leading-5">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-5">{subtitle}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{subtitle}</p>
                 </div>
                 <FilledCheckbox checked={on} onChange={() => onChange(!on)} />
             </div>
@@ -1189,7 +1189,7 @@ function FilledRadio({ selected }: { selected: boolean }) {
     return (
         <div className={cn(
             "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors border",
-            selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#658774]",
+            selected ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-600)]",
         )}>
             {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
         </div>
@@ -1211,13 +1211,13 @@ function RadioRuleCard({ title, subtitle, selected, onSelect, children }: {
     return (
         <div className={cn(
             "bg-white rounded-[12px] p-4 flex flex-col gap-3 transition-colors w-full",
-            selected ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]",
+            selected ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)]",
         )}>
             <button type="button" onClick={onSelect}
                 className="flex items-center gap-3 w-full text-left">
                 <div className="flex flex-col min-w-0 flex-1">
-                    <p className="text-[14px] font-medium text-[#344054] leading-5">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-5">{subtitle}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{subtitle}</p>
                 </div>
                 <FilledRadio selected={selected} />
             </button>
@@ -1235,9 +1235,9 @@ function SubCheckboxCard({ label, checked, onChange }: {
         <button type="button" onClick={() => onChange(!checked)}
             className={cn(
                 "w-full bg-white rounded-[12px] p-4 flex items-center gap-3 transition-colors text-left",
-                checked ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec] hover:bg-[#fafafa]",
+                checked ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)] hover:bg-[#fafafa]",
             )}>
-            <span className="flex-1 text-[14px] font-medium text-[#344054]">{label}</span>
+            <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
             <FilledCheckbox checked={checked} onChange={() => onChange(!checked)} />
         </button>
     );
@@ -1260,11 +1260,11 @@ function DayPills({ value, onChange }: {
                         className={cn(
                             "h-11 px-4 rounded-[8px] flex items-center justify-center gap-3 transition-colors",
                             selected
-                                ? "bg-white border-2 border-[#7ba08c]"
-                                : "bg-white border-1 border-[#e4e7ec] hover:bg-[#fafafa]",
+                                ? "bg-white border-2 border-[var(--colors-secondary-500)]"
+                                : "bg-white border-1 border-[var(--colors-border-secondary)] hover:bg-[#fafafa]",
                         )}>
                         <FilledCheckbox checked={selected} onChange={() => toggle(day)} />
-                        <span className="text-[16px] font-medium text-[#344054]">{day}</span>
+                        <span className="text-[16px] font-medium text-[var(--colors-text-secondary)]">{day}</span>
                     </button>
                 );
             })}
@@ -1312,18 +1312,18 @@ function InlineUnitDropdown({ value, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="flex items-center gap-1 text-[16px] text-[#344054] focus:outline-none">
+                className="flex items-center gap-1 text-[16px] text-[var(--colors-text-secondary)] focus:outline-none">
                 <span>{selected?.label ?? "Day"}</span>
-                <ChevronDown className="w-4 h-4 text-[#667085]" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] right-0 z-50 min-w-[120px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
+                <div className="absolute top-[calc(100%+4px)] right-0 z-50 min-w-[120px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
                     {UNIT_OPTIONS.map(o => (
                         <button key={o.value} type="button"
                             onClick={() => { onChange(o.value); setOpen(false); }}
                             className={cn(
                                 "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                value === o.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === o.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {o.label}
                         </button>
@@ -1351,20 +1351,20 @@ function RegionDropdown({ value, onChange }: {
     return (
         <div ref={ref} className="relative w-full">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[16px] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]">
-                <span className={cn("flex-1 text-left truncate", value ? "text-[#101828]" : "text-[#667085]")}>
+                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[16px] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]">
+                <span className={cn("flex-1 text-left truncate", value ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                     {value || "Select region"}
                 </span>
-                <ChevronDown className="w-5 h-5 text-[#667085] shrink-0" />
+                <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 max-h-[240px] overflow-y-auto">
+                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 max-h-[240px] overflow-y-auto">
                     {REGIONS.map(r => (
                         <button key={r} type="button"
                             onClick={() => { onChange(r); setOpen(false); }}
                             className={cn(
                                 "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                value === r ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === r ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {r}
                         </button>
@@ -1395,22 +1395,22 @@ function MembershipTierDropdown({ value, onChange }: {
     return (
         <div ref={ref} className="relative w-full">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[16px] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]">
-                <span className={cn("flex-1 text-left truncate", selected ? "text-[#101828]" : "text-[#667085]")}>
+                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[16px] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]">
+                <span className={cn("flex-1 text-left truncate", selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                     {selected?.name || "Select membership tier"}
                 </span>
-                <ChevronDown className="w-5 h-5 text-[#667085] shrink-0" />
+                <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 max-h-[240px] overflow-y-auto">
+                <div className="absolute top-[calc(100%+4px)] left-0 right-0 z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 max-h-[240px] overflow-y-auto">
                     {memberships.length === 0 ? (
-                        <p className="px-3 py-2 text-[14px] text-[#667085]">No active memberships yet</p>
+                        <p className="px-3 py-2 text-[14px] text-[var(--colors-text-quaternary)]">No active memberships yet</p>
                     ) : memberships.map(m => (
                         <button key={m.id} type="button"
                             onClick={() => { onChange(m.id); setOpen(false); }}
                             className={cn(
                                 "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                value === m.id ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === m.id ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {m.name}
                         </button>
@@ -1429,10 +1429,10 @@ function FormCard({ title, children, footer }: {
     footer: React.ReactNode;
 }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
                 {title && (
-                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h2>
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h2>
                 )}
                 {children}
             </div>
@@ -1444,7 +1444,7 @@ function FormCard({ title, children, footer }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-5 w-full">
-            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+            <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
             <div className="flex flex-col gap-4 w-full">{children}</div>
         </div>
     );
@@ -1455,14 +1455,14 @@ function FormField({ label, hint, children }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
-            {hint && <p className="text-[14px] text-[#475467] leading-5">{hint}</p>}
+            {hint && <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{hint}</p>}
         </div>
     );
 }
 
-const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 function TextInput({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder?: string;
@@ -1487,7 +1487,7 @@ function Textarea({ value, onChange, placeholder, minHeight = 120 }: {
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
             style={{ minHeight }}
-            className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
+            className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
         />
     );
 }
@@ -1496,8 +1496,8 @@ function PriceInput({ value, onChange }: {
     value: string; onChange: (v: string) => void;
 }) {
     return (
-        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all h-10">
-            <div className="flex items-center pl-[14px] text-[16px] font-medium text-[#667085] shrink-0">AED</div>
+        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all h-10">
+            <div className="flex items-center pl-[14px] text-[16px] font-medium text-[var(--colors-text-quaternary)] shrink-0">AED</div>
             <div className="flex-1 min-w-0">
                 <NumericStringInput
                     value={value}
@@ -1530,39 +1530,39 @@ function TemplatePreviewCard({ data }: { data: PreviewState }) {
     const tint = data.kind === "package" ? BANNER_TINTS.package : BANNER_TINTS.membership;
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
             {/* Header */}
             <div className="flex flex-col">
                 <div className="pt-6 px-6 flex flex-col gap-1">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Template preview</p>
+                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
                     <p className="text-[14px] text-[#6e776f] leading-5">This is how your product will look like.</p>
                 </div>
                 <div className="h-5" />
-                <div className="h-px bg-[#e4e7ec]" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
             </div>
             {/* Stage */}
             <div className="bg-[#f6f6f3] px-6 py-10">
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
                     {data.kind
                         ? <DecorativeBanner bannerHeight={120} iconBox={56} icon={Icon} {...tint} />
-                        : <div className="h-[120px] w-full bg-[#f9fafb]" />}
+                        : <div className="h-[120px] w-full bg-[var(--colors-bg-secondary)]" />}
                     <div className="flex flex-col gap-4 px-5">
                         <div className="flex flex-col gap-2">
-                            <p className="text-[18px] leading-[28px] font-medium text-[#101828] truncate">
+                            <p className="text-[18px] leading-[28px] font-medium text-[var(--colors-text-primary)] truncate">
                                 {hasName ? data.name : "Product name"}
                             </p>
                             <div className="flex gap-2 items-start">
                                 <div className="flex-1 min-w-0 flex items-center gap-1">
-                                    <CalendarCheck01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                    <span className="text-[14px] font-medium text-[#667085] truncate">{data.creditsLabel || "Credit"}</span>
+                                    <CalendarCheck01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] truncate">{data.creditsLabel || "Credit"}</span>
                                 </div>
                                 <div className="flex-1 min-w-0 flex items-center gap-1">
-                                    <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
-                                    <span className="text-[14px] font-medium text-[#667085] truncate">{data.durationLabel || "Duration"}</span>
+                                    <ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] truncate">{data.durationLabel || "Duration"}</span>
                                 </div>
                             </div>
                         </div>
-                        <p className="font-semibold text-[20px] leading-[30px] text-[#658774]">
+                        <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-secondary-600)]">
                             AED {data.price.toLocaleString("en-US")}
                         </p>
                     </div>
@@ -1798,11 +1798,11 @@ export function ProductFormPage({ mode, productId, initial, returnTo = "/admin/p
             {/* Top header (72px) */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={handleClose} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                         {isEdit
                             ? `Edit ${kind === "package" ? "package" : "membership"}`
                             : "Create new product"}

@@ -67,24 +67,24 @@ export function MultiSelectFilterDropdown({
             <button type="button"
                 onClick={() => setOpen(p => !p)}
                 className={cn(
-                    "h-[40px] bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors",
+                    "h-[40px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                 )}>
-                <Icon className="w-4 h-4 text-[#667085]" />
+                <Icon className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                 <span>{placeholder}</span>
-                <span className="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[12px] font-medium text-[#344054]">
+                <span className="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[12px] font-medium text-[var(--colors-text-secondary)]">
                     {value.size}
                 </span>
                 <ChevronDown className={cn(
-                    "w-4 h-4 text-[#667085] transition-transform",
+                    "w-4 h-4 text-[var(--colors-text-quaternary)] transition-transform",
                     open && "rotate-180",
                 )} />
             </button>
 
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[220px] max-h-[400px] overflow-y-auto">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[220px] max-h-[400px] overflow-y-auto">
                     <CheckboxRow label="Select all" checked={allChecked} onToggle={toggleAll} />
-                    <div className="h-px bg-[#e4e7ec] my-1 mx-1.5" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)] my-1 mx-1.5" />
                     {options.map(opt => (
                         <CheckboxRow key={opt.value}
                             label={opt.label}
@@ -103,16 +103,16 @@ function CheckboxRow({ label, checked, onToggle }: {
     return (
         <button type="button"
             onClick={onToggle}
-            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[#f9fafb] transition-colors">
+            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--colors-bg-secondary)] transition-colors">
             <span className={cn(
                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
                 checked
-                    ? "bg-[#658774] border-[#658774]"
-                    : "bg-white border-[#d0d5dd]",
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]"
+                    : "bg-white border-[var(--colors-border-primary)]",
             )}>
                 {checked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
             </span>
-            <span className="text-[14px] font-medium text-[#344054] leading-[20px]">{label}</span>
+            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">{label}</span>
         </button>
     );
 }

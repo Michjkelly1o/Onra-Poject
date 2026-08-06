@@ -376,7 +376,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     return (
         <div ref={rootRef} className="flex flex-col overflow-hidden flex-1">
             {/* Instructor column headers — horizontally scrollable (synced). */}
-            <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
+            <div className="flex shrink-0 border-b border-[var(--colors-border-secondary)] pl-6">
                 <div className="w-16 shrink-0" />
                 <div ref={headerScrollRef} onScroll={() => syncScroll("header")} className="flex-1 overflow-x-auto scrollbar-hide">
                     <div className="flex" style={{ width: contentWidth }}>
@@ -390,13 +390,13 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                             const isFocused = !!focusId && instructor.id === focusId;
                             return (
                                 <div key={instructor.id} style={{ width: colWidth }}
-                                    className={cn("shrink-0 min-w-0 flex items-center gap-3 px-4 py-3 border-l border-[#f2f4f7]", isFocused && "bg-[#f5fffa]")}>
+                                    className={cn("shrink-0 min-w-0 flex items-center gap-3 px-4 py-3 border-l border-[var(--colors-bg-tertiary)]", isFocused && "bg-[#f5fffa]")}>
                                     <InstructorAvatar initials={instructor.initials} color={instructor.color} size={36} />
                                     <div className="min-w-0">
-                                        <p className="text-[14px] font-semibold text-[#101828] truncate">{instructor.name}</p>
+                                        <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] truncate">{instructor.name}</p>
                                         <div className="flex items-center gap-1">
-                                            <Calendar className="w-[12px] h-[12px] text-[#667085]" />
-                                            <span className="text-[12px] text-[#667085]">
+                                            <Calendar className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)]" />
+                                            <span className="text-[12px] text-[var(--colors-text-quaternary)]">
                                                 {count} {isRecoveryCol
                                                     ? (count === 1 ? "appointment" : "appointments")
                                                     : (count === 1 ? "class" : "classes")}
@@ -417,7 +417,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                     {/* Time labels — fixed left gutter */}
                     <div className="w-16 shrink-0 flex flex-col">
                         {hours.map(h => (
-                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
+                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[var(--colors-text-quaternary)]"
                                 style={{ height: HOUR_HEIGHT }}>
                                 {formatHour(h)}
                             </div>
@@ -428,7 +428,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                     <div ref={bodyScrollRef} onScroll={() => syncScroll("body")} className="flex-1 overflow-x-auto scrollbar-hide pr-6">
                         <div className="relative" style={{ width: contentWidth, minHeight: gridHeight }}>
                             {hours.map((_, i) => (
-                                <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
+                                <div key={i} className="absolute left-0 right-0 border-t border-[var(--colors-bg-tertiary)]" style={{ top: i * HOUR_HEIGHT }} />
                             ))}
 
                             {/* Current time line */}
@@ -467,7 +467,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                                         return dateISO >= from && dateISO <= to && b.staff_ids.includes(instructor.id);
                                     });
                                 return (
-                                    <div key={instructor.id} style={{ width: colWidth, minHeight: gridHeight }} className="shrink-0 relative border-l border-[#f2f4f7]">
+                                    <div key={instructor.id} style={{ width: colWidth, minHeight: gridHeight }} className="shrink-0 relative border-l border-[var(--colors-bg-tertiary)]">
                                         {/* Per-instructor blocked strips —
                                             label is centered within the
                                             column the block belongs to. */}
@@ -547,13 +547,13 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
     return (
         <div className="flex flex-col overflow-hidden flex-1">
             {/* Day column headers */}
-            <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
+            <div className="flex shrink-0 border-b border-[var(--colors-border-secondary)] pl-6">
                 <div className="w-16 shrink-0" />
                 {cols.map(col => (
-                    <div key={col.day} className={cn("flex-1 min-w-0 flex flex-col items-center py-3 border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]")}>
-                        <p className={cn("text-[11px] font-semibold uppercase tracking-wider", col.isToday ? "text-[#658774]" : "text-[#667085]")}>{col.day}</p>
+                    <div key={col.day} className={cn("flex-1 min-w-0 flex flex-col items-center py-3 border-l border-[var(--colors-bg-tertiary)]", col.isToday && "bg-[#f5fffa]")}>
+                        <p className={cn("text-[11px] font-semibold uppercase tracking-wider", col.isToday ? "text-[var(--colors-secondary-600)]" : "text-[var(--colors-text-quaternary)]")}>{col.day}</p>
                         <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[16px] font-semibold mt-0.5",
-                            col.isToday ? "bg-[#658774] text-white" : "text-[#101828]")}>
+                            col.isToday ? "bg-[var(--colors-secondary-600)] text-white" : "text-[var(--colors-text-primary)]")}>
                             {col.date}
                         </div>
                     </div>
@@ -567,7 +567,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
                     {/* Time labels */}
                     <div className="w-16 shrink-0 flex flex-col">
                         {hours.map(h => (
-                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
+                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[var(--colors-text-quaternary)]"
                                 style={{ height: WEEK_HOUR_HEIGHT }}>
                                 {formatHour(h)}
                             </div>
@@ -577,7 +577,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
                     {/* Grid */}
                     <div className="flex-1 relative">
                         {hours.map((_, i) => (
-                            <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
+                            <div key={i} className="absolute left-0 right-0 border-t border-[var(--colors-bg-tertiary)]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
                         ))}
 
                         {/* Current time line */}
@@ -594,7 +594,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
                                 const dayClasses = classes.filter(c => c.dateISO === col.iso);
                                 const lanes = computeOverlapLanes(dayClasses);
                                 return (
-                                    <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]/30")}
+                                    <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[var(--colors-bg-tertiary)]", col.isToday && "bg-[#f5fffa]/30")}
                                         style={{ minHeight: gridHeight }}>
                                         {dayClasses.map(cls => {
                                             const lane = lanes.get(cls.id);

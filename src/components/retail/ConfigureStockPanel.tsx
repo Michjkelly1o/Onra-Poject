@@ -49,7 +49,7 @@ function UnitsStepper({ value, onChange, ariaLabel }: {
     const numeric = Number(value) || 0;
     const setValue = (next: number) => onChange(String(Math.max(0, Math.trunc(next))));
     return (
-        <div className="w-[112px] h-10 flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:border-[#7ba08c] transition-colors overflow-hidden">
+        <div className="w-[112px] h-10 flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:border-[var(--colors-secondary-500)] transition-colors overflow-hidden">
             <input
                 type="text"
                 inputMode="numeric"
@@ -63,22 +63,22 @@ function UnitsStepper({ value, onChange, ariaLabel }: {
                     onChange(trimmed === "" ? "0" : trimmed);
                 }}
                 onBlur={() => { if (value.length === 0) onChange("0"); }}
-                className="flex-1 min-w-0 h-full px-3 text-right text-[16px] text-[#101828] bg-transparent focus:outline-none placeholder:text-[#98a2b3]"
+                className="flex-1 min-w-0 h-full px-3 text-right text-[16px] text-[var(--colors-text-primary)] bg-transparent focus:outline-none placeholder:text-[var(--colors-fg-quaternary)]"
             />
-            <div className="relative w-6 h-full shrink-0 select-none border-l border-[#e4e7ec] flex items-center justify-center">
-                <ChevronSelectorVertical className="pointer-events-none relative z-10 w-4 h-4 text-[#667085]" />
+            <div className="relative w-6 h-full shrink-0 select-none border-l border-[var(--colors-border-secondary)] flex items-center justify-center">
+                <ChevronSelectorVertical className="pointer-events-none relative z-10 w-4 h-4 text-[var(--colors-text-quaternary)]" />
                 <button
                     type="button"
                     onClick={() => setValue(numeric + 1)}
                     aria-label={`Increase ${ariaLabel}`}
-                    className="absolute inset-x-0 top-0 h-1/2 cursor-pointer hover:bg-[#f9fafb] transition-colors"
+                    className="absolute inset-x-0 top-0 h-1/2 cursor-pointer hover:bg-[var(--colors-bg-secondary)] transition-colors"
                 />
                 <button
                     type="button"
                     onClick={() => setValue(numeric - 1)}
                     disabled={numeric <= 0}
                     aria-label={`Decrease ${ariaLabel}`}
-                    className="absolute inset-x-0 bottom-0 h-1/2 cursor-pointer hover:bg-[#f9fafb] transition-colors disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    className="absolute inset-x-0 bottom-0 h-1/2 cursor-pointer hover:bg-[var(--colors-bg-secondary)] transition-colors disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 />
             </div>
         </div>
@@ -178,21 +178,21 @@ export function ConfigureStockPanel({ open, onClose, product }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={480}>
-            <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                <p className="flex-1 font-semibold text-[18px] text-[#101828]">Configure stock</p>
-                <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors" aria-label="Close">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+            <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Configure stock</p>
+                <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors" aria-label="Close">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                 <div className="flex flex-col gap-1">
-                    <p className="text-[14px] text-[#667085]">Product</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{product.name}</p>
-                    <p className="text-[13px] text-[#667085]">{product.sku}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Product</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{product.name}</p>
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">{product.sku}</p>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <label className="text-[14px] font-medium text-[#344054]" htmlFor="configure-stock-reason">Reason</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]" htmlFor="configure-stock-reason">Reason</label>
                     <input
                         id="configure-stock-reason"
                         type="text"
@@ -200,19 +200,19 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                         onChange={e => setReason(e.target.value)}
                         placeholder="Enter reason"
                         className={cn(
-                            "w-full h-10 px-[14px] rounded-[8px] border-1 border-[#d0d5dd] bg-white",
+                            "w-full h-10 px-[14px] rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white",
                             "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                            "text-[16px] text-[#101828] placeholder:text-[#98a2b3]",
-                            "focus:outline-none focus:border-[#7ba08c] transition-colors",
+                            "text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-fg-quaternary)]",
+                            "focus:outline-none focus:border-[var(--colors-secondary-500)] transition-colors",
                         )}
                     />
-                    <p className="text-[13px] text-[#667085]">
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">
                         Every changed count will get an audit-log entry with this reason.
                     </p>
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    <p className="text-[14px] font-medium text-[#344054]">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                         {sizes.length > 0 ? "Units on hand — per branch, per size" : "Units on hand — per branch"}
                     </p>
                     <div className="flex flex-col gap-3">
@@ -220,15 +220,15 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                             activeBranches.map(b => {
                                 const open = !collapsedBranches.has(b.id);
                                 return (
-                                    <div key={b.id} className="flex flex-col border-1 border-[#e4e7ec] rounded-[10px] overflow-hidden">
+                                    <div key={b.id} className="flex flex-col border-1 border-[var(--colors-border-secondary)] rounded-[10px] overflow-hidden">
                                         <button
                                             type="button"
                                             onClick={() => toggleBranch(b.id)}
                                             aria-expanded={open}
-                                            className="flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[#f9fafb] transition-colors"
+                                            className="flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[var(--colors-bg-secondary)] transition-colors"
                                         >
-                                            <p className="text-[14px] font-medium text-[#101828]">{b.name}</p>
-                                            <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", !open && "-rotate-90")} />
+                                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{b.name}</p>
+                                            <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", !open && "-rotate-90")} />
                                         </button>
                                         {open && (
                                             <div className="flex flex-col gap-2 px-3 pb-3">
@@ -237,8 +237,8 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                                                     return (
                                                         <div key={sz} className="grid grid-cols-[1fr_112px] items-center gap-3">
                                                             <div className="flex flex-col min-w-0">
-                                                                <p className="text-[14px] text-[#475467] truncate">{sz}</p>
-                                                                <p className="text-[12px] text-[#667085]">Current: {currentByKey.get(key) ?? 0}</p>
+                                                                <p className="text-[14px] text-[var(--colors-text-tertiary)] truncate">{sz}</p>
+                                                                <p className="text-[12px] text-[var(--colors-text-quaternary)]">Current: {currentByKey.get(key) ?? 0}</p>
                                                             </div>
                                                             <UnitsStepper
                                                                 value={drafts[key] ?? "0"}
@@ -259,8 +259,8 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                                 return (
                                     <div key={b.id} className="grid grid-cols-[1fr_112px] items-center gap-3">
                                         <div className="flex flex-col min-w-0">
-                                            <p className="text-[14px] text-[#101828] truncate">{b.name}</p>
-                                            <p className="text-[12px] text-[#667085]">Current: {currentByKey.get(key) ?? 0}</p>
+                                            <p className="text-[14px] text-[var(--colors-text-primary)] truncate">{b.name}</p>
+                                            <p className="text-[12px] text-[var(--colors-text-quaternary)]">Current: {currentByKey.get(key) ?? 0}</p>
                                         </div>
                                         <UnitsStepper
                                             value={drafts[key] ?? "0"}
@@ -274,7 +274,7 @@ export function ConfigureStockPanel({ open, onClose, product }: {
                     </div>
                 </div>
             </div>
-            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+            <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                 <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                 <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
             </div>

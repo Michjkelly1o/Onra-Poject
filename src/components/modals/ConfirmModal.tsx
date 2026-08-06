@@ -29,7 +29,7 @@ export type ConfirmTone = "danger" | "success" | "warning" | "info";
 
 const TONE_STYLES: Record<ConfirmTone, { iconBg: string; iconColor: string }> = {
     danger:  { iconBg: "bg-[#fee4e2]", iconColor: "text-[#d92d20]" },
-    success: { iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]" },
+    success: { iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]" },
     warning: { iconBg: "bg-[#fef0c7]", iconColor: "text-[#dc6803]" },
     info:    { iconBg: "bg-[#eff8ff]", iconColor: "text-[#175cd3]" },
 };
@@ -100,7 +100,7 @@ export function ConfirmModal({
             {extraContent && (
                 <>
                     <div className="h-5 shrink-0" />
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                     {extraContent}
                 </>
             )}

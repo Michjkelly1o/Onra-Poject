@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 const HERO = { from: "var(--brand-tertiary)", to: "var(--brand-tertiary)", text: "var(--brand-primary)", ring: "#aad4bd" };
 
 const STEP_BTN =
-    "flex size-9 items-center justify-center rounded-full border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50 disabled:opacity-40";
+    "flex size-9 items-center justify-center rounded-full border border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50 disabled:opacity-40";
 
 function InfoRow({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
     return (
@@ -34,7 +34,7 @@ function InfoRow({ icon: Icon, children }: { icon: React.ComponentType<{ classNa
             <span className="flex size-4 shrink-0 items-center justify-center py-0.5">
                 <Icon className="size-4 text-[var(--brand-primary)]" />
             </span>
-            <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">{children}</p>
+            <p className="flex-1 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{children}</p>
         </div>
     );
 }
@@ -251,9 +251,9 @@ export function ProductDetailScreen({
                     type="button"
                     onClick={onBack}
                     aria-label="Close"
-                    className="absolute right-4 top-3 z-20 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="absolute right-4 top-3 z-20 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <XClose className="size-5 text-[#344054]" aria-hidden />
+                    <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
             )}
             <div className={isSheet ? "flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "contents"}>
@@ -262,7 +262,7 @@ export function ProductDetailScreen({
                 it with a real product photo (aspect-square, ~360px on the
                 phone-frame width) so shoppers see the item before buying. */}
             {isRetail && product.imageUrl ? (
-                <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
+                <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-[var(--colors-bg-secondary)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
 {!isSheet && (
@@ -324,7 +324,7 @@ export function ProductDetailScreen({
                             {product.priceLabel ?? `AED ${product.price}`}
                         </p>
                     </div>
-                    {description && <p className="text-sm font-normal leading-5 text-[#475467]">{description}</p>}
+                    {description && <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{description}</p>}
                 </div>
 
                 {/* Type-specific info list */}
@@ -334,9 +334,9 @@ export function ProductDetailScreen({
                             <InfoRow icon={CurrencyDollarCircle}>
                                 {membership.credits === "unlimited" ? "Unlimited credits" : `${membership.credits} credits amount`}
                             </InfoRow>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <InfoRow icon={MarkerPin01}>Applicable for {branchNames(membership.branch_ids) || "all branches"}</InfoRow>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <InfoRow icon={Clock}>
                                 Valid until{" "}
                                 <span className="font-medium text-[var(--brand-text)]">
@@ -348,9 +348,9 @@ export function ProductDetailScreen({
                     {pkg && (
                         <>
                             <InfoRow icon={CurrencyDollarCircle}>{pkg.credits} credits amount</InfoRow>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <InfoRow icon={MarkerPin01}>Applicable for {branchNames(pkg.branch_ids) || "all branches"}</InfoRow>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <InfoRow icon={Clock}>
                                 Valid until <span className="font-medium text-[var(--brand-text)]">{pkg.validity_days} days</span>
                             </InfoRow>
@@ -371,7 +371,7 @@ export function ProductDetailScreen({
                                     {product.categoryLabel ?? "Retail"}
                                 </span>
                             </InfoRow>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <InfoRow icon={Box}>
                                 {retailOutOfStock ? (
                                     <span className="font-medium text-[#b42318]">Out of stock at your branch</span>
@@ -388,7 +388,7 @@ export function ProductDetailScreen({
                             </InfoRow>
                             {hasSizes && (
                                 <>
-                                    <div className="h-px w-full bg-[#e4e7ec]" />
+                                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                                     <div className="flex flex-col gap-2">
                                         <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">Size</p>
                                         <div className="flex flex-wrap gap-2">
@@ -404,10 +404,10 @@ export function ProductDetailScreen({
                                                         className={
                                                             "min-w-11 rounded-full border px-4 py-2 text-sm font-medium leading-5 transition-colors " +
                                                             (soldOut
-                                                                ? "cursor-not-allowed border-[#e4e7ec] bg-[#f9fafb] text-[#98a2b3] line-through"
+                                                                ? "cursor-not-allowed border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] text-[var(--colors-fg-quaternary)] line-through"
                                                                 : active
                                                                     ? "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]"
-                                                                    : "border-[#d0d5dd] bg-white text-[var(--brand-text)] active:bg-gray-50")
+                                                                    : "border-[var(--colors-border-primary)] bg-white text-[var(--brand-text)] active:bg-gray-50")
                                                         }
                                                     >
                                                         {sz}
@@ -429,17 +429,17 @@ export function ProductDetailScreen({
                             {upgrade.mode === "upgrade" ? "Upgrade plan" : "Downgrade plan"}
                         </p>
                         <div className="flex items-center gap-2">
-                            <span className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#e4e7ec] bg-white p-3">
+                            <span className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-3">
                                 <span className="min-w-0 truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{upgrade.currentName}</span>
                             </span>
-                            <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
-                            <span className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[#e4e7ec] bg-white p-3">
+                            <ChevronRight className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
+                            <span className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-3">
                                 <span className="min-w-0 truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{product.name}</span>
                             </span>
                         </div>
                         <div className="flex items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
-                            <Lightbulb02 className="mt-0.5 size-5 shrink-0 text-[#475467]" aria-hidden />
-                            <p className="flex-1 text-sm font-normal leading-5 text-[#475467]">
+                            <Lightbulb02 className="mt-0.5 size-5 shrink-0 text-[var(--colors-text-tertiary)]" aria-hidden />
+                            <p className="flex-1 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                 {upgrade.mode === "upgrade" ? "Upgrading" : "Downgrading"} will replace your current plan once the duration ends.
                             </p>
                         </div>
@@ -451,7 +451,7 @@ export function ProductDetailScreen({
             {/* Footer — Quantity row (packages + retail) ABOVE the actions.
                 Retail rows clamp the max at units-in-stock so a shopper can't
                 push past what the branch has left. */}
-            <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-[#f2f4f7] bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
+            <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-3 border-t border-[var(--colors-bg-tertiary)] bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3">
                 {isGuest ? (
                     <Button variant="primary" size="xl" className="w-full rounded-full" onClick={() => router.push(loginHref(pathname))}>
                         Log in to purchase
@@ -489,7 +489,7 @@ export function ProductDetailScreen({
                                                 aria-label="Decrease quantity"
                                                 className={STEP_BTN}
                                             >
-                                                <Minus className="size-5 text-[#344054]" aria-hidden />
+                                                <Minus className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                                             </button>
                                             <span className="min-w-4 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{qty}</span>
                                             <button
@@ -499,7 +499,7 @@ export function ProductDetailScreen({
                                                 aria-label="Increase quantity"
                                                 className={STEP_BTN}
                                             >
-                                                <Plus className="size-5 text-[#344054]" aria-hidden />
+                                                <Plus className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                                             </button>
                                         </div>
                                     </div>

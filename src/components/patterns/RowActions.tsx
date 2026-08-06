@@ -17,14 +17,14 @@
 // (most call sites already compute conditional items based on row status).
 //
 // Visual chrome captured verbatim from the audit (2026-06-24):
-//   • Trigger: w-9 h-9 rounded-[8px], hover bg-[#f2f4f7], DotsVertical w-4 h-4
-//     text-[#667085]
+//   • Trigger: w-9 h-9 rounded-[8px], hover bg-[var(--colors-bg-tertiary)], DotsVertical w-4 h-4
+//     text-[var(--colors-text-quaternary)]
 //   • Dropdown: FixedDropdown minWidth=200 (default; overridable per call)
-//   • Items: px-4 py-[10px] text-[14px] font-medium text-[#344054], hover
-//     bg-[#f9fafb], icon w-4 h-4 text-[#667085]
+//   • Items: px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)], hover
+//     bg-[var(--colors-bg-secondary)], icon w-4 h-4 text-[var(--colors-text-quaternary)]
 //   • Danger variant: text-[#b42318] for text + icon, hover bg-[#fef3f2]
 //   • Success variant: text-[#067647] for icon, used by Mark-as-paid / Present
-//   • Disabled item: text-[#98a2b3] + cursor-not-allowed; icon text-[#d0d5dd]
+//   • Disabled item: text-[var(--colors-fg-quaternary)] + cursor-not-allowed; icon text-[var(--colors-border-primary)]
 //   • Disabled trigger: opacity-30 + cursor-not-allowed (e.g. PayrollRunPage)
 
 import { useRef, useState } from "react";
@@ -124,11 +124,11 @@ export function RowActions({
                     "w-9 h-9 flex items-center justify-center rounded-[8px] transition-colors",
                     isInert
                         ? "opacity-30 cursor-not-allowed"
-                        : "hover:bg-[#f2f4f7]",
+                        : "hover:bg-[var(--colors-bg-tertiary)]",
                     className,
                 )}
             >
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
+                <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
 
             {!isInert && (
@@ -150,24 +150,24 @@ export function RowActions({
                                 className={cn(
                                     "flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium transition-colors",
                                     item.disabled
-                                        ? "text-[#98a2b3] cursor-not-allowed"
+                                        ? "text-[var(--colors-fg-quaternary)] cursor-not-allowed"
                                         : item.danger
                                             ? "text-[#b42318] hover:bg-[#fef3f2]"
                                             : item.successText
-                                                ? "text-[#067647] hover:bg-[#f9fafb]"
-                                                : "text-[#344054] hover:bg-[#f9fafb]",
+                                                ? "text-[#067647] hover:bg-[var(--colors-bg-secondary)]"
+                                                : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}
                             >
                                 <Icon
                                     className={cn(
                                         "w-4 h-4",
                                         item.disabled
-                                            ? "text-[#d0d5dd]"
+                                            ? "text-[var(--colors-border-primary)]"
                                             : item.danger
                                                 ? "text-[#b42318]"
                                                 : item.success
                                                     ? "text-[#067647]"
-                                                    : "text-[#667085]",
+                                                    : "text-[var(--colors-text-quaternary)]",
                                     )}
                                 />
                                 {item.label}

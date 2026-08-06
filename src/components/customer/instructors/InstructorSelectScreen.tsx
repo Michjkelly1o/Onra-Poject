@@ -45,13 +45,13 @@ export function InstructorSelectScreen({
     }
 
     const searchBar = (
-        <div className="flex items-center gap-2 rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <SearchLg className="size-5 shrink-0 text-[#667085]" aria-hidden />
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <SearchLg className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
             <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search instructor…"
-                className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
+                className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
             />
         </div>
     );
@@ -63,9 +63,9 @@ export function InstructorSelectScreen({
                     type="button"
                     onClick={onBack}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Instructor</h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -81,14 +81,14 @@ export function InstructorSelectScreen({
                             className="flex w-full items-center gap-3 py-4 text-left"
                         >
                             <InstructorAvatar imageUrl={i.imageUrl} initials={i.initials} size={32} />
-                            <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[#344054]">
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                                 {i.name}
                             </span>
                             <CheckBox checked={selected.includes(i.id)} />
                         </button>
                     ))
                 ) : (
-                    <p className="py-12 text-center text-sm text-[#667085]">No instructor found.</p>
+                    <p className="py-12 text-center text-sm text-[var(--colors-text-quaternary)]">No instructor found.</p>
                 )}
             </div>
 

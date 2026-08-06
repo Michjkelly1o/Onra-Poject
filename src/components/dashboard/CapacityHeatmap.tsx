@@ -97,9 +97,9 @@ export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: Ca
     }
 
     return (
-        <div className="bg-white border border-[#e4e7ec] rounded-2xl p-5">
-            <p className="text-base font-semibold text-[#101828] mb-4">
-                Capacity used <span className="font-normal text-[#667085]">· {unitLabel}</span>
+        <div className="bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-5">
+            <p className="text-base font-semibold text-[var(--colors-text-primary)] mb-4">
+                Capacity used <span className="font-normal text-[var(--colors-text-quaternary)]">· {unitLabel}</span>
             </p>
 
             <div className="flex flex-col gap-2">
@@ -107,7 +107,7 @@ export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: Ca
                     const palette = SESSION_TYPE_TAG_COLORS[type];
                     return (
                         <div key={type} className="flex items-center gap-3">
-                            <div className="w-[64px] text-xs font-medium text-[#667085] text-right shrink-0">
+                            <div className="w-[64px] text-xs font-medium text-[var(--colors-text-quaternary)] text-right shrink-0">
                                 {ROW_LABELS[type]}
                             </div>
                             <div className="flex-1 flex gap-1">
@@ -127,7 +127,7 @@ export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: Ca
                                                 })}
                                                 onMouseMove={(e) => setTip(prev => prev ? { ...prev, ...tipPosition(e) } : prev)}
                                                 onMouseLeave={() => setTip(null)}
-                                                className="flex-1 h-5 rounded-[5px] border border-dashed border-[#e4e7ec] bg-transparent"
+                                                className="flex-1 h-5 rounded-[5px] border border-dashed border-[var(--colors-border-secondary)] bg-transparent"
                                                 aria-label={`${ROW_LABELS[type]} ${r.period.sub} — no sessions`}
                                             />
                                         );

@@ -63,8 +63,8 @@ const SHIFT_STATUS_LABEL: Record<Shift["status"], string> = {
 };
 const SHIFT_STATUS_BADGE: Record<Shift["status"], string> = {
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
@@ -73,8 +73,8 @@ const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const ROLE_TYPE_BADGE: Record<Role["type"], string> = {
@@ -154,7 +154,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors text-left",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}>
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
@@ -220,13 +220,13 @@ function ChangeShiftModal({ staffMember, currentShiftId, onClose, onConfirmed }:
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[480px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="px-6 pt-6 pb-2">
-                    <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Change shift</h3>
-                    <p className="text-[14px] text-[#475467] mt-1">
-                        Pick a new shift for <span className="font-medium text-[#344054]">{staffMember.fullName}</span>.
+                    <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Change shift</h3>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] mt-1">
+                        Pick a new shift for <span className="font-medium text-[var(--colors-text-secondary)]">{staffMember.fullName}</span>.
                     </p>
                 </div>
                 <div className="px-6 py-4 max-h-[360px] overflow-y-auto flex flex-col gap-2">
@@ -234,17 +234,17 @@ function ChangeShiftModal({ staffMember, currentShiftId, onClose, onConfirmed }:
                         className={cn(
                             "flex items-center justify-between gap-3 px-4 py-3 rounded-[8px] border-1 text-left transition-colors",
                             picked === ""
-                                ? "border-[#7ba08c] bg-[#f5fffa]"
-                                : "border-[#e4e7ec] hover:bg-[#f9fafb]",
+                                ? "border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                                : "border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                         )}>
                         <div className="flex flex-col">
-                            <span className="text-[14px] font-medium text-[#101828]">No shift</span>
-                            <span className="text-[13px] text-[#667085]">Remove from current shift</span>
+                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">No shift</span>
+                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">Remove from current shift</span>
                         </div>
-                        {picked === "" && <Check className="w-4 h-4 text-[#658774]" />}
+                        {picked === "" && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                     </button>
                     {options.length === 0 ? (
-                        <p className="text-[14px] text-[#667085] text-center py-4">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] text-center py-4">
                             No other active shifts at this branch yet.
                         </p>
                     ) : options.map(s => (
@@ -252,16 +252,16 @@ function ChangeShiftModal({ staffMember, currentShiftId, onClose, onConfirmed }:
                             className={cn(
                                 "flex items-center justify-between gap-3 px-4 py-3 rounded-[8px] border-1 text-left transition-colors",
                                 picked === s.id
-                                    ? "border-[#7ba08c] bg-[#f5fffa]"
-                                    : "border-[#e4e7ec] hover:bg-[#f9fafb]",
+                                    ? "border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                                    : "border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             <div className="flex flex-col">
-                                <span className="text-[14px] font-medium text-[#101828]">{s.name}</span>
-                                <span className="text-[13px] text-[#667085]">
+                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s.name}</span>
+                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">
                                     {daysSummary(s.working_days)} · {fmtTime12(s.start_time)} – {fmtTime12(s.end_time)}
                                 </span>
                             </div>
-                            {picked === s.id && <Check className="w-4 h-4 text-[#658774]" />}
+                            {picked === s.id && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -312,16 +312,16 @@ function StatusFilterDropdown({ value, onChange }: {
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-2 min-w-[160px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-2 min-w-[160px]">
                     {STATUS_FILTER_OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => { onChange(value === opt.value ? null : opt.value); setOpen(false); }}
                             className={cn(
                                 "w-full flex items-center justify-between text-left px-5 py-3 text-[15px] font-medium transition-colors",
-                                value === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
-                            {value === opt.value && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt.value && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -339,8 +339,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]"
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]"
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" /> : checked ? <Check className="w-3 h-3" /> : null}
         </button>
@@ -376,7 +376,7 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
         <button type="button" onClick={onClick}
             className={cn(
                 "px-3 pb-3 -mb-px text-[14px] font-semibold transition-colors border-b-2",
-                active ? "border-[#658774] text-[#101828]" : "border-transparent text-[#667085] hover:text-[#344054]",
+                active ? "border-[var(--colors-secondary-600)] text-[var(--colors-text-primary)]" : "border-transparent text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
             )}>
             {label}
         </button>
@@ -548,8 +548,8 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
         <div className="px-6 pb-6 flex flex-col gap-4">
             <div className="flex items-end justify-between gap-3 flex-wrap">
                 <div className="flex flex-col">
-                    <p className="text-[14px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                         {scoped.length} {scoped.length === 1 ? "staff" : "staff"}
                     </p>
                 </div>
@@ -609,7 +609,7 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
                                         : branches.find(b => b.id === s.branchId)?.name ?? "—";
                                     return (
                                         <tr key={s.id}
-                                            className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                            className={cn("transition-colors", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
                                             <td className={TD}>
                                                 <CheckboxCell checked={isSelected} onChange={() => toggleOne(s.id)} ariaLabel={`Select ${s.fullName}`} />
                                             </td>
@@ -617,8 +617,8 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <StaffAvatar staff={s} />
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className="text-[14px] font-medium text-[#101828] truncate">{s.fullName}</span>
-                                                        <span className="text-[13px] text-[#667085] truncate">{s.email}</span>
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{s.fullName}</span>
+                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)] truncate">{s.email}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -627,9 +627,9 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium", ROLE_TYPE_BADGE[role.type])}>
                                                         {role.name}
                                                     </span>
-                                                ) : <span className="text-[#667085]">—</span>}
+                                                ) : <span className="text-[var(--colors-text-quaternary)]">—</span>}
                                             </td>
-                                            <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{branchLabel}</td>
+                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{branchLabel}</td>
                                             <td className={TD}>
                                                 <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium", STAFF_STATUS_BADGE[s.status])}>
                                                     {STAFF_STATUS_LABEL[s.status]}
@@ -703,16 +703,16 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
             {/* Floating bulk-action bar */}
             {selectionCount > 0 && (
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+                    <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                         <button type="button" onClick={clearSelection}
-                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                             {selectionCount} selected
-                            <XClose className="w-5 h-5 text-[#667085]" />
+                            <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                         </button>
                         <div className="flex items-center gap-3">
                             {hasArchivable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Archive className="w-5 h-5 text-[#667085]" />}
+                                    leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                                     onClick={() => setBulkPending("archive")}>
                                     Archive
                                 </Button>
@@ -769,7 +769,7 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
     const isArchive  = shift.status === "archive";
 
     return (
-        <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             <div className="relative shrink-0">
                 <DecorativeBanner bannerHeight={156} iconBox={72} icon={Clock} {...BANNER_TINTS.package} />
                 <div className="absolute top-3 right-3">
@@ -782,35 +782,35 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div className="flex flex-col gap-1">
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828] break-words">
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)] break-words">
                             {shift.name}
                         </h2>
                     </div>
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Branch location</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{branchName}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Branch location</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{branchName}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Shift days</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{daysSummary(shift.working_days)}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Shift days</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{daysSummary(shift.working_days)}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Shift hours</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Shift hours</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                 {fmtTime12(shift.start_time)} – {fmtTime12(shift.end_time)}
                             </p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Staff</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{totalStaffs}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Staff</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{totalStaffs}</p>
                         </div>
                     </div>
                 </div>
 
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Shift actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Shift actions</p>
                     <div className="flex flex-col gap-4">
                         {isActive && (
                             <>
@@ -889,10 +889,10 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
                 <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                     <button type="button" onClick={() => router.push(returnTo)}
                         aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Shift details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Shift details</h1>
                 </div>
                 <div className="flex-1 flex items-center justify-center px-6">
                     <div className="relative w-full max-w-[480px]" style={{ minHeight: 320 }}>
@@ -949,11 +949,11 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Shift details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Shift details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -968,8 +968,8 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
                     />
                 }
                 main={
-                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
-                        <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px]">
+                        <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                             <div className="flex gap-1">
                                 <TabBtn label="Assigned staffs" active onClick={() => {}} />
                             </div>

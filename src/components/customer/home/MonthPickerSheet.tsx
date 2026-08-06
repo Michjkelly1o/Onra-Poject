@@ -55,7 +55,7 @@ export function MonthPickerSheet({ open, onClose, month, year, minYear, maxYear,
             <div className="relative flex items-center justify-center gap-6 py-2">
                 <div
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-6 top-1/2 h-10 -translate-y-1/2 rounded-xl bg-[#f9fafb]"
+                    className="pointer-events-none absolute inset-x-6 top-1/2 h-10 -translate-y-1/2 rounded-xl bg-[var(--colors-bg-secondary)]"
                 />
                 <ScrollWheel labels={MONTHS_SHORT} values={MONTH_VALUES} value={m} onChange={setM} widthClass="w-[80px]" />
                 <span className="relative text-lg font-semibold leading-7 text-[var(--brand-text)]">–</span>

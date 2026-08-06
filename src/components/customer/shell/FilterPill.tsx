@@ -20,7 +20,7 @@ export function FilterPill({
             className={`rounded-lg px-4 py-2 text-sm font-medium leading-5 transition-colors ${
                 selected
                     ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]"
-                    : "border border-[#e4e7ec] bg-white text-[#344054]"
+                    : "border border-[var(--colors-border-secondary)] bg-white text-[var(--colors-text-secondary)]"
             }`}
         >
             {label}

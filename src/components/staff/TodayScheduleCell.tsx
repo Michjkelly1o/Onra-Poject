@@ -52,7 +52,7 @@ function Chip({ bg, stripe }: { bg: string; stripe: string }) {
 function OffChip() {
     return (
         <span
-            className="h-3 w-[26px] shrink-0 rounded-[3px] border border-[#e4e7ec]"
+            className="h-3 w-[26px] shrink-0 rounded-[3px] border border-[var(--colors-border-secondary)]"
             style={{ backgroundColor: "#f2f4f7", backgroundImage: HATCH_CHIP }}
             aria-hidden
         />
@@ -128,8 +128,8 @@ export function TodayScheduleCell({
             <div className="flex w-full flex-col gap-2">
                 <div className="h-5 w-full rounded-md" style={{ backgroundColor: "#f2f4f7", backgroundImage: HATCH_FULL }} aria-hidden />
                 <div className="flex h-[18px] w-full items-center justify-between">
-                    <span className="truncate text-[12px] font-medium leading-[18px] text-[#101828]">{timeOffTitle(allDayOff)}</span>
-                    <span className="shrink-0 text-[12px] leading-[18px] text-[#667085]">All day</span>
+                    <span className="truncate text-[12px] font-medium leading-[18px] text-[var(--colors-text-primary)]">{timeOffTitle(allDayOff)}</span>
+                    <span className="shrink-0 text-[12px] leading-[18px] text-[var(--colors-text-quaternary)]">All day</span>
                 </div>
             </div>
         );
@@ -145,9 +145,9 @@ export function TodayScheduleCell({
         body = (
             <div className="flex w-full flex-col gap-2">
                 {chips.length === 0 ? (
-                    <div className="h-5 w-full rounded-md border border-[#e4e7ec] bg-[#f9fafb]" aria-hidden />
+                    <div className="h-5 w-full rounded-md border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)]" aria-hidden />
                 ) : (
-                    <div className="flex h-5 w-full items-center gap-1 overflow-hidden rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-2">
+                    <div className="flex h-5 w-full items-center gap-1 overflow-hidden rounded-md border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-2">
                         {chips.map((c, i) =>
                             c.kind === "off" ? (
                                 <OffChip key={i} />
@@ -158,10 +158,10 @@ export function TodayScheduleCell({
                     </div>
                 )}
                 <div className="flex h-[18px] w-full items-center justify-between">
-                    <span className="truncate text-[12px] font-medium leading-[18px] text-[#101828]" style={{ color: pal.name }}>
+                    <span className="truncate text-[12px] font-medium leading-[18px] text-[var(--colors-text-primary)]" style={{ color: pal.name }}>
                         {shiftToday.name}
                     </span>
-                    <span className="shrink-0 text-[12px] leading-[18px] text-[#667085]">
+                    <span className="shrink-0 text-[12px] leading-[18px] text-[var(--colors-text-quaternary)]">
                         {shiftTimeCompact(shiftToday.start_time, shiftToday.end_time)}
                     </span>
                 </div>
@@ -169,7 +169,7 @@ export function TodayScheduleCell({
         );
     } else {
         // State 5 — no shift assigned.
-        body = <span className="text-[14px] leading-5 text-[#101828]">No shift assigned</span>;
+        body = <span className="text-[14px] leading-5 text-[var(--colors-text-primary)]">No shift assigned</span>;
     }
 
     if (isInstructor) {

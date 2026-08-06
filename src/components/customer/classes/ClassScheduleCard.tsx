@@ -45,7 +45,7 @@ export interface ClassScheduleCardProps {
 
 const TONE: Record<BadgeTone, string> = {
     success: "border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-primary)]",
-    neutral: "border-[#e4e7ec] bg-[#f9fafb] text-[#344054]",
+    neutral: "border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] text-[var(--colors-text-secondary)]",
     error: "border-[#fecdca] bg-[#fef3f2] text-[#b42318]",
 };
 
@@ -82,7 +82,7 @@ export function ClassScheduleCard({
                     onAction?.();
                 }
             }}
-            className="flex w-full cursor-pointer flex-col gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4 text-left transition-shadow active:shadow-sm"
+            className="flex w-full cursor-pointer flex-col gap-3 rounded-2xl border border-[var(--colors-border-secondary)] bg-white p-4 text-left transition-shadow active:shadow-sm"
         >
             <div className="flex w-full items-center gap-3">
                 <div
@@ -98,14 +98,14 @@ export function ClassScheduleCard({
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
                     <div className="flex min-w-0 items-center gap-1.5">
-                        <p className="truncate text-xs font-normal leading-[18px] text-[#667085]">with {instructorName}</p>
+                        <p className="truncate text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">with {instructorName}</p>
                         {statusPill && (() => {
                             // Gray status pill — matches the card's neutral badge family.
                             const PillIcon = statusPill.tone === "booked" ? CheckCircle : Hourglass03;
                             return (
-                                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5">
-                                    <PillIcon className="size-3 shrink-0 text-[#667085]" aria-hidden />
-                                    <span className="text-xs font-medium leading-[18px] text-[#344054]">{statusPill.label}</span>
+                                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-2 py-0.5">
+                                    <PillIcon className="size-3 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                                    <span className="text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">{statusPill.label}</span>
                                 </span>
                             );
                         })()}
@@ -113,27 +113,27 @@ export function ClassScheduleCard({
                 </div>
 
                 {/* Capacity indicator — plain icon + XS text (no pill), less prominent. */}
-                <span className="flex shrink-0 items-center gap-1 text-xs font-medium leading-[18px] text-[#475467]">
-                    {badgeIcon === "users" && <Users01 className="size-3.5 shrink-0 text-[#667085]" aria-hidden />}
-                    {badgeIcon === "hourglass" && <Hourglass03 className="size-3.5 shrink-0 text-[#667085]" aria-hidden />}
+                <span className="flex shrink-0 items-center gap-1 text-xs font-medium leading-[18px] text-[var(--colors-text-tertiary)]">
+                    {badgeIcon === "users" && <Users01 className="size-3.5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />}
+                    {badgeIcon === "hourglass" && <Hourglass03 className="size-3.5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />}
                     {badgeLabel}
                 </span>
             </div>
 
             <div className="flex w-full flex-col gap-1">
                 <div className="flex items-center gap-2">
-                    <MarkerPin01 className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                    <MarkerPin01 className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                     <p className="truncate text-xs leading-[18px]">
-                        <span className="font-medium text-[#344054]">{room}</span>
-                        <span className="font-normal text-[#667085]"> - {branch}</span>
+                        <span className="font-medium text-[var(--colors-text-secondary)]">{room}</span>
+                        <span className="font-normal text-[var(--colors-text-quaternary)]"> - {branch}</span>
                     </p>
                 </div>
                 {timeLabel && (
                     <div className="flex items-center gap-2">
-                        <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                        <Clock className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                         <p className="truncate text-xs leading-[18px]">
-                            <span className="font-medium text-[#344054]">{timeStart}</span>
-                            {timeRest && <span className="font-normal text-[#667085]"> • {timeRest}</span>}
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{timeStart}</span>
+                            {timeRest && <span className="font-normal text-[var(--colors-text-quaternary)]"> • {timeRest}</span>}
                         </p>
                     </div>
                 )}

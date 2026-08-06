@@ -56,18 +56,18 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                        : complete ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3]",
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        : complete ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
-                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />}
+                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
             <span className={cn(
                 "text-[14px]",
                 active ? "font-semibold text-[#3b5446]"
-                    : complete ? "font-medium text-[#344054]" : "font-medium text-[#667085]",
+                    : complete ? "font-medium text-[var(--colors-text-secondary)]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {step.label}
             </span>
@@ -79,7 +79,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
 
 function FormCard({ children, footer }: { children: React.ReactNode; footer: React.ReactNode }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-8">{children}</div>
             <div className="shrink-0 px-6 pb-6 pt-6 flex items-center">{footer}</div>
         </div>
@@ -89,7 +89,7 @@ function FormCard({ children, footer }: { children: React.ReactNode; footer: Rea
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-5 w-full">
-            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+            <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
             <div className="flex flex-col gap-4 w-full">{children}</div>
         </div>
     );
@@ -98,14 +98,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function FormField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
-            {hint && <p className="text-[14px] text-[#475467] leading-5">{hint}</p>}
+            {hint && <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{hint}</p>}
         </div>
     );
 }
 
-const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 function TextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
     return <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={INPUT_CLS} />;
@@ -114,14 +114,14 @@ function TextInput({ value, onChange, placeholder }: { value: string; onChange: 
 function Textarea({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
     return (
         <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{ minHeight: 96 }}
-            className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6" />
+            className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6" />
     );
 }
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
     return (
         <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)}
-            className={cn("relative w-9 h-5 rounded-full transition-colors shrink-0", on ? "bg-[#658774]" : "bg-[#f2f4f7]")}>
+            className={cn("relative w-9 h-5 rounded-full transition-colors shrink-0", on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]")}>
             <span className={cn(
                 "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all",
                 "shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]",
@@ -138,12 +138,12 @@ function ToggleCard({ title, subtitle, on, onChange, children }: {
     return (
         <div className={cn(
             "bg-white rounded-[12px] p-4 flex flex-col gap-3 transition-colors w-full",
-            on ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]",
+            on ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)]",
         )}>
             <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-col min-w-0 flex-1">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-5">{subtitle}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{subtitle}</p>
                 </div>
                 <Toggle on={on} onChange={onChange} />
             </div>
@@ -157,7 +157,7 @@ function FilledCheckbox({ checked, onChange }: { checked: boolean; onChange: () 
         <button type="button" onClick={onChange}
             className={cn(
                 "w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 transition-colors border",
-                checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#658774]",
+                checked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-600)]",
             )}>
             {checked && <Check className="w-[10px] h-[10px] text-white" />}
         </button>
@@ -168,7 +168,7 @@ function FilledRadio({ selected }: { selected: boolean }) {
     return (
         <div className={cn(
             "w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-colors border",
-            selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+            selected ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]",
         )}>
             {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
         </div>
@@ -184,12 +184,12 @@ function ActionCard({ icon, label, selected, onSelect }: {
         <button type="button" onClick={onSelect}
             className={cn(
                 "flex-1 min-w-0 flex items-center gap-3 p-4 rounded-[12px] transition-colors text-left",
-                selected ? "bg-white border-2 border-[#7ba08c]" : "bg-white border-1 border-[#e4e7ec] hover:bg-[#fafafa]",
+                selected ? "bg-white border-2 border-[var(--colors-secondary-500)]" : "bg-white border-1 border-[var(--colors-border-secondary)] hover:bg-[#fafafa]",
             )}>
-            <div className="w-8 h-8 rounded-[6px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0 text-[#475467]">
+            <div className="w-8 h-8 rounded-[6px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0 text-[var(--colors-text-tertiary)]">
                 {icon}
             </div>
-            <span className="flex-1 text-[14px] font-medium text-[#344054]">{label}</span>
+            <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
             <FilledRadio selected={selected} />
         </button>
     );
@@ -227,11 +227,11 @@ function TimeSelect({ value, onChange, disabledOption }: {
     return (
         <>
             <button ref={btnRef} type="button" onClick={toggle}
-                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[16px] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <span className={cn("flex-1 text-left truncate", selected ? "text-[#101828]" : "text-[#667085]")}>
+                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[16px] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <span className={cn("flex-1 text-left truncate", selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                     {selected?.label ?? "Select time"}
                 </span>
-                <ChevronDown className="w-5 h-5 text-[#667085] shrink-0" />
+                <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             {/* Fixed-positioned so the menu escapes the scrollable form card. */}
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={width || 220}>
@@ -243,8 +243,8 @@ function TimeSelect({ value, onChange, disabledOption }: {
                                 onClick={() => { if (!disabled) { onChange(o.value); setOpen(false); } }}
                                 className={cn(
                                     "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                    disabled ? "text-[#d0d5dd] cursor-not-allowed"
-                                        : value === o.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                    disabled ? "text-[var(--colors-border-primary)] cursor-not-allowed"
+                                        : value === o.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}>
                                 {o.label}
                             </button>
@@ -281,7 +281,7 @@ function RowFilterDropdown({ active, onChange }: {
     return (
         <div className="shrink-0">
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== "all" && (
@@ -296,7 +296,7 @@ function RowFilterDropdown({ active, onChange }: {
                         onClick={() => { onChange(opt.value); setOpen(false); }}
                         className={cn(
                             "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            active === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                            active === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                         )}>
                         {opt.label}
                     </button>
@@ -342,17 +342,17 @@ function MultiSelectCard({ title, subtitle, options, selected, onChange }: {
     const groups = Array.from(new Set(visibleOptions.map(o => o.group ?? "")));
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
                     <p className="text-[14px] text-[#6e776f] leading-5 truncate">{subtitle}</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {selected.length} selected
                 </span>
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0">
                     {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
@@ -361,24 +361,24 @@ function MultiSelectCard({ title, subtitle, options, selected, onChange }: {
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-2">
                         <FilledCheckbox checked={allVisibleSelected} onChange={toggleAll} />
-                        <span className="flex-1 text-[14px] font-medium text-[#101828]">Select all</span>
+                        <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-primary)]">Select all</span>
                         <RowFilterDropdown active={filter} onChange={setFilter} />
                     </div>
-                    <div className="h-px bg-[#e4e7ec]" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                     {groups.map(g => (
                         <div key={g || "_"} className="flex flex-col gap-3">
-                            {g && <p className="text-[12px] text-[#667085] leading-[18px]">{g}</p>}
+                            {g && <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{g}</p>}
                             {visibleOptions.filter(o => (o.group ?? "") === g).map(o => (
                                 <div key={o.id} className="flex items-center gap-2">
                                     <FilledCheckbox checked={selected.includes(o.id)} onChange={() => toggleOne(o.id)} />
-                                    <span className="text-[14px] font-medium text-[#101828] flex-1 truncate">{o.label}</span>
-                                    {o.sublabel && <span className="text-[14px] text-[#667085] shrink-0">{o.sublabel}</span>}
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1 truncate">{o.label}</span>
+                                    {o.sublabel && <span className="text-[14px] text-[var(--colors-text-quaternary)] shrink-0">{o.sublabel}</span>}
                                 </div>
                             ))}
                         </div>
                     ))}
                     {visibleOptions.length === 0 && (
-                        <p className="text-[14px] text-[#667085]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                             {options.length === 0 ? "Nothing available yet."
                                 : filter === "enabled" ? "No options selected yet."
                                     : "All options are selected."}
@@ -407,12 +407,12 @@ function BranchSingleSelect({ value, onChange, branches }: {
     return (
         <>
             <button ref={btnRef} type="button" onClick={toggle}
-                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white text-[16px] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <MarkerPin01 className="w-5 h-5 text-[#667085] shrink-0" />
-                <span className={cn("flex-1 text-left truncate", selected ? "text-[#101828]" : "text-[#667085]")}>
+                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[16px] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <MarkerPin01 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
+                <span className={cn("flex-1 text-left truncate", selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                     {selected ? selected.name : "Select location"}
                 </span>
-                <ChevronDown className="w-5 h-5 text-[#667085] shrink-0" />
+                <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={width || 220}>
                 {branches.map(b => (
@@ -420,9 +420,9 @@ function BranchSingleSelect({ value, onChange, branches }: {
                         onClick={() => { onChange(b.id); setOpen(false); }}
                         className={cn(
                             "flex items-center gap-2 w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            value === b.id ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                            value === b.id ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                         )}>
-                        <MarkerPin01 className="w-4 h-4 text-[#667085]" />
+                        <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                         {b.name}
                     </button>
                 ))}
@@ -615,11 +615,11 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={handleClose} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                         {isEdit ? "Edit promotion" : "Create new promotion"}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
@@ -747,14 +747,14 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                             {/* ── Promotion configuration ── */}
                             <Section title="Promotion configuration">
                                 {form.action === "buy_package" && (
-                                    <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px] p-1 flex gap-1">
+                                    <div className="bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[10px] p-1 flex gap-1">
                                         {([["percentage", "Percentage off (%)"], ["fixed_amount", "Fixed amount off (AED)"]] as const).map(([v, label]) => (
                                             <button key={v} type="button" onClick={() => patch({ packageOffer: v })}
                                                 className={cn(
                                                     "flex-1 h-9 rounded-[6px] text-[14px] font-semibold transition-colors",
                                                     form.packageOffer === v
-                                                        ? "bg-white text-[#344054] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1)]"
-                                                        : "text-[#667085]",
+                                                        ? "bg-white text-[var(--colors-text-secondary)] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1)]"
+                                                        : "text-[var(--colors-text-quaternary)]",
                                                 )}>
                                                 {label}
                                             </button>
@@ -763,20 +763,20 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                                 )}
                                 <FormField label="Discount value">
                                     {form.action === "buy_package" ? (
-                                        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] h-10">
+                                        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] h-10">
                                             {form.packageOffer === "fixed_amount" && (
-                                                <div className="flex items-center pl-[14px] text-[16px] font-medium text-[#667085]">AED</div>
+                                                <div className="flex items-center pl-[14px] text-[16px] font-medium text-[var(--colors-text-quaternary)]">AED</div>
                                             )}
                                             <div className="flex-1 min-w-0">
                                                 <NumericStringInput value={form.discountValue} onChange={v => patch({ discountValue: v })}
                                                     min={0} className="!border-0 !shadow-none !rounded-none !ring-0 focus-within:!ring-0 focus-within:!border-0" />
                                             </div>
                                             {form.packageOffer === "percentage" && (
-                                                <div className="flex items-center pr-[14px] text-[16px] font-medium text-[#667085]">%</div>
+                                                <div className="flex items-center pr-[14px] text-[16px] font-medium text-[var(--colors-text-quaternary)]">%</div>
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] h-10">
+                                        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] h-10">
                                             <div className="flex-1 min-w-0">
                                                 <NumericStringInput value={form.discountValue} onChange={v => patch({ discountValue: v })}
                                                     min={0} className="!border-0 !shadow-none !rounded-none !ring-0 focus-within:!ring-0 focus-within:!border-0" />
@@ -875,13 +875,13 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
 
                             {/* ── Customer ── */}
                             <Section title="Customer">
-                                <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                    <p className="text-[14px] text-[#667085]">The promo can be configured to target specific eligible users.</p>
+                                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">The promo can be configured to target specific eligible users.</p>
                                     {([["all", "Everyone"], ["new_users", "New user only"]] as const).map(([v, label]) => (
                                         <button key={v} type="button" onClick={() => patch({ customerTargeting: v })}
                                             className="flex items-center gap-2 w-full text-left">
                                             <FilledRadio selected={form.customerTargeting === v} />
-                                            <span className="text-[14px] font-medium text-[#344054]">{label}</span>
+                                            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -940,8 +940,8 @@ function PreviewAttr({ icon, label, muted }: {
 }) {
     return (
         <div className="flex items-center gap-1 min-w-0">
-            <span className="w-4 h-4 shrink-0 text-[#667085]">{icon}</span>
-            <span className={cn("text-[14px] truncate", muted ? "text-[#98a2b3]" : "text-[#667085]")}>
+            <span className="w-4 h-4 shrink-0 text-[var(--colors-text-quaternary)]">{icon}</span>
+            <span className={cn("text-[14px] truncate", muted ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-quaternary)]")}>
                 {label}
             </span>
         </div>
@@ -969,17 +969,17 @@ function PromoPreviewPanel({ form, branches }: { form: PromoFormData; branches: 
     })();
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
             {/* Header */}
             <div className="pt-6 px-6 pb-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Promotion preview</p>
+                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Promotion preview</p>
                 <p className="text-[14px] text-[#6e776f] leading-5">This is how your promotion card will look like.</p>
             </div>
             {/* Stage */}
             <div className="bg-[#f6f6f3] px-6 py-10">
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col w-[352px] mx-auto">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden flex flex-col w-[352px] mx-auto">
                     {/* Banner */}
-                    <div className="relative h-[144px] shrink-0 overflow-hidden bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]">
+                    <div className="relative h-[144px] shrink-0 overflow-hidden bg-gradient-to-br from-[#1d2939] via-[var(--colors-text-secondary)] to-[var(--colors-text-tertiary)]">
                         {/* Image-only banner — the artwork carries all voucher copy */}
                         {form.bannerPreview && (
                             <img src={form.bannerPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -994,10 +994,10 @@ function PromoPreviewPanel({ form, branches }: { form: PromoFormData; branches: 
                     {/* Content */}
                     <div className="flex flex-col gap-4 px-4 py-5">
                         <div className="flex flex-col gap-1">
-                            <p className={cn("text-[18px] font-medium leading-7 truncate", name ? "text-[#101828]" : "text-[#98a2b3]")}>
+                            <p className={cn("text-[18px] font-medium leading-7 truncate", name ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-fg-quaternary)]")}>
                                 {name || "Promotion name"}
                             </p>
-                            <p className={cn("text-[14px] leading-5 line-clamp-2", description ? "text-[#667085]" : "text-[#98a2b3]")}>
+                            <p className={cn("text-[14px] leading-5 line-clamp-2", description ? "text-[var(--colors-text-quaternary)]" : "text-[var(--colors-fg-quaternary)]")}>
                                 {description || "Your promotion description will appear here."}
                             </p>
                         </div>
@@ -1017,11 +1017,11 @@ function PromoPreviewPanel({ form, branches }: { form: PromoFormData; branches: 
                                 muted={!branchLabel} />
                         </div>
                         {/* Dashed divider */}
-                        <div className="border-t border-dashed border-[#e4e7ec]" />
+                        <div className="border-t border-dashed border-[var(--colors-border-secondary)]" />
                         {/* Valid until */}
                         <div className="flex items-center gap-1 text-[14px]">
-                            <span className="text-[#667085]">Valid until</span>
-                            <span className={cn("font-medium", form.endDate ? "text-[#101828]" : "text-[#98a2b3]")}>
+                            <span className="text-[var(--colors-text-quaternary)]">Valid until</span>
+                            <span className={cn("font-medium", form.endDate ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-fg-quaternary)]")}>
                                 {formatPreviewDate(form.endDate, form.endTime)}
                             </span>
                         </div>
@@ -1043,9 +1043,9 @@ function BookOfferDropdown({ value, onChange }: { value: BookOffer; onChange: (v
     ];
     const selected = OPTIONS.find(o => o.value === value);
     return (
-        <div className="shrink-0 border-l-1 border-[#d0d5dd]">
+        <div className="shrink-0 border-l-1 border-[var(--colors-border-primary)]">
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="h-full px-[14px] flex items-center text-[16px] text-[#344054]">
+                className="h-full px-[14px] flex items-center text-[16px] text-[var(--colors-text-secondary)]">
                 {selected?.label ?? "free class"}
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={140}>
@@ -1054,7 +1054,7 @@ function BookOfferDropdown({ value, onChange }: { value: BookOffer; onChange: (v
                         onClick={() => { onChange(o.value); setOpen(false); }}
                         className={cn(
                             "flex w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            value === o.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                            value === o.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                         )}>
                         {o.label}
                     </button>

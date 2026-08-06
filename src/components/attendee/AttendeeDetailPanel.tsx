@@ -133,15 +133,15 @@ function resolveActivePlan(plans: CustomerPlan[], customerId: string): { plan: C
 function InfoField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085] leading-[20px]">{label}</p>
-            <div className="text-[16px] font-medium text-[#101828] leading-[24px]">{children}</div>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{label}</p>
+            <div className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-[24px]">{children}</div>
         </div>
     );
 }
 
 function LeftPanel({ ci, instructorLabel }: { ci: ClassInstance; instructorLabel: string }) {
     return (
-        <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
+        <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden h-full">
             {/* Banner */}
             <div className="relative h-[155px] shrink-0 overflow-hidden" style={{ backgroundColor: ci.coverColor }}>
                 {ci.coverImage ? (
@@ -166,8 +166,8 @@ function LeftPanel({ ci, instructorLabel }: { ci: ClassInstance; instructorLabel
             <div className="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-hide">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div>
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{ci.name}</h2>
-                        <p className="text-[14px] text-[#667085] leading-[20px] mt-1 line-clamp-3">{ci.description}</p>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{ci.name}</h2>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] mt-1 line-clamp-3">{ci.description}</p>
                     </div>
 
                     <div className="flex flex-col gap-4">
@@ -220,18 +220,18 @@ function PresentDetailsModal({ open, mode, customer, booking, classInstance, act
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[16px] w-full max-w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
 
                 {/* Header — green check + Present + subline */}
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className="w-12 h-12 rounded-full bg-[#e9fff3] flex items-center justify-center shrink-0">
-                        <Check className="w-6 h-6 text-[#658774]" />
+                    <div className="w-12 h-12 rounded-full bg-[var(--colors-secondary-50)] flex items-center justify-center shrink-0">
+                        <Check className="w-6 h-6 text-[var(--colors-secondary-600)]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full px-4">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Present</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Present</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             {mode === "all"
                                 ? "All booked customers marked present."
                                 : `Enjoy ${classInstance.name} with instructor ${classInstance.instructorName}.`}
@@ -242,34 +242,34 @@ function PresentDetailsModal({ open, mode, customer, booking, classInstance, act
                 {/* Bordered detail row */}
                 <div className="px-6 pt-6">
                     {mode === "all" ? (
-                        <div className="flex items-center gap-3 p-4 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px]">
-                            <div className="w-10 h-10 rounded-full bg-[#e9fff3] flex items-center justify-center shrink-0">
-                                <Check className="w-5 h-5 text-[#658774]" />
+                        <div className="flex items-center gap-3 p-4 bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px]">
+                            <div className="w-10 h-10 rounded-full bg-[var(--colors-secondary-50)] flex items-center justify-center shrink-0">
+                                <Check className="w-5 h-5 text-[var(--colors-secondary-600)]" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-medium text-[#101828]">{allCount} customer{allCount === 1 ? "" : "s"} marked present</p>
-                                <p className="text-[13px] text-[#667085]">{classInstance.name} • {classInstance.displayTime}</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{allCount} customer{allCount === 1 ? "" : "s"} marked present</p>
+                                <p className="text-[13px] text-[var(--colors-text-quaternary)]">{classInstance.name} • {classInstance.displayTime}</p>
                             </div>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
+                        <div className="flex items-center gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]">
                             <TableAvatar initials={customer?.initials ?? "?"} imageUrl={customer?.imageUrl} size={48} />
                             <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                <p className="text-[15px] font-semibold text-[#101828] truncate">{name}</p>
+                                <p className="text-[15px] font-semibold text-[var(--colors-text-primary)] truncate">{name}</p>
                                 {activePlan.plan ? (
                                     <>
-                                        <p className="flex items-center gap-1.5 text-[13px] text-[#667085] truncate">
-                                            <Package className="w-4 h-4 text-[#667085] shrink-0" />
+                                        <p className="flex items-center gap-1.5 text-[13px] text-[var(--colors-text-quaternary)] truncate">
+                                            <Package className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                             {activePlan.plan.name}
                                         </p>
-                                        <p className="flex items-center gap-1.5 text-[13px] text-[#667085]">
-                                            <Clock className="w-4 h-4 text-[#667085] shrink-0" />
+                                        <p className="flex items-center gap-1.5 text-[13px] text-[var(--colors-text-quaternary)]">
+                                            <Clock className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                             Expires in {formatExpiryDDMMYYYY(activePlan.plan.expiryISO)}
                                         </p>
                                     </>
                                 ) : (
-                                    <p className="flex items-center gap-1.5 text-[13px] text-[#667085]">
-                                        <Package className="w-4 h-4 text-[#667085] shrink-0" />
+                                    <p className="flex items-center gap-1.5 text-[13px] text-[var(--colors-text-quaternary)]">
+                                        <Package className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                         No active package
                                     </p>
                                 )}
@@ -317,16 +317,16 @@ function BookedCard({ booking, customer, canPresent, onPresent, onViewDetails }:
             onClick={cardClickable ? onViewDetails : undefined}
             onKeyDown={cardClickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onViewDetails(); } } : undefined}
             className={cn(
-                "flex flex-col gap-4 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]",
-                cardClickable && "cursor-pointer transition-shadow hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.10),0px_2px_4px_-2px_rgba(16,24,40,0.06)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd]",
+                "flex flex-col gap-4 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]",
+                cardClickable && "cursor-pointer transition-shadow hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.10),0px_2px_4px_-2px_rgba(16,24,40,0.06)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--colors-secondary-300)]",
             )}
         >
             {/* Top row — 48px avatar + name (bold) + spot beneath */}
             <div className="flex items-center gap-3">
                 <TableAvatar initials={customer?.initials ?? name.split(" ").map(w => w[0]).join("").slice(0, 2)} imageUrl={customer?.imageUrl} size={48} />
                 <div className="flex-1 min-w-0">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px] truncate">{name}</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">{spotLabel}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px] truncate">{name}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{spotLabel}</p>
                 </div>
                 {isNoShow && <NoShowBadge />}
             </div>
@@ -352,9 +352,9 @@ function BookedCard({ booking, customer, canPresent, onPresent, onViewDetails }:
                 <button
                     type="button"
                     disabled
-                    className="w-full h-10 flex items-center justify-center gap-1 rounded-[8px] border-1 border-[#e4e7ec] bg-white text-[14px] font-semibold text-[#98a2b3] cursor-not-allowed"
+                    className="w-full h-10 flex items-center justify-center gap-1 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white text-[14px] font-semibold text-[var(--colors-fg-quaternary)] cursor-not-allowed"
                 >
-                    <CheckCircle className="w-4 h-4 text-[#98a2b3]" />
+                    <CheckCircle className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
                     Present
                 </button>
             )}
@@ -434,21 +434,21 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
     if (!classInstance) {
         return (
             <div className="flex h-full flex-col bg-white">
-                <div className="flex items-center justify-between h-[64px] shrink-0 border-b border-[#e4e7ec] px-6">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{isAppt ? "Appointment" : "Class"}</p>
+                <div className="flex items-center justify-between h-[64px] shrink-0 border-b border-[var(--colors-border-secondary)] px-6">
+                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{isAppt ? "Appointment" : "Class"}</p>
                     {variant === "panel" && (
                         <button type="button" onClick={onClose} aria-label="Close"
-                            className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                            <XClose className="w-5 h-5 text-[#667085]" />
+                            className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                            <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                         </button>
                     )}
                 </div>
                 <div className="flex-1 flex items-center justify-center text-center px-6">
                     <div>
-                        <p className="text-[18px] font-semibold text-[#101828]">This {isAppt ? "appointment" : "class"} is no longer available</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">This {isAppt ? "appointment" : "class"} is no longer available</p>
                         {variant === "panel" && (
                             <button type="button" onClick={onClose}
-                                className="mt-4 text-[14px] text-[#658774] hover:underline">
+                                className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                                 Back to Attendee
                             </button>
                         )}
@@ -569,12 +569,12 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
     return (
         <div className="flex h-full flex-col bg-white">
             {/* Header — booking name; close (X) only in the side-panel variant. */}
-            <div className="flex items-center justify-between h-[64px] shrink-0 border-b border-[#e4e7ec] px-6">
-                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{headerTitle}</p>
+            <div className="flex items-center justify-between h-[64px] shrink-0 border-b border-[var(--colors-border-secondary)] px-6">
+                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{headerTitle}</p>
                 {variant === "panel" && (
                     <button type="button" onClick={onClose} aria-label="Close"
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 )}
             </div>
@@ -582,18 +582,18 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
             {/* Body — info column + participants card, side by side. */}
             <div className="flex-1 min-h-0 flex gap-6 p-6 overflow-hidden">
                 <LeftPanel ci={ci} instructorLabel={instructorLabel} />
-                <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
+                <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px]">
                     {/* Participants header — title + Search participant (no tabs, no filter). */}
                     <div className="shrink-0 flex items-center gap-3 flex-wrap px-6 pt-6 pb-4">
-                        <p className="flex-1 min-w-0 text-[18px] font-semibold text-[#101828] leading-[28px]">Participants</p>
+                        <p className="flex-1 min-w-0 text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Participants</p>
                         <div className="relative w-[240px]">
-                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
+                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)] pointer-events-none" />
                             <input
                                 type="text"
                                 value={rosterSearch}
                                 onChange={(e) => setRosterSearch(e.target.value)}
                                 placeholder="Search participant..."
-                                className="w-full h-10 pl-9 pr-3 bg-white border border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                className="w-full h-10 pl-9 pr-3 bg-white border border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                             />
                         </div>
                     </div>
@@ -611,13 +611,13 @@ export function AttendeeDetailContent({ classId, variant = "panel", onClose }: {
 
                         {bookedRows.length === 0 ? (
                             <div className="py-16 text-center">
-                                <p className="text-[15px] font-semibold text-[#101828]">No participants yet.</p>
-                                <p className="text-[14px] text-[#667085] mt-1">Booked customers will appear here.</p>
+                                <p className="text-[15px] font-semibold text-[var(--colors-text-primary)]">No participants yet.</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] mt-1">Booked customers will appear here.</p>
                             </div>
                         ) : visibleBooked.length === 0 ? (
                             <div className="py-16 text-center">
-                                <p className="text-[15px] font-semibold text-[#101828]">No participants match &ldquo;{rosterSearch}&rdquo;.</p>
-                                <p className="text-[14px] text-[#667085] mt-1">Try a different name.</p>
+                                <p className="text-[15px] font-semibold text-[var(--colors-text-primary)]">No participants match &ldquo;{rosterSearch}&rdquo;.</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] mt-1">Try a different name.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -677,8 +677,8 @@ function RosterList({ rows, customerById, emptyTitle, emptySubtitle }: {
     if (rows.length === 0) {
         return (
             <div className="py-16 text-center">
-                <p className="text-[15px] font-semibold text-[#101828]">{emptyTitle}</p>
-                <p className="text-[14px] text-[#667085] mt-1">{emptySubtitle}</p>
+                <p className="text-[15px] font-semibold text-[var(--colors-text-primary)]">{emptyTitle}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] mt-1">{emptySubtitle}</p>
             </div>
         );
     }
@@ -688,11 +688,11 @@ function RosterList({ rows, customerById, emptyTitle, emptySubtitle }: {
                 const c = customerById.get(b.customerId);
                 const name = customerDisplayName(c, b);
                 return (
-                    <div key={b.id} className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[16px]">
+                    <div key={b.id} className="flex items-center gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px]">
                         <TableAvatar initials={c?.initials ?? name.split(" ").map(w => w[0]).join("").slice(0, 2)} imageUrl={c?.imageUrl} size={40} />
                         <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-medium text-[#101828] truncate">{name}</p>
-                            <p className="text-[13px] text-[#667085]">
+                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{name}</p>
+                            <p className="text-[13px] text-[var(--colors-text-quaternary)]">
                                 {b.status === "waitlisted" && b.waitlistPosition ? `Position ${b.waitlistPosition}` : b.spot ? `Spot ${b.spot}` : "—"}
                             </p>
                         </div>

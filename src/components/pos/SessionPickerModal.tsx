@@ -241,31 +241,31 @@ export function SessionPickerModal({ product, customerId, cartSessions = [], onC
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6 pb-5">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Book a session</p>
-                        <p className="text-[14px] text-[#475467]">
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Book a session</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)]">
                             {isPrivate ? "Pick the instructor, date and time" : "Pick the date and time"}
                         </p>
                     </div>
-                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
-                <div className="h-px bg-[#e4e7ec]" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
-                    <section className="border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-4">
+                    <section className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-4">
                         {/* Session summary — cover image + name + facts */}
                         <div className="flex items-center gap-3">
                             {product.coverImage ? (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={product.coverImage} alt="" className="w-14 h-14 rounded-[10px] object-cover border-1 border-[#e4e7ec] shrink-0" />
+                                <img src={product.coverImage} alt="" className="w-14 h-14 rounded-[10px] object-cover border-1 border-[var(--colors-border-secondary)] shrink-0" />
                             ) : (
-                                <div className="w-14 h-14 rounded-[10px] bg-gradient-to-br from-[#e9fff3] to-[#f5fffa] border-1 border-[#e4e7ec] shrink-0" />
+                                <div className="w-14 h-14 rounded-[10px] bg-gradient-to-br from-[var(--colors-secondary-50)] to-[#f5fffa] border-1 border-[var(--colors-border-secondary)] shrink-0" />
                             )}
                             <div className="min-w-0">
-                                <p className="text-[16px] font-semibold text-[#101828] truncate">{product.name}</p>
-                                <p className="text-[13px] text-[#667085]">
+                                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] truncate">{product.name}</p>
+                                <p className="text-[13px] text-[var(--colors-text-quaternary)]">
                                     {product.durationMin} min · AED {product.price.toLocaleString()}
                                     {product.openSession ? ` · Up to ${product.capacity}` : ""}
                                 </p>
@@ -283,12 +283,12 @@ export function SessionPickerModal({ product, customerId, cartSessions = [], onC
                                         setInstOpen((o) => !o);
                                     }}
                                     className={cn(
-                                        "flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
-                                        instOpen ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]",
+                                        "flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
+                                        instOpen ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-500)]",
                                     )}>
-                                    <User01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                    <span className="flex-1 text-left truncate text-[#101828]">{instructorLabel}</span>
-                                    <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", instOpen && "rotate-180")} />
+                                    <User01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="flex-1 text-left truncate text-[var(--colors-text-primary)]">{instructorLabel}</span>
+                                    <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", instOpen && "rotate-180")} />
                                 </button>
                                 <FixedDropdown triggerRef={instTriggerRef} open={instOpen} onClose={() => setInstOpen(false)} minWidth={menuWidth}>
                                     <div className="max-h-[240px] overflow-y-auto">
@@ -328,7 +328,7 @@ export function SessionPickerModal({ product, customerId, cartSessions = [], onC
                 </div>
 
                 {/* Footer */}
-                <div className="h-px bg-[#e4e7ec]" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                 <div className="flex gap-3 px-6 py-4 shrink-0">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="lg" className="flex-1" disabled={!canAdd} onClick={handleAdd}>
@@ -348,10 +348,10 @@ function Field({ label, help, helpColor = "muted", children }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
             {help && (
-                <p className={cn("text-[13px]", helpColor === "error" ? "text-[#b42318]" : "text-[#667085]")}>{help}</p>
+                <p className={cn("text-[13px]", helpColor === "error" ? "text-[#b42318]" : "text-[var(--colors-text-quaternary)]")}>{help}</p>
             )}
         </div>
     );
@@ -362,10 +362,10 @@ function InstOption({ label, active, onClick }: { label: string; active: boolean
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full px-4 py-2.5 text-left transition-colors",
-                active ? "bg-[#f0fff8]" : "hover:bg-[#f9fafb]",
+                active ? "bg-[#f0fff8]" : "hover:bg-[var(--colors-bg-secondary)]",
             )}>
-            <span className={cn("flex-1 text-[14px] truncate", active ? "font-semibold text-[#101828]" : "text-[#344054]")}>{label}</span>
-            {active && <Check className="w-4 h-4 text-[#658774] shrink-0" />}
+            <span className={cn("flex-1 text-[14px] truncate", active ? "font-semibold text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)]")}>{label}</span>
+            {active && <Check className="w-4 h-4 text-[var(--colors-secondary-600)] shrink-0" />}
         </button>
     );
 }

@@ -75,7 +75,7 @@ export function BookingCard({ name, date, time, location, tzLabel, status, image
         >
             <div className="flex w-full flex-col gap-2">
                 {/* Date • time */}
-                <p className="whitespace-nowrap text-xs font-medium leading-[18px] text-[#344054]">
+                <p className="whitespace-nowrap text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">
                     {date} • {time}
                 </p>
 
@@ -99,16 +99,16 @@ export function BookingCard({ name, date, time, location, tzLabel, status, image
                     <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
                         <div className="flex w-full flex-col">
                             <p className="whitespace-nowrap text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
-                            <p className="w-full truncate text-xs font-normal leading-[18px] text-[#475467]">{location}</p>
+                            <p className="w-full truncate text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">{location}</p>
                             {tzLabel && (
-                                <p className="w-full truncate text-[11px] font-normal leading-4 text-[#98a2b3]">{tzLabel}</p>
+                                <p className="w-full truncate text-[11px] font-normal leading-4 text-[var(--colors-fg-quaternary)]">{tzLabel}</p>
                             )}
                         </div>
 
                         {/* Status */}
                         <div className="flex items-center gap-1">
                             <Icon className="size-3.5 shrink-0" style={{ color }} aria-hidden />
-                            <span className="truncate text-xs font-medium leading-[18px] text-[#344054]">{status.label}</span>
+                            <span className="truncate text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">{status.label}</span>
                         </div>
                     </div>
                 </div>

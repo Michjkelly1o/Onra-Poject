@@ -162,7 +162,7 @@ export function DatePickerSheet({
     }
 
     const years = Array.from({ length: YEAR_PAGE }, (_, i) => yearTop - i);
-    const navBtn = "flex size-9 items-center justify-center rounded-full text-[#344054] transition-colors active:bg-gray-50";
+    const navBtn = "flex size-9 items-center justify-center rounded-full text-[var(--colors-text-secondary)] transition-colors active:bg-gray-50";
     const labelBtn = "rounded-md px-1.5 py-0.5 text-base font-semibold leading-6 transition-colors active:bg-gray-50";
 
     const dayDisabled = (iso: string) => (!!minISO && iso < minISO) || (!!maxISO && iso > maxISO);
@@ -244,7 +244,7 @@ export function DatePickerSheet({
             ) : (
                 <div className="grid grid-cols-7 gap-y-2.5">
                     {WEEKDAYS.map((w) => (
-                        <div key={w} className="pb-1 text-center text-sm font-medium leading-5 text-[#475467]">
+                        <div key={w} className="pb-1 text-center text-sm font-medium leading-5 text-[var(--colors-text-tertiary)]">
                             {w}
                         </div>
                     ))}
@@ -270,7 +270,7 @@ export function DatePickerSheet({
                                 {inSpan && (
                                     <span
                                         aria-hidden
-                                        className={`absolute inset-y-0 ${bandL} ${bandR} bg-[#f2f4f7] ${roundL ? "rounded-l-full" : ""} ${roundR ? "rounded-r-full" : ""}`}
+                                        className={`absolute inset-y-0 ${bandL} ${bandR} bg-[var(--colors-bg-tertiary)] ${roundL ? "rounded-l-full" : ""} ${roundR ? "rounded-r-full" : ""}`}
                                     />
                                 )}
                                 <button
@@ -281,10 +281,10 @@ export function DatePickerSheet({
                                         endpoint
                                             ? "bg-[var(--brand-primary)] font-semibold text-white"
                                             : disabled
-                                              ? "text-[#e4e7ec]"
+                                              ? "text-[var(--colors-border-secondary)]"
                                               : c.cur
                                                 ? "text-[var(--brand-text)] active:bg-gray-50"
-                                                : "text-[#d0d5dd]"
+                                                : "text-[var(--colors-border-primary)]"
                                     }`}
                                 >
                                     {c.d}

@@ -47,27 +47,27 @@ export function BranchLocationCard({
                     type="button"
                     onClick={() => openBranchInMaps(mapsQuery)}
                     aria-label="Open in Google Maps"
-                    className="absolute right-4 top-4 flex items-center justify-center rounded-full border border-[#f2f4f7] bg-white p-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                    className="absolute right-4 top-4 flex items-center justify-center rounded-full border border-[var(--colors-bg-tertiary)] bg-white p-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                 >
-                    <Maximize01 className="size-5 text-[#344054]" aria-hidden />
+                    <Maximize01 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
             </div>
             <div className="flex w-full items-start gap-2">
-                <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
+                <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">{nameLine}</p>
-                    {displayAddress && <p className="text-sm font-normal leading-5 text-[#475467]">{displayAddress}</p>}
+                    {displayAddress && <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{displayAddress}</p>}
                     {hours && (
                         <p className="flex items-center gap-1 text-sm leading-5">
                             <span className="font-medium text-[var(--brand-primary)]">{hours.isOpen ? "Open" : "Closed"}</span>
-                            <span className="text-[#667085]">•</span>
-                            <span className="text-[#667085]">{hours.hoursLabel}</span>
+                            <span className="text-[var(--colors-text-quaternary)]">•</span>
+                            <span className="text-[var(--colors-text-quaternary)]">{hours.hoursLabel}</span>
                         </p>
                     )}
                     {branch && (
-                        <span className="mt-1 flex w-fit items-center gap-1 rounded-md border border-[#e4e7ec] bg-white px-2 py-0.5">
-                            <Globe04 className="size-3 shrink-0 text-[#667085]" aria-hidden />
-                            <span className="text-xs font-medium leading-[18px] text-[#344054]">
+                        <span className="mt-1 flex w-fit items-center gap-1 rounded-md border border-[var(--colors-border-secondary)] bg-white px-2 py-0.5">
+                            <Globe04 className="size-3 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                            <span className="text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">
                                 {branchCity} ({compactOffsetForCity(branchCity)})
                             </span>
                         </span>

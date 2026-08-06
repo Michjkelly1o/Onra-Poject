@@ -102,8 +102,8 @@ function AgreementStatusBadge({ status }: { status: AgreementStatus }) {
 
 function AgreementIcon() {
     return (
-        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-            <File06 className="w-5 h-5 text-[#475467]" />
+        <div className="relative shrink-0 size-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center">
+            <File06 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
         </div>
     );
@@ -139,16 +139,16 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date range</p>
                         <div className="grid grid-cols-2 gap-3">
                             <DatePicker value={pending.dateStart} placeholder="Start date"
                                 onChange={v => setPending(p => ({
@@ -160,10 +160,10 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
                                 onChange={v => setPending(p => ({ ...p, dateEnd: v }))} />
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {STATUSES.map(s => (
                                 <FilterPill key={s} label={AGREEMENT_STATUS_LABEL[s]}
@@ -172,16 +172,16 @@ function AgreementFilterPanel({ open, onClose, applied, onApply, branches }: {
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Branch location */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Branch location</p>
                         <SelectInput value={pending.branchId} placeholder="Select location"
                             options={[{ value: "", label: "All locations" }, ...branches.map(b => ({ value: b.id, label: b.name }))]}
                             onChange={v => setPending(p => ({ ...p, branchId: v }))} width="w-full" />
                     </div>
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_AGREEMENT_FILTER); onApply(EMPTY_AGREEMENT_FILTER); onClose(); }}>Clear filter</Button>
                     <Button variant="primary" disabled={!hasAny}
@@ -201,28 +201,28 @@ function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
     );
 }
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7] align-middle";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)] align-middle";
 
 // ─── Agreements tab ───────────────────────────────────────────────────────────
 
@@ -402,20 +402,20 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
                                 {paged.map(a => (
                                     <tr key={a.id}
                                         onClick={() => handleView(a)}
-                                        className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
+                                        className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
                                                 <AgreementIcon />
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="text-[14px] font-medium text-[#101828]">{liveAgreementName(a)}</span>
-                                                    <span className="text-[13px] text-[#667085]">Version {a.version}</span>
+                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{liveAgreementName(a)}</span>
+                                                    <span className="text-[13px] text-[var(--colors-text-quaternary)]">Version {a.version}</span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className={cn(TD, "text-[#475467]")}>{branchName(a.branchId)}</td>
-                                        <td className={cn(TD, "text-[#667085]")}>{liveClassTemplateNames(a)}</td>
+                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{branchName(a.branchId)}</td>
+                                        <td className={cn(TD, "text-[var(--colors-text-quaternary)]")}>{liveClassTemplateNames(a)}</td>
                                         <td className={TD}><AgreementStatusBadge status={a.status} /></td>
-                                        <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(a.signedAtISO)}</td>
+                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(a.signedAtISO)}</td>
                                         <td onClick={e => e.stopPropagation()} className={TD}>
                                             <RowActions
                                                 items={[{

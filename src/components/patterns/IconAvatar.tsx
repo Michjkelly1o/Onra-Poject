@@ -11,9 +11,9 @@
 // rates, etc).
 //
 // Captures the EXACT chrome from the audit:
-//   • Outer: `relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex
+//   • Outer: `relative shrink-0 size-10 rounded-full bg-[var(--colors-bg-tertiary)] flex
 //     items-center justify-center`
-//   • Icon:  `w-5 h-5 text-[#475467]`
+//   • Icon:  `w-5 h-5 text-[var(--colors-text-tertiary)]`
 //   • Inset 0.75px contrast border via overlay div per the Figma spec
 //
 // Currently replaces:
@@ -34,10 +34,10 @@ export interface IconAvatarProps {
 export function IconAvatar({ icon: Icon, className }: IconAvatarProps) {
     return (
         <div className={cn(
-            "relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center",
+            "relative shrink-0 size-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center",
             className,
         )}>
-            <Icon className="w-5 h-5 text-[#475467]" />
+            <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
         </div>
     );

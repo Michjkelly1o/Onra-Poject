@@ -40,17 +40,17 @@ export function NotificationRow({
     return (
         <button type="button" onClick={onClick} className="flex w-full items-start gap-3 text-left">
             {/* Featured icon tile */}
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-[#f9fafb] shadow-[0px_1.5px_1.5px_0px_rgba(0,0,0,0.04),-3px_4.5px_9px_0px_rgba(0,0,0,0.02),3px_4.5px_9px_0px_rgba(0,0,0,0.02)] backdrop-blur-[4px]">
-                <Icon className="size-5 text-[#344054]" aria-hidden />
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] shadow-[0px_1.5px_1.5px_0px_rgba(0,0,0,0.04),-3px_4.5px_9px_0px_rgba(0,0,0,0.02),3px_4.5px_9px_0px_rgba(0,0,0,0.02)] backdrop-blur-[4px]">
+                <Icon className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
             </span>
 
             {/* Text */}
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex items-baseline gap-1.5">
-                    <span className="text-sm font-semibold leading-5 text-[#344054]">{notification.title}</span>
-                    <span className="shrink-0 text-sm font-normal leading-5 text-[#667085]">{timeAgo}</span>
+                    <span className="text-sm font-semibold leading-5 text-[var(--colors-text-secondary)]">{notification.title}</span>
+                    <span className="shrink-0 text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{timeAgo}</span>
                 </span>
-                <span className="text-sm font-normal leading-5 text-[#475467]">{notification.message}</span>
+                <span className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{notification.message}</span>
             </span>
 
             {/* Unread dot */}

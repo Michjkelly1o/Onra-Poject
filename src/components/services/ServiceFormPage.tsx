@@ -78,20 +78,20 @@ function StepItem({ step, current }: { step: typeof STEPS[number]; current: numb
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
                         : complete
-                            ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#98a2b3]",
+                            ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
                 {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />
                 )}
             </div>
             <span className={cn(
                 "text-[14px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]",
+                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {step.label}
             </span>
@@ -101,14 +101,14 @@ function StepItem({ step, current }: { step: typeof STEPS[number]; current: numb
 
 // ─── Form input helpers (verbatim from class-template form) ─────────────────
 
-const inputCls = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const inputCls = "h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 function FormField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
-            {hint && <p className="text-[14px] text-[#475467]">{hint}</p>}
+            {hint && <p className="text-[14px] text-[var(--colors-text-tertiary)]">{hint}</p>}
         </div>
     );
 }
@@ -134,7 +134,7 @@ function Toggle({ on, onChange, ariaLabel, disabled }: {
             onClick={disabled ? undefined : onChange}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
                 disabled && "opacity-50 cursor-not-allowed",
             )}
         >
@@ -174,7 +174,7 @@ function ServicePreviewCard({ data }: { data: PreviewData }) {
         ? `AED ${Number(data.price).toLocaleString()}`
         : "Fixed price";
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden w-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden w-full">
             <div className="relative h-[156px] w-full overflow-hidden shrink-0 bg-gradient-to-br from-[#dbdbdb] to-[#dbdbdb]/20">
                 {data.coverPreview && (
                     <img src={data.coverPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
@@ -186,7 +186,7 @@ function ServicePreviewCard({ data }: { data: PreviewData }) {
                 </div>
             </div>
             <div className="flex flex-col gap-4 px-5 pb-5 pt-4">
-                <h3 className={cn("font-medium text-[18px] leading-[28px]", hasName ? "text-[#101828]" : "text-[#667085]")}>
+                <h3 className={cn("font-medium text-[18px] leading-[28px]", hasName ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                     {hasName ? data.name : "Service name"}
                 </h3>
                 {/* 2×2 stat grid per Figma 7423:108412 (Service preview card):
@@ -198,24 +198,24 @@ function ServicePreviewCard({ data }: { data: PreviewData }) {
                 <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <Grid01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085] truncate">{data.category || "Category"}</span>
+                            <Grid01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{data.category || "Category"}</span>
                         </div>
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085] truncate">
+                            <ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">
                                 {data.durationMin ? `${data.durationMin} min` : "Duration"}
                             </span>
                         </div>
                     </div>
                     <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <BankNote01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085] truncate">{priceLabel}</span>
+                            <BankNote01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{priceLabel}</span>
                         </div>
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085] truncate">{data.branchName || "Location"}</span>
+                            <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{data.branchName || "Location"}</span>
                         </div>
                     </div>
                 </div>
@@ -285,9 +285,9 @@ function ServiceDetailStep({
     }
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
-                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Service detail</h2>
+                <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Service detail</h2>
 
                 <ImageBannerUpload
                     preview={data.coverPreview}
@@ -316,7 +316,7 @@ function ServiceDetailStep({
                                 <button
                                     type="button"
                                     onClick={() => { close(); onCreateCategory(); }}
-                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors rounded-t-[8px]"
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[var(--colors-secondary-600)] hover:bg-[var(--colors-bg-secondary)] transition-colors rounded-t-[8px]"
                                 >
                                     <Plus className="w-4 h-4" />
                                     Create class category
@@ -337,7 +337,7 @@ function ServiceDetailStep({
                     <div className="flex flex-col gap-3">
                         {!lockType && (
                             <>
-                                <h3 className="font-semibold text-[16px] leading-[24px] text-[#101828]">Session type</h3>
+                                <h3 className="font-semibold text-[16px] leading-[24px] text-[var(--colors-text-primary)]">Session type</h3>
                                 <div className="grid grid-cols-2 gap-3 w-full">
                                     {TYPE_OPTIONS.map(opt => {
                                         const selected = data.type === opt.value;
@@ -349,8 +349,8 @@ function ServiceDetailStep({
                                                 className={cn(
                                                     "flex items-start gap-3 rounded-[12px] p-4 text-left transition-colors w-full",
                                                     selected
-                                                        ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                                        : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                                                        ? "border-1 border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                                                        : "border-1 border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-border-primary)]",
                                                 )}
                                                 aria-pressed={selected}
                                             >
@@ -358,13 +358,13 @@ function ServiceDetailStep({
                                                     "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
                                                     selected
                                                         ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]"
-                                                        : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                                                        : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
                                                 )}>
                                                     <opt.Icon className="w-4 h-4" />
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-[14px] font-medium text-[#101828] leading-5">{opt.title}</p>
-                                                    <p className="text-[14px] text-[#667085] leading-[20px] mt-0.5">{opt.subtitle}</p>
+                                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{opt.title}</p>
+                                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] mt-0.5">{opt.subtitle}</p>
                                                 </div>
                                             </button>
                                         );
@@ -379,13 +379,13 @@ function ServiceDetailStep({
                             <div className={cn(
                                 "rounded-[12px] p-4 flex flex-col gap-4 transition-colors",
                                 data.openSession
-                                    ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                                    : "border-1 border-[#e4e7ec] bg-white",
+                                    ? "border-1 border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                                    : "border-1 border-[var(--colors-border-secondary)] bg-white",
                             )}>
                                 <div className="flex items-start gap-4">
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[14px] font-medium text-[#101828]">Service is open sessions</p>
-                                        <p className="text-[14px] text-[#667085]">The service is open to multiple participants and does not require instructor.</p>
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Service is open sessions</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">The service is open to multiple participants and does not require instructor.</p>
                                     </div>
                                     <Toggle
                                         on={data.openSession}
@@ -428,13 +428,13 @@ function PricingStep({
 }) {
     const canContinue = price.trim() !== "" && Number(price) > 0;
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
-                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Pricing</h2>
+                <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Pricing</h2>
 
                 <FormField label="Fixed price">
-                    <div className="flex items-stretch w-full rounded-[8px] border-1 border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]">
-                        <div className="px-3 flex items-center text-[14px] text-[#475467] border-r-1 border-[#d0d5dd] bg-[#fbfdfc] rounded-l-[8px]">
+                    <div className="flex items-stretch w-full rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)]">
+                        <div className="px-3 flex items-center text-[14px] text-[var(--colors-text-tertiary)] border-r-1 border-[var(--colors-border-primary)] bg-[#fbfdfc] rounded-l-[8px]">
                             AED
                         </div>
                         <input
@@ -443,7 +443,7 @@ function PricingStep({
                             value={price}
                             onChange={e => onChange(e.target.value.replace(/^0+(?=\d)/, ""))}
                             placeholder="Enter amount"
-                            className="flex-1 px-3 py-2 text-[14px] text-[#101828] placeholder:text-[#667085] bg-transparent rounded-r-[8px] focus:outline-none"
+                            className="flex-1 px-3 py-2 text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-transparent rounded-r-[8px] focus:outline-none"
                         />
                     </div>
                 </FormField>
@@ -479,9 +479,9 @@ function LocationStep({
 }) {
     const canSubmit = !!branchId;
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
-                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Location</h2>
+                <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Location</h2>
 
                 <FormField label="Branch location">
                     <SelectInput
@@ -670,8 +670,8 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
     if (mode === "edit" && !existing) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center gap-3">
-                <p className="font-semibold text-[18px] text-[#101828]">Service not found</p>
-                <p className="text-[14px] text-[#667085]">The service you're trying to edit no longer exists.</p>
+                <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Service not found</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">The service you're trying to edit no longer exists.</p>
                 <Button variant="primary" size="md" onClick={() => router.push(returnTo)}>
                     Back to services
                 </Button>
@@ -708,11 +708,11 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
                 <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                     <button type="button"
                         onClick={() => router.push(returnTo)}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                        <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{pageTitle}</h1>
+                        <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{pageTitle}</h1>
                         <Breadcrumbs className="p-0 text-[12px]" />
                     </div>
                 </div>
@@ -759,9 +759,9 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
                         )}
 
                         {/* Right: live preview */}
-                        <div className="w-[340px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] overflow-hidden self-start">
+                        <div className="w-[340px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden self-start">
                             <div className="p-6 pb-4">
-                                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Service preview</p>
+                                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Service preview</p>
                                 <p className="text-[14px] text-[#6e776f] mt-1">This is how your service will look like.</p>
                             </div>
                             <div className="bg-[#f6f6f3] px-6 py-10">

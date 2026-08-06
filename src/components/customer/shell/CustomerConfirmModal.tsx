@@ -54,7 +54,7 @@ export function CustomerConfirmModal({
             >
                 <div className="flex flex-col gap-1.5">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
-                    <p className="text-sm font-normal leading-5 text-[#475467]">{description}</p>
+                    <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{description}</p>
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary-gray" size="lg" className="flex-1 rounded-full" onClick={onClose}>

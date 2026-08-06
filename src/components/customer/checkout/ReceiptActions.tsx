@@ -21,7 +21,7 @@ export function ReceiptActions({ receipt, captureRef, children }: { receipt: Rec
     const scrollable = useMainScrollable();
     const [shareOpen, setShareOpen] = useState(false);
 
-    const iconBtn = "flex size-[52px] shrink-0 items-center justify-center rounded-full border border-[#d0d5dd] bg-white transition-colors active:bg-gray-50";
+    const iconBtn = "flex size-[52px] shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-primary)] bg-white transition-colors active:bg-gray-50";
 
     return (
         <>
@@ -31,7 +31,7 @@ export function ReceiptActions({ receipt, captureRef, children }: { receipt: Rec
                 }`}
             >
                 <button type="button" onClick={() => setShareOpen(true)} aria-label="Share receipt" className={iconBtn}>
-                    <Share01 className="size-5 text-[#344054]" aria-hidden />
+                    <Share01 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <button
                     type="button"
@@ -48,7 +48,7 @@ export function ReceiptActions({ receipt, captureRef, children }: { receipt: Rec
                     aria-label="Download receipt"
                     className={iconBtn}
                 >
-                    <Download01 className="size-5 text-[#344054]" aria-hidden />
+                    <Download01 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <div className="flex-1">{children}</div>
             </div>

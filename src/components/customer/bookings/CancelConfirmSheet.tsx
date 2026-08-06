@@ -39,12 +39,12 @@ export function CancelConfirmSheet({
                 </span>
                 <div className="flex flex-col gap-1.5">
                     <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{title}</p>
-                    <p className="text-sm font-normal leading-5 text-[#475467]">{description}</p>
+                    <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{description}</p>
                 </div>
                 {refundNote && (
                     <div className="flex w-full items-center gap-2 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-3">
-                        <Lightbulb02 className="size-5 shrink-0 text-[#475467]" aria-hidden />
-                        <p className="flex-1 text-left text-sm font-normal leading-5 text-[#475467]">{refundNote}</p>
+                        <Lightbulb02 className="size-5 shrink-0 text-[var(--colors-text-tertiary)]" aria-hidden />
+                        <p className="flex-1 text-left text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{refundNote}</p>
                     </div>
                 )}
                 <Button

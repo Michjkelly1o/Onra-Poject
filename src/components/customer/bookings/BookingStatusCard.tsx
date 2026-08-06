@@ -45,7 +45,7 @@ export function BookingStatusCard({
             </div>
             <div className="relative flex min-w-0 flex-1 flex-col gap-1">
                 <p className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{p.cardTitle}</p>
-                <p className="text-xs font-normal leading-[18px] text-[#344054]">{sub}</p>
+                <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-secondary)]">{sub}</p>
             </div>
             <Icon className="relative size-5 shrink-0" style={{ color: p.cardIconColor }} aria-hidden />
         </div>

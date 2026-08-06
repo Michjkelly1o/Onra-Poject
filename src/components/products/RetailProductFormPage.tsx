@@ -50,15 +50,15 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
                         : complete
-                            ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3]",
+                            ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
                 {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />
                 )}
             </div>
             <span className={cn(
@@ -66,8 +66,8 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 active
                     ? "font-semibold text-[#3b5446]"
                     : complete
-                        ? "font-medium text-[#344054]"
-                        : "font-medium text-[#667085]",
+                        ? "font-medium text-[var(--colors-text-secondary)]"
+                        : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {step.label}
             </span>
@@ -83,10 +83,10 @@ function FormCard({ title, children, footer }: {
     footer: React.ReactNode;
 }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
                 {title && (
-                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h2>
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h2>
                 )}
                 {children}
             </div>
@@ -98,7 +98,7 @@ function FormCard({ title, children, footer }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-5 w-full">
-            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+            <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
             <div className="flex flex-col gap-4 w-full">{children}</div>
         </div>
     );
@@ -109,17 +109,17 @@ function FormField({ label, hint, error, children }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            {label && <label className="text-[14px] font-medium text-[#344054]">{label}</label>}
+            {label && <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>}
             {children}
             {error
                 ? <p className="text-[14px] text-[#d92d20] leading-5">{error}</p>
-                : hint && <p className="text-[14px] text-[#475467] leading-5">{hint}</p>}
+                : hint && <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{hint}</p>}
         </div>
     );
 }
 
-const INPUT_CLS = "h-10 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
-const INPUT_CLS_VALID = "border-[#d0d5dd] focus:ring-[#aad4bd] focus:border-[#7ba08c]";
+const INPUT_CLS = "h-10 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS_VALID = "border-[var(--colors-border-primary)] focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)]";
 const INPUT_CLS_INVALID = "border-[#fda29b] focus:ring-[#fecdca] focus:border-[#d92d20]";
 
 function TextInput({ value, onChange, placeholder, invalid = false }: {
@@ -150,7 +150,7 @@ function Textarea({ value, onChange, placeholder, minHeight = 120 }: {
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
             style={{ minHeight }}
-            className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
+            className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
         />
     );
 }
@@ -161,8 +161,8 @@ function PriceInput({ value, onChange }: {
     value: string; onChange: (v: string) => void;
 }) {
     return (
-        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all h-10">
-            <div className="flex items-center pl-[14px] text-[16px] font-medium text-[#667085] shrink-0">AED</div>
+        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all h-10">
+            <div className="flex items-center pl-[14px] text-[16px] font-medium text-[var(--colors-text-quaternary)] shrink-0">AED</div>
             <div className="flex-1 min-w-0">
                 <NumericStringInput
                     value={value}
@@ -298,7 +298,7 @@ function SizeCheckbox({ checked, onChange }: { checked: boolean; onChange: () =>
         <button type="button" onClick={onChange}
             className={cn(
                 "w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 transition-colors border",
-                checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#658774]",
+                checked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-600)]",
             )}>
             {checked && <Check className="w-[10px] h-[10px] text-white" />}
         </button>
@@ -344,19 +344,19 @@ function SizesField({ sizes, onChange }: { sizes: string[]; onChange: (next: str
     };
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             {/* Header */}
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Sizes</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Sizes</p>
                     <p className="text-[14px] text-[#6e776f] leading-5 truncate">Add the sizes this product comes in.</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {sizes.length} selected
                 </span>
                 <button type="button" onClick={() => setExpanded(p => !p)}
                     aria-label={expanded ? "Collapse" : "Expand"}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0">
                     {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
@@ -366,15 +366,15 @@ function SizesField({ sizes, onChange }: { sizes: string[]; onChange: (next: str
                     {options.map(label => (
                         <div key={label} className="flex items-center gap-2">
                             <SizeCheckbox checked={isChecked(label)} onChange={() => toggle(label)} />
-                            <span className="text-[14px] font-medium text-[#101828] flex-1">{label}</span>
+                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1">{label}</span>
                             <button type="button" onClick={() => removeOption(label)} aria-label={`Remove ${label}`}
-                                className="w-6 h-6 flex items-center justify-center rounded-[6px] text-[#98a2b3] hover:text-[#b42318] hover:bg-[#fef3f2] transition-colors shrink-0">
+                                className="w-6 h-6 flex items-center justify-center rounded-[6px] text-[var(--colors-fg-quaternary)] hover:text-[#b42318] hover:bg-[#fef3f2] transition-colors shrink-0">
                                 <XClose className="w-4 h-4" />
                             </button>
                         </div>
                     ))}
 
-                    <div className="h-px bg-[#e4e7ec]" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)]" />
 
                     {/* Add a custom size label */}
                     <div className="flex items-center gap-2">
@@ -462,7 +462,7 @@ function BasicInformationStep({
                                 <button
                                     type="button"
                                     onClick={() => { close(); onCreateCategory(); }}
-                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors rounded-t-[8px]"
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[var(--colors-secondary-600)] hover:bg-[var(--colors-bg-secondary)] transition-colors rounded-t-[8px]"
                                 >
                                     <Plus className="w-4 h-4" />
                                     Create category
@@ -568,7 +568,7 @@ function PricingStep({
                     adjustRetailStock action on save so the audit log stays
                     in step with the running balance. */}
                 <Section title={mode === "create" ? "Initial stock" : "Stock on hand"}>
-                    <p className="text-[14px] text-[#475467] leading-5">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                         {sizes.length > 0
                             ? (mode === "create"
                                 ? "Set how many units land at each branch, per size, when this product goes live. Every entry writes a matching audit-log row (kind: receive)."
@@ -584,15 +584,15 @@ function PricingStep({
                             if (sizes.length > 0) {
                                 const open = !collapsedBranches.has(b.id);
                                 return (
-                                    <div key={b.id} className="flex flex-col border-1 border-[#e4e7ec] rounded-[10px] overflow-hidden">
+                                    <div key={b.id} className="flex flex-col border-1 border-[var(--colors-border-secondary)] rounded-[10px] overflow-hidden">
                                         <button
                                             type="button"
                                             onClick={() => toggleBranch(b.id)}
                                             aria-expanded={open}
-                                            className="flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[#f9fafb] transition-colors"
+                                            className="flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-[var(--colors-bg-secondary)] transition-colors"
                                         >
-                                            <p className="text-[14px] font-medium text-[#101828]">{b.name}</p>
-                                            <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", !open && "-rotate-90")} />
+                                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{b.name}</p>
+                                            <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", !open && "-rotate-90")} />
                                         </button>
                                         {open && (
                                             <div className="flex flex-col gap-2 px-3 pb-3 pl-4">
@@ -600,7 +600,7 @@ function PricingStep({
                                                     const key = stockKey(b.id, sz);
                                                     return (
                                                         <div key={sz} className="flex items-center justify-between gap-3">
-                                                            <p className="text-[14px] text-[#475467]">{sz}</p>
+                                                            <p className="text-[14px] text-[var(--colors-text-tertiary)]">{sz}</p>
                                                             <div className="w-[140px]">
                                                                 <IntegerInput
                                                                     value={stockByBranch[key] ?? ""}
@@ -618,7 +618,7 @@ function PricingStep({
                             }
                             return (
                                 <div key={b.id} className="flex items-center justify-between gap-3">
-                                    <p className="text-[14px] text-[#101828]">{b.name}</p>
+                                    <p className="text-[14px] text-[var(--colors-text-primary)]">{b.name}</p>
                                     <div className="w-[140px]">
                                         <IntegerInput
                                             value={stockByBranch[b.id] ?? ""}
@@ -648,45 +648,45 @@ function TemplatePreviewCard({ basic, pricing, categoryLabel }: {
     const price = Number.isFinite(priceNum) ? priceNum : 0;
     const threshold = Number(pricing.reorderThreshold);
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
             <div className="flex flex-col">
                 <div className="pt-6 px-6 flex flex-col gap-1">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Template preview</p>
+                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
                     <p className="text-[14px] text-[#6e776f] leading-5">This is how your product will look like.</p>
                 </div>
                 <div className="h-5" />
-                <div className="h-px bg-[#e4e7ec]" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
             </div>
             <div className="bg-[#f6f6f3] px-6 py-10">
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
                     {/* Banner — real image when uploaded, sage placeholder otherwise. */}
                     {basic.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={basic.imageUrl} alt="" className="h-[160px] w-full object-cover" />
                     ) : (
-                        <div className="h-[160px] w-full bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
+                        <div className="h-[160px] w-full bg-gradient-to-br from-[var(--colors-secondary-50)] to-[#f5fffa]" />
                     )}
                     <div className="flex flex-col gap-4 px-5">
                         <div className="flex flex-col gap-2">
-                            <p className="text-[18px] leading-[28px] font-medium text-[#101828] truncate">
+                            <p className="text-[18px] leading-[28px] font-medium text-[var(--colors-text-primary)] truncate">
                                 {hasName ? basic.name : "Product name"}
                             </p>
                             <div className="flex gap-2 items-start">
                                 <div className="flex-1 min-w-0 flex items-center gap-1">
-                                    <Package className="w-4 h-4 text-[#667085] shrink-0" />
-                                    <span className="text-[14px] font-medium text-[#667085] truncate">
+                                    <Package className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] truncate">
                                         {categoryLabel || "Retail category"}
                                     </span>
                                 </div>
                                 <div className="flex-1 min-w-0 flex items-center gap-1">
-                                    <CoinsHand className="w-4 h-4 text-[#667085] shrink-0" />
-                                    <span className="text-[14px] font-medium text-[#667085] truncate">
+                                    <CoinsHand className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] truncate">
                                         Reorder at {threshold || 0}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <p className="font-semibold text-[20px] leading-[30px] text-[#658774]">
+                        <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-secondary-600)]">
                             AED {price.toLocaleString("en-US")}
                         </p>
                     </div>
@@ -979,8 +979,8 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
         return (
             <div className="h-screen bg-white flex items-center justify-center px-6 py-10">
                 <div className="max-w-md text-center flex flex-col gap-3">
-                    <p className="text-[18px] font-semibold text-[#101828]">Product not found</p>
-                    <p className="text-[14px] text-[#667085]">
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Product not found</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                         The product you were editing may have been deleted. Head back to the retail list.
                     </p>
                     <Button variant="primary" size="md" onClick={() => router.push(returnTo)}>
@@ -999,12 +999,12 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
                     type="button"
                     onClick={handleClose}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                 >
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                         {mode === "create" ? "Create new retail product" : `Edit ${target?.name ?? "product"}`}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />

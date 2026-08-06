@@ -147,8 +147,8 @@ function TxnIcon({ kind }: { kind: TxnKind }) {
                 ? SlashCircle01
                 : Package;
     return (
-        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-            <Icon className="w-5 h-5 text-[#475467]" />
+        <div className="relative shrink-0 size-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center">
+            <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
         </div>
     );
@@ -187,7 +187,7 @@ function planTypeLabel(t: CustomerTransaction): string {
 
 function CardBrandMark({ brand }: { brand: PaymentMethod["brand"] }) {
     return (
-        <div className="w-[34px] h-[24px] rounded-[4px] bg-white border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
+        <div className="w-[34px] h-[24px] rounded-[4px] bg-white border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0">
             {brand === "Master Card" ? (
                 <span className="flex items-center">
                     <span className="w-[11px] h-[11px] rounded-full bg-[#eb001b]" />
@@ -212,14 +212,14 @@ function GiftCardWidget({ card, design }: { card: IssuedGiftCard; design?: GiftC
         : 0;
     const statusStyle: Record<IssuedGiftCard["status"], string> = {
         active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-        redeemed: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+        redeemed: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         expired: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         refunded: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     };
     const statusLabel = card.status.charAt(0).toUpperCase() + card.status.slice(1);
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5">
             {/* Decorative banner strip — faint concentric rings (Figma 6440:197172) */}
             <div className="h-6 bg-[#dbf8ff] relative overflow-hidden">
                 <div className="absolute left-1/2 -top-[40px]">
@@ -236,7 +236,7 @@ function GiftCardWidget({ card, design }: { card: IssuedGiftCard; design?: GiftC
                         <Gift01 className="w-[20px] h-[20px] text-[#0e7090]" />
                     </div>
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <p className="text-[16px] font-medium text-[#101828] truncate">{name}</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)] truncate">{name}</p>
                         <span className={cn("inline-flex items-center px-[8px] py-[2px] rounded-full text-[12px] font-medium shrink-0", statusStyle[card.status])}>
                             {statusLabel}
                         </span>
@@ -245,26 +245,26 @@ function GiftCardWidget({ card, design }: { card: IssuedGiftCard; design?: GiftC
                 {/* Amount / Duration / Code */}
                 <div className="flex gap-4">
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <p className="text-[14px] text-[#667085]">Amount</p>
-                        <p className="text-[14px] font-medium text-[#101828]">{fmtAed(card.face_value_aed)}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Amount</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{fmtAed(card.face_value_aed)}</p>
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <p className="text-[14px] text-[#667085]">Duration</p>
-                        <p className="text-[14px] font-medium text-[#101828]">{months} {months === 1 ? "Month" : "Months"}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Duration</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{months} {months === 1 ? "Month" : "Months"}</p>
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col">
-                        <p className="text-[14px] text-[#667085]">Code</p>
-                        <p className="text-[14px] font-medium text-[#101828] truncate">{card.code}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Code</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{card.code}</p>
                     </div>
                 </div>
                 {/* Footer — balance + expiry + progress */}
                 <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between text-[14px] text-[#667085]">
+                    <div className="flex items-center justify-between text-[14px] text-[var(--colors-text-quaternary)]">
                         <p>{fmtAed(card.current_balance_aed)}/{card.face_value_aed} left</p>
                         <p>End {fmtDate(card.expires_at)}</p>
                     </div>
-                    <div className="h-1 w-full rounded-full bg-[#e4e7ec] overflow-hidden">
-                        <div className="h-full rounded-full bg-[#4b8c9a]" style={{ width: `${pct}%` }} />
+                    <div className="h-1 w-full rounded-full bg-[var(--colors-bg-quaternary)] overflow-hidden">
+                        <div className="h-full rounded-full bg-[var(--colors-brand-600)]" style={{ width: `${pct}%` }} />
                     </div>
                 </div>
             </div>
@@ -302,16 +302,16 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date range</p>
                         <div className="grid grid-cols-2 gap-3">
                             <DatePicker value={pending.dateStart} placeholder="Start date"
                                 onChange={v => setPending(p => ({
@@ -323,10 +323,10 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
                                 onChange={v => setPending(p => ({ ...p, dateEnd: v }))} />
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {STATUSES.map(s => (
                                 <FilterPill key={s} label={TXN_STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
@@ -334,10 +334,10 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Products */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Products</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Products</p>
                         <div className="flex flex-wrap gap-2">
                             {KINDS.map(k => (
                                 <FilterPill key={k} label={KIND_LABEL[k]} selected={pending.kinds.includes(k)}
@@ -346,7 +346,7 @@ function PaymentFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_PAYMENT_FILTER); onApply(EMPTY_PAYMENT_FILTER); onClose(); }}>Clear filter</Button>
                     <Button variant="primary" disabled={!hasAny}
@@ -378,16 +378,16 @@ function RefundModal({ txn, onClose, onConfirm }: {
         return (
             <button type="button" onClick={() => setMethod(value)}
                 className={cn("flex items-center gap-3 p-4 rounded-[12px] w-full text-left transition-all",
-                    selected ? "border-2 border-[#658774] bg-white" : "border-1 border-[#e4e7ec] bg-white hover:border-[#aad4bd]")}>
+                    selected ? "border-2 border-[var(--colors-secondary-600)] bg-white" : "border-1 border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-secondary-300)]")}>
                 {/* Icon box turns green when the method is selected, neutral otherwise. */}
                 <div className={cn("size-10 rounded-[8px] flex items-center justify-center shrink-0 transition-colors",
-                    selected ? "" : "bg-white border-1 border-[#e4e7ec] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]")}
+                    selected ? "" : "bg-white border-1 border-[var(--colors-border-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]")}
                     style={selected ? { background: "linear-gradient(135deg, #edfdf5 0%, #dcfae9 100%)" } : undefined}>
-                    <Icon className={cn("w-5 h-5", selected ? "text-[#658774]" : "text-[#475467]")} />
+                    <Icon className={cn("w-5 h-5", selected ? "text-[var(--colors-secondary-600)]" : "text-[var(--colors-text-tertiary)]")} />
                 </div>
-                <p className="flex-1 min-w-0 text-[16px] font-medium text-[#344054]">{label}</p>
+                <p className="flex-1 min-w-0 text-[16px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
                 <span className={cn("w-5 h-5 rounded-full flex items-center justify-center shrink-0",
-                    selected ? "bg-[#658774]" : "border border-[#d0d5dd]")}>
+                    selected ? "bg-[var(--colors-secondary-600)]" : "border border-[var(--colors-border-primary)]")}>
                     {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </span>
             </button>
@@ -401,28 +401,28 @@ function RefundModal({ txn, onClose, onConfirm }: {
                 {/* Header */}
                 <div className="relative shrink-0">
                     <button type="button" onClick={onClose}
-                        className="absolute right-3 top-3 w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        className="absolute right-3 top-3 w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <div className="flex flex-col gap-1 px-6 pt-6 pb-5 pr-14">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Refund Payment</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">Select the refund method to confirm this transaction.</p>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Refund Payment</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Select the refund method to confirm this transaction.</p>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                 </div>
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-4">
                     {/* Detail refund */}
-                    <div className="border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Detail refund</p>
+                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Detail refund</p>
                         <div className="flex items-center justify-between gap-4">
-                            <p className="text-[14px] text-[#667085]">{txn.name}</p>
-                            <p className="text-[16px] font-medium text-[#101828] whitespace-nowrap">{fmtAed(txn.amountAed)}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{txn.name}</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{fmtAed(txn.amountAed)}</p>
                         </div>
                     </div>
                     {/* Refund method — two options side by side */}
-                    <div className="border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Refund method</p>
+                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Refund method</p>
                         <div className="grid grid-cols-2 gap-4">
                             <MethodOption value="cash" label="Cash" Icon={BankNote01} />
                             <MethodOption value="card" label="Card on file" Icon={CreditCard01} />
@@ -431,7 +431,7 @@ function RefundModal({ txn, onClose, onConfirm }: {
                 </div>
                 {/* Footer */}
                 <div className="shrink-0">
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                     <div className="px-6 pt-6 pb-6 flex gap-3">
                         <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
                         <Button variant="primary" size="lg" className="flex-1" onClick={() => onConfirm(method)}>Proceed refund</Button>
@@ -452,20 +452,20 @@ function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -476,7 +476,7 @@ function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
 // ─── Section header — shared style across every customer-detail tab ──────────
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
-    return <p className="text-[16px] font-medium text-[#667085]">{children}</p>;
+    return <p className="text-[16px] font-medium text-[var(--colors-text-quaternary)]">{children}</p>;
 }
 
 // ─── Payments tab ─────────────────────────────────────────────────────────────
@@ -643,14 +643,14 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
         <div className="flex-1 flex flex-col overflow-hidden">
             {/* Inner-tab toggle */}
             <div className="shrink-0 px-6 pt-5 pb-4">
-                <div className="flex bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px] p-1">
+                <div className="flex bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[10px] p-1">
                     {([["overview", "Overview"], ["history", "Payment history"]] as const).map(([id, label]) => (
                         <button key={id} type="button" onClick={() => setInner(id)}
                             className={cn(
                                 "flex-1 h-9 rounded-[8px] text-[14px] font-semibold transition-all",
                                 inner === id
-                                    ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                    : "text-[#667085] hover:text-[#344054]",
+                                    ? "bg-white text-[var(--colors-text-primary)] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                    : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                             )}>
                             {label}
                         </button>
@@ -663,9 +663,9 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                     {/* Metric cards */}
                     <div className="flex gap-4">
                         {metrics.map(m => (
-                            <div key={m.label} className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
-                                <p className="text-[14px] text-[#667085]">{m.label}</p>
-                                <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{fmtAed(m.value)}</p>
+                            <div key={m.label} className="flex-1 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6 flex flex-col gap-2">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{m.label}</p>
+                                <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-[32px]">{fmtAed(m.value)}</p>
                             </div>
                         ))}
                     </div>
@@ -674,9 +674,9 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                     <div className="flex flex-col gap-3">
                         <SectionHeader>Gift card</SectionHeader>
                         {giftCards.length === 0 ? (
-                            <div className="border-1 border-dashed border-[#e4e7ec] rounded-[16px] py-10 flex flex-col items-center gap-1">
-                                <p className="text-[14px] font-medium text-[#344054]">No gift cards</p>
-                                <p className="text-[13px] text-[#667085]">This customer has no gift cards on file.</p>
+                            <div className="border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[16px] py-10 flex flex-col items-center gap-1">
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">No gift cards</p>
+                                <p className="text-[13px] text-[var(--colors-text-quaternary)]">This customer has no gift cards on file.</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-4">
@@ -694,11 +694,11 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                         <div className="flex gap-4">
                             {PAYMENT_METHODS.map(pm => (
                                 <div key={pm.id}
-                                    className="flex-1 min-w-0 flex items-center gap-4 p-4 rounded-[12px] bg-[#f9fafb] border-1 border-[#e4e7ec]">
+                                    className="flex-1 min-w-0 flex items-center gap-4 p-4 rounded-[12px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)]">
                                     <CardBrandMark brand={pm.brand} />
                                     <div className="flex flex-col gap-1 min-w-0">
-                                        <p className="text-[16px] font-semibold text-[#101828]">{pm.brand}</p>
-                                        <p className="text-[14px] text-[#667085]">****{pm.last4}</p>
+                                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{pm.brand}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">****{pm.last4}</p>
                                     </div>
                                 </div>
                             ))}
@@ -756,16 +756,16 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                             <tr key={t.id} className={cn(
                                                 "transition-colors",
                                                 pulseTxId === t.id
-                                                    ? "bg-[#e9fff3] animate-pulse"
-                                                    : "hover:bg-[#f9fafb]",
+                                                    ? "bg-[var(--colors-secondary-50)] animate-pulse"
+                                                    : "hover:bg-[var(--colors-bg-secondary)]",
                                             )}>
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <TxnIcon kind={t.kind} />
-                                                        <span className="text-[14px] font-medium text-[#101828]">{t.name}</span>
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{t.name}</span>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{planTypeLabel(t)}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{planTypeLabel(t)}</td>
                                                 {/* Refunded rows prefix `+` so the amount reads as
                                                     money returned to the customer — matches the
                                                     Wallet tab's `+ / −` convention (customer POV:
@@ -777,7 +777,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                     ledger convention): without the abs, `+` on
                                                     top of a stored `-1800` reads as
                                                     `+ AED −1,800`. */}
-                                                <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>
                                                     {t.status === "refunded"
                                                         ? `+ ${fmtAed(Math.abs(t.amountAed))}`
                                                         : fmtAed(t.amountAed)}
@@ -797,7 +797,7 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                                                         <TxnStatusBadge status={t.status} />
                                                     )}
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(t.createdAtISO)}</td>
                                                 <td className={TD}>
                                                     {/* Only completed AND refundable payments can be
                                                         refunded. `isRefundable === false` is set on

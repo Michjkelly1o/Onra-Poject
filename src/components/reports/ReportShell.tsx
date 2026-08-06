@@ -154,11 +154,11 @@ export function ReportShell<T>({
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{title}</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{title}</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -168,8 +168,8 @@ export function ReportShell<T>({
                 {/* Top row: summary block · toolbar */}
                 <div className="flex items-end justify-between gap-6 py-4 flex-wrap">
                     <div className="flex flex-col gap-1">
-                        <p className="text-[14px] leading-[20px] text-[#667085]">{totalLabel}</p>
-                        <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{summaryText}</p>
+                        <p className="text-[14px] leading-[20px] text-[var(--colors-text-quaternary)]">{totalLabel}</p>
+                        <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{summaryText}</p>
                     </div>
                     <div className="flex items-center gap-3 flex-wrap justify-end">
                         {toolbar}
@@ -190,12 +190,12 @@ export function ReportShell<T>({
                                 minWidth: visibleColumns.reduce((s, c) => s + c.minWidth, 0),
                             }}>
                                 <thead>
-                                    <tr className="border-b border-[#e4e7ec]">
+                                    <tr className="border-b border-[var(--colors-border-secondary)]">
                                         {visibleColumns.map(col => (
                                             <th key={col.key}
                                                 style={{ minWidth: col.minWidth }}
                                                 className={cn(
-                                                    "px-6 py-3 text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap",
+                                                    "px-6 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] whitespace-nowrap",
                                                     col.align === "right" ? "text-right" : "text-left",
                                                 )}>
                                                 <SortIconButton
@@ -212,12 +212,12 @@ export function ReportShell<T>({
                                 </thead>
                                 <tbody>
                                     {pageRows.map((row, idx) => (
-                                        <tr key={idx} className="border-b border-[#e4e7ec] last:border-b-0 hover:bg-[#f9fafb] transition-colors">
+                                        <tr key={idx} className="border-b border-[var(--colors-border-secondary)] last:border-b-0 hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                             {visibleColumns.map(col => (
                                                 <td key={col.key}
                                                     style={{ minWidth: col.minWidth }}
                                                     className={cn(
-                                                        "px-6 py-4 text-[14px] text-[#475467] leading-[20px] whitespace-nowrap",
+                                                        "px-6 py-4 text-[14px] text-[var(--colors-text-tertiary)] leading-[20px] whitespace-nowrap",
                                                         col.align === "right" ? "text-right" : "text-left",
                                                     )}>
                                                     {col.render(row)}
@@ -273,13 +273,13 @@ function SortIconButton({ label, sortable, active, dir, align, onClick }: {
     return (
         <button type="button" onClick={onClick}
             className={cn(
-                "inline-flex items-center gap-1 hover:text-[#101828] transition-colors select-none",
+                "inline-flex items-center gap-1 hover:text-[var(--colors-text-primary)] transition-colors select-none",
                 align === "right" && "flex-row-reverse",
             )}>
             <span>{label}</span>
             <Icon className={cn(
                 "w-3.5 h-3.5 shrink-0",
-                active ? "text-[#475467]" : "text-[#98a2b3]",
+                active ? "text-[var(--colors-text-tertiary)]" : "text-[var(--colors-fg-quaternary)]",
             )} />
         </button>
     );

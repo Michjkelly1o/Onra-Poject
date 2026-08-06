@@ -138,7 +138,7 @@ function StatusFilterDropdown({ value, onChange }: {
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
                     {OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => {
@@ -148,10 +148,10 @@ function StatusFilterDropdown({ value, onChange }: {
                             }}
                             className={cn(
                                 "w-full flex items-center justify-between text-left px-5 py-3 text-[15px] font-medium transition-colors",
-                                value === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
-                            {value === opt.value && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt.value && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -174,15 +174,15 @@ function MetricCard({ label, value, period, Icon }: {
     label: string; value: string; period: string; Icon: React.ElementType;
 }) {
     return (
-        <div className="flex-1 min-w-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="flex-1 min-w-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-start justify-between gap-3">
-                <p className="text-[14px] text-[#667085] leading-[20px] flex-1 min-w-0">{label}</p>
-                <div className="w-10 h-10 rounded-full bg-[#f1f2ed] flex items-center justify-center shrink-0 overflow-hidden">
-                    <Icon className="w-5 h-5 text-[#475467]" />
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] flex-1 min-w-0">{label}</p>
+                <div className="w-10 h-10 rounded-full bg-[var(--colors-tertiary-50)] flex items-center justify-center shrink-0 overflow-hidden">
+                    <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                 </div>
             </div>
-            <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">{value}</p>
-            <p className="text-[14px] text-[#667085] leading-[20px]">{period}</p>
+            <p className="font-semibold text-[24px] leading-[32px] text-[var(--colors-text-primary)]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{period}</p>
         </div>
     );
 }
@@ -229,38 +229,38 @@ function ProcessPayrollModal({ open, instructorCount, grossWages, taxRate, showT
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className="w-12 h-12 rounded-full bg-[#e9fff3] flex items-center justify-center">
-                        <CoinsHand className="w-6 h-6 text-[#658774]" />
+                    <div className="w-12 h-12 rounded-full bg-[var(--colors-secondary-50)] flex items-center justify-center">
+                        <CoinsHand className="w-6 h-6 text-[var(--colors-secondary-600)]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Process payroll?</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Process payroll?</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             You&apos;re about to process payroll for {instructorCount} {instructorCount === 1 ? "staff member" : "staff"}. This action cannot be undone.
                         </p>
                     </div>
                 </div>
 
                 {/* Detail box */}
-                <div className="mx-6 mt-6 rounded-[12px] border-1 border-[#e4e7ec] bg-[#f9fafb] p-4 flex flex-col gap-3">
-                    <p className="text-[14px] font-semibold text-[#344054] leading-[20px]">Payroll Details</p>
+                <div className="mx-6 mt-6 rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] p-4 flex flex-col gap-3">
+                    <p className="text-[14px] font-semibold text-[var(--colors-text-secondary)] leading-[20px]">Payroll Details</p>
                     <div className="flex items-center justify-between text-[14px]">
-                        <span className="text-[#667085]">Gross wages</span>
-                        <span className="font-medium text-[#101828]">{aed(grossWages)}</span>
+                        <span className="text-[var(--colors-text-quaternary)]">Gross wages</span>
+                        <span className="font-medium text-[var(--colors-text-primary)]">{aed(grossWages)}</span>
                     </div>
                     {showTax && (
                         <div className="flex items-center justify-between text-[14px]">
-                            <span className="text-[#667085]">Tax withholding (<span className="text-[#658774]">{taxRate}%</span>)</span>
-                            <span className="font-medium text-[#101828]">− {aed(withholding)}</span>
+                            <span className="text-[var(--colors-text-quaternary)]">Tax withholding (<span className="text-[var(--colors-secondary-600)]">{taxRate}%</span>)</span>
+                            <span className="font-medium text-[var(--colors-text-primary)]">− {aed(withholding)}</span>
                         </div>
                     )}
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                     <div className="flex items-center justify-between text-[14px]">
-                        <span className="font-semibold text-[#344054]">Net payout</span>
-                        <span className="font-semibold text-[#101828]">{aed(netTotal)}</span>
+                        <span className="font-semibold text-[var(--colors-text-secondary)]">Net payout</span>
+                        <span className="font-semibold text-[var(--colors-text-primary)]">{aed(netTotal)}</span>
                     </div>
                 </div>
 
@@ -289,16 +289,16 @@ function PayrollSubmittedModal({ open, total, instructorCount, periodLabel, onCl
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                    <div className="w-12 h-12 rounded-full bg-[#e9fff3] flex items-center justify-center">
-                        <CheckCircle className="w-6 h-6 text-[#658774]" />
+                    <div className="w-12 h-12 rounded-full bg-[var(--colors-secondary-50)] flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-[var(--colors-secondary-600)]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Payroll submitted</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Payroll submitted</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             {aed(total)} processed for {instructorCount} {instructorCount === 1 ? "staff member" : "staff"} · {periodLabel}
                         </p>
                     </div>
@@ -471,8 +471,8 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
 
 // ─── Table chrome ──────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
 
 // ─── Page ──────────────────────────────────────────────────────────────────
 
@@ -712,7 +712,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
     const branchOptions = useMemo(
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id, label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -856,11 +856,11 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Payroll details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Payroll details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -878,8 +878,8 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                 {/* Toolbar */}
                 <div className="flex items-center gap-3 mt-6">
                     <div className="flex-1">
-                        <p className="text-[14px] text-[#667085] leading-5">Total</p>
-                        <p className="text-[16px] font-medium text-[#101828]">{subtitle}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{subtitle}</p>
                     </div>
                     <SelectInput
                         triggerIcon={<MarkerPin01 className="w-4 h-4" />}
@@ -944,7 +944,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                                     {showPayrollTax && (
                                                         <TaxSuffix
                                                             category="pay_rate"
-                                                            className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap"
+                                                            className="text-[11px] font-normal text-[var(--colors-text-quaternary)] normal-case whitespace-nowrap"
                                                         />
                                                     )}
                                                 </div>
@@ -960,17 +960,17 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                                     {pageRows.map(r => {
                                         const branch = branches.find(b => b.id === r.branchId);
                                         return (
-                                            <tr key={r.entryId} className="transition-colors hover:bg-[#f9fafb]">
+                                            <tr key={r.entryId} className="transition-colors hover:bg-[var(--colors-bg-secondary)]">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <NeutralAvatar initials={r.instructor.initials} imageUrl={r.instructor.imageUrl} />
                                                         <div className="flex flex-col">
-                                                            <span className="text-[14px] font-medium text-[#101828]">{r.instructor.name}</span>
-                                                            <span className="text-[13px] text-[#667085]">{r.instructor.email}</span>
+                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.instructor.name}</span>
+                                                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">{r.instructor.email}</span>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{branch?.name ?? "—"}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{branch?.name ?? "—"}</td>
                                                 <td className={TD}>{r.payRateName}</td>
                                                 <td className={TD}>{r.classesCount}</td>
                                                 <td className={TD}>{r.totalHours}h</td>

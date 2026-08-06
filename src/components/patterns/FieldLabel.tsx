@@ -8,7 +8,7 @@
 // across the app. Replaces ~6 inline `function FieldLabel(...)` declarations
 // that previously rendered identical styling:
 //
-//   text-[14px] font-medium text-[#344054] leading-[20px]
+//   text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]
 //
 // Two variants:
 //   • `<FieldLabel label="Full name" />`              — plain label
@@ -34,13 +34,13 @@ export function FieldLabel({ label, hint, className }: FieldLabelProps) {
     if (hint) {
         return (
             <div className={cn("flex flex-col gap-[2px]", className)}>
-                <span className="text-[14px] font-medium text-[#344054] leading-[20px]">{label}</span>
-                <span className="text-[14px] text-[#475467]">{hint}</span>
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">{label}</span>
+                <span className="text-[14px] text-[var(--colors-text-tertiary)]">{hint}</span>
             </div>
         );
     }
     return (
-        <p className={cn("text-[14px] font-medium text-[#344054] leading-[20px]", className)}>
+        <p className={cn("text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]", className)}>
             {label}
         </p>
     );

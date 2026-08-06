@@ -36,13 +36,13 @@ interface ChartTooltipProps {
 function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
     if (!active || !payload?.length) return null;
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[140px]">
-            <p className="font-semibold text-[#101828] mb-1.5">{label}</p>
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[140px]">
+            <p className="font-semibold text-[var(--colors-text-primary)] mb-1.5">{label}</p>
             {payload.map(p => (
                 <p key={p.dataKey} className="flex items-center gap-1.5 mb-0.5">
                     <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="text-[#475467]">{p.name}:</span>
-                    <span className="font-medium text-[#101828]">{p.value}</span>
+                    <span className="text-[var(--colors-text-tertiary)]">{p.name}:</span>
+                    <span className="font-medium text-[var(--colors-text-primary)]">{p.value}</span>
                 </p>
             ))}
         </div>
@@ -55,7 +55,7 @@ function Legend({ items }: { items: { color: string; label: string }[] }) {
             {items.map(l => (
                 <div key={l.label} className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
-                    <span className="text-xs text-[#667085]">{l.label}</span>
+                    <span className="text-xs text-[var(--colors-text-quaternary)]">{l.label}</span>
                 </div>
             ))}
         </div>
@@ -79,8 +79,8 @@ interface ChartCardProps {
 function ChartCard({ title, children }: ChartCardProps) {
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[14px] text-[#667085]">{title}</p>
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{title}</p>
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4">
                 {children}
             </div>
         </div>

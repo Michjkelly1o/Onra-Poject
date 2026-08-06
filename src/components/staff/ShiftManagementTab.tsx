@@ -69,7 +69,7 @@ function EnabledToggle({ on, disabled, onChange }: {
             onClick={() => !disabled && onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full p-0.5 flex items-center transition-colors shrink-0",
-                on ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                on ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -145,10 +145,10 @@ function DayChip({ active, disabled, letter, onClick, title }: {
             className={cn(
                 "w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold transition-colors border-1",
                 disabled
-                    ? "border-transparent bg-[#f2f4f7] text-[#d0d5dd] cursor-not-allowed"
+                    ? "border-transparent bg-[var(--colors-bg-tertiary)] text-[var(--colors-border-primary)] cursor-not-allowed"
                     : active
-                        ? "border-[#7ba08c] bg-[#e7f2eb] text-[#3b5446]"
-                        : "border-[#e4e7ec] bg-white text-[#98a2b3] hover:border-[#aad4bd]",
+                        ? "border-[var(--colors-secondary-500)] bg-[#e7f2eb] text-[#3b5446]"
+                        : "border-[var(--colors-border-secondary)] bg-white text-[var(--colors-fg-quaternary)] hover:border-[var(--colors-secondary-300)]",
             )}
         >
             {letter}
@@ -179,23 +179,23 @@ function ShiftExpandBody({
                 logic kept. */}
             {SHOW_STAFFING && (
             <div className="flex items-center gap-3">
-                <p className="text-[13px] font-semibold text-[#344054] flex-1">Assigned staff · days within the shift</p>
+                <p className="text-[13px] font-semibold text-[var(--colors-text-secondary)] flex-1">Assigned staff · days within the shift</p>
                 <div className="flex items-center gap-3 shrink-0">
-                    <p className="text-[13px] text-[#667085]">Staffing target</p>
-                    <div className="inline-flex items-center border-1 border-[#e4e7ec] rounded-[8px] bg-white overflow-hidden">
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">Staffing target</p>
+                    <div className="inline-flex items-center border-1 border-[var(--colors-border-secondary)] rounded-[8px] bg-white overflow-hidden">
                         <button type="button"
                             onClick={() => onChangeTarget(Math.max(0, (shift.staffing_target ?? 1) - 1))}
                             aria-label="Decrease staffing target"
-                            className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[#475467] hover:bg-[#f9fafb] transition-colors">
+                            className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                             −
                         </button>
-                        <span className="w-10 text-center text-[14px] font-semibold text-[#101828] border-x-1 border-[#e4e7ec]">
+                        <span className="w-10 text-center text-[14px] font-semibold text-[var(--colors-text-primary)] border-x-1 border-[var(--colors-border-secondary)]">
                             {shift.staffing_target ?? 1}
                         </span>
                         <button type="button"
                             onClick={() => onChangeTarget((shift.staffing_target ?? 1) + 1)}
                             aria-label="Increase staffing target"
-                            className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[#475467] hover:bg-[#f9fafb] transition-colors">
+                            className="w-8 h-8 flex items-center justify-center text-[16px] font-semibold text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                             +
                         </button>
                     </div>
@@ -204,7 +204,7 @@ function ShiftExpandBody({
             )}
 
             {rows.length === 0 ? (
-                <p className="text-[14px] text-[#667085]">No staff assigned yet. Use the row's "Assign staff" action to add one.</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">No staff assigned yet. Use the row's "Assign staff" action to add one.</p>
             ) : (
                 <div className="flex flex-col gap-2">
                     {rows.map(a => {
@@ -225,7 +225,7 @@ function ShiftExpandBody({
                                             {s.initials}
                                         </div>
                                     )}
-                                    <span className="text-[14px] font-medium text-[#101828] truncate">{s.fullName}</span>
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{s.fullName}</span>
                                 </div>
                                 {/* Day chips — clickable when the parent shift
                                     has that weekday in its working_days;
@@ -258,7 +258,7 @@ function ShiftExpandBody({
                                     type="button"
                                     onClick={() => onRemoveAssignment(a.id)}
                                     aria-label={`Remove ${s.fullName} from ${shift.name}`}
-                                    className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[#98a2b3] hover:text-[#b42318] hover:bg-[#fef3f2] transition-colors shrink-0">
+                                    className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[var(--colors-fg-quaternary)] hover:text-[#b42318] hover:bg-[#fef3f2] transition-colors shrink-0">
                                     <Trash01 className="w-4 h-4" />
                                 </button>
                             </div>
@@ -293,7 +293,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
     edit:         {} as never,
     assign_staff: {} as never,
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Archive this shift?",
         titleBulk:   n => `Archive ${n} shifts?`,
         description: subject => <>{subject} will be hidden from the default shift list. You can recover archived shifts at any time.</>,
@@ -309,7 +309,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         tone: "destructive",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Check, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Reactivate this shift?",
         titleBulk:   n => `Reactivate ${n} shifts?`,
         description: subject => <>{subject} will become assignable again.</>,
@@ -317,7 +317,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         tone: "primary",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Recover this shift?",
         titleBulk:   n => `Recover ${n} shifts?`,
         description: subject => <>{subject} will be restored to Active status and become assignable to staff again.</>,
@@ -351,14 +351,14 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+            <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
-                    {count} selected<XClose className="w-5 h-5 text-[#667085]" />
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
+                    {count} selected<XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -421,8 +421,8 @@ function PillBtn({ label, selected, onClick }: { label: string; selected: boolea
             className={cn(
                 "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all",
                 selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                    ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                    : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
             )}>
             {label}
         </button>
@@ -473,18 +473,18 @@ function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onAppl
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400} zIndex={50}>
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     {isWeek ? (
                         <>
                             <div className="flex flex-col gap-2">
-                                <p className="text-[14px] font-medium text-[#344054]">Role</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Role</p>
                                 <div className="flex flex-wrap gap-2">
                                     {roleOptions.map(r => (
                                         <PillBtn key={r.id} label={r.name}
@@ -493,11 +493,11 @@ function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onAppl
                                     ))}
                                 </div>
                             </div>
-                            <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                             <div className="flex flex-col gap-2">
-                                <p className="text-[14px] font-medium text-[#344054]">Shift name</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Shift name</p>
                                 {shiftNameOptions.length === 0 ? (
-                                    <p className="text-[13px] text-[#98a2b3]">No shifts at this location.</p>
+                                    <p className="text-[13px] text-[var(--colors-fg-quaternary)]">No shifts at this location.</p>
                                 ) : (
                                     <div className="flex flex-wrap gap-2">
                                         {shiftNameOptions.map(sh => (
@@ -512,7 +512,7 @@ function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onAppl
                     ) : (
                         <>
                             <div className="flex flex-col gap-2">
-                                <p className="text-[14px] font-medium text-[#344054]">Working days</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Working days</p>
                                 <div className="flex flex-wrap gap-2">
                                     {DAY_FILTER_PILLS.map(d => (
                                         <PillBtn key={d.label} label={d.label}
@@ -521,9 +521,9 @@ function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onAppl
                                     ))}
                                 </div>
                             </div>
-                            <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                             <div className="flex flex-col gap-2">
-                                <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                                 <div className="flex flex-wrap gap-2">
                                     {(["active", "inactive", "archive"] as const).map(s => (
                                         <PillBtn key={s} label={STATUS_LABEL[s]}
@@ -535,7 +535,7 @@ function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onAppl
                         </>
                     )}
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" disabled={!hasAny} onClick={clear}>
                         Clear filter
                     </Button>
@@ -551,8 +551,8 @@ function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onAppl
 
 function ShiftAvatar() {
     return (
-        <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5 text-[#475467]" />
+        <div className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
         </div>
     );
 }
@@ -568,8 +568,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -938,7 +938,7 @@ export function ShiftManagementTab({
                                     return (
                                         <React.Fragment key={s.id}>
                                         <tr
-                                            className={cn("transition-colors", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                            className={cn("transition-colors", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
                                             <td className={TD}>
                                                 <CheckboxCell
                                                     checked={isSelected}
@@ -959,18 +959,18 @@ export function ShiftManagementTab({
                                                     className="flex items-center gap-3 w-full text-left"
                                                 >
                                                     <span className={cn(
-                                                        "w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 transition-transform",
+                                                        "w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0 transition-transform",
                                                         isExpanded && "rotate-90",
                                                     )} aria-hidden>
                                                         <ChevronRight className="w-4 h-4" />
                                                     </span>
                                                     <ShiftAvatar />
-                                                    <span className="text-[14px] font-medium text-[#101828]">{s.name}</span>
+                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s.name}</span>
                                                 </button>
                                                 ) : (
                                                     <div className="flex items-center gap-3">
                                                         <ShiftAvatar />
-                                                        <span className="text-[14px] font-medium text-[#101828]">{s.name}</span>
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s.name}</span>
                                                     </div>
                                                 )}
                                             </td>
@@ -985,11 +985,11 @@ export function ShiftManagementTab({
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <span className={cn(
                                                         "text-[14px] font-medium",
-                                                        isUnderstaffed ? "text-[#b54708]" : "text-[#101828]",
+                                                        isUnderstaffed ? "text-[#b54708]" : "text-[var(--colors-text-primary)]",
                                                     )}>
                                                         {assignedCount}
                                                     </span>
-                                                    <span className="text-[13px] text-[#667085]">/ {target} needed</span>
+                                                    <span className="text-[13px] text-[var(--colors-text-quaternary)]">/ {target} needed</span>
                                                     {isUnderstaffed && (
                                                         <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#fef4e1] border-[#fecc85] text-[#b54708] whitespace-nowrap">
                                                             Understaffed
@@ -1110,8 +1110,8 @@ export function ShiftManagementTab({
             {pendingConfirm && (() => {
                 const count   = pendingConfirm.mode === "row" ? 1 : pendingConfirm.rows.length;
                 const subject = pendingConfirm.mode === "row"
-                    ? <span className="font-medium text-[#344054]">{pendingConfirm.row.name}</span>
-                    : <><span className="font-medium text-[#344054]">{pendingConfirm.rows.length}</span> selected shifts</>;
+                    ? <span className="font-medium text-[var(--colors-text-secondary)]">{pendingConfirm.row.name}</span>
+                    : <><span className="font-medium text-[var(--colors-text-secondary)]">{pendingConfirm.rows.length}</span> selected shifts</>;
                 const cfg = MODAL_CONFIG[pendingConfirm.kind];
                 const title = count === 1 ? cfg.titleSingle : cfg.titleBulk(count);
                 return (

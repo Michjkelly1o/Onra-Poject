@@ -102,7 +102,7 @@ export function ShareSheet({ open, onClose, title = "Share", message, url, previ
                             >
                                 {t.icon}
                             </span>
-                            <span className="text-center text-xs font-medium leading-4 text-[#344054]">{t.label}</span>
+                            <span className="text-center text-xs font-medium leading-4 text-[var(--colors-text-secondary)]">{t.label}</span>
                         </button>
                     ))}
                 </div>

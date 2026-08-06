@@ -212,7 +212,7 @@ export function BranchFormPage({ mode, branchId }: {
 
                     {/* Center form card */}
                     <div className="flex-1 min-w-0 max-w-[628px] flex flex-col min-h-0">
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex-1 flex flex-col gap-6 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] min-h-0">
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex-1 flex flex-col gap-6 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] min-h-0">
                             <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-1 -mx-1 min-h-0">
                                 <SectionHeader title="Branch details" />
 
@@ -233,14 +233,14 @@ export function BranchFormPage({ mode, branchId }: {
                                 </Field>
 
                                 <Field label="Phone number">
-                                    <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                    <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                         <PhoneCountryDropdown value={phoneCountry} onChange={setPhoneCountry} />
                                         <input
                                             type="tel"
                                             value={phoneNumber}
                                             onChange={e => setPhoneNumber(e.target.value.replace(/[^\d\s]/g, ""))}
                                             placeholder="Enter phone number"
-                                            className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent min-w-0 rounded-r-[8px]"
+                                            className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent min-w-0 rounded-r-[8px]"
                                         />
                                     </div>
                                 </Field>
@@ -311,12 +311,12 @@ export function BranchFormPage({ mode, branchId }: {
                                     manually edited per client Jul 2026. Same
                                     styling weight as an Info-tile so it reads as
                                     "system computed" rather than a form field. */}
-                                <div className="flex items-start gap-3 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[8px] px-4 py-3">
-                                    <Globe01 className="w-4 h-4 text-[#667085] mt-0.5 shrink-0" />
+                                <div className="flex items-start gap-3 bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[8px] px-4 py-3">
+                                    <Globe01 className="w-4 h-4 text-[var(--colors-text-quaternary)] mt-0.5 shrink-0" />
                                     <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                        <p className="text-[13px] font-medium text-[#475467] leading-[18px]">Detected timezone</p>
-                                        <p className="text-[14px] font-semibold text-[#101828] leading-5 truncate">{timezoneLabel(derivedTimezone)}</p>
-                                        <p className="text-[12px] text-[#667085] leading-4">Auto-derived from country and city. Update the address to change it.</p>
+                                        <p className="text-[13px] font-medium text-[var(--colors-text-tertiary)] leading-[18px]">Detected timezone</p>
+                                        <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5 truncate">{timezoneLabel(derivedTimezone)}</p>
+                                        <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-4">Auto-derived from country and city. Update the address to change it.</p>
                                     </div>
                                 </div>
 
@@ -331,7 +331,7 @@ export function BranchFormPage({ mode, branchId }: {
                                         const h = workingHours.find(w => w.dow === d.dow)!;
                                         return (
                                             <div key={d.key} className="grid grid-cols-[120px_60px_1fr_1fr] gap-3 items-center w-full">
-                                                <span className="text-[14px] font-medium text-[#344054]">{d.label}</span>
+                                                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{d.label}</span>
                                                 <Toggle
                                                     on={!h.closed}
                                                     onChange={() => updateHour(d.dow, { closed: !h.closed })}
@@ -366,35 +366,35 @@ export function BranchFormPage({ mode, branchId }: {
                         re-flows as the admin types — only the inner
                         preview area scrolls when working-hours fill up. */}
                     <div className="w-[360px] shrink-0 flex flex-col min-h-0">
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex-1 flex flex-col overflow-hidden min-h-0">
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex-1 flex flex-col overflow-hidden min-h-0">
                             <div className="flex flex-col gap-1 px-6 pt-6 pb-5 shrink-0">
-                                <p className="text-[18px] font-semibold text-[#101828] leading-7">Branch preview</p>
+                                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Branch preview</p>
                                 <p className="text-[14px] text-[#6e776f] leading-5">This is how branch overview will look like.</p>
                             </div>
-                            <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                             <div className="bg-[#f6f6f3] p-6 flex-1 min-h-0 overflow-y-auto flex items-start justify-center">
-                                <div className="w-full bg-white border-1 border-[#e4e7ec] rounded-[20px] p-5 flex flex-col gap-4">
+                                <div className="w-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-5 flex flex-col gap-4">
                                     {/* Avatar — uploaded image OR Building icon fallback */}
                                     {logoDataUrl ? (
                                         <LogoPreview src={logoDataUrl} size={96} />
                                     ) : (
                                         <div
-                                            className="relative w-24 h-24 rounded-full bg-[#f2f4f7] border-4 border-white shrink-0 flex items-center justify-center"
+                                            className="relative w-24 h-24 rounded-full bg-[var(--colors-bg-tertiary)] border-4 border-white shrink-0 flex items-center justify-center"
                                             style={{ boxShadow: "0px 12px 16px -4px rgba(16,24,40,0.08), 0px 4px 6px -2px rgba(16,24,40,0.03)" }}
                                         >
-                                            <Building01 className="w-10 h-10 text-[#475467]" />
+                                            <Building01 className="w-10 h-10 text-[var(--colors-text-tertiary)]" />
                                             <div className="absolute inset-0 rounded-full border border-[rgba(0,0,0,0.08)] pointer-events-none" />
                                         </div>
                                     )}
                                     <div className="flex flex-col">
-                                        <p className="text-[20px] font-semibold text-[#101828] leading-[30px]">
+                                        <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
                                             {name || "Branch name"}
                                         </p>
-                                        <p className="text-[14px] text-[#667085] leading-5">{email || "Email address"}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{email || "Email address"}</p>
                                     </div>
                                     <div className="flex flex-col gap-3">
-                                        <PreviewLine icon={<Phone className="w-4 h-4 text-[#667085]" />}       text={phoneNumber ? `${phoneCountry.dial} ${phoneNumber}` : "Phone number"} />
-                                        <PreviewLine icon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />} text={fullAddress(address, city, country) || "Address"} />
+                                        <PreviewLine icon={<Phone className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}       text={phoneNumber ? `${phoneCountry.dial} ${phoneNumber}` : "Phone number"} />
+                                        <PreviewLine icon={<MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} text={fullAddress(address, city, country) || "Address"} />
                                         <WorkingHoursPreview hours={workingHours} />
                                     </div>
                                 </div>
@@ -413,7 +413,7 @@ function PreviewLine({ icon, text }: { icon: React.ReactNode; text: string }) {
     return (
         <div className="flex items-center gap-2">
             {icon}
-            <p className="text-[14px] text-[#475467] leading-5 truncate">{text}</p>
+            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 truncate">{text}</p>
         </div>
     );
 }
@@ -438,18 +438,18 @@ function WorkingHoursPreview({ hours }: { hours: WorkingHourState[] }) {
     return (
         <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4 text-[#667085]" />
-                <p className="text-[14px] text-[#667085] leading-5">Working hours</p>
+                <Clock className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Working hours</p>
             </div>
             <div className="flex flex-col gap-1 pl-5">
                 {openDays.length === 0 ? (
-                    <p className="text-[14px] text-[#667085] leading-5">—</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">—</p>
                 ) : openDays.map(dow => {
                     const h = hours.find(w => w.dow === dow)!;
                     return (
                         <div key={dow} className="flex items-center gap-3">
-                            <p className="text-[14px] font-medium text-[#667085] w-[40px]">{DAY_LABELS_SHORT[dow]}</p>
-                            <p className="text-[14px] text-[#667085] leading-5">
+                            <p className="text-[14px] font-medium text-[var(--colors-text-quaternary)] w-[40px]">{DAY_LABELS_SHORT[dow]}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">
                                 ({to12hLabel(h.open)} – {to12hLabel(h.close)})
                             </p>
                         </div>
@@ -475,8 +475,8 @@ function TimeInput({ value, onChange, disabled }: { value: string; onChange: (v:
             onChange={e => onChange(e.target.value)}
             disabled={disabled}
             className={cn(
-                "h-10 w-full px-[12px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white",
-                disabled && "bg-[#f9fafb] text-[#98a2b3] cursor-not-allowed",
+                "h-10 w-full px-[12px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white",
+                disabled && "bg-[var(--colors-bg-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed",
             )}
         />
     );
@@ -496,7 +496,7 @@ function Toggle({ on, onChange, ariaLabel }: {
             onClick={onChange}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}
         >
             <div className={cn(

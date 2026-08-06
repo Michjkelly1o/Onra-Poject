@@ -186,21 +186,21 @@ export function ReferralOverviewTab({ period }: { period: DateFilter }) {
     return (
         <div className="flex w-full flex-col gap-4">
             {/* ── Header ─────────────────────────────────────────────────── */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex items-center gap-4 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex items-center gap-4 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex-1 flex flex-col gap-1">
                     <div className="flex items-center gap-2.5">
-                        <p className="text-[18px] font-semibold text-[#101828]">Referral program</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Referral program</p>
                         <span className={cn(
                             "inline-flex items-center gap-1.5 px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1",
                             settings.programActive
                                 ? "bg-[#ecfdf3] border-[#abefc6] text-[#067647]"
-                                : "bg-[#f9fafb] border-[#e4e7ec] text-[#475467]",
+                                : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
                         )}>
-                            <span className={cn("w-1.5 h-1.5 rounded-full", settings.programActive ? "bg-[#17b26a]" : "bg-[#98a2b3]")} />
+                            <span className={cn("w-1.5 h-1.5 rounded-full", settings.programActive ? "bg-[#17b26a]" : "bg-[var(--colors-fg-quaternary)]")} />
                             {settings.programActive ? "Active" : "Paused"}
                         </span>
                     </div>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                         Monthly budget resets in {resetDays} {resetDays === 1 ? "day" : "days"}.
                     </p>
                 </div>
@@ -212,53 +212,53 @@ export function ReferralOverviewTab({ period }: { period: DateFilter }) {
             {/* ── Metric cards ───────────────────────────────────────────── */}
             <div className="flex gap-4">
                 {metricCards.map(m => (
-                    <div key={m.label} className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <p className="text-[14px] text-[#667085]">{m.label}</p>
-                        <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{m.value}</p>
+                    <div key={m.label} className="flex-1 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">{m.label}</p>
+                        <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-[32px]">{m.value}</p>
                     </div>
                 ))}
             </div>
 
             {/* ── Monthly budget progress ────────────────────────────────── */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-4 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex flex-col gap-4 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex items-end justify-between gap-4">
                     <div className="flex flex-col gap-1">
-                        <p className="text-[16px] font-semibold text-[#101828]">Monthly budget</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Monthly budget</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Estimated value of rewards issued against this month&apos;s cap.
                         </p>
                     </div>
-                    <p className="text-[14px] text-[#475467] shrink-0">
-                        <span className="font-semibold text-[#101828]">{fmtAed(metrics.rewardsSpentAed)}</span>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">
+                        <span className="font-semibold text-[var(--colors-text-primary)]">{fmtAed(metrics.rewardsSpentAed)}</span>
                         {" "}of {metrics.budgetAed > 0 ? fmtAed(metrics.budgetAed) : "no cap"}
                     </p>
                 </div>
-                <div className="h-2 w-full rounded-full bg-[#f2f4f7] overflow-hidden">
+                <div className="h-2 w-full rounded-full bg-[var(--colors-bg-tertiary)] overflow-hidden">
                     <div
                         className={cn(
                             "h-full rounded-full transition-all",
-                            metrics.budgetPct >= 100 ? "bg-[#d92d20]" : "bg-[#658774]",
+                            metrics.budgetPct >= 100 ? "bg-[#d92d20]" : "bg-[var(--colors-secondary-600)]",
                         )}
                         style={{ width: `${metrics.budgetAed > 0 ? metrics.budgetPct : 0}%` }}
                     />
                 </div>
                 {metrics.budgetAed > 0 && (
-                    <p className="text-[13px] text-[#667085]">{metrics.budgetPct}% of budget used</p>
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">{metrics.budgetPct}% of budget used</p>
                 )}
             </div>
 
             {/* ── Top referrers ──────────────────────────────────────────── */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex flex-col shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex flex-col gap-1 p-6 pb-4">
-                    <p className="text-[16px] font-semibold text-[#101828]">Top referrers</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">Customers driving the most sign-ups.</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Top referrers</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Customers driving the most sign-ups.</p>
                 </div>
 
                 {ranked.length === 0 ? (
                     <div className="px-6 pb-8 pt-2">
-                        <div className="border-1 border-dashed border-[#e4e7ec] rounded-[12px] py-10 flex flex-col items-center gap-1">
-                            <p className="text-[14px] font-medium text-[#344054]">No referrers yet</p>
-                            <p className="text-[13px] text-[#667085]">Referrers appear here once customers start sharing their link.</p>
+                        <div className="border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[12px] py-10 flex flex-col items-center gap-1">
+                            <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">No referrers yet</p>
+                            <p className="text-[13px] text-[var(--colors-text-quaternary)]">Referrers appear here once customers start sharing their link.</p>
                         </div>
                     </div>
                 ) : (
@@ -276,20 +276,20 @@ export function ReferralOverviewTab({ period }: { period: DateFilter }) {
                             <tbody>
                                 {paged.map((r, i) => (
                                     <tr key={r.customerId} onClick={() => openCustomer(r.customerId)}
-                                        className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
-                                        <td className={cn(TD, "text-center text-[14px] text-[#667085]")}>{(clampedPage - 1) * pageSize + i + 1}</td>
+                                        className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
+                                        <td className={cn(TD, "text-center text-[14px] text-[var(--colors-text-quaternary)]")}>{(clampedPage - 1) * pageSize + i + 1}</td>
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
                                                 <TableAvatar initials={r.initials} size={40} />
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                    <span className="text-[13px] text-[#475467]">{r.email}</span>
+                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
+                                                    <span className="text-[13px] text-[var(--colors-text-tertiary)]">{r.email}</span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.branchName}</td>
-                                        <td className={cn(TD, "text-[14px] text-[#101828]")}>{r.referrals}</td>
-                                        <td className={cn(TD, "text-[14px] text-[#101828]")}>{r.credits} {r.credits === 1 ? "credit" : "credits"}</td>
+                                        <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{r.branchName}</td>
+                                        <td className={cn(TD, "text-[14px] text-[var(--colors-text-primary)]")}>{r.referrals}</td>
+                                        <td className={cn(TD, "text-[14px] text-[var(--colors-text-primary)]")}>{r.credits} {r.credits === 1 ? "credit" : "credits"}</td>
                                     </tr>
                                 ))}
                             </tbody>

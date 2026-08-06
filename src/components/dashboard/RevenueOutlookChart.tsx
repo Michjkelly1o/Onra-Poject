@@ -76,16 +76,16 @@ function BarTooltip({ payload }: { payload: TooltipPayload | null }) {
     return (
         <div
             role="tooltip"
-            className="fixed z-50 bg-white border border-[#e4e7ec] rounded-lg shadow-lg text-[12px] leading-[16px] px-3 py-2 min-w-[200px] pointer-events-none"
+            className="fixed z-50 bg-white border border-[var(--colors-border-secondary)] rounded-lg shadow-lg text-[12px] leading-[16px] px-3 py-2 min-w-[200px] pointer-events-none"
             style={{ left: payload.x, top: payload.y }}
         >
-            <p className="font-semibold text-[#101828] mb-0.5">{payload.title}</p>
-            {payload.subtitle && <p className="text-[11px] text-[#667085] mb-1.5">{payload.subtitle}</p>}
+            <p className="font-semibold text-[var(--colors-text-primary)] mb-0.5">{payload.title}</p>
+            {payload.subtitle && <p className="text-[11px] text-[var(--colors-text-quaternary)] mb-1.5">{payload.subtitle}</p>}
             {payload.rows.map((r, i) => (
                 <div key={i} className="flex items-center gap-1.5 mb-0.5">
                     <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: r.color }} aria-hidden />
-                    <span className="flex-1 text-[#475467]">{r.name}</span>
-                    <span className="font-medium text-[#101828] tabular-nums">{r.value}</span>
+                    <span className="flex-1 text-[var(--colors-text-tertiary)]">{r.name}</span>
+                    <span className="font-medium text-[var(--colors-text-primary)] tabular-nums">{r.value}</span>
                 </div>
             ))}
         </div>
@@ -150,16 +150,16 @@ export function RevenueOutlookChart({ rows, typeFilter, chips, unitLabel, granul
     }
 
     return (
-        <div className="bg-white border border-[#e4e7ec] rounded-2xl p-5">
+        <div className="bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-5">
             {/* Header: title + legend on the right when in All-types mode.
                 Uses the DS panel-title style (text-base font-semibold ink)
                 so it reads the same as every other card header in admin. */}
             <div className="flex items-baseline gap-3 mb-4">
-                <p className="text-base font-semibold text-[#101828]">
-                    Revenue <span className="font-normal text-[#667085]">· {unitLabel}</span>
+                <p className="text-base font-semibold text-[var(--colors-text-primary)]">
+                    Revenue <span className="font-normal text-[var(--colors-text-quaternary)]">· {unitLabel}</span>
                 </p>
                 {typeFilter === "" && (
-                    <div className="ml-auto flex items-center gap-3 text-xs text-[#667085]">
+                    <div className="ml-auto flex items-center gap-3 text-xs text-[var(--colors-text-quaternary)]">
                         {SESSION_TYPE_ORDER.map(t => (
                             <span key={t} className="flex items-center gap-1.5">
                                 <span
@@ -183,12 +183,12 @@ export function RevenueOutlookChart({ rows, typeFilter, chips, unitLabel, granul
                         return (
                             <div key={i}>
                                 <div
-                                    className={cn("absolute left-0 right-0 h-px", t === 0 ? "bg-[#dcdcd0]" : "bg-[#eaecf0]")}
+                                    className={cn("absolute left-0 right-0 h-px", t === 0 ? "bg-[#dcdcd0]" : "bg-[var(--colors-border-tertiary)]")}
                                     style={{ top: y }}
                                     aria-hidden
                                 />
                                 <div
-                                    className="absolute w-9 text-right text-xs text-[#98a2b3] tabular-nums"
+                                    className="absolute w-9 text-right text-xs text-[var(--colors-fg-quaternary)] tabular-nums"
                                     style={{ top: y, left: -44, transform: "translateY(-50%)" }}
                                     aria-hidden
                                 >
@@ -214,7 +214,7 @@ export function RevenueOutlookChart({ rows, typeFilter, chips, unitLabel, granul
                                 onMouseLeave={() => setTip(null)}
                                 className="flex-1 flex flex-col items-center justify-end h-full group focus:outline-none"
                             >
-                                <span className="text-xs text-[#667085] mb-1 tabular-nums group-hover:text-[#101828]">
+                                <span className="text-xs text-[var(--colors-text-quaternary)] mb-1 tabular-nums group-hover:text-[var(--colors-text-primary)]">
                                     {shortNumber(Math.round(total))}
                                 </span>
                                 <div
@@ -247,8 +247,8 @@ export function RevenueOutlookChart({ rows, typeFilter, chips, unitLabel, granul
             {/* X labels */}
             <div className="flex pl-11 mt-2">
                 {rows.map((r, i) => (
-                    <div key={i} className="flex-1 text-center text-xs text-[#667085] leading-tight">
-                        <span className="block font-semibold text-[#101828]">{r.period.label}</span>
+                    <div key={i} className="flex-1 text-center text-xs text-[var(--colors-text-quaternary)] leading-tight">
+                        <span className="block font-semibold text-[var(--colors-text-primary)]">{r.period.label}</span>
                         <span>{r.period.sub}</span>
                     </div>
                 ))}
@@ -263,7 +263,7 @@ export function RevenueOutlookChart({ rows, typeFilter, chips, unitLabel, granul
                             <div key={i} className="flex-1 flex justify-center items-start px-1">
                                 {chip && (
                                     <span
-                                        className="inline-flex items-center gap-1.5 text-xs text-[#667085] bg-[#f9fafb] border border-[#eaecf0] rounded-full px-2 py-0.5 whitespace-nowrap"
+                                        className="inline-flex items-center gap-1.5 text-xs text-[var(--colors-text-quaternary)] bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-tertiary)] rounded-full px-2 py-0.5 whitespace-nowrap"
                                         title={chip.text}
                                     >
                                         {chip.type && (

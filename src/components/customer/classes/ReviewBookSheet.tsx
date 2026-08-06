@@ -37,7 +37,7 @@ const SLIDE_MS = 360;
 const SLIDE_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 const GUEST_INPUT =
-    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[#667085] focus:border-[var(--brand-primary)] focus:outline-none";
+    "w-full rounded-xl border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[var(--colors-text-quaternary)] focus:border-[var(--brand-primary)] focus:outline-none";
 
 type BookTo = "myself" | "guest";
 /** Guest pay options (never the booker's own plan — client 2026-08). */
@@ -196,9 +196,9 @@ export function ReviewBookSheet({
                             setStep(0);
                         }}
                         aria-label="Back"
-                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 ) : (
                     <span aria-hidden className="absolute left-0 size-8" />
@@ -211,9 +211,9 @@ export function ReviewBookSheet({
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="absolute right-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="absolute right-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 )}
             </div>
@@ -230,7 +230,7 @@ export function ReviewBookSheet({
                     {/* Class Summary */}
                     <div className="flex w-full items-start gap-3">
                         <div
-                            className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[#e4e7ec]"
+                            className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--colors-border-secondary)]"
                             style={!detail.coverImage ? { backgroundColor: detail.coverColor } : undefined}
                         >
                             {detail.coverImage && (
@@ -239,33 +239,33 @@ export function ReviewBookSheet({
                             )}
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <p className="truncate text-sm font-medium leading-5 text-[#101828]">{detail.name}</p>
-                            <p className="text-xs font-normal leading-[18px] text-[#475467]">
+                            <p className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">{detail.name}</p>
+                            <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
                                 {fullDate} at {startTime12}
                             </p>
                             <div className="flex items-start gap-1.5">
-                                <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
-                                <p className="text-xs font-normal leading-[18px] text-[#475467]">
+                                <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                                <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
                                     {detail.room} - {detail.branchName}
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <span className="flex items-center gap-1 text-xs font-normal leading-[18px] text-[#475467]">
-                                    <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                                <span className="flex items-center gap-1 text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
+                                    <Clock className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                                     {detail.durationMins} mins
                                 </span>
                                 {detail.instructorName && (
                                     <>
-                                        <span className="text-xs leading-[18px] text-[#475467]" aria-hidden>
+                                        <span className="text-xs leading-[18px] text-[var(--colors-text-tertiary)]" aria-hidden>
                                             •
                                         </span>
-                                        <span className="flex items-center gap-1.5 text-xs font-normal leading-[18px] text-[#475467]">
-                                            <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                        <span className="flex items-center gap-1.5 text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
+                                            <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                                                 {detail.instructorImageUrl ? (
                                                     // eslint-disable-next-line @next/next/no-img-element
                                                     <img src={detail.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                                                 ) : (
-                                                    <span className="text-[9px] font-semibold leading-none text-[#667085]">
+                                                    <span className="text-[9px] font-semibold leading-none text-[var(--colors-text-quaternary)]">
                                                         {detail.instructorInitials}
                                                     </span>
                                                 )}
@@ -278,12 +278,12 @@ export function ReviewBookSheet({
                         </div>
                     </div>
 
-                    <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
+                    <div className="h-px w-full shrink-0 bg-[var(--colors-bg-quaternary)]" />
 
                     {/* Book to */}
                     <section className="flex w-full flex-col gap-3">
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Book to</p>
-                        <div className="flex rounded-full border border-[#e4e7ec] bg-[#f9fafb] p-1">
+                        <div className="flex rounded-full border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] p-1">
                             {(["myself", "guest"] as BookTo[]).map((t) => {
                                 const active = bookTo === t;
                                 return (
@@ -297,8 +297,8 @@ export function ReviewBookSheet({
                                         }}
                                         className={`flex-1 rounded-full py-1 text-sm leading-5 transition-colors ${
                                             active
-                                                ? "bg-white font-semibold text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                                : "font-medium text-[#667085]"
+                                                ? "bg-white font-semibold text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                                : "font-medium text-[var(--colors-text-quaternary)]"
                                         }`}
                                     >
                                         {t === "myself" ? "Myself" : "Guest"}
@@ -308,31 +308,31 @@ export function ReviewBookSheet({
                         </div>
 
                         {bookTo === "myself" ? (
-                            <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
-                                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                            <div className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
+                                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                                     {member.imageUrl ? (
                                         // eslint-disable-next-line @next/next/no-img-element
                                         <img src={member.imageUrl} alt="" className="size-full object-cover" />
                                     ) : (
-                                        <span className="text-xs font-semibold leading-none text-[#667085]">{member.initials}</span>
+                                        <span className="text-xs font-semibold leading-none text-[var(--colors-text-quaternary)]">{member.initials}</span>
                                     )}
                                 </span>
                                 <div className="flex min-w-0 flex-1 flex-col">
                                     <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
                                         {`${member.firstName} ${member.lastName}`.trim()}{" "}
-                                        <span className="font-normal text-[#667085]">(You)</span>
+                                        <span className="font-normal text-[var(--colors-text-quaternary)]">(You)</span>
                                     </span>
-                                    <span className="truncate text-sm font-normal leading-5 text-[#667085]">{member.email}</span>
+                                    <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{member.email}</span>
                                 </div>
                             </div>
                         ) : guest ? (
-                            <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
-                                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-xs font-semibold text-[#667085]">
+                            <div className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
+                                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)] text-xs font-semibold text-[var(--colors-text-quaternary)]">
                                     {guest.name.trim().slice(0, 1).toUpperCase() || "G"}
                                 </span>
                                 <div className="flex min-w-0 flex-1 flex-col">
                                     <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{guest.name}</span>
-                                    <span className="truncate text-sm font-normal leading-5 text-[#667085]">
+                                    <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">
                                         {guest.email || "Guest booking"}
                                     </span>
                                 </div>
@@ -348,7 +348,7 @@ export function ReviewBookSheet({
                             <button
                                 type="button"
                                 onClick={openGuestPanel}
-                                className="flex w-full items-center justify-center rounded-xl border border-dashed border-[#d0d5dd] bg-white p-4 text-sm font-semibold leading-5 text-[var(--brand-primary)] transition-colors active:bg-gray-50"
+                                className="flex w-full items-center justify-center rounded-xl border border-dashed border-[var(--colors-border-primary)] bg-white p-4 text-sm font-semibold leading-5 text-[var(--brand-primary)] transition-colors active:bg-gray-50"
                             >
                                 Add guest details
                             </button>
@@ -371,7 +371,7 @@ export function ReviewBookSheet({
                     {/* Pay with — hidden for waitlist (nothing charged until promoted). */}
                     {mode === "book" && (
                         <>
-                            <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
+                            <div className="h-px w-full shrink-0 bg-[var(--colors-bg-quaternary)]" />
                             <section className="flex w-full flex-col gap-3">
                                 <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Pay with</p>
 
@@ -390,7 +390,7 @@ export function ReviewBookSheet({
                                                         <FeaturedIcon icon={CoinsStacked03} />
                                                         <span className="flex min-w-0 flex-1 flex-col">
                                                             <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{p.name}</span>
-                                                            <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
+                                                            <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{sub}</span>
                                                         </span>
                                                         <RadioDot checked />
                                                     </div>
@@ -414,15 +414,15 @@ export function ReviewBookSheet({
                                                 onClose();
                                                 router.push(`/customer/classes/${detail.id}/book/plans`);
                                             }}
-                                            className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4 text-left transition-colors active:bg-gray-50"
+                                            className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4 text-left transition-colors active:bg-gray-50"
                                         >
-                                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
-                                                <ShoppingBag03 className="size-5 text-[#344054]" aria-hidden />
+                                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[var(--colors-border-secondary)] bg-white">
+                                                <ShoppingBag03 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                                             </span>
                                             <span className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--brand-text)]">
                                                 Purchase plan
                                             </span>
-                                            <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                                            <ChevronRight className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
                                         </button>
                                     )
                                 ) : (
@@ -441,16 +441,16 @@ export function ReviewBookSheet({
                                                     onClick={() => !o.disabled && setGuestPay(o.id)}
                                                     className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
                                                         o.disabled
-                                                            ? "border border-[#e4e7ec] bg-[#f9fafb] opacity-60"
+                                                            ? "border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] opacity-60"
                                                             : sel
                                                               ? "border-2 border-[var(--brand-primary)] bg-white"
-                                                              : "border border-[#e4e7ec] bg-white"
+                                                              : "border border-[var(--colors-border-secondary)] bg-white"
                                                     }`}
                                                 >
                                                     <FeaturedIcon icon={o.icon} />
                                                     <span className="flex min-w-0 flex-1 flex-col">
                                                         <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{o.label}</span>
-                                                        <span className="text-sm font-normal leading-5 text-[#667085]">{o.sub}</span>
+                                                        <span className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{o.sub}</span>
                                                     </span>
                                                     <RadioDot checked={sel} />
                                                 </button>
@@ -463,10 +463,10 @@ export function ReviewBookSheet({
                     )}
 
                     {/* Cancellation policy — mirrors the Class Details section. */}
-                    <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
+                    <div className="h-px w-full shrink-0 bg-[var(--colors-bg-quaternary)]" />
                     <section className="flex w-full flex-col gap-2">
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Cancellation policy</p>
-                        <p className="text-sm font-normal leading-5 text-[#475467]">Full refund if you cancel 24 hours before.</p>
+                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">Full refund if you cancel 24 hours before.</p>
                     </section>
 
                     {frozenMembership && (
@@ -495,7 +495,7 @@ export function ReviewBookSheet({
                     <div className="flex h-full w-full shrink-0 flex-col px-4">
                         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <label className="flex w-full flex-col gap-1.5">
-                                <span className="text-sm font-medium leading-5 text-[#344054]">Guest name</span>
+                                <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Guest name</span>
                                 <input
                                     className={GUEST_INPUT}
                                     placeholder="Enter guest name"
@@ -504,7 +504,7 @@ export function ReviewBookSheet({
                                 />
                             </label>
                             <label className="flex w-full flex-col gap-1.5">
-                                <span className="text-sm font-medium leading-5 text-[#344054]">Email</span>
+                                <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Email</span>
                                 <input
                                     className={GUEST_INPUT}
                                     type="email"
@@ -548,13 +548,13 @@ export function ReviewBookSheet({
                                             setStep(0);
                                         }}
                                         className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
-                                            sel ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
+                                            sel ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[var(--colors-border-secondary)] bg-white"
                                         }`}
                                     >
                                         <FeaturedIcon icon={CoinsStacked03} />
                                         <span className="flex min-w-0 flex-1 flex-col">
                                             <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{p.name}</span>
-                                            <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
+                                            <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{sub}</span>
                                         </span>
                                         <RadioDot checked={sel} />
                                     </button>
@@ -573,8 +573,8 @@ function FeaturedIcon({ icon: Icon }: { icon: ComponentType<SVGProps<SVGSVGEleme
     // (no colour fill, matching the Products module). Figma uses a tint here but
     // the client wants the plain default (client 2026-08).
     return (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <Icon className="size-5 text-[#344054]" aria-hidden />
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[var(--colors-border-secondary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <Icon className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
         </span>
     );
 }
@@ -583,7 +583,7 @@ function RadioDot({ checked }: { checked: boolean }) {
     return (
         <span
             className={`flex size-5 shrink-0 items-center justify-center rounded-full border ${
-                checked ? "border-[var(--brand-primary)]" : "border-[#d0d5dd]"
+                checked ? "border-[var(--brand-primary)]" : "border-[var(--colors-border-primary)]"
             }`}
         >
             {checked && <span className="size-2.5 rounded-full bg-[var(--brand-primary)]" />}

@@ -81,19 +81,19 @@ export function DateStrip({ selectedISO, onSelect, bookingOpenDays, enabledDays,
                                 onClick={() => onSelect(iso)}
                                 aria-pressed={selected}
                                 className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl bg-white px-1 py-2 transition-colors ${
-                                    selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec]"
+                                    selected ? "border-2 border-[var(--brand-primary)]" : "border border-[var(--colors-border-secondary)]"
                                 } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
                             >
                                 <span
                                     className={`text-center text-xs font-normal leading-[18px] ${
-                                        selected ? "text-[var(--brand-primary)]" : disabled ? "text-[#98a2b3]" : "text-[#667085]"
+                                        selected ? "text-[var(--brand-primary)]" : disabled ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-quaternary)]"
                                     }`}
                                 >
                                     {weekdayAbbr(iso)}
                                 </span>
                                 <span
                                     className={`text-xs font-medium leading-[18px] ${
-                                        selected ? "text-[var(--brand-primary)]" : disabled ? "text-[#98a2b3]" : "text-[#344054]"
+                                        selected ? "text-[var(--brand-primary)]" : disabled ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-secondary)]"
                                     }`}
                                 >
                                     {dayNum(iso)}

@@ -97,7 +97,7 @@ export function ClassesFilterModal({
                 {/* Time of day — three predefined pills (reuses the Categories chip). */}
                 {showTime && (
                     <div className="flex flex-col gap-2">
-                        <span className="text-sm font-medium leading-5 text-[#344054]">Time</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Time</span>
                         {/* Horizontal — one column per slot, illustration on top */}
                         <div className="grid grid-cols-3 gap-2">
                             {TIME_SLOTS.map((slot) => {
@@ -109,16 +109,16 @@ export function ClassesFilterModal({
                                         type="button"
                                         onClick={() => toggleSlot(slot)}
                                         className={`flex flex-col items-center gap-2 rounded-xl p-3 text-center transition-colors ${
-                                            on ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec] active:bg-gray-50"
+                                            on ? "border-2 border-[var(--brand-primary)]" : "border border-[var(--colors-border-secondary)] active:bg-gray-50"
                                         }`}
                                     >
                                         <Icon
-                                            className={`size-6 shrink-0 ${on ? "text-[var(--brand-primary)]" : "text-[#344054]"}`}
+                                            className={`size-6 shrink-0 ${on ? "text-[var(--brand-primary)]" : "text-[var(--colors-text-secondary)]"}`}
                                             aria-hidden
                                         />
                                         <span className="flex flex-col items-center gap-0.5">
                                             <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{slot.label}</span>
-                                            <span className="text-[11px] leading-4 text-[#667085]">({slot.range})</span>
+                                            <span className="text-[11px] leading-4 text-[var(--colors-text-quaternary)]">({slot.range})</span>
                                         </span>
                                     </button>
                                 );
@@ -127,13 +127,13 @@ export function ClassesFilterModal({
                     </div>
                 )}
 
-                {showTime && <div className="h-px w-full bg-[#e4e7ec]" />}
+                {showTime && <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />}
 
                 {/* Instructor — multi-select pills + See all (>5) */}
                 {showInstructor && (
                     <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium leading-5 text-[#344054]">Instructor</span>
+                            <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Instructor</span>
                             {showSeeAll && (
                                 <button type="button" onClick={onSeeAll} className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">
                                     See all
@@ -149,11 +149,11 @@ export function ClassesFilterModal({
                                         type="button"
                                         onClick={() => toggle("instructorIds", i.id)}
                                         className={`flex items-center gap-3 rounded-md px-4 py-2 transition-colors ${
-                                            on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
+                                            on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[var(--colors-border-secondary)] bg-white"
                                         }`}
                                     >
                                         <InstructorAvatar imageUrl={i.imageUrl} initials={i.initials} size={20} />
-                                        <span className="text-sm font-medium leading-5 text-[#344054]">{i.name}</span>
+                                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">{i.name}</span>
                                     </button>
                                 );
                             })}
@@ -161,7 +161,7 @@ export function ClassesFilterModal({
                     </div>
                 )}
 
-                {showInstructor && <div className="h-px w-full bg-[#e4e7ec]" />}
+                {showInstructor && <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />}
 
                 {/* Type — appointment session type (Private / Recovery), before Categories.
                     Same single-select segmented control as the Bookings filter. */}
@@ -174,11 +174,11 @@ export function ClassesFilterModal({
                     />
                 )}
 
-                {showType && <div className="h-px w-full bg-[#e4e7ec]" />}
+                {showType && <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />}
 
                 {/* Categories */}
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium leading-5 text-[#344054]">Categories</span>
+                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Categories</span>
                     <div className="flex flex-wrap gap-2">
                         {categories.map((c) => (
                             <FilterPill

@@ -91,27 +91,27 @@ export function AssignStaffModal({ shift, onClose }: {
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[16px] w-full max-w-[720px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[80vh] overflow-hidden">
                 {/* Header */}
-                <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[#e4e7ec]">
+                <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[var(--colors-border-secondary)]">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Assign staff</p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
-                            Pick a staff member to assign to <span className="font-medium text-[#344054]">{shift.name}</span>.
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Assign staff</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                            Pick a staff member to assign to <span className="font-medium text-[var(--colors-text-secondary)]">{shift.name}</span>.
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 {/* Search */}
                 <div className="px-6 pt-5 pb-4">
                     <div className="relative">
-                        <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085] pointer-events-none" />
+                        <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--colors-text-quaternary)] pointer-events-none" />
                         <input
                             type="text" value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Search staff by name or email"
-                            className="w-full h-10 pl-10 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            className="w-full h-10 pl-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </div>
                 </div>
@@ -119,7 +119,7 @@ export function AssignStaffModal({ shift, onClose }: {
                 {/* List */}
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
                     {available.length === 0 ? (
-                        <p className="text-[14px] text-[#667085] text-center py-8">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] text-center py-8">
                             {search
                                 ? "No matching staff found."
                                 : "No staff available at this branch yet."}
@@ -153,7 +153,7 @@ export function AssignStaffModal({ shift, onClose }: {
                                     <div key={s.id}
                                         className={cn(
                                             "grid grid-cols-[1fr_auto] items-center gap-4 py-3",
-                                            i > 0 && "border-t border-[#e4e7ec]",
+                                            i > 0 && "border-t border-[var(--colors-border-secondary)]",
                                         )}>
                                         {/* Staff info */}
                                         <div className="flex items-center gap-3 min-w-0">
@@ -167,12 +167,12 @@ export function AssignStaffModal({ shift, onClose }: {
                                                 </div>
                                             )}
                                             <div className="min-w-0">
-                                                <p className="text-[14px] font-medium text-[#101828] truncate">{s.fullName}</p>
-                                                <p className="text-[13px] text-[#667085] truncate">
+                                                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{s.fullName}</p>
+                                                <p className="text-[13px] text-[var(--colors-text-quaternary)] truncate">
                                                     {onThisShift
                                                         ? s.email
                                                         : otherShiftNames.length > 0
-                                                            ? <>On <span className="text-[#344054] font-medium">{otherShiftNames.join(", ")}</span></>
+                                                            ? <>On <span className="text-[var(--colors-text-secondary)] font-medium">{otherShiftNames.join(", ")}</span></>
                                                             : s.email}
                                                 </p>
                                             </div>
@@ -186,7 +186,7 @@ export function AssignStaffModal({ shift, onClose }: {
                                             <Button
                                                 variant="secondary-gray"
                                                 size="sm"
-                                                leftIcon={<UserPlus01 className="w-4 h-4 text-[#344054]" />}
+                                                leftIcon={<UserPlus01 className="w-4 h-4 text-[var(--colors-text-secondary)]" />}
                                                 onClick={() => handleAssign(s.id, s.fullName)}
                                             >
                                                 Assign

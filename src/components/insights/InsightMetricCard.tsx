@@ -60,8 +60,8 @@ export function InsightMetricCard({ metric }: { metric: Metric }) {
         <div
             onClick={clickable ? handleClick : undefined}
             className={cn(
-                "bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2 transition-all",
-                clickable && "cursor-pointer hover:border-[#7ba08c] hover:shadow-[0px_2px_6px_rgba(122,160,140,0.15)]",
+                "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6 flex flex-col gap-2 transition-all",
+                clickable && "cursor-pointer hover:border-[var(--colors-secondary-500)] hover:shadow-[0px_2px_6px_rgba(122,160,140,0.15)]",
             )}
         >
             {/* Label + info — the info icon opens a visible floating
@@ -72,7 +72,7 @@ export function InsightMetricCard({ metric }: { metric: Metric }) {
                 on drill-through cards). Descriptionless metrics still
                 render the icon greyed as a neutral divider. */}
             <div className="flex items-center justify-between gap-2">
-                <p className="text-[14px] text-[#667085]">{metric.label}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{metric.label}</p>
                 {metric.description ? (
                     <div
                         className="relative shrink-0 group/tip"
@@ -84,15 +84,15 @@ export function InsightMetricCard({ metric }: { metric: Metric }) {
                             type="button"
                             tabIndex={0}
                             aria-label={`About ${metric.label}`}
-                            className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd]"
+                            className="flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-[var(--colors-secondary-300)]"
                         >
-                            <InfoCircle className="w-5 h-5 text-[#98a2b3]" />
+                            <InfoCircle className="w-5 h-5 text-[var(--colors-fg-quaternary)]" />
                         </button>
                         <div
                             role="tooltip"
                             className={cn(
                                 "pointer-events-none absolute z-20 right-0 top-full mt-2 w-[260px]",
-                                "rounded-[8px] bg-[#101828] px-3 py-2 text-[12px] leading-[18px] text-white",
+                                "rounded-[8px] bg-[var(--colors-text-primary)] px-3 py-2 text-[12px] leading-[18px] text-white",
                                 "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
                                 "opacity-0 translate-y-[-2px] transition-all duration-150",
                                 "group-hover/tip:opacity-100 group-hover/tip:translate-y-0",
@@ -103,11 +103,11 @@ export function InsightMetricCard({ metric }: { metric: Metric }) {
                         </div>
                     </div>
                 ) : (
-                    <InfoCircle className="w-5 h-5 text-[#98a2b3] shrink-0" />
+                    <InfoCircle className="w-5 h-5 text-[var(--colors-fg-quaternary)] shrink-0" />
                 )}
             </div>
             {/* Value */}
-            <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{metric.value}</p>
+            <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-[32px]">{metric.value}</p>
             {/* Change row */}
             <div className="flex items-center gap-1">
                 {hasChange && (
@@ -123,7 +123,7 @@ export function InsightMetricCard({ metric }: { metric: Metric }) {
                         {Math.abs(metric.change!)}%
                     </span>
                 )}
-                <p className="text-[14px] text-[#667085]">{periodLabel}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{periodLabel}</p>
             </div>
         </div>
     );

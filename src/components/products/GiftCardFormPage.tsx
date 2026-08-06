@@ -57,15 +57,15 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
                         : complete
-                            ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3]",
+                            ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
                 {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />
                 )}
             </div>
             <span className={cn(
@@ -73,8 +73,8 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 active
                     ? "font-semibold text-[#3b5446]"
                     : complete
-                        ? "font-medium text-[#344054]"
-                        : "font-medium text-[#667085]",
+                        ? "font-medium text-[var(--colors-text-secondary)]"
+                        : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {step.label}
             </span>
@@ -90,10 +90,10 @@ function FormCard({ title, children, footer }: {
     footer: React.ReactNode;
 }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 max-w-[720px] w-[628px] h-full overflow-hidden">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
                 {title && (
-                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h2>
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h2>
                 )}
                 {children}
             </div>
@@ -105,7 +105,7 @@ function FormCard({ title, children, footer }: {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-5 w-full">
-            <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+            <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
             <div className="flex flex-col gap-4 w-full">{children}</div>
         </div>
     );
@@ -116,16 +116,16 @@ function FormField({ label, hint, error, children }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
             {error
                 ? <p className="text-[14px] text-[#d92d20] leading-5">{error}</p>
-                : hint && <p className="text-[14px] text-[#475467] leading-5">{hint}</p>}
+                : hint && <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{hint}</p>}
         </div>
     );
 }
 
-const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS = "h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 function TextInput({ value, onChange, placeholder, invalid = false }: {
     value: string; onChange: (v: string) => void; placeholder?: string; invalid?: boolean;
@@ -150,7 +150,7 @@ function Textarea({ value, onChange, placeholder, minHeight = 120 }: {
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
             style={{ minHeight }}
-            className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
+            className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y leading-6"
         />
     );
 }
@@ -159,8 +159,8 @@ function PriceInput({ value, onChange }: {
     value: string; onChange: (v: string) => void;
 }) {
     return (
-        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all h-10">
-            <div className="flex items-center pl-[14px] text-[16px] font-medium text-[#667085] shrink-0">AED</div>
+        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all h-10">
+            <div className="flex items-center pl-[14px] text-[16px] font-medium text-[var(--colors-text-quaternary)] shrink-0">AED</div>
             <div className="flex-1 min-w-0">
                 <NumericStringInput
                     value={value}
@@ -183,7 +183,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
             onClick={() => onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full transition-colors shrink-0",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <span className={cn(
                 "absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all",
@@ -201,11 +201,11 @@ function ToggleCard({ title, subtitle, on, onChange }: {
     return (
         <div className={cn(
             "bg-white rounded-[12px] p-4 flex items-center justify-between gap-3 transition-colors w-full",
-            on ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]",
+            on ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)]",
         )}>
             <div className="flex flex-col min-w-0 flex-1">
-                <p className="text-[14px] font-medium text-[#101828] leading-5">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-5">{subtitle}</p>
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{subtitle}</p>
             </div>
             <Toggle on={on} onChange={onChange} />
         </div>
@@ -460,37 +460,37 @@ interface PreviewState {
 function GiftCardPreviewCard({ data }: { data: PreviewState }) {
     const hasName = !!data.name.trim();
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden w-[400px] shrink-0 self-start">
             {/* Header */}
             <div className="flex flex-col">
                 <div className="pt-6 px-6 flex flex-col gap-1">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Template preview</p>
+                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
                     <p className="text-[14px] text-[#6e776f] leading-5">This is how your gift card will look like.</p>
                 </div>
                 <div className="h-5" />
-                <div className="h-px bg-[#e4e7ec]" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
             </div>
             {/* Stage */}
             <div className="bg-[#f6f6f3] px-6 py-10">
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden flex flex-col gap-4 pb-5 w-[352px] mx-auto">
                     <DecorativeBanner bannerHeight={120} iconBox={56} icon={Gift01} {...BANNER_TINTS.giftCard} />
                     <div className="flex flex-col gap-4 px-5">
                         <div className="flex flex-col gap-2">
-                            <p className="text-[18px] leading-[28px] font-medium text-[#101828] truncate">
+                            <p className="text-[18px] leading-[28px] font-medium text-[var(--colors-text-primary)] truncate">
                                 {hasName ? data.name : "Gift card name"}
                             </p>
                             <div className="flex gap-2 items-start">
                                 <div className="flex-1 min-w-0 flex items-center gap-1">
-                                    <BankNote01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                    <span className="text-[14px] font-medium text-[#667085] truncate">{data.amountLabel || "Amount"}</span>
+                                    <BankNote01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] truncate">{data.amountLabel || "Amount"}</span>
                                 </div>
                                 <div className="flex-1 min-w-0 flex items-center gap-1">
-                                    <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
-                                    <span className="text-[14px] font-medium text-[#667085] truncate">{data.durationLabel || "Valid until"}</span>
+                                    <ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] truncate">{data.durationLabel || "Valid until"}</span>
                                 </div>
                             </div>
                         </div>
-                        <p className="font-semibold text-[20px] leading-[30px] text-[#658774]">
+                        <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-secondary-600)]">
                             {data.priceLabel}
                         </p>
                     </div>
@@ -699,11 +699,11 @@ export function GiftCardFormPage({ mode, designId, initial, returnTo = "/admin/p
             {/* Top header (72px) */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={handleClose} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                         {isEdit ? "Edit gift card" : "Create new gift card"}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />

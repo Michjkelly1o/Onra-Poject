@@ -65,7 +65,7 @@ const AFTER_CUTOFF_OPTIONS: Array<RadioCardSpec<ClassesSettings["after_cutoff_mo
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
+            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{title}</p>
             {children}
         </div>
     );
@@ -76,9 +76,9 @@ function Field({ label, children, subtitle }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
-            {subtitle && <p className="text-[13px] text-[#667085] leading-[18px]">{subtitle}</p>}
+            {subtitle && <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">{subtitle}</p>}
         </div>
     );
 }
@@ -91,7 +91,7 @@ function Toggle({ on, onChange, ariaLabel }: {
             onClick={() => onChange(!on)}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -110,15 +110,15 @@ function RadioCard<V extends string>({
         <button type="button" onClick={onSelect}
             className={cn(
                 "text-left rounded-[12px] border-1 p-4 flex items-start gap-3 transition-colors bg-white",
-                selected ? "border-[#7ba08c]" : "border-[#e4e7ec] hover:border-[#d0d5dd]",
+                selected ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)] hover:border-[var(--colors-border-primary)]",
             )}>
             <div className="flex-1 flex flex-col gap-1 min-w-0">
-                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>
             </div>
             <div className={cn(
                 "w-4 h-4 rounded-full border-1 flex items-center justify-center shrink-0 mt-0.5",
-                selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white",
+                selected ? "border-[var(--colors-secondary-600)] bg-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)] bg-white",
             )}>
                 {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
@@ -137,8 +137,8 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot, readOnly }: {
         <div className={cn(
             "flex items-stretch h-10 w-full border-1 rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden transition-all",
             readOnly
-                ? "bg-[#f9fafb] border-[#e4e7ec]"
-                : "bg-white border-[#d0d5dd] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]",
+                ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)]"
+                : "bg-white border-[var(--colors-border-primary)] focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)]",
         )}>
             <input
                 type="number"
@@ -157,8 +157,8 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot, readOnly }: {
                     if (!Number.isNaN(parsed)) onChange(parsed);
                 }}
                 className={cn(
-                    "flex-1 min-w-0 px-[14px] text-[16px] placeholder:text-[#667085] focus:outline-none bg-transparent",
-                    readOnly ? "text-[#667085]" : "text-[#101828]",
+                    "flex-1 min-w-0 px-[14px] text-[16px] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent",
+                    readOnly ? "text-[var(--colors-text-quaternary)]" : "text-[var(--colors-text-primary)]",
                 )}
             />
             {suffixSlot}
@@ -189,29 +189,29 @@ function NotifyViaPicker({ selected, onChange }: {
         <>
             <button ref={btnRef} type="button"
                 onClick={() => setOpen(o => !o)}
-                className="w-full h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white flex items-center gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all">
+                className="w-full h-10 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white flex items-center gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all">
                 <div className="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
                     {selected.length === 0 && (
-                        <span className="text-[14px] text-[#667085]">Select channels</span>
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">Select channels</span>
                     )}
                     {visibleChips.map(v => (
                         <span key={v}
-                            className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-[6px] border-1 border-[#7ba08c] bg-[#f5fffa] text-[13px] text-[#3b5446] leading-[18px] shrink-0">
+                            className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-[6px] border-1 border-[var(--colors-secondary-500)] bg-[#f5fffa] text-[13px] text-[#3b5446] leading-[18px] shrink-0">
                             {NOTIFY_LABEL[v]}
                             <button type="button"
                                 onClick={e => { e.stopPropagation(); toggle(v); }}
-                                className="w-4 h-4 flex items-center justify-center text-[#3b5446] hover:text-[#101828]">
+                                className="w-4 h-4 flex items-center justify-center text-[#3b5446] hover:text-[var(--colors-text-primary)]">
                                 <XClose className="w-3 h-3" />
                             </button>
                         </span>
                     ))}
                     {hiddenCount > 0 && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] border-1 border-[#d0d5dd] bg-[#f9fafb] text-[13px] font-medium text-[#475467] leading-[18px] shrink-0">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] border-1 border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] text-[13px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] shrink-0">
                             +{hiddenCount}
                         </span>
                     )}
                 </div>
-                <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             <FixedDropdown
                 triggerRef={btnRef}
@@ -228,12 +228,12 @@ function NotifyViaPicker({ selected, onChange }: {
                             onClick={() => toggle(v)}
                             className={cn(
                                 "w-full text-left px-3 py-2 text-[14px] flex items-center gap-2 transition-colors",
-                                isSelected ? "text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                isSelected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}
                         >
                             <div className={cn(
                                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                                isSelected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                isSelected ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]",
                             )}>
                                 {isSelected && <Check className="w-[10px] h-[10px] text-white" />}
                             </div>
@@ -330,21 +330,21 @@ export function WaitlistPanel({ open, onClose }: {
             <div
                 style={{ right: shown ? 0 : -600 }}
                 className={cn(
-                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "fixed top-0 w-[600px] max-w-[100vw] h-full bg-white border-l border-[var(--colors-border-secondary)] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
                     "transition-[right] duration-300 ease-out",
                 )}
             >
                 {/* Header */}
-                <div className="flex items-start gap-4 px-6 border-b border-[#e4e7ec] shrink-0 py-4 select-none">
+                <div className="flex items-start gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4 select-none">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="font-semibold text-[18px] text-[#101828]">Waitlist</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Waitlist</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             When a booked customer cancels, the spot is offered to the waitlist in order.
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -385,13 +385,13 @@ export function WaitlistPanel({ open, onClose }: {
                     <Section title="Auto promotion cut off">
                         <div className={cn(
                             "rounded-[12px] border-1 px-4 py-3 flex items-start gap-4 bg-white transition-colors",
-                            matchCancel ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+                            matchCancel ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)]",
                         )}>
                             <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">
+                                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">
                                     Match the free cancellation window
                                 </p>
-                                <p className="text-[14px] text-[#667085] leading-[20px]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                     Recommended only auto add people while they can still cancel free, so no one is auto booked straight into a charge.
                                 </p>
                             </div>
@@ -448,7 +448,7 @@ export function WaitlistPanel({ open, onClose }: {
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[#e4e7ec] shrink-0 select-none">
+                <div className="flex justify-between gap-3 px-6 py-4 border-t border-[var(--colors-border-secondary)] shrink-0 select-none">
                     <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
                 </div>

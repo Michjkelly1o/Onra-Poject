@@ -44,7 +44,7 @@ const TONE: Record<Tone, string> = {
     purple: "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     // Inactive / Archived / Expired / Cancelled — same gray as
     // PlanStatusBadge `cancelled` / `expired` / StatusBadge `inactive`.
-    gray:   "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    gray:   "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 export interface BadgeProps {

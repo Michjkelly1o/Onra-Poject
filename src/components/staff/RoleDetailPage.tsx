@@ -61,8 +61,8 @@ const ROLE_STATUS_LABEL: Record<RoleStatus, string> = {
 };
 const ROLE_STATUS_BADGE: Record<RoleStatus, string> = {
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
@@ -71,8 +71,8 @@ const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const ROLE_TYPE_BADGE: Record<RoleType, string> = {
@@ -101,13 +101,13 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         title: s => `Archive ${s}?`,
         description: () => "Archived records are hidden from the default lists but kept for audit. You can recover later.",
         confirmLabel: "Archive", destructive: false,
-        Icon: Archive, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        Icon: Archive, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
     recover: {
         title: s => `Recover ${s}?`,
         description: () => "The record returns to Active and becomes assignable again.",
         confirmLabel: "Recover", destructive: false,
-        Icon: RefreshCcw01, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        Icon: RefreshCcw01, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
     deactivate: {
         title: s => `Deactivate ${s}?`,
@@ -119,7 +119,7 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         title: s => `Reactivate ${s}?`,
         description: () => "The record returns to Active and becomes assignable again.",
         confirmLabel: "Reactivate", destructive: false,
-        Icon: Check, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        Icon: Check, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
     delete: {
         title: s => `Delete ${s}?`,
@@ -142,7 +142,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors text-left",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}>
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
@@ -164,7 +164,7 @@ function Sidebar({ role, totalStaffs, onAction }: {
     const canDelete = !isLocked && !isArchive && totalStaffs === 0;
 
     return (
-        <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner — sage tint matches the role avatar chrome used everywhere
                 else in this module (form preview, list cells). */}
             <div className="relative shrink-0">
@@ -179,18 +179,18 @@ function Sidebar({ role, totalStaffs, onAction }: {
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div className="flex flex-col gap-1">
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{role.name}</h2>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">{role.description || "—"}</p>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{role.name}</h2>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{role.description || "—"}</p>
                     </div>
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Total staffs</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{totalStaffs} {totalStaffs === 1 ? "staff" : "staff"}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total staffs</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{totalStaffs} {totalStaffs === 1 ? "staff" : "staff"}</p>
                         </div>
                         {isLocked && (
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[#667085]">Access</p>
-                                <p className="text-[16px] font-medium text-[#101828]">System-managed</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Access</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">System-managed</p>
                             </div>
                         )}
                     </div>
@@ -198,8 +198,8 @@ function Sidebar({ role, totalStaffs, onAction }: {
 
                 {/* Actions footer */}
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Role actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Role actions</p>
                     <div className="flex flex-col gap-4">
                         {/* Active non-locked → full action set */}
                         {isActive && !isLocked && (
@@ -230,7 +230,7 @@ function Sidebar({ role, totalStaffs, onAction }: {
                         )}
                         {/* Locked Owner → note */}
                         {isLocked && (
-                            <p className="text-[14px] text-[#667085] leading-[20px]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                 The Owner role is system-managed and cannot be edited, archived, or deleted.
                             </p>
                         )}
@@ -265,7 +265,7 @@ const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>>
 
 function PermissionCellView({ value, ariaLabel }: { value: PermissionCell; ariaLabel: string }) {
     if (value === "na" || value === false) {
-        return <span className="text-[14px] text-[#98a2b3]" aria-label={`${ariaLabel}: not applicable`}>—</span>;
+        return <span className="text-[14px] text-[var(--colors-fg-quaternary)]" aria-label={`${ariaLabel}: not applicable`}>—</span>;
     }
     return <Check className="w-4 h-4 text-[#067647] inline-block" aria-label={ariaLabel} />;
 }
@@ -284,15 +284,15 @@ function PermissionSection({ section, role, defaultOpen = true }: {
         const mod = section.modules[0];
         const cellRow = role.permissions[section.key]?.[mod.key] ?? { create: "na", edit: "na", delete: "na", view: "na" };
         return (
-            <tr className="hover:bg-[#f9fafb] transition-colors">
-                <td className="px-4 py-3 border-b border-[#f2f4f7]">
+            <tr className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                <td className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)]">
                     <div className="flex items-center gap-2">
-                        <Icon className="w-5 h-5 text-[#475467] shrink-0" />
-                        <span className="text-[14px] text-[#344054]">{section.label}</span>
+                        <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0" />
+                        <span className="text-[14px] text-[var(--colors-text-secondary)]">{section.label}</span>
                     </div>
                 </td>
                 {(["create", "edit", "delete", "view"] as const).map(action => (
-                    <td key={action} className="px-4 py-3 border-b border-[#f2f4f7] text-center">
+                    <td key={action} className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)] text-center">
                         <div className="flex items-center justify-center">
                             <PermissionCellView value={cellRow[action]} ariaLabel={`${section.label} / ${action}`} />
                         </div>
@@ -305,25 +305,25 @@ function PermissionSection({ section, role, defaultOpen = true }: {
     return (
         <>
             <tr className="bg-white">
-                <td colSpan={5} className="px-4 py-3 border-b border-[#f2f4f7]">
+                <td colSpan={5} className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)]">
                     <button type="button" onClick={() => setOpen(p => !p)}
                         className="flex items-center gap-2 w-full text-left">
                         {open
-                            ? <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
-                            : <ChevronUp   className="w-4 h-4 text-[#667085] shrink-0 rotate-180" />
+                            ? <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            : <ChevronUp   className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 rotate-180" />
                         }
-                        <Icon className="w-5 h-5 text-[#475467] shrink-0" />
-                        <span className="text-[14px] font-semibold text-[#101828]">{section.label}</span>
+                        <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0" />
+                        <span className="text-[14px] font-semibold text-[var(--colors-text-primary)]">{section.label}</span>
                     </button>
                 </td>
             </tr>
             {open && section.modules.map(mod => {
                 const cellRow = role.permissions[section.key]?.[mod.key] ?? { create: "na", edit: "na", delete: "na", view: "na" };
                 return (
-                    <tr key={mod.key} className="hover:bg-[#f9fafb] transition-colors">
-                        <td className="px-4 py-3 text-[14px] text-[#344054] border-b border-[#f2f4f7] pl-[60px]">{mod.label}</td>
+                    <tr key={mod.key} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)] pl-[60px]">{mod.label}</td>
                         {(["create", "edit", "delete", "view"] as const).map(action => (
-                            <td key={action} className="px-4 py-3 border-b border-[#f2f4f7] text-center">
+                            <td key={action} className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)] text-center">
                                 <div className="flex items-center justify-center">
                                     <PermissionCellView value={cellRow[action]} ariaLabel={`${section.label} / ${mod.label} / ${action}`} />
                                 </div>
@@ -343,23 +343,23 @@ function PermissionsTab({ role }: { role: Role }) {
         <div className="px-6 pb-6 flex flex-col gap-6">
             {gl.enabled && (
                 <div className="flex flex-col gap-3">
-                    <p className="text-[14px] text-[#667085]">Grant limits</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Grant limits</p>
                     <div className="grid grid-cols-3 gap-4">
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] px-5 py-4 flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Total spent</p>
-                            <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-5 py-4 flex flex-col gap-1">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total spent</p>
+                            <p className="font-semibold text-[24px] leading-[32px] text-[var(--colors-text-primary)]">
                                 {gl.unlimited ? "Unlimited" : (gl.grants_per_month ?? 0)}
                             </p>
                         </div>
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] px-5 py-4 flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Max value per grant</p>
-                            <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-5 py-4 flex flex-col gap-1">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Max value per grant</p>
+                            <p className="font-semibold text-[24px] leading-[32px] text-[var(--colors-text-primary)]">
                                 {gl.unlimited ? "Unlimited" : `AED ${(gl.max_grant_value_aed ?? 0).toLocaleString("en-US")}`}
                             </p>
                         </div>
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] px-5 py-4 flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Remove unused grants</p>
-                            <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-5 py-4 flex flex-col gap-1">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Remove unused grants</p>
+                            <p className="font-semibold text-[24px] leading-[32px] text-[var(--colors-text-primary)]">
                                 {gl.allow_remove_unused ? "Yes" : "No"}
                             </p>
                         </div>
@@ -368,16 +368,16 @@ function PermissionsTab({ role }: { role: Role }) {
             )}
 
             <div className="flex flex-col gap-3">
-                <p className="text-[14px] text-[#667085]">Permissions</p>
-                <div className="w-full border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Permissions</p>
+                <div className="w-full border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
                     <table className="w-full border-collapse">
-                        <thead className="bg-[#f9fafb]">
+                        <thead className="bg-[var(--colors-bg-secondary)]">
                             <tr>
-                                <th className="text-left px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]">Module / Action</th>
-                                <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Create</th>
-                                <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Edit</th>
-                                <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Delete</th>
-                                <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">View</th>
+                                <th className="text-left px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]">Module / Action</th>
+                                <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Create</th>
+                                <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Edit</th>
+                                <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Delete</th>
+                                <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">View</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -426,16 +426,16 @@ function StatusFilterDropdown({ value, onChange }: {
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2 min-w-[160px]">
                     {STATUS_FILTER_OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => { onChange(value === opt.value ? null : opt.value); setOpen(false); }}
                             className={cn(
                                 "w-full flex items-center justify-between text-left px-5 py-3 text-[15px] font-medium transition-colors",
-                                value === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                value === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
-                            {value === opt.value && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt.value && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -453,8 +453,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]"
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]"
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" /> : checked ? <Check className="w-3 h-3" /> : null}
         </button>
@@ -636,8 +636,8 @@ function StaffListTab({ role, onChangeRoleFor }: {
             {/* Toolbar — "Total / N staffs" left, search + filter right */}
             <div className="flex items-end justify-between gap-3 flex-wrap">
                 <div className="flex flex-col">
-                    <p className="text-[14px] text-[#667085]">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">{scoped.length} {scoped.length === 1 ? "staff" : "staff"}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{scoped.length} {scoped.length === 1 ? "staff" : "staff"}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <ToolbarSearch value={search} onChange={setSearch} placeholder="Search staff..." />
@@ -698,7 +698,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
                                             onClick={() => handleAction(s, "view")}
                                             className={cn(
                                                 "transition-colors cursor-pointer",
-                                                isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                                                isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
                                             )}>
                                             <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <CheckboxCell checked={isSelected} onChange={() => toggleOne(s.id)} ariaLabel={`Select ${s.fullName}`} />
@@ -707,8 +707,8 @@ function StaffListTab({ role, onChangeRoleFor }: {
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <StaffAvatar staff={s} />
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className="text-[14px] font-medium text-[#101828] truncate">{s.fullName}</span>
-                                                        <span className="text-[13px] text-[#667085] truncate">{s.email}</span>
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{s.fullName}</span>
+                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)] truncate">{s.email}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -717,7 +717,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
                                                     {role.name}
                                                 </span>
                                             </td>
-                                            <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{branch}</td>
+                                            <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{branch}</td>
                                             <td className={TD}>
                                                 <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium", STAFF_STATUS_BADGE[s.status])}>
                                                     {STAFF_STATUS_LABEL[s.status]}
@@ -796,16 +796,16 @@ function StaffListTab({ role, onChangeRoleFor }: {
             {/* Floating bulk-action bar — same chrome as the gift-card list */}
             {selectionCount > 0 && (
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+                    <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                         <button type="button" onClick={clearSelection}
-                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                             {selectionCount} selected
-                            <XClose className="w-5 h-5 text-[#667085]" />
+                            <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                         </button>
                         <div className="flex items-center gap-3">
                             {hasArchivable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Archive className="w-5 h-5 text-[#667085]" />}
+                                    leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                                     onClick={() => setBulkPending("archive")}>
                                     Archive
                                 </Button>
@@ -893,10 +893,10 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
                 <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                     <button type="button" onClick={() => router.push(returnTo)}
                         aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">User role details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">User role details</h1>
                 </div>
                 <div className="flex-1 flex items-center justify-center px-6">
                     <div className="relative w-full max-w-[480px]" style={{ minHeight: 320 }}>
@@ -951,11 +951,11 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">User role details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">User role details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -966,8 +966,8 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
             <DetailPageShell
                 sidebar={<Sidebar role={role} totalStaffs={staffOnRole.length} onAction={handleSidebarAction} />}
                 main={
-                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
-                        <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px]">
+                        <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                             <DetailPageTabs
                                 tabs={[
                                     { key: "permissions", label: "Permissions" },

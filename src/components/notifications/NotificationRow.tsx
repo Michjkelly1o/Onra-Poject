@@ -11,14 +11,14 @@
 //
 // Visual chrome (from audit):
 //   • Outer button: `w-full flex gap-3 items-center text-left py-1.5 -mx-2
-//     px-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors`
-//   • Icon tile (48px): `shrink-0 w-12 h-12 rounded-[10px] bg-[#f9fafb]
-//     border-1 border-[#e4e7ec] flex items-center justify-center
+//     px-2 rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors`
+//   • Icon tile (48px): `shrink-0 w-12 h-12 rounded-[10px] bg-[var(--colors-bg-secondary)]
+//     border-1 border-[var(--colors-border-secondary)] flex items-center justify-center
 //     shadow-[0px_1.481px_1.481px_rgba(0,0,0,0.04)]`
-//   • Title: `text-[16px] font-semibold leading-[24px] text-[#344054]`
-//   • Time:  `text-[16px] font-normal leading-[24px] text-[#667085]`
-//   • Body:  `text-[16px] font-normal leading-[24px] text-[#475467]`
-//   • Unread dot: `shrink-0 w-[10px] h-[10px] bg-[#658774] rounded-full`
+//   • Title: `text-[16px] font-semibold leading-[24px] text-[var(--colors-text-secondary)]`
+//   • Time:  `text-[16px] font-normal leading-[24px] text-[var(--colors-text-quaternary)]`
+//   • Body:  `text-[16px] font-normal leading-[24px] text-[var(--colors-text-tertiary)]`
+//   • Unread dot: `shrink-0 w-[10px] h-[10px] bg-[var(--colors-secondary-600)] rounded-full`
 
 import type { Notification } from "@/lib/store";
 import { iconForNotification, relativeTime } from "./notification-utils";
@@ -40,37 +40,37 @@ export function NotificationRow({ n, onClick, branchLabel }: NotificationRowProp
         <button
             type="button"
             onClick={onClick}
-            className="w-full flex gap-3 items-center text-left py-1.5 -mx-2 px-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+            className="w-full flex gap-3 items-center text-left py-1.5 -mx-2 px-2 rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
         >
             {/* Featured icon tile (48px) */}
-            <div className="shrink-0 w-12 h-12 rounded-[10px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shadow-[0px_1.481px_1.481px_rgba(0,0,0,0.04)]">
-                <Icon className="w-6 h-6 text-[#475467]" />
+            <div className="shrink-0 w-12 h-12 rounded-[10px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shadow-[0px_1.481px_1.481px_rgba(0,0,0,0.04)]">
+                <Icon className="w-6 h-6 text-[var(--colors-text-tertiary)]" />
             </div>
             {/* Text block */}
             <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
                 <div className="flex items-baseline gap-[6px] flex-wrap">
-                    <p className="text-[16px] font-semibold leading-[24px] text-[#344054]">
+                    <p className="text-[16px] font-semibold leading-[24px] text-[var(--colors-text-secondary)]">
                         {n.title}
                     </p>
-                    <p className="text-[16px] font-normal leading-[24px] text-[#667085]">
+                    <p className="text-[16px] font-normal leading-[24px] text-[var(--colors-text-quaternary)]">
                         {relativeTime(n.createdAt)}
                     </p>
                     {/* Branch pill — surfaces which location the event
                         belongs to. Rendered only when the caller passes a
                         `branchLabel` (admin "All locations" view). */}
                     {branchLabel && (
-                        <span className="inline-flex items-center px-[8px] py-[2px] rounded-full border-1 border-[#e4e7ec] bg-[#f9fafb] text-[12px] font-medium text-[#475467] whitespace-nowrap">
+                        <span className="inline-flex items-center px-[8px] py-[2px] rounded-full border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] text-[12px] font-medium text-[var(--colors-text-tertiary)] whitespace-nowrap">
                             {branchLabel}
                         </span>
                     )}
                 </div>
-                <p className="text-[16px] font-normal leading-[24px] text-[#475467]">
+                <p className="text-[16px] font-normal leading-[24px] text-[var(--colors-text-tertiary)]">
                     {n.body}
                 </p>
             </div>
             {/* Unread dot — 10px, matches Figma */}
             {!n.isRead && (
-                <span className="shrink-0 w-[10px] h-[10px] bg-[#658774] rounded-full" />
+                <span className="shrink-0 w-[10px] h-[10px] bg-[var(--colors-secondary-600)] rounded-full" />
             )}
         </button>
     );

@@ -106,7 +106,7 @@ export function ProductArt({
     if (kind === "retail" && imageUrl) {
         return (
             <div
-                className={`relative shrink-0 overflow-hidden border border-[#e4e7ec] bg-white ${
+                className={`relative shrink-0 overflow-hidden border border-[var(--colors-border-secondary)] bg-white ${
                     sheet ? "h-[240px] w-full rounded-2xl" : "size-16 rounded-[10.67px]"
                 }`}
             >
@@ -118,7 +118,7 @@ export function ProductArt({
 
     return (
         <div
-            className={`relative flex shrink-0 items-center justify-center overflow-hidden border border-[#e4e7ec] bg-white ${
+            className={`relative flex shrink-0 items-center justify-center overflow-hidden border border-[var(--colors-border-secondary)] bg-white ${
                 sheet ? "h-[240px] w-full rounded-2xl" : "size-16 rounded-[10.67px]"
             }`}
         >

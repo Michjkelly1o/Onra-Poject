@@ -19,8 +19,8 @@ import { Button } from "@/components/ui/button";
 
 const MSG_MAX = 120;
 const FIELD =
-    "w-full rounded-lg border bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[#667085]";
-const FIELD_OK = "border-[#d0d5dd] focus:border-[var(--brand-primary)]";
+    "w-full rounded-lg border bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[var(--colors-text-quaternary)]";
+const FIELD_OK = "border-[var(--colors-border-primary)] focus:border-[var(--brand-primary)]";
 const FIELD_ERR = "border-[#fda29b] focus:border-[#fda29b]";
 
 export function GiftCardInfoContent({
@@ -69,9 +69,9 @@ export function GiftCardInfoContent({
                         type="button"
                         onClick={onDone}
                         aria-label="Back"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 )}
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
@@ -82,9 +82,9 @@ export function GiftCardInfoContent({
                         type="button"
                         onClick={onDone}
                         aria-label="Close"
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 ) : (
                     <span aria-hidden className="size-10 shrink-0" />
@@ -98,7 +98,7 @@ export function GiftCardInfoContent({
             <div className={isSheet ? "flex h-full flex-col" : "flex min-h-full flex-col"}>
                 <Header />
                 <div className="flex flex-1 items-center justify-center px-6 text-center">
-                    <p className="text-sm text-[#475467]">This gift card is no longer available.</p>
+                    <p className="text-sm text-[var(--colors-text-tertiary)]">This gift card is no longer available.</p>
                 </div>
             </div>
         );
@@ -165,12 +165,12 @@ export function GiftCardInfoContent({
                 }`}
             >
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium leading-5 text-[#344054]">Recipient name</label>
+                    <label className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Recipient name</label>
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recipient name…" className={`${FIELD} ${recipientError ? FIELD_ERR : FIELD_OK}`} />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium leading-5 text-[#344054]">Recipient email</label>
+                    <label className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Recipient email</label>
                     <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Recipient email…" className={`${FIELD} ${recipientError ? FIELD_ERR : FIELD_OK}`} />
                     {recipientError && (
                         <p className="text-sm font-normal leading-5 text-[#b42318]">We couldn&apos;t find a customer with this name and email.</p>
@@ -179,21 +179,21 @@ export function GiftCardInfoContent({
 
                 {isCustom && (
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-medium leading-5 text-[#344054]">Amount</label>
+                        <label className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Amount</label>
                         <div className="relative">
                             <input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="AED gift card amount" className={`${FIELD} pr-10 ${amountError ? FIELD_ERR : FIELD_OK}`} />
-                            <ChevronSelectorVertical className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[#667085]" aria-hidden />
+                            <ChevronSelectorVertical className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[var(--colors-text-quaternary)]" aria-hidden />
                         </div>
-                        <p className={`text-sm font-normal leading-5 ${amountError ? "text-[#b42318]" : "text-[#475467]"}`}>Enter an amount between AED {min} and AED {max}</p>
+                        <p className={`text-sm font-normal leading-5 ${amountError ? "text-[#b42318]" : "text-[var(--colors-text-tertiary)]"}`}>Enter an amount between AED {min} and AED {max}</p>
                     </div>
                 )}
 
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium leading-5 text-[#344054]">
-                        Add personal message <span className="font-normal text-[#667085]">(optional)</span>
+                    <label className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
+                        Add personal message <span className="font-normal text-[var(--colors-text-quaternary)]">(optional)</span>
                     </label>
                     <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, MSG_MAX))} rows={4} placeholder="e.g Happy birthday Paula! Enjoy your classes 🎉" className={`${FIELD} resize-none`} />
-                    <p className="text-sm font-normal leading-5 text-[#667085]">{message.length}/{MSG_MAX}</p>
+                    <p className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{message.length}/{MSG_MAX}</p>
                 </div>
             </div>
 

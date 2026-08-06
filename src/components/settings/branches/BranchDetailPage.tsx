@@ -27,7 +27,7 @@
 //   • archive  → Recover · Delete (only if 0 rooms)
 //
 // Confirm modal colors match the Products page (canonical reference):
-//   • archive / recover / reactivate → green tone (bg-[#e9fff3], primary button)
+//   • archive / recover / reactivate → green tone (bg-[var(--colors-secondary-50)], primary button)
 //   • deactivate / delete           → red tone (bg-[#fee4e2], destructive button)
 
 import { useEffect, useState } from "react";
@@ -75,8 +75,8 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         confirmLabel: "Archive",
         destructive: false,
         Icon: Archive,
-        iconBg: "bg-[#e9fff3]",
-        iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]",
+        iconColor: "text-[var(--colors-secondary-600)]",
     },
     recover: {
         title: s => `Recover ${s}?`,
@@ -84,8 +84,8 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         confirmLabel: "Recover",
         destructive: false,
         Icon: RefreshCcw01,
-        iconBg: "bg-[#e9fff3]",
-        iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]",
+        iconColor: "text-[var(--colors-secondary-600)]",
     },
     deactivate: {
         title: s => `Deactivate ${s}?`,
@@ -102,8 +102,8 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         confirmLabel: "Reactivate",
         destructive: false,
         Icon: Check,
-        iconBg: "bg-[#e9fff3]",
-        iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]",
+        iconColor: "text-[var(--colors-secondary-600)]",
     },
     delete: {
         title: s => `Delete ${s}?`,
@@ -134,7 +134,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
             onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors text-left",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}
         >
             <span className="w-5 h-5 shrink-0">{icon}</span>
@@ -160,15 +160,15 @@ function Sidebar({
     const isArchive  = branch.status === "archive";
 
     return (
-        <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-6 flex-1">
                     {/* Avatar + status badge overlap */}
                     <div className="relative">
-                        <div className="w-[88px] h-[88px] rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center overflow-hidden">
+                        <div className="w-[88px] h-[88px] rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center overflow-hidden">
                             {branch.image_url
                                 ? <img src={branch.image_url} alt={branch.name} className="w-full h-full object-cover" />
-                                : <Building01 className="w-10 h-10 text-[#475467]" />
+                                : <Building01 className="w-10 h-10 text-[var(--colors-text-tertiary)]" />
                             }
                         </div>
                         <div className="absolute top-0 right-0">
@@ -178,8 +178,8 @@ function Sidebar({
 
                     {/* Name + email */}
                     <div className="flex flex-col gap-1">
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{branch.name}</h2>
-                        <p className="text-[14px] text-[#667085] truncate">{branch.email ?? emailFromName(branch.name)}</p>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{branch.name}</h2>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{branch.email ?? emailFromName(branch.name)}</p>
                     </div>
 
                     {/* Metadata stack — mirrors Figma 4098-210481. */}
@@ -194,8 +194,8 @@ function Sidebar({
 
                 {/* Actions footer */}
                 <div className="px-6 pb-6 pt-6 shrink-0">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Branch actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Branch actions</p>
                     <div className="flex flex-col gap-4">
                         {isActive && (
                             <>
@@ -237,8 +237,8 @@ function Sidebar({
 function Metadata({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <div className="text-[16px] font-medium text-[#101828] break-words">{value}</div>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <div className="text-[16px] font-medium text-[var(--colors-text-primary)] break-words">{value}</div>
         </div>
     );
 }
@@ -247,7 +247,7 @@ function Metadata({ label, value }: { label: string; value: React.ReactNode }) {
  *  client Jul 2026: red read as an error state on non-working days. */
 function WorkingDays({ hours }: { hours: BusinessHours[] }) {
     return (
-        <p className="font-semibold text-[16px] leading-[24px] text-[#101828]">
+        <p className="font-semibold text-[16px] leading-[24px] text-[var(--colors-text-primary)]">
             {DOW_ORDER.map((dow, i) => {
                 const h = hours.find(r => r.day_of_week === dow);
                 const closed = !h || h.is_closed;
@@ -256,7 +256,7 @@ function WorkingDays({ hours }: { hours: BusinessHours[] }) {
                         key={dow}
                         className={cn(
                             "mr-[10px] last:mr-0",
-                            closed ? "text-[#98a2b3]" : "text-[#101828]",
+                            closed ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-primary)]",
                         )}
                     >
                         {DAY_SHORT[i]}
@@ -275,8 +275,8 @@ function WorkingDays({ hours }: { hours: BusinessHours[] }) {
 function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-0">
-            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-            <div className="text-[16px] font-medium text-[#101828] leading-6 break-words">{value}</div>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+            <div className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 break-words">{value}</div>
         </div>
     );
 }
@@ -302,7 +302,7 @@ function DetailsTab({
         <div className="px-6 pb-6 flex flex-col gap-8">
             {/* Branch details */}
             <section className="flex flex-col gap-3">
-                <p className="text-[16px] font-medium text-[#667085] leading-6">Branch details</p>
+                <p className="text-[16px] font-medium text-[var(--colors-text-quaternary)] leading-6">Branch details</p>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                     <DetailField label="Branch name"    value={branch.name} />
                     <DetailField label="Email"        value={branch.email ?? emailFromName(branch.name)} />
@@ -318,10 +318,10 @@ function DetailsTab({
                                         const closed = !h || h.is_closed;
                                         return (
                                             <div key={dow} className="flex items-center gap-3">
-                                                <p className="font-medium text-[16px] text-[#101828] leading-6 w-[100px]">{DAY_LABELS[i]}</p>
+                                                <p className="font-medium text-[16px] text-[var(--colors-text-primary)] leading-6 w-[100px]">{DAY_LABELS[i]}</p>
                                                 <p className={cn(
                                                     "text-[14px] leading-5",
-                                                    closed ? "text-[#98a2b3]" : "text-[#667085]",
+                                                    closed ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-quaternary)]",
                                                 )}>
                                                     {closed ? "(Closed)" : `(${to12h(h!.open_time)} - ${to12h(h!.close_time)})`}
                                                 </p>
@@ -340,8 +340,8 @@ function DetailsTab({
                     <DetailField
                         label="Timezone"
                         value={
-                            <span className="flex items-center gap-2 text-[16px] font-medium text-[#101828] leading-6">
-                                <Globe01 className="w-4 h-4 text-[#667085] shrink-0" />
+                            <span className="flex items-center gap-2 text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">
+                                <Globe01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                 {timezoneLabel(branch.timezone ?? resolveBranchTimezone(branch.country, branch.state, branch.city))}
                             </span>
                         }
@@ -353,17 +353,17 @@ function DetailsTab({
                 list (no outer border, no header fill) — the only chrome is
                 the `divide-y` between rows. Every branch can own rooms. */}
             <section className="flex flex-col gap-3">
-                <p className="text-[16px] font-medium text-[#667085] leading-6">Rooms</p>
+                <p className="text-[16px] font-medium text-[var(--colors-text-quaternary)] leading-6">Rooms</p>
                 <div className="w-full">
-                    <div className="grid grid-cols-[1fr_140px_88px_64px] border-b border-[#e4e7ec]">
-                        <div className="px-0 py-3 text-[12px] font-medium text-[#475467]">Room name</div>
-                        <div className="px-6 py-3 text-[12px] font-medium text-[#475467]">Status</div>
+                    <div className="grid grid-cols-[1fr_140px_88px_64px] border-b border-[var(--colors-border-secondary)]">
+                        <div className="px-0 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)]">Room name</div>
+                        <div className="px-6 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)]">Status</div>
                         <div className="px-6 py-3" />
                         <div className="px-0 py-3" />
                     </div>
                     {rooms.length === 0 ? (
                         <div className="py-12 text-center">
-                            <p className="text-[14px] text-[#475467]">No rooms in this branch yet.</p>
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)]">No rooms in this branch yet.</p>
                         </div>
                     ) : rooms.map((room, idx) => {
                         const isLast = idx === rooms.length - 1;
@@ -372,18 +372,18 @@ function DetailsTab({
                                 key={room.id}
                                 onClick={() => onRoomView(room)}
                                 className={cn(
-                                    "grid grid-cols-[1fr_140px_88px_64px] items-center bg-white hover:bg-[#f9fafb] transition-colors cursor-pointer",
-                                    !isLast && "border-b border-[#e4e7ec]",
+                                    "grid grid-cols-[1fr_140px_88px_64px] items-center bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer",
+                                    !isLast && "border-b border-[var(--colors-border-secondary)]",
                                 )}
                             >
                                 {/* Col 1 — room name + capacity */}
                                 <div className="flex items-center gap-3 pl-0 pr-6 py-4 min-w-0">
-                                    <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border-1 border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
-                                        <LayoutGrid01 className="w-5 h-5 text-[#475467]" />
+                                    <div className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
+                                        <LayoutGrid01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                                     </div>
                                     <div className="flex flex-col min-w-0">
-                                        <p className="text-[14px] font-medium text-[#101828] leading-5 truncate">{room.name}</p>
-                                        <p className="text-[14px] text-[#475467] leading-5">{room.capacity} max</p>
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 truncate">{room.name}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{room.capacity} max</p>
                                     </div>
                                 </div>
                                 {/* Col 2 — status */}
@@ -406,18 +406,18 @@ function DetailsTab({
                                         type="button"
                                         onClick={() => onToggleRoomActions(room.id)}
                                         onBlur={() => setTimeout(onCloseRoomActions, 100)}
-                                        className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#f2f4f7] transition-colors"
+                                        className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[var(--colors-bg-tertiary)] transition-colors"
                                         aria-label="Open actions"
                                     >
-                                        <DotsVertical className="w-4 h-4 text-[#667085]" />
+                                        <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                                     </button>
                                     {roomActionsId === room.id && (
-                                        <div className="absolute right-2 top-[calc(100%-4px)] z-30 w-[200px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1">
-                                            <RoomMenuItem icon={<Eye className="w-4 h-4 text-[#667085]" />}      label="View details" onClick={() => onRoomView(room)} />
-                                            <RoomMenuItem icon={<Pencil01 className="w-4 h-4 text-[#667085]" />} label="Edit room"     onClick={() => onRoomEdit(room)} />
+                                        <div className="absolute right-2 top-[calc(100%-4px)] z-30 w-[200px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1">
+                                            <RoomMenuItem icon={<Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}      label="View details" onClick={() => onRoomView(room)} />
+                                            <RoomMenuItem icon={<Pencil01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Edit room"     onClick={() => onRoomEdit(room)} />
                                             {room.status !== "archive"
-                                                ? <RoomMenuItem icon={<Archive className="w-4 h-4 text-[#667085]" />}     label="Archive"  onClick={() => onRoomAction(room, "archive")} />
-                                                : <RoomMenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[#667085]" />} label="Recover"  onClick={() => onRoomAction(room, "recover")} />
+                                                ? <RoomMenuItem icon={<Archive className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}     label="Archive"  onClick={() => onRoomAction(room, "archive")} />
+                                                : <RoomMenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Recover"  onClick={() => onRoomAction(room, "recover")} />
                                             }
                                         </div>
                                     )}
@@ -436,10 +436,10 @@ function RoomMenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: 
         <button
             type="button"
             onMouseDown={onClick}
-            className="w-full flex items-center gap-3 px-3 py-2 mx-1 rounded-[6px] hover:bg-[#f9fafb] text-left"
+            className="w-full flex items-center gap-3 px-3 py-2 mx-1 rounded-[6px] hover:bg-[var(--colors-bg-secondary)] text-left"
         >
             {icon}
-            <span className="text-[14px] font-medium text-[#344054]">{label}</span>
+            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
         </button>
     );
 }
@@ -456,7 +456,7 @@ function Toggle({ on, onChange, ariaLabel }: { on: boolean; onChange: () => void
             onClick={onChange}
             className={cn(
                 "relative w-9 h-5 rounded-full transition-colors flex items-center px-0.5 shrink-0",
-                on ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                on ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
             )}
         >
             <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_rgba(16,24,40,0.1),0px_1px_2px_rgba(16,24,40,0.06)]" />
@@ -573,11 +573,11 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
                         type="button"
                         onClick={handleClose}
                         aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Branch details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Branch details</h1>
                 </div>
                 <div className="flex-1 flex items-center justify-center px-6">
                     <div className="relative w-full max-w-[480px]" style={{ minHeight: 320 }}>
@@ -599,12 +599,12 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
                     type="button"
                     onClick={handleClose}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                 >
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Branch details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Branch details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -622,8 +622,8 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
                     />
                 }
                 main={
-                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
-                        <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px]">
+                        <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                             <DetailPageTabs
                                 tabs={[{ key: "details", label: "Details" }]}
                                 activeKey={tab}

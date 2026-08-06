@@ -355,22 +355,22 @@ export function useTeamActivity(limit: number = MAX_TEAM_ACTIVITY): TeamActivity
 export function TeamActivityRow({ item }: { item: TeamActivityItem }) {
     const Icon = item.icon;
     return (
-        <div className="w-full flex gap-3 items-center py-1.5 -mx-2 px-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors">
+        <div className="w-full flex gap-3 items-center py-1.5 -mx-2 px-2 rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
             {/* Featured icon tile (48px) — matches NotificationRow */}
-            <div className="shrink-0 w-12 h-12 rounded-[10px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shadow-[0px_1.481px_1.481px_rgba(0,0,0,0.04)]">
-                <Icon className="w-6 h-6 text-[#475467]" />
+            <div className="shrink-0 w-12 h-12 rounded-[10px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shadow-[0px_1.481px_1.481px_rgba(0,0,0,0.04)]">
+                <Icon className="w-6 h-6 text-[var(--colors-text-tertiary)]" />
             </div>
             {/* Text block — same 16px scale as NotificationRow */}
             <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
                 <div className="flex items-baseline gap-[6px] flex-wrap">
-                    <p className="text-[16px] font-semibold leading-[24px] text-[#344054]">
+                    <p className="text-[16px] font-semibold leading-[24px] text-[var(--colors-text-secondary)]">
                         {item.name}
                     </p>
-                    <p className="text-[16px] font-normal leading-[24px] text-[#667085]">
+                    <p className="text-[16px] font-normal leading-[24px] text-[var(--colors-text-quaternary)]">
                         {item.timeAgo}
                     </p>
                 </div>
-                <p className="text-[16px] font-normal leading-[24px] text-[#475467]">
+                <p className="text-[16px] font-normal leading-[24px] text-[var(--colors-text-tertiary)]">
                     {item.description}
                 </p>
             </div>

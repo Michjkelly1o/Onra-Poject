@@ -17,8 +17,8 @@ export interface CardFormData {
 }
 
 const FIELD =
-    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
-const LABEL = "text-sm font-medium leading-5 text-[#344054]";
+    "w-full rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] outline-none transition-colors placeholder:text-[var(--colors-text-quaternary)] focus:border-[var(--brand-primary)]";
+const LABEL = "text-sm font-medium leading-5 text-[var(--colors-text-secondary)]";
 
 function fmtNumber(v: string): string {
     return v
@@ -65,9 +65,9 @@ export function CardForm({
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</h1>
                 {onDelete ? (
@@ -75,7 +75,7 @@ export function CardForm({
                         type="button"
                         onClick={onDelete}
                         aria-label="Remove card"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
                         <Trash01 className="size-5 text-[#d92d20]" aria-hidden />
                     </button>
@@ -86,18 +86,18 @@ export function CardForm({
 
             <div className="flex flex-1 flex-col gap-5 px-4 pb-4 pt-[80px]">
                 {/* Card illustration */}
-                <div className="rounded-2xl bg-gradient-to-br from-[#eaecf0] to-[#f8f9fc] p-5 shadow-[0px_2px_8px_rgba(16,24,40,0.08)]">
+                <div className="rounded-2xl bg-gradient-to-br from-[var(--colors-border-tertiary)] to-[#f8f9fc] p-5 shadow-[0px_2px_8px_rgba(16,24,40,0.08)]">
                     <div className="flex items-center justify-between">
                         <div className="h-6 w-9 rounded bg-[#cbd2dd]" />
-                        <span className="text-[#98a2b3]">)))</span>
+                        <span className="text-[var(--colors-fg-quaternary)]">)))</span>
                     </div>
                     <p className="mt-6 font-mono text-lg tracking-[0.2em] text-[var(--brand-text)]">
                         {number || "1234 5678 9000 0000"}
                     </p>
                     <div className="mt-3 flex items-end justify-between">
                         <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-[#344054]">{holder || "Card holder"}</p>
-                            <p className="text-sm text-[#475467]">{expiry || "MM / YY"}</p>
+                            <p className="truncate text-sm font-medium text-[var(--colors-text-secondary)]">{holder || "Card holder"}</p>
+                            <p className="text-sm text-[var(--colors-text-tertiary)]">{expiry || "MM / YY"}</p>
                         </div>
                         <span className="text-base font-bold italic text-[#1a1f71]">VISA</span>
                     </div>

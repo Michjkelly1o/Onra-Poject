@@ -88,7 +88,7 @@ function SmallToggle({ on, onChange, ariaLabel }: {
             onClick={() => onChange(!on)}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -140,49 +140,49 @@ function TaxRateSelect({ value, rates, onChange, onCreateRate, disabled }: {
                 disabled={disabled}
                 onClick={() => setOpen(p => !p)}
                 className={cn(
-                    "w-full h-11 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#fbfffd] transition-colors",
+                    "w-full h-11 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#fbfffd] transition-colors",
                     disabled && "opacity-60 cursor-not-allowed",
                 )}>
                 <span className={cn(
                     "flex-1 text-left text-[16px] leading-[24px] truncate",
-                    selected ? "text-[#101828]" : "text-[#667085]",
+                    selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
                 )}>
                     {triggerLabel}
                 </span>
-                <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", open && "rotate-180")} />
             </button>
 
             {open && (
-                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
+                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
                     {/* Add new tax rate — header item with + icon */}
                     <button type="button"
                         onClick={() => { setOpen(false); onCreateRate(); }}
-                        className="w-full flex items-center gap-2 px-3 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Plus className="w-5 h-5 text-[#667085]" />
+                        className="w-full flex items-center gap-2 px-3 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <Plus className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                         Add new tax rate
                     </button>
-                    <div className="h-px bg-[#e4e7ec] my-1 mx-2" />
+                    <div className="h-px bg-[var(--colors-bg-quaternary)] my-1 mx-2" />
 
                     {/* No tax rate option */}
                     <button type="button"
                         onClick={() => { setOpen(false); onChange(undefined); }}
                         className={cn(
-                            "w-full flex items-center justify-between px-3 py-[10px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors",
-                            value === undefined ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054]",
+                            "w-full flex items-center justify-between px-3 py-[10px] text-[14px] font-medium hover:bg-[var(--colors-bg-secondary)] transition-colors",
+                            value === undefined ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)]",
                         )}>
                         <span>No tax rate</span>
-                        {value === undefined && <Check className="w-5 h-5 text-[#658774]" />}
+                        {value === undefined && <Check className="w-5 h-5 text-[var(--colors-secondary-600)]" />}
                     </button>
 
                     {visible.map(r => (
                         <button key={r.id} type="button"
                             onClick={() => { setOpen(false); onChange(r.id); }}
                             className={cn(
-                                "w-full flex items-center justify-between px-3 py-[10px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors",
-                                value === r.id ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054]",
+                                "w-full flex items-center justify-between px-3 py-[10px] text-[14px] font-medium hover:bg-[var(--colors-bg-secondary)] transition-colors",
+                                value === r.id ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)]",
                             )}>
                             <span>{r.name} ({r.ratePercentage}%)</span>
-                            {value === r.id && <Check className="w-5 h-5 text-[#658774]" />}
+                            {value === r.id && <Check className="w-5 h-5 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -260,23 +260,23 @@ function LocationSelect({ rule, branchOptions, onChange, disabled }: {
                 disabled={disabled}
                 onClick={() => setOpen(p => !p)}
                 className={cn(
-                    "w-full h-11 px-[14px] flex items-center gap-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#fbfffd] transition-colors",
+                    "w-full h-11 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#fbfffd] transition-colors",
                     disabled && "opacity-60 cursor-not-allowed",
                 )}>
                 <span className={cn(
                     "flex-1 text-left text-[16px] leading-[24px] truncate",
-                    isPlaceholder ? "text-[#667085]" : "text-[#101828]",
+                    isPlaceholder ? "text-[var(--colors-text-quaternary)]" : "text-[var(--colors-text-primary)]",
                 )}>
                     {triggerLabel}
                 </span>
-                <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", open && "rotate-180")} />
             </button>
 
             {open && (
-                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
+                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
                     <button type="button"
                         onClick={toggleSelectAll}
-                        className="w-full flex items-center gap-3 px-3 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        className="w-full flex items-center gap-3 px-3 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         <CheckboxBox checked={selectAllChecked} />
                         Select all
                     </button>
@@ -285,7 +285,7 @@ function LocationSelect({ rule, branchOptions, onChange, disabled }: {
                         return (
                             <button key={b.id} type="button"
                                 onClick={() => toggleOne(b.id)}
-                                className="w-full flex items-center gap-3 px-3 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                                className="w-full flex items-center gap-3 px-3 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                 <CheckboxBox checked={checked} />
                                 {b.name}
                             </button>
@@ -301,7 +301,7 @@ function CheckboxBox({ checked }: { checked: boolean }) {
     return (
         <span className={cn(
             "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-            checked ? "bg-[#658774] border-[#658774] text-white" : "bg-white border-[#d0d5dd]",
+            checked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white" : "bg-white border-[var(--colors-border-primary)]",
         )}>
             {checked && <Check className="w-3 h-3" />}
         </span>
@@ -338,9 +338,9 @@ function RuleStatusModal({ action, onConfirm, onCancel }: {
             variant: "destructive" as const,
         }
         : {
-            iconBg: "bg-[#e9fff3]",
+            iconBg: "bg-[var(--colors-secondary-50)]",
             Icon: Check,
-            iconColor: "text-[#658774]",
+            iconColor: "text-[var(--colors-secondary-600)]",
             title: "Reactivate this tax rule?",
             body: "This tax rule will resume applying to future sales in the selected locations.",
             confirmLabel: "Reactivate",
@@ -352,16 +352,16 @@ function RuleStatusModal({ action, onConfirm, onCancel }: {
             <div className="relative bg-white rounded-[12px] w-[400px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
                     aria-label="Close"
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", cfg.iconBg)}>
                         <cfg.Icon className={cn("w-6 h-6", cfg.iconColor)} />
                     </div>
                     <div className="flex flex-col gap-1 text-center">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{cfg.body}</p>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{cfg.title}</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{cfg.body}</p>
                     </div>
                 </div>
                 <div className="flex gap-3 px-6 pt-6 pb-6">
@@ -392,18 +392,18 @@ function DeleteTaxRuleModal({ onConfirm, onCancel }: {
             <div className="relative bg-white rounded-[12px] w-[400px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
                     aria-label="Close"
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <Trash02 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                             Delete this tax rule?
                         </h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             Are you sure you want to delete this tax rule? This will remove all of the information.
                         </p>
                     </div>
@@ -460,10 +460,10 @@ function TaxRuleRow({ rule, rates, branchOptions, onUpdate, onToggle, onDelete, 
                 className={cn(
                     "w-11 h-11 flex items-center justify-center border-1 rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors shrink-0",
                     canDelete
-                        ? "border-[#d0d5dd] hover:bg-[#fef3f2]"
-                        : "border-[#e4e7ec] cursor-not-allowed opacity-50",
+                        ? "border-[var(--colors-border-primary)] hover:bg-[#fef3f2]"
+                        : "border-[var(--colors-border-secondary)] cursor-not-allowed opacity-50",
                 )}>
-                <Trash02 className={cn("w-5 h-5", canDelete ? "text-[#d92d20]" : "text-[#98a2b3]")} />
+                <Trash02 className={cn("w-5 h-5", canDelete ? "text-[#d92d20]" : "text-[var(--colors-fg-quaternary)]")} />
             </button>
         </div>
     );
@@ -548,15 +548,15 @@ function CategoryAccordion({
             "flex flex-col gap-3",
             nested
                 ? "pt-1"
-                : "border-1 border-[#e4e7ec] rounded-[16px] p-4 gap-4",
+                : "border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-4 gap-4",
         )}>
             {/* Header — clickable only when NOT nested (the parent
                 accordion owns expand/collapse for nested sub-rows). */}
             {nested ? (
                 <div className="flex items-center justify-between w-full gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon className="w-4 h-4 text-[#475467] shrink-0" />
-                        <span className="text-[14px] font-medium text-[#101828] leading-[20px]">
+                        <Icon className="w-4 h-4 text-[var(--colors-text-tertiary)] shrink-0" />
+                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">
                             {meta.title}
                         </span>
                     </div>
@@ -565,20 +565,20 @@ function CategoryAccordion({
                 <button type="button" onClick={onToggleOpen}
                     className="flex items-center justify-between w-full gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-                            <Icon className="w-5 h-5 text-[#475467]" />
+                        <div className="relative shrink-0 size-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center">
+                            <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
                         </div>
                         <div className="flex flex-col items-start text-left min-w-0">
-                            <span className="text-[14px] font-medium text-[#101828] leading-[20px] flex items-center gap-1.5">
+                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px] flex items-center gap-1.5">
                                 {meta.title}
                                 {headerTooltip && (
                                     <HoverTooltip text={headerTooltip}>
-                                        <InfoCircle className="w-4 h-4 text-[#98a2b3]" aria-label="info" />
+                                        <InfoCircle className="w-4 h-4 text-[var(--colors-fg-quaternary)]" aria-label="info" />
                                     </HoverTooltip>
                                 )}
                             </span>
-                            <span className="text-[14px] text-[#667085] leading-[20px]">
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                 {rules.length} tax rule{rules.length === 1 ? "" : "s"}
                             </span>
                         </div>
@@ -589,7 +589,7 @@ function CategoryAccordion({
                                 {headerPill}
                             </span>
                         )}
-                        {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
+                        {open ? <ChevronUp className="w-5 h-5 text-[var(--colors-text-quaternary)]" /> : <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                     </div>
                 </button>
             )}
@@ -598,7 +598,7 @@ function CategoryAccordion({
             {bodyVisible && (
                 <div className="flex flex-col gap-4 py-2 w-full">
                     {rules.length === 0 ? (
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             No tax rules yet. Add one to apply tax to this category.
                         </p>
                     ) : (
@@ -626,7 +626,7 @@ function CategoryAccordion({
 
                     {/* "+ Add another tax rule" link — same visual as Figma */}
                     <button type="button" onClick={onAddRule}
-                        className="flex items-center gap-[6px] self-start text-[14px] font-semibold text-[#475467] hover:text-[#101828] transition-colors">
+                        className="flex items-center gap-[6px] self-start text-[14px] font-semibold text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] transition-colors">
                         <Plus className="w-5 h-5" />
                         Add another tax rule
                     </button>
@@ -819,11 +819,11 @@ export function ApplyTaxRatesView({ kind, showOnly, onCreateRate }: ApplyTaxRate
     }
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-6 min-h-[760px]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-6 min-h-[760px]">
             {/* Header */}
             <div className="flex flex-col gap-1">
-                <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">Apply tax rates</p>
-                <p className="text-[14px] text-[#475467] leading-[20px]">Set tax rules for all categories</p>
+                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">Apply tax rates</p>
+                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Set tax rules for all categories</p>
             </div>
 
             {/* Category stack */}
@@ -977,29 +977,29 @@ function ServicesParentCard({ open, onToggleOpen, servicesRuleCount, inheritedRa
     children: React.ReactNode;
 }) {
     return (
-        <div className="border-1 border-[#e4e7ec] rounded-[16px] p-4 flex flex-col gap-4">
+        <div className="border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-4 flex flex-col gap-4">
             {/* Header — clickable to expand/collapse */}
             <button type="button" onClick={onToggleOpen}
                 className="flex items-center justify-between w-full gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative shrink-0 size-10 rounded-full bg-[#f2f4f7] flex items-center justify-center">
-                        <Package className="w-5 h-5 text-[#475467]" />
+                    <div className="relative shrink-0 size-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center">
+                        <Package className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                         <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
                     </div>
                     <div className="flex flex-col items-start text-left min-w-0">
-                        <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">Services</span>
-                        <span className="text-[12px] text-[#667085] leading-[18px]">
+                        <span className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">Services</span>
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">
                             Memberships · Packages · Appointments
                         </span>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                     {summaryPill && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#475467]">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]">
                             {summaryPill}
                         </span>
                     )}
-                    {open ? <ChevronUp className="w-5 h-5 text-[#667085]" /> : <ChevronDown className="w-5 h-5 text-[#667085]" />}
+                    {open ? <ChevronUp className="w-5 h-5 text-[var(--colors-text-quaternary)]" /> : <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                 </div>
             </button>
 
@@ -1010,9 +1010,9 @@ function ServicesParentCard({ open, onToggleOpen, servicesRuleCount, inheritedRa
                         no rules yet (the rate inheritance only makes sense
                         once at least one rule is configured). */}
                     {servicesRuleCount > 0 && inheritedRate !== undefined && (
-                        <div className="flex items-center gap-3 px-4 py-3 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px]">
-                            <Lightbulb02 className="w-4 h-4 text-[#475467] shrink-0" />
-                            <p className="text-[13px] text-[#475467] leading-[18px]">
+                        <div className="flex items-center gap-3 px-4 py-3 bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px]">
+                            <Lightbulb02 className="w-4 h-4 text-[var(--colors-text-tertiary)] shrink-0" />
+                            <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-[18px]">
                                 All service categories inherit VAT {inheritedRate}% unless overridden below.
                             </p>
                         </div>

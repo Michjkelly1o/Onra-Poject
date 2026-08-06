@@ -71,8 +71,8 @@ const ROLE_STATUS_LABEL: Record<RoleStatus, string> = {
 };
 const ROLE_STATUS_BADGE: Record<RoleStatus, string> = {
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 // ─── Staff status labels & badge styles ────────────────────────────────────
@@ -83,8 +83,8 @@ const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 // ─── Role-type badge palette (per Figma staff tab) ─────────────────────────
@@ -117,7 +117,7 @@ function ToggleSwitch({ on, disabled, onChange }: {
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
                 disabled && "opacity-40 cursor-not-allowed",
-                on ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                on ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
         </button>
@@ -150,8 +150,8 @@ function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -201,13 +201,13 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
     const items: { label: string; icon: React.ReactNode; onClick: () => void }[] =
         variant === "staff-only"
             ? [
-                { label: "Add staff",         icon: <UserPlus01 className="w-4 h-4 text-[#667085]" />,    onClick: onAddStaff },
-                { label: "Add shift",         icon: <ClockPlus className="w-4 h-4 text-[#667085]" />,     onClick: () => onAddShift?.() },
-                { label: "Add time off",  icon: <AlarmClockOff className="w-4 h-4 text-[#667085]" />, onClick: () => onAddBlockedTime?.() },
+                { label: "Add staff",         icon: <UserPlus01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,    onClick: onAddStaff },
+                { label: "Add shift",         icon: <ClockPlus className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,     onClick: () => onAddShift?.() },
+                { label: "Add time off",  icon: <AlarmClockOff className="w-4 h-4 text-[var(--colors-text-quaternary)]" />, onClick: () => onAddBlockedTime?.() },
             ]
             : [
-                { label: "Add role",  icon: <UserSquare className="w-4 h-4 text-[#667085]" />,  onClick: onAddRole  },
-                { label: "Add staff", icon: <UserPlus01 className="w-4 h-4 text-[#667085]" />, onClick: onAddStaff },
+                { label: "Add role",  icon: <UserSquare className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,  onClick: onAddRole  },
+                { label: "Add staff", icon: <UserPlus01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />, onClick: onAddStaff },
             ];
 
     return (
@@ -218,10 +218,10 @@ function AddNewMenu({ variant, onAddRole, onAddStaff, onAddShift, onAddBlockedTi
                 Add
             </Button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px]">
                     {items.map(it => (
                         <button key={it.label} type="button" onClick={() => { setOpen(false); it.onClick(); }}
-                            className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                             {it.icon}{it.label}
                         </button>
                     ))}
@@ -329,10 +329,10 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
 
     return (
         <SlidePanel open={open} onClose={onClose} width={420}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -343,7 +343,7 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
                     {!isRoleTab && (
                         <>
                             <div className="flex flex-col gap-2">
-                                <p className="text-[14px] font-medium text-[#344054]">Role</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Role</p>
                                 <div className="flex flex-wrap gap-2">
                                     {roleFilterOptions.map(r => (
                                         <FilterPill key={r.id} label={r.name}
@@ -352,12 +352,12 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
                                     ))}
                                 </div>
                             </div>
-                            <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                         </>
                     )}
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {isRoleTab
                                 ? (["active", "inactive", "archive"] as RoleStatus[]).map(s => (
@@ -375,7 +375,7 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" disabled={!hasAny} onClick={handleClear}>Clear filter</Button>
                     <Button variant="primary" size="md" onClick={handleApply}>Apply</Button>
                 </div>
@@ -395,7 +395,7 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     destructive: boolean;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", Icon: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", Icon: Archive, iconColor: "text-[var(--colors-secondary-600)]",
         title: s => `Archive ${s}?`,
         description: s => `${s} will be hidden from default lists. You can recover it any time.`,
         confirmLabel: "Archive", destructive: false,
@@ -407,13 +407,13 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         confirmLabel: "Deactivate", destructive: true,
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", Icon: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", Icon: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
         title: s => `Recover ${s}?`,
         description: s => `${s} will be restored to Active.`,
         confirmLabel: "Recover", destructive: false,
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", Icon: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", Icon: Check, iconColor: "text-[var(--colors-secondary-600)]",
         title: s => `Reactivate ${s}?`,
         description: s => `${s} will be set back to Active.`,
         confirmLabel: "Reactivate", destructive: false,
@@ -491,7 +491,7 @@ function ShiftsDateNav({ weekStart, setWeekStart }: {
                 onClick={() => {
                     const d = new Date(weekStart); d.setDate(d.getDate() - 7); setWeekStart(d);
                 }}
-                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[#e4e7ec] transition-colors">
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[var(--colors-bg-quaternary)] transition-colors">
                 <ChevronLeft className="w-4 h-4" />
             </button>
             <button type="button"
@@ -501,14 +501,14 @@ function ShiftsDateNav({ weekStart, setWeekStart }: {
                     d.setDate(d.getDate() - monIdx);
                     setWeekStart(d);
                 }}
-                className="px-3 py-[6px] rounded-[8px] bg-surface-secondary text-[14px] font-semibold text-[#344054] min-w-[168px] text-center hover:bg-[#e4e7ec] transition-colors">
+                className="px-3 py-[6px] rounded-[8px] bg-surface-secondary text-[14px] font-semibold text-[var(--colors-text-secondary)] min-w-[168px] text-center hover:bg-[var(--colors-bg-quaternary)] transition-colors">
                 {weekRangeLabel(weekStart)}
             </button>
             <button type="button" aria-label="Next week"
                 onClick={() => {
                     const d = new Date(weekStart); d.setDate(d.getDate() + 7); setWeekStart(d);
                 }}
-                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[#e4e7ec] transition-colors">
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[var(--colors-bg-quaternary)] transition-colors">
                 <ChevronRight className="w-4 h-4" />
             </button>
         </div>
@@ -525,19 +525,19 @@ function TimeOffDateNav({ cursor, setCursor }: {
                 onClick={() => setCursor(cursor.month === 0
                     ? { year: cursor.year - 1, month: 11 }
                     : { year: cursor.year, month: cursor.month - 1 })}
-                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[#e4e7ec] transition-colors">
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[var(--colors-bg-quaternary)] transition-colors">
                 <ChevronLeft className="w-4 h-4" />
             </button>
             <button type="button"
                 onClick={() => { const d = new Date(); setCursor({ year: d.getFullYear(), month: d.getMonth() }); }}
-                className="px-3 py-[6px] rounded-[8px] bg-surface-secondary text-[14px] font-semibold text-[#344054] min-w-[160px] text-center hover:bg-[#e4e7ec] transition-colors">
+                className="px-3 py-[6px] rounded-[8px] bg-surface-secondary text-[14px] font-semibold text-[var(--colors-text-secondary)] min-w-[160px] text-center hover:bg-[var(--colors-bg-quaternary)] transition-colors">
                 {MONTH_LABELS[cursor.month]} {cursor.year}
             </button>
             <button type="button" aria-label="Next month"
                 onClick={() => setCursor(cursor.month === 11
                     ? { year: cursor.year + 1, month: 0 }
                     : { year: cursor.year, month: cursor.month + 1 })}
-                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[#e4e7ec] transition-colors">
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] bg-surface-secondary hover:bg-[var(--colors-bg-quaternary)] transition-colors">
                 <ChevronRight className="w-4 h-4" />
             </button>
         </div>
@@ -632,8 +632,8 @@ function exportStaffCsv(rows: Staff[], rolesById: Map<string, Role>, branches: B
 
 // ─── Table chrome ──────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
 
 // ─── Page ──────────────────────────────────────────────────────────────────
 
@@ -906,7 +906,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const branchOptions = useMemo(
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id, label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -1161,8 +1161,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
-                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                         {totalCount} {totalNoun}
                     </p>
                 </div>
@@ -1244,7 +1244,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             <div className={cn(
                 forceTab === "roles"
                     ? "flex flex-col"
-                    : "h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                    : "h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on
@@ -1427,7 +1427,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         return (
                                             <tr key={r.id}
                                                 onClick={() => router.push(`/staff/roles/${r.id}?returnTo=${encodeURIComponent(returnTo)}`)}
-                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     {/* Owner (locked) cannot be bulk-selected. */}
                                                     <CheckboxCell
@@ -1440,8 +1440,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                 <div className="flex items-center gap-3">
                                                     <RoleAvatar />
                                                     <div className="flex flex-col">
-                                                        <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                        <span className="text-[13px] text-[#667085] line-clamp-1">{r.description}</span>
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
+                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)] line-clamp-1">{r.description}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -1526,7 +1526,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         return (
                                             <tr key={s.id}
                                                 onClick={() => router.push(`/staff/members/${s.id}?returnTo=${encodeURIComponent(returnTo)}`)}
-                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
@@ -1538,8 +1538,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                     <div className="flex items-center gap-3">
                                                         <Avatar a={{ imageUrl: s.imageUrl, initials: s.initials, color: s.color, name: s.fullName }} />
                                                         <div className="flex flex-col">
-                                                            <span className="text-[14px] font-medium text-[#101828]">{s.fullName}</span>
-                                                            <span className="text-[13px] text-[#667085]">{s.email}</span>
+                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s.fullName}</span>
+                                                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">{s.email}</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1550,7 +1550,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{branchName(s.branchId, branches)}</td>
                                                 <td className={TD}>
                                                     <TodayScheduleCell
                                                         staff={s}
@@ -1669,16 +1669,16 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 Visible only when the active tab has at least one selection. */}
             {tab === "roles" && selectedRoleRows.length > 0 && (
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+                    <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                         <button type="button" onClick={() => setSelectedRoleIds(new Set())}
-                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                             {selectedRoleRows.length} selected
-                            <XClose className="w-5 h-5 text-[#667085]" />
+                            <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                         </button>
                         <div className="flex items-center gap-3">
                             {bulkRoleArchivable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Archive className="w-5 h-5 text-[#667085]" />}
+                                    leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                                     onClick={() => setPendingBulk({ entity: "role", kind: "archive" })}>
                                     Archive
                                 </Button>
@@ -1721,16 +1721,16 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
 
             {tab === "staff" && selectedStaffRows.length > 0 && (
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-                    <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+                    <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                         <button type="button" onClick={() => setSelectedStaffIds(new Set())}
-                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                             {selectedStaffRows.length} selected
-                            <XClose className="w-5 h-5 text-[#667085]" />
+                            <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                         </button>
                         <div className="flex items-center gap-3">
                             {bulkStaffArchivable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Archive className="w-5 h-5 text-[#667085]" />}
+                                    leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                                     onClick={() => setPendingBulk({ entity: "staff", kind: "archive" })}>
                                     Archive
                                 </Button>
