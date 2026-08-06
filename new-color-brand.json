@@ -1,0 +1,374 @@
+[
+    {
+        "hex": "#e8edee",
+        "rgb": "rgb(232, 237, 238)",
+        "token": "rich blue green-50"
+    },
+    {
+        "hex": "#b7c8c9",
+        "rgb": "rgb(183, 200, 201)",
+        "token": "rich blue green-100"
+    },
+    {
+        "hex": "#94aeaf",
+        "rgb": "rgb(148, 174, 175)",
+        "token": "rich blue green-200"
+    },
+    {
+        "hex": "#63888b",
+        "rgb": "rgb(99, 136, 139)",
+        "token": "rich blue green-300"
+    },
+    {
+        "hex": "#457175",
+        "rgb": "rgb(69, 113, 117)",
+        "token": "rich blue green-400"
+    },
+    {
+        "hex": "#164e52",
+        "rgb": "rgb(22, 78, 82)",
+        "token": "rich blue green-500"
+    },
+    {
+        "hex": "#14474b",
+        "rgb": "rgb(20, 71, 75)",
+        "token": "rich blue green-600"
+    },
+    {
+        "hex": "#10373a",
+        "rgb": "rgb(16, 55, 58)",
+        "token": "rich blue green-700"
+    },
+    {
+        "hex": "#0c2b2d",
+        "rgb": "rgb(12, 43, 45)",
+        "token": "rich blue green-800"
+    },
+    {
+        "hex": "#092122",
+        "rgb": "rgb(9, 33, 34)",
+        "token": "rich blue green-900"
+    }
+],
+[
+    {
+        "hex": "#fefefd",
+        "rgb": "rgb(254, 254, 253)",
+        "token": "fashion white-50"
+    },
+    {
+        "hex": "#fdfbf8",
+        "rgb": "rgb(253, 251, 248)",
+        "token": "fashion white-100"
+    },
+    {
+        "hex": "#fcf9f4",
+        "rgb": "rgb(252, 249, 244)",
+        "token": "fashion white-200"
+    },
+    {
+        "hex": "#fbf6f0",
+        "rgb": "rgb(251, 246, 240)",
+        "token": "fashion white-300"
+    },
+    {
+        "hex": "#faf5ed",
+        "rgb": "rgb(250, 245, 237)",
+        "token": "fashion white-400"
+    },
+    {
+        "hex": "#f9f2e8",
+        "rgb": "rgb(249, 242, 232)",
+        "token": "fashion white-500"
+    },
+    {
+        "hex": "#e3dcd3",
+        "rgb": "rgb(227, 220, 211)",
+        "token": "fashion white-600"
+    },
+    {
+        "hex": "#b1aca5",
+        "rgb": "rgb(177, 172, 165)",
+        "token": "fashion white-700"
+    },
+    {
+        "hex": "#898580",
+        "rgb": "rgb(137, 133, 128)",
+        "token": "fashion white-800"
+    },
+    {
+        "hex": "#696661",
+        "rgb": "rgb(105, 102, 97)",
+        "token": "fashion white-900"
+    }
+]
+
+
+[
+    {
+        "hex": "#fafcfb",
+        "rgb": "rgb(250, 252, 251)",
+        "token": "tranquil mint-50"
+    },
+    {
+        "hex": "#eff6f3",
+        "rgb": "rgb(239, 246, 243)",
+        "token": "tranquil mint-100"
+    },
+    {
+        "hex": "#e7f1ed",
+        "rgb": "rgb(231, 241, 237)",
+        "token": "tranquil mint-200"
+    },
+    {
+        "hex": "#dcebe4",
+        "rgb": "rgb(220, 235, 228)",
+        "token": "tranquil mint-300"
+    },
+    {
+        "hex": "#d5e7df",
+        "rgb": "rgb(213, 231, 223)",
+        "token": "tranquil mint-400"
+    },
+    {
+        "hex": "#cbe1d7",
+        "rgb": "rgb(203, 225, 215)",
+        "token": "tranquil mint-500"
+    },
+    {
+        "hex": "#b9cdc4",
+        "rgb": "rgb(185, 205, 196)",
+        "token": "tranquil mint-600"
+    },
+    {
+        "hex": "#90a099",
+        "rgb": "rgb(144, 160, 153)",
+        "token": "tranquil mint-700"
+    },
+    {
+        "hex": "#707c76",
+        "rgb": "rgb(112, 124, 118)",
+        "token": "tranquil mint-800"
+    },
+    {
+        "hex": "#555f5a",
+        "rgb": "rgb(85, 95, 90)",
+        "token": "tranquil mint-900"
+    }
+]
+
+PASTEL GREY
+[
+    {
+        "hex": "#fafaf9",
+        "rgb": "rgb(250, 250, 249)",
+        "token": "pastel grey-50"
+    },
+    {
+        "hex": "#f0efec",
+        "rgb": "rgb(240, 239, 236)",
+        "token": "pastel grey-100"
+    },
+    {
+        "hex": "#e9e7e3",
+        "rgb": "rgb(233, 231, 227)",
+        "token": "pastel grey-200"
+    },
+    {
+        "hex": "#dfdbd6",
+        "rgb": "rgb(223, 219, 214)",
+        "token": "pastel grey-300"
+    },
+    {
+        "hex": "#d9d5ce",
+        "rgb": "rgb(217, 213, 206)",
+        "token": "pastel grey-400"
+    },
+    {
+        "hex": "#cfcac2",
+        "rgb": "rgb(207, 202, 194)",
+        "token": "pastel grey-500"
+    },
+    {
+        "hex": "#bcb8b1",
+        "rgb": "rgb(188, 184, 177)",
+        "token": "pastel grey-600"
+    },
+    {
+        "hex": "#938f8a",
+        "rgb": "rgb(147, 143, 138)",
+        "token": "pastel grey-700"
+    },
+    {
+        "hex": "#726f6b",
+        "rgb": "rgb(114, 111, 107)",
+        "token": "pastel grey-800"
+    },
+    {
+        "hex": "#575551",
+        "rgb": "rgb(87, 85, 81)",
+        "token": "pastel grey-900"
+    }
+]
+
+PAMPAS
+[
+    {
+        "hex": "#fefefd",
+        "rgb": "rgb(254, 254, 253)",
+        "token": "pampas-50"
+    },
+    {
+        "hex": "#fbfbfa",
+        "rgb": "rgb(251, 251, 250)",
+        "token": "pampas-100"
+    },
+    {
+        "hex": "#f9f9f7",
+        "rgb": "rgb(249, 249, 247)",
+        "token": "pampas-200"
+    },
+    {
+        "hex": "#f6f6f4",
+        "rgb": "rgb(246, 246, 244)",
+        "token": "pampas-300"
+    },
+    {
+        "hex": "#f5f4f1",
+        "rgb": "rgb(245, 244, 241)",
+        "token": "pampas-400"
+    },
+    {
+        "hex": "#f2f1ee",
+        "rgb": "rgb(242, 241, 238)",
+        "token": "pampas-500"
+    },
+    {
+        "hex": "#dcdbd9",
+        "rgb": "rgb(220, 219, 217)",
+        "token": "pampas-600"
+    },
+    {
+        "hex": "#acaba9",
+        "rgb": "rgb(172, 171, 169)",
+        "token": "pampas-700"
+    },
+    {
+        "hex": "#858583",
+        "rgb": "rgb(133, 133, 131)",
+        "token": "pampas-800"
+    },
+    {
+        "hex": "#666564",
+        "rgb": "rgb(102, 101, 100)",
+        "token": "pampas-900"
+    }
+]
+
+TRADITIONAL MINT
+[
+    {
+        "hex": "#f8faf7",
+        "rgb": "rgb(248, 250, 247)",
+        "token": "traditional mint-50"
+    },
+    {
+        "hex": "#eaf0e6",
+        "rgb": "rgb(234, 240, 230)",
+        "token": "traditional mint-100"
+    },
+    {
+        "hex": "#dfe9da",
+        "rgb": "rgb(223, 233, 218)",
+        "token": "traditional mint-200"
+    },
+    {
+        "hex": "#d1dfc9",
+        "rgb": "rgb(209, 223, 201)",
+        "token": "traditional mint-300"
+    },
+    {
+        "hex": "#c8d9bf",
+        "rgb": "rgb(200, 217, 191)",
+        "token": "traditional mint-400"
+    },
+    {
+        "hex": "#bacfaf",
+        "rgb": "rgb(186, 207, 175)",
+        "token": "traditional mint-500"
+    },
+    {
+        "hex": "#a9bc9f",
+        "rgb": "rgb(169, 188, 159)",
+        "token": "traditional mint-600"
+    },
+    {
+        "hex": "#84937c",
+        "rgb": "rgb(132, 147, 124)",
+        "token": "traditional mint-700"
+    },
+    {
+        "hex": "#667260",
+        "rgb": "rgb(102, 114, 96)",
+        "token": "traditional mint-800"
+    },
+    {
+        "hex": "#4e574a",
+        "rgb": "rgb(78, 87, 74)",
+        "token": "traditional mint-900"
+    }
+]
+
+HONEY SUCKLE
+[
+    {
+        "hex": "#fdfef2",
+        "rgb": "rgb(253, 254, 242)",
+        "token": "honeysuckle-50"
+    },
+    {
+        "hex": "#f7fdd7",
+        "rgb": "rgb(247, 253, 215)",
+        "token": "honeysuckle-100"
+    },
+    {
+        "hex": "#f4fbc4",
+        "rgb": "rgb(244, 251, 196)",
+        "token": "honeysuckle-200"
+    },
+    {
+        "hex": "#eefaa9",
+        "rgb": "rgb(238, 250, 169)",
+        "token": "honeysuckle-300"
+    },
+    {
+        "hex": "#ebf998",
+        "rgb": "rgb(235, 249, 152)",
+        "token": "honeysuckle-400"
+    },
+    {
+        "hex": "#e6f77e",
+        "rgb": "rgb(230, 247, 126)",
+        "token": "honeysuckle-500"
+    },
+    {
+        "hex": "#d1e173",
+        "rgb": "rgb(209, 225, 115)",
+        "token": "honeysuckle-600"
+    },
+    {
+        "hex": "#a3af59",
+        "rgb": "rgb(163, 175, 89)",
+        "token": "honeysuckle-700"
+    },
+    {
+        "hex": "#7f8845",
+        "rgb": "rgb(127, 136, 69)",
+        "token": "honeysuckle-800"
+    },
+    {
+        "hex": "#616835",
+        "rgb": "rgb(97, 104, 53)",
+        "token": "honeysuckle-900"
+    }
+]
