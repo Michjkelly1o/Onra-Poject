@@ -982,9 +982,13 @@ export function ReceiptStep(p: ReceiptStepProps) {
             </div>
 
             {!p.hideFooter && (
-              <div className="shrink-0 px-6 py-4 border-[#e4e7ec] flex items-center justify-between">
-                <Button variant="secondary-gray" size="lg" onClick={p.onBack}>Back</Button>
-                <Button variant="primary" size="lg" onClick={p.onComplete}>Complete transaction</Button>
+              // Client 2026-08: the receipt is the FINAL step — the payment was
+              // already confirmed on the previous step, so it must not show a
+              // second "Complete transaction" action. A single "Done" closes the
+              // receipt and returns to POS (still wired to onComplete, which
+              // records the sale + redirects).
+              <div className="shrink-0 px-6 py-4 border-[#e4e7ec] flex justify-end">
+                <Button variant="primary" size="lg" onClick={p.onComplete}>Done</Button>
               </div>
             )}
         </div>

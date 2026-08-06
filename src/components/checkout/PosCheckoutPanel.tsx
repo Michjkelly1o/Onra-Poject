@@ -270,9 +270,14 @@ function PosCheckoutBody({ onCancel, onComplete }: {
                             </Button>
                         </>
                     ) : (
+                        // Client 2026-08: the receipt is the FINAL step — payment was
+                        // already confirmed on the previous step, so it must not show a
+                        // second "Complete transaction" action. A single right-aligned
+                        // "Done" finalizes the sale + closes (still handleComplete). The
+                        // empty span keeps Done on the right under justify-between.
                         <>
-                            <Button variant="secondary-gray" size="lg" onClick={() => setStep(1)}>Back</Button>
-                            <Button variant="primary" size="lg" onClick={handleComplete}>Complete transaction</Button>
+                            <span aria-hidden />
+                            <Button variant="primary" size="lg" onClick={handleComplete}>Done</Button>
                         </>
                     )}
                 </div>
