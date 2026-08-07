@@ -109,7 +109,7 @@ export default function NotificationBell() {
                 type="button"
                 onClick={() => setOpen(v => !v)}
                 aria-label="Notifications"
-                className="relative w-9 h-9 flex items-center justify-center rounded-[8px] text-[#667085] hover:text-[#101828] hover:bg-[#f9fafb] transition-colors"
+                className="relative w-9 h-9 flex items-center justify-center rounded-[8px] text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
             >
                 <Bell01 className="w-[21px] h-[21px]" />
                 {hasUnread && (
@@ -119,10 +119,10 @@ export default function NotificationBell() {
 
             {/* Floating panel */}
             {open && (
-                <div className="absolute right-0 top-full mt-2 w-[380px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] z-50 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-[380px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] z-50 overflow-hidden">
                     {/* Header */}
-                    <div className="border-b border-[#e4e7ec] px-6 py-4">
-                        <p className="text-[18px] font-medium leading-[28px] text-[#101828]">
+                    <div className="border-b border-[var(--colors-border-secondary)] px-6 py-4">
+                        <p className="text-[18px] font-medium leading-[28px] text-[var(--colors-text-primary)]">
                             Notifications
                         </p>
                     </div>
@@ -131,8 +131,8 @@ export default function NotificationBell() {
                     <div className="px-6 py-4 max-h-[380px] overflow-y-auto scrollbar-hide">
                         {visible.length === 0 ? (
                             <div className="py-8 flex flex-col items-center gap-2">
-                                <Bell01 className="w-6 h-6 text-[#d0d5dd]" />
-                                <p className="text-[14px] text-[#667085]">You're all caught up.</p>
+                                <Bell01 className="w-6 h-6 text-[var(--colors-border-primary)]" />
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">You're all caught up.</p>
                             </div>
                         ) : (
                             <div className="flex flex-col">
@@ -144,33 +144,33 @@ export default function NotificationBell() {
                                             <button
                                                 type="button"
                                                 onClick={() => handleRowClick(n.id)}
-                                                className="w-full flex gap-3 items-start text-left py-2 -mx-2 px-2 rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                                                className="w-full flex gap-3 items-start text-left py-2 -mx-2 px-2 rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                                             >
                                                 {/* Featured icon tile */}
-                                                <div className="shrink-0 w-10 h-10 rounded-[10px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shadow-[0px_1.481px_1.481px_rgba(0,0,0,0.04)]">
-                                                    <Icon className="w-5 h-5 text-[#475467]" />
+                                                <div className="shrink-0 w-10 h-10 rounded-[10px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shadow-[0px_1.481px_1.481px_rgba(0,0,0,0.04)]">
+                                                    <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                                                 </div>
                                                 {/* Text block */}
                                                 <div className="flex-1 min-w-0 flex flex-col gap-[2px]">
                                                     <div className="flex items-baseline gap-[6px] flex-wrap">
-                                                        <p className="text-[14px] font-semibold text-[#344054] leading-[20px]">
+                                                        <p className="text-[14px] font-semibold text-[var(--colors-text-secondary)] leading-[20px]">
                                                             {n.title}
                                                         </p>
-                                                        <p className="text-[14px] font-normal text-[#667085] leading-[20px]">
+                                                        <p className="text-[14px] font-normal text-[var(--colors-text-quaternary)] leading-[20px]">
                                                             {relativeTime(n.createdAt)}
                                                         </p>
                                                     </div>
-                                                    <p className="text-[14px] font-normal text-[#475467] leading-[20px] line-clamp-1">
+                                                    <p className="text-[14px] font-normal text-[var(--colors-text-tertiary)] leading-[20px] line-clamp-1">
                                                         {n.body}
                                                     </p>
                                                 </div>
                                                 {/* Unread dot */}
                                                 {!n.isRead && (
-                                                    <span className="shrink-0 mt-[14px] w-2 h-2 bg-[#658774] rounded-full" />
+                                                    <span className="shrink-0 mt-[14px] w-2 h-2 bg-[var(--colors-secondary-600)] rounded-full" />
                                                 )}
                                             </button>
                                             {!isLast && (
-                                                <div className="h-px bg-[#e4e7ec] my-1" />
+                                                <div className="h-px bg-[var(--colors-bg-quaternary)] my-1" />
                                             )}
                                         </div>
                                     );
@@ -180,12 +180,12 @@ export default function NotificationBell() {
                     </div>
 
                     {/* Footer */}
-                    <div className="border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-center">
+                    <div className="border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-center">
                         <button
                             type="button"
                             onClick={handleViewAll}
                             className={cn(
-                                "text-[14px] font-semibold leading-[20px] text-[#475467] hover:text-[#101828] transition-colors",
+                                "text-[14px] font-semibold leading-[20px] text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] transition-colors",
                             )}
                         >
                             View all notification

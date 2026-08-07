@@ -130,7 +130,7 @@ const TEMPLATE_CSV =
 function FileTypeIcon({ kind, size = 40 }: { kind: "CSV" | "XLSX"; size?: number }) {
     return (
         <div className="relative shrink-0" style={{ width: size * 0.8, height: size }}>
-            <div className="absolute inset-0 rounded-[3px] border-1 border-[#d0d5dd] bg-white" />
+            <div className="absolute inset-0 rounded-[3px] border-1 border-[var(--colors-border-primary)] bg-white" />
             <div className="absolute left-[2px] bottom-[16%] bg-[#079455] rounded-[2px] px-[3px] py-[1px]">
                 <span className="text-[7px] font-bold text-white leading-none tracking-tight">{kind}</span>
             </div>
@@ -148,14 +148,14 @@ function Breadcrumbs({ step }: { step: ImportStep }) {
     ];
     const activeKey: ImportStep = step === "loading" ? "mapping" : step;
     return (
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-[#e4e7ec] shrink-0">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--colors-border-secondary)] shrink-0">
             {crumbs.map((c, i) => (
                 <div key={c.key} className="flex items-center gap-3">
                     <span className={cn("text-[14px] font-semibold whitespace-nowrap",
-                        c.key === activeKey ? "text-[#4f6e5d]" : "text-[#475467]")}>
+                        c.key === activeKey ? "text-[#4f6e5d]" : "text-[var(--colors-text-tertiary)]")}>
                         {c.label}
                     </span>
-                    {i < crumbs.length - 1 && <ChevronRight className="w-4 h-4 text-[#667085]" />}
+                    {i < crumbs.length - 1 && <ChevronRight className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}
                 </div>
             ))}
         </div>
@@ -166,16 +166,16 @@ function Breadcrumbs({ step }: { step: ImportStep }) {
 
 function TemplateCard({ kind, name }: { kind: "CSV" | "XLSX"; name: string }) {
     return (
-        <div className="flex-1 min-w-0 flex items-center gap-3 p-4 rounded-[12px] border-1 border-[#e4e7ec] bg-white">
+        <div className="flex-1 min-w-0 flex items-center gap-3 p-4 rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-white">
             <FileTypeIcon kind={kind} size={32} />
             <div className="flex flex-col min-w-0 flex-1">
-                <p className="text-[14px] font-medium text-[#344054] truncate">{name}</p>
-                <p className="text-[14px] text-[#475467]">10 KB</p>
+                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] truncate">{name}</p>
+                <p className="text-[14px] text-[var(--colors-text-tertiary)]">10 KB</p>
             </div>
             <button type="button"
                 onClick={() => downloadTextFile("customer-data-template.csv", TEMPLATE_CSV)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors shrink-0">
-                <Download01 className="w-5 h-5 text-[#344054]" />
+                className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                <Download01 className="w-5 h-5 text-[var(--colors-text-secondary)]" />
             </button>
         </div>
     );
@@ -186,10 +186,10 @@ function TemplateCard({ kind, name }: { kind: "CSV" | "XLSX"; name: string }) {
 function SummaryRow({ label, value, tone, icon }: {
     label: string; value: number; tone: "default" | "success" | "error"; icon: React.ReactNode;
 }) {
-    const valueColor = tone === "success" ? "text-[#079455]" : tone === "error" ? "text-[#d92d20]" : "text-[#101828]";
+    const valueColor = tone === "success" ? "text-[#079455]" : tone === "error" ? "text-[#d92d20]" : "text-[var(--colors-text-primary)]";
     return (
         <div className="flex items-center justify-between gap-4">
-            <p className="text-[14px] text-[#667085]">{label}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
             <div className="flex items-center gap-1.5">
                 <span className={cn("text-[14px] font-medium", valueColor)}>{value}</span>
                 {icon}
@@ -331,25 +331,25 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                                 { w: 300, p: 8, op: "opacity-80", icon: 15 },
                                 { w: 240, p: 6, op: "opacity-60", icon: 12 },
                             ] as const).map((s, i) => (
-                                <div key={s.w} className={cn("bg-[#f9fafb] rounded-[16px] flex items-center gap-3 shadow-[0px_1px_1px_rgba(16,24,40,0.05)]", s.op)}
+                                <div key={s.w} className={cn("bg-[var(--colors-bg-secondary)] rounded-[16px] flex items-center gap-3 shadow-[0px_1px_1px_rgba(16,24,40,0.05)]", s.op)}
                                     style={{ width: s.w, padding: s.p, marginBottom: i < 2 ? -16 : 0 }}>
                                     <div className="bg-white rounded-[10px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]"
                                         style={{ width: s.w * 0.14, height: s.w * 0.14 }}>
-                                        <div className="bg-[#f9fafb] rounded-[7px] flex items-center justify-center"
+                                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] flex items-center justify-center"
                                             style={{ width: s.w * 0.085, height: s.w * 0.085 }}>
-                                            <User01 className="text-[#98a2b3]" style={{ width: s.icon, height: s.icon }} />
+                                            <User01 className="text-[var(--colors-fg-quaternary)]" style={{ width: s.icon, height: s.icon }} />
                                         </div>
                                     </div>
                                     <div className="flex flex-col gap-2 flex-1 min-w-0">
-                                        <div className="bg-[#f2f4f7] h-[12px] w-[68px] rounded-full" />
-                                        <div className="bg-[#f2f4f7] h-[12px] w-full rounded-full" />
+                                        <div className="bg-[var(--colors-bg-tertiary)] h-[12px] w-[68px] rounded-full" />
+                                        <div className="bg-[var(--colors-bg-tertiary)] h-[12px] w-full rounded-full" />
                                     </div>
                                 </div>
                             ))}
                         </div>
                         <div className="flex flex-col items-center gap-1 text-center max-w-[352px]">
-                            <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">Checking &amp; importing data...</p>
-                            <p className="text-[14px] text-[#475467] leading-[20px]">{checkedRows} of {TOTAL_ROWS} rows checked</p>
+                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">Checking &amp; importing data...</p>
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{checkedRows} of {TOTAL_ROWS} rows checked</p>
                         </div>
                     </div>
                 ) : (
@@ -357,14 +357,14 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                         {/* Header */}
                         <div className="relative shrink-0">
                             <button type="button" onClick={closeAndReset}
-                                className="absolute right-3 top-3 w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                                <XClose className="w-6 h-6 text-[#667085]" />
+                                className="absolute right-3 top-3 w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                             </button>
                             <div className="flex flex-col gap-1 px-6 pt-6 pb-5 pr-14">
-                                <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Import customer data</h3>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">{headerSubtitle}</p>
+                                <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Import customer data</h3>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{headerSubtitle}</p>
                             </div>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                         </div>
 
                         <Breadcrumbs step={step} />
@@ -382,16 +382,16 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                                         onClick={() => fileInputRef.current?.click()}
                                         onDragOver={e => e.preventDefault()}
                                         onDrop={onDrop}
-                                        className="cursor-pointer border-1 border-[#e4e7ec] rounded-[12px] px-6 py-4 flex flex-col items-center gap-3 hover:bg-[#f9fafb] transition-colors">
-                                        <div className="w-10 h-10 rounded-[8px] bg-white border-1 border-[#e4e7ec] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex items-center justify-center">
-                                            <UploadCloud02 className="w-5 h-5 text-[#475467]" />
+                                        className="cursor-pointer border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-6 py-4 flex flex-col items-center gap-3 hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                        <div className="w-10 h-10 rounded-[8px] bg-white border-1 border-[var(--colors-border-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex items-center justify-center">
+                                            <UploadCloud02 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                                         </div>
                                         <div className="flex flex-col items-center gap-1">
                                             <p className="text-[14px]">
                                                 <span className="font-semibold text-[#4f6e5d]">Click to upload</span>
-                                                <span className="text-[#475467]"> or drag and drop</span>
+                                                <span className="text-[var(--colors-text-tertiary)]"> or drag and drop</span>
                                             </p>
-                                            <p className="text-[12px] text-[#475467]">CSV, .xlsx, or .xls (max. 10 MB)</p>
+                                            <p className="text-[12px] text-[var(--colors-text-tertiary)]">CSV, .xlsx, or .xls (max. 10 MB)</p>
                                         </div>
                                     </div>
                                     <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden"
@@ -399,28 +399,28 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
 
                                     {/* Uploaded file queue item */}
                                     {file && (
-                                        <div className="border-1 border-[#e4e7ec] rounded-[12px] p-4 flex items-start gap-3">
+                                        <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex items-start gap-3">
                                             <FileTypeIcon kind="CSV" size={40} />
                                             <div className="flex flex-col gap-1 flex-1 min-w-0">
-                                                <p className="text-[14px] font-medium text-[#344054] truncate">{file.name}</p>
-                                                <p className="text-[14px] text-[#475467]">{file.sizeLabel}</p>
+                                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] truncate">{file.name}</p>
+                                                <p className="text-[14px] text-[var(--colors-text-tertiary)]">{file.sizeLabel}</p>
                                                 <div className="flex items-center gap-3 mt-0.5">
-                                                    <div className="flex-1 h-2 rounded-full bg-[#e4e7ec] overflow-hidden">
-                                                        <div className="h-full rounded-full bg-[#658774] w-full" />
+                                                    <div className="flex-1 h-2 rounded-full bg-[var(--colors-bg-quaternary)] overflow-hidden">
+                                                        <div className="h-full rounded-full bg-[var(--colors-secondary-400)] w-full" />
                                                     </div>
-                                                    <span className="text-[14px] font-medium text-[#344054]">100%</span>
+                                                    <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">100%</span>
                                                 </div>
                                             </div>
                                             <button type="button" onClick={() => setFile(null)}
-                                                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                                                <Trash01 className="w-5 h-5 text-[#667085]" />
+                                                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                                                <Trash01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                                             </button>
                                         </div>
                                     )}
 
                                     {/* Templates */}
                                     <div className="flex flex-col gap-2">
-                                        <p className="text-[14px] font-medium text-[#667085]">Download our data templates for mapping your data</p>
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-quaternary)]">Download our data templates for mapping your data</p>
                                         <div className="flex gap-4">
                                             <TemplateCard kind="CSV" name="CSV data template.csv" />
                                             <TemplateCard kind="XLSX" name="Excel data template.xlsx" />
@@ -432,25 +432,25 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                             {step === "mapping" && (
                                 <>
                                     {/* Uploaded file summary */}
-                                    <div className="border-1 border-[#e4e7ec] rounded-[12px] p-4 flex items-center gap-3">
+                                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex items-center gap-3">
                                         <FileTypeIcon kind="CSV" size={40} />
                                         <div className="flex flex-col min-w-0">
-                                            <p className="text-[14px] font-medium text-[#344054] truncate">{file?.name ?? "Customer file.csv"}</p>
-                                            <p className="text-[14px] text-[#475467]">{file?.sizeLabel ?? "1 MB"} | {TOTAL_ROWS} rows</p>
+                                            <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] truncate">{file?.name ?? "Customer file.csv"}</p>
+                                            <p className="text-[14px] text-[var(--colors-text-tertiary)]">{file?.sizeLabel ?? "1 MB"} | {TOTAL_ROWS} rows</p>
                                         </div>
                                     </div>
 
                                     {/* Mapping table — full height (all rows shown); the
                                         modal's content area is the single scroll region. */}
-                                    <div className="border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
-                                        <div className="flex bg-[#f9fafb] border-b border-[#e4e7ec]">
-                                            <p className="flex-1 px-6 py-3 text-[12px] font-medium text-[#475467]">Your data column</p>
-                                            <p className="w-[316px] px-6 py-3 text-[12px] font-medium text-[#475467]">Customer data column</p>
+                                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
+                                        <div className="flex bg-[var(--colors-bg-secondary)] border-b border-[var(--colors-border-secondary)]">
+                                            <p className="flex-1 px-6 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)]">Your data column</p>
+                                            <p className="w-[316px] px-6 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)]">Customer data column</p>
                                         </div>
                                         {FILE_COLUMNS.map((col, i) => (
                                             <div key={col.id}
-                                                className={cn("flex items-center", i < FILE_COLUMNS.length - 1 && "border-b border-[#e4e7ec]")}>
-                                                <p className="flex-1 px-6 py-4 text-[14px] text-[#475467]">{col.label}</p>
+                                                className={cn("flex items-center", i < FILE_COLUMNS.length - 1 && "border-b border-[var(--colors-border-secondary)]")}>
+                                                <p className="flex-1 px-6 py-4 text-[14px] text-[var(--colors-text-tertiary)]">{col.label}</p>
                                                 <div className="w-[316px] px-6 py-3">
                                                     <SelectInput
                                                         value={mapping[col.id] ?? SKIP}
@@ -467,11 +467,11 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
 
                             {step === "summary" && result && (
                                 <>
-                                    <div className="border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Summary</p>
+                                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Summary</p>
                                         <div className="flex flex-col gap-3">
                                             <SummaryRow label="Total rows" value={result.total} tone="default"
-                                                icon={<Database01 className="w-4 h-4 text-[#667085]" />} />
+                                                icon={<Database01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} />
                                             <SummaryRow label="Valid rows" value={result.valid} tone="success"
                                                 icon={<CheckCircle className="w-4 h-4 text-[#079455]" />} />
                                             <SummaryRow label="Invalid rows" value={result.invalid} tone="error"
@@ -484,12 +484,12 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                                     {/* Invalid-rows report — only when some rows failed validation */}
                                     {result.invalid > 0 && (
                                         <div className="flex flex-col gap-2">
-                                            <p className="text-[14px] font-medium text-[#667085]">Download the invalid rows data report</p>
-                                            <div className="border-1 border-[#e4e7ec] rounded-[12px] p-4 flex items-center gap-3">
+                                            <p className="text-[14px] font-medium text-[var(--colors-text-quaternary)]">Download the invalid rows data report</p>
+                                            <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex items-center gap-3">
                                                 <FileTypeIcon kind="XLSX" size={40} />
                                                 <div className="flex flex-col min-w-0 flex-1">
-                                                    <p className="text-[14px] font-medium text-[#344054] truncate">Invalid rows data report.xlsx</p>
-                                                    <p className="text-[14px] text-[#475467]">20 KB</p>
+                                                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] truncate">Invalid rows data report.xlsx</p>
+                                                    <p className="text-[14px] text-[var(--colors-text-tertiary)]">20 KB</p>
                                                 </div>
                                                 <button type="button"
                                                     onClick={() => downloadTextFile(
@@ -497,8 +497,8 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                                                         "Row,Issue\n" + Array.from({ length: result.invalid },
                                                             (_, k) => `${result.valid + k + 1},Missing required field`).join("\n") + "\n",
                                                     )}
-                                                    className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors shrink-0">
-                                                    <Download01 className="w-5 h-5 text-[#344054]" />
+                                                    className="w-9 h-9 flex items-center justify-center rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                                                    <Download01 className="w-5 h-5 text-[var(--colors-text-secondary)]" />
                                                 </button>
                                             </div>
                                         </div>
@@ -508,7 +508,7 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                         </div>
 
                         {/* Footer */}
-                        <div className="shrink-0 border-t border-[#e4e7ec] px-6 pt-6 pb-6 flex gap-3">
+                        <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 pt-6 pb-6 flex gap-3">
                             {step === "upload" && (
                                 <>
                                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={closeAndReset}>Cancel</Button>

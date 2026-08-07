@@ -10,12 +10,12 @@
 // across compensation, payroll, staff/role rows).
 //
 // Chrome (exact match to the audited locals):
-//   • Outer: `rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec]
+//   • Outer: `rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)]
 //     flex items-center justify-center shrink-0`
-//   • Initials: `text-[#475467] font-medium`, font-size scales with `size`
+//   • Initials: `text-[var(--colors-text-tertiary)] font-medium`, font-size scales with `size`
 //   • Image: `object-cover` fitted to the circle, falls back to initials on
 //     onerror (parent display:none pattern preserved from local copies)
-//   • Icon (alt content): `text-[#475467]`, scales to `size * 0.5` (matches
+//   • Icon (alt content): `text-[var(--colors-text-tertiary)]`, scales to `size * 0.5` (matches
 //     StaffPermissionsPage RoleAvatar)
 //
 // Picks the right inner content in this order:
@@ -55,8 +55,8 @@ export function NeutralAvatar({ initials, imageUrl, icon: Icon, size = 40, class
     return (
         <div
             className={cn(
-                "rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0",
-                Icon ? "" : "font-medium text-[#475467]",
+                "rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0",
+                Icon ? "" : "font-medium text-[var(--colors-text-tertiary)]",
                 className,
             )}
             style={{
@@ -66,7 +66,7 @@ export function NeutralAvatar({ initials, imageUrl, icon: Icon, size = 40, class
             }}
         >
             {Icon
-                ? <Icon className="text-[#475467]" style={{ width: size * 0.5, height: size * 0.5 }} />
+                ? <Icon className="text-[var(--colors-text-tertiary)]" style={{ width: size * 0.5, height: size * 0.5 }} />
                 : initials ?? ""}
         </div>
     );

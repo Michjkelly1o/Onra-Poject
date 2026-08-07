@@ -48,7 +48,7 @@ export function PlanBadge({ kind, className }: {
 }) {
     const styles = kind === "membership"
         ? "bg-[#eef4ff] border-[#c7d7fe] text-[#3538cd]"
-        : "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]";
+        : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]";
     const label = kind === "membership" ? "Membership" : "Package";
     return (
         <span className={cn(
@@ -72,7 +72,7 @@ export function planKindFromName(planName: string): "membership" | "package" {
 export function NoPlanBadge({ className }: { className?: string }) {
     return (
         <span className={cn(
-            "inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-[#d0d5dd] bg-[#f9fafb] text-[12px] font-medium leading-[18px] text-[#667085] whitespace-nowrap",
+            "inline-flex items-center px-2 py-0.5 rounded-full border border-dashed border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] text-[12px] font-medium leading-[18px] text-[var(--colors-text-quaternary)] whitespace-nowrap",
             className,
         )}>
             No plan

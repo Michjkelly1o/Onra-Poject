@@ -16,7 +16,7 @@ export function RadioDot({ checked }: { checked: boolean }) {
             <span className="absolute inset-[28%] rounded-full bg-[var(--brand-primary)]" />
         </span>
     ) : (
-        <span className="block size-4 shrink-0 rounded-full border border-[#d0d5dd]" aria-hidden />
+        <span className="block size-4 shrink-0 rounded-full border border-[var(--colors-border-primary)]" aria-hidden />
     );
 }
 
@@ -26,6 +26,6 @@ export function CheckBox({ checked }: { checked: boolean }) {
             <Check className="size-3 text-[var(--brand-primary)]" strokeWidth={3} />
         </span>
     ) : (
-        <span className="block size-4 shrink-0 rounded border border-[#d0d5dd]" aria-hidden />
+        <span className="block size-4 shrink-0 rounded border border-[var(--colors-border-primary)]" aria-hidden />
     );
 }

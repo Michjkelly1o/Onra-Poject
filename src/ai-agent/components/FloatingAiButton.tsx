@@ -58,10 +58,8 @@ export function FloatingAiButton() {
     };
 
     return (
-        // Client 2026-07-31 — pinned to the BOTTOM CENTRE of the viewport
-        // (was bottom-right). `left-1/2` + `-translate-x-1/2` on the
-        // wrapper horizontally centres the pill regardless of its width;
-        // 32px bottom padding stays per Figma spacing-4xl.
+        // Client 2026-08-04 — pinned to the BOTTOM RIGHT of the viewport
+        // (`right-8`), 32px from both edges per Figma spacing-4xl.
         //
         // z-40 (client 2026-08-04) — sits just BELOW the app's modal / side-
         // panel layer (every admin dialog, sheet, and filter panel is z-50 or
@@ -71,7 +69,7 @@ export function FloatingAiButton() {
         // floating over ordinary content. Was z-[60], which sat over z-50
         // modals — the bug the client reported on the Add-widget modal.
         <div
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40"
+            className="fixed bottom-8 right-8 z-40"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
@@ -85,7 +83,7 @@ export function FloatingAiButton() {
                     // to 8px when the Talk-to-Agent button appears on hover
                     // so both segments have equal breathing room.
                     "flex items-center gap-2 rounded-full",
-                    "border-1 border-[#c4edd6]",
+                    "border-1 border-[var(--colors-secondary-200)]",
                     hovered ? "pl-2 pr-2 py-2" : "pl-2 pr-3 py-2",
                     // Brand gradient bg — utility-brand-200 → utility-brand-50
                     // at ~114° (default) / ~126° (hover). Kept a single
@@ -100,7 +98,7 @@ export function FloatingAiButton() {
                 )}
             >
                 {/* Logomark tile — 36px white circle, 1.125px border. */}
-                <span className="w-9 h-9 rounded-full bg-white border-[1.125px] border-[#e4e7ec] overflow-hidden flex items-center justify-center shrink-0">
+                <span className="w-9 h-9 rounded-full bg-white border-[1.125px] border-[var(--colors-border-secondary)] overflow-hidden flex items-center justify-center shrink-0">
                     <Image
                         src="/Logomark.webp"
                         alt=""
@@ -112,7 +110,7 @@ export function FloatingAiButton() {
                 </span>
 
                 {/* Prompt text — always visible in both states. */}
-                <span className="text-[14px] font-medium leading-[20px] text-[#101828] whitespace-nowrap">
+                <span className="text-[14px] font-medium leading-[20px] text-[var(--colors-text-primary)] whitespace-nowrap">
                     How can I help today?
                 </span>
 
@@ -137,9 +135,9 @@ export function FloatingAiButton() {
                                 // so it reads as a real DS button.
                                 "inline-flex items-center justify-center rounded-full",
                                 "px-3 py-2 whitespace-nowrap",
-                                "bg-[#c4edd6] border-2 border-white/[0.12]",
+                                "bg-[var(--colors-secondary-200)] border-2 border-white/[0.12]",
                                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                                "text-[14px] font-semibold leading-[20px] text-[#0c2d34]",
+                                "text-[14px] font-semibold leading-[20px] text-[var(--colors-brand-900)]",
                             )}
                         >
                             Talk to Agent

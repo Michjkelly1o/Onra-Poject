@@ -66,7 +66,7 @@ const REASON_STYLE: Record<Reason, { label: string; className: string }> = {
     sick:     { label: "Sick",     className: "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" },
     vacation: { label: "Vacation", className: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" },
     training: { label: "Training", className: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]" },
-    other:    { label: "Other",    className: "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]" },
+    other:    { label: "Other",    className: "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]" },
 };
 
 function ReasonChip({ reason }: { reason: Reason | undefined }) {
@@ -173,14 +173,14 @@ function TimeOffPanel({
     return (
         <SlidePanel open={open} onClose={onClose} width={440}>
             {/* Header */}
-            <div className="shrink-0 px-6 py-4 border-b border-[#e4e7ec] flex items-center gap-3">
+            <div className="shrink-0 px-6 py-4 border-b border-[var(--colors-border-secondary)] flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[18px] font-semibold text-[#101828]">
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">
                         {mode === "edit" ? "Edit time off" : "Add time off"}
                     </p>
                 </div>
                 <button type="button" onClick={onClose} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)]">
                     <XClose className="w-5 h-5" />
                 </button>
             </div>
@@ -188,7 +188,7 @@ function TimeOffPanel({
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
                 <div className="flex flex-col gap-[6px]">
-                    <label className="text-[14px] font-medium text-[#344054]">Reason</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Reason</label>
                     <SelectInput
                         placeholder="Select a reason"
                         value={form.reason}
@@ -199,18 +199,18 @@ function TimeOffPanel({
                 </div>
 
                 <div className="flex flex-col gap-[6px]">
-                    <label className="text-[14px] font-medium text-[#344054]">Title (optional)</label>
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Title (optional)</label>
                     <input
                         type="text" value={form.title}
                         onChange={e => set({ title: e.target.value })}
                         placeholder="Enter title"
-                        className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                        className="h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
                     />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                     <div className="flex flex-col gap-[6px]">
-                        <label className="text-[14px] font-medium text-[#344054]">From</label>
+                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">From</label>
                         <DatePicker
                             value={form.dateFrom}
                             onChange={iso => {
@@ -225,7 +225,7 @@ function TimeOffPanel({
                         )}
                     </div>
                     <div className="flex flex-col gap-[6px]">
-                        <label className="text-[14px] font-medium text-[#344054]">To</label>
+                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">To</label>
                         <DatePicker
                             value={form.dateTo}
                             onChange={iso => set({ dateTo: iso })}
@@ -238,7 +238,7 @@ function TimeOffPanel({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3 rounded-[12px] border-1 border-[#e4e7ec] bg-white p-3">
+                <div className="flex items-center gap-3 rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-white p-3">
                     <button
                         type="button"
                         role="switch"
@@ -247,7 +247,7 @@ function TimeOffPanel({
                         onClick={() => set({ allDay: !form.allDay })}
                         className={cn(
                             "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                            form.allDay ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                            form.allDay ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
                         )}
                     >
                         <span className={cn(
@@ -256,15 +256,15 @@ function TimeOffPanel({
                         )} />
                     </button>
                     <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-semibold text-[#101828] leading-5">All day</p>
-                        <p className="text-[13px] text-[#667085] leading-[18px] mt-0.5">Runs full days across the picked range.</p>
+                        <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">All day</p>
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px] mt-0.5">Runs full days across the picked range.</p>
                     </div>
                 </div>
 
                 {!form.allDay && (
                     <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[#344054]">Start time</label>
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Start time</label>
                             <SelectInput
                                 triggerIcon={<Clock className="w-4 h-4" />}
                                 placeholder="Select time"
@@ -275,7 +275,7 @@ function TimeOffPanel({
                             />
                         </div>
                         <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[#344054]">End time</label>
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">End time</label>
                             <SelectInput
                                 triggerIcon={<Clock className="w-4 h-4" />}
                                 placeholder="Select time"
@@ -289,7 +289,7 @@ function TimeOffPanel({
                 )}
 
                 <div className="flex flex-col gap-[6px]">
-                    <label className="text-[14px] font-medium text-[#344054]">
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                         {form.reason === "other" ? "Note" : "Note (optional)"}
                     </label>
                     <textarea
@@ -300,7 +300,7 @@ function TimeOffPanel({
                             : "Enter note..."
                         }
                         rows={3}
-                        className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
+                        className="w-full px-[14px] py-[10px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
                     />
                     {missingOtherNote && (
                         <p className="text-[13px] text-[#b42318]">A note is required when the reason is Other.</p>
@@ -309,7 +309,7 @@ function TimeOffPanel({
             </div>
 
             {/* Footer */}
-            <div className="shrink-0 px-6 py-4 border-t border-[#e4e7ec] flex justify-end gap-3">
+            <div className="shrink-0 px-6 py-4 border-t border-[var(--colors-border-secondary)] flex justify-end gap-3">
                 <Button variant="secondary-gray" size="md" onClick={onClose}>
                     Cancel
                 </Button>
@@ -331,15 +331,15 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
         <>
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
                 aria-label="Row actions"
-                className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[#667085] hover:bg-[#f9fafb] transition-colors">
+                className="w-8 h-8 flex items-center justify-center rounded-[6px] text-[var(--colors-text-quaternary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                 <DotsVertical className="w-4 h-4" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={160}>
                 <div className="py-1.5">
                     <button type="button"
                         onClick={() => { setOpen(false); onEdit(); }}
-                        className="w-full px-4 py-2.5 flex items-center gap-2 text-[14px] text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit
+                        className="w-full px-4 py-2.5 flex items-center gap-2 text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <Edit02 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Edit
                     </button>
                     <button type="button"
                         onClick={() => { setOpen(false); onDelete(); }}
@@ -443,8 +443,8 @@ export default function InstructorTimeOffPage() {
                 audit. */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
-                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                         {myEntries.length} time off
                     </p>
                 </div>
@@ -494,11 +494,11 @@ export default function InstructorTimeOffPage() {
                                     const isShared = b.staff_ids.length > 1;
                                     const otherCount = b.staff_ids.length - 1;
                                     return (
-                                        <tr key={b.id} className={cn("transition-colors hover:bg-[#f9fafb]", isPast && "opacity-70")}>
+                                        <tr key={b.id} className={cn("transition-colors hover:bg-[var(--colors-bg-secondary)]", isPast && "opacity-70")}>
                                             <td className={TD}>
                                                 <div className="flex flex-col gap-1">
                                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                                        <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">
                                                             {isRange
                                                                 ? `${fmtDate(fromISO)} – ${fmtDate(toISO)}`
                                                                 : fmtDate(fromISO)}
@@ -509,7 +509,7 @@ export default function InstructorTimeOffPage() {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="text-[13px] text-[#667085] whitespace-nowrap">
+                                                    <span className="text-[13px] text-[var(--colors-text-quaternary)] whitespace-nowrap">
                                                         {b.all_day
                                                             ? `All day${isRange ? ` · ${days} days` : ""}`
                                                             : `${fmtTime12(b.start_time)} – ${fmtTime12(b.end_time)}`}
@@ -520,7 +520,7 @@ export default function InstructorTimeOffPage() {
                                                 <div className="flex items-center gap-1.5 flex-wrap">
                                                     <ReasonChip reason={b.reason} />
                                                     {isPast && (
-                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#f2f4f7] border-[#e4e7ec] text-[#475467] whitespace-nowrap">
+                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[var(--colors-bg-tertiary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)] whitespace-nowrap">
                                                             Past
                                                         </span>
                                                     )}
@@ -531,10 +531,10 @@ export default function InstructorTimeOffPage() {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className={cn(TD, "text-[#667085] max-w-[400px] truncate")}>
+                                            <td className={cn(TD, "text-[var(--colors-text-quaternary)] max-w-[400px] truncate")}>
                                                 {b.note.trim() || "—"}
                                                 {isShared && (
-                                                    <span className="ml-1 text-[#98a2b3]">· Managed by admin</span>
+                                                    <span className="ml-1 text-[var(--colors-fg-quaternary)]">· Managed by admin</span>
                                                 )}
                                             </td>
                                             <td className={TD}>
@@ -569,12 +569,12 @@ export default function InstructorTimeOffPage() {
                 <div className="fixed inset-0 z-[300] bg-black/40 flex items-center justify-center px-4">
                     <div className="bg-white rounded-[16px] w-full max-w-[420px] overflow-hidden flex flex-col shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)]">
                         <div className="px-6 py-5 flex flex-col gap-2">
-                            <p className="text-[18px] font-semibold text-[#101828]">Delete this time off?</p>
-                            <p className="text-[14px] text-[#667085]">
+                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Delete this time off?</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                                 This will remove the entry from your schedule and from admin&apos;s view. This can&apos;t be undone.
                             </p>
                         </div>
-                        <div className="px-6 py-4 border-t border-[#e4e7ec] flex justify-end gap-3">
+                        <div className="px-6 py-4 border-t border-[var(--colors-border-secondary)] flex justify-end gap-3">
                             <Button variant="secondary-gray" size="md" onClick={() => setPendingDelete(null)}>
                                 Cancel
                             </Button>

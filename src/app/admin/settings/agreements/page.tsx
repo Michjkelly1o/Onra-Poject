@@ -95,8 +95,8 @@ const EMPTY_FILTER: FilterState = {
     statuses: [], scopes: [], effectiveStart: "", effectiveEnd: "",
 };
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_#e4e7ec]";
-const TD = "px-4 py-4 text-[14px] text-[#475467] border-b border-[#f2f4f7]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-tertiary)] border-b border-[var(--colors-bg-tertiary)]";
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
 
@@ -124,14 +124,14 @@ function formatDateISO(iso: string): string {
  *  re-accept-due customers. Matches Figma 4232:52279 "80% · 31 to
  *  re-accept" pattern. */
 function CoverageCell({ coverage }: { coverage: AgreementCoverage | undefined }) {
-    if (!coverage) return <span className="text-[#98a2b3]">—</span>;
+    if (!coverage) return <span className="text-[var(--colors-fg-quaternary)]">—</span>;
     const pct = coverage.percent;
     return (
         <div className="flex items-center gap-2">
-            <div className="w-[64px] h-[6px] rounded-full bg-[#eaecf0] overflow-hidden shrink-0">
-                <div className="h-full bg-[#658774] transition-[width]" style={{ width: `${pct}%` }} />
+            <div className="w-[64px] h-[6px] rounded-full bg-[var(--colors-border-tertiary)] overflow-hidden shrink-0">
+                <div className="h-full bg-[var(--colors-secondary-400)] transition-[width]" style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-[14px] text-[#101828] shrink-0">{pct}%</span>
+            <span className="text-[14px] text-[var(--colors-text-primary)] shrink-0">{pct}%</span>
             {coverage.pendingReAccept > 0 && (
                 <span className="text-[14px] text-[#b54708] shrink-0">
                     · {coverage.pendingReAccept} to re-accept
@@ -181,14 +181,14 @@ const MODAL_CONFIG: Record<RowActionKind, {
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Archive this agreement?",
         titleBulk: n => `Archive ${n} agreements?`,
         description: subject => <>{subject} will be hidden from the default list. All signed records and version history are preserved — you can recover archived agreements at any time.</>,
         confirmLabel: "Archive",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
         titleSingle: "Recover this agreement?",
         titleBulk: n => `Recover ${n} agreements?`,
         description: subject => <>{subject} will be restored to Active status and shown in the agreements list again.</>,
@@ -228,17 +228,17 @@ function FilterPanel({ open, onClose, applied, onApply }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={420}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {(["active", "archived"] as AgreementStatus[]).map(s => (
                                 <FilterPill key={s} label={STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
@@ -247,11 +247,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Type — derived location scope */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Type</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Type</p>
                         <div className="flex flex-wrap gap-2">
                             {(["multi", "specific"] as LocationScope[]).map(t => (
                                 <FilterPill key={t} label={SCOPE_LABEL[t]} selected={pending.scopes.includes(t)}
@@ -260,11 +260,11 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Effective date range — filters by effectiveUntil ∈ [start, end] */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Effective date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Effective date range</p>
                         <div className="grid grid-cols-2 gap-3">
                             <DatePicker
                                 value={pending.effectiveStart}
@@ -285,7 +285,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
@@ -311,15 +311,15 @@ function BulkActionBar({ count, hasArchivable, hasRecoverable, onClear, onAction
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+            <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -345,8 +345,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -602,11 +602,11 @@ export default function AgreementsPage() {
 
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
         if (p.mode === "row") {
-            return { count: 1, subject: <span className="font-medium text-[#344054]">{p.row.name}</span> };
+            return { count: 1, subject: <span className="font-medium text-[var(--colors-text-secondary)]">{p.row.name}</span> };
         }
         return {
             count: p.rows.length,
-            subject: <><span className="font-medium text-[#344054]">{p.rows.length}</span> selected agreements</>,
+            subject: <><span className="font-medium text-[var(--colors-text-secondary)]">{p.rows.length}</span> selected agreements</>,
         };
     }
 
@@ -662,13 +662,13 @@ export default function AgreementsPage() {
 
                     {/* Search */}
                     <div className="relative w-[220px]">
-                        <SearchLg className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#667085]" />
+                        <SearchLg className="absolute left-[12px] top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[var(--colors-text-quaternary)]" />
                         <input
                             type="text"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder="Search agreement..."
-                            className="h-10 w-full pl-[40px] pr-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            className="h-10 w-full pl-[40px] pr-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </div>
 
@@ -691,10 +691,9 @@ export default function AgreementsPage() {
                 {/* Table + pagination — no inner padding now that the outer
                     card chrome is gone (admin layout's p-6 already provides
                     the page gutter). */}
-                <div className="overflow-y-auto scrollbar-hide relative pt-5 min-h-0">
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative pt-5">
                     {pagedRows.length === 0 ? (
                         <EmptyState
-                            absolute={false} className="min-h-[400px]"
                             title={isTrulyEmpty ? "No agreements yet" : "No agreements found"}
                             subtitle={isTrulyEmpty
                                 ? "Create your first agreement to start collecting customer signatures."
@@ -742,7 +741,7 @@ export default function AgreementsPage() {
                                         return (
                                             <tr key={r.id}
                                                 onClick={() => router.push(`/settings/agreements/${r.id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`)}
-                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <CheckboxCell
                                                         checked={isSelected}
@@ -754,8 +753,8 @@ export default function AgreementsPage() {
                                                     <div className="flex items-center gap-3">
                                                         <IconAvatar icon={File06} />
                                                         <div className="flex flex-col">
-                                                            <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                            <span className="text-[14px] text-[#667085]">Version {r.currentVersion}</span>
+                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
+                                                            <span className="text-[14px] text-[var(--colors-text-quaternary)]">Version {r.currentVersion}</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -771,7 +770,7 @@ export default function AgreementsPage() {
                                                         const ts = lastSignedById.get(r.id);
                                                         return ts
                                                             ? <span className="whitespace-nowrap">{formatDateISO(ts)}</span>
-                                                            : <span className="text-[#98a2b3]">—</span>;
+                                                            : <span className="text-[var(--colors-fg-quaternary)]">—</span>;
                                                     })()}
                                                 </td>
                                                 <td className={TD}>

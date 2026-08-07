@@ -91,7 +91,7 @@ export function AchievementHighlight({ count, monthLabel }: AchievementHighlight
                     <p className="truncate text-xl font-semibold leading-[30px] text-[var(--brand-text)]">
                         {count} in {monthLabel}
                     </p>
-                    <p className="w-full text-xs font-normal leading-[18px] text-[#667085]">Most classes in a month</p>
+                    <p className="w-full text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">Most classes in a month</p>
                 </div>
                 <DiamondBadge />
             </div>

@@ -21,7 +21,6 @@ export default function AdminLayout({
     const { sidebarCollapsed } = useAppStore();
     const currentRole = useAppStore(s => s.currentRole);
     const setCurrentUser = useAppStore(s => s.setCurrentUser);
-
     // The AI Agent moved from a bottom-centre floating pill into the header
     // (client 2026-08), so the extra `pb-24` that reserved space under the FAB
     // is gone — every module uses the same 24px card padding (16px top). Modules
@@ -39,7 +38,7 @@ export default function AdminLayout({
 
     return (
         <>
-            <div className="flex h-screen bg-[#f1f2ed]">
+            <div className="flex h-screen bg-[var(--colors-tertiary-50)]">
                 {/* Sidebar wrapper — drives width so content area reflows naturally */}
                 <div
                     className={cn(

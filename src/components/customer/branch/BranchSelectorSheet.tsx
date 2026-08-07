@@ -45,7 +45,7 @@ function BranchCard({
     return (
         <div
             className={`flex w-full shrink-0 flex-col gap-3 rounded-2xl bg-white p-4 transition-colors ${
-                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec]"
+                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[var(--colors-border-secondary)]"
             }`}
         >
             <button type="button" onClick={onSelect} aria-pressed={selected} className="flex w-full items-start gap-3 text-left">
@@ -54,11 +54,11 @@ function BranchCard({
                     {operational && (
                         <span className="flex items-center gap-1 text-sm leading-5">
                             <span className="font-medium text-[#067647]">{operational.isOpen ? "Open" : "Closed"}</span>
-                            <span className="text-[#667085]">•</span>
-                            <span className="truncate text-[#667085]">{operational.hoursLabel}</span>
+                            <span className="text-[var(--colors-text-quaternary)]">•</span>
+                            <span className="truncate text-[var(--colors-text-quaternary)]">{operational.hoursLabel}</span>
                         </span>
                     )}
-                    <span className="truncate text-sm font-normal leading-5 text-[#667085]">{subtitle}</span>
+                    <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{subtitle}</span>
                 </span>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={LOGOMARK} alt="" className="h-8 w-[26.667px] shrink-0" />
@@ -66,9 +66,9 @@ function BranchCard({
 
             {branch && (
                 <div className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-1 rounded-md border border-[#d0d5dd] bg-white py-0.5 pl-2 pr-1.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <Globe04 className="size-3 shrink-0 text-[#667085]" aria-hidden />
-                        <span className="text-xs font-medium leading-[18px] text-[#344054]">
+                    <span className="flex items-center gap-1 rounded-md border border-[var(--colors-border-primary)] bg-white py-0.5 pl-2 pr-1.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <Globe04 className="size-3 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                        <span className="text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">
                             {branchCity} ({compactOffsetForCity(branchCity)})
                         </span>
                     </span>
@@ -114,18 +114,18 @@ export function BranchSelectorSheet({ open, onClose }: { open: boolean; onClose:
     return (
         <CustomerSheet open={open} onClose={onClose} heightClass="h-[56dvh]">
             {/* Search */}
-            <div className="flex shrink-0 items-center gap-2 rounded-full border border-[#d0d5dd] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <SearchLg className="size-5 shrink-0 text-[#667085]" aria-hidden />
+            <div className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <SearchLg className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                 <input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Search branch..."
-                    className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
+                    className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
                 />
             </div>
 
             {/* Options */}
-            <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [scrollbar-color:#d0d5dd_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#d0d5dd] [&::-webkit-scrollbar]:w-1.5">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1 [scrollbar-color:#d0d5dd_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--colors-border-primary)] [&::-webkit-scrollbar]:w-1.5">
                 {showAll && (
                     <BranchCard
                         name="All branches"
@@ -149,8 +149,8 @@ export function BranchSelectorSheet({ open, onClose }: { open: boolean; onClose:
 
             {/* Hint */}
             <div className="mt-3 flex shrink-0 items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-3">
-                <Lightbulb02 className="size-5 shrink-0 text-[#475467]" aria-hidden />
-                <p className="text-sm font-normal leading-5 text-[#475467]">Location will be set as your main branch.</p>
+                <Lightbulb02 className="size-5 shrink-0 text-[var(--colors-text-tertiary)]" aria-hidden />
+                <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">Location will be set as your main branch.</p>
             </div>
         </CustomerSheet>
     );

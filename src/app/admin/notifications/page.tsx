@@ -75,8 +75,8 @@ function TabButton({ label, count, active, onClick }: {
             className={cn(
                 "h-[48px] flex items-center gap-2 px-3 transition-colors whitespace-nowrap",
                 active
-                    ? "border-b-2 border-[#101828] text-[#101828]"
-                    : "text-[#667085] hover:text-[#344054]",
+                    ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                    : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
             )}
         >
             <span className="text-[14px] font-semibold">{label}</span>
@@ -85,8 +85,8 @@ function TabButton({ label, count, active, onClick }: {
             <span className={cn(
                 "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
                 active
-                    ? "bg-[#f2f4f7] text-[#344054]"
-                    : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#667085]",
+                    ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)]"
+                    : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)]",
             )}>
                 {count}
             </span>
@@ -100,7 +100,7 @@ function TabButton({ label, count, active, onClick }: {
 // Local SectionHeader removed — uses canonical from `@/components/patterns/SectionHeader`.
 
 function Divider() {
-    return <div className="h-px bg-[#e4e7ec] w-full" />;
+    return <div className="h-px bg-[var(--colors-bg-quaternary)] w-full" />;
 }
 
 function Section({ title, items, onRowClick, headerRight, branchLabelFor }: {
@@ -329,7 +329,7 @@ function NotificationsPage() {
                 the buttons + border line don't sit flush against the page
                 edge (the user explicitly asked for this). */}
             <div className="shrink-0 px-0">
-                <div className="border-b border-[#e4e7ec]">
+                <div className="border-b border-[var(--colors-border-secondary)]">
                     <div className="flex gap-1 items-end">
                         {TABS.map(t => (
                             <TabButton
@@ -351,7 +351,7 @@ function NotificationsPage() {
                 picker is rendered INLINE with the first visible section
                 header (Today / Past) — same level as the section label
                 so the right edge stays aligned with the page chrome. */}
-            <div className="relative h-[760px] border-1 border-[#e4e7ec] rounded-[20px] bg-white overflow-hidden flex flex-col">
+            <div className="relative h-[760px] border-1 border-[var(--colors-border-secondary)] rounded-[20px] bg-white overflow-hidden flex flex-col">
                 {activeTab === "team" ? (
                     // Team activity tab — separate render path. Reads the
                     // shared activity seed (no branch scope, different row

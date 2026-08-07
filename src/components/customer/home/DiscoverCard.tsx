@@ -27,7 +27,7 @@ export function DiscoverCard({
 }) {
     return (
         <button type="button" onClick={onClick} className="flex w-[188px] shrink-0 flex-col gap-3 text-left">
-            <div className="relative h-[120px] w-[188px] overflow-hidden rounded-xl bg-[#f9fafb]">
+            <div className="relative h-[120px] w-[188px] overflow-hidden rounded-xl bg-[var(--colors-bg-secondary)]">
                 {coverImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={coverImage} alt="" className="absolute inset-0 size-full object-cover" />
@@ -39,18 +39,18 @@ export function DiscoverCard({
                 <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{title}</p>
                 {avatar ? (
                     <div className="flex min-w-0 items-center gap-1.5">
-                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                             {avatar.imageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={avatar.imageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                             ) : (
-                                <span className="text-[8px] font-semibold leading-none text-[#667085]">{avatar.initials}</span>
+                                <span className="text-[8px] font-semibold leading-none text-[var(--colors-text-quaternary)]">{avatar.initials}</span>
                             )}
                         </span>
-                        <span className="truncate text-sm font-normal leading-5 text-[#475467]">{subtitle}</span>
+                        <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{subtitle}</span>
                     </div>
                 ) : (
-                    <p className="truncate text-sm font-normal leading-5 text-[#475467]">{subtitle}</p>
+                    <p className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{subtitle}</p>
                 )}
             </div>
         </button>

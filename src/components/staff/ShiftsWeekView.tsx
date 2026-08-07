@@ -134,7 +134,7 @@ function ShiftCard({ shift, index, onUnassign }: { shift: Shift; index: number; 
             {onUnassign && (
                 <button type="button" aria-label="Unassign shift"
                     onClick={(e) => { e.stopPropagation(); onUnassign(); }}
-                    className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-[4px] bg-white/70 text-[#667085] opacity-0 transition-opacity hover:bg-white hover:text-[#b42318] group-hover/card:opacity-100">
+                    className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-[4px] bg-white/70 text-[var(--colors-text-quaternary)] opacity-0 transition-opacity hover:bg-white hover:text-[#b42318] group-hover/card:opacity-100">
                     <Trash01 className="size-3.5" />
                 </button>
             )}
@@ -199,7 +199,7 @@ function DayAddShiftMenu({ staffBranchId, dayIdx, shifts, staffDayShiftIds, staf
             <button ref={btnRef} type="button" aria-label="Assign shift"
                 onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
                 className={cn(
-                    "mt-0.5 flex w-full items-center justify-center gap-1 rounded-[6px] border border-dashed border-[#d0d5dd] py-1 text-[12px] font-medium text-[#667085] transition-colors hover:border-[#7ba08c] hover:text-[#3b5446]",
+                    "mt-0.5 flex w-full items-center justify-center gap-1 rounded-[6px] border border-dashed border-[var(--colors-border-primary)] py-1 text-[12px] font-medium text-[var(--colors-text-quaternary)] transition-colors hover:border-[var(--colors-secondary-500)] hover:text-[#3b5446]",
                     "opacity-0 group-hover/cell:opacity-100", open && "opacity-100",
                 )}>
                 <Plus className="size-3.5" /> Add
@@ -234,8 +234,8 @@ export function PickerShiftRow({ shift, index, onPick }: { shift: Shift; index: 
             style={{ backgroundColor: c.bg, borderColor: c.border }}
         >
             <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[10px]" style={{ backgroundColor: c.stripe }} aria-hidden />
-            <p className="pl-1 text-[14px] font-semibold leading-5 text-[#101828]">{shift.name}</p>
-            <p className="pl-1 text-[12px] leading-4 text-[#667085]">{dayLabel} • {time}</p>
+            <p className="pl-1 text-[14px] font-semibold leading-5 text-[var(--colors-text-primary)]">{shift.name}</p>
+            <p className="pl-1 text-[12px] leading-4 text-[var(--colors-text-quaternary)]">{dayLabel} • {time}</p>
         </button>
     );
 }
@@ -252,20 +252,20 @@ export function ShiftPickerPanel({ available, emptyLabel, onPick }: {
     const q = query.trim().toLowerCase();
     const filtered = q ? available.filter(sh => sh.name.toLowerCase().includes(q)) : available;
     return (
-        <div className="w-[380px] max-h-[420px] overflow-y-auto rounded-[12px] border border-[#e4e7ec] bg-white p-3 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
-            <div className="mb-3 flex items-center gap-2 rounded-[8px] border border-[#d0d5dd] px-3 py-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <SearchLg className="size-4 shrink-0 text-[#667085]" />
+        <div className="w-[380px] max-h-[420px] overflow-y-auto rounded-[12px] border border-[var(--colors-border-secondary)] bg-white p-3 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+            <div className="mb-3 flex items-center gap-2 rounded-[8px] border border-[var(--colors-border-primary)] px-3 py-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <SearchLg className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" />
                 <input
                     autoFocus
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search..."
-                    className="min-w-0 flex-1 bg-transparent text-[14px] text-[#101828] outline-none placeholder:text-[#667085]"
+                    className="min-w-0 flex-1 bg-transparent text-[14px] text-[var(--colors-text-primary)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
                 />
             </div>
             <div className="flex flex-col gap-2.5">
                 {filtered.length === 0 ? (
-                    <p className="px-1 py-4 text-center text-[13px] text-[#98a2b3]">
+                    <p className="px-1 py-4 text-center text-[13px] text-[var(--colors-fg-quaternary)]">
                         {available.length > 0 ? "No shifts found." : emptyLabel}
                     </p>
                 ) : filtered.map((sh, i) => (
@@ -349,9 +349,9 @@ function StaffShiftMenu({
                 aria-label="Staff shift actions"
                 onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
                 className={cn(
-                    "shrink-0 flex size-6 items-center justify-center rounded-md text-[#667085] transition-colors",
-                    "opacity-0 group-hover:opacity-100 hover:bg-[#f2f4f7]",
-                    open && "opacity-100 bg-[#f2f4f7]",
+                    "shrink-0 flex size-6 items-center justify-center rounded-md text-[var(--colors-text-quaternary)] transition-colors",
+                    "opacity-0 group-hover:opacity-100 hover:bg-[var(--colors-bg-tertiary)]",
+                    open && "opacity-100 bg-[var(--colors-bg-tertiary)]",
                 )}
             >
                 <DotsVertical className="size-4" />
@@ -360,21 +360,21 @@ function StaffShiftMenu({
             {open && pos && createPortal(
                 <div ref={popRef} className="fixed z-[80] flex items-start gap-3" style={{ top: pos.top, left: pos.left }}>
                     {/* Action list */}
-                    <div className="w-[220px] rounded-[12px] border border-[#e4e7ec] bg-white p-1.5 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+                    <div className="w-[220px] rounded-[12px] border border-[var(--colors-border-secondary)] bg-white p-1.5 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
                         {/* View schedule — instructors only (they have classes to view). */}
                         {isInstructor && (
-                            <button type="button" onClick={() => { setOpen(false); onViewSchedule(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb]">
-                                <Eye className="size-4 text-[#667085]" /> View schedule
+                            <button type="button" onClick={() => { setOpen(false); onViewSchedule(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
+                                <Eye className="size-4 text-[var(--colors-text-quaternary)]" /> View schedule
                             </button>
                         )}
                         {/* Assign shift — always available; adds another shift. */}
-                        <button type="button" onClick={() => setPicker(true)} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb]">
-                            <ClockPlus className="size-4 text-[#667085]" /> Assign shift
+                        <button type="button" onClick={() => setPicker(true)} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
+                            <ClockPlus className="size-4 text-[var(--colors-text-quaternary)]" /> Assign shift
                         </button>
                         {/* Unassign — only when the staff holds a shift. */}
                         {hasShift && (
-                            <button type="button" onClick={() => { setOpen(false); onUnassign(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb]">
-                                <Trash01 className="size-4 text-[#667085]" /> Unassign shift
+                            <button type="button" onClick={() => { setOpen(false); onUnassign(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
+                                <Trash01 className="size-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
                             </button>
                         )}
                     </div>
@@ -417,7 +417,7 @@ function UnassignShiftsModal({
             <Modal.Header title="Unassign shift" subtitle={`Select a shift to remove from ${staffName}.`} onClose={onClose} />
             <div className="flex flex-col gap-2.5 px-6 py-2 max-h-[360px] overflow-y-auto">
                 {rows.length === 0 ? (
-                    <p className="py-6 text-center text-[13px] text-[#98a2b3]">No shifts assigned.</p>
+                    <p className="py-6 text-center text-[13px] text-[var(--colors-fg-quaternary)]">No shifts assigned.</p>
                 ) : rows.map(({ assignmentId, shift, index }) => {
                     const c = shiftPalette(shift, index);
                     const time = `${to12h(shift.start_time)} - ${to12h(shift.end_time)}`;
@@ -429,14 +429,14 @@ function UnassignShiftsModal({
                         >
                             <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[10px]" style={{ backgroundColor: c.stripe }} aria-hidden />
                             <div className="min-w-0 flex-1 pl-1">
-                                <p className="truncate text-[14px] font-semibold leading-5 text-[#101828]">{shift.name}</p>
-                                <p className="truncate text-[12px] leading-4 text-[#667085]">{workingDaysLabel(shift.working_days)} • {time}</p>
+                                <p className="truncate text-[14px] font-semibold leading-5 text-[var(--colors-text-primary)]">{shift.name}</p>
+                                <p className="truncate text-[12px] leading-4 text-[var(--colors-text-quaternary)]">{workingDaysLabel(shift.working_days)} • {time}</p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => onUnassignOne(assignmentId)}
                                 aria-label={`Unassign ${shift.name}`}
-                                className="shrink-0 flex size-8 items-center justify-center rounded-[8px] text-[#98a2b3] transition-colors hover:bg-white/70 hover:text-[#b42318]"
+                                className="shrink-0 flex size-8 items-center justify-center rounded-[8px] text-[var(--colors-fg-quaternary)] transition-colors hover:bg-white/70 hover:text-[#b42318]"
                             >
                                 <Trash01 className="size-4" />
                             </button>
@@ -704,7 +704,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                     {/* Left header cell — empty (no "Staff" label, no bg), matching
                         the Schedule module week header. Sticky so it stays put on
                         horizontal scroll. */}
-                    <div className="sticky left-0 top-0 z-40 bg-white border-b border-[#e4e7ec] px-4 py-3" />
+                    <div className="sticky left-0 top-0 z-40 bg-white border-b border-[var(--colors-border-secondary)] px-4 py-3" />
                     {days.map((d, i) => {
                         const dateISO = isoDayLocal(d);
                         const isToday = dateISO === todayISO;
@@ -714,19 +714,19 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                             <div
                                 key={dateISO}
                                 className={cn(
-                                    "border-b border-l border-[#e4e7ec] px-3 py-3 flex flex-col items-center bg-white",
+                                    "border-b border-l border-[var(--colors-border-secondary)] px-3 py-3 flex flex-col items-center bg-white",
                                     isToday && "bg-[#f5fffa]",
                                 )}
                             >
                                 <p className={cn(
                                     "text-[11px] font-semibold uppercase tracking-wider",
-                                    isToday ? "text-[#658774]" : "text-[#667085]",
+                                    isToday ? "text-[var(--colors-secondary-600)]" : "text-[var(--colors-text-quaternary)]",
                                 )}>
                                     {WEEKDAY_HEAD[i]}
                                 </p>
                                 <div className={cn(
                                     "w-8 h-8 rounded-full flex items-center justify-center text-[16px] font-semibold mt-0.5",
-                                    isToday ? "bg-[#658774] text-white" : "text-[#101828]",
+                                    isToday ? "bg-[var(--colors-secondary-600)] text-white" : "text-[var(--colors-text-primary)]",
                                 )}>
                                     {d.getDate()}
                                 </div>
@@ -745,18 +745,18 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                         {/* Section header is a plain full-width div, not a
                             grid — no need to wrap in a grid just to span
                             all columns. */}
-                        <div className="sticky left-0 z-10 w-full px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-[#98a2b3] bg-[#fafafa] border-b border-[#e4e7ec]">
+                        <div className="sticky left-0 z-10 w-full px-4 py-2 text-[11px] font-semibold tracking-wide uppercase text-[var(--colors-fg-quaternary)] bg-[#fafafa] border-b border-[var(--colors-border-secondary)]">
                             {g.title}
                         </div>
                         {g.rows.length === 0 ? (
-                            <div className="w-full px-4 py-4 text-[13px] text-[#98a2b3]">
+                            <div className="w-full px-4 py-4 text-[13px] text-[var(--colors-fg-quaternary)]">
                                 No {g.key === "instructors" ? "instructors" : "staff"} on this week.
                             </div>
                         ) : (
                             g.rows.map(s => (
                                 <div
                                     key={s.id}
-                                    className="grid border-b border-[#e4e7ec] w-full"
+                                    className="grid border-b border-[var(--colors-border-secondary)] w-full"
                                     style={{ gridTemplateColumns: "minmax(180px, 200px) repeat(7, minmax(0, 1fr))" }}
                                 >
                                     {/* Left rail — avatar + name + (specialty
@@ -773,7 +773,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                             </div>
                                         )}
                                         <div className="flex flex-1 min-w-0 flex-col">
-                                            <span className="text-[13px] font-semibold text-[#101828] truncate">{s.fullName}</span>
+                                            <span className="text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">{s.fullName}</span>
                                             {/* Subtitle — role name for ops
                                                 staff; comma-joined specialties
                                                 for instructors (matches the
@@ -783,14 +783,14 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                 const t = roleTypeById.get(s.roleId);
                                                 if (t === "instructor" && s.specialties && s.specialties.length > 0) {
                                                     return (
-                                                        <span className="text-[11px] text-[#667085] truncate">
+                                                        <span className="text-[11px] text-[var(--colors-text-quaternary)] truncate">
                                                             {s.specialties.join(" · ")}
                                                         </span>
                                                     );
                                                 }
                                                 const roleName = roles.find(r => r.id === s.roleId)?.name;
                                                 return roleName
-                                                    ? <span className="text-[11px] text-[#667085] truncate">{roleName}</span>
+                                                    ? <span className="text-[11px] text-[var(--colors-text-quaternary)] truncate">{roleName}</span>
                                                     : null;
                                             })()}
                                         </div>
@@ -829,20 +829,20 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                         return (
                                             <div
                                                 key={isoDayLocal(day)}
-                                                className="group/cell relative px-2 py-3 border-l border-[#e4e7ec] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
+                                                className="group/cell relative px-2 py-3 border-l border-[var(--colors-border-secondary)] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
                                                 {timeOff ? (
                                                     // Time off takes precedence — no shift is shown or
                                                     // assignable on this day.
                                                     <div
-                                                        className="flex-1 min-h-[52px] rounded-[8px] border border-[#e4e7ec] px-3 py-2 flex flex-col justify-center overflow-hidden"
+                                                        className="flex-1 min-h-[52px] rounded-[8px] border border-[var(--colors-border-secondary)] px-3 py-2 flex flex-col justify-center overflow-hidden"
                                                         style={{ backgroundImage: "repeating-linear-gradient(45deg, #fafafb, #fafafb 5px, #f2f4f7 5px, #f2f4f7 10px)" }}
                                                         title="Staff on time off — shifts can't be assigned this day"
                                                     >
                                                         {/* Title = reason (Vacation / Sick / …), subtext =
                                                             duration (All day / time range) — client 2026-08. */}
-                                                        <p className="text-[13px] font-semibold text-[#475467] leading-[18px] truncate">{timeOffTitle(timeOff)}</p>
-                                                        <p className="text-[12px] text-[#98a2b3] leading-[16px] truncate">{timeOffDuration(timeOff)}</p>
+                                                        <p className="text-[13px] font-semibold text-[var(--colors-text-tertiary)] leading-[18px] truncate">{timeOffTitle(timeOff)}</p>
+                                                        <p className="text-[12px] text-[var(--colors-fg-quaternary)] leading-[16px] truncate">{timeOffDuration(timeOff)}</p>
                                                     </div>
                                                 ) : (
                                                     <>

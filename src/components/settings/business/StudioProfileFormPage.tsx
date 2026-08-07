@@ -130,7 +130,7 @@ export function StudioProfileFormPage() {
 
                     {/* Center form card */}
                     <div className="flex-1 min-w-0 max-w-[628px] flex flex-col min-h-0">
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex-1 flex flex-col gap-6 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] min-h-0">
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex-1 flex flex-col gap-6 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] min-h-0">
                             <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-1 -mx-1 min-h-0">
                                 <SectionHeader title="Studio details" />
 
@@ -159,8 +159,8 @@ export function StudioProfileFormPage() {
                                         <TextInput value={studioName} onChange={setStudioName} placeholder="Enter studio name" />
                                     </Field>
                                     <Field label="Website">
-                                        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]">
-                                            <span className="h-10 flex items-center px-3 text-[16px] text-[#475467] bg-[#f9fafb] border-r border-[#d0d5dd]">
+                                        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)]">
+                                            <span className="h-10 flex items-center px-3 text-[16px] text-[var(--colors-text-tertiary)] bg-[var(--colors-bg-secondary)] border-r border-[var(--colors-border-primary)]">
                                                 http://
                                             </span>
                                             <input
@@ -168,7 +168,7 @@ export function StudioProfileFormPage() {
                                                 value={website}
                                                 onChange={e => setWebsite(e.target.value)}
                                                 placeholder="your-studio.com"
-                                                className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent min-w-0"
+                                                className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent min-w-0"
                                             />
                                         </div>
                                     </Field>
@@ -233,14 +233,14 @@ export function StudioProfileFormPage() {
                                 </Field>
 
                                 <Field label="Primary contact phone number">
-                                    <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                    <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                         <PhoneCountryDropdown value={phoneCountry} onChange={setPhoneCountry} />
                                         <input
                                             type="tel"
                                             value={phoneNumber}
                                             onChange={e => setPhoneNumber(e.target.value.replace(/[^\d\s]/g, ""))}
                                             placeholder="Enter phone number"
-                                            className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent min-w-0 rounded-r-[8px]"
+                                            className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent min-w-0 rounded-r-[8px]"
                                         />
                                     </div>
                                 </Field>
@@ -257,22 +257,22 @@ export function StudioProfileFormPage() {
                     {/* Right preview — hugs its content vertically so the panel
                         doesn't run the full viewport height. */}
                     <div className="w-[360px] shrink-0 self-start">
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                             <div className="flex flex-col gap-1 px-6 pt-6 pb-5">
-                                <p className="text-[18px] font-semibold text-[#101828] leading-7">Studio preview</p>
+                                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Studio preview</p>
                                 <p className="text-[14px] text-[#6e776f] leading-5">This is how studio overview will look like.</p>
                             </div>
-                            <div className="h-px w-full bg-[#e4e7ec]" />
+                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <div className="bg-[#f8f8f6] p-6 flex items-start justify-center">
-                                <div className="w-full bg-white border-1 border-[#e4e7ec] rounded-[20px] p-5 flex flex-col gap-3">
+                                <div className="w-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-5 flex flex-col gap-3">
                                     <LogoPreview src={logoDataUrl} size={96} />
                                     <div>
-                                        <p className="text-[18px] font-semibold text-[#101828] leading-7">{studioName || "Forma Studio"}</p>
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{studioName || "Forma Studio"}</p>
                                     </div>
                                     <div className="flex flex-col gap-1.5 mt-1">
-                                        <PreviewLine icon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />} text={country} />
-                                        <PreviewLine icon={<Coins01 className="w-4 h-4 text-[#667085]" />}     text={currency} />
-                                        <PreviewLine icon={<Phone className="w-4 h-4 text-[#667085]" />}     text={phoneNumber ? `${phoneCountry.dial} ${phoneNumber}` : "Phone number"} />
+                                        <PreviewLine icon={<MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} text={country} />
+                                        <PreviewLine icon={<Coins01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}     text={currency} />
+                                        <PreviewLine icon={<Phone className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}     text={phoneNumber ? `${phoneCountry.dial} ${phoneNumber}` : "Phone number"} />
                                     </div>
                                 </div>
                             </div>
@@ -293,12 +293,12 @@ export function FormHeader({ title, onClose }: { title: string; onClose: () => v
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
             >
-                <XClose className="w-5 h-5 text-[#667085]" />
+                <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
             </button>
             <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                     {title}
                 </h1>
                 <Breadcrumbs className="p-0 text-[12px]" />
@@ -335,17 +335,17 @@ function StepRow({ step, current, isLast }: {
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active   ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                    : complete ? "bg-[#658774] text-white"
-                    : "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#98a2b3]",
+                    active   ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    : complete ? "bg-[var(--colors-secondary-600)] text-white"
+                    : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {step.n}
                 </div>
-                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />}
+                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
             <span className={cn(
                 "text-[14px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]"
+                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]"
             )}>
                 {step.label}
             </span>
@@ -370,7 +370,7 @@ export function Field({ label, children, error }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-[14px] font-medium text-[#344054] leading-5">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">{label}</label>
             {children}
             {error && (
                 <p className="text-[13px] leading-5 text-[#d92d20]">{error}</p>
@@ -379,8 +379,8 @@ export function Field({ label, children, error }: {
     );
 }
 
-const INPUT_CLS       = "h-10 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
-const INPUT_CLS_OK    = "border-[#d0d5dd] focus:ring-[#aad4bd] focus:border-[#7ba08c]";
+const INPUT_CLS       = "h-10 w-full px-[14px] border-1 rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS_OK    = "border-[var(--colors-border-primary)] focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)]";
 const INPUT_CLS_ERROR = "border-[#fda29b] focus:ring-[#fecdca] focus:border-[#d92d20]";
 
 export function TextInput({ value, onChange, placeholder, type = "text", invalid = false }: {
@@ -433,7 +433,7 @@ export function Textarea({ value, onChange, placeholder, rows = 3 }: {
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
             rows={rows}
-            className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
+            className="w-full px-[14px] py-[10px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
         />
     );
 }
@@ -441,7 +441,7 @@ export function Textarea({ value, onChange, placeholder, rows = 3 }: {
 export function LogoPreview({ src, size }: { src: string; size: number }) {
     return (
         <div
-            className="relative rounded-full bg-[#f2f4f7] border-4 border-white shrink-0 overflow-hidden flex items-center justify-center"
+            className="relative rounded-full bg-[var(--colors-bg-tertiary)] border-4 border-white shrink-0 overflow-hidden flex items-center justify-center"
             style={{
                 width: size,
                 height: size,
@@ -451,7 +451,7 @@ export function LogoPreview({ src, size }: { src: string; size: number }) {
             {src
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={src} alt="" className="w-full h-full object-cover rounded-full" />
-                : <Image01 className="w-1/2 h-1/2 text-[#98a2b3]" />
+                : <Image01 className="w-1/2 h-1/2 text-[var(--colors-fg-quaternary)]" />
             }
             <div className="absolute inset-0 rounded-full border border-[rgba(0,0,0,0.08)] pointer-events-none" />
         </div>
@@ -462,7 +462,7 @@ function PreviewLine({ icon, text }: { icon: React.ReactNode; text: string }) {
     return (
         <div className="flex items-center gap-2">
             {icon}
-            <p className="text-[14px] text-[#475467] leading-5 truncate">{text}</p>
+            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 truncate">{text}</p>
         </div>
     );
 }

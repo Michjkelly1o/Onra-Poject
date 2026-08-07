@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
 
 function NavAvatar({ imageUrl, initials }: { imageUrl?: string; initials?: string }) {
     return (
-        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7] ring-[0.5px] ring-black/[0.08]">
+        <span className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)] ring-[0.5px] ring-black/[0.08]">
             {imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imageUrl} alt="" className="size-full object-cover" />

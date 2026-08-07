@@ -20,6 +20,7 @@ import { useAppStore, type FollowUpTask, type Customer } from "@/lib/store";
 import { TableAvatar } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
+import { LEAD_ASSIGNMENT_ENABLED } from "@/lib/lead-assignment";
 import { cn } from "@/lib/utils";
 
 /** Trigger weights per the plan §Phase 5 rank formula. Enquiry_logged
@@ -120,8 +121,8 @@ export function LeadsToFollowUpBody() {
         // reads centered inside the card, not stuck to the top edge.
         return (
             <div className="flex-1 min-h-[220px] flex flex-col items-center justify-center gap-2 px-4 text-center">
-                <p className="text-[14px] font-medium text-[#101828]">You&apos;re all caught up.</p>
-                <p className="text-[13px] text-[#667085] max-w-[260px]">
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">You&apos;re all caught up.</p>
+                <p className="text-[13px] text-[var(--colors-text-quaternary)] max-w-[260px]">
                     Tasks show up here automatically when a lead needs a follow-up.
                 </p>
             </div>
@@ -129,7 +130,15 @@ export function LeadsToFollowUpBody() {
     }
 
     return (
-        <div className="flex flex-col divide-y divide-[#f2f4f7]">
+        // Cap to roughly a chart widget's body height (h=240) and scroll the
+        // overflow inside — otherwise 6 ranked rows make this card taller than
+        // its grid-row sibling, and `grid-auto-rows: 1fr` stretches the whole
+        // row to match. Keeps the widget the same size as the charts beside it.
+        // The bottom white fade (same as the "Recent activity" widget) signals
+        // there's more to scroll to.
+        <div className="relative">
+        <div className="max-h-[248px] overflow-y-auto scrollbar-hide">
+        <div className="flex flex-col divide-y divide-[var(--colors-bg-tertiary)]">
             {ranked.map(({ task, customer, liveTag }) => {
                 const assignee = task.assigneeId
                     ? staff.find(s => s.id === task.assigneeId)
@@ -145,32 +154,43 @@ export function LeadsToFollowUpBody() {
                         }
                         className={cn(
                             "flex items-start gap-3 py-3 px-1 text-left transition-colors rounded-md",
-                            "hover:bg-[#f9fafb]",
+                            "hover:bg-[var(--colors-bg-secondary)]",
                         )}
                     >
                         <TableAvatar initials={customer.initials} imageUrl={customer.imageUrl} size={32} />
                         <div className="flex-1 min-w-0 flex flex-col gap-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[14px] font-medium text-[#101828] truncate">
+                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">
                                     {`${customer.firstName} ${customer.lastName}`.trim() || customer.email}
                                 </span>
                                 <StatusBadge type="lifecycle" status={liveTag} size="sm" />
                                 {customer.isVip && <StatusBadge type="vip" status="vip" size="sm" />}
                             </div>
-                            <p className="text-[13px] text-[#475467] line-clamp-2">{task.reason}</p>
-                            <div className="flex items-center gap-3 text-[12px] text-[#667085]">
+                            <p className="text-[13px] text-[var(--colors-text-tertiary)] line-clamp-2">{task.reason}</p>
+                            <div className="flex items-center gap-3 text-[12px] text-[var(--colors-text-quaternary)]">
                                 <span>{formatAge(task.createdAt)}</span>
-                                <span className="text-[#d0d5dd]">·</span>
-                                <span>
-                                    {assignee
-                                        ? `Assigned to ${assignee.fullName || `${assignee.firstName} ${assignee.lastName}`.trim()}`
-                                        : "Unassigned"}
-                                </span>
+                                {/* Assignee chip hidden while lead assignment is
+                                    off — every task is team-owned, so a blanket
+                                    "Unassigned" reads as broken. See
+                                    @/lib/lead-assignment. */}
+                                {LEAD_ASSIGNMENT_ENABLED && (
+                                    <>
+                                        <span className="text-[var(--colors-border-primary)]">·</span>
+                                        <span>
+                                            {assignee
+                                                ? `Assigned to ${assignee.fullName || `${assignee.firstName} ${assignee.lastName}`.trim()}`
+                                                : "Unassigned"}
+                                        </span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </button>
                 );
             })}
+        </div>
+        </div>
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none rounded-b-[20px]" />
         </div>
     );
 }

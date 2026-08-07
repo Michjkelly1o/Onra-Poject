@@ -30,9 +30,9 @@ function AddButton({ label, onClick }: { label: string; onClick?: () => void }) 
                 onClick?.();
             }}
             aria-label={label}
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50"
         >
-            <Plus className="relative size-5 text-[#344054]" aria-hidden />
+            <Plus className="relative size-5 text-[var(--colors-text-secondary)]" aria-hidden />
             <span
                 aria-hidden
                 className="pointer-events-none absolute inset-0 rounded-lg shadow-[inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]"
@@ -65,7 +65,7 @@ export function ProductCard({
                     onAdd?.();
                 }
             }}
-            className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4 text-left transition-shadow active:shadow-sm"
+            className="flex cursor-pointer items-center gap-3 rounded-2xl border border-[var(--colors-border-secondary)] bg-white p-4 text-left transition-shadow active:shadow-sm"
         >
             {product.kind === "retail" ? (
                 <ProductArt kind={product.kind} variant="card" imageUrl={product.imageUrl} />
@@ -77,7 +77,7 @@ export function ProductCard({
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <div className="flex min-w-0 flex-col">
                     <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{product.name}</p>
-                    <p className="truncate text-sm font-normal leading-5 text-[#475467]">{product.sub}</p>
+                    <p className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{product.sub}</p>
                 </div>
                 {/* Price + per-class, inline (Figma 4548:45171): the price leads
                     (text-md semibold, brand green) and the per-class sits muted
@@ -90,7 +90,7 @@ export function ProductCard({
                     </p>
                     {product.unitPriceLabel && (
                         <span className="flex items-end self-stretch py-0.5">
-                            <span className="text-xs font-normal leading-[18px] text-[#667085]">{product.unitPriceLabel}</span>
+                            <span className="text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">{product.unitPriceLabel}</span>
                         </span>
                     )}
                 </div>

@@ -116,7 +116,7 @@ export default function PaymentsReportPage() {
 
     if (!report) {
         return (
-            <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">
+            <div className="px-[24px] py-[48px] text-[14px] text-[var(--colors-text-tertiary)]">
                 Payments report definition is missing from the registry.
             </div>
         );

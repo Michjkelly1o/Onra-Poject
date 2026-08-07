@@ -69,8 +69,8 @@ function scopeLabel(a: Agreement): string {
 
 function DisabledCheckbox({ checked }: { checked: boolean }) {
     return (
-        <div className="w-4 h-4 rounded-[4px] border bg-[#f9fafb] border-[#d0d5dd] flex items-center justify-center shrink-0">
-            {checked && <Check className="w-[10px] h-[10px] text-[#d0d5dd]" />}
+        <div className="w-4 h-4 rounded-[4px] border bg-[var(--colors-bg-secondary)] border-[var(--colors-border-primary)] flex items-center justify-center shrink-0">
+            {checked && <Check className="w-[10px] h-[10px] text-[var(--colors-border-primary)]" />}
         </div>
     );
 }
@@ -84,7 +84,7 @@ function DisabledCheckbox({ checked }: { checked: boolean }) {
 
 function PatternBanner() {
     return (
-        <div className="relative h-[155px] w-full overflow-hidden bg-[#f9fafb] shrink-0">
+        <div className="relative h-[155px] w-full overflow-hidden bg-[var(--colors-bg-secondary)] shrink-0">
             {/* Background pattern — concentric rounded squares, tilted. */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-40">
                 <div className="size-[560px] flex items-center justify-center" style={{ transform: "rotate(-32.1deg)" }}>
@@ -114,7 +114,7 @@ function PatternBanner() {
                     "shadow-[0px_3.49px_3.49px_rgba(0,0,0,0.04),-6.98px_10.47px_20.94px_rgba(224,248,164,0.08),10.47px_10.47px_20.94px_rgba(224,248,164,0.06),0px_3.49px_20.94px_rgba(224,248,164,0.12)]",
                     "backdrop-blur-[8.7px]",
                 )}>
-                    <File06 className="w-[42px] h-[42px] text-[#475467]" />
+                    <File06 className="w-[42px] h-[42px] text-[var(--colors-text-tertiary)]" />
                     <div className="absolute inset-0 rounded-[16px] pointer-events-none shadow-[inset_2.5px_2.5px_3.3px_rgba(255,255,255,0.2)]" />
                 </div>
             </div>
@@ -134,7 +134,7 @@ function SideAction({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-left text-[16px] font-semibold transition-colors",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#101828]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)]",
             )}>
             {icon}
             {label}
@@ -167,7 +167,7 @@ function LeftSidebar({ agreement, onAddVersion, onEdit, onArchive, onRecover }: 
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <div className="w-[320px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner with floating status badge top-right */}
             <div className="relative shrink-0">
                 <PatternBanner />
@@ -178,7 +178,7 @@ function LeftSidebar({ agreement, onAddVersion, onEdit, onArchive, onRecover }: 
 
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
-                    <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{agreement.name}</h2>
+                    <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{agreement.name}</h2>
 
                     {/* v24 — sidebar fields match Figma 7684:192127
                         left-rail: Current version / Multi-location access
@@ -199,7 +199,7 @@ function LeftSidebar({ agreement, onAddVersion, onEdit, onArchive, onRecover }: 
                         <SidebarFieldPill label="Effective until">
                             {agreement.effectiveDatesMode === "ongoing"
                                 ? <SidebarOngoingPill />
-                                : <span className="text-[16px] font-medium text-[#101828]">{formatDateLong(agreement.effectiveUntil)}</span>}
+                                : <span className="text-[16px] font-medium text-[var(--colors-text-primary)]">{formatDateLong(agreement.effectiveUntil)}</span>}
                         </SidebarFieldPill>
                         <SidebarField
                             label="Re-acceptance newer version"
@@ -213,8 +213,8 @@ function LeftSidebar({ agreement, onAddVersion, onEdit, onArchive, onRecover }: 
                 </div>
 
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Agreement actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Agreement actions</p>
                     <div className="flex flex-col gap-4">{actions}</div>
                 </div>
             </div>
@@ -225,8 +225,8 @@ function LeftSidebar({ agreement, onAddVersion, onEdit, onArchive, onRecover }: 
 function SidebarField({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <p className="text-[16px] font-medium text-[#101828]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{value}</p>
         </div>
     );
 }
@@ -236,7 +236,7 @@ function SidebarField({ label, value }: { label: string; value: string }) {
 function SidebarFieldPill({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
             <div>{children}</div>
         </div>
     );
@@ -255,15 +255,15 @@ function SidebarOngoingPill() {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
     return (
-        <p className="text-[14px] text-[#667085] mt-2 first:mt-0">{children}</p>
+        <p className="text-[14px] text-[var(--colors-text-quaternary)] mt-2 first:mt-0">{children}</p>
     );
 }
 
 function DescriptionCard({ label, body }: { label: string; body: string }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-            <p className="text-[16px] text-[#101828] leading-6 whitespace-pre-line">{body}</p>
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+            <p className="text-[16px] text-[var(--colors-text-primary)] leading-6 whitespace-pre-line">{body}</p>
         </div>
     );
 }
@@ -279,12 +279,12 @@ function InlineStat({ icon, label, value }: {
 }) {
     return (
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center shrink-0 text-[#475467]">
+            <div className="w-10 h-10 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center shrink-0 text-[var(--colors-text-tertiary)]">
                 {icon}
             </div>
             <div className="flex flex-col min-w-0">
-                <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-                <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{value}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+                <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">{value}</p>
             </div>
         </div>
     );
@@ -298,32 +298,32 @@ function ServicesCard({ serviceList, totalSelected }: {
 }) {
     const [open, setOpen] = useState(true);
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Applicable service &amp; branch</p>
-                    <p className="text-[14px] text-[#667085] leading-5">The agreement can be use on multiple services</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Applicable service &amp; branch</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">The agreement can be use on multiple services</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {totalSelected} selected
                 </span>
                 <button type="button" onClick={() => setOpen(p => !p)}
                     aria-label={open ? "Collapse" : "Expand"}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 hover:text-[#344054] transition-colors">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0 hover:text-[var(--colors-text-secondary)] transition-colors">
                     {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
             {open && (
                 <div className="flex flex-col gap-3">
                     {serviceList.length === 0 ? (
-                        <p className="text-[14px] text-[#667085]">No services selected.</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">No services selected.</p>
                     ) : serviceList.map(g => (
                         <div key={g.branchName} className="flex flex-col gap-3">
-                            <p className="text-[12px] text-[#667085] leading-[18px]">{g.branchName}</p>
+                            <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{g.branchName}</p>
                             {g.services.map(s => (
                                 <div key={s.id} className="flex items-center gap-2">
                                     <DisabledCheckbox checked />
-                                    <span className="text-[14px] font-medium text-[#101828]">{s.name}</span>
+                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s.name}</span>
                                 </div>
                             ))}
                         </div>
@@ -357,40 +357,40 @@ function DetailsTab({ agreement, serviceList }: {
             <SectionHeading>Rule</SectionHeading>
             <div className="grid grid-cols-2 gap-3">
                 <RulePill
-                    icon={<ShieldTick className="w-5 h-5 text-[#475467]" />}
+                    icon={<ShieldTick className="w-5 h-5 text-[var(--colors-text-tertiary)]" />}
                     label="Multi-location access"
                     tooltip="Membership can be use on multiple branches"
                     value={
-                        <span className="text-[16px] font-semibold text-[#101828]">
+                        <span className="text-[16px] font-semibold text-[var(--colors-text-primary)]">
                             {agreement.allLocations || agreement.locationIds.length > 1 ? "On" : "Off"}
                         </span>
                     }
                 />
                 <RulePill
-                    icon={<Calendar className="w-5 h-5 text-[#475467]" />}
+                    icon={<Calendar className="w-5 h-5 text-[var(--colors-text-tertiary)]" />}
                     label="Effective until"
                     value={
                         agreement.effectiveDatesMode === "ongoing"
                             ? <SidebarOngoingPill />
-                            : <span className="text-[16px] font-semibold text-[#101828]">{formatDateShort(agreement.effectiveUntil)}</span>
+                            : <span className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{formatDateShort(agreement.effectiveUntil)}</span>
                     }
                 />
                 <RulePill
-                    icon={<File02 className="w-5 h-5 text-[#475467]" />}
+                    icon={<File02 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />}
                     label="Re-acceptance newer version"
                     tooltip="Customers must accept the latest version before their next booking"
                     value={
-                        <span className="text-[16px] font-semibold text-[#101828]">
+                        <span className="text-[16px] font-semibold text-[var(--colors-text-primary)]">
                             {agreement.requireReAcceptance ? "On" : "Off"}
                         </span>
                     }
                 />
                 <RulePill
-                    icon={<Edit02 className="w-5 h-5 text-[#475467]" />}
+                    icon={<Edit02 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />}
                     label="Minors & guardian consent"
                     tooltip="Guardian consent is required for customers under 18"
                     value={
-                        <span className="text-[16px] font-semibold text-[#101828]">
+                        <span className="text-[16px] font-semibold text-[var(--colors-text-primary)]">
                             {agreement.requireGuardianConsent ? "On" : "Off"}
                         </span>
                     }
@@ -417,12 +417,12 @@ function RulePill({ icon, label, tooltip, value }: {
 }) {
     return (
         <div className="flex items-start gap-3">
-            <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center">
+            <div className="shrink-0 w-9 h-9 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center">
                 {icon}
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <div className="flex items-center gap-1.5">
-                    <p className="text-[14px] text-[#667085] leading-[20px]">{label}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{label}</p>
                     {tooltip && <InfoTooltip content={tooltip} />}
                 </div>
                 <div>{value}</div>
@@ -446,7 +446,7 @@ function InfoTooltip({ content }: { content: string }) {
         >
             <button type="button" tabIndex={0}
                 aria-label="More info"
-                className="w-4 h-4 rounded-full text-[#98a2b3] hover:text-[#667085] transition-colors">
+                className="w-4 h-4 rounded-full text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-quaternary)] transition-colors">
                 <HelpCircle className="w-4 h-4" />
             </button>
             {open && (
@@ -466,29 +466,29 @@ function InfoTooltip({ content }: { content: string }) {
 function ApplicableBranchesCard({ branches }: { branches: { id: string; name: string }[] }) {
     const [open, setOpen] = useState(true);
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Applicable branches</p>
-                    <p className="text-[14px] text-[#667085] leading-5">The membership can be use on multiple branches</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Applicable branches</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">The membership can be use on multiple branches</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {branches.length} selected
                 </span>
                 <button type="button" onClick={() => setOpen(p => !p)}
                     aria-label={open ? "Collapse" : "Expand"}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 hover:text-[#344054] transition-colors">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0 hover:text-[var(--colors-text-secondary)] transition-colors">
                     {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
             {open && (
                 <div className="flex flex-col gap-3">
                     {branches.length === 0 ? (
-                        <p className="text-[14px] text-[#667085]">No branches selected.</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">No branches selected.</p>
                     ) : branches.map(b => (
                         <div key={b.id} className="flex items-center gap-2">
                             <DisabledCheckbox checked />
-                            <span className="text-[14px] font-medium text-[#101828]">{b.name}</span>
+                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{b.name}</span>
                         </div>
                     ))}
                 </div>
@@ -536,8 +536,8 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
             {/* Toolbar */}
             <div className="shrink-0 px-6 pt-6 pb-3 flex items-center justify-between gap-3">
                 <div className="flex flex-col">
-                    <p className="text-[14px] text-[#667085]">Total</p>
-                    <p className="text-[14px] font-medium text-[#101828]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">
                         {filtered.length} Version
                     </p>
                 </div>
@@ -548,11 +548,11 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
             <div className="flex-1 min-h-0 px-6">
                 <table className="w-full border-collapse">
                     <thead>
-                        <tr className="border-b border-[#e4e7ec]">
-                            <th className="py-3 pr-3 text-left text-[12px] font-medium text-[#475467]">
+                        <tr className="border-b border-[var(--colors-border-secondary)]">
+                            <th className="py-3 pr-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)]">
                                 <SortableHeader sortKey="version" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Version</SortableHeader>
                             </th>
-                            <th className="py-3 pr-3 text-center text-[12px] font-medium text-[#475467] w-[140px]">
+                            <th className="py-3 pr-3 text-center text-[12px] font-medium text-[var(--colors-text-tertiary)] w-[140px]">
                                 <SortableHeader sortKey="status"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
                             </th>
                             <th className="py-3 pr-3 w-[52px]" />
@@ -561,7 +561,7 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
                     <tbody>
                         {pagedRows.length === 0 ? (
                             <tr>
-                                <td colSpan={3} className="py-10 text-center text-[14px] text-[#667085]">
+                                <td colSpan={3} className="py-10 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     {versions.length === 0 ? "No versions yet." : "No versions match your search."}
                                 </td>
                             </tr>
@@ -570,16 +570,16 @@ function VersionsTab({ agreement, versions, onView, onRepublish }: {
                             return (
                                 <tr key={v.id}
                                     onClick={() => onView(v)}
-                                    className="transition-colors border-b border-[#f2f4f7] hover:bg-[#f9fafb] cursor-pointer">
+                                    className="transition-colors border-b border-[var(--colors-bg-tertiary)] hover:bg-[var(--colors-bg-secondary)] cursor-pointer">
                                     <td className="py-4 pr-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-[#f2f4f7] flex items-center justify-center shrink-0 relative">
-                                                <File06 className="w-5 h-5 text-[#475467]" />
+                                            <div className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center shrink-0 relative">
+                                                <File06 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                                                 <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-[14px] font-medium text-[#101828]">Version {v.versionNumber}</span>
-                                                <span className="text-[14px] text-[#667085]">Added on {formatDateShort(v.publishedAt)}</span>
+                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">Version {v.versionNumber}</span>
+                                                <span className="text-[14px] text-[var(--colors-text-quaternary)]">Added on {formatDateShort(v.publishedAt)}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -628,30 +628,30 @@ function VersionPagination({ page, total, pageSize, onPage, onPageSize }: {
     }, []);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
+        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[var(--colors-border-secondary)]">
             <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
                 <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
+                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[var(--colors-text-secondary)]">
+                    {pageSize}<ChevronLeft className="w-4 h-4 text-[var(--colors-text-quaternary)] rotate-90" />
                 </button>
                 {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
+                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
                         {[10, 20, 30].map(s => (
                             <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
+                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[var(--colors-bg-secondary)] transition-colors", s === pageSize ? "text-[var(--colors-text-primary)] font-semibold" : "text-[var(--colors-text-secondary)]")}>{s}</button>
                         ))}
                     </div>
                 )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">per page</span>
             </div>
             <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] whitespace-nowrap">Page {page} of {totalPages}</span>
                 <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
                     className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
+                        page <= 1 ? "border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed bg-white" : "border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)]")}>Previous</button>
                 <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
                     className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
+                        page >= totalPages ? "border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed bg-white" : "border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)]")}>Next</button>
             </div>
         </div>
     );
@@ -739,7 +739,7 @@ function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
              *  metrics not be clickable"). */}
             <div className="grid grid-cols-3 gap-4">
                 <AcceptanceKpiCard
-                    icon={<FileCheck02 className="w-5 h-5 text-[#658774]" />}
+                    icon={<FileCheck02 className="w-5 h-5 text-[var(--colors-secondary-600)]" />}
                     tint="green"
                     label="Signed current version"
                     value={buckets.signed.length}
@@ -763,7 +763,7 @@ function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
 
             {/* Sub-tabs — SegmentedTabs pattern (matches Referral +
                 Customer detail Plan tab). */}
-            <div className="bg-[#f9fafb] rounded-[12px] p-1 flex items-center">
+            <div className="bg-[var(--colors-bg-secondary)] rounded-[12px] p-1 flex items-center">
                 <AcceptanceSubTabButton active={subTab === "all_signed"}    label="All signed"          count={buckets.signed.length}   onClick={() => setSubTab("all_signed")} />
                 <AcceptanceSubTabButton active={subTab === "needs_re_accept"} label="Needs re-acceptance" count={buckets.reAccept.length} onClick={() => setSubTab("needs_re_accept")} />
                 <AcceptanceSubTabButton active={subTab === "pending_never"} label="Pending / never"     count={buckets.never.length}    onClick={() => setSubTab("pending_never")} />
@@ -772,8 +772,8 @@ function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
             {/* Toolbar row — Total + Search */}
             <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">
-                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828] leading-6">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">
                         {filtered.length} {filtered.length === 1 ? "customer" : "customers"}
                     </p>
                 </div>
@@ -797,29 +797,29 @@ function AcceptanceStatusTab({ agreement }: { agreement: Agreement }) {
                     <tbody>
                         {paged.length === 0 ? (
                             <tr>
-                                <td className={cn(AT_TD, "text-center text-[#667085]")} colSpan={subTab === "pending_never" ? 4 : 5}>
+                                <td className={cn(AT_TD, "text-center text-[var(--colors-text-quaternary)]")} colSpan={subTab === "pending_never" ? 4 : 5}>
                                     No customers in this bucket.
                                 </td>
                             </tr>
                         ) : paged.map(r => (
-                            <tr key={r.customerId} className="hover:bg-[#f9fafb] transition-colors">
+                            <tr key={r.customerId} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                 <td className={AT_TD}>
                                     <div className="flex items-center gap-3">
                                         {r.customerImage ? (
                                             /* eslint-disable-next-line @next/next/no-img-element */
                                             <img src={r.customerImage} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-full bg-[#f2f4f7] flex items-center justify-center text-[13px] font-semibold text-[#344054] shrink-0">
+                                            <div className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center text-[13px] font-semibold text-[var(--colors-text-secondary)] shrink-0">
                                                 {r.customerInitials ?? r.customerName.slice(0, 2).toUpperCase()}
                                             </div>
                                         )}
                                         <div className="flex flex-col min-w-0">
-                                            <span className="text-[14px] font-medium text-[#101828]">{r.customerName}</span>
-                                            <span className="text-[13px] text-[#475467]">{r.customerEmail}</span>
+                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.customerName}</span>
+                                            <span className="text-[13px] text-[var(--colors-text-tertiary)]">{r.customerEmail}</span>
                                         </div>
                                     </div>
                                 </td>
-                                <td className={cn(AT_TD, r.status === "never_signed" && "text-[#98a2b3]")}>
+                                <td className={cn(AT_TD, r.status === "never_signed" && "text-[var(--colors-fg-quaternary)]")}>
                                     {r.versionLabel}
                                 </td>
                                 {subTab !== "pending_never" && (
@@ -862,8 +862,8 @@ interface AcceptanceRow {
     status:          "signed" | "re_accept_due" | "never_signed";
 }
 
-const AT_TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
-const AT_TD = "px-4 py-4 text-[14px] text-[#475467] border-b border-[#f2f4f7]";
+const AT_TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
+const AT_TD = "px-4 py-4 text-[14px] text-[var(--colors-text-tertiary)] border-b border-[var(--colors-bg-tertiary)]";
 
 function AcceptanceKpiCard({ icon, tint, label, value, subtitle }: {
     icon: React.ReactNode;
@@ -881,15 +881,15 @@ function AcceptanceKpiCard({ icon, tint, label, value, subtitle }: {
       : tint === "amber" ? "bg-[#fffaeb] border-[#fedf89]"
       :                    "bg-[#fef3f2] border-[#fecdca]";
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-start justify-between gap-3">
-                <p className="text-[14px] text-[#667085]">{label}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
                 <div className={cn("w-8 h-8 rounded-[8px] border-1 flex items-center justify-center shrink-0", iconTint)}>
                     {icon}
                 </div>
             </div>
-            <p className="text-[28px] font-semibold text-[#101828] leading-[36px]">{value}</p>
-            <p className="text-[13px] text-[#667085] leading-[18px]">{subtitle}</p>
+            <p className="text-[28px] font-semibold text-[var(--colors-text-primary)] leading-[36px]">{value}</p>
+            <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">{subtitle}</p>
         </div>
     );
 }
@@ -904,16 +904,16 @@ function AcceptanceSubTabButton({ active, label, count, onClick }: {
             className={cn(
                 "flex-1 h-10 rounded-[8px] flex items-center justify-center gap-2 text-[14px] font-medium transition-colors",
                 active
-                    ? "bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.08)] text-[#101828]"
-                    : "text-[#667085] hover:text-[#344054]",
+                    ? "bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.08)] text-[var(--colors-text-primary)]"
+                    : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
             )}
         >
             <span>{label}</span>
             <span className={cn(
                 "inline-flex items-center px-2 py-[1px] rounded-full text-[12px] font-medium border-1",
                 active
-                    ? "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]"
-                    : "bg-white border-[#e4e7ec] text-[#667085]",
+                    ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]"
+                    : "bg-white border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)]",
             )}>
                 {count}
             </span>
@@ -976,17 +976,17 @@ function RightPanel({ agreement, versions, serviceList, onView, onRepublish }: {
     ];
 
     return (
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[var(--colors-border-secondary)] rounded-[20px]">
             {/* Tabs row — same h-[48px] underline pattern as membership detail */}
-            <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                 <div className="flex gap-1">
                     {TABS.map(t => (
                         <button key={t.id} type="button" onClick={() => setTab(t.id)}
                             className={cn(
                                 "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
                                 tab === t.id
-                                    ? "border-b-2 border-[#101828] text-[#101828]"
-                                    : "text-[#667085] hover:text-[#344054]",
+                                    ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                    : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                             )}>
                             {t.label}
                         </button>
@@ -1117,11 +1117,11 @@ export function AgreementDetailPage({ agreementId, returnTo = "/admin/settings/a
             {/* Header — same 72px chrome as membership detail */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={handleClose} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                         Agreement details
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
@@ -1168,7 +1168,7 @@ export function AgreementDetailPage({ agreementId, returnTo = "/admin/settings/a
                         title={isArchive ? "Archive this agreement?" : "Recover this agreement?"}
                         description={
                             <>
-                                <span className="font-medium text-[#344054]">{agreement.name}</span>
+                                <span className="font-medium text-[var(--colors-text-secondary)]">{agreement.name}</span>
                                 {isArchive
                                     ? " will be hidden from the default list. All signed records and version history are preserved — you can recover archived agreements at any time."
                                     : " will be restored to Active status and shown in the agreements list again."}

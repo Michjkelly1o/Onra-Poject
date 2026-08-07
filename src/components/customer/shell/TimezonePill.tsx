@@ -19,10 +19,10 @@ export function TimezonePill({ tz, onClick }: { tz: string; onClick: () => void 
             type="button"
             onClick={onClick}
             aria-label={`Display timezone: ${tz} (${offset}). Tap to change.`}
-            className="flex shrink-0 items-center gap-1 rounded-md border border-[#d0d5dd] bg-white py-0.5 pl-2 pr-1.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+            className="flex shrink-0 items-center gap-1 rounded-md border border-[var(--colors-border-primary)] bg-white py-0.5 pl-2 pr-1.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
         >
-            <Globe04 className="size-3 shrink-0 text-[#667085]" aria-hidden />
-            <span className="text-xs font-medium leading-[18px] text-[#344054]">{offset}</span>
+            <Globe04 className="size-3 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+            <span className="text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">{offset}</span>
         </button>
     );
 }

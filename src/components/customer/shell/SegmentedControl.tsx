@@ -22,8 +22,8 @@ export function SegmentedControl<T extends string>({
 }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium leading-5 text-[#344054]">{label}</span>
-            <div className="flex overflow-hidden rounded-md border border-[#d0d5dd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">{label}</span>
+            <div className="flex overflow-hidden rounded-md border border-[var(--colors-border-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 {options.map((opt, i) => {
                     const on = value === opt;
                     return (
@@ -31,9 +31,9 @@ export function SegmentedControl<T extends string>({
                             key={opt}
                             type="button"
                             onClick={() => onChange(on ? null : opt)}
-                            className={`min-h-10 flex-1 px-4 py-2 text-sm font-semibold leading-5 text-[#344054] transition-colors ${
-                                i < options.length - 1 ? "border-r border-[#d0d5dd]" : ""
-                            } ${on ? "bg-[#f9fafb]" : "bg-white"}`}
+                            className={`min-h-10 flex-1 px-4 py-2 text-sm font-semibold leading-5 text-[var(--colors-text-secondary)] transition-colors ${
+                                i < options.length - 1 ? "border-r border-[var(--colors-border-primary)]" : ""
+                            } ${on ? "bg-[var(--colors-bg-secondary)]" : "bg-white"}`}
                         >
                             {opt}
                         </button>

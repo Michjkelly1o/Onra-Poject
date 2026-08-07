@@ -22,7 +22,7 @@
 //     in practice)
 //   • Container: `bg-white rounded-[12px] shadow-[...]` with a soft 2-layer
 //     drop shadow
-//   • Close button: top-right `<XClose>` in a hover-bg-[#f9fafb] square
+//   • Close button: top-right `<XClose>` in a hover-bg-[var(--colors-bg-secondary)] square
 //   • z-index: most modals sit at z-[200..300] above the slide panels
 //   • Click-outside-to-close: enabled by default; opt out via
 //     `onBackdropClick=null`
@@ -227,8 +227,8 @@ Modal.Header = function ModalHeader({
                     id={id}
                     className={cn(
                         centered
-                            ? "font-semibold text-[18px] leading-[28px] text-[#101828]"
-                            : "text-[18px] font-semibold text-[#101828] leading-7",
+                            ? "font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]"
+                            : "text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7",
                     )}
                 >
                     {title}
@@ -236,8 +236,8 @@ Modal.Header = function ModalHeader({
                 {subtitle && (
                     <p className={cn(
                         centered
-                            ? "text-[14px] text-[#475467] leading-[20px]"
-                            : "text-sm font-normal text-[#475467] leading-5",
+                            ? "text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]"
+                            : "text-sm font-normal text-[var(--colors-text-tertiary)] leading-5",
                     )}>
                         {subtitle}
                     </p>
@@ -249,7 +249,7 @@ Modal.Header = function ModalHeader({
                     type="button"
                     onClick={onClose}
                     aria-label="Close"
-                    className="shrink-0 w-10 h-10 -mr-2 -mt-2 flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#101828] hover:bg-[#f9fafb] transition-colors"
+                    className="shrink-0 w-10 h-10 -mr-2 -mt-2 flex items-center justify-center rounded-full text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                 >
                     <XClose className="w-5 h-5" />
                 </button>
@@ -260,9 +260,9 @@ Modal.Header = function ModalHeader({
                     type="button"
                     onClick={onClose}
                     aria-label="Close"
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10"
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10"
                 >
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
             )}
         </div>

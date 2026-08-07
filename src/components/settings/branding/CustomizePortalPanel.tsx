@@ -120,24 +120,24 @@ export function CustomizePortalPanel({ open, onClose }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={720}>
             {/* Header — title + close X (top-right). */}
-            <div className="relative shrink-0 border-b border-[#e4e7ec] px-6 py-4">
+            <div className="relative shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4">
                 <div className="pr-10">
-                    <p className="text-[18px] font-medium leading-[28px] text-[#101828]">
+                    <p className="text-[18px] font-medium leading-[28px] text-[var(--colors-text-primary)]">
                         Customize portal preferences
                     </p>
-                    <p className="text-[14px] text-[#475467] leading-5 mt-1">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 mt-1">
                         Manage your website portal URL, menu bar, and embed code.
                     </p>
                 </div>
                 <button type="button" onClick={onClose} aria-label="Close"
-                    className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
             </div>
 
             {/* Breadcrumb stepper — matches CustomizeDesignPanel. Any step
                 click jumps directly. */}
-            <div className="shrink-0 border-b border-[#e4e7ec] px-6 py-4 flex items-center gap-2">
+            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4 flex items-center gap-2">
                 {STEPS.map((s, i) => (
                     <Fragment key={s.n}>
                         <button
@@ -147,13 +147,13 @@ export function CustomizePortalPanel({ open, onClose }: {
                                 "text-[14px] font-semibold py-1 px-1 transition-colors",
                                 step === s.n
                                     ? "text-[#4f6e5d]"
-                                    : "text-[#475467] hover:text-[#344054]",
+                                    : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
                             )}
                         >
                             {s.label}
                         </button>
                         {i < STEPS.length - 1 && (
-                            <ChevronRight className="w-4 h-4 text-[#98a2b3]" />
+                            <ChevronRight className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
                         )}
                     </Fragment>
                 ))}
@@ -187,7 +187,7 @@ export function CustomizePortalPanel({ open, onClose }: {
             </div>
 
             {/* Footer — Cancel left / Continue or Save right. */}
-            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between">
+            <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between">
                 <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                 {step === 1 ? (
                     <Button variant="primary" size="md" onClick={() => setStep(2)}>Continue</Button>
@@ -234,7 +234,7 @@ function Step1({
                         className={cn(INPUT_CLS, "flex-1")}
                     />
                     <IconButton onClick={onOpenLivePortal} title="Open live portal">
-                        <Share04 className="w-5 h-5 text-[#475467]" />
+                        <Share04 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                     </IconButton>
                     <CopyButton text={portalUrl} title="Copy URL" />
                 </div>
@@ -242,7 +242,7 @@ function Step1({
 
             <div className="flex items-center gap-16 w-full">
                 <div className="flex-1 flex flex-col gap-1">
-                    <p className="text-[18px] font-semibold text-[#101828] leading-7">Menu bar</p>
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Menu bar</p>
                     <p className="text-[14px] text-[#6e776f] leading-5">
                         Show the menu bar on your website portal
                     </p>
@@ -295,19 +295,19 @@ function MenuItemRow({
             onDrop={(e) => { e.preventDefault(); onDragEnd(); }}
             onDragEnd={onDragEnd}
             className={cn(
-                "bg-white border-1 border-[#e4e7ec] rounded-[12px] flex items-center gap-1 p-4 transition-all select-none",
+                "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] flex items-center gap-1 p-4 transition-all select-none",
                 isDragging
-                    ? "opacity-50 border-[#7ba08c] shadow-[0px_8px_16px_-4px_rgba(16,24,40,0.10)]"
-                    : "hover:border-[#d0d5dd]",
+                    ? "opacity-50 border-[var(--colors-secondary-500)] shadow-[0px_8px_16px_-4px_rgba(16,24,40,0.10)]"
+                    : "hover:border-[var(--colors-border-primary)]",
                 disabled && "opacity-60",
             )}
         >
             <div className="flex-1 flex items-center gap-3 min-w-0">
                 <DotsGrid className={cn(
                     "w-4 h-4 shrink-0 transition-colors",
-                    isDragging ? "text-[#475467] cursor-grabbing" : "text-[#98a2b3] cursor-grab",
+                    isDragging ? "text-[var(--colors-text-tertiary)] cursor-grabbing" : "text-[var(--colors-fg-quaternary)] cursor-grab",
                 )} />
-                <p className="text-[14px] font-medium text-[#344054] leading-5">{item.label}</p>
+                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">{item.label}</p>
             </div>
             <Toggle
                 on={item.enabled && !disabled}
@@ -343,7 +343,7 @@ function Step2({
                             className={cn(INPUT_CLS, "flex-1")}
                         />
                         <IconButton onClick={() => setPortalUrl("")} title="Clear">
-                            <Trash01 className="w-5 h-5 text-[#475467]" />
+                            <Trash01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                         </IconButton>
                     </div>
                 </FormField>
@@ -352,7 +352,7 @@ function Step2({
                         <textarea
                             value={embedCode}
                             readOnly
-                            className="flex-1 h-[140px] bg-[#f9fafb] border-1 border-[#d0d5dd] rounded-[8px] px-[14px] py-3 text-[14px] leading-6 text-[#475467] font-mono shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-y focus:outline-none"
+                            className="flex-1 h-[140px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-primary)] rounded-[8px] px-[14px] py-3 text-[14px] leading-6 text-[var(--colors-text-tertiary)] font-mono shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-y focus:outline-none"
                         />
                         <CopyButton text={embedCode} title="Copy embed code" />
                     </div>
@@ -368,10 +368,10 @@ function Step2({
                                 type="url"
                                 value={item.url}
                                 readOnly
-                                className={cn(INPUT_CLS, "flex-1 bg-[#f9fafb] text-[#475467]")}
+                                className={cn(INPUT_CLS, "flex-1 bg-[var(--colors-bg-secondary)] text-[var(--colors-text-tertiary)]")}
                             />
                             <IconButton onClick={onOpenLink} title={`Open ${item.label}`}>
-                                <Share04 className="w-5 h-5 text-[#475467]" />
+                                <Share04 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                             </IconButton>
                             <CopyButton text={item.url} title={`Copy ${item.label} link`} />
                         </div>
@@ -387,13 +387,13 @@ function Step2({
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-[14px] font-medium text-[#344054] leading-5">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">{label}</label>
             {children}
         </div>
     );
 }
 
-const INPUT_CLS = "h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const INPUT_CLS = "h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 function IconButton({ onClick, title, children }: {
     onClick: () => void;
@@ -406,7 +406,7 @@ function IconButton({ onClick, title, children }: {
             onClick={onClick}
             title={title}
             aria-label={title}
-            className="w-11 h-11 shrink-0 border-1 border-[#d0d5dd] bg-white rounded-[8px] flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#f9fafb] transition-colors"
+            className="w-11 h-11 shrink-0 border-1 border-[var(--colors-border-primary)] bg-white rounded-[8px] flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
         >
             {children}
         </button>
@@ -467,23 +467,23 @@ function CopyButton({ text, title }: { text: string; title: string }) {
                     "w-11 h-11 shrink-0 border-1 rounded-[8px] flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
                     copied
                         ? "border-[#abefc6] bg-[#ecfdf3]"
-                        : "border-[#d0d5dd] bg-white hover:bg-[#f9fafb]",
+                        : "border-[var(--colors-border-primary)] bg-white hover:bg-[var(--colors-bg-secondary)]",
                 )}
             >
                 {copied
                     ? <Check className="w-5 h-5 text-[#067647]" />
-                    : <Copy03 className="w-5 h-5 text-[#475467]" />
+                    : <Copy03 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                 }
             </button>
             {mounted && copied && tipPos && createPortal(
                 <div
-                    className="fixed z-[9999] -translate-x-1/2 -translate-y-full whitespace-nowrap bg-[#101828] text-white text-[12px] font-medium px-3 py-1.5 rounded-[6px] shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.10),0px_2px_4px_-2px_rgba(16,24,40,0.06)] pointer-events-none"
+                    className="fixed z-[9999] -translate-x-1/2 -translate-y-full whitespace-nowrap bg-[var(--colors-text-primary)] text-white text-[12px] font-medium px-3 py-1.5 rounded-[6px] shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.10),0px_2px_4px_-2px_rgba(16,24,40,0.06)] pointer-events-none"
                     style={{ left: tipPos.left, top: tipPos.top }}
                     role="status"
                     aria-live="polite"
                 >
                     Copied!
-                    <span className="absolute left-1/2 -translate-x-1/2 -bottom-[5px] border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-[#101828]" />
+                    <span className="absolute left-1/2 -translate-x-1/2 -bottom-[5px] border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-[var(--colors-text-primary)]" />
                 </div>,
                 document.body,
             )}
@@ -507,7 +507,7 @@ function Toggle({ on, onChange, ariaLabel, disabled = false }: {
             onClick={() => onChange(!on)}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
                 disabled && "cursor-not-allowed opacity-60",
             )}
         >

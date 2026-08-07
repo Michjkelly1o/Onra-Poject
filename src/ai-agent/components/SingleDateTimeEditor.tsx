@@ -20,7 +20,7 @@
 // onto preview_class_schedule (recurring=false, dateISO, startTime).
 
 import { useMemo, useState } from "react";
-import { CheckCircle, ChevronLeft } from "@untitledui/icons";
+import { CheckCircle, ChevronLeft, ChevronRight } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
@@ -144,11 +144,11 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
 
     if (confirmed) {
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-secondary-300)] bg-[#f1f7f4] px-4 py-3">
                 <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Session scheduled</p>
-                    <p className="text-[13px] text-[#475467] leading-5 mt-0.5">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Session scheduled</p>
+                    <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5">
                         {fmtDateLabel(confirmed.dateISO)} · {fmtTime(confirmed.startTime)}
                     </p>
                 </div>
@@ -157,22 +157,39 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
     }
 
     return (
-        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] overflow-hidden">
-            {/* Header — title + pager (+ back on step 2) */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-[#e4e7ec]">
-                {step === 2 && (
-                    <button type="button" onClick={() => setStep(1)} aria-label="Back"
-                        className="w-7 h-7 -ml-1 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f2f4f7] transition-colors shrink-0">
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-                )}
-                <p className="flex-1 text-[15px] font-semibold text-[#101828]">
+        <div className="w-full bg-white border border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]">
+            {/* Header — title + pager. Matches the AiQuestionPrompt chrome so
+                the date/time step reads as the same kind of question panel. */}
+            <div className="h-[52px] flex items-center gap-2 px-3.5 border-b border-[var(--colors-border-secondary)]">
+                <p className="flex-1 min-w-0 text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6 truncate">
                     {step === 1 ? "When is the session?" : "When does the class start?"}
                 </p>
-                <span className="text-[13px] text-[#667085] shrink-0">{step} of 2</span>
+                <div className="flex items-center gap-1 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => setStep(1)}
+                        disabled={step === 1}
+                        aria-label="Previous question"
+                        className="size-6 flex items-center justify-center rounded-[3px] text-[var(--colors-text-quaternary)] enabled:hover:bg-[var(--colors-bg-secondary)] disabled:opacity-40 transition-colors"
+                    >
+                        <ChevronLeft className="size-3.5" />
+                    </button>
+                    <span className="text-[14px] font-medium text-[var(--colors-text-quaternary)] tabular-nums px-1">
+                        {step} of 2
+                    </span>
+                    <button
+                        type="button"
+                        onClick={step === 1 && dateISO ? () => setStep(2) : undefined}
+                        disabled={!(step === 1 && dateISO)}
+                        aria-label="Next question"
+                        className="size-6 flex items-center justify-center rounded-[3px] text-[var(--colors-text-quaternary)] enabled:hover:bg-[var(--colors-bg-secondary)] disabled:opacity-40 transition-colors"
+                    >
+                        <ChevronRight className="size-3.5" />
+                    </button>
+                </div>
             </div>
 
-            <div className="p-3 flex flex-col gap-2">
+            <div className="py-2">
                 {step === 1 ? (
                     <>
                         {dateOptions.map((iso, i) => (
@@ -180,20 +197,22 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
                                 selected={dateISO === iso} onClick={() => pickDate(iso)} />
                         ))}
                         {/* Pick a custom date — the shared DS DatePicker (calendar popover). */}
-                        <DatePicker
-                            value={dateOptions.includes(dateISO) ? "" : dateISO}
-                            onChange={(iso) => pickDate(iso)}
-                            minDate={today}
-                            placeholder="Pick a custom date"
-                        />
+                        <div className="px-1.5 pt-1">
+                            <DatePicker
+                                value={dateOptions.includes(dateISO) ? "" : dateISO}
+                                onChange={(iso) => pickDate(iso)}
+                                minDate={today}
+                                placeholder="Pick a custom date"
+                            />
+                        </div>
                     </>
                 ) : times.length === 0 ? (
-                    <div className="rounded-[10px] border border-dashed border-[#e4e7ec] bg-[#f9fafb] py-8 px-4 flex flex-col items-center gap-1 text-center">
-                        <p className="text-[14px] font-medium text-[#475467]">No times available on {fmtDateLabel(dateISO)}</p>
-                        <p className="text-[12px] text-[#98a2b3]">The instructor is fully booked or off that day — go back and pick another date.</p>
+                    <div className="mx-3 my-1 rounded-[10px] border border-dashed border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] py-8 px-4 flex flex-col items-center gap-1 text-center">
+                        <p className="text-[14px] font-medium text-[var(--colors-text-tertiary)]">No times available on {fmtDateLabel(dateISO)}</p>
+                        <p className="text-[12px] text-[var(--colors-fg-quaternary)]">The instructor is fully booked or off that day — go back and pick another date.</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-2 max-h-[280px] overflow-y-auto pr-0.5">
+                    <div className="max-h-[280px] overflow-y-auto">
                         {times.map((t, i) => (
                             <OptionRow key={t} index={i + 1} label={fmtTime(t)}
                                 selected={startTime === t} onClick={() => pickTime(t)} />
@@ -205,23 +224,27 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
     );
 }
 
-/** A numbered selectable row — matches the ask-questions option style. */
+/** A numbered selectable row — IDENTICAL to AiQuestionPrompt's plain option:
+ *  a borderless row (only the number badge is bordered), same padding + hover,
+ *  so the date/time step reads exactly like every other question step. */
 function OptionRow({ index, label, selected, onClick }: {
     index: number; label: string; selected: boolean; onClick: () => void;
 }) {
     return (
-        <button type="button" onClick={onClick}
-            className={cn(
-                "flex items-center gap-3 w-full px-3 py-2.5 rounded-[10px] border-1 text-left transition-colors",
-                selected ? "border-[#7ba08c] bg-[#f1f7f4]" : "border-[#e4e7ec] bg-white hover:border-[#aad4bd] hover:bg-[#f9fafb]",
-            )}>
-            <span className={cn(
-                "w-6 h-6 shrink-0 flex items-center justify-center rounded-[6px] border-1 text-[12px] font-medium",
-                selected ? "border-[#7ba08c] text-[#3f8f68] bg-white" : "border-[#e4e7ec] text-[#667085]",
-            )}>
-                {index}
-            </span>
-            <span className="text-[14px] font-medium text-[#344054]">{label}</span>
-        </button>
+        <div className="px-1.5 py-0.5">
+            <button type="button" onClick={onClick} aria-pressed={selected}
+                className={cn(
+                    "w-full flex items-center gap-3 pl-2 pr-2.5 py-1.5 rounded-[6px] text-left transition-colors",
+                    selected ? "bg-[#f1f7f4]" : "hover:bg-[var(--colors-bg-secondary)]",
+                )}>
+                <span className={cn(
+                    "shrink-0 size-6 flex items-center justify-center rounded-[6px] border text-[12px] font-medium",
+                    selected ? "border-[var(--colors-secondary-300)] text-[var(--colors-text-secondary)] bg-white" : "border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)] bg-white",
+                )}>
+                    {index}
+                </span>
+                <span className="flex-1 min-w-0 text-[14px] leading-5 font-medium text-[var(--colors-text-secondary)] truncate">{label}</span>
+            </button>
+        </div>
     );
 }

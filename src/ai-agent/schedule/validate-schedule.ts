@@ -136,6 +136,49 @@ function occConflict(
 
 // ─── Class schedule ──────────────────────────────────────────────────────────
 
+/** Genuinely-available start times ("HH:MM") for a SINGLE class on `dateISO` —
+ *  the SAME admin logic the preview validates against: branch hours → 15-min
+ *  slots that fit before close → instructor shift/blocked gate → no instructor
+ *  or room double-booking → not in the past. Empty when the day has no free
+ *  slot (branch closed, instructor fully booked/off, etc.). */
+export function computeAvailableTimes(args: {
+    snapshot: AiAgentStateSnapshot;
+    clock: ScheduleClock;
+    dateISO: string;
+    instructorId?: string;
+    roomId?: string;
+    durationMins: number;
+}): string[] {
+    const { snapshot, clock, dateISO, instructorId, roomId, durationMins } = args;
+    const branchId =
+        (roomId ? snapshot.rooms.find((r) => r.id === roomId)?.branch_id : undefined) ??
+        (instructorId ? snapshot.staff.find((s) => s.id === instructorId)?.branchId : undefined);
+    if (!branchId) return [];
+    const bh = businessWindow(snapshot.businessHours, branchId, dateISO);
+    if (!bh) return [];
+    let slots: string[] = [];
+    for (let m = toMin(bh.open); m <= toMin(bh.close) - durationMins; m += 15) {
+        slots.push(`${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`);
+    }
+    if (instructorId) {
+        slots = gateSlotsByInstructor(slots, dateISO, {
+            instructorId,
+            durationMins,
+            staffById: new Map<string, Staff>(snapshot.staff.map((s) => [s.id, s])),
+            shifts: snapshot.shifts,
+            shiftAssignments: snapshot.shiftAssignments,
+            blockedTimes: snapshot.blockedTimes,
+        });
+    }
+    slots = slots.filter((t) => {
+        const end = addMinutesToTime(t, durationMins);
+        const c = occConflict(snapshot, { dateISO, startTime: t, endTime: end }, instructorId, roomId, undefined);
+        return !c.instructor && !c.room;
+    });
+    if (dateISO === clock.todayISO) slots = slots.filter((t) => toMin(t) > clock.nowMinutes);
+    return slots;
+}
+
 export function validateClassSchedule(args: {
     draft: ClassScheduleDraft;
     snapshot: AiAgentStateSnapshot;
@@ -198,13 +241,13 @@ export function validateClassSchedule(args: {
                 blockedTimes: snapshot.blockedTimes,
             });
             if (ok.length === 0) {
-                push(`${instructor.fullName} isn't available at ${fmt12(o.startTime)} on ${o.dateISO} — it's outside their shift or on their time-off.`);
+                push(`${instructor.fullName} isn't available at ${fmt12(o.startTime)} — it's outside their shift or on their time-off.`);
             }
         }
         // Double-booking (instructor or room).
         const conflict = occConflict(snapshot, o, draft.instructorId, draft.roomId, room?.name);
-        if (conflict.instructor) push(`${instructor?.fullName ?? "The instructor"} already has a class or session at ${fmt12(o.startTime)} on ${o.dateISO}.`);
-        if (conflict.room) push(`${room?.name ?? "That room"} is already booked at ${fmt12(o.startTime)} on ${o.dateISO}.`);
+        if (conflict.instructor) push(`${instructor?.fullName ?? "The instructor"} already has a class or session at ${fmt12(o.startTime)}.`);
+        if (conflict.room) push(`${room?.name ?? "That room"} is already booked at ${fmt12(o.startTime)}.`);
     }
 
     return { errors, warnings };

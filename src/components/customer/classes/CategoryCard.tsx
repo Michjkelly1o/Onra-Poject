@@ -28,9 +28,9 @@ export function CategoryCard({ name, imageUrl, onClick }: CategoryCardProps) {
                       onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && onClick?.(),
                   }
                 : {})}
-            className={`flex min-h-[88px] items-center justify-between gap-2 overflow-hidden rounded-lg bg-[#f1f2ed] pl-3 ${interactive ? "cursor-pointer outline-none" : ""}`}
+            className={`flex min-h-[88px] items-center justify-between gap-2 overflow-hidden rounded-lg bg-[var(--colors-tertiary-50)] pl-3 ${interactive ? "cursor-pointer outline-none" : ""}`}
         >
-            <p className="truncate text-sm font-semibold leading-5 text-[#344054]">{name}</p>
+            <p className="truncate text-sm font-semibold leading-5 text-[var(--colors-text-secondary)]">{name}</p>
 
             {imageUrl ? (
                 <div className="relative w-[96px] shrink-0 self-stretch overflow-hidden">

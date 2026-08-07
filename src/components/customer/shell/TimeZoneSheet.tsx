@@ -41,12 +41,12 @@ function ZoneRow({
             <span className="flex min-w-0 flex-1 items-center gap-2">
                 <span className="truncate text-base font-medium leading-6 text-[var(--brand-text)]">{city}</span>
                 {yourTime && (
-                    <span className="shrink-0 rounded-md border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
+                    <span className="shrink-0 rounded-md border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">
                         Your time
                     </span>
                 )}
             </span>
-            <span className="shrink-0 text-base font-normal leading-6 text-[#475467]">{offset}</span>
+            <span className="shrink-0 text-base font-normal leading-6 text-[var(--colors-text-tertiary)]">{offset}</span>
             <RadioDot checked={selected} />
         </button>
     );
@@ -101,7 +101,7 @@ export function TimeZoneSheet({
                         />
                         <div className="mt-2 flex items-start gap-3 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                             <Lightbulb02 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
-                            <p className="text-sm font-normal leading-5 text-[#475467]">
+                            <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                 You&apos;re outside the branch&apos;s time zone — pick which one to show class times in.
                             </p>
                         </div>

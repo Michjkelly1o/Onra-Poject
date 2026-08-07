@@ -69,7 +69,7 @@ function Toggle({ on, onClick, ariaLabel }: {
             onClick={onClick}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -117,13 +117,13 @@ export default function ServicesPage() {
     return (
         <div className="flex w-full flex-col gap-4">
             {/* ── Intro / context banner ───────────────────────────── */}
-            <div className="flex items-start gap-3 rounded-[12px] bg-[#f1f2ed] p-4">
-                <Lightbulb02 className="mt-0.5 h-5 w-5 shrink-0 text-[#475467]" />
+            <div className="flex items-start gap-3 rounded-[12px] bg-[var(--colors-tertiary-50)] p-4">
+                <Lightbulb02 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--colors-text-tertiary)]" />
                 <div className="flex flex-col gap-1">
-                    <p className="text-[14px] font-medium text-[#344054]">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                         Choose what your studio offers
                     </p>
-                    <p className="text-[13px] leading-[19px] text-[#475467]">
+                    <p className="text-[13px] leading-[19px] text-[var(--colors-text-tertiary)]">
                         Classes are always available. Turn the optional services below on or
                         off — switching one off hides everything related to it across menus,
                         modules, customer plans and reports. You can turn it back on anytime.
@@ -132,10 +132,10 @@ export default function ServicesPage() {
             </div>
 
             {/* ── Services card ────────────────────────────────────── */}
-            <div className="flex flex-col rounded-[16px] border-1 border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="flex flex-col rounded-[16px] border-1 border-[var(--colors-border-secondary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="flex flex-col gap-1 p-6 pb-4">
-                    <p className="text-[16px] font-semibold text-[#101828]">Services</p>
-                    <p className="text-[14px] leading-[20px] text-[#667085]">
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Services</p>
+                    <p className="text-[14px] leading-[20px] text-[var(--colors-text-quaternary)]">
                         Enable only what this studio actually sells.
                     </p>
                 </div>
@@ -148,15 +148,15 @@ export default function ServicesPage() {
                             key={s.key}
                             className={cn(
                                 "flex items-center gap-4 px-6 py-5",
-                                i > 0 && "border-t border-[#eaecf0]",
+                                i > 0 && "border-t border-[var(--colors-border-tertiary)]",
                             )}
                         >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border-1 border-[#e4e7ec] bg-[#f9fafb]">
-                                <Icon className="h-5 w-5 text-[#475467]" />
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)]">
+                                <Icon className="h-5 w-5 text-[var(--colors-text-tertiary)]" />
                             </div>
                             <div className="flex flex-1 flex-col gap-1 min-w-0">
-                                <p className="text-[15px] font-semibold text-[#101828]">{s.title}</p>
-                                <p className="text-[13px] leading-[19px] text-[#667085]">{s.description}</p>
+                                <p className="text-[15px] font-semibold text-[var(--colors-text-primary)]">{s.title}</p>
+                                <p className="text-[13px] leading-[19px] text-[var(--colors-text-quaternary)]">{s.description}</p>
                             </div>
                             <Toggle
                                 on={on}

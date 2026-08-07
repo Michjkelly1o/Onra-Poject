@@ -79,22 +79,22 @@ export default function SelectInstructorPage() {
                     type="button"
                     onClick={pickFlexible}
                     className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-all duration-300 ease-out active:bg-gray-50 ${
-                        selected === FLEXIBLE ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
+                        selected === FLEXIBLE ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[var(--colors-border-secondary)] bg-white"
                     }`}
                 >
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-tertiary)]">
                         <Shuffle01 className="size-4 text-[var(--brand-primary)]" aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium leading-5 text-[#344054]">Preference: Flexible</span>
-                        <span className="block text-xs leading-4 text-[#667085]">Let the studio assign an available instructor</span>
+                        <span className="block truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Preference: Flexible</span>
+                        <span className="block text-xs leading-4 text-[var(--colors-text-quaternary)]">Let the studio assign an available instructor</span>
                     </span>
                     {selected === FLEXIBLE ? (
                         <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#d7ffe9]">
                             <Check className="size-2.5 text-[#085d3a]" strokeWidth={3} aria-hidden />
                         </span>
                     ) : (
-                        <span className="size-4 shrink-0 rounded-full border border-[#d0d5dd]" />
+                        <span className="size-4 shrink-0 rounded-full border border-[var(--colors-border-primary)]" />
                     )}
                 </button>
 
@@ -106,18 +106,18 @@ export default function SelectInstructorPage() {
                             type="button"
                             onClick={() => pick(i.id)}
                             className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-all duration-300 ease-out active:bg-gray-50 ${
-                                isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
+                                isSel ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[var(--colors-border-secondary)] bg-white"
                             }`}
                         >
-                            <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                            <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                                 {i.imageUrl ? (
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img src={i.imageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                                 ) : (
-                                    <span className="text-xs font-semibold text-[#667085]">{i.initials}</span>
+                                    <span className="text-xs font-semibold text-[var(--colors-text-quaternary)]">{i.initials}</span>
                                 )}
                             </span>
-                            <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[#344054]">
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                                 {i.name}
                             </span>
                             {isSel ? (
@@ -125,7 +125,7 @@ export default function SelectInstructorPage() {
                                     <Check className="size-2.5 text-[#085d3a]" strokeWidth={3} aria-hidden />
                                 </span>
                             ) : (
-                                <span className="size-4 shrink-0 rounded-full border border-[#d0d5dd]" />
+                                <span className="size-4 shrink-0 rounded-full border border-[var(--colors-border-primary)]" />
                             )}
                         </button>
                     );

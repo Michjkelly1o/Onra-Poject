@@ -28,6 +28,7 @@ import { Check, ClockRefresh, XClose, MessageChatSquare, AlertCircle, Settings01
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
 import { lookupStageLabel } from "@/lib/customer/follow-up-tasks";
+import { LEAD_ASSIGNMENT_ENABLED } from "@/lib/lead-assignment";
 
 /** Human copy per trigger — matches the plan §Phase 4 table's task lines
  *  and reads well as a "source" cell in the table. */
@@ -79,11 +80,11 @@ function IconActionButton({
                 aria-label={label}
                 className={cn(
                     "inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors",
-                    "text-[#667085]",
+                    "text-[var(--colors-text-quaternary)]",
                     tone === "success" && "hover:bg-[#ecfdf3] hover:text-[#067647]",
                     tone === "warning" && "hover:bg-[#fffaeb] hover:text-[#b54708]",
                     tone === "danger"  && "hover:bg-[#fef3f2] hover:text-[#b42318]",
-                    tone === "neutral" && "hover:bg-[#f2f4f7] hover:text-[#344054]",
+                    tone === "neutral" && "hover:bg-[var(--colors-bg-tertiary)] hover:text-[var(--colors-text-secondary)]",
                 )}
             >
                 {icon}
@@ -314,7 +315,11 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                 <th className={cn(TH, "min-w-[280px]")}>Reason</th>
                                 <th className={cn(TH, "w-[160px]")}>Trigger</th>
                                 <th className={cn(TH, "w-[160px]")}>Status</th>
-                                <th className={cn(TH, "w-[160px]")}>Assigned to</th>
+                                {/* Assignee column hidden while lead assignment
+                                    is off — see @/lib/lead-assignment. */}
+                                {LEAD_ASSIGNMENT_ENABLED && (
+                                    <th className={cn(TH, "w-[160px]")}>Assigned to</th>
+                                )}
                                 <th className={cn(TH, "w-[140px]")}>Last update</th>
                                 <th className={cn(TH, "w-[140px]")}>Actions</th>
                             </tr>
@@ -325,7 +330,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                     const ageISO = isOpen ? task.createdAt : (task.closedAt ?? task.createdAt);
                                     return (
                                         <tr key={task.id} className="align-middle">
-                                            <td className={cn(TD, "text-[14px] font-medium text-[#101828]")}>
+                                            <td className={cn(TD, "text-[14px] font-medium text-[var(--colors-text-primary)]")}>
                                                 {task.reason}
                                             </td>
                                             <td className={cn(TD, "whitespace-nowrap")}>
@@ -350,10 +355,12 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className={cn(TD, "whitespace-nowrap")}>
-                                                {assigneeLabel(task.assigneeId)}
-                                            </td>
-                                            <td className={cn(TD, "whitespace-nowrap text-[#667085]")}>
+                                            {LEAD_ASSIGNMENT_ENABLED && (
+                                                <td className={cn(TD, "whitespace-nowrap")}>
+                                                    {assigneeLabel(task.assigneeId)}
+                                                </td>
+                                            )}
+                                            <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-quaternary)]")}>
                                                 {formatAge(ageISO)}
                                             </td>
                                             <td className={cn(TD)}>
@@ -379,7 +386,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <span className="text-[#d0d5dd]">—</span>
+                                                    <span className="text-[var(--colors-border-primary)]">—</span>
                                                 )}
                                             </td>
                                         </tr>
@@ -393,43 +400,48 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
             {/* Log-enquiry side panel — same 480px right-slide chrome as
                 the POS "Add new customer" panel. */}
             <SlidePanel open={enquiryOpen} onClose={() => setEnquiryOpen(false)} width={480}>
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Log enquiry</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Log enquiry</p>
                     <button
                         type="button"
                         onClick={() => setEnquiryOpen(false)}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                         aria-label="Close"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
                     <div className="flex flex-col gap-1">
-                        <p className="text-[14px] text-[#667085]">Customer</p>
-                        <p className="text-[16px] font-medium text-[#101828]">{name}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Customer</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{name}</p>
                     </div>
                     {/* Q3 (2026-07-27) — clearer, more contextual helper
                         copy under each field so the admin knows what
                         they're routing to and what the note becomes. */}
+                    {/* "Assign to" on a new enquiry hidden while lead assignment
+                        is off — the task just logs unassigned (team-owned). See
+                        @/lib/lead-assignment. */}
+                    {LEAD_ASSIGNMENT_ENABLED && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
+                                Assign to
+                            </label>
+                            <SelectInput
+                                value={assignTo}
+                                onChange={setAssignTo}
+                                options={staffOptions}
+                                width="w-full"
+                                disabled={!canSubmitEnquiry}
+                            />
+                            <p className="text-[13px] text-[var(--colors-text-quaternary)]">
+                                The new task shows up on this staff member&apos;s dashboard follow-up widget.
+                                Leave as &ldquo;Unassigned&rdquo; if nobody owns this lead yet.
+                            </p>
+                        </div>
+                    )}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[14px] font-medium text-[#344054]">
-                            Assign to
-                        </label>
-                        <SelectInput
-                            value={assignTo}
-                            onChange={setAssignTo}
-                            options={staffOptions}
-                            width="w-full"
-                            disabled={!canSubmitEnquiry}
-                        />
-                        <p className="text-[13px] text-[#667085]">
-                            The new task shows up on this staff member&apos;s dashboard follow-up widget.
-                            Leave as &ldquo;Unassigned&rdquo; if nobody owns this lead yet.
-                        </p>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-[14px] font-medium text-[#344054]">
+                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                             Enquiry note
                         </label>
                         <textarea
@@ -439,14 +451,14 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                             rows={5}
                             disabled={!canSubmitEnquiry}
                             className={cn(
-                                "w-full resize-none rounded-[8px] border-1 border-[#d0d5dd] px-[14px] py-2.5",
-                                "text-[16px] text-[#101828] placeholder:text-[#667085] bg-white",
-                                "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all",
+                                "w-full resize-none rounded-[8px] border-1 border-[var(--colors-border-primary)] px-[14px] py-2.5",
+                                "text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-white",
+                                "focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all",
                                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                                 !canSubmitEnquiry && "opacity-60 cursor-not-allowed",
                             )}
                         />
-                        <p className="text-[13px] text-[#667085]">
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)]">
                             Becomes the task&apos;s reason line, visible to whoever picks it up. Leave blank
                             for a generic &ldquo;New enquiry from {name} — follow up.&rdquo;
                         </p>
@@ -466,7 +478,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                         </div>
                     )}
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" onClick={() => setEnquiryOpen(false)}>
                         Cancel
                     </Button>
@@ -486,48 +498,54 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                 Source. Same 480px right-slide chrome as the Log-enquiry
                 panel above so the two feel like a set. */}
             <SlidePanel open={settingsOpen} onClose={() => setSettingsOpen(false)} width={480}>
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Follow-up settings</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Follow-up settings</p>
                     <button
                         type="button"
                         onClick={() => setSettingsOpen(false)}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                         aria-label="Close"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
                     <div className="flex flex-col gap-1">
-                        <p className="text-[14px] text-[#667085]">Customer</p>
-                        <p className="text-[16px] font-medium text-[#101828]">{name}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Customer</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{name}</p>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-[14px] font-medium text-[#344054]">
-                            Assigned to
-                        </label>
-                        <SelectInput
-                            value={customer.assignedTo ?? ""}
-                            onChange={(next) => {
-                                updateCustomer(customerId, { assignedTo: next || undefined });
-                                const label = next
-                                    ? staffOptions.find(o => o.value === next)?.label ?? "staff"
-                                    : "Unassigned";
-                                showToast(
-                                    "Assignment updated",
-                                    `${name} → ${label}.`,
-                                    "success",
-                                    "check",
-                                );
-                            }}
-                            options={staffOptions}
-                            width="w-full"
-                        />
-                        <p className="text-[13px] text-[#667085]">Owner of this customer&apos;s follow-up work.</p>
-                    </div>
+                    {/* Assignment dropdown hidden while lead assignment is off
+                        — boutique doesn't assign leads to a person. See
+                        @/lib/lead-assignment. Follow-up status + Source below
+                        stay; the panel is still the follow-up settings home. */}
+                    {LEAD_ASSIGNMENT_ENABLED && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
+                                Assigned to
+                            </label>
+                            <SelectInput
+                                value={customer.assignedTo ?? ""}
+                                onChange={(next) => {
+                                    updateCustomer(customerId, { assignedTo: next || undefined });
+                                    const label = next
+                                        ? staffOptions.find(o => o.value === next)?.label ?? "staff"
+                                        : "Unassigned";
+                                    showToast(
+                                        "Assignment updated",
+                                        `${name} → ${label}.`,
+                                        "success",
+                                        "check",
+                                    );
+                                }}
+                                options={staffOptions}
+                                width="w-full"
+                            />
+                            <p className="text-[13px] text-[var(--colors-text-quaternary)]">Owner of this customer&apos;s follow-up work.</p>
+                        </div>
+                    )}
                     {isPreConversion && (
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-[14px] font-medium text-[#344054]">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                                 Follow-up status
                             </label>
                             <SelectInput
@@ -548,18 +566,18 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                 }))}
                                 width="w-full"
                             />
-                            <p className="text-[13px] text-[#667085]">Auto-updates on activity; edit to override.</p>
+                            <p className="text-[13px] text-[var(--colors-text-quaternary)]">Auto-updates on activity; edit to override.</p>
                         </div>
                     )}
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[14px] font-medium text-[#344054]">
+                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                             Source
                         </label>
-                        <p className="text-[16px] font-medium text-[#101828]">{sourceLabelForPanel}</p>
-                        <p className="text-[13px] text-[#667085]">Set at customer creation; view-only here.</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{sourceLabelForPanel}</p>
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)]">Set at customer creation; view-only here.</p>
                     </div>
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-end">
                     <Button variant="secondary-gray" onClick={() => setSettingsOpen(false)}>
                         Close
                     </Button>

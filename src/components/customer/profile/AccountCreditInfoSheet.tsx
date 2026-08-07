@@ -10,7 +10,7 @@ export function AccountCreditInfoSheet({ open, onClose }: { open: boolean; onClo
     return (
         <CustomerSheet open={open} onClose={onClose}>
             <SheetToolbar title="Account credits" onClose={onClose} />
-            <p className="pt-1 text-base font-normal leading-6 text-[#475467]">
+            <p className="pt-1 text-base font-normal leading-6 text-[var(--colors-text-tertiary)]">
                 Account credits are currency rewards you receive from referrals and can use toward eligible purchases.
             </p>
         </CustomerSheet>

@@ -28,7 +28,7 @@ export function PanelStepper({ steps, current, onStep }: {
     onStep?: (n: number) => void;
 }) {
     return (
-        <div className="shrink-0 border-b border-[#e4e7ec] px-6 py-4 flex items-center gap-2">
+        <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4 flex items-center gap-2">
             {steps.map((s, i) => (
                 <Fragment key={s.n}>
                     <button
@@ -37,14 +37,14 @@ export function PanelStepper({ steps, current, onStep }: {
                         disabled={!onStep}
                         className={cn(
                             "text-[14px] font-semibold py-1 px-1 transition-colors",
-                            current === s.n ? "text-[#4f6e5d]" : "text-[#475467]",
-                            onStep && current !== s.n && "hover:text-[#344054]",
+                            current === s.n ? "text-[#4f6e5d]" : "text-[var(--colors-text-tertiary)]",
+                            onStep && current !== s.n && "hover:text-[var(--colors-text-secondary)]",
                             !onStep && "cursor-default",
                         )}
                     >
                         {s.label}
                     </button>
-                    {i < steps.length - 1 && <ChevronRight className="w-4 h-4 text-[#98a2b3] shrink-0" />}
+                    {i < steps.length - 1 && <ChevronRight className="w-4 h-4 text-[var(--colors-fg-quaternary)] shrink-0" />}
                 </Fragment>
             ))}
         </div>

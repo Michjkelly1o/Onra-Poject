@@ -219,7 +219,7 @@ export function LogoTile({ integration, size }: {
     return (
         <div
             className={cn(
-                "relative rounded-[6px] border-[0.75px] border-[#e4e7ec] bg-white overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex items-center justify-center shrink-0",
+                "relative rounded-[6px] border-[0.75px] border-[var(--colors-border-secondary)] bg-white overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex items-center justify-center shrink-0",
                 size === 36 && "w-9 h-9",
                 size === 44 && "w-11 h-11",
                 size === 32 && "w-8 h-8",
@@ -248,11 +248,11 @@ export function IntegrationCard({ integration, onConnect, onView, onDisconnect }
     const connected = integration.status === "connected";
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 w-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-4 w-full">
             <div className="relative flex flex-col gap-4 w-full">
                 <LogoTile integration={integration} size={36} />
                 <div className="flex flex-col gap-1 w-full pr-[88px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-6">{integration.name}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{integration.name}</p>
                     <p className="text-[14px] text-[#6e776f] leading-5">{integration.description}</p>
                 </div>
                 <div className="absolute top-0 right-0">
@@ -300,22 +300,22 @@ function ModalShell({ title, subtitle, onClose, children, footer }: {
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[16px] w-[560px] max-w-[90vw] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 {/* Header */}
-                <div className="pt-6 px-6 pb-5 border-b border-[#e4e7ec] relative">
+                <div className="pt-6 px-6 pb-5 border-b border-[var(--colors-border-secondary)] relative">
                     <div className="flex flex-col gap-1 pr-10">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
                         {subtitle && (
-                            <p className="text-[14px] text-[#475467] leading-5">{subtitle}</p>
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{subtitle}</p>
                         )}
                     </div>
                     <button type="button" onClick={onClose}
-                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 {/* Body */}
                 <div className="px-6 py-5">{children}</div>
                 {/* Footer */}
-                <div className="border-t border-[#e4e7ec] px-6 py-5">
+                <div className="border-t border-[var(--colors-border-secondary)] px-6 py-5">
                     {footer}
                 </div>
             </div>
@@ -349,14 +349,14 @@ export function ConnectModal({ integration, onContinue, onClose }: {
                 </div>
             }
         >
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <LogoTile integration={integration} size={44} />
-                <h4 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cfg.listHeader}</h4>
+                <h4 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{cfg.listHeader}</h4>
                 <ul className="flex flex-col gap-2">
                     {cfg.listItems.map(item => (
                         <li key={item} className="flex items-center gap-2">
-                            <CheckCircle className="w-[18px] h-[18px] text-[#658774] shrink-0" />
-                            <span className="text-[16px] text-[#101828] leading-6">{item}</span>
+                            <CheckCircle className="w-[18px] h-[18px] text-[var(--colors-secondary-600)] shrink-0" />
+                            <span className="text-[16px] text-[var(--colors-text-primary)] leading-6">{item}</span>
                         </li>
                     ))}
                 </ul>
@@ -383,29 +383,29 @@ export function LoadingModal({ integration, onClose }: {
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[16px] w-[560px] max-w-[90vw] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col items-center px-6 py-20 overflow-hidden">
-                <div className="bg-[#f9fafb] rounded-[16px] h-[150px] w-[194px] flex flex-col items-center gap-3 p-3 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] mb-6">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] h-[150px] w-[194px] flex flex-col items-center gap-3 p-3 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] mb-6">
                     <div className="bg-white rounded-[10.18px] w-[50.9px] h-[50.9px] flex items-center justify-center shadow-[0px_1.48px_3.82px_rgba(0,0,0,0.02),-2.96px_4.44px_10.18px_rgba(0,0,0,0.02)]">
                         <LogoTile integration={integration} size={32} />
                     </div>
                     <div className="flex flex-col gap-2 w-full flex-1 justify-between pb-1">
                         <div className="flex flex-col gap-2 w-full">
-                            <div className="h-[13px] rounded-full bg-[#f2f4f7] w-full" />
+                            <div className="h-[13px] rounded-full bg-[var(--colors-bg-tertiary)] w-full" />
                             <div className="flex gap-2 w-full">
-                                <div className="h-[13px] rounded-full bg-[#f2f4f7] flex-1" />
-                                <div className="h-[13px] rounded-full bg-[#f2f4f7] flex-1" />
+                                <div className="h-[13px] rounded-full bg-[var(--colors-bg-tertiary)] flex-1" />
+                                <div className="h-[13px] rounded-full bg-[var(--colors-bg-tertiary)] flex-1" />
                             </div>
                         </div>
                         <div className="flex justify-center">
-                            <div className="h-[13px] rounded-full bg-[#f2f4f7] w-[95px]" />
+                            <div className="h-[13px] rounded-full bg-[var(--colors-bg-tertiary)] w-[95px]" />
                         </div>
                     </div>
                 </div>
 
                 <div className="flex flex-col items-center gap-1 text-center max-w-[352px]">
-                    <p className="font-semibold text-[16px] leading-6 text-[#101828]">
+                    <p className="font-semibold text-[16px] leading-6 text-[var(--colors-text-primary)]">
                         Redirecting to {integration.name}...
                     </p>
-                    <p className="text-[14px] text-[#475467] leading-5">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                         You&apos;ll be redirected to {integration.name} to authorize and access your account.
                     </p>
                 </div>
@@ -477,8 +477,8 @@ function ViewField({ label, value, valueColor }: {
 }) {
     return (
         <div className="flex flex-col">
-            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-            <p className={cn("text-[16px] font-medium leading-6", valueColor ?? "text-[#101828]")}>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+            <p className={cn("text-[16px] font-medium leading-6", valueColor ?? "text-[var(--colors-text-primary)]")}>
                 {value}
             </p>
         </div>
@@ -505,17 +505,17 @@ export function DisconnectConfirm({ integration, onConfirm, onCancel }: {
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <LogoTile integration={integration} size={44} />
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                             Disconnect {integration.name}?
                         </h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
-                            <span className="font-medium text-[#344054]">{integration.name}</span>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{integration.name}</span>
                             {" "}will stop syncing with Onra. You can reconnect at any time.
                         </p>
                     </div>

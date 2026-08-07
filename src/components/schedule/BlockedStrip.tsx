@@ -112,8 +112,8 @@ export function BlockedStrip({
                 style={{ top, height, left, width }}
             >
                 <div className="flex flex-col items-center bg-white/90 backdrop-blur-[1px] px-2.5 py-1 rounded-[10px] shadow-[0px_1px_2px_rgba(16,24,40,0.05)] whitespace-nowrap">
-                    <span className="text-[12px] font-semibold text-[#475467] leading-4">{labelTitle}</span>
-                    <span className="text-[11px] font-medium text-[#667085] leading-4">
+                    <span className="text-[12px] font-semibold text-[var(--colors-text-tertiary)] leading-4">{labelTitle}</span>
+                    <span className="text-[11px] font-medium text-[var(--colors-text-quaternary)] leading-4">
                         {subtitle ?? `${fmt12(blockStart)} – ${fmt12(blockEnd)}`}
                     </span>
                 </div>
@@ -129,7 +129,7 @@ export function BlockedStrip({
     // to the class cards behind it.
     return (
         <div
-            className="absolute left-0 right-0 z-10 flex items-center justify-center pointer-events-none border-y border-[#e4e7ec]"
+            className="absolute left-0 right-0 z-10 flex items-center justify-center pointer-events-none border-y border-[var(--colors-border-secondary)]"
             style={{
                 top,
                 height,
@@ -140,8 +140,8 @@ export function BlockedStrip({
         >
             {!hideLabel && (
                 <div className="flex flex-col items-center bg-white/90 backdrop-blur-[1px] px-2.5 py-1 rounded-[10px] shadow-[0px_1px_2px_rgba(16,24,40,0.05)] whitespace-nowrap">
-                    <span className="text-[12px] font-semibold text-[#475467] leading-4">{labelTitle}</span>
-                    <span className="text-[11px] font-medium text-[#667085] leading-4">
+                    <span className="text-[12px] font-semibold text-[var(--colors-text-tertiary)] leading-4">{labelTitle}</span>
+                    <span className="text-[11px] font-medium text-[var(--colors-text-quaternary)] leading-4">
                         {subtitle ?? `${fmt12(blockStart)} – ${fmt12(blockEnd)}`}
                     </span>
                 </div>

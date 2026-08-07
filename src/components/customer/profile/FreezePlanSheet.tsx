@@ -35,9 +35,9 @@ import { REAL_TODAY_ISO, addDaysISO, daysBetweenISO } from "@/lib/customer/dates
 import { shortDate } from "@/lib/customer/profile-format";
 import { previewFreezeBilling } from "@/lib/customer/freeze-eligibility";
 
-const LABEL = "text-sm font-medium leading-5 text-[#344054]";
+const LABEL = "text-sm font-medium leading-5 text-[var(--colors-text-secondary)]";
 const DATE_FIELD =
-    "flex w-full items-center gap-2 rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
+    "flex w-full items-center gap-2 rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
 
 const UNIT_DAYS = { days: 1, weeks: 7, months: 30 } as const;
 
@@ -167,7 +167,7 @@ export function FreezePlanSheet({
                     <div className="flex flex-col gap-1.5">
                         <span className={LABEL}>Start date</span>
                         <button type="button" onClick={() => setPickerField("start")} className={DATE_FIELD}>
-                            <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                            <Calendar className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                             <span className="min-w-0 flex-1 truncate text-left text-[var(--brand-text)]">
                                 {shortDate(startISO)}
                             </span>
@@ -176,7 +176,7 @@ export function FreezePlanSheet({
                     <div className="flex flex-col gap-1.5">
                         <span className={LABEL}>End date</span>
                         <button type="button" onClick={() => setPickerField("end")} className={DATE_FIELD}>
-                            <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                            <Calendar className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                             <span className="min-w-0 flex-1 truncate text-left text-[var(--brand-text)]">
                                 {shortDate(endISO)}
                             </span>
@@ -186,7 +186,7 @@ export function FreezePlanSheet({
 
                 <p
                     className={`mt-2 text-sm leading-5 ${
-                        durationError ? "text-[#d92d20]" : "text-[#667085]"
+                        durationError ? "text-[#d92d20]" : "text-[var(--colors-text-quaternary)]"
                     }`}
                 >
                     {durationError ?? (
@@ -199,7 +199,7 @@ export function FreezePlanSheet({
 
                 {showReasons && (
                     <>
-                        <p className="mb-2 mt-4 text-sm font-medium leading-5 text-[#344054]">Freeze reason</p>
+                        <p className="mb-2 mt-4 text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Freeze reason</p>
                         <div className="flex flex-col gap-3">
                             {reasons.map((r) => (
                                 <button
@@ -209,7 +209,7 @@ export function FreezePlanSheet({
                                     className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors ${
                                         reason?.label === r.label
                                             ? "border-2 border-[var(--brand-primary)] bg-[#fbfdfc]"
-                                            : "border border-[#e4e7ec]"
+                                            : "border border-[var(--colors-border-secondary)]"
                                     }`}
                                 >
                                     <span className="flex-1 text-base leading-6 text-[var(--brand-text)]">{r.label}</span>
@@ -224,9 +224,9 @@ export function FreezePlanSheet({
                     the member sees what will happen at next charge before they
                     confirm. Neutral background, no alarming red or amber. */}
                 {disclosure && (
-                    <div className="mt-4 rounded-xl border border-[#eaecf0] bg-[#f9fafb] px-4 py-3">
-                        <p className="text-sm font-medium leading-5 text-[#344054]">Billing during freeze</p>
-                        <p className="mt-1 text-sm leading-5 text-[#475467]">{disclosure}</p>
+                    <div className="mt-4 rounded-xl border border-[var(--colors-border-tertiary)] bg-[var(--colors-bg-secondary)] px-4 py-3">
+                        <p className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Billing during freeze</p>
+                        <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">{disclosure}</p>
                     </div>
                 )}
 

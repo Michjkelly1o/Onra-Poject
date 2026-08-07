@@ -56,9 +56,9 @@ export function AuthHeader({ onClose }: { onClose?: () => void }) {
                     type="button"
                     onClick={onClose}
                     aria-label="Close"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <XClose className="size-5 text-[#344054]" aria-hidden />
+                    <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
             )}
         </header>

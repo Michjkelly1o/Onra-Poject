@@ -67,7 +67,7 @@ function MembershipFilterDropdown({ active, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] bg-white hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                className="flex items-center gap-1.5 h-9 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== "all" && (
@@ -77,14 +77,14 @@ function MembershipFilterDropdown({ active, onChange }: {
                 Filter
             </button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
-                    <p className="px-3 pt-1.5 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Status</p>
+                <div className="absolute right-0 top-[calc(100%+4px)] z-50 w-[180px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1 overflow-hidden">
+                    <p className="px-3 pt-1.5 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">Status</p>
                     {OPTIONS.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => { onChange(opt.value); setOpen(false); }}
                             className={cn(
                                 "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                                active === opt.value ? "bg-[#f9fafb] text-[#101828]" : "text-[#344054] hover:bg-[#f9fafb]",
+                                active === opt.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
                         </button>
@@ -111,15 +111,15 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
-                    active  ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                            : complete ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3]",
+                    active  ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                            : complete ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
-                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />}
+                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {step.label}
             </span>
         </div>
@@ -128,14 +128,14 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
 
 // ─── Form helpers ─────────────────────────────────────────────────────────────
 
-const inputCls = "h-10 w-full px-[14px] border border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const inputCls = "h-10 w-full px-[14px] border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 function FormField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             {children}
-            {hint && <p className="text-[14px] text-[#475467]">{hint}</p>}
+            {hint && <p className="text-[14px] text-[var(--colors-text-tertiary)]">{hint}</p>}
         </div>
     );
 }
@@ -152,7 +152,7 @@ interface PreviewData {
 
 function TemplatePreviewCard({ data }: { data: PreviewData }) {
     return (
-        <div className="bg-white border border-[#e4e7ec] rounded-[16px] overflow-hidden w-full">
+        <div className="bg-white border border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden w-full">
             <div className="relative h-[156px] w-full overflow-hidden shrink-0 bg-gradient-to-br from-[#dbdbdb] to-[#dbdbdb]/20">
                 {data.coverPreview && <img src={data.coverPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />}
                 <div className="absolute top-3 right-3">
@@ -161,10 +161,10 @@ function TemplatePreviewCard({ data }: { data: PreviewData }) {
             </div>
             <div className="flex flex-col gap-4 px-5 pb-5 pt-4">
                 <div className="flex flex-col gap-1">
-                    <h3 className={cn("font-medium text-[18px] leading-[28px]", data.name.trim() ? "text-[#101828]" : "text-[#667085]")}>
+                    <h3 className={cn("font-medium text-[18px] leading-[28px]", data.name.trim() ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                         {data.name.trim() || "Class template name"}
                     </h3>
-                    <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-2">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] line-clamp-2">
                         {data.description.trim() || "This is the default description of the class template."}
                     </p>
                 </div>
@@ -172,10 +172,10 @@ function TemplatePreviewCard({ data }: { data: PreviewData }) {
                     Group classes; Private services live in the Services module. */}
                 <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
-                        <div className="flex items-center gap-1 flex-1 min-w-0"><Grid01 className="w-4 h-4 text-[#667085] shrink-0" /><span className="text-[14px] text-[#667085] truncate">{data.category || "Category"}</span></div>
-                        <div className="flex items-center gap-1 flex-1 min-w-0"><ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" /><span className="text-[14px] text-[#667085]">{data.durationMin ? `${data.durationMin} min` : "Duration"}</span></div>
+                        <div className="flex items-center gap-1 flex-1 min-w-0"><Grid01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" /><span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{data.category || "Category"}</span></div>
+                        <div className="flex items-center gap-1 flex-1 min-w-0"><ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" /><span className="text-[14px] text-[var(--colors-text-quaternary)]">{data.durationMin ? `${data.durationMin} min` : "Duration"}</span></div>
                     </div>
-                    <div className="flex items-center gap-1 flex-1 min-w-0"><Users01 className="w-4 h-4 text-[#667085] shrink-0" /><span className="text-[14px] text-[#667085]">{data.capacity ? `${data.capacity} max` : "Capacity"}</span></div>
+                    <div className="flex items-center gap-1 flex-1 min-w-0"><Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" /><span className="text-[14px] text-[var(--colors-text-quaternary)]">{data.capacity ? `${data.capacity} max` : "Capacity"}</span></div>
                 </div>
             </div>
         </div>
@@ -188,7 +188,7 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
     return (
         <button type="button" onClick={onChange}
             className={cn("w-4 h-4 rounded-[4px] flex items-center justify-center shrink-0 transition-colors border",
-                checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd] hover:border-[#658774]")}>
+                checked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-600)]")}>
             {checked && <Check className="w-[10px] h-[10px] text-white" />}
         </button>
     );
@@ -213,9 +213,9 @@ function BasicInformationStep({ data, onChange, onContinue, categoryOptions, onC
 }) {
     const canContinue = data.name.trim() && data.description.trim() && data.category && data.durationMin && data.capacity;
     return (
-        <div className="bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
+        <div className="bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
-                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Class template detail</h2>
+                <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Class template detail</h2>
                 <div className="flex flex-col gap-4">
                     <ImageBannerUpload preview={data.coverPreview} onChange={(url, file) => onChange({ coverPreview: url, coverFile: file })} />
                     <FormField label="Class name">
@@ -223,7 +223,7 @@ function BasicInformationStep({ data, onChange, onContinue, categoryOptions, onC
                     </FormField>
                     <FormField label="Class description">
                         <textarea rows={3} value={data.description} onChange={e => onChange({ description: e.target.value })} placeholder="Enter class description..."
-                            className="w-full px-[14px] py-[10px] border border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none" />
+                            className="w-full px-[14px] py-[10px] border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none" />
                     </FormField>
                     {/* Class category — class type field removed (always Group). */}
                     <FormField label="Class category">
@@ -233,7 +233,7 @@ function BasicInformationStep({ data, onChange, onContinue, categoryOptions, onC
                                 <button
                                     type="button"
                                     onClick={() => { close(); onCreateCategory(); }}
-                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors rounded-t-[8px]"
+                                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[var(--colors-secondary-600)] hover:bg-[var(--colors-bg-secondary)] transition-colors rounded-t-[8px]"
                                 >
                                     <Plus className="w-4 h-4" />
                                     Create class category
@@ -255,8 +255,8 @@ function BasicInformationStep({ data, onChange, onContinue, categoryOptions, onC
                 <button type="button" disabled={!canContinue} onClick={onContinue}
                     className={cn("px-4 py-[10px] rounded-[8px] text-[16px] font-semibold transition-all",
                         canContinue
-                            ? "bg-[var(--brand-tertiary)] text-[#0c2d34] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[#aad4bd]"
-                            : "bg-[#f2f4f7] border border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed")}>
+                            ? "bg-[var(--brand-tertiary)] text-[var(--colors-brand-900)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-secondary-300)]"
+                            : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed")}>
                     Continue
                 </button>
             </div>
@@ -300,17 +300,17 @@ function ApplicableMembershipsStep({ items, selected, onChange, onBack, onSave }
     }
 
     return (
-        <div className="bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
+        <div className="bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-4">
-                <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Applicable memberships</h2>
-                <div className="border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Applicable memberships</h2>
+                <div className="border border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-4 shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="flex items-center gap-4">
                         <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-medium text-[#101828]">Packages</p>
-                            <p className="text-[14px] text-[#667085]">The class template can be use on multiple packages</p>
+                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Packages</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">The class template can be use on multiple packages</p>
                         </div>
-                        <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border border-[#e4e7ec] text-[#344054] shrink-0">{selected.length} selected</span>
-                        <button type="button" onClick={() => setExpanded(p => !p)} className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0">
+                        <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">{selected.length} selected</span>
+                        <button type="button" onClick={() => setExpanded(p => !p)} className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0">
                             {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                         </button>
                     </div>
@@ -318,27 +318,27 @@ function ApplicableMembershipsStep({ items, selected, onChange, onBack, onSave }
                         <div className="flex flex-col gap-3">
                             <div className="flex items-center gap-2">
                                 <Checkbox checked={allVisibleSelected} onChange={toggleAll} />
-                                <span className="flex-1 text-[14px] font-medium text-[#101828]">Select all</span>
+                                <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-primary)]">Select all</span>
                                 <MembershipFilterDropdown active={membershipFilter} onChange={setMembershipFilter} />
                             </div>
-                            <div className="h-px bg-[#e4e7ec]" />
+                            <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                             {GROUPS.map(group => {
                                 const groupItems = visibleItems.filter(m => m.group === group);
                                 if (groupItems.length === 0) return null;
                                 return (
                                     <div key={group} className="flex flex-col gap-3">
-                                        <p className="text-[12px] text-[#667085]">{group}</p>
+                                        <p className="text-[12px] text-[var(--colors-text-quaternary)]">{group}</p>
                                         {groupItems.map(item => (
                                             <div key={item.id} className="flex items-center gap-2">
                                                 <Checkbox checked={selected.includes(item.id)} onChange={() => toggleOne(item.id)} />
-                                                <span className="text-[14px] font-medium text-[#101828] flex-1">{item.label}</span>
+                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1">{item.label}</span>
                                             </div>
                                         ))}
                                     </div>
                                 );
                             })}
                             {visibleItems.length === 0 && (
-                                <p className="text-[14px] text-[#667085]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                                     {items.length === 0 ? "Nothing available yet."
                                         : membershipFilter === "enabled" ? "No options selected yet."
                                             : "All options are selected."}
@@ -347,9 +347,9 @@ function ApplicableMembershipsStep({ items, selected, onChange, onBack, onSave }
                         </div>
                     )}
                 </div>
-                <div className="flex items-start gap-4 px-4 py-4 bg-[#f1f2ed] border border-[#e4e7ec] rounded-[12px]">
-                    <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-0.5" />
-                    <p className="text-[14px] text-[#475467] leading-[20px]">Each class session created from this template will deduct 1 credit from a member's active package upon booking.</p>
+                <div className="flex items-start gap-4 px-4 py-4 bg-[var(--colors-tertiary-50)] border border-[var(--colors-border-secondary)] rounded-[12px]">
+                    <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0 mt-0.5" />
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Each class session created from this template will deduct 1 credit from a member's active package upon booking.</p>
                 </div>
             </div>
             <div className="shrink-0 px-6 pb-6 flex items-center justify-between">
@@ -430,7 +430,7 @@ function EditClassTemplatePageInner() {
     if (!template) {
         return (
             <div className="h-screen flex items-center justify-center">
-                <p className="text-[16px] text-[#667085]">Template not found.</p>
+                <p className="text-[16px] text-[var(--colors-text-quaternary)]">Template not found.</p>
             </div>
         );
     }
@@ -449,11 +449,11 @@ function EditClassTemplatePageInner() {
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(`/class-types/${id}`)}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Edit class template</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Edit class template</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -475,9 +475,9 @@ function EditClassTemplatePageInner() {
                     )}
 
                     {/* Preview */}
-                    <div className="w-[340px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] overflow-hidden self-start">
+                    <div className="w-[340px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden self-start">
                         <div className="p-6 pb-4">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Template preview</p>
+                            <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
                             <p className="text-[14px] text-[#6e776f] mt-1">This is how your class template will look like.</p>
                         </div>
                         <div className="bg-[#f6f6f3] px-6 py-10">

@@ -35,6 +35,7 @@
 //   customer_id    → customers.id
 
 import type { Appointment, AppointmentBooking, AppointmentRating } from "./_types";
+import { DEMO_TODAY_APPOINTMENTS, DEMO_TODAY_APPOINTMENT_BOOKINGS } from "./prototype_demo_data";
 
 // ─── Time helpers (NOW-anchored) ─────────────────────────────────────────────
 
@@ -381,6 +382,6 @@ for (const service of SERVICES) {
     }
 }
 
-export const appointments: Appointment[] = appointmentRows;
-export const appointment_bookings: AppointmentBooking[] = bookingRows;
+export const appointments: Appointment[] = [...appointmentRows, ...DEMO_TODAY_APPOINTMENTS];
+export const appointment_bookings: AppointmentBooking[] = [...bookingRows, ...DEMO_TODAY_APPOINTMENT_BOOKINGS];
 export const appointment_ratings: AppointmentRating[] = ratingRows;

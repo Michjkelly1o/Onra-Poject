@@ -265,9 +265,9 @@ export default function MyPlanPage() {
                     type="button"
                     onClick={goBack}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">My plan</h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -291,11 +291,11 @@ export default function MyPlanPage() {
                     </>
                 ) : (
                     <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-                        <div className="flex size-12 items-center justify-center rounded-full bg-[#f2f4f7]">
-                            <CreditCardX className="size-6 text-[#667085]" aria-hidden />
+                        <div className="flex size-12 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)]">
+                            <CreditCardX className="size-6 text-[var(--colors-text-quaternary)]" aria-hidden />
                         </div>
                         <p className="mt-4 text-base font-semibold leading-6 text-[var(--brand-text)]">No active plan</p>
-                        <p className="mt-1 text-sm leading-5 text-[#475467]">Browse our plans to start booking classes.</p>
+                        <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">Browse our plans to start booking classes.</p>
                         <Button
                             variant="primary"
                             size="lg"

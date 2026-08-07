@@ -55,9 +55,9 @@ export default function PromoListPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Promotion
@@ -67,14 +67,14 @@ export default function PromoListPage() {
 
             <div className="flex flex-1 flex-col gap-6 px-4 pb-6 pt-2">
                 {/* Code entry */}
-                <div className="flex items-center gap-2 rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                    <Ticket01 className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                <div className="flex items-center gap-2 rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <Ticket01 className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                     <input
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && applyCode()}
                         placeholder="Enter promotion"
-                        className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
+                        className="min-w-0 flex-1 bg-transparent text-base font-normal leading-6 text-[var(--brand-text)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
                     />
                     {code.trim() && (
                         <button

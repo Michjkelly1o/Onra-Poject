@@ -96,9 +96,9 @@ function EditProductRouteInner() {
     if (!membership && !pkg) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">Product not found</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Product not found</p>
                 <button type="button" onClick={() => router.push(returnTo)}
-                    className="mt-4 text-[14px] text-[#658774] hover:underline">
+                    className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                     Back to memberships &amp; packages
                 </button>
             </div>

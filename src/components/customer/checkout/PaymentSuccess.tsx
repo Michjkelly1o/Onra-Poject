@@ -26,9 +26,9 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 </header>
             )}
@@ -46,7 +46,7 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
 
                 <div className="flex flex-col items-center gap-0.5">
                     <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Payment successful</p>
-                    <p className="text-center text-sm font-normal leading-5 text-[#475467]">
+                    <p className="text-center text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         Your payment of AED {order?.total ?? 0} has been successfully processed.
                     </p>
                 </div>

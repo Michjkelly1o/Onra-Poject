@@ -58,7 +58,7 @@ export function FullScreenFilterModal({
     if (!open || !mounted) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[60] flex justify-center bg-[#f2f4f7]" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-[60] flex justify-center bg-[var(--colors-bg-tertiary)]" role="dialog" aria-modal="true">
             <div className="flex h-full w-full max-w-[402px] flex-col bg-white">
                 {/* Header — centred title + close. */}
                 <header className="flex items-center gap-3 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
@@ -68,9 +68,9 @@ export function FullScreenFilterModal({
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 </header>
 

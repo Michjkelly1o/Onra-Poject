@@ -32,14 +32,14 @@ export function InstructorCard({ name, activeClasses, imageUrl, initials, onClic
                       onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && onClick?.(),
                   }
                 : {})}
-            className={`flex h-[100px] w-[240px] shrink-0 items-center gap-4 overflow-hidden rounded-xl border border-[#e4e7ec] bg-white pl-4 ${interactive ? "cursor-pointer outline-none" : ""}`}
+            className={`flex h-[100px] w-[240px] shrink-0 items-center gap-4 overflow-hidden rounded-xl border border-[var(--colors-border-secondary)] bg-white pl-4 ${interactive ? "cursor-pointer outline-none" : ""}`}
         >
             <div className="flex min-w-0 flex-1 flex-col">
                 <p className="truncate text-sm font-semibold leading-5 text-[var(--brand-text)]">{name}</p>
-                <p className="truncate text-xs font-normal leading-[18px] text-[#667085]">{label}</p>
+                <p className="truncate text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">{label}</p>
             </div>
 
-            <div className="relative flex w-[100px] shrink-0 items-center justify-center self-stretch overflow-hidden bg-[#f2f4f7]">
+            <div className="relative flex w-[100px] shrink-0 items-center justify-center self-stretch overflow-hidden bg-[var(--colors-bg-tertiary)]">
                 {imageUrl ? (
                     // The instructor assets are circular avatars (transparent corners); scaling
                     // up crops the circle so the photo fills the box as a full rectangle.
@@ -48,7 +48,7 @@ export function InstructorCard({ name, activeClasses, imageUrl, initials, onClic
                 ) : (
                     // No photo → neutral placeholder avatar (Figma 4214-40762): grey
                     // bg + grey initials, never the brand colour.
-                    <span className="text-2xl font-semibold text-[#667085]">{initials}</span>
+                    <span className="text-2xl font-semibold text-[var(--colors-text-quaternary)]">{initials}</span>
                 )}
             </div>
         </div>

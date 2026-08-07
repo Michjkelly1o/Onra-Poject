@@ -80,7 +80,7 @@ function CustomerShell({ children }: { children: React.ReactNode }) {
     const showBook = isHome && upcoming.length > 0;
 
     return (
-            <div data-brand-scope="customer" className="fixed inset-0 flex justify-center overflow-hidden bg-[#f2f4f7]">
+            <div data-brand-scope="customer" className="fixed inset-0 flex justify-center overflow-hidden bg-[var(--colors-bg-tertiary)]">
                 <div className="relative flex h-full w-full max-w-[402px] flex-col overflow-hidden bg-[var(--brand-background)]">
                     {/* Shared decorative background — MAIN pages only (§3); level-2
                         pages omit it for a cleaner plain-background look. */}

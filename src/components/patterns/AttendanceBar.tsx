@@ -11,9 +11,9 @@
 //
 // Visual chrome (from audit):
 //   • Container: `flex items-center gap-3`
-//   • Track:     `h-[4px] w-[80px] bg-[#e4e7ec] rounded-full overflow-hidden shrink-0`
-//   • Fill:      `h-full rounded-full bg-[#658774]` with `style.width = ${pct*100}%`
-//   • Label:     `text-[14px] text-[#344054] whitespace-nowrap` "{booked}/{capacity}"
+//   • Track:     `h-[4px] w-[80px] bg-[var(--colors-bg-quaternary)] rounded-full overflow-hidden shrink-0`
+//   • Fill:      `h-full rounded-full bg-[var(--colors-secondary-400)]` (soft) with `style.width = ${pct*100}%`
+//   • Label:     `text-[14px] text-[var(--colors-text-secondary)] whitespace-nowrap` "{booked}/{capacity}"
 
 import { cn } from "@/lib/utils";
 
@@ -28,10 +28,10 @@ export function AttendanceBar({ booked, capacity, className }: AttendanceBarProp
     const pct = capacity > 0 ? (booked / capacity) : 0;
     return (
         <div className={cn("flex items-center gap-3", className)}>
-            <div className="h-[4px] w-[80px] bg-[#e4e7ec] rounded-full overflow-hidden shrink-0">
-                <div className="h-full rounded-full bg-[#658774]" style={{ width: `${pct * 100}%` }} />
+            <div className="h-[4px] w-[80px] bg-[var(--colors-bg-quaternary)] rounded-full overflow-hidden shrink-0">
+                <div className="h-full rounded-full bg-[var(--colors-secondary-400)]" style={{ width: `${pct * 100}%` }} />
             </div>
-            <span className="text-[14px] text-[#344054] whitespace-nowrap">
+            <span className="text-[14px] text-[var(--colors-text-secondary)] whitespace-nowrap">
                 {booked}/{capacity}
             </span>
         </div>

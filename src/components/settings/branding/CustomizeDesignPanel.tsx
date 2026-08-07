@@ -122,24 +122,24 @@ export function CustomizeDesignPanel({ open, onClose }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={960}>
             {/* Header — title + close X (top-right) per Figma 7824:122617. */}
-            <div className="relative shrink-0 border-b border-[#e4e7ec] px-6 py-4">
+            <div className="relative shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4">
                 <div className="pr-10">
-                    <p className="text-[18px] font-medium leading-[28px] text-[#101828]">
+                    <p className="text-[18px] font-medium leading-[28px] text-[var(--colors-text-primary)]">
                         Customize design settings
                     </p>
-                    <p className="text-[14px] text-[#475467] leading-5 mt-1">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 mt-1">
                         Set your brand identity, colors, and messaging across every touchpoint.
                     </p>
                 </div>
                 <button type="button" onClick={onClose} aria-label="Close"
-                    className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="absolute top-3 right-4 w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
             </div>
 
             {/* Breadcrumb stepper — horizontal, chevron-separated. Any step
                 click jumps directly (per Figma). */}
-            <div className="shrink-0 border-b border-[#e4e7ec] px-6 py-4 flex items-center gap-2">
+            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 py-4 flex items-center gap-2">
                 {STEPS.map((s, i) => (
                     <Fragment key={s.n}>
                         <button
@@ -149,13 +149,13 @@ export function CustomizeDesignPanel({ open, onClose }: {
                                 "text-[14px] font-semibold py-1 px-1 transition-colors",
                                 step === s.n
                                     ? "text-[#4f6e5d]"
-                                    : "text-[#475467] hover:text-[#344054]",
+                                    : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
                             )}
                         >
                             {s.label}
                         </button>
                         {i < STEPS.length - 1 && (
-                            <ChevronRight className="w-4 h-4 text-[#98a2b3]" />
+                            <ChevronRight className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
                         )}
                     </Fragment>
                 ))}
@@ -193,9 +193,9 @@ export function CustomizeDesignPanel({ open, onClose }: {
                     </div>
 
                     {/* Preview panel — 320 px per Figma. */}
-                    <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] overflow-hidden flex flex-col">
-                        <div className="px-5 pt-5 pb-3 shrink-0 border-b border-[#e4e7ec]">
-                            <p className="font-semibold text-[16px] leading-[24px] text-[#101828]">Template preview</p>
+                    <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden flex flex-col">
+                        <div className="px-5 pt-5 pb-3 shrink-0 border-b border-[var(--colors-border-secondary)]">
+                            <p className="font-semibold text-[16px] leading-[24px] text-[var(--colors-text-primary)]">Template preview</p>
                             <p className="text-[13px] text-[#6e776f] mt-1">This is how your class template will look like.</p>
                         </div>
                         <div className="px-5 pt-3 pb-3 shrink-0">
@@ -211,7 +211,7 @@ export function CustomizeDesignPanel({ open, onClose }: {
             </div>
 
             {/* Footer — Cancel left / Save right per Figma. */}
-            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between">
+            <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between">
                 <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                 <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
             </div>
@@ -277,20 +277,20 @@ function UploadRow({ label, hint, url, onChange }: {
     }
     return (
         <div className="flex items-start gap-4 w-full">
-            <div className="w-16 h-16 rounded-[8px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0 overflow-hidden">
+            <div className="w-16 h-16 rounded-[8px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0 overflow-hidden">
                 {url
                     ? <img src={url} alt="" className="w-full h-full object-contain" />
-                    : <Image01 className="w-6 h-6 text-[#98a2b3]" />}
+                    : <Image01 className="w-6 h-6 text-[var(--colors-fg-quaternary)]" />}
             </div>
             <div className="flex-1 min-w-0 flex flex-col gap-2">
                 <div className="flex flex-col gap-1">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">{label}</p>
-                    <p className="text-[14px] text-[#475467] leading-5">{hint}</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{label}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{hint}</p>
                 </div>
                 <label className="cursor-pointer inline-flex">
                     <input type="file" accept="image/png,image/jpeg" className="sr-only" onChange={handleFile} />
-                    <span className="inline-flex items-center gap-2 h-9 px-3 rounded-[8px] border-1 border-[#d0d5dd] bg-white text-[14px] font-semibold text-[#344054] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <UploadCloud02 className="w-4 h-4 text-[#475467]" />
+                    <span className="inline-flex items-center gap-2 h-9 px-3 rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white text-[14px] font-semibold text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <UploadCloud02 className="w-4 h-4 text-[var(--colors-text-tertiary)]" />
                         Upload image
                     </span>
                 </label>
@@ -353,7 +353,7 @@ function ColorInput({ value, onChange }: { value: string; onChange: (v: string) 
     // Normalise to hex so the native color picker accepts the seed value.
     const safe = /^#[0-9a-f]{6}$/i.test(value) ? value : "#000000";
     return (
-        <div className="flex items-center gap-2 h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]">
+        <div className="flex items-center gap-2 h-10 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)]">
             <label className="relative w-6 h-6 rounded-full shrink-0 cursor-pointer overflow-hidden">
                 <div className="absolute inset-0 rounded-full border border-[rgba(0,0,0,0.08)] pointer-events-none z-10" />
                 <div className="absolute inset-0 rounded-full" style={{ backgroundColor: safe }} />
@@ -369,7 +369,7 @@ function ColorInput({ value, onChange }: { value: string; onChange: (v: string) 
                 type="text"
                 value={value}
                 onChange={e => onChange(e.target.value)}
-                className="flex-1 h-full bg-transparent text-[14px] text-[#101828] focus:outline-none placeholder:text-[#667085]"
+                className="flex-1 h-full bg-transparent text-[14px] text-[var(--colors-text-primary)] focus:outline-none placeholder:text-[var(--colors-text-quaternary)]"
                 placeholder="#RRGGBB"
             />
         </div>
@@ -388,21 +388,21 @@ function TypefaceCard({ typeface, selected, onClick }: {
             className={cn(
                 "flex flex-col items-start gap-1 p-4 rounded-[12px] text-left transition-colors relative",
                 selected
-                    ? "border-1 border-[#7ba08c] bg-[#f5fffa]"
-                    : "border-1 border-[#e4e7ec] bg-white hover:border-[#d0d5dd]",
+                    ? "border-1 border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                    : "border-1 border-[var(--colors-border-secondary)] bg-white hover:border-[var(--colors-border-primary)]",
             )}
         >
-            <span className="text-[12px] text-[#667085] leading-[18px]">{brandTypefaceLabel(typeface)}</span>
+            <span className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{brandTypefaceLabel(typeface)}</span>
             <span
-                className="text-[18px] text-[#101828] leading-[28px]"
+                className="text-[18px] text-[var(--colors-text-primary)] leading-[28px]"
                 style={{ fontFamily: brandTypefaceFontFamily(typeface) }}
             >
                 The quick brown fox
             </span>
-            <span className="text-[12px] text-[#667085] leading-[18px]">{brandTypefaceTagline(typeface)}</span>
+            <span className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{brandTypefaceTagline(typeface)}</span>
             <div className={cn(
                 "absolute top-4 right-4 w-4 h-4 rounded-full flex items-center justify-center transition-colors",
-                selected ? "bg-[#658774] text-white" : "bg-white border-1 border-[#d0d5dd]",
+                selected ? "bg-[var(--colors-secondary-600)] text-white" : "bg-white border-1 border-[var(--colors-border-primary)]",
             )}>
                 {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
@@ -428,8 +428,8 @@ function NotificationsStep({
                 <ChannelRow
                     title="Email"
                     subtitle="Booking confirmations, reminders, receipts"
-                    icon={<Mail01 className="w-5 h-5 text-[#475467]" />}
-                    iconBg="bg-white border-1 border-[#e4e7ec]"
+                    icon={<Mail01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />}
+                    iconBg="bg-white border-1 border-[var(--colors-border-secondary)]"
                     on={emailOn}
                     onChange={() => setEmailOn(!emailOn)}
                 />
@@ -444,8 +444,8 @@ function NotificationsStep({
                 <ChannelRow
                     title="SMS"
                     subtitle="Sender name shown to recipients"
-                    icon={<MessageChatCircle className="w-5 h-5 text-[#475467]" />}
-                    iconBg="bg-white border-1 border-[#e4e7ec]"
+                    icon={<MessageChatCircle className="w-5 h-5 text-[var(--colors-text-tertiary)]" />}
+                    iconBg="bg-white border-1 border-[var(--colors-border-secondary)]"
                     on={smsOn}
                     onChange={() => setSmsOn(!smsOn)}
                 />
@@ -468,8 +468,8 @@ function ChannelRow({ title, subtitle, icon, iconBg, on, onChange }: {
                 {icon}
             </div>
             <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-semibold text-[#101828] leading-5">{title}</p>
-                <p className="text-[14px] text-[#475467] leading-5">{subtitle}</p>
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{subtitle}</p>
             </div>
             <Toggle on={on} onChange={onChange} ariaLabel={`Toggle ${title}`} />
         </div>
@@ -494,7 +494,7 @@ function Toggle({ on, onChange, ariaLabel }: { on: boolean; onChange: () => void
             onClick={onChange}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}
         >
             <div className={cn(
@@ -511,7 +511,7 @@ function FormCard({ children }: { children: React.ReactNode }) {
     // Footer removed Jul 2026 — Cancel + Save moved up to the panel-level
     // sticky footer per Figma 7824:122617.
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col flex-1 min-w-0 overflow-hidden h-full">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
                 {children}
             </div>
@@ -523,8 +523,8 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
     return (
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
-                <p className="font-semibold text-[16px] leading-[24px] text-[#101828]">{title}</p>
-                {subtitle && <p className="text-[14px] text-[#475467] leading-5">{subtitle}</p>}
+                <p className="font-semibold text-[16px] leading-[24px] text-[var(--colors-text-primary)]">{title}</p>
+                {subtitle && <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{subtitle}</p>}
             </div>
             <div className="flex flex-col gap-3">{children}</div>
         </div>
@@ -534,7 +534,7 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="text-[14px] font-medium text-[#344054] leading-5">{label}</span>
+            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">{label}</span>
             {children}
         </div>
     );
@@ -547,7 +547,7 @@ function TextInput({ value, onChange, placeholder }: { value: string; onChange: 
             value={value}
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
-            className="h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all"
+            className="h-10 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all"
         />
     );
 }
@@ -571,7 +571,7 @@ function PreviewTabs({ current, onChange }: { current: PreviewTab; onChange: (t:
         { key: "class", label: "Class" },
     ];
     return (
-        <div className="flex items-center bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px] p-1 gap-1">
+        <div className="flex items-center bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[10px] p-1 gap-1">
             {TABS.map(t => {
                 const active = current === t.key;
                 return (
@@ -582,8 +582,8 @@ function PreviewTabs({ current, onChange }: { current: PreviewTab; onChange: (t:
                         className={cn(
                             "flex-1 px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all",
                             active
-                                ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                : "text-[#667085] hover:text-[#344054]",
+                                ? "bg-white text-[var(--colors-text-primary)] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                         )}
                     >
                         {t.label}
@@ -602,7 +602,7 @@ function PreviewTabs({ current, onChange }: { current: PreviewTab; onChange: (t:
  *  a soft drop shadow + rounded corners. */
 function PhoneMock({ children }: { children: React.ReactNode }) {
     return (
-        <div className="w-[300px] h-[620px] shrink-0 rounded-[28px] overflow-hidden bg-white relative shadow-[0px_12px_28px_-10px_rgba(16,24,40,0.18)] border-1 border-[#e4e7ec]">
+        <div className="w-[300px] h-[620px] shrink-0 rounded-[28px] overflow-hidden bg-white relative shadow-[0px_12px_28px_-10px_rgba(16,24,40,0.18)] border-1 border-[var(--colors-border-secondary)]">
             {children}
         </div>
     );

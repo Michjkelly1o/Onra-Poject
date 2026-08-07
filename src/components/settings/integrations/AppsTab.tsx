@@ -176,9 +176,9 @@ export function AppsTab({ search, categoryFilter }: AppsTabProps) {
                 admin can still submit a request from a dry feed. */}
             {visibleGroups.length === 0 && (
                 <>
-                    <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[12px] py-10 flex flex-col items-center gap-1">
-                        <p className="text-[14px] font-medium text-[#344054]">No apps found</p>
-                        <p className="text-[13px] text-[#667085]">Try a different search or pick another filter.</p>
+                    <div className="bg-white border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[12px] py-10 flex flex-col items-center gap-1">
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">No apps found</p>
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)]">Try a different search or pick another filter.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <RequestIntegrationsCard onClick={() => setFlow({ kind: "request" })} />
@@ -199,7 +199,7 @@ export function AppsTab({ search, categoryFilter }: AppsTabProps) {
                 const groupItems = groupedByCategory.get(group.key) ?? [];
                 return (
                     <div key={group.key} className="flex flex-col gap-3">
-                        <p className="text-[14px] font-medium text-[#475467]">{group.label}</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-tertiary)]">{group.label}</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {groupItems.map(i => (
                                 <IntegrationCard
@@ -301,7 +301,7 @@ function FilterDropdown({ open, onOpenChange, value, onChange }: {
                 // Clear-filter row dropped per the brief: admins toggle off
                 // by clicking the selected category again (same pattern as
                 // every other filter dropdown across the app).
-                <div className="absolute top-[calc(100%+4px)] right-0 z-50 min-w-[240px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
+                <div className="absolute top-[calc(100%+4px)] right-0 z-50 min-w-[240px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1">
                     {INTEGRATION_CATEGORIES.map(cat => {
                         const selected = value === cat.key;
                         return (
@@ -310,12 +310,12 @@ function FilterDropdown({ open, onOpenChange, value, onChange }: {
                                 type="button"
                                 onClick={() => { onChange(selected ? null : cat.key); onOpenChange(false); }}
                                 className={cn(
-                                    "flex items-center justify-between gap-3 w-full px-4 py-[10px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors whitespace-nowrap",
-                                    selected ? "text-[#101828] font-semibold" : "text-[#344054]",
+                                    "flex items-center justify-between gap-3 w-full px-4 py-[10px] text-[14px] font-medium hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap",
+                                    selected ? "text-[var(--colors-text-primary)] font-semibold" : "text-[var(--colors-text-secondary)]",
                                 )}
                             >
                                 <span>{cat.label}</span>
-                                {selected && <Check className="w-4 h-4 text-[#658774] shrink-0" />}
+                                {selected && <Check className="w-4 h-4 text-[var(--colors-secondary-600)] shrink-0" />}
                             </button>
                         );
                     })}
@@ -337,12 +337,12 @@ function RequestIntegrationsCard({ onClick }: { onClick: () => void }) {
     // max-w cap that made it look narrower than the real-integration
     // cards when sitting inline at the end of a group's grid.
     return (
-        <div className="bg-[#f9fafb] border-1 border-dashed border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 w-full">
-            <div className="w-10 h-10 rounded-[8px] bg-white border-1 border-[#e4e7ec] flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <Link04 className="w-5 h-5 text-[#475467]" />
+        <div className="bg-[var(--colors-bg-secondary)] border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3 w-full">
+            <div className="w-10 h-10 rounded-[8px] bg-white border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <Link04 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
             </div>
             <div className="flex flex-col gap-1">
-                <p className="text-[16px] font-semibold text-[#101828] leading-6">Request integrations</p>
+                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Request integrations</p>
                 <p className="text-[14px] text-[#6e776f] leading-5">
                     Tell us what to build next or connect anything via Zapier & our open API
                 </p>
@@ -350,9 +350,9 @@ function RequestIntegrationsCard({ onClick }: { onClick: () => void }) {
             <button
                 type="button"
                 onClick={onClick}
-                className="inline-flex items-center justify-center gap-1.5 h-10 px-3 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-semibold text-[#344054] hover:bg-[#f9fafb] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                className="inline-flex items-center justify-center gap-1.5 h-10 px-3 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-semibold text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
             >
-                <Plus className="w-4 h-4 text-[#475467]" />
+                <Plus className="w-4 h-4 text-[var(--colors-text-tertiary)]" />
                 Request
             </button>
         </div>

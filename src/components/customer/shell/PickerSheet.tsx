@@ -60,13 +60,13 @@ export function PickerSheet({
             <p className="shrink-0 pb-3 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">{title}</p>
 
             {/* Search */}
-            <div className="flex shrink-0 items-center gap-2 rounded-full border border-[#d0d5dd] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <SearchLg className="size-5 shrink-0 text-[#667085]" aria-hidden />
+            <div className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <SearchLg className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                 <input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     placeholder={searchPlaceholder}
-                    className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
+                    className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
                 />
             </div>
 
@@ -82,18 +82,18 @@ export function PickerSheet({
                             className="flex w-full items-center gap-3 py-4 text-left"
                         >
                             {o.flag && (
-                                <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7] text-lg leading-none">
+                                <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)] text-lg leading-none">
                                     {o.flag}
                                 </span>
                             )}
-                            <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[#344054]">
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                                 {o.label}
                             </span>
                             <RadioDot checked={sel === o.value} />
                         </button>
                     ))
                 ) : (
-                    <p className="py-12 text-center text-sm text-[#667085]">No results found.</p>
+                    <p className="py-12 text-center text-sm text-[var(--colors-text-quaternary)]">No results found.</p>
                 )}
             </div>
 

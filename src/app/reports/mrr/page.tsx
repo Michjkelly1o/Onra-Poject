@@ -103,7 +103,7 @@ export default function MRRReportPage() {
 
     if (!report) {
         return (
-            <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">
+            <div className="px-[24px] py-[48px] text-[14px] text-[var(--colors-text-tertiary)]">
                 MRR report definition is missing from the registry.
             </div>
         );

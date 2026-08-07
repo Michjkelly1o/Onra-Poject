@@ -771,6 +771,22 @@ export interface ScheduleInstructor {
      *  instructor picker by this so a class scheduled at Branch X can
      *  only pick instructors whose branch is X (or is null). */
     branchId: string | null;
+    /** Categories this instructor may teach (mirrors staff.categoryIds).
+     *  Phase 1 unification (2026-08-05): carried ON the schedule pool so the
+     *  form no longer has to reach into a SEPARATE staff table to judge
+     *  eligibility — the pool it SELECTS from and the data that judges
+     *  CAN-TEACH are now one and the same, killing the divergence that let a
+     *  class show a valid instructor in the list yet "unavailable" on edit.
+     *  Optional so the `Instructor` directory (which extends this) and any
+     *  legacy literal keep compiling; the schedule pool always sets it. */
+    categoryIds?: string[];
+    /** Assigned shift id (mirrors staff.shiftId) — lets the picker apply the
+     *  SAME shift gate the time-slot logic uses. */
+    shiftId?: string | null;
+    /** Whether the instructor is currently active (mirrors staff.status ===
+     *  "active"). Inactive instructors can still be RESOLVED for display but
+     *  should not be freshly selectable. */
+    active?: boolean;
 }
 
 /** Status for a directory instructor. Mirrors the customer/staff status model:
@@ -2479,16 +2495,78 @@ export interface PendingPurchase {
     saleBranchId?: string;
 }
 
-// ─── SCHEDULE_INSTRUCTORS — built from staff_profiles seed ──────────────────
+// ─── SCHEDULE_INSTRUCTORS — the ONE schedulable-instructor pool ─────────────
+//
+// Phase 1 unification (2026-08-05). Historically this pool was built from
+// `staff_profiles` (display only — no categories), the CAN-TEACH gate read
+// `staff.ts` (`staffById`), and the denormalized list name fell back to
+// `instructors.ts`. Three sources, never reconciled → a class could show a
+// valid instructor in the list yet grey/blank them on edit. Now ALL of it
+// derives from the canonical `staff.ts` table, so display / select / eligibility
+// agree by construction.
+//
+// Membership rule ("a schedulable instructor"): role instructor, active,
+// teaches ≥1 category, and based at an ACTIVE branch (or all-locations). That
+// reproduces exactly the 10 south/east instructors and deliberately excludes
+// West (inactive branch — its classes can't be scheduled), the two recovery
+// therapists (no class category), and pending invites — none of which should
+// clutter the schedule pickers or list filters.
 
-export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = SEED_STAFF_PROFILES.map(s => ({
-    id: s.id,
-    name: s.full_name,
-    initials: s.initials,
-    color: s.color_hex,
-    imageUrl: s.image_url,
-    branchId: s.branch_id,
-}));
+const ACTIVE_BRANCH_IDS: Set<string> = new Set(
+    SEED_BRANCHES.filter(b => b.status === "active").map(b => b.id),
+);
+
+/** True when a staff SEED row belongs in the schedulable-instructor pool. */
+function isSchedulableStaffSeed(s: (typeof SEED_STAFF)[number]): boolean {
+    return s.role_id === "role_instructor"
+        && s.status === "active"
+        && (s.category_ids?.length ?? 0) > 0
+        && (s.branch_id === null || ACTIVE_BRANCH_IDS.has(s.branch_id));
+}
+
+export const SCHEDULE_INSTRUCTORS: ScheduleInstructor[] = SEED_STAFF
+    .filter(isSchedulableStaffSeed)
+    .map(s => ({
+        id: s.id,
+        name: s.full_name,
+        initials: s.initials,
+        color: s.color_hex,
+        imageUrl: s.image_url,
+        branchId: s.branch_id,
+        categoryIds: s.category_ids ?? [],
+        shiftId: s.shift_id ?? null,
+        active: s.status === "active",
+    }));
+
+/** Live equivalent of SCHEDULE_INSTRUCTORS, derived from the runtime `staff`
+ *  slice so instructor edits made during a demo (rename, re-category, branch
+ *  move, deactivate) reflect in the schedule pickers instead of silently
+ *  drifting from the frozen seed pool. Same membership rule as the seed pool
+ *  above, evaluated against the live branches for active-branch scope. Wired
+ *  into the create/edit form in Phase 5. */
+export function deriveScheduleInstructors(
+    staff: Staff[],
+    activeBranchIds: Set<string>,
+): ScheduleInstructor[] {
+    return staff
+        .filter(s =>
+            s.roleId === "role_instructor"
+            && s.status === "active"
+            && (s.categoryIds?.length ?? 0) > 0
+            && (s.branchId === null || activeBranchIds.has(s.branchId)),
+        )
+        .map(s => ({
+            id: s.id,
+            name: s.fullName,
+            initials: s.initials,
+            color: s.color,
+            imageUrl: s.imageUrl,
+            branchId: s.branchId,
+            categoryIds: s.categoryIds ?? [],
+            shiftId: s.shiftId ?? null,
+            active: s.status === "active",
+        }));
+}
 
 // ─── Adapters (snake_case seed → camelCase store shape) ─────────────────────
 
@@ -2788,11 +2866,13 @@ export function liveScheduleStatus<T extends string>(dateISO: string, startTime:
 
 function scheduleFromSeed(s: SeedClassSchedule, templates: ClassTemplate[]): ClassSchedule {
     const tpl = templates.find(t => t.id === s.template_id);
-    // Resolve the instructor's denormalized name/initials/colour. staff_profiles
-    // only carries the 4 canonical staff rows, but demo schedules bind to all 10
-    // instructors — fall back to the full instructors seed so none render blank
-    // (otherwise the unmatched 6 got "" + the #e0e0e0 default → empty grey chip).
+    // Resolve the instructor's denormalized name/initials/colour from the
+    // canonical staff.ts table FIRST (Phase 1 unification 2026-08-05) so the
+    // list/grid/detail name always matches the pool the edit form selects from.
+    // Falls back to staff_profiles / the instructors directory only if an id
+    // somehow isn't in staff.ts, so nothing ever renders as a blank grey chip.
     const inst =
+        SEED_STAFF.find(p => p.id === s.instructor_id) ??
         SEED_STAFF_PROFILES.find(p => p.id === s.instructor_id) ??
         SEED_INSTRUCTORS.find(p => p.id === s.instructor_id);
     const branch = SEED_BRANCHES.find(b => b.id === s.branch_id);
@@ -4367,6 +4447,12 @@ export interface AppState {
      *  always available. */
     deleteBlockedTimes: (ids: string[]) => void;
     pendingPurchase: PendingPurchase | null;
+    /** Transient — a cover image the user uploaded in the AI Agent's
+     *  "create class from scratch" flow. Held here (not relayed through the
+     *  model) so the publish tool can read it off the request snapshot. Set on
+     *  upload, cleared after the class is published. Not persisted. */
+    aiScratchCoverImage: string | null;
+    setAiScratchCoverImage: (url: string | null) => void;
     toast: ToastData | null;
 
     /** Client 2026-07-31 — true while ANY admin list page has at least one
@@ -5615,6 +5701,120 @@ function buildShowcaseBookings(): ClassBooking[] {
 }
 const SHOWCASE_BOOKINGS: ClassBooking[] = buildShowcaseBookings();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Follow-up showcase (client 2026-08-05)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// A named set of leads / lapsed trialists whose REAL state trips the follow-up
+// task engine, so the Follow-ups tab + "Leads to follow up" widget show a
+// genuine, varied list on a fresh demo — spanning all 3 auto-detected triggers,
+// across multiple people, not one. Nothing here is a hand-authored task: the
+// tasks are generated by `generateSeedFollowUpTasks` from this customer data.
+//
+// Each archetype is tuned to the engine's real rules (see follow-up-tasks.ts /
+// lifecycle.ts):
+//   • Lead (lead_form_submitted): no plan, no booking, but a recent visit so
+//     the lifecycle tags them Lead (never-visited would be Churned → excluded).
+//   • Trialist (trial_no_rebook_7d): a COMPLIMENTARY plan only (a package would
+//     count as "paid" and disqualify), one attended class 9–12 days ago, last
+//     visit <14d so they stay Trialist (not At Risk).
+//   • Lead (first_booking_cancelled): first + only booking cancelled, recent
+//     visit so they tag Lead.
+function buildFollowUpShowcase(): {
+    customers: Customer[];
+    plans: CustomerPlan[];
+    bookings: ClassBooking[];
+} {
+    const customers: Customer[] = [];
+    const plans: CustomerPlan[] = [];
+    const bookings: ClassBooking[] = [];
+
+    // ── Leads — "New lead from {source} — reach out." ────────────────────────
+    const leads: Array<[string, string, string, string, string, number, number]> = [
+        // id, first, last, sourceId, marketingSource, createdDaysAgo, lastVisitDaysAgo
+        ["cust_fu_lead_1", "Layla",  "Haddad",  "src_instagram", "Instagram / Social", 3, 2],
+        ["cust_fu_lead_2", "Omar",   "Farouk",  "src_website",   "Website / Online",   5, 4],
+        ["cust_fu_lead_3", "Nadia",  "Rahman",  "src_walkin",    "Walk-in",            2, 1],
+    ];
+    leads.forEach(([id, first, last, sourceId, marketingSource, created, lastVisit], i) => {
+        customers.push({
+            id, firstName: first, lastName: last, initials: `${first[0]}${last[0]}`,
+            email: `${first}.${last}@onradmo.test`.toLowerCase(),
+            phone: `+971 50 991 10${i + 1}`,
+            imageUrl: LC_PORTRAITS[i % LC_PORTRAITS.length],
+            branchId: LC_BRANCH, planKind: null,
+            createdAt: daysAgoISO(created), status: "active",
+            gender: i % 2 === 0 ? "Female" : "Male",
+            sourceId, marketingSource,
+            firstVisitISO: daysAgoISODate(lastVisit), lastVisitISO: daysAgoISODate(lastVisit),
+        });
+    });
+
+    // ── Lapsed trialists — "{name} did a trial and hasn't returned." ─────────
+    const trialists: Array<[string, string, string, string, number, number]> = [
+        // id, first, last, sourceId, attendedDaysAgo, planPurchasedDaysAgo
+        ["cust_fu_trial_1", "Yusuf", "Karim",  "src_referral",  9,  14],
+        ["cust_fu_trial_2", "Hana",  "Saleh",  "src_instagram", 11, 15],
+        ["cust_fu_trial_3", "Bilal", "Osman",  "src_website",   12, 16],
+    ];
+    trialists.forEach(([id, first, last, sourceId, attended, purchased], i) => {
+        customers.push({
+            id, firstName: first, lastName: last, initials: `${first[0]}${last[0]}`,
+            email: `${first}.${last}@onradmo.test`.toLowerCase(),
+            phone: `+971 50 992 20${i + 1}`,
+            imageUrl: LC_PORTRAITS[(i + 1) % LC_PORTRAITS.length],
+            branchId: LC_BRANCH, planKind: null,
+            createdAt: daysAgoISO(purchased + 1), status: "active",
+            gender: i % 2 === 0 ? "Male" : "Female",
+            sourceId, marketingSource: "Referral",
+            firstVisitISO: daysAgoISODate(attended), lastVisitISO: daysAgoISODate(attended),
+        });
+        plans.push({
+            id: `cp_${id}`, customerId: id,
+            kind: "complimentary", name: "Free trial credit",
+            planTypeLabel: "Free credit", creditsLabel: "1 credit",
+            status: "active",
+            purchasedAtISO: daysAgoISODate(purchased), expiryISO: daysAgoISODate(-14),
+            totalCredits: 1, creditsUsed: 1,
+        });
+        bookings.push({
+            id: `bk_${id}_attended`, classScheduleId: "sc_lc_showcase",
+            customerId: id, branchId: LC_BRANCH,
+            status: "booked", attendanceStatus: "present",
+            bookingTime: daysAgoISO(attended), spot: "1", planId: "", planName: "",
+        });
+    });
+
+    // ── Cancelled first class — "{name} cancelled their first class." ────────
+    const cancels: Array<[string, string, string, string, number, number]> = [
+        // id, first, last, sourceId, cancelledDaysAgo, lastVisitDaysAgo
+        ["cust_fu_cancel_1", "Rania", "Aziz",    "src_classpass", 5, 6],
+        ["cust_fu_cancel_2", "Tariq", "Mansour", "src_walkin",    4, 5],
+    ];
+    cancels.forEach(([id, first, last, sourceId, cancelled, lastVisit], i) => {
+        customers.push({
+            id, firstName: first, lastName: last, initials: `${first[0]}${last[0]}`,
+            email: `${first}.${last}@onradmo.test`.toLowerCase(),
+            phone: `+971 50 993 30${i + 1}`,
+            imageUrl: LC_PORTRAITS[(i + 2) % LC_PORTRAITS.length],
+            branchId: LC_BRANCH, planKind: null,
+            createdAt: daysAgoISO(lastVisit + 1), status: "active",
+            gender: i % 2 === 0 ? "Female" : "Male",
+            sourceId, marketingSource: "Walk-in",
+            firstVisitISO: daysAgoISODate(lastVisit), lastVisitISO: daysAgoISODate(lastVisit),
+        });
+        bookings.push({
+            id: `bk_${id}_cancelled`, classScheduleId: "sc_lc_showcase",
+            customerId: id, branchId: LC_BRANCH,
+            status: "cancelled", attendanceStatus: "late_cancel",
+            bookingTime: daysAgoISO(cancelled), spot: "1", planId: "", planName: "",
+        });
+    });
+
+    return { customers, plans, bookings };
+}
+const FOLLOWUP_SHOWCASE = buildFollowUpShowcase();
+
 const SHOWCASE_TRANSACTIONS: CustomerTransaction[] = [
     {
         id: "txn_lc_new_active", customerId: "cust_lc_new_active", branchId: LC_BRANCH,
@@ -5963,6 +6163,49 @@ function buildBulkShowcase(): {
 }
 const BULK_SHOWCASE = buildBulkShowcase();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Follow-up task seed backfill (client 2026-08-05)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The signal→task engine (generateFollowUpTasks) only fires as a side-effect of
+// live writes (addBooking / cancelBooking / addLead / logEnquiry). Nothing runs
+// it at boot, so a fresh demo used to open with an EMPTY Follow-ups tab + empty
+// "Leads to follow up" dashboard widget — even though seeded leads / lapsed
+// trialists genuinely qualify. The client couldn't tell which customer had a
+// list without clicking every profile.
+//
+// This runs the SAME generator across every customer once at seed time, so the
+// list is built by the real logic from the real customer state — no
+// hand-authored task rows anywhere. Only the 3 state-derivable triggers are
+// evaluated; `enquiry_logged` is intentionally excluded (it's a manual staff
+// action, and with no `triggers` filter the generator would otherwise mint one
+// for every lead). Idempotent — the generator dedupes against open tasks — and
+// only ever invoked when the slice is empty, so a tester's own logged / closed
+// tasks are never clobbered.
+const SEED_FOLLOW_UP_TRIGGERS: FollowUpTaskTrigger[] = [
+    "lead_form_submitted",
+    "trial_no_rebook_7d",
+    "first_booking_cancelled",
+];
+
+type FollowUpTaskState = Pick<
+    AppState,
+    "customers" | "classBookings" | "customerPlans" | "customerTransactions" | "followUpTasks" | "leadSources" | "followUpStages"
+>;
+
+export function generateSeedFollowUpTasks(state: FollowUpTaskState): FollowUpTask[] {
+    let tasks: FollowUpTask[] = [...state.followUpTasks];
+    for (const c of state.customers) {
+        const fresh = generateFollowUpTasks(
+            c.id,
+            { ...state, followUpTasks: tasks },
+            { triggers: SEED_FOLLOW_UP_TRIGGERS },
+        );
+        tasks = applyGeneratedTasks(tasks, fresh);
+    }
+    return tasks;
+}
+
 const PERSIST_KEY = "onra-demo-state";
 
 export const useAppStore = create<AppState>()(persist(
@@ -6012,10 +6255,10 @@ export const useAppStore = create<AppState>()(persist(
     appointmentBookings: INITIAL_APPOINTMENT_BOOKINGS,
     appointmentRatings: INITIAL_APPOINTMENT_RATINGS,
     classSchedules: INITIAL_SCHEDULES,
-    classBookings: [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS, ...BULK_SHOWCASE.bookings],
+    classBookings: [...INITIAL_BOOKINGS, ...SHOWCASE_BOOKINGS, ...FOLLOWUP_SHOWCASE.bookings, ...BULK_SHOWCASE.bookings],
     classRatings: INITIAL_RATINGS,
-    customers: [...SHOWCASE_CUSTOMERS, ...BULK_SHOWCASE.customers, ...INITIAL_CUSTOMERS],
-    customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...BULK_SHOWCASE.plans],
+    customers: [...SHOWCASE_CUSTOMERS, ...FOLLOWUP_SHOWCASE.customers, ...BULK_SHOWCASE.customers, ...INITIAL_CUSTOMERS],
+    customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...FOLLOWUP_SHOWCASE.plans, ...BULK_SHOWCASE.plans],
     customerTransactions: [...INITIAL_CUSTOMER_TRANSACTIONS, ...INITIAL_GIFT_CARD_SALE_TXNS, ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions],
     customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
     customerReferrals: INITIAL_CUSTOMER_REFERRALS,
@@ -6065,6 +6308,7 @@ export const useAppStore = create<AppState>()(persist(
     instructorIntegrations: [...INITIAL_INSTRUCTOR_INTEGRATIONS],
     paymentProviders: [...INITIAL_PAYMENT_PROVIDERS],
     pendingPurchase: null,
+    aiScratchCoverImage: null,
     toast: null,
     bulkSelectionActive: false,
 
@@ -6919,8 +7163,24 @@ export const useAppStore = create<AppState>()(persist(
     updateClassSchedule: (id, updates) => {
         const stateBefore = get();
         const before = stateBefore.classSchedules.find(s => s.id === id);
+        // When a class is reassigned to a different instructor, its OWN ratings
+        // and staff-attendance-log rows must follow it (audit Phase 6,
+        // 2026-08-05). Otherwise the old instructor keeps the class's ratings
+        // (StaffDetailPage rating count + the delete-guard) and the Staff
+        // Attendance report's staff↔class join goes stale. Reattributing keeps
+        // schedule.instructorId, ratings.instructorId and log.staff_id in lock-
+        // step — the single-source-of-truth invariant the whole audit enforces.
+        const newInstructor = updates.instructorId;
+        const instructorReassigned =
+            newInstructor !== undefined && !!before && newInstructor !== before.instructorId;
         set((state) => ({
             classSchedules: state.classSchedules.map(s => s.id === id ? { ...s, ...updates } : s),
+            classRatings: instructorReassigned
+                ? state.classRatings.map(r => r.classScheduleId === id ? { ...r, instructorId: newInstructor! } : r)
+                : state.classRatings,
+            staffAttendanceLog: instructorReassigned
+                ? state.staffAttendanceLog.map(l => l.class_schedule_id === id ? { ...l, staff_id: newInstructor! } : l)
+                : state.staffAttendanceLog,
         }));
         // Phase 4 sync — fire a notification only when an instructor-
         // relevant field actually changed. Quiet for cover-image swaps,
@@ -11253,6 +11513,25 @@ export const useAppStore = create<AppState>()(persist(
             const editingCurrent = state.currentUser.role === "instructor" && currentStaffId === id;
             const editedRow = nextStaff.find(s => s.id === id);
 
+            // Keep the schedule cards' denormalized instructor identity fresh when
+            // an admin renames / re-avatars an instructor. The admin path
+            // previously skipped this cascade (only updateOwnProfile had it), so
+            // an admin rename didn't reach the schedule list / grid / detail.
+            // Audit Phase 6, 2026-08-05.
+            const identityChanged = !!editedRow && (
+                patch.firstName !== undefined || patch.lastName !== undefined ||
+                patch.fullName  !== undefined || patch.initials !== undefined ||
+                patch.color     !== undefined || patch.imageUrl !== undefined
+            );
+            const nextSchedules = identityChanged && editedRow
+                ? state.classSchedules.map(c => c.instructorId === id ? {
+                    ...c,
+                    instructorName: editedRow.fullName,
+                    instructorInitials: editedRow.initials,
+                    instructorColor: editedRow.color,
+                  } : c)
+                : state.classSchedules;
+
             if (editingCurrent && editedRow) {
                 // Phase 3 cascade — `staff[].bio` mirrors back to
                 // `currentUser.introduction` so when admin edits Liam's
@@ -11266,6 +11545,7 @@ export const useAppStore = create<AppState>()(persist(
                 return {
                     staff: nextStaff,
                     instructors: nextInstructors,
+                    classSchedules: nextSchedules,
                     currentUser: {
                         ...state.currentUser,
                         first_name: editedRow.firstName,
@@ -11281,6 +11561,7 @@ export const useAppStore = create<AppState>()(persist(
             return {
                 staff: nextStaff,
                 instructors: nextInstructors,
+                classSchedules: nextSchedules,
             };
         });
 
@@ -11466,6 +11747,7 @@ export const useAppStore = create<AppState>()(persist(
     },
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
+    setAiScratchCoverImage: (url) => set({ aiScratchCoverImage: url }),
     applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride, giftCardDebits) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
@@ -12551,7 +12833,7 @@ export const useAppStore = create<AppState>()(persist(
         //   next hydrate. Non-branding slices unaffected.
         // v54 (2026-07-13): tertiaryColor re-anchored `#E9FFF3` → `#C4EDD6` so
         //   the seed matches the actual DS Button "primary" variant background
-        //   (`bg-[#c4edd6]`). Before this bump, the admin form showed
+        //   (`bg-[var(--colors-secondary-200)]`). Before this bump, the admin form showed
         //   `#E9FFF3` but the customer's Book class button rendered `#c4edd6`,
         //   which read as "tertiary not connected" when scrubbed. Bump forces
         //   testers to reseed with the aligned value.
@@ -12889,15 +13171,41 @@ export const useAppStore = create<AppState>()(persist(
         //   Figma timeline (5 states). Added Liam's today class + today-relative
         //   partial time off so the "shift + time off + schedule" state is
         //   seeded/testable. blockedTimes + classSchedules are persisted → bump.
-        // v105 (2026-08-06): classesSettings gained guest-booking flags
+        // v105 — follow-up showcase: added named leads / lapsed trialists whose
+        //   real state trips the follow-up engine, and a boot backfill that
+        //   generates the tasks at seed time. customers / customerPlans /
+        //   classBookings / followUpTasks are persisted → bump so the Follow-ups
+        //   tab + "Leads to follow up" widget show a real list on existing
+        //   devices instead of an empty tab.
+        // v106 — class-schedule audit Phase 1 (2026-08-05): unified the
+        //   instructor source of truth. Reconciled two seed contradictions
+        //   (Lana Steiner branch East→South in staff_profiles; Candice Wu rate
+        //   pr_monthly→pr_standard in instructors) so the instructors slice is
+        //   persisted → bump so existing devices pick up the reconciled data
+        //   instead of the stale divergent copies.
+        // v107 — class-schedule audit Phase 2 (2026-08-05): every generated
+        //   class now binds to a constraint-valid instructor + room (category /
+        //   branch / shift / time-off / room fit / no double-book) instead of
+        //   the old round-robin, and no class lands on a day its branch is
+        //   closed. classSchedules is persisted → bump so existing devices load
+        //   the repaired schedule instead of the old invalid assignments.
+        // v108 — class-schedule audit Phase 3 (2026-08-05): reconciled Candice
+        //   Wu's payroll entry (pr_monthly→pr_standard, base 8000→294) so it
+        //   matches her canonical staff.ts rate. payrollEntries is persisted →
+        //   bump. (Notification seeds needed no change — all reference hand rows
+        //   or Liam's classes, none of which Phase 2 altered.)
+        // v109 — class-schedule audit Phase 7 (2026-08-05): verification sweep
+        //   fixed one pre-existing seed error — booking bk_mia_cancel_3 was
+        //   tagged South but its class is at East. classBookings is persisted →
+        //   bump so branch-scoped reports/dashboards filter it correctly.
+        // v110 (2026-08-06): merge of the customer-experience line into the
+        //   insights/KPI line. Brings the guest-booking flags on classesSettings
         //   (guests_use_plan_enabled / guests_allow_unlimited) for the Bring a
-        //   friend flow. Bump so persisted demos pick up the new defaults.
-        // v106 (2026-08-06): 2026-08 rebrand fetched from main — brandingSettings
-        //   primaryColor #658774→#164E52 (Rich blue green) + tertiaryColor
-        //   #C4EDD6→#DCEBE4. brandingSettings is persisted → bump so existing
-        //   demos re-seed and the customer app's <BrandTokens> picks up the new
-        //   brand teal instead of the stale sage.
-        version: 106,
+        //   friend flow on top of the v106-110 schedule audits + rebrand. v111
+        //   also adds the customer guest-booking fields (guest phone, guest
+        //   booking limit). Fresh bump so every persisted demo re-seeds with the
+        //   combined data + branding.
+        version: 111,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -13102,6 +13410,16 @@ export const useAppStore = create<AppState>()(persist(
             }
             if (!Array.isArray(state.followUpTasks)) {
                 state.followUpTasks = [];
+            }
+            // Client 2026-08-05 — seed the follow-up list from real customer
+            // state so the Follow-ups tab + "Leads to follow up" widget show a
+            // genuine, auto-generated list on boot (the live engine only fires
+            // on writes; nothing ran it at seed time). Only when empty, so a
+            // tester's own logged / closed tasks are never overwritten. Every
+            // row comes from the same generator the live path uses — no
+            // hand-authored tasks. See generateSeedFollowUpTasks.
+            if (state.followUpTasks.length === 0) {
+                state.followUpTasks = generateSeedFollowUpTasks(state);
             }
             // v83 audit fix — resolve the current label of the seeded
             // "New" stage once so a hypothetical pre-existing rename in
@@ -13371,6 +13689,7 @@ export const useAppStore = create<AppState>()(persist(
                 sidebarCollapsed: _sidebarCollapsed,
                 toast:          _toast,
                 pendingPurchase: _pendingPurchase,
+                aiScratchCoverImage: _aiScratchCoverImage,
                 // bulkSelectionActive is UI-only ephemeral state driven by
                 // the currently mounted list page. Persisting it would
                 // cause a stale "true" to survive across reloads and

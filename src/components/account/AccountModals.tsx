@@ -80,10 +80,10 @@ export function ModalShell({
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-[1]"
+                    className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-[1]"
                     aria-label="Close"
                 >
-                    <XClose className="w-6 h-6 text-[#98a2b3]" />
+                    <XClose className="w-6 h-6 text-[var(--colors-fg-quaternary)]" />
                 </button>
                 {children}
             </div>
@@ -97,10 +97,10 @@ export function ModalHeaderLeft({ title }: { title: string }) {
     return (
         <div className="flex flex-col w-full">
             <div className="pt-6 px-6 pb-0">
-                <p className="text-[18px] font-semibold text-[#101828] leading-7">{title}</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{title}</p>
             </div>
             <div className="h-5 w-full" />
-            <div className="h-px w-full bg-[#e4e7ec]" />
+            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
         </div>
     );
 }
@@ -120,8 +120,8 @@ function ModalHeaderCenter({
         <div className="flex flex-col gap-4 items-center pt-6 px-6 pb-5 w-full">
             <FeaturedIcon>{icon}</FeaturedIcon>
             <div className="flex flex-col gap-1 items-center text-center w-full">
-                <p className="text-[18px] font-semibold text-[#101828] leading-7 w-full">{title}</p>
-                <p className="text-[14px] text-[#475467] leading-5 w-full">{supporting}</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 w-full">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 w-full">{supporting}</p>
             </div>
         </div>
     );
@@ -178,7 +178,7 @@ export function ModalFooter({
 // ─── Field primitives ───────────────────────────────────────────────────────
 
 const INPUT_CLS =
-    "h-10 w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+    "h-10 w-full px-[14px] py-[10px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
 
 // Local FieldLabel removed — uses canonical from `@/components/patterns/FieldLabel`.
 
@@ -239,7 +239,7 @@ function PasswordInput({
                 <button
                     type="button"
                     onClick={() => setShow(s => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[#f2f4f7] text-[#475467] hover:text-[#101828] transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] transition-colors"
                     aria-label={show ? "Hide password" : "Show password"}
                     title={show ? "Hide password" : "Show password"}
                 >
@@ -331,10 +331,10 @@ function OtpInput({
                         onPaste={e => handlePaste(i, e)}
                         onFocus={e => e.target.select()}
                         className={cn(
-                            "w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] rounded-[12px] border-1 text-center font-medium text-[40px] sm:text-[48px] leading-[60px] tracking-[-0.96px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-colors",
+                            "w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] rounded-[12px] border-1 text-center font-medium text-[40px] sm:text-[48px] leading-[60px] tracking-[-0.96px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-colors",
                             filled
-                                ? "text-[#101828] border-[#7ba08c]"
-                                : "text-[#d0d5dd] border-[#d0d5dd]"
+                                ? "text-[var(--colors-text-primary)] border-[var(--colors-secondary-500)]"
+                                : "text-[var(--colors-border-primary)] border-[var(--colors-border-primary)]"
                         )}
                     />
                 );
@@ -346,12 +346,12 @@ function OtpInput({
 /** "Didn't get a code? Resend." caption used under both OTP inputs. */
 function ResendCaption({ onResend }: { onResend: () => void }) {
     return (
-        <p className="text-[14px] text-[#475467] leading-5 text-center w-full">
+        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 text-center w-full">
             Didn&apos;t get a code?{" "}
             <button
                 type="button"
                 onClick={onResend}
-                className="underline font-medium text-[#475467] hover:text-[#344054]"
+                className="underline font-medium text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]"
             >
                 Resend
             </button>
@@ -405,7 +405,7 @@ export function EditProfileModal({
                         {avatar
                             // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={avatar} alt="" className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center text-[#667085] text-[24px] font-semibold">
+                            : <div className="w-full h-full flex items-center justify-center text-[var(--colors-text-quaternary)] text-[24px] font-semibold">
                                 {(firstName[0] ?? "").toUpperCase()}{(lastName[0] ?? "").toUpperCase()}
                             </div>
                         }
@@ -491,7 +491,7 @@ export function ChangeEmailVerifyModal({
                 supporting={
                     <>
                         We&apos;ll need to verify your old email address,{" "}
-                        <span className="font-semibold text-[#475467]">{currentEmail}</span>{" "}
+                        <span className="font-semibold text-[var(--colors-text-tertiary)]">{currentEmail}</span>{" "}
                         in order to change it.
                     </>
                 }
@@ -638,14 +638,14 @@ export function ChangePhoneNewModal({
                     chrome as the customer-create form. NB: do NOT add
                     `overflow-hidden` to the wrapper — it would clip the
                     country dropdown menu when it opens below the field. */}
-                <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     <PhoneCountryDropdown value={country} onChange={setCountry} />
                     <input
                         type="tel"
                         value={number}
                         onChange={e => setNumber(e.target.value.replace(/[^\d\s]/g, ""))}
                         placeholder="Enter phone number"
-                        className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent min-w-0 rounded-r-[8px]"
+                        className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent min-w-0 rounded-r-[8px]"
                     />
                 </div>
             </div>
@@ -772,12 +772,12 @@ function RequirementRow({ met, children }: { met: boolean; children: React.React
             <div
                 className={cn(
                     "w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0",
-                    met ? "bg-[#dcfae6]" : "bg-[#d0d5dd]"
+                    met ? "bg-[#dcfae6]" : "bg-[var(--colors-border-primary)]"
                 )}
             >
                 <Check className={cn("w-3 h-3", met ? "text-[#079455]" : "text-white")} />
             </div>
-            <p className="flex-1 text-[14px] text-[#667085] leading-5">{children}</p>
+            <p className="flex-1 text-[14px] text-[var(--colors-text-quaternary)] leading-5">{children}</p>
         </div>
     );
 }

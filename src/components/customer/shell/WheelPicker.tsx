@@ -60,7 +60,7 @@ export function ScrollWheel({
                         type="button"
                         onClick={() => ref.current?.scrollTo({ top: i * WHEEL_ITEM_H, behavior: "smooth" })}
                         className={`flex h-10 w-full snap-center items-center justify-center transition-colors ${
-                            selected ? "text-xl font-semibold text-[var(--brand-text)]" : "text-lg font-medium text-[#98a2b3]"
+                            selected ? "text-xl font-semibold text-[var(--brand-text)]" : "text-lg font-medium text-[var(--colors-fg-quaternary)]"
                         }`}
                     >
                         {l}
@@ -78,7 +78,7 @@ export function WheelGroup({ children }: { children: React.ReactNode }) {
         <div className="relative flex items-center justify-center gap-3 py-2">
             <div
                 aria-hidden
-                className="pointer-events-none absolute inset-x-3 top-1/2 h-10 -translate-y-1/2 rounded-xl bg-[#f9fafb]"
+                className="pointer-events-none absolute inset-x-3 top-1/2 h-10 -translate-y-1/2 rounded-xl bg-[var(--colors-bg-secondary)]"
             />
             {children}
         </div>

@@ -39,7 +39,7 @@ export function SettingsGroupHeader({ className }: { className?: string } = {}) 
         // fill main's p-6 top padding gap (where content bled through
         // above the tabs). box-shadow is purely visual — no layout
         // impact, so the tab strip does NOT move.
-        <div className="sticky top-0 z-30 w-full bg-white border-b border-[#e4e7ec] shadow-[0_-24px_0_0_#ffffff]">
+        <div className="sticky top-0 z-30 w-full bg-white border-b border-[var(--colors-border-secondary)] shadow-[0_-24px_0_0_#ffffff]">
             <DetailPageTabs
                 tabs={group.tabs.map(t => ({ key: t.href, label: t.label }))}
                 activeKey={activeKey}

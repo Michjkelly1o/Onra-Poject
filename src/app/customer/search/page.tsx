@@ -173,7 +173,7 @@ export default function SearchPage() {
                                     className={`flex h-8 flex-1 items-center justify-center px-2 pb-3 text-sm leading-5 transition-colors ${
                                         active
                                             ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
-                                            : "font-medium text-[#667085]"
+                                            : "font-medium text-[var(--colors-text-quaternary)]"
                                     }`}
                                 >
                                     {TAB_LABEL[t]}
@@ -187,13 +187,13 @@ export default function SearchPage() {
                     type="button"
                     onClick={() => setBranchSheet(true)}
                     aria-label={`Current studio: ${studioName}. Tap to switch.`}
-                    className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[#e4e7ec] bg-white px-3 py-2 text-left transition-colors active:bg-gray-50"
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--colors-border-secondary)] bg-white px-3 py-2 text-left transition-colors active:bg-gray-50"
                 >
-                    <MarkerPin01 className="size-5 shrink-0 text-[#667085]" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-base font-normal leading-6 text-[#667085]">
+                    <MarkerPin01 className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate text-base font-normal leading-6 text-[var(--colors-text-quaternary)]">
                         {studioName}
                     </span>
-                    <ChevronDown className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                    <ChevronDown className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                 </button>
 
                 <button
@@ -203,9 +203,9 @@ export default function SearchPage() {
                         setFilterOpen(true);
                     }}
                     aria-label="Filter"
-                    className="relative flex shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white p-2.5 transition-colors active:bg-gray-50"
+                    className="relative flex shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white p-2.5 transition-colors active:bg-gray-50"
                 >
-                    <Sliders02 className="size-5 text-[#344054]" aria-hidden />
+                    <Sliders02 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     {fcount > 0 && (
                         <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-primary)] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                             {fcount}
@@ -231,7 +231,7 @@ export default function SearchPage() {
 
                         {/* Result total — shown whenever a filter narrows the list. */}
                         {fcount > 0 && (
-                            <p className="text-sm font-normal leading-5 text-[#475467]">
+                            <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                                 {dayClasses.length} result{dayClasses.length === 1 ? "" : "s"}
                             </p>
                         )}

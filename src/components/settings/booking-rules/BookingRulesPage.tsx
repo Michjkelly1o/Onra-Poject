@@ -176,8 +176,8 @@ export default function BookingRulesPage() {
             <SettingsCard>
                 <div className="flex items-start gap-4">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="text-[16px] font-semibold text-[#101828]">Waitlist</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Waitlist</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             When a booked customer cancels, the spot is offered to the waitlist in order (oldest first).
                         </p>
                     </div>
@@ -310,7 +310,7 @@ function UnderlineTabs<K extends string>({ tabs, activeKey, onChange }: {
     onChange: (k: K) => void;
 }) {
     return (
-        <div className="border-b border-[#e4e7ec]">
+        <div className="border-b border-[var(--colors-border-secondary)]">
             <div className="flex gap-1">
                 {tabs.map(t => (
                     <button
@@ -320,8 +320,8 @@ function UnderlineTabs<K extends string>({ tabs, activeKey, onChange }: {
                         className={cn(
                             "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
                             activeKey === t.key
-                                ? "border-b-2 border-[#101828] text-[#101828]"
-                                : "text-[#667085] hover:text-[#344054]",
+                                ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                         )}
                     >
                         {t.label}
@@ -334,7 +334,7 @@ function UnderlineTabs<K extends string>({ tabs, activeKey, onChange }: {
 
 function SettingsCard({ children }: { children: React.ReactNode }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] flex flex-col gap-5 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             {children}
         </div>
     );
@@ -346,8 +346,8 @@ function CardHeader({ title, subtitle, editLabel, onEdit }: {
     return (
         <div className="flex items-start gap-4">
             <div className="flex-1 flex flex-col gap-1">
-                <p className="text-[16px] font-semibold text-[#101828]">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>
             </div>
             <Button
                 variant="secondary-gray" size="md"
@@ -363,8 +363,8 @@ function CardHeader({ title, subtitle, editLabel, onEdit }: {
 function SummaryField({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <p className="text-[16px] font-semibold text-[#101828]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{value}</p>
         </div>
     );
 }
@@ -377,7 +377,7 @@ function Toggle({ on, onChange, ariaLabel }: {
             onClick={() => onChange(!on)}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -392,14 +392,14 @@ function Toggle({ on, onChange, ariaLabel }: {
 function CancellationRuleSummary({ policy }: { policy: CancellationPolicy }) {
     return (
         <div className="flex flex-col gap-4">
-            <p className="text-[14px] font-medium text-[#667085] leading-[20px]">Credit &amp; package customers</p>
+            <p className="text-[14px] font-medium text-[var(--colors-text-quaternary)] leading-[20px]">Credit &amp; package customers</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                 <SummaryField
                     label="Cancel window – before class start"
                     value={
                         <span className="flex items-center gap-2">
                             <span>{policy.credit_before_window_value} {unitLabel(policy.credit_before_window_unit, policy.credit_before_window_value)}</span>
-                            <span className="text-[#98a2b3]">→</span>
+                            <span className="text-[var(--colors-fg-quaternary)]">→</span>
                             <span>{OUTCOME_LABEL[policy.credit_before_outcome]}</span>
                         </span>
                     }
@@ -409,16 +409,16 @@ function CancellationRuleSummary({ policy }: { policy: CancellationPolicy }) {
                     value={
                         <span className="flex items-center gap-2">
                             <span>{policy.credit_within_window_value} {unitLabel(policy.credit_within_window_unit, policy.credit_within_window_value)}</span>
-                            <span className="text-[#98a2b3]">→</span>
+                            <span className="text-[var(--colors-fg-quaternary)]">→</span>
                             <span>{OUTCOME_LABEL[policy.credit_within_outcome]}</span>
                         </span>
                     }
                 />
             </div>
 
-            <div className="h-px w-full bg-[#e4e7ec]" />
+            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
-            <p className="text-[14px] font-medium text-[#667085] leading-[20px]">Membership customers (no credit to forfeit)</p>
+            <p className="text-[14px] font-medium text-[var(--colors-text-quaternary)] leading-[20px]">Membership customers (no credit to forfeit)</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                 <SummaryField
                     label="Charge a late cancel fee"

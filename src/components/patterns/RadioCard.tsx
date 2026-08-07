@@ -62,8 +62,8 @@ export function RadioCardGroup<K extends string>({
                         className={cn(
                             "text-left rounded-[12px] border-1 px-4 py-3 flex items-start gap-3 transition-colors",
                             selected
-                                ? "border-[#7ba08c] bg-[#f5fffa]"
-                                : "border-[#e4e7ec] bg-white hover:bg-[#fafafa]",
+                                ? "border-[var(--colors-secondary-500)] bg-[#f5fffa]"
+                                : "border-[var(--colors-border-secondary)] bg-white hover:bg-[#fafafa]",
                         )}
                     >
                         {/* Radio dot — solid mint ring + inner dot when
@@ -72,17 +72,17 @@ export function RadioCardGroup<K extends string>({
                             className={cn(
                                 "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
                                 selected
-                                    ? "border-[#658774]"
-                                    : "border-[#d0d5dd]",
+                                    ? "border-[var(--colors-secondary-600)]"
+                                    : "border-[var(--colors-border-primary)]",
                             )}
                             aria-hidden
                         >
                             {selected && (
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#658774]" />
+                                <span className="w-2.5 h-2.5 rounded-full bg-[var(--colors-secondary-600)]" />
                             )}
                         </span>
                         <div className="flex-1 flex flex-col gap-1 min-w-0">
-                            <p className="text-[14px] font-semibold text-[#101828] leading-[20px] flex items-center gap-2 flex-wrap">
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px] flex items-center gap-2 flex-wrap">
                                 <span>{opt.label}</span>
                                 {opt.recommended && (
                                     <span className="inline-flex items-center h-5 px-1.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[11px] font-medium text-[#067647] whitespace-nowrap">
@@ -91,7 +91,7 @@ export function RadioCardGroup<K extends string>({
                                 )}
                             </p>
                             {opt.description && (
-                                <p className="text-[14px] text-[#667085] leading-[20px]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                                     {opt.description}
                                 </p>
                             )}

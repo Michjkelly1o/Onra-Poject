@@ -13,9 +13,9 @@ export function NotificationBell({ count, onClick }: { count: number; onClick: (
             type="button"
             onClick={onClick}
             aria-label={count > 0 ? `Notifications, ${count} unread` : "Notifications"}
-            className="relative flex shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white p-2.5 transition-colors active:bg-gray-50"
+            className="relative flex shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white p-2.5 transition-colors active:bg-gray-50"
         >
-            <Bell01 className="size-5 text-[#344054]" aria-hidden />
+            <Bell01 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
             {count > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-primary)] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                     {count > 9 ? "9+" : count}

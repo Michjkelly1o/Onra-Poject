@@ -58,8 +58,8 @@ const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 const ROLE_TYPE_BADGE: Record<RoleType, string> = {
     owner:        "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
@@ -119,7 +119,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors text-left",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}>
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
@@ -151,15 +151,15 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory, isO
         : "••••••••••••";
 
     return (
-        <aside className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-6 flex-1">
                     {/* Avatar + status */}
                     <div className="relative">
-                        <div className="w-[88px] h-[88px] rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center overflow-hidden">
+                        <div className="w-[88px] h-[88px] rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center overflow-hidden">
                             {staff.imageUrl
                                 ? <img src={staff.imageUrl} alt={staff.fullName} className="w-full h-full object-cover" />
-                                : <span className="font-semibold text-[28px] text-[#475467]">{staff.initials}</span>
+                                : <span className="font-semibold text-[28px] text-[var(--colors-text-tertiary)]">{staff.initials}</span>
                             }
                         </div>
                         <div className="absolute top-0 right-0">
@@ -171,8 +171,8 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory, isO
 
                     {/* Name + email */}
                     <div className="flex flex-col gap-1">
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{staff.fullName}</h2>
-                        <p className="text-[14px] text-[#667085]">{staff.email}</p>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{staff.fullName}</h2>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">{staff.email}</p>
                     </div>
 
                     {/* Metadata stack */}
@@ -181,12 +181,12 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory, isO
                         <Metadata label="Temporary password" value={<span className="font-mono tracking-wider">{tempPwMask}</span>} />
                         <Metadata label="Phone" value={staff.phone} />
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Role</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Role</p>
                             {role
                                 ? <span className={cn("inline-flex items-center self-start px-[10px] py-[2px] rounded-full text-[13px] font-medium", ROLE_TYPE_BADGE[role.type])}>
                                     {role.name}
                                   </span>
-                                : <p className="text-[16px] font-medium text-[#101828]">—</p>
+                                : <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">—</p>
                             }
                         </div>
                         <Metadata label="Branch location" value={branchLabel} />
@@ -198,8 +198,8 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory, isO
 
                 {/* Actions footer */}
                 <div className="px-6 pb-6 pt-6 shrink-0">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Staff actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Staff actions</p>
                     <div className="flex flex-col gap-4">
                         {/* Owner is the account holder — only Account settings, same
                             as the Staff table's owner row. */}
@@ -246,8 +246,8 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory, isO
 function Metadata({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <p className="text-[16px] font-medium text-[#101828]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{value}</p>
         </div>
     );
 }
@@ -260,9 +260,9 @@ function InternalLinkCard({ staff, payRateId }: { staff: Staff; payRateId?: stri
     // self-aligned-start so the card hugs its content height rather than
     // stretching to match the main content card on its left.
     return (
-        <aside className="w-[280px] shrink-0 self-start bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <aside className="w-[280px] shrink-0 self-start bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             <div className="px-6 pt-6 pb-4">
-                <p className="font-semibold text-[16px] leading-[24px] text-[#101828]">Internal link</p>
+                <p className="font-semibold text-[16px] leading-[24px] text-[var(--colors-text-primary)]">Internal link</p>
             </div>
             <div className="flex flex-col gap-1 px-3 pb-6">
                 {/* Earnings → payroll module detail page for THIS instructor.
@@ -286,10 +286,10 @@ function InternalLinkCard({ staff, payRateId }: { staff: Staff; payRateId?: stri
 function LinkRow({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
     return (
         <button type="button" onClick={onClick}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-[8px] hover:bg-[#f9fafb] transition-colors text-left">
-            <span className="text-[#475467] shrink-0">{icon}</span>
-            <span className="flex-1 text-[14px] font-medium text-[#344054]">{label}</span>
-            <ArrowUpRight className="w-4 h-4 text-[#667085] shrink-0" />
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-left">
+            <span className="text-[var(--colors-text-tertiary)] shrink-0">{icon}</span>
+            <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
+            <ArrowUpRight className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
         </button>
     );
 }
@@ -318,7 +318,7 @@ const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>>
 
 function PermissionCellView({ value, ariaLabel }: { value: PermissionCell; ariaLabel: string }) {
     if (value === "na" || value === false) {
-        return <span className="text-[14px] text-[#98a2b3]" aria-label={`${ariaLabel}: not applicable`}>—</span>;
+        return <span className="text-[14px] text-[var(--colors-fg-quaternary)]" aria-label={`${ariaLabel}: not applicable`}>—</span>;
     }
     return <Check className="w-4 h-4 text-[#067647] inline-block" aria-label={ariaLabel} />;
 }
@@ -332,15 +332,15 @@ function PermissionSection({ section, role }: { section: PermissionSectionSpec; 
         const mod = section.modules[0];
         const cellRow = role.permissions[section.key]?.[mod.key] ?? { create: "na", edit: "na", delete: "na", view: "na" };
         return (
-            <tr className="hover:bg-[#f9fafb] transition-colors">
-                <td className="px-4 py-3 border-b border-[#f2f4f7]">
+            <tr className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                <td className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)]">
                     <div className="flex items-center gap-2">
-                        <Icon className="w-5 h-5 text-[#475467] shrink-0" />
-                        <span className="text-[14px] text-[#344054]">{section.label}</span>
+                        <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0" />
+                        <span className="text-[14px] text-[var(--colors-text-secondary)]">{section.label}</span>
                     </div>
                 </td>
                 {(["create", "edit", "delete", "view"] as const).map(action => (
-                    <td key={action} className="px-4 py-3 border-b border-[#f2f4f7] text-center">
+                    <td key={action} className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)] text-center">
                         <div className="flex items-center justify-center">
                             <PermissionCellView value={cellRow[action]} ariaLabel={`${section.label} / ${action}`} />
                         </div>
@@ -353,25 +353,25 @@ function PermissionSection({ section, role }: { section: PermissionSectionSpec; 
     return (
         <>
             <tr className="bg-white">
-                <td colSpan={5} className="px-4 py-3 border-b border-[#f2f4f7]">
+                <td colSpan={5} className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)]">
                     <button type="button" onClick={() => setOpen(p => !p)}
                         className="flex items-center gap-2 w-full text-left">
                         {open
-                            ? <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
-                            : <ChevronUp   className="w-4 h-4 text-[#667085] shrink-0 rotate-180" />
+                            ? <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            : <ChevronUp   className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 rotate-180" />
                         }
-                        <Icon className="w-5 h-5 text-[#475467] shrink-0" />
-                        <span className="text-[14px] font-semibold text-[#101828]">{section.label}</span>
+                        <Icon className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0" />
+                        <span className="text-[14px] font-semibold text-[var(--colors-text-primary)]">{section.label}</span>
                     </button>
                 </td>
             </tr>
             {open && section.modules.map(mod => {
                 const cellRow = role.permissions[section.key]?.[mod.key] ?? { create: "na", edit: "na", delete: "na", view: "na" };
                 return (
-                    <tr key={mod.key} className="hover:bg-[#f9fafb] transition-colors">
-                        <td className="px-4 py-3 text-[14px] text-[#344054] border-b border-[#f2f4f7] pl-[60px]">{mod.label}</td>
+                    <tr key={mod.key} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)] pl-[60px]">{mod.label}</td>
                         {(["create", "edit", "delete", "view"] as const).map(action => (
-                            <td key={action} className="px-4 py-3 border-b border-[#f2f4f7] text-center">
+                            <td key={action} className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)] text-center">
                                 <div className="flex items-center justify-center">
                                     <PermissionCellView value={cellRow[action]} ariaLabel={`${section.label} / ${mod.label} / ${action}`} />
                                 </div>
@@ -388,16 +388,16 @@ function PermissionsTab({ role }: { role: Role }) {
     const sections = permissionSectionsFor(role.type);
     return (
         <div className="px-6 pb-6 flex flex-col gap-3">
-            <p className="text-[14px] text-[#667085]">Permissions</p>
-            <div className="w-full border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Permissions</p>
+            <div className="w-full border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
                 <table className="w-full border-collapse">
-                    <thead className="bg-[#f9fafb]">
+                    <thead className="bg-[var(--colors-bg-secondary)]">
                         <tr>
-                            <th className="text-left px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]">Module / Action</th>
-                            <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Create</th>
-                            <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Edit</th>
-                            <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Delete</th>
-                            <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">View</th>
+                            <th className="text-left px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]">Module / Action</th>
+                            <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Create</th>
+                            <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Edit</th>
+                            <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Delete</th>
+                            <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">View</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -418,9 +418,9 @@ function PerformanceMetricCard({ label, value, delta }: {
 }) {
     const positive = delta >= 0;
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <p className="font-semibold text-[28px] leading-[36px] text-[#101828]">{value}</p>
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-4 py-3 flex flex-col gap-1">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="font-semibold text-[28px] leading-[36px] text-[var(--colors-text-primary)]">{value}</p>
             <div className="flex items-center gap-1 text-[13px]">
                 {positive
                     ? <ArrowUp   className="w-3.5 h-3.5 text-[#067647]" />
@@ -429,7 +429,7 @@ function PerformanceMetricCard({ label, value, delta }: {
                 <span className={positive ? "text-[#067647] font-medium" : "text-[#b42318] font-medium"}>
                     {Math.abs(delta)}%
                 </span>
-                <span className="text-[#667085]">vs last week</span>
+                <span className="text-[var(--colors-text-quaternary)]">vs last week</span>
             </div>
         </div>
     );
@@ -440,12 +440,12 @@ function ChartEmptyCard({ title, emptyTitle, emptyBody }: {
 }) {
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[14px] text-[#667085]">{title}</p>
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] h-[260px] relative flex items-center justify-center">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{title}</p>
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] h-[260px] relative flex items-center justify-center">
                 <div className="flex flex-col items-center gap-2 text-center px-6">
-                    <BarChartSquare02 className="w-10 h-10 text-[#98a2b3]" />
-                    <p className="text-[16px] font-semibold text-[#101828]">{emptyTitle}</p>
-                    <p className="text-[14px] text-[#667085]">{emptyBody}</p>
+                    <BarChartSquare02 className="w-10 h-10 text-[var(--colors-fg-quaternary)]" />
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{emptyTitle}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">{emptyBody}</p>
                 </div>
             </div>
         </div>
@@ -492,7 +492,7 @@ function WorkingDaysStrip({ workingDays }: { workingDays: boolean[] }) {
     return (
         <div className="flex items-center gap-3 text-[16px] font-medium">
             {DAY_LETTERS.map((d, i) => (
-                <span key={i} className={workingDays[i] ? "text-[#101828]" : "text-[#98a2b3]"}>{d}</span>
+                <span key={i} className={workingDays[i] ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-fg-quaternary)]"}>{d}</span>
             ))}
         </div>
     );
@@ -522,8 +522,8 @@ function branchOperatingHoursLabel(businessHours: BusinessHours[], branchId: str
 function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <div className="text-[16px] font-medium text-[#101828]">{value || "—"}</div>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <div className="text-[16px] font-medium text-[var(--colors-text-primary)]">{value || "—"}</div>
         </div>
     );
 }
@@ -538,17 +538,17 @@ function IntroductionSection({ intro }: { intro: string }) {
     // card (not above it like the surrounding sections), and the See more
     // toggle is a sage-coloured link beneath the truncated body text.
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <p className="text-[14px] text-[#667085]">Introduction</p>
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Introduction</p>
             <p className={cn(
-                "text-[16px] text-[#101828] leading-[24px] break-words whitespace-normal",
+                "text-[16px] text-[var(--colors-text-primary)] leading-[24px] break-words whitespace-normal",
                 !expanded && long && "line-clamp-2",
             )}>
                 {intro}
             </p>
             {long && (
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="self-start text-[14px] font-medium text-[#658774] hover:text-[#3b5446] transition-colors mt-1">
+                    className="self-start text-[14px] font-medium text-[var(--colors-secondary-600)] hover:text-[#3b5446] transition-colors mt-1">
                     {expanded ? "See less" : "See more"}
                 </button>
             )}
@@ -656,7 +656,7 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
                 grid (no card border / padding) so the section reads as
                 pure content above the Overall performance block. */}
             <div className="flex flex-col gap-3">
-                <p className="text-[14px] text-[#667085]">Personal information</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Personal information</p>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                     <InfoField label="Full name"   value={staff.fullName} />
                     <InfoField label="Joined date" value={staff.joinedDate} />
@@ -685,7 +685,7 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
 
             {/* Overall performance — 4 metric cards in horizontal row */}
             <div className="flex flex-col gap-3">
-                <p className="text-[14px] text-[#667085]">Overall performance</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Overall performance</p>
                 <div className="grid grid-cols-4 gap-3">
                     <PerformanceMetricCard label="Classes"        value={completedClasses.length} delta={hasAnyActivity ?  3 : 0} />
                     <PerformanceMetricCard label="Attendance rate" value={`${attendanceRate}%`}    delta={hasAnyActivity ?  3 : 0} />
@@ -804,7 +804,7 @@ function NonInstructorOverviewTab({ staff }: { staff: Staff }) {
             {/* Personal information — flush 2-col grid, now including Working
                 days + Shift hours for every role (client 2026-07-24). */}
             <div className="flex flex-col gap-3">
-                <p className="text-[14px] text-[#667085]">Personal information</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Personal information</p>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                     <InfoField label="Full name"   value={staff.fullName} />
                     <InfoField label="Joined date" value={staff.joinedDate} />
@@ -852,12 +852,12 @@ function PayRateTab({ staff, payRates }: { staff: Staff; payRates: PayRate[] }) 
     }
     return (
         <div className="px-6 pb-6">
-            <p className="text-[16px] font-semibold text-[#101828] leading-[24px] mb-5">Pay rate</p>
+            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px] mb-5">Pay rate</p>
             <div className="grid grid-cols-2 gap-x-8 gap-y-6 max-w-[640px]">
                 {rows.map(r => (
                     <div key={r.label} className="flex flex-col gap-1">
-                        <p className="text-[14px] text-[#667085] leading-[20px]">{r.label}</p>
-                        <p className="text-[16px] font-medium text-[#101828] leading-[24px]">{r.value}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{r.label}</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-[24px]">{r.value}</p>
                     </div>
                 ))}
             </div>
@@ -909,10 +909,10 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                 <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                     <button type="button" onClick={() => router.push(returnTo)}
                         aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Staff details</h1>
                 </div>
                 <div className="flex-1 flex items-center justify-center px-6">
                     <div className="relative w-full max-w-[480px]" style={{ minHeight: 320 }}>
@@ -977,11 +977,11 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Staff details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Staff details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -1000,8 +1000,8 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                 }
                 main={
                     <>
-                        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px]">
-                            <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px]">
+                            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                                 <DetailPageTabs
                                     tabs={[
                                         { key: "overview", label: "Overview" },

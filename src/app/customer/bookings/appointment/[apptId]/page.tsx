@@ -211,7 +211,7 @@ export default function AppointmentBookingDetailPage() {
     const statusBlock = (
         <div
             className={`relative flex items-start gap-4 overflow-hidden rounded-2xl border p-4 ${
-                isCancelled ? "border-[#e4e7ec] bg-[#f9fafb]" : "border-[var(--brand-primary)] bg-[var(--brand-tertiary)]"
+                isCancelled ? "border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)]" : "border-[var(--brand-primary)] bg-[var(--brand-tertiary)]"
             }`}
         >
             <div aria-hidden className="pointer-events-none absolute right-0 top-0" style={{ opacity: 0.5 }}>
@@ -239,7 +239,7 @@ export default function AppointmentBookingDetailPage() {
                           ? "Appointment attended"
                           : "Appointment confirmed"}
                 </p>
-                <p className="text-xs font-normal leading-[18px] text-[#344054]">
+                <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-secondary)]">
                     {isCancelled
                         ? booking.lateCancel
                             ? "This appointment was cancelled within 24 hours — no refund was issued."
@@ -277,12 +277,12 @@ export default function AppointmentBookingDetailPage() {
                         onClick={() => instructorId && router.push(`/customer/instructors/${instructorId}`)}
                         className="flex min-w-0 items-center gap-1.5 text-left"
                     >
-                        <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                        <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                             {instructorImageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                             ) : (
-                                <span className="text-[8px] font-semibold leading-none text-[#667085]">{instructorInitials}</span>
+                                <span className="text-[8px] font-semibold leading-none text-[var(--colors-text-quaternary)]">{instructorInitials}</span>
                             )}
                         </span>
                         <span className="truncate">{instructorName}</span>

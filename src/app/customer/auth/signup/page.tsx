@@ -24,8 +24,8 @@ import { PhoneCountrySheet } from "@/components/customer/profile/PhoneCountryShe
 import { splitPhone } from "@/components/customers/CustomerFormPage";
 
 const FIELD =
-    "w-full rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none transition-colors placeholder:text-[#667085] focus:border-[var(--brand-primary)]";
-const LABEL = "text-sm font-medium leading-5 text-[#344054]";
+    "w-full rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none transition-colors placeholder:text-[var(--colors-text-quaternary)] focus:border-[var(--brand-primary)]";
+const LABEL = "text-sm font-medium leading-5 text-[var(--colors-text-secondary)]";
 const GENDERS = ["Male", "Female"];
 
 function formatDob(iso: string): string {
@@ -40,12 +40,12 @@ function Checkbox({ checked, onToggle, children }: { checked: boolean; onToggle:
         <button type="button" onClick={onToggle} className="flex w-full items-start gap-2 text-left">
             <span
                 className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded transition-colors ${
-                    checked ? "bg-[var(--brand-primary)]" : "border border-[#d0d5dd] bg-white"
+                    checked ? "bg-[var(--brand-primary)]" : "border border-[var(--colors-border-primary)] bg-white"
                 }`}
             >
                 {checked && <Check className="size-3 text-white" aria-hidden />}
             </span>
-            <span className="flex-1 text-sm leading-5 text-[#667085]">{children}</span>
+            <span className="flex-1 text-sm leading-5 text-[var(--colors-text-quaternary)]">{children}</span>
         </button>
     );
 }
@@ -112,7 +112,7 @@ export default function AuthSignupPage() {
             <div className={`flex flex-1 flex-col items-center gap-6 px-4 pb-4 ${AUTH_CONTENT_OFFSET}`}>
                 <div className="flex w-full flex-col gap-2">
                     <h1 className="text-2xl font-semibold leading-8 text-[var(--brand-text)]">Create an account</h1>
-                    <p className="text-base leading-6 text-[#667085]">
+                    <p className="text-base leading-6 text-[var(--colors-text-quaternary)]">
                         Fill in your details to complete your account setup.
                     </p>
                 </div>
@@ -130,7 +130,7 @@ export default function AuthSignupPage() {
                     <div className="flex flex-col gap-1.5">
                         <span className={LABEL}>Date of birth</span>
                         <button type="button" onClick={() => setDobOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                            <span className={`flex-1 ${dob ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                            <span className={`flex-1 ${dob ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                                 {formatDob(dob) || "Enter date of birth"}
                             </span>
                         </button>
@@ -139,16 +139,16 @@ export default function AuthSignupPage() {
                     <div className="flex flex-col gap-1.5">
                         <span className={LABEL}>Gender</span>
                         <button type="button" onClick={() => setGenderOpen(true)} className={`${FIELD} flex items-center text-left`}>
-                            <span className={`flex-1 ${gender ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                            <span className={`flex-1 ${gender ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                                 {gender || "Select gender"}
                             </span>
-                            <ChevronDown className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                            <ChevronDown className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                         </button>
                     </div>
 
                     <div className="flex flex-col gap-1.5">
                         <span className={LABEL}>Email</span>
-                        <div className="w-full rounded-lg border border-[#d0d5dd] bg-[#f9fafb] px-3.5 py-2.5 text-base leading-6 text-[#667085]">
+                        <div className="w-full rounded-lg border border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] px-3.5 py-2.5 text-base leading-6 text-[var(--colors-text-quaternary)]">
                             {authDraft.email}
                         </div>
                     </div>
@@ -180,7 +180,7 @@ export default function AuthSignupPage() {
                             <span className="text-sm leading-5 text-[var(--brand-primary)]">Referral code applied.</span>
                         )}
                         {referralValid === false && (
-                            <span className="text-sm leading-5 text-[#667085]">
+                            <span className="text-sm leading-5 text-[var(--colors-text-quaternary)]">
                                 We couldn&rsquo;t find that code — you can still continue.
                             </span>
                         )}

@@ -26,11 +26,11 @@ export function PhoneCountrySheet({ value, onChange }: { value: PhoneCountry; on
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="flex h-[46px] shrink-0 items-center gap-1.5 rounded-lg border border-[#d0d5dd] bg-white px-3"
+                className="flex h-[46px] shrink-0 items-center gap-1.5 rounded-lg border border-[var(--colors-border-primary)] bg-white px-3"
             >
                 <span className="text-base leading-none">{value.flag}</span>
                 <span className="text-base leading-6 text-[var(--brand-text)]">{value.dial}</span>
-                <ChevronDown className="size-4 text-[#667085]" aria-hidden />
+                <ChevronDown className="size-4 text-[var(--colors-text-quaternary)]" aria-hidden />
             </button>
 
             <CustomerSheet
@@ -47,13 +47,13 @@ export function PhoneCountrySheet({ value, onChange }: { value: PhoneCountry; on
                         setQ("");
                     }}
                 />
-                <div className="mb-1 flex items-center gap-2 rounded-lg border border-[#d0d5dd] bg-white px-3.5 py-2.5">
-                    <SearchLg className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                <div className="mb-1 flex items-center gap-2 rounded-lg border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5">
+                    <SearchLg className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                     <input
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         placeholder="Search country"
-                        className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
+                        className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
                     />
                 </div>
                 <div className="flex max-h-[50vh] flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -70,7 +70,7 @@ export function PhoneCountrySheet({ value, onChange }: { value: PhoneCountry; on
                         >
                             <span className="text-lg leading-none">{c.flag}</span>
                             <span className="min-w-0 flex-1 truncate text-base leading-6 text-[var(--brand-text)]">{c.name}</span>
-                            <span className="shrink-0 text-sm leading-5 text-[#475467]">{c.dial}</span>
+                            <span className="shrink-0 text-sm leading-5 text-[var(--colors-text-tertiary)]">{c.dial}</span>
                             <RadioDot checked={c.code === value.code} />
                         </button>
                     ))}

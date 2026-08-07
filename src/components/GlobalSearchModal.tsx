@@ -138,8 +138,8 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
             <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-full max-w-[640px] flex flex-col overflow-hidden">
 
                 {/* ── Header — search input ─────────────────────────── */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-[#e4e7ec]">
-                    <SearchLg className="w-5 h-5 text-[#667085] shrink-0" />
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--colors-border-secondary)]">
+                    <SearchLg className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
                     <input
                         ref={inputRef}
                         type="text"
@@ -147,20 +147,20 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
                         onChange={e => { setQuery(e.target.value); setHighlight(0); }}
                         onKeyDown={onInputKeyDown}
                         placeholder="Search for anything…"
-                        className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none"
+                        className="flex-1 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none"
                     />
                     <button
                         type="button"
                         onClick={onClose}
                         aria-label="Close search"
-                        className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors text-[#667085]"
+                        className="w-8 h-8 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-tertiary)] transition-colors text-[var(--colors-text-quaternary)]"
                     >
                         <XClose className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* ── Category chips ────────────────────────────────── */}
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-[#e4e7ec] overflow-x-auto scrollbar-hide">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--colors-border-secondary)] overflow-x-auto scrollbar-hide">
                     {CATEGORIES.map(c => {
                         const active = category === c;
                         return (
@@ -174,8 +174,8 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
                                     // chips. Only the color flips.
                                     "shrink-0 px-3 py-1.5 rounded-full text-[13px] font-medium transition-all whitespace-nowrap border-1",
                                     active
-                                        ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                                        : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                        ? "bg-[var(--colors-secondary-50)] border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                                        : "bg-white border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}
                             >
                                 {c}
@@ -213,7 +213,7 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
                                 const flatIndexBase = flat.findIndex(r => r.id === group.items[0].id);
                                 return (
                                     <section key={group.category}>
-                                        <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-[#667085]">
+                                        <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-[var(--colors-text-quaternary)]">
                                             {group.category}
                                         </p>
                                         {group.items.map((r, i) => {
@@ -240,7 +240,7 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
                                                         setHighlight(0);
                                                         inputRef.current?.focus();
                                                     }}
-                                                    className="block w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-medium text-[#658774] hover:text-[#3b5446] hover:bg-[#f9fafb] transition-colors"
+                                                    className="block w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-medium text-[var(--colors-secondary-600)] hover:text-[#3b5446] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                                                 >
                                                     Show all {group.overflow + group.items.length} results
                                                 </button>
@@ -280,7 +280,7 @@ function IdleBody({
         <div className="py-2">
             {recent.length > 0 && (
                 <section>
-                    <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-[#667085]">
+                    <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-[var(--colors-text-quaternary)]">
                         Recent
                     </p>
                     {recent.map(r => {
@@ -301,7 +301,7 @@ function IdleBody({
 
             {visibleSuggestions.length > 0 && (
                 <section>
-                    <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-[#667085]">
+                    <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-[var(--colors-text-quaternary)]">
                         Suggestions
                     </p>
                     {visibleSuggestions.map(r => {
@@ -321,7 +321,7 @@ function IdleBody({
             )}
 
             {recent.length === 0 && visibleSuggestions.length === 0 && (
-                <p className="text-center text-[14px] text-[#667085] py-12 px-6">
+                <p className="text-center text-[14px] text-[var(--colors-text-quaternary)] py-12 px-6">
                     Nothing to suggest here yet — try a different category.
                 </p>
             )}
@@ -351,16 +351,16 @@ function ResultRow({ result, highlighted, onSelect, onHover }: {
                 onMouseEnter={onHover}
                 className={cn(
                     "flex items-center gap-3 w-full px-3 py-2.5 text-left rounded-[8px] transition-colors",
-                    highlighted ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                    highlighted ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
                 )}
             >
                 <ResultAvatar result={result} Icon={Icon} />
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5 truncate">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 truncate">
                         {result.title}
                     </p>
                     {result.sublabel && (
-                        <p className="text-[12px] text-[#667085] leading-4 truncate">
+                        <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-4 truncate">
                             {result.sublabel}
                         </p>
                     )}
@@ -380,15 +380,15 @@ function ResultAvatar({ result, Icon }: {
     if (result.category === "Customers" || result.category === "Instructors") {
         if (result.avatarImage) {
             return (
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-[#f2f4f7] border-1 border-[rgba(0,0,0,0.08)] shrink-0">
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-[var(--colors-bg-tertiary)] border-1 border-[rgba(0,0,0,0.08)] shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={result.avatarImage} alt="" className="w-full h-full object-cover" />
                 </div>
             );
         }
         return (
-            <div className="w-8 h-8 rounded-full bg-[#f2f4f7] border-1 border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
-                <span className="text-[12px] font-semibold text-[#475467]">
+            <div className="w-8 h-8 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
+                <span className="text-[12px] font-semibold text-[var(--colors-text-tertiary)]">
                     {result.avatarInitials || result.title.slice(0, 1).toUpperCase()}
                 </span>
             </div>
@@ -398,7 +398,7 @@ function ResultAvatar({ result, Icon }: {
     // Class template — cover image when present.
     if (result.category === "Classes" && result.avatarImage) {
         return (
-            <div className="w-8 h-8 rounded-[6px] overflow-hidden bg-[#f2f4f7] border-1 border-[rgba(0,0,0,0.08)] shrink-0">
+            <div className="w-8 h-8 rounded-[6px] overflow-hidden bg-[var(--colors-bg-tertiary)] border-1 border-[rgba(0,0,0,0.08)] shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={result.avatarImage} alt="" className="w-full h-full object-cover" />
             </div>
@@ -407,8 +407,8 @@ function ResultAvatar({ result, Icon }: {
 
     // Generic — icon tile.
     return (
-        <div className="w-8 h-8 rounded-[6px] bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
-            <Icon className="w-4 h-4 text-[#475467]" />
+        <div className="w-8 h-8 rounded-[6px] bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0">
+            <Icon className="w-4 h-4 text-[var(--colors-text-tertiary)]" />
         </div>
     );
 }

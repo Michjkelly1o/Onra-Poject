@@ -110,26 +110,26 @@ function DefaultPagination({
     }, []);
 
     return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
+        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[var(--colors-border-secondary)]">
             <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
                 <button
                     type="button"
                     onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]"
+                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[var(--colors-text-secondary)]"
                 >
                     {pageSize}
-                    <ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
+                    <ChevronLeft className="w-4 h-4 text-[var(--colors-text-quaternary)] rotate-90" />
                 </button>
                 {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
+                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
                         {pageSizeOptions.map(s => (
                             <button
                                 key={s}
                                 type="button"
                                 onClick={() => { onPageSize(s); setSizeOpen(false); }}
                                 className={cn(
-                                    "flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors",
-                                    s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]",
+                                    "flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[var(--colors-bg-secondary)] transition-colors",
+                                    s === pageSize ? "text-[var(--colors-text-primary)] font-semibold" : "text-[var(--colors-text-secondary)]",
                                 )}
                             >
                                 {s}
@@ -137,10 +137,10 @@ function DefaultPagination({
                         ))}
                     </div>
                 )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">per page</span>
             </div>
             <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] whitespace-nowrap">
                     Page {page} of {totalPages}
                 </span>
                 <button
@@ -150,8 +150,8 @@ function DefaultPagination({
                     className={cn(
                         "px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
                         page <= 1
-                            ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white"
-                            : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]",
+                            ? "border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed bg-white"
+                            : "border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)]",
                     )}
                 >
                     Previous
@@ -163,8 +163,8 @@ function DefaultPagination({
                     className={cn(
                         "px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
                         page >= totalPages
-                            ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white"
-                            : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]",
+                            ? "border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed bg-white"
+                            : "border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)]",
                     )}
                 >
                     Next
@@ -199,10 +199,10 @@ function CompactPagination({
                     ref={ref}
                     type="button"
                     onClick={() => setOpen(p => !p)}
-                    className="h-9 px-3 flex items-center gap-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                    className="h-9 px-3 flex items-center gap-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                 >
                     {pageSize}
-                    <ChevronDown className="w-4 h-4 text-[#667085]" />
+                    <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <FixedDropdown triggerRef={ref} open={open} onClose={() => setOpen(false)} minWidth={80}>
                     {pageSizeOptions.map(n => (
@@ -210,17 +210,17 @@ function CompactPagination({
                             key={n}
                             type="button"
                             onClick={() => { onPageSize(n); setOpen(false); }}
-                            className="flex items-center justify-between w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                            className="flex items-center justify-between w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                         >
                             <span>{n}</span>
-                            {n === pageSize && <Check className="w-4 h-4 text-[#658774]" />}
+                            {n === pageSize && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </FixedDropdown>
-                <span className="text-[14px] text-[#667085]">per page</span>
+                <span className="text-[14px] text-[var(--colors-text-quaternary)]">per page</span>
             </div>
             <div className="flex items-center gap-3">
-                <span className="text-[14px] text-[#667085]">Page {page} of {totalPages}</span>
+                <span className="text-[14px] text-[var(--colors-text-quaternary)]">Page {page} of {totalPages}</span>
                 <Button variant="secondary-gray" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>Previous</Button>
                 <Button variant="secondary-gray" size="sm" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>Next</Button>
             </div>

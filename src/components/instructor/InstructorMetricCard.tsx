@@ -61,14 +61,14 @@ export function InstructorMetricCard({
                 }
             }}
             className={cn(
-                "bg-white border-1 border-[#e4e7ec] rounded-[16px] p-5 flex items-start justify-end gap-6 transition-shadow",
-                isClickable && "cursor-pointer hover:shadow-[0_1px_3px_rgba(16,24,40,0.1),0_1px_2px_rgba(16,24,40,0.06)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]",
+                "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-5 flex items-start justify-end gap-6 transition-shadow",
+                isClickable && "cursor-pointer hover:shadow-[0_1px_3px_rgba(16,24,40,0.1),0_1px_2px_rgba(16,24,40,0.06)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]",
             )}
         >
             {/* Text column */}
             <div className="flex-1 min-w-0 flex flex-col gap-2 items-start">
-                <p className="text-sm font-normal text-[#667085] leading-5 whitespace-nowrap">{label}</p>
-                <p className="text-[24px] font-semibold text-[#101828] leading-8">{value}</p>
+                <p className="text-sm font-normal text-[var(--colors-text-quaternary)] leading-5 whitespace-nowrap">{label}</p>
+                <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">{value}</p>
                 {deltaPercent !== null && (
                     <div className="flex items-center gap-1">
                         <div className="flex items-center gap-1 py-0.5 rounded-full shrink-0">
@@ -77,7 +77,7 @@ export function InstructorMetricCard({
                                 {absDelta}%
                             </p>
                         </div>
-                        <p className="text-sm font-normal text-[#667085] leading-5 whitespace-nowrap">
+                        <p className="text-sm font-normal text-[var(--colors-text-quaternary)] leading-5 whitespace-nowrap">
                             {deltaSuffix}
                         </p>
                     </div>
@@ -85,8 +85,8 @@ export function InstructorMetricCard({
             </div>
 
             {/* Featured icon circle */}
-            <div className="bg-[#f1f2ed] rounded-full size-10 shrink-0 flex items-center justify-center">
-                <Icon className="w-5 h-5 text-[#101828]" />
+            <div className="bg-[var(--colors-tertiary-50)] rounded-full size-10 shrink-0 flex items-center justify-center">
+                <Icon className="w-5 h-5 text-[var(--colors-text-primary)]" />
             </div>
         </div>
     );

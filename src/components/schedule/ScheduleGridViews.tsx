@@ -231,6 +231,7 @@ function ClassBlock({ cls, onClick, gridStartHour, gridHeight }: {
                 room: cls.room,
                 booked: cls.booked,
                 capacity: cls.capacity,
+                status: cls.status,
             }}
             absolute={{ top, height }}
             onClick={onClick}
@@ -324,6 +325,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const rootRef = useRef<HTMLDivElement>(null);
     const headerScrollRef = useRef<HTMLDivElement>(null);
     const bodyScrollRef = useRef<HTMLDivElement>(null);
+    const vScrollRef = useRef<HTMLDivElement>(null);
     const [colWidth, setColWidth] = useState(240);
     const colCount = columns.length;
     useEffect(() => {
@@ -373,10 +375,21 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const currentTop = (currentMinutes * HOUR_HEIGHT) / 60;
     const showCurrentTime = currentMinutes > 0 && currentMinutes < (gridEndHour - gridStartHour) * 60;
 
+    // On load (and when the viewed day changes) scroll the grid so the orange
+    // "now" line sits ~⅓ down the viewport, instead of opening pinned at the
+    // top — otherwise the current time is off-screen in the afternoon. Keyed on
+    // dateISO only, so it never fights the user's scroll on a minute re-render.
+    useEffect(() => {
+        const el = vScrollRef.current;
+        if (!el) return;
+        el.scrollTop = showCurrentTime ? Math.max(0, currentTop - el.clientHeight / 3) : 0;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dateISO]);
+
     return (
         <div ref={rootRef} className="flex flex-col overflow-hidden flex-1">
             {/* Instructor column headers — horizontally scrollable (synced). */}
-            <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
+            <div className="flex shrink-0 border-b border-[var(--colors-border-secondary)] pl-6">
                 <div className="w-16 shrink-0" />
                 <div ref={headerScrollRef} onScroll={() => syncScroll("header")} className="flex-1 overflow-x-auto scrollbar-hide">
                     <div className="flex" style={{ width: contentWidth }}>
@@ -390,13 +403,13 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                             const isFocused = !!focusId && instructor.id === focusId;
                             return (
                                 <div key={instructor.id} style={{ width: colWidth }}
-                                    className={cn("shrink-0 min-w-0 flex items-center gap-3 px-4 py-3 border-l border-[#f2f4f7]", isFocused && "bg-[#f5fffa]")}>
+                                    className={cn("shrink-0 min-w-0 flex items-center gap-3 px-4 py-3 border-l border-[var(--colors-bg-tertiary)]", isFocused && "bg-[#f5fffa]")}>
                                     <InstructorAvatar initials={instructor.initials} color={instructor.color} size={36} />
                                     <div className="min-w-0">
-                                        <p className="text-[14px] font-semibold text-[#101828] truncate">{instructor.name}</p>
+                                        <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] truncate">{instructor.name}</p>
                                         <div className="flex items-center gap-1">
-                                            <Calendar className="w-[12px] h-[12px] text-[#667085]" />
-                                            <span className="text-[12px] text-[#667085]">
+                                            <Calendar className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)]" />
+                                            <span className="text-[12px] text-[var(--colors-text-quaternary)]">
                                                 {count} {isRecoveryCol
                                                     ? (count === 1 ? "appointment" : "appointments")
                                                     : (count === 1 ? "class" : "classes")}
@@ -412,23 +425,29 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
             </div>
 
             {/* Scrollable time grid */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide">
+            <div ref={vScrollRef} className="flex-1 overflow-y-auto scrollbar-hide">
                 <div className="flex pl-6" style={{ minHeight: gridHeight }}>
                     {/* Time labels — fixed left gutter */}
                     <div className="w-16 shrink-0 flex flex-col">
                         {hours.map(h => (
-                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
+                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[var(--colors-text-quaternary)]"
                                 style={{ height: HOUR_HEIGHT }}>
                                 {formatHour(h)}
                             </div>
                         ))}
                     </div>
 
-                    {/* Instructor columns — horizontally scrollable (synced with header). */}
-                    <div ref={bodyScrollRef} onScroll={() => syncScroll("body")} className="flex-1 overflow-x-auto scrollbar-hide pr-6">
+                    {/* Instructor columns — horizontally scrollable (synced with header).
+                        overflow-y-hidden is REQUIRED: with only overflow-x-auto the browser
+                        computes overflow-y:auto too, so this box scrolls vertically on its
+                        own — the class cards then drift out of sync with the frozen time-
+                        label gutter (its sibling), making a 5pm class line up with 8am after
+                        a scroll. Pinning vertical scroll to the OUTER container keeps the
+                        labels + classes moving in lockstep. */}
+                    <div ref={bodyScrollRef} onScroll={() => syncScroll("body")} className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide pr-6">
                         <div className="relative" style={{ width: contentWidth, minHeight: gridHeight }}>
                             {hours.map((_, i) => (
-                                <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
+                                <div key={i} className="absolute left-0 right-0 border-t border-[var(--colors-bg-tertiary)]" style={{ top: i * HOUR_HEIGHT }} />
                             ))}
 
                             {/* Current time line */}
@@ -467,7 +486,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                                         return dateISO >= from && dateISO <= to && b.staff_ids.includes(instructor.id);
                                     });
                                 return (
-                                    <div key={instructor.id} style={{ width: colWidth, minHeight: gridHeight }} className="shrink-0 relative border-l border-[#f2f4f7]">
+                                    <div key={instructor.id} style={{ width: colWidth, minHeight: gridHeight }} className="shrink-0 relative border-l border-[var(--colors-bg-tertiary)]">
                                         {/* Per-instructor blocked strips —
                                             label is centered within the
                                             column the block belongs to. */}
@@ -517,6 +536,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
     // strip there couldn't tell the admin WHO is blocked. Blocks render
     // only in Day view where each column is an instructor.
     const cols = buildWeekCols(weekStart);
+    const vScrollRef = useRef<HTMLDivElement>(null);
 
     // Grid range = widest envelope of the branch's open hours across the 7
     // visible days (some weekdays may open earlier/close later than others).
@@ -544,16 +564,27 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
     const currentTop = (currentMinutes * WEEK_HOUR_HEIGHT) / 60;
     const showCurrentTime = currentMinutes > 0 && currentMinutes < (gridEndHour - gridStartHour) * 60;
 
+    // Same as Day view: open scrolled to the orange "now" line, keyed on the
+    // visible week (first column's date) so it re-centres when the week changes
+    // but never on a minute re-render.
+    const weekKey = cols[0]?.iso ?? "";
+    useEffect(() => {
+        const el = vScrollRef.current;
+        if (!el) return;
+        el.scrollTop = showCurrentTime ? Math.max(0, currentTop - el.clientHeight / 3) : 0;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [weekKey]);
+
     return (
         <div className="flex flex-col overflow-hidden flex-1">
             {/* Day column headers */}
-            <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
+            <div className="flex shrink-0 border-b border-[var(--colors-border-secondary)] pl-6">
                 <div className="w-16 shrink-0" />
                 {cols.map(col => (
-                    <div key={col.day} className={cn("flex-1 min-w-0 flex flex-col items-center py-3 border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]")}>
-                        <p className={cn("text-[11px] font-semibold uppercase tracking-wider", col.isToday ? "text-[#658774]" : "text-[#667085]")}>{col.day}</p>
+                    <div key={col.day} className={cn("flex-1 min-w-0 flex flex-col items-center py-3 border-l border-[var(--colors-bg-tertiary)]", col.isToday && "bg-[#f5fffa]")}>
+                        <p className={cn("text-[11px] font-semibold uppercase tracking-wider", col.isToday ? "text-[var(--colors-secondary-600)]" : "text-[var(--colors-text-quaternary)]")}>{col.day}</p>
                         <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-[16px] font-semibold mt-0.5",
-                            col.isToday ? "bg-[#658774] text-white" : "text-[#101828]")}>
+                            col.isToday ? "bg-[var(--colors-secondary-600)] text-white" : "text-[var(--colors-text-primary)]")}>
                             {col.date}
                         </div>
                     </div>
@@ -562,12 +593,12 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
             </div>
 
             {/* Scrollable time grid */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6">
+            <div ref={vScrollRef} className="flex-1 overflow-y-auto scrollbar-hide px-6">
                 <div className="flex" style={{ minHeight: gridHeight }}>
                     {/* Time labels */}
                     <div className="w-16 shrink-0 flex flex-col">
                         {hours.map(h => (
-                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
+                            <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[var(--colors-text-quaternary)]"
                                 style={{ height: WEEK_HOUR_HEIGHT }}>
                                 {formatHour(h)}
                             </div>
@@ -577,7 +608,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
                     {/* Grid */}
                     <div className="flex-1 relative">
                         {hours.map((_, i) => (
-                            <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
+                            <div key={i} className="absolute left-0 right-0 border-t border-[var(--colors-bg-tertiary)]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
                         ))}
 
                         {/* Current time line */}
@@ -594,7 +625,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
                                 const dayClasses = classes.filter(c => c.dateISO === col.iso);
                                 const lanes = computeOverlapLanes(dayClasses);
                                 return (
-                                    <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[#f2f4f7]", col.isToday && "bg-[#f5fffa]/30")}
+                                    <div key={col.day} className={cn("flex-1 min-w-0 relative border-l border-[var(--colors-bg-tertiary)]", col.isToday && "bg-[#f5fffa]/30")}
                                         style={{ minHeight: gridHeight }}>
                                         {dayClasses.map(cls => {
                                             const lane = lanes.get(cls.id);
@@ -619,6 +650,7 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
                                                         instructorImageUrl: SCHEDULE_INSTRUCTORS.find(i => i.id === cls.instructorId)?.imageUrl,
                                                         room: cls.room,
                                                         booked: cls.booked, capacity: cls.capacity,
+                                                        status: cls.status,
                                                     }}
                                                     absolute={{ top, height, leftPct, widthPct }}
                                                     moreCount={lane?.moreCount ?? 0}

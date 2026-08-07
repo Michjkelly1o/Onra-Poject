@@ -147,27 +147,27 @@ export function ClientsModal({ open, onClose, classes, bookings }: ClientsModalP
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Search name or email..."
-                        className="w-full h-10 px-3 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-sm text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                        className="w-full h-10 px-3 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-sm text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
 
                 {/* Table */}
                 <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
                     {/* Header row */}
-                    <div className="grid grid-cols-[1.6fr_100px_120px] gap-4 items-center pb-3 border-b-1 border-[#e4e7ec] sticky top-0 bg-white z-10">
-                        <SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Client</SortableHeader>
-                        <SortableHeader sortKey="visits"    currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Visits</SortableHeader>
-                        <SortableHeader sortKey="lastVisit" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Last visit</SortableHeader>
+                    <div className="grid grid-cols-[1.6fr_100px_120px] gap-4 items-center pb-3 border-b-1 border-[var(--colors-border-secondary)] sticky top-0 bg-white z-10">
+                        <SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Client</SortableHeader>
+                        <SortableHeader sortKey="visits"    currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Visits</SortableHeader>
+                        <SortableHeader sortKey="lastVisit" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Last visit</SortableHeader>
                     </div>
 
                     {/* Body */}
                     {sortedRows.length === 0 ? (
-                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[#667085]">
+                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[var(--colors-text-quaternary)]">
                             {search ? "No clients match your search." : "No clients in this period."}
                         </div>
                     ) : (
                         sortedRows.map(r => (
-                            <div key={r.customerId} className="grid grid-cols-[1.6fr_100px_120px] gap-4 items-center py-3 border-b-1 border-[#f2f4f7] last:border-b-0">
+                            <div key={r.customerId} className="grid grid-cols-[1.6fr_100px_120px] gap-4 items-center py-3 border-b-1 border-[var(--colors-bg-tertiary)] last:border-b-0">
                                 {/* Client cell */}
                                 <div className="flex items-center gap-3 min-w-0">
                                     {r.imageUrl ? (
@@ -181,16 +181,16 @@ export function ClientsModal({ open, onClose, classes, bookings }: ClientsModalP
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-[#101828] leading-5 truncate">{r.name}</p>
-                                        <p className="text-sm font-normal text-[#475467] leading-5 truncate">{r.email}</p>
+                                        <p className="text-sm font-medium text-[var(--colors-text-primary)] leading-5 truncate">{r.name}</p>
+                                        <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{r.email}</p>
                                     </div>
                                 </div>
                                 {/* Visits */}
-                                <div className="text-sm font-medium text-[#101828] leading-5">
-                                    {r.visits} <span className="text-xs font-normal text-[#667085]">/ {r.bookings} booked</span>
+                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">
+                                    {r.visits} <span className="text-xs font-normal text-[var(--colors-text-quaternary)]">/ {r.bookings} booked</span>
                                 </div>
                                 {/* Last visit */}
-                                <div className="text-sm font-normal text-[#475467] leading-5">
+                                <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">
                                     {r.lastVisitISO ? formatDate(r.lastVisitISO) : "—"}
                                 </div>
                             </div>

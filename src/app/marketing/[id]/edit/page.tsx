@@ -28,7 +28,7 @@ function EditMarketingRouteInner() {
     if (!item) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">Marketing item not found</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Marketing item not found</p>
             </div>
         );
     }

@@ -50,19 +50,19 @@ function orDash(v?: string): string {
 // ─── Building blocks ──────────────────────────────────────────────────────────
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
-    return <p className="text-[16px] font-medium text-[#667085]">{children}</p>;
+    return <p className="text-[16px] font-medium text-[var(--colors-text-quaternary)]">{children}</p>;
 }
 
 function Divider() {
-    return <div className="h-px w-full bg-[#e4e7ec] shrink-0" />;
+    return <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />;
 }
 
 /** Label + value pair. `value` accepts plain text or a node (status rows). */
 function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-0.5 min-w-0">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <div className="text-[16px] font-medium text-[#101828] leading-[24px] flex items-center gap-1.5">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <div className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-[24px] flex items-center gap-1.5">
                 {value}
             </div>
         </div>
@@ -162,7 +162,7 @@ export function CustomerDetailsTab({ customerId }: { customerId: string }) {
                                         type="button"
                                         onClick={() => setRevealPassword(v => !v)}
                                         aria-label={revealPassword ? "Hide password" : "Show password"}
-                                        className="text-[#667085] hover:text-[#344054] transition-colors shrink-0"
+                                        className="text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)] transition-colors shrink-0"
                                     >
                                         {revealPassword
                                             ? <EyeOff className="w-4 h-4" />

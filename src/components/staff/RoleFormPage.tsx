@@ -84,20 +84,20 @@ function StepRow({ index, label, active, done, isLast }: {
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[#658774] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c]"
                         : done
-                            ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border-[1.5px] border-[#e4e7ec] text-[#98a2b3]",
+                            ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border-[1.5px] border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {done && !active ? <Check className="w-3.5 h-3.5" /> : index}
                 </div>
                 {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />
                 )}
             </div>
             <p className={cn(
                 "flex-1 text-[14px] leading-[20px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]",
+                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {label}
             </p>
@@ -116,8 +116,8 @@ function TextInput({ value, onChange, placeholder, disabled }: {
         <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
             disabled={disabled}
             className={cn(
-                "h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                disabled && "opacity-60 cursor-not-allowed bg-[#f9fafb]",
+                "h-10 w-full px-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                disabled && "opacity-60 cursor-not-allowed bg-[var(--colors-bg-secondary)]",
             )}
         />
     );
@@ -131,8 +131,8 @@ function TextArea({ value, onChange, placeholder, disabled }: {
             rows={3}
             disabled={disabled}
             className={cn(
-                "w-full px-[14px] py-[10px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none",
-                disabled && "opacity-60 cursor-not-allowed bg-[#f9fafb]",
+                "w-full px-[14px] py-[10px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none",
+                disabled && "opacity-60 cursor-not-allowed bg-[var(--colors-bg-secondary)]",
             )}
         />
     );
@@ -151,8 +151,8 @@ function NumberInput({ value, onChange, placeholder = "0", disabled }: {
             }}
             placeholder={placeholder}
             className={cn(
-                "h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                disabled && "opacity-50 cursor-not-allowed bg-[#f9fafb]",
+                "h-10 w-full px-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                disabled && "opacity-50 cursor-not-allowed bg-[var(--colors-bg-secondary)]",
             )}
         />
     );
@@ -164,7 +164,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (next: boolean)
             onClick={() => onChange(!value)}
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
-                value ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                value ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
         </button>
@@ -181,9 +181,9 @@ function Checkbox({ checked, onChange, disabled, ariaLabel }: {
             className={cn(
                 "w-5 h-5 rounded-[6px] border flex items-center justify-center transition-colors shrink-0",
                 checked
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
-                disabled && "opacity-50 cursor-not-allowed hover:border-[#d0d5dd]",
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
+                disabled && "opacity-50 cursor-not-allowed hover:border-[var(--colors-border-primary)]",
             )}>
             {checked && <Check className="w-3.5 h-3.5" />}
         </button>
@@ -200,22 +200,22 @@ function RolePreview({ form }: { form: FormValue }) {
     // card grows with description length). Roles are branch-agnostic, so the
     // preview no longer shows a branch line.
     return (
-        <div className="w-[400px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shrink-0">
+        <div className="w-[400px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shrink-0">
             <div className="p-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Role preview</p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">This is how role overview will look like.</p>
+                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Role preview</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">This is how role overview will look like.</p>
             </div>
             <div className="bg-[#f6f6f3] flex flex-col gap-5 p-6 w-full">
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-4">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-4">
                     {/* Avatar top-left — same chrome as the staff preview. */}
-                    <div className="w-[80px] h-[80px] rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
-                        <User01 className="w-9 h-9 text-[#475467]" />
+                    <div className="w-[80px] h-[80px] rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0">
+                        <User01 className="w-9 h-9 text-[var(--colors-text-tertiary)]" />
                     </div>
                     <div className="flex flex-col gap-1">
-                        <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                        <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                             {form.name.trim() || "Role name"}
                         </p>
-                        <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-3">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] line-clamp-3">
                             {form.description.trim() || "Role description"}
                         </p>
                     </div>
@@ -280,7 +280,7 @@ function PermissionCellInput({ value, onChange, disabled, ariaLabel }: {
     // permission matrix bakes in N/A for module-action pairs that don't make
     // sense (e.g. "View" on a write-only action surface).
     if (value === "na") {
-        return <span className="text-[14px] text-[#98a2b3]" aria-label={`${ariaLabel}: not applicable`}>—</span>;
+        return <span className="text-[14px] text-[var(--colors-fg-quaternary)]" aria-label={`${ariaLabel}: not applicable`}>—</span>;
     }
     return (
         <Checkbox checked={value} onChange={onChange} disabled={disabled} ariaLabel={ariaLabel} />
@@ -295,32 +295,32 @@ function PermissionMatrixTable({ form, locked, onCellChange }: {
     const sections = permissionSectionsFor(form.type);
 
     return (
-        <div className="w-full border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
+        <div className="w-full border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
             <table className="w-full border-collapse">
-                <thead className="bg-[#f9fafb]">
+                <thead className="bg-[var(--colors-bg-secondary)]">
                     <tr>
-                        <th className="text-left px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]">Module / Action</th>
-                        <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Create</th>
-                        <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Edit</th>
-                        <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">Delete</th>
-                        <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec] w-[80px]">View</th>
+                        <th className="text-left px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]">Module / Action</th>
+                        <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Create</th>
+                        <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Edit</th>
+                        <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">Delete</th>
+                        <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)] w-[80px]">View</th>
                     </tr>
                 </thead>
                 <tbody>
                     {sections.map((section: PermissionSectionSpec) => (
                         <>
                             <tr key={`${section.key}__hdr`} className="bg-white">
-                                <td colSpan={5} className="px-4 py-3 text-[14px] font-semibold text-[#101828] border-b border-[#f2f4f7]">
+                                <td colSpan={5} className="px-4 py-3 text-[14px] font-semibold text-[var(--colors-text-primary)] border-b border-[var(--colors-bg-tertiary)]">
                                     {section.label}
                                 </td>
                             </tr>
                             {section.modules.map(mod => {
                                 const cellRow = form.permissions[section.key]?.[mod.key] ?? { create: "na", edit: "na", delete: "na", view: "na" };
                                 return (
-                                    <tr key={`${section.key}__${mod.key}`} className="hover:bg-[#f9fafb] transition-colors">
-                                        <td className="px-4 py-3 text-[14px] text-[#344054] border-b border-[#f2f4f7] pl-8">{mod.label}</td>
+                                    <tr key={`${section.key}__${mod.key}`} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                        <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)] pl-8">{mod.label}</td>
                                         {(["create", "edit", "delete", "view"] as const).map(action => (
-                                            <td key={action} className="px-4 py-3 border-b border-[#f2f4f7] text-center">
+                                            <td key={action} className="px-4 py-3 border-b border-[var(--colors-bg-tertiary)] text-center">
                                                 <div className="flex items-center justify-center">
                                                     <PermissionCellInput
                                                         value={cellRow[action]}
@@ -366,8 +366,8 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
         <div className="flex flex-col gap-4 w-full">
             <div className="flex items-start justify-between gap-3">
                 <div className="flex flex-col">
-                    <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Grant limits</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">Control how this role can grant complimentary credits.</p>
+                    <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Grant limits</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Control how this role can grant complimentary credits.</p>
                 </div>
                 <Toggle value={gl.enabled} onChange={v => update({ enabled: v })} />
             </div>
@@ -375,33 +375,33 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
             {gl.enabled && (
                 <>
                     <div className="grid grid-cols-3 gap-3 w-full">
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Grants / month</p>
-                            <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">{labels.perMonth}</p>
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-1">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Grants / month</p>
+                            <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{labels.perMonth}</p>
                         </div>
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Max value per grant</p>
-                            <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">{labels.maxValue}</p>
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-1">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Max value per grant</p>
+                            <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{labels.maxValue}</p>
                         </div>
-                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Remove unused grants</p>
-                            <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">{gl.allow_remove_unused ? "Yes" : "No"}</p>
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-1">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Remove unused grants</p>
+                            <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{gl.allow_remove_unused ? "Yes" : "No"}</p>
                         </div>
                     </div>
 
-                    <div className="border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
+                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
                         <table className="w-full border-collapse">
-                            <thead className="bg-[#f9fafb]">
+                            <thead className="bg-[var(--colors-bg-secondary)]">
                                 <tr>
-                                    <th className="text-left px-4 py-3 text-[12px] font-medium text-[#475467]">Limit type</th>
-                                    <th className="text-left px-4 py-3 text-[12px] font-medium text-[#475467] w-[200px]">Value</th>
-                                    <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] w-[100px]">Unlimited</th>
-                                    <th className="text-center px-4 py-3 text-[12px] font-medium text-[#475467] w-[100px]">Enabled</th>
+                                    <th className="text-left px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)]">Limit type</th>
+                                    <th className="text-left px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] w-[200px]">Value</th>
+                                    <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] w-[100px]">Unlimited</th>
+                                    <th className="text-center px-4 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] w-[100px]">Enabled</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr className="border-t border-[#f2f4f7]">
-                                    <td className="px-4 py-3 text-[14px] text-[#344054]">Grants per month</td>
+                                <tr className="border-t border-[var(--colors-bg-tertiary)]">
+                                    <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Grants per month</td>
                                     <td className="px-4 py-3">
                                         {gl.unlimited ? (
                                             <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Unlimited</span>
@@ -428,8 +428,8 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
                                         </div>
                                     </td>
                                 </tr>
-                                <tr className="border-t border-[#f2f4f7]">
-                                    <td className="px-4 py-3 text-[14px] text-[#344054]">Max grant value (AED)</td>
+                                <tr className="border-t border-[var(--colors-bg-tertiary)]">
+                                    <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Max grant value (AED)</td>
                                     <td className="px-4 py-3">
                                         {gl.unlimited ? (
                                             <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Unlimited</span>
@@ -456,16 +456,16 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
                                         </div>
                                     </td>
                                 </tr>
-                                <tr className="border-t border-[#f2f4f7]">
-                                    <td className="px-4 py-3 text-[14px] text-[#344054]">Remove unused grants</td>
+                                <tr className="border-t border-[var(--colors-bg-tertiary)]">
+                                    <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Remove unused grants</td>
                                     <td className="px-4 py-3">
                                         {gl.allow_remove_unused ? (
                                             <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Enabled</span>
                                         ) : (
-                                            <span className="text-[14px] text-[#98a2b3]">—</span>
+                                            <span className="text-[14px] text-[var(--colors-fg-quaternary)]">—</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-center"><span className="text-[14px] text-[#98a2b3]">—</span></td>
+                                    <td className="px-4 py-3 text-center"><span className="text-[14px] text-[var(--colors-fg-quaternary)]">—</span></td>
                                     <td className="px-4 py-3 text-center">
                                         <div className="flex items-center justify-center">
                                             <Checkbox checked={gl.allow_remove_unused} onChange={v => update({ allow_remove_unused: v })} ariaLabel="Allow remove unused grants" />
@@ -543,7 +543,7 @@ function Step2Permissions({ form, set, mode, locked }: {
                         width="w-full"
                         disabled={locked}
                     />
-                    <p className="text-[13px] text-[#667085] leading-[18px]">{typeFieldHelper}</p>
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">{typeFieldHelper}</p>
                 </div>
             </div>
 
@@ -571,9 +571,9 @@ function Step2Permissions({ form, set, mode, locked }: {
                     </div>
                 )}
                 {!locked && (
-                    <div className="flex gap-3 items-start bg-[#f1f2ed] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0 mt-[2px]" />
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                    <div className="flex gap-3 items-start bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0 mt-[2px]" />
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             Check or uncheck cells to customise this role. Cells marked with a dash (&mdash;) don&apos;t apply to that module-action pair.
                         </p>
                     </div>
@@ -717,11 +717,11 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{headerTitle}</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{headerTitle}</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -754,7 +754,7 @@ export default function RoleFormPage({ mode, roleId, returnTo = "/admin/staff" }
                 </div>
 
                 {/* Center content card */}
-                <div className="flex-1 min-w-0 max-w-[760px] h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 max-w-[760px] h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
                         {step === 1
                             ? <Step1Details form={form} set={set} locked={locked} nameError={nameError} />

@@ -51,20 +51,20 @@ export default function PrivacyPolicyPage() {
                     type="button"
                     onClick={goBack}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Privacy policy</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 
             <div className="flex flex-1 flex-col gap-6 px-4 pb-10 pt-[96px]">
-                <p className="text-xs font-normal leading-[18px] text-[#98a2b3]">Last updated {LAST_UPDATED}</p>
+                <p className="text-xs font-normal leading-[18px] text-[var(--colors-fg-quaternary)]">Last updated {LAST_UPDATED}</p>
                 {SECTIONS.map((s) => (
                     <section key={s.heading} className="flex flex-col gap-2">
                         <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">{s.heading}</h2>
-                        <p className="text-sm font-normal leading-[22px] text-[#475467]">{s.body}</p>
+                        <p className="text-sm font-normal leading-[22px] text-[var(--colors-text-tertiary)]">{s.body}</p>
                     </section>
                 ))}
             </div>

@@ -24,7 +24,7 @@ export function SeatingChartView({ rows, columns }: { rows: number; columns: num
                 {/* Instructor bar */}
                 <div className="flex flex-col items-center gap-1.5">
                     <div className="h-4 w-20 rounded-[6px] bg-[#717bbc]" />
-                    <span className="text-[10px] font-semibold text-[#475467]">Instructor</span>
+                    <span className="text-[10px] font-semibold text-[var(--colors-text-tertiary)]">Instructor</span>
                 </div>
                 <div className="flex flex-col gap-3 mt-2">
                     {Array.from({ length: rows }).map((_, ri) => (
@@ -32,7 +32,7 @@ export function SeatingChartView({ rows, columns }: { rows: number; columns: num
                             {Array.from({ length: columns }).map((_, ci) => (
                                 <div key={ci} className="flex flex-col items-center gap-1">
                                     <div className="w-7 h-7 rounded-full bg-[var(--brand-tertiary)] shrink-0" />
-                                    <span className="text-[9px] font-semibold text-[#475467]">
+                                    <span className="text-[9px] font-semibold text-[var(--colors-text-tertiary)]">
                                         {rowLabel(ri)}{ci + 1}
                                     </span>
                                 </div>

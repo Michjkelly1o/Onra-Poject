@@ -73,16 +73,16 @@ function InstructorContent({ appointment, onPicked }: {
             <button
                 type="button"
                 onClick={pickFlexible}
-                className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4 text-left transition-colors active:bg-gray-50"
+                className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4 text-left transition-colors active:bg-gray-50"
             >
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-tertiary)]">
                     <Shuffle01 className="size-5 text-[var(--brand-primary)]" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium leading-5 text-[#344054]">Preference: Flexible</span>
-                    <span className="block text-xs leading-4 text-[#667085]">Let the studio assign an available instructor</span>
+                    <span className="block truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Preference: Flexible</span>
+                    <span className="block text-xs leading-4 text-[var(--colors-text-quaternary)]">Let the studio assign an available instructor</span>
                 </span>
-                <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
+                <ChevronRight className="size-5 shrink-0 text-[var(--colors-fg-quaternary)]" aria-hidden />
             </button>
 
             {visibleInstructors.map((i) => (
@@ -90,18 +90,18 @@ function InstructorContent({ appointment, onPicked }: {
                     key={i.id}
                     type="button"
                     onClick={() => pick(i.id)}
-                    className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4 text-left transition-colors active:bg-gray-50"
+                    className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4 text-left transition-colors active:bg-gray-50"
                 >
-                    <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                    <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                         {i.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={i.imageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                         ) : (
-                            <span className="text-xs font-semibold text-[#667085]">{i.initials}</span>
+                            <span className="text-xs font-semibold text-[var(--colors-text-quaternary)]">{i.initials}</span>
                         )}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[#344054]">{i.name}</span>
-                    <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">{i.name}</span>
+                    <ChevronRight className="size-5 shrink-0 text-[var(--colors-fg-quaternary)]" aria-hidden />
                 </button>
             ))}
         </div>
@@ -186,13 +186,13 @@ function SlotContent({ appointment, active, onPickedSlot }: {
                                 key={s.time}
                                 type="button"
                                 onClick={() => pickSlot(s.time)}
-                                className="relative flex w-full items-center justify-center rounded-xl border border-[#e4e7ec] bg-white p-4 transition-colors active:bg-gray-50"
+                                className="relative flex w-full items-center justify-center rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4 transition-colors active:bg-gray-50"
                             >
-                                <span className="text-sm font-medium leading-5 text-[#344054]">
+                                <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                                     {timeInZoneLabel(dateISO, s.time, branch, timezone, true)}
                                 </span>
                                 {isOpen && s.spotsLeft != null && (
-                                    <span className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-full border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
+                                    <span className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-full border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">
                                         <Users01 className="size-3 shrink-0" aria-hidden />
                                         {s.booked}/{s.capacity}
                                     </span>
@@ -282,9 +282,9 @@ export function AppointmentBookingFlow({ appointmentId, open, onClose }: {
                             type="button"
                             onClick={onBack}
                             aria-label="Back"
-                            className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                            className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                         >
-                            <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                            <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                         </button>
                     ) : (
                         <span aria-hidden className="absolute left-0 size-8" />
@@ -294,14 +294,14 @@ export function AppointmentBookingFlow({ appointmentId, open, onClose }: {
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="absolute right-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="absolute right-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 </div>
-                <div className="-mx-4 h-1 w-[calc(100%+32px)] overflow-hidden bg-[#e4e7ec]">
+                <div className="-mx-4 h-1 w-[calc(100%+32px)] overflow-hidden bg-[var(--colors-bg-quaternary)]">
                     <div
-                        className="h-full rounded-r-full bg-[var(--brand-primary)]"
+                        className="h-full rounded-r-full bg-[var(--colors-secondary-400)]"
                         style={{ width: `${progress}%`, transition: `width ${SLIDE_MS}ms ${SLIDE_EASE}` }}
                     />
                 </div>

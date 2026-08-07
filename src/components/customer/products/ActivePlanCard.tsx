@@ -29,7 +29,7 @@ export function ActivePlanCard({ name, sub }: { name: string; sub: string }) {
             </span>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{name}</p>
-                <p className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</p>
+                <p className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{sub}</p>
             </div>
         </div>
     );

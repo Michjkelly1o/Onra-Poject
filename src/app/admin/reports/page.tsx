@@ -76,7 +76,7 @@ const CATEGORIES: ReportCategory[] = [
             "Track studio performance — sales, refunds, discounts, gift cards, tax, revenue recognition, MRR, ARPM, and per-visit economics.",
         icon: BankNote01,
         items: [
-            { slug: "total-sales",         label: "Total Sales"                  },
+            { slug: "total-sales",         label: "Sales"                        },
             { slug: "sales-by-category",   label: "Sales by Category (stream)"   },
             { slug: "sales-by-item",       label: "Sales by Item"                },
             { slug: "payments",            label: "Payments"                     },
@@ -247,17 +247,17 @@ function CategoryCard({
     }, [category.items, favorites]);
 
     return (
-        <section className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex gap-16 items-start">
+        <section className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex gap-16 items-start">
             {/* Left — featured icon + title + description */}
             <div className="flex-1 min-w-0 flex gap-3 items-start">
-                <div className="shrink-0 w-8 h-8 rounded-[6px] border-1 border-[#e4e7ec] flex items-center justify-center overflow-hidden">
-                    <Icon className="w-4 h-4 text-[#475467]" />
+                <div className="shrink-0 w-8 h-8 rounded-[6px] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center overflow-hidden">
+                    <Icon className="w-4 h-4 text-[var(--colors-text-tertiary)]" />
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                         {category.title}
                     </h2>
-                    <p className="text-[14px] leading-[20px] text-[#475467]">
+                    <p className="text-[14px] leading-[20px] text-[var(--colors-text-tertiary)]">
                         {category.description}
                     </p>
                 </div>
@@ -270,19 +270,19 @@ function CategoryCard({
                     const isFav = favorites.has(item.slug);
                     return (
                         <li key={item.slug} className="flex flex-col w-full">
-                            <div className="flex items-center gap-1.5 px-[10px] py-[9px] mx-[6px] rounded-[6px] hover:bg-[#f9fafb] transition-colors">
+                            <div className="flex items-center gap-1.5 px-[10px] py-[9px] mx-[6px] rounded-[6px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                 <button
                                     type="button"
                                     onClick={() => onToggleFavorite(item.slug)}
                                     aria-label={isFav ? `Unpin ${item.label}` : `Pin ${item.label} to top`}
                                     aria-pressed={isFav}
                                     title={isFav ? "Remove from favourites" : "Add to favourites"}
-                                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded-[4px] hover:bg-[#f2f4f7] transition-colors"
+                                    className="shrink-0 w-6 h-6 flex items-center justify-center rounded-[4px] hover:bg-[var(--colors-bg-tertiary)] transition-colors"
                                 >
                                     <Star01
                                         className={cn(
                                             "w-4 h-4 transition-colors",
-                                            isFav ? "text-[#fdb022]" : "text-[#d0d5dd] hover:text-[#98a2b3]",
+                                            isFav ? "text-[#fdb022]" : "text-[var(--colors-border-primary)] hover:text-[var(--colors-fg-quaternary)]",
                                         )}
                                         fill={isFav ? "#fdb022" : "none"}
                                     />
@@ -290,13 +290,13 @@ function CategoryCard({
                                 <button
                                     type="button"
                                     onClick={() => onSelect(item)}
-                                    className="flex-1 min-w-0 text-left truncate rounded-[6px] text-[14px] font-medium leading-[20px] text-[#344054]"
+                                    className="flex-1 min-w-0 text-left truncate rounded-[6px] text-[14px] font-medium leading-[20px] text-[var(--colors-text-secondary)]"
                                 >
                                     {item.label}
                                 </button>
                             </div>
                             {idx < orderedItems.length - 1 && (
-                                <div className="h-px bg-[#e4e7ec] my-1" />
+                                <div className="h-px bg-[var(--colors-bg-quaternary)] my-1" />
                             )}
                         </li>
                     );

@@ -83,7 +83,7 @@ export function PaymentHistoryFilterModal({
     const disabled = paymentFilterCount(draft) === 0;
     const [pickerOpen, setPickerOpen] = useState(false);
     const dateFieldCls =
-        "flex w-full items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-sm leading-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
+        "flex w-full items-center gap-2 rounded-md border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-sm leading-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
 
     const toggleMethod = (v: PaymentMethod) => {
         const arr = draft.methods;
@@ -105,7 +105,7 @@ export function PaymentHistoryFilterModal({
                 {/* Date range */}
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium leading-5 text-[#344054]">Date range</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Date range</span>
                         {(draft.dateFrom || draft.dateTo) && (
                             <button type="button" onClick={clearDates} className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">
                                 Clear
@@ -113,18 +113,18 @@ export function PaymentHistoryFilterModal({
                         )}
                     </div>
                     <button type="button" onClick={() => setPickerOpen(true)} className={dateFieldCls}>
-                        <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
-                        <span className={`min-w-0 flex-1 truncate text-left ${draft.dateFrom ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                        <Calendar className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                        <span className={`min-w-0 flex-1 truncate text-left ${draft.dateFrom ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                             {rangeLabel(draft.dateFrom, draft.dateTo)}
                         </span>
                     </button>
                 </div>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Payment type */}
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium leading-5 text-[#344054]">Payment type</span>
+                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Payment type</span>
                     <div className="flex flex-wrap gap-2">
                         {TYPE_OPTIONS.map((t) => (
                             <FilterPill
@@ -137,11 +137,11 @@ export function PaymentHistoryFilterModal({
                     </div>
                 </div>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Payment method */}
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium leading-5 text-[#344054]">Payment method</span>
+                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Payment method</span>
                     <div className="flex flex-wrap gap-2">
                         {METHOD_OPTIONS.map((m) => (
                             <FilterPill key={m.id} label={m.label} selected={draft.methods.includes(m.id)} onClick={() => toggleMethod(m.id)} />

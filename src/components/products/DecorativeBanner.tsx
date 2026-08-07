@@ -53,7 +53,7 @@ export function DecorativeBanner({
     const s        = iconBox / 72; // shadow scale factor
 
     return (
-        <div className="relative w-full overflow-hidden bg-[#f9fafb] shrink-0" style={{ height: bannerHeight }}>
+        <div className="relative w-full overflow-hidden bg-[var(--colors-bg-secondary)] shrink-0" style={{ height: bannerHeight }}>
             {/* Background pattern — concentric rounded squares, tilted. The
                 outer wrapper applies the -32.1° rotation; the inner squares
                 apply the -12.5° offset around the centre. A radial mask fades

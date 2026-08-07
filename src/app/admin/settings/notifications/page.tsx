@@ -148,7 +148,7 @@ function Toggle({ on, onChange, ariaLabel, disabled, lockedOn, onLockedClick }: 
                 // signals "no click here" for both paths.
                 disabled && !lockedOn && "opacity-50 cursor-not-allowed",
                 lockedOn && "cursor-not-allowed",
-                on ? (lockedOn ? "bg-[#658774] ring-2 ring-[#fedf89]" : "bg-[#658774]") : "bg-[#f2f4f7]",
+                on ? (lockedOn ? "bg-[var(--colors-secondary-600)] ring-2 ring-[#fedf89]" : "bg-[var(--colors-secondary-600)]") : "bg-[var(--colors-bg-tertiary)]",
             )}>
             <div className={cn(
                 "w-5 h-5 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-transform",
@@ -166,7 +166,7 @@ function Pill({ tone, children }: {
       : tone === "amber" ? "bg-[#fffaeb] border-[#fedf89] text-[#b54708]"
       : tone === "red"   ? "bg-[#fef3f2] border-[#fecdca] text-[#b42318]"
       : tone === "blue"  ? "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]"
-      :                    "bg-[#f9fafb] border-[#e4e7ec] text-[#344054]";
+      :                    "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]";
     return (
         <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 whitespace-nowrap", tint)}>
             {children}
@@ -193,7 +193,7 @@ function InfoTooltip({ content, className }: { content: string; className?: stri
             onBlur={() => setOpen(false)}
         >
             <button type="button" tabIndex={0} aria-label="More info"
-                className="w-4 h-4 rounded-full text-[#98a2b3] hover:text-[#667085] transition-colors flex items-center justify-center">
+                className="w-4 h-4 rounded-full text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-quaternary)] transition-colors flex items-center justify-center">
                 <HelpCircle className="w-4 h-4" />
             </button>
             {open && (
@@ -237,20 +237,20 @@ function RowKebab({ onEditTemplate, onManageTiming, onRemove }: {
         <>
             <button ref={btnRef} type="button" aria-label="Row actions"
                 onClick={() => setOpen(o => !o)}
-                className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-5 h-5 text-[#667085]" />
+                className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[var(--colors-bg-tertiary)] transition-colors">
+                <DotsVertical className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
                 <button type="button"
                     onClick={() => { setOpen(false); onEditTemplate(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors text-left">
-                    <Edit02 className="w-4 h-4 text-[#667085]" />
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors text-left">
+                    <Edit02 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                     Edit template
                 </button>
                 <button type="button"
                     onClick={() => { setOpen(false); onManageTiming(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors text-left">
-                    <Clock className="w-4 h-4 text-[#667085]" />
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors text-left">
+                    <Clock className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                     Manage timing
                 </button>
                 {onRemove && (
@@ -311,9 +311,9 @@ function EventRow({ ns, waConnected, onChannelToggle, onLockHit, onEditTemplate,
     const lockSms      = ns.isCritical && smsLive      && liveCount === 1;
 
     return (
-        <div className="flex items-center gap-4 pl-11 pr-4 h-[52px] border-t border-[#f2f4f7]">
+        <div className="flex items-center gap-4 pl-11 pr-4 h-[52px] border-t border-[var(--colors-bg-tertiary)]">
             <div className="flex-1 min-w-0 flex items-center gap-2">
-                <span className="text-[14px] text-[#344054] truncate">{ns.label}</span>
+                <span className="text-[14px] text-[var(--colors-text-secondary)] truncate">{ns.label}</span>
                 {ns.isCritical && (
                     <>
                         <Pill tone="blue">Critical</Pill>
@@ -352,7 +352,7 @@ function EventRow({ ns, waConnected, onChannelToggle, onLockHit, onEditTemplate,
                     onLockedClick={onLockHit}
                     ariaLabel={`SMS ${ns.label}`} />
             </div>
-            <div className={cn(COL_SEND, "text-[14px] text-[#475467]")}>
+            <div className={cn(COL_SEND, "text-[14px] text-[var(--colors-text-tertiary)]")}>
                 {ns.sentDuringCampaigns ? "—" : formatSendTime(ns)}
             </div>
             <div className={cn(COL_KEBAB, "flex justify-center")}>
@@ -417,15 +417,15 @@ function Section({
     const toggleParent = (id: string) =>
         setExpandedParents(s => ({ ...s, [id]: !s[id] }));
     return (
-        <div className="border-t border-[#e4e7ec]">
+        <div className="border-t border-[var(--colors-border-secondary)]">
             <button type="button" onClick={onToggle}
                 className="w-full flex items-center gap-2 px-4 h-[52px] hover:bg-[#fafafa] transition-colors">
                 <ChevronDown className={cn(
-                    "w-5 h-5 text-[#667085] transition-transform shrink-0",
+                    "w-5 h-5 text-[var(--colors-text-quaternary)] transition-transform shrink-0",
                     !open && "-rotate-90",
                 )} />
-                <meta.Icon className="w-4 h-4 text-[#667085]" />
-                <span className="text-[14px] font-medium text-[#101828]">{meta.label}</span>
+                <meta.Icon className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{meta.label}</span>
             </button>
 
             {open && items.map(ns => {
@@ -445,7 +445,7 @@ function Section({
                                             ? `Hide branch overrides for ${ns.label}`
                                             : `Show branch overrides for ${ns.label}`
                                     }
-                                    className="absolute left-3.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 flex items-center justify-center rounded hover:bg-[#f2f4f7] text-[#667085] transition-colors"
+                                    className="absolute left-3.5 top-1/2 -translate-y-1/2 z-10 w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-quaternary)] transition-colors"
                                 >
                                     <ChevronDown
                                         className={cn(
@@ -464,7 +464,7 @@ function Section({
                                 onManageTiming={() => onManageTiming(ns)}
                                 trailingBadge={
                                     isMarketing && overrideCount > 0 ? (
-                                        <span className="inline-flex items-center h-5 px-1.5 rounded-full bg-[#f5fffa] border border-[#e4e7ec] text-[11px] font-medium text-[#658774] whitespace-nowrap shrink-0">
+                                        <span className="inline-flex items-center h-5 px-1.5 rounded-full bg-[#f5fffa] border border-[var(--colors-border-secondary)] text-[11px] font-medium text-[var(--colors-secondary-600)] whitespace-nowrap shrink-0">
                                             {`${overrideCount} ${overrideCount === 1 ? "branch" : "branches"}`}
                                         </span>
                                     ) : null
@@ -490,11 +490,11 @@ function Section({
             })}
 
             {open && category === "marketing" && (
-                <div className="mx-4 mt-4 mb-4 rounded-[12px] bg-[#f5fffa] border-1 border-[#e4e7ec] px-4 py-3 flex items-start gap-3">
-                    <Lightbulb02 className="w-5 h-5 text-[#658774] shrink-0 mt-0.5" />
-                    <p className="text-[14px] text-[#475467] leading-[20px]">
-                        Only <span className="font-semibold text-[#101828]">{marketingOptedIn.toLocaleString()}</span> of{" "}
-                        <span className="font-semibold text-[#101828]">{marketingTotal.toLocaleString()}</span>{" "}
+                <div className="mx-4 mt-4 mb-4 rounded-[12px] bg-[#f5fffa] border-1 border-[var(--colors-border-secondary)] px-4 py-3 flex items-start gap-3">
+                    <Lightbulb02 className="w-5 h-5 text-[var(--colors-secondary-600)] shrink-0 mt-0.5" />
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                        Only <span className="font-semibold text-[var(--colors-text-primary)]">{marketingOptedIn.toLocaleString()}</span> of{" "}
+                        <span className="font-semibold text-[var(--colors-text-primary)]">{marketingTotal.toLocaleString()}</span>{" "}
                         customers have opted in to receive marketing messages. Opted-out customers won't receive them.
                     </p>
                 </div>
@@ -551,19 +551,19 @@ function MarketingBranchOverrides({
                 />
             ))}
             {eligibleBranches.length > 0 && (
-                <div className="flex items-center gap-2 pl-11 pr-4 py-2 border-t border-dashed border-[#eaecf0]">
+                <div className="flex items-center gap-2 pl-11 pr-4 py-2 border-t border-dashed border-[var(--colors-border-tertiary)]">
                     <div className="relative">
                         <button
                             type="button"
                             onClick={() => setAddOpen(o => !o)}
-                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] font-medium text-[#658774] hover:bg-[#f5fffa] hover:text-[#4c6a5a] transition-colors"
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] font-medium text-[var(--colors-secondary-600)] hover:bg-[#f5fffa] hover:text-[#4c6a5a] transition-colors"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             Branch overrides
                         </button>
                         {addOpen && (
-                            <div className="absolute left-0 top-full mt-1 z-10 bg-white border border-[#e4e7ec] rounded-lg shadow-lg py-1 min-w-[220px]">
-                                <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-[#98a2b3]">
+                            <div className="absolute left-0 top-full mt-1 z-10 bg-white border border-[var(--colors-border-secondary)] rounded-lg shadow-lg py-1 min-w-[220px]">
+                                <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-[var(--colors-fg-quaternary)]">
                                     Add for branch
                                 </div>
                                 {eligibleBranches.map(b => (
@@ -574,9 +574,9 @@ function MarketingBranchOverrides({
                                             onAddBranchOverride(parent.id, b.id);
                                             setAddOpen(false);
                                         }}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[#344054] hover:bg-[#f9fafb] text-left"
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] text-left"
                                     >
-                                        <MarkerPin01 className="w-4 h-4 text-[#667085]" />
+                                        <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                                         {b.name}
                                     </button>
                                 ))}
@@ -604,11 +604,11 @@ function MarketingOverrideRow({
 }) {
     const showApprovalPill = waConnected;
     return (
-        <div className="flex items-center gap-4 pl-11 pr-4 h-[48px] border-t border-dashed border-[#eaecf0]">
+        <div className="flex items-center gap-4 pl-11 pr-4 h-[48px] border-t border-dashed border-[var(--colors-border-tertiary)]">
             <div className="flex-1 min-w-0 flex items-center gap-2 pl-5">
-                <MarkerPin01 className="w-4 h-4 text-[#7ba08c] shrink-0" />
-                <span className="text-[13px] text-[#344054] truncate">{branchName}</span>
-                <span className="text-[11px] text-[#98a2b3] shrink-0">override</span>
+                <MarkerPin01 className="w-4 h-4 text-[var(--colors-secondary-500)] shrink-0" />
+                <span className="text-[13px] text-[var(--colors-text-secondary)] truncate">{branchName}</span>
+                <span className="text-[11px] text-[var(--colors-fg-quaternary)] shrink-0">override</span>
             </div>
             <div className={cn(COL_EMAIL, "flex justify-center")}>
                 <Toggle on={override.emailEnabled}
@@ -634,7 +634,7 @@ function MarketingOverrideRow({
                     onLockedClick={onLockHit}
                     ariaLabel={`SMS ${branchName}`} />
             </div>
-            <div className={cn(COL_SEND, "text-[13px] text-[#475467]")}>
+            <div className={cn(COL_SEND, "text-[13px] text-[var(--colors-text-tertiary)]")}>
                 {override.sentDuringCampaigns ? "—" : formatSendTime(override)}
             </div>
             <div className={cn(COL_KEBAB, "flex justify-center")}>
@@ -658,20 +658,20 @@ function ColumnHeaders({ waConnected }: { waConnected: boolean }) {
     // sits above the row content; `border-b` gives a visual separator when
     // the header is pinned above scrolled rows. Client 2026-07-22.
     return (
-        <div className="sticky top-0 z-10 flex items-center gap-4 pl-11 pr-4 h-[44px] bg-[#fafafa] border-t border-b border-[#e4e7ec]">
-            <div className="flex-1 min-w-0 text-[12px] font-medium text-[#475467]">Notifications</div>
-            <div className={cn(COL_EMAIL, "text-center text-[12px] font-medium text-[#475467]")}>Email</div>
+        <div className="sticky top-0 z-10 flex items-center gap-4 pl-11 pr-4 h-[44px] bg-[#fafafa] border-t border-b border-[var(--colors-border-secondary)]">
+            <div className="flex-1 min-w-0 text-[12px] font-medium text-[var(--colors-text-tertiary)]">Notifications</div>
+            <div className={cn(COL_EMAIL, "text-center text-[12px] font-medium text-[var(--colors-text-tertiary)]")}>Email</div>
             <div className={cn(COL_WA, "flex items-center justify-center gap-1")}>
-                <span className="text-[12px] font-medium text-[#475467]">WhatsApp</span>
+                <span className="text-[12px] font-medium text-[var(--colors-text-tertiary)]">WhatsApp</span>
                 {!waConnected && (
                     <InfoTooltip content="Connect WhatsApp Business in Settings → Integrations to enable this channel." />
                 )}
             </div>
             {waConnected && (
-                <div className={cn(COL_APPROVAL, "text-center text-[12px] font-medium text-[#475467]")}>Approval status</div>
+                <div className={cn(COL_APPROVAL, "text-center text-[12px] font-medium text-[var(--colors-text-tertiary)]")}>Approval status</div>
             )}
-            <div className={cn(COL_SMS, "text-center text-[12px] font-medium text-[#475467]")}>SMS</div>
-            <div className={cn(COL_SEND, "text-[12px] font-medium text-[#475467]")}>Send time</div>
+            <div className={cn(COL_SMS, "text-center text-[12px] font-medium text-[var(--colors-text-tertiary)]")}>SMS</div>
+            <div className={cn(COL_SEND, "text-[12px] font-medium text-[var(--colors-text-tertiary)]")}>Send time</div>
             <div className={COL_KEBAB} />
         </div>
     );
@@ -808,14 +808,14 @@ function TemplateEditor({ ns, initialTab, onClose }: {
                 {/* Header — Condition tab uses its own title + subtitle
                     per Figma 7808:58413; the other four tabs share the
                     template-editor copy. */}
-                <div className="flex items-start gap-4 px-6 py-5 border-b border-[#e4e7ec] shrink-0">
+                <div className="flex items-start gap-4 px-6 py-5 border-b border-[var(--colors-border-secondary)] shrink-0">
                     <div className="flex-1 flex flex-col gap-1">
-                        <h3 className="text-[18px] font-semibold text-[#101828] leading-[28px]">
+                        <h3 className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">
                             {tab === "condition"
                                 ? "Notification conditions"
                                 : `Edit template — ${ns.label}`}
                         </h3>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             {tab === "condition" ? (
                                 "Manage when we push the reminder."
                             ) : (
@@ -824,21 +824,21 @@ function TemplateEditor({ ns, initialTab, onClose }: {
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 {/* Tabs (underline) */}
-                <div className="border-b border-[#e4e7ec] px-6 shrink-0">
+                <div className="border-b border-[var(--colors-border-secondary)] px-6 shrink-0">
                     <div className="flex gap-1">
                         {(["email", "whatsapp", "sms", "timing", "condition"] as const).map(k => (
                             <button key={k} type="button" onClick={() => setTab(k)}
                                 className={cn(
                                     "h-[44px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
                                     tab === k
-                                        ? "border-b-2 border-[#101828] text-[#101828]"
-                                        : "text-[#667085] hover:text-[#344054]",
+                                        ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                        : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                                 )}>
                                 {k === "email"     ? "Email"
                                : k === "whatsapp"  ? "WhatsApp"
@@ -888,7 +888,7 @@ function TemplateEditor({ ns, initialTab, onClose }: {
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3 shrink-0">
+                <div className="border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3 shrink-0">
                     <div />
                     <div className="flex items-center gap-3">
                         <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
@@ -919,8 +919,8 @@ function TemplateEditor({ ns, initialTab, onClose }: {
 function VariableRail({ onInsert }: { onInsert: (token: string) => void }) {
     return (
         <div className="flex flex-col gap-2 w-[200px] shrink-0">
-            <p className="text-[13px] font-medium text-[#344054]">Variables — drag into the field</p>
-            <div className="flex flex-wrap gap-2 p-3 border-1 border-[#e4e7ec] rounded-[8px] bg-[#fafafa]">
+            <p className="text-[13px] font-medium text-[var(--colors-text-secondary)]">Variables — drag into the field</p>
+            <div className="flex flex-wrap gap-2 p-3 border-1 border-[var(--colors-border-secondary)] rounded-[8px] bg-[#fafafa]">
                 {TEMPLATE_VARIABLES.map(v => (
                     <button key={v} type="button" onClick={() => onInsert(v)}
                         title="Click to insert at cursor"
@@ -935,9 +935,9 @@ function VariableRail({ onInsert }: { onInsert: (token: string) => void }) {
 
 function CaseSensitiveHint() {
     return (
-        <div className="bg-[#f5fffa] border-1 border-[#e4e7ec] rounded-[12px] px-4 py-3 flex items-start gap-3">
-            <Lightbulb02 className="w-5 h-5 text-[#658774] shrink-0 mt-0.5" />
-            <p className="text-[13px] text-[#475467] leading-[18px]">
+        <div className="bg-[#f5fffa] border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-4 py-3 flex items-start gap-3">
+            <Lightbulb02 className="w-5 h-5 text-[var(--colors-secondary-600)] shrink-0 mt-0.5" />
+            <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-[18px]">
                 Variables are case-sensitive. Anything that doesn't match a known variable is left in the message as-is.
             </p>
         </div>
@@ -954,15 +954,15 @@ function EmailTab({ subject, onSubjectChange, body, onBodyChange, onInsertVariab
             <div className="flex gap-4">
                 <div className="flex-1 flex flex-col gap-4">
                     <label className="flex flex-col gap-1.5">
-                        <span className="text-[13px] font-medium text-[#344054]">Subject line</span>
+                        <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">Subject line</span>
                         <input value={subject} onChange={e => onSubjectChange(e.target.value)}
-                            className="h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c]" />
+                            className="h-10 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)]" />
                     </label>
                     <label className="flex flex-col gap-1.5">
-                        <span className="text-[13px] font-medium text-[#344054]">Email body</span>
+                        <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">Email body</span>
                         <textarea value={body} onChange={e => onBodyChange(e.target.value)}
                             rows={8}
-                            className="px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] resize-y font-mono" />
+                            className="px-3 py-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] resize-y font-mono" />
                     </label>
                 </div>
                 <VariableRail onInsert={onInsertVariable} />
@@ -983,7 +983,7 @@ function WhatsappTab({ status, rejectionReason, body, onBodyChange, onInsertVari
     return (
         <>
             <div className="flex items-center gap-2">
-                <span className="text-[13px] font-medium text-[#344054]">Approval status</span>
+                <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">Approval status</span>
                 <ApprovalPill status={status} />
             </div>
 
@@ -1014,12 +1014,12 @@ function WhatsappTab({ status, rejectionReason, body, onBodyChange, onInsertVari
             <div className="flex gap-4">
                 <div className="flex-1 flex flex-col gap-2">
                     <label className="flex flex-col gap-1.5">
-                        <span className="text-[13px] font-medium text-[#344054]">WhatsApp message</span>
+                        <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">WhatsApp message</span>
                         <textarea value={body} onChange={e => onBodyChange(e.target.value)}
                             rows={7}
-                            className="px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] resize-y font-mono" />
+                            className="px-3 py-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] resize-y font-mono" />
                     </label>
-                    <p className="text-[12px] text-[#667085]">Plain text only — emojis are fine, rich formatting isn't.</p>
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)]">Plain text only — emojis are fine, rich formatting isn't.</p>
                 </div>
                 <VariableRail onInsert={onInsertVariable} />
             </div>
@@ -1041,12 +1041,12 @@ function SmsTab({ body, onBodyChange, onInsertVariable }: {
             <div className="flex gap-4">
                 <div className="flex-1 flex flex-col gap-2">
                     <label className="flex flex-col gap-1.5">
-                        <span className="text-[13px] font-medium text-[#344054]">SMS message</span>
+                        <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">SMS message</span>
                         <textarea value={body} onChange={e => onBodyChange(e.target.value)}
                             rows={7}
-                            className="px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] resize-y font-mono" />
+                            className="px-3 py-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] resize-y font-mono" />
                     </label>
-                    <p className="text-[12px] text-[#667085]">
+                    <p className="text-[12px] text-[var(--colors-text-quaternary)]">
                         {chars}/160 characters ({segments} message{segments === 1 ? "" : "s"})
                     </p>
                 </div>
@@ -1075,7 +1075,7 @@ function TimingTab({ mode, onModeChange, offsets, onOffsetsChange }: {
     return (
         <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-                <span className="text-[13px] font-medium text-[#344054]">When to send</span>
+                <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">When to send</span>
                 <div className="grid grid-cols-2 gap-3">
                     <TimingRadioCard
                         title="Immediately"
@@ -1094,7 +1094,7 @@ function TimingTab({ mode, onModeChange, offsets, onOffsetsChange }: {
 
             {mode === "scheduled" && (
                 <div className="flex flex-col gap-2">
-                    <span className="text-[13px] font-medium text-[#344054]">Send time</span>
+                    <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">Send time</span>
                     {offsets.every(o => o.value <= 0) && (
                         <p className="text-[12px] text-[#b54708] leading-[16px]">
                             Add at least one send time above 0 — Save is disabled until a real offset is set.
@@ -1103,7 +1103,7 @@ function TimingTab({ mode, onModeChange, offsets, onOffsetsChange }: {
                     <div className="flex flex-col gap-3">
                         {offsets.map((o, i) => (
                             <div key={i} className="flex items-center gap-2">
-                                <div className="flex-1 flex items-stretch h-10 border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]">
+                                <div className="flex-1 flex items-stretch h-10 border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)]">
                                     <input
                                         type="number" min={0} inputMode="numeric"
                                         aria-label="Send time value"
@@ -1115,7 +1115,7 @@ function TimingTab({ mode, onModeChange, offsets, onOffsetsChange }: {
                                             const parsed = parseInt(raw.replace(/^0+(?=\d)/, ""), 10);
                                             if (!Number.isNaN(parsed)) updateOffset(i, { value: parsed });
                                         }}
-                                        className="flex-1 min-w-0 px-3 text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent"
+                                        className="flex-1 min-w-0 px-3 text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent"
                                     />
                                     <UnitSuffixSelect
                                         value={o.unit}
@@ -1155,14 +1155,14 @@ function ConditionTab({ isCritical, onChange }: {
             <div
                 className={cn(
                     "rounded-[12px] border-1 px-4 py-3 flex items-start gap-4 transition-colors",
-                    isCritical ? "border-[#7ba08c] bg-white" : "border-[#e4e7ec] bg-white",
+                    isCritical ? "border-[var(--colors-secondary-500)] bg-white" : "border-[var(--colors-border-secondary)] bg-white",
                 )}
             >
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">
+                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">
                         Notification is critical
                     </p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                         At least one delivery channel must remain enabled for critical notifications.
                     </p>
                 </div>
@@ -1183,18 +1183,18 @@ function TimingRadioCard({ title, subtitle, selected, onSelect }: {
         <button type="button" onClick={onSelect}
             className={cn(
                 "text-left rounded-[12px] border-1 p-4 flex items-start gap-3 transition-colors bg-white",
-                selected ? "border-[#7ba08c]" : "border-[#e4e7ec] hover:border-[#d0d5dd]",
+                selected ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)] hover:border-[var(--colors-border-primary)]",
             )}>
             <div className="shrink-0 w-9 h-9 rounded-[8px] bg-[#f5fffa] flex items-center justify-center">
-                <Clock className="w-5 h-5 text-[#658774]" />
+                <Clock className="w-5 h-5 text-[var(--colors-secondary-600)]" />
             </div>
             <div className="flex-1 flex flex-col gap-1 min-w-0">
-                <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">{title}</p>
-                <p className="text-[13px] text-[#667085] leading-[18px]">{subtitle}</p>
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">{subtitle}</p>
             </div>
             <div className={cn(
                 "w-4 h-4 rounded-full border-1 flex items-center justify-center shrink-0 mt-0.5",
-                selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white",
+                selected ? "border-[var(--colors-secondary-600)] bg-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)] bg-white",
             )}>
                 {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
@@ -1204,9 +1204,9 @@ function TimingRadioCard({ title, subtitle, selected, onSelect }: {
 
 function PreviewCard({ label, body }: { label: string; body: string }) {
     return (
-        <div className="border-1 border-[#e4e7ec] rounded-[12px] bg-[#fafafa] p-4 flex flex-col gap-2">
-            <p className="text-[13px] font-medium text-[#344054]">{label}</p>
-            <p className="text-[13px] text-[#475467] leading-[20px] whitespace-pre-wrap">{body || "—"}</p>
+        <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] bg-[#fafafa] p-4 flex flex-col gap-2">
+            <p className="text-[13px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
+            <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-[20px] whitespace-pre-wrap">{body || "—"}</p>
         </div>
     );
 }
@@ -1231,22 +1231,22 @@ function SendTestRow({ kind }: { kind: "email" | "phone" }) {
     // sit on the same baseline — no `self-center` acrobatics needed
     // and the button reads as belonging to the input it acts on.
     return (
-        <div className="border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-[#344054]">Send a test to yourself</span>
+        <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-[var(--colors-text-secondary)]">Send a test to yourself</span>
             <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                     {kind === "email" ? (
                         <input value={emailValue} onChange={e => setEmailValue(e.target.value)}
-                            className="w-full h-10 px-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
+                            className="w-full h-10 px-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
                     ) : (
-                        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                             <PhoneCountryDropdown value={phoneCountry} onChange={setPhoneCountry} />
                             <input
                                 type="tel"
                                 value={phoneNumber}
                                 onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
                                 placeholder="Phone number..."
-                                className="flex-1 h-10 px-[14px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent rounded-r-[8px]"
+                                className="flex-1 h-10 px-[14px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent rounded-r-[8px]"
                             />
                         </div>
                     )}
@@ -1348,16 +1348,16 @@ function DeliveryHoursPanel({ open, onClose }: { open: boolean; onClose: () => v
                 "transition-opacity duration-300",
                 shown ? "opacity-100" : "opacity-0",
             )}>
-                <div className="flex items-start gap-4 px-6 py-5 border-b border-[#e4e7ec] shrink-0">
+                <div className="flex items-start gap-4 px-6 py-5 border-b border-[var(--colors-border-secondary)] shrink-0">
                     <div className="flex-1 flex flex-col gap-1">
-                        <h3 className="text-[18px] font-semibold text-[#101828] leading-[28px]">Delivery hours</h3>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <h3 className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Delivery hours</h3>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Set quiet hours
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -1374,31 +1374,31 @@ function DeliveryHoursPanel({ open, onClose }: { open: boolean; onClose: () => v
                     <div className="flex items-start gap-4">
                         <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">Pause messages between</span>
+                                <span className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">Pause messages between</span>
                                 <div className={cn("flex items-center gap-2", !onlyDuringHours && "opacity-40 pointer-events-none")}>
                                     <TimeDropdown value={start} onChange={setStart} ariaLabel="Quiet hours start" />
-                                    <span className="text-[14px] text-[#475467]">and</span>
+                                    <span className="text-[14px] text-[var(--colors-text-tertiary)]">and</span>
                                     <TimeDropdown value={end}   onChange={setEnd}   ariaLabel="Quiet hours end" />
                                 </div>
                             </div>
-                            <p className="text-[13px] text-[#667085] leading-[18px]">
+                            <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">
                                 Messages queued in this window send when it ends.
                             </p>
                         </div>
                         <Toggle on={onlyDuringHours} onChange={setOnlyDuringHours} ariaLabel="Pause messages during quiet hours" />
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                     <div className="flex items-start gap-4">
                         <div className="flex-1 flex flex-col gap-1 min-w-0">
-                            <p className="text-[14px] font-semibold text-[#101828] leading-[20px]">Critical notifications ignore quiet hours</p>
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">Critical notifications ignore quiet hours</p>
                         </div>
                         <Toggle on={criticalBypass} onChange={setCriticalBypass} ariaLabel="Critical bypass" />
                     </div>
                 </div>
 
-                <div className="border-t border-[#e4e7ec] px-6 py-4 flex justify-between gap-3 shrink-0">
+                <div className="border-t border-[var(--colors-border-secondary)] px-6 py-4 flex justify-between gap-3 shrink-0">
                     <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="md" onClick={handleSave}>Save changes</Button>
                 </div>
@@ -1448,15 +1448,15 @@ function TimeDropdown({ value, onChange, ariaLabel }: {
                 onClick={() => setOpen(o => !o)}
                 className={cn(
                     "flex items-stretch h-10 w-[160px] border-1 rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden transition-colors",
-                    open ? "border-[#7ba08c] ring-2 ring-[#aad4bd]" : "border-[#d0d5dd] hover:border-[#98a2b3]",
+                    open ? "border-[var(--colors-secondary-500)] ring-2 ring-[var(--colors-secondary-300)]" : "border-[var(--colors-border-primary)] hover:border-[var(--colors-fg-quaternary)]",
                 )}
             >
-                <span className="px-2 flex items-center border-r border-[#d0d5dd] bg-[#f9fafb] shrink-0">
-                    <Clock className="w-4 h-4 text-[#667085]" />
+                <span className="px-2 flex items-center border-r border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] shrink-0">
+                    <Clock className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                 </span>
-                <span className="flex-1 min-w-0 px-3 flex items-center text-[14px] text-[#101828] text-left">{value}</span>
+                <span className="flex-1 min-w-0 px-3 flex items-center text-[14px] text-[var(--colors-text-primary)] text-left">{value}</span>
                 <span className="pr-2 flex items-center">
-                    <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
+                    <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] transition-transform", open && "rotate-180")} />
                 </span>
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={160}>
@@ -1469,8 +1469,8 @@ function TimeDropdown({ value, onChange, ariaLabel }: {
                             className={cn(
                                 "w-full flex items-center px-3 py-2 text-[14px] font-medium transition-colors text-left",
                                 t === value
-                                    ? "bg-[#f9fafb] text-[#101828]"
-                                    : "text-[#344054] hover:bg-[#f9fafb]",
+                                    ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]"
+                                    : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}
                         >
                             {t}
@@ -1612,12 +1612,12 @@ export default function CustomerNotificationsPage() {
              *  and the sticky `ColumnHeaders` inside pins to that inner
              *  scroll ancestor — client 2026-07-22 asked to keep column
              *  headers visible while scrolling long event lists. */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col max-h-[calc(100vh-220px)]">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col max-h-[calc(100vh-220px)]">
                 {/* Top strip — title + Quiet hours pill + Delivery hours button */}
                 <div className="flex items-start gap-4 px-6 py-5 shrink-0">
                     <div className="flex-1 flex flex-col gap-1">
-                        <p className="text-[16px] font-semibold text-[#101828]">Customer notifications</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Customer notifications</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">
                             Choose which channels each message goes out on, and edit the copy your customers receive.
                         </p>
                     </div>

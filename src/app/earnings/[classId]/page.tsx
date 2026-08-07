@@ -326,11 +326,11 @@ export default function InstructorClassDetailPage() {
                         type="button"
                         onClick={() => router.push(returnTo)}
                         aria-label="Back to earnings"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Class details</h1>
                 </div>
                 <div className="relative flex-1">
                     <EmptyState
@@ -355,12 +355,12 @@ export default function InstructorClassDetailPage() {
                     type="button"
                     onClick={() => router.push(returnTo)}
                     aria-label="Back to earnings"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                 >
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Class details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -373,9 +373,9 @@ export default function InstructorClassDetailPage() {
                 {/* Right panel — same shell as admin's right panel:
                     border + rounded-[20px], no shadow, white bg via the
                     page-level white container. */}
-                <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px] relative">
+                <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px] relative">
                     {/* Tabs */}
-                    <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-5">
+                    <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-5">
                         <div className="flex gap-1">
                             {tabs.map(t => (
                                 <TabButton
@@ -392,8 +392,8 @@ export default function InstructorClassDetailPage() {
                     {/* Toolbar — Total + Search (+ Filter on Reviews tab) */}
                     <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-4">
                         <div className="flex flex-col">
-                            <span className="text-[14px] text-[#475467] leading-5">Total</span>
-                            <span className="text-[16px] font-semibold text-[#101828] leading-6">
+                            <span className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">Total</span>
+                            <span className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">
                                 {tab === "reviews"
                                     ? `${filteredReviews.length} rating${filteredReviews.length === 1 ? "" : "s"}`
                                     : `${tabCount(tab, filteredBooked, filteredWaitlisted, filteredCancelled)} customer${tabCount(tab, filteredBooked, filteredWaitlisted, filteredCancelled) === 1 ? "" : "s"}`}
@@ -501,7 +501,7 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
                      : cls.genderAccess === "male"   ? "Male only"
                      : "All genders";
     return (
-        <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
             <div
                 className="relative h-[155px] shrink-0 overflow-hidden"
@@ -530,8 +530,8 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     {/* Name + description */}
                     <div>
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{cls.name}</h2>
-                        <p className="text-[14px] text-[#667085] leading-[20px] mt-1 line-clamp-2">
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{cls.name}</h2>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] mt-1 line-clamp-2">
                             {cls.description || "—"}
                         </p>
                     </div>
@@ -539,36 +539,36 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
                     {/* Info fields — admin's exact layout */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Date &amp; time</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Date &amp; time</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                 {fmtFullDate(cls.dateISO)} • {cls.displayTime}
                             </p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[#667085]">Class type</p>
-                                <p className="text-[16px] font-medium text-[#101828]">{cls.classType} class</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Class type</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{cls.classType} class</p>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[#667085]">Gender access</p>
-                                <p className="text-[16px] font-medium text-[#101828]">{genderText}</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Gender access</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{genderText}</p>
                             </div>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Duration</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Duration</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                 {diffMinutes(cls.startTime, cls.endTime)} minutes
                             </p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Class capacity</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Class capacity</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                 {cls.capacity} participants
                             </p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Location</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{cls.room || "—"}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Location</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{cls.room || "—"}</p>
                         </div>
                     </div>
                 </div>
@@ -577,12 +577,12 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
                     shows it since the page only renders for completed +
                     cancelled classes (which is where ratings apply). */}
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-3">Rating summary</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-3">Rating summary</p>
                     <RatingStars rating={avgRating} size="lg" />
-                    <p className="text-[18px] font-semibold text-[#101828] leading-7 mt-2">
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 mt-2">
                         {avgRating > 0 ? avgRating.toFixed(1) : "0"}
-                        <span className="text-[14px] font-normal text-[#667085]"> ({ratingCount} ratings)</span>
+                        <span className="text-[14px] font-normal text-[var(--colors-text-quaternary)]"> ({ratingCount} ratings)</span>
                     </p>
                 </div>
             </div>
@@ -609,15 +609,15 @@ function TabButton({ label, count, active, onClick }: {
             onClick={onClick}
             className={cn(
                 "h-[48px] px-3 text-[14px] font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
-                active ? "border-b-2 border-[#101828] text-[#101828]" : "text-[#667085] hover:text-[#344054]",
+                active ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
             )}
         >
             {label}
             <span className={cn(
                 "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
                 active
-                    ? "bg-[#f2f4f7] text-[#344054]"
-                    : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#667085]",
+                    ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)]"
+                    : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)]",
             )}>
                 {count}
             </span>
@@ -669,7 +669,7 @@ function BookedTable({ rows, customerById, classStatus, page, pageSize }: Booked
                         const indexInList = rows.indexOf(b);
                         const showFirstTimer = indexInList === 0; // demo heuristic
                         return (
-                            <tr key={b.id} className="transition-colors hover:bg-[#f9fafb]">
+                            <tr key={b.id} className="transition-colors hover:bg-[var(--colors-bg-secondary)]">
                                 <td className={TD}>
                                     <div className="flex items-center gap-3">
                                         <TableAvatar
@@ -679,10 +679,10 @@ function BookedTable({ rows, customerById, classStatus, page, pageSize }: Booked
                                         />
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <div className="text-[14px] font-medium text-[#101828]">{name}</div>
+                                                <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{name}</div>
                                                 {showFirstTimer && <FirstTimerBadge />}
                                             </div>
-                                            <div className="text-[13px] text-[#667085]">{fmtBookingTime(b.bookingTime)}</div>
+                                            <div className="text-[13px] text-[var(--colors-text-quaternary)]">{fmtBookingTime(b.bookingTime)}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -751,7 +751,7 @@ function WaitlistTable({ rows, customerById, page, pageSize }: {
                         const cust = customerById.get(b.customerId);
                         const name = cust ? `${cust.firstName} ${cust.lastName}`.trim() : "Unknown";
                         return (
-                            <tr key={b.id} className="transition-colors hover:bg-[#f9fafb]">
+                            <tr key={b.id} className="transition-colors hover:bg-[var(--colors-bg-secondary)]">
                                 <td className={TD}>
                                     <div className="flex items-center gap-3">
                                         <TableAvatar
@@ -760,8 +760,8 @@ function WaitlistTable({ rows, customerById, page, pageSize }: {
                                             size={40}
                                         />
                                         <div>
-                                            <div className="text-[14px] font-medium text-[#101828]">{name}</div>
-                                            <div className="text-[13px] text-[#667085]">{fmtBookingTime(b.bookingTime)}</div>
+                                            <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{name}</div>
+                                            <div className="text-[13px] text-[var(--colors-text-quaternary)]">{fmtBookingTime(b.bookingTime)}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -822,7 +822,7 @@ function CancelledTable({ rows, customerById, cls, page, pageSize }: {
                             classStartTime: cls.startTime,
                         });
                         return (
-                            <tr key={b.id} className="transition-colors hover:bg-[#f9fafb]">
+                            <tr key={b.id} className="transition-colors hover:bg-[var(--colors-bg-secondary)]">
                                 <td className={TD}>
                                     <div className="flex items-center gap-3">
                                         <TableAvatar
@@ -831,8 +831,8 @@ function CancelledTable({ rows, customerById, cls, page, pageSize }: {
                                             size={40}
                                         />
                                         <div>
-                                            <div className="text-[14px] font-medium text-[#101828]">{name}</div>
-                                            <div className="text-[13px] text-[#667085]">{fmtBookingTime(b.bookingTime)}</div>
+                                            <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{name}</div>
+                                            <div className="text-[13px] text-[var(--colors-text-quaternary)]">{fmtBookingTime(b.bookingTime)}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -888,7 +888,7 @@ function ReviewsTable({ rows, customerById, page, pageSize }: {
                         const name = cust ? `${cust.firstName} ${cust.lastName}`.trim() : "Unknown";
                         const tags = r.tags ?? [];
                         return (
-                            <tr key={r.id} className="transition-colors hover:bg-[#f9fafb]">
+                            <tr key={r.id} className="transition-colors hover:bg-[var(--colors-bg-secondary)]">
                                 <td className={TD}>
                                     <div className="flex items-center gap-3">
                                         <TableAvatar
@@ -897,13 +897,13 @@ function ReviewsTable({ rows, customerById, page, pageSize }: {
                                             size={40}
                                         />
                                         <div>
-                                            <div className="text-[14px] font-medium text-[#101828]">{name}</div>
-                                            <div className="text-[13px] text-[#667085]">{fmtBookingTime(r.submittedAt)}</div>
+                                            <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{name}</div>
+                                            <div className="text-[13px] text-[var(--colors-text-quaternary)]">{fmtBookingTime(r.submittedAt)}</div>
                                         </div>
                                     </div>
                                 </td>
                                 <td className={TD}><RatingStars rating={r.score} /></td>
-                                <td className={cn(TD, "text-[14px] text-[#475467] leading-[20px]")}>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]")}>
                                     <p className="max-w-[420px]">{r.comment}</p>
                                 </td>
                                 <td className={TD}>
@@ -911,7 +911,7 @@ function ReviewsTable({ rows, customerById, page, pageSize }: {
                                         {tags.map(t => (
                                             <span
                                                 key={t}
-                                                className="inline-flex items-center px-[8px] py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#475467]"
+                                                className="inline-flex items-center px-[8px] py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]"
                                             >
                                                 {t}
                                             </span>
@@ -945,7 +945,7 @@ function RatingStars({ rating, size = "md" }: { rating: number; size?: "md" | "l
                     key={i}
                     className={cn(
                         px,
-                        i < full ? "text-[#f79009] fill-[#f79009]" : "text-[#d0d5dd]",
+                        i < full ? "text-[#f79009] fill-[#f79009]" : "text-[var(--colors-border-primary)]",
                     )}
                 />
             ))}
@@ -1024,14 +1024,14 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
 {/* Header */}
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -1039,7 +1039,7 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date range</p>
                         <div className="flex gap-2">
                             <div className="flex-1">
                                 <DatePicker
@@ -1063,11 +1063,11 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                     {/* What stood out */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">What stood out</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">What stood out</p>
                         <div className="flex flex-wrap gap-2">
                             {STOOD_OUT_TAGS.map(t => (
                                 <FilterPill
@@ -1080,11 +1080,11 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                     {/* Ratings */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Ratings</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Ratings</p>
                         <div className="flex flex-wrap gap-2">
                             {RATING_VALUES.map(n => {
                                 const sel = pending.ratings.includes(n);
@@ -1096,8 +1096,8 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                                         className={cn(
                                             "h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors inline-flex items-center gap-1.5",
                                             sel
-                                                ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                                                : "bg-white border-[#d0d5dd] text-[#344054] hover:border-[#aad4bd]",
+                                                ? "bg-[var(--colors-secondary-50)] border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                                                : "bg-white border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] hover:border-[var(--colors-secondary-300)]",
                                         )}
                                     >
                                         <Star01 className="w-4 h-4 text-[#fdb022]" fill="#fdb022" />
@@ -1110,7 +1110,7 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 {/* Footer */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button
                         variant="secondary-gray"
                         size="md"

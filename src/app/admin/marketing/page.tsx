@@ -132,8 +132,8 @@ function branchLabel(branchIds: string[] | undefined, totalBranches: number): st
 function MarketingAttribute({ icon, label }: { icon: React.ReactNode; label: string }) {
     return (
         <div className="flex items-center gap-1 min-w-0">
-            <span className="w-4 h-4 shrink-0 text-[#667085]">{icon}</span>
-            <span className="text-[14px] text-[#667085] truncate">{label}</span>
+            <span className="w-4 h-4 shrink-0 text-[var(--colors-text-quaternary)]">{icon}</span>
+            <span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{label}</span>
         </div>
     );
 }
@@ -144,8 +144,8 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
     // Active items get the deep-slate gradient fallback; inactive / archived /
     // expired items render the muted gray gradient (Figma grayscale state).
     const bannerClass = status === "active"
-        ? "bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467]"
-        : "bg-gradient-to-br from-[#475467] via-[#667085] to-[#98a2b3]";
+        ? "bg-gradient-to-br from-[#1d2939] via-[var(--colors-text-secondary)] to-[var(--colors-text-tertiary)]"
+        : "bg-gradient-to-br from-[var(--colors-text-tertiary)] via-[var(--colors-text-quaternary)] to-[var(--colors-fg-quaternary)]";
     // ── Kebab menu wiring ────────────────────────────────────────────────
     const updateMarketingItem = useAppStore(s => s.updateMarketingItem);
     const deleteMarketingItem = useAppStore(s => s.deleteMarketingItem);
@@ -209,9 +209,9 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
         <div
             onClick={onOpen}
             className={cn(
-                "bg-white border-1 border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col cursor-pointer",
+                "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden flex flex-col cursor-pointer",
                 "transition-all duration-150",
-                "hover:border-[#658774] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
+                "hover:border-[var(--colors-secondary-600)] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
             )}>
             {/* Banner — verbatim match for the customer-side campaign
                 carousel (`src/components/customer/home/WhatsOn.tsx`):
@@ -237,10 +237,10 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
             <div className="flex flex-col gap-4 px-4 py-5">
                 <div className="flex flex-row items-start gap-2">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <p className="text-[18px] font-medium text-[#101828] leading-7 truncate">
+                        <p className="text-[18px] font-medium text-[var(--colors-text-primary)] leading-7 truncate">
                             {item.title}
                         </p>
-                        <p className="text-[14px] text-[#667085] leading-5 line-clamp-2">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 line-clamp-2">
                             {item.short_description || "—"}
                         </p>
                     </div>
@@ -263,12 +263,12 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
                 </div>
 
                 {/* Dashed divider */}
-                <div className="border-t border-dashed border-[#e4e7ec]" />
+                <div className="border-t border-dashed border-[var(--colors-border-secondary)]" />
 
                 {/* Valid until */}
                 <div className="flex items-center gap-1 text-[14px]">
-                    <span className="text-[#667085]">Valid until</span>
-                    <span className="font-medium text-[#101828]">{formatValidUntil(item.expiry_date)}</span>
+                    <span className="text-[var(--colors-text-quaternary)]">Valid until</span>
+                    <span className="font-medium text-[var(--colors-text-primary)]">{formatValidUntil(item.expiry_date)}</span>
                 </div>
             </div>
         </div>
@@ -302,8 +302,8 @@ function FilterPill({ label, selected, onClick }: {
             className={cn(
                 "px-4 py-2 rounded-[8px] text-[14px] font-medium border-1 transition-colors",
                 selected
-                    ? "bg-[#f5fffa] border-[#7ba08c] text-[#3b5446]"
-                    : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)] text-[#3b5446]"
+                    : "bg-white border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
             )}>
             {label}
         </button>
@@ -348,18 +348,18 @@ function FilterPanel({ open, applied, onClose, onApply }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Status — multi-select pills */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {FILTER_STATUSES.map(s => (
                                 <FilterPill key={s} label={STATUS_LABEL[s]}
@@ -369,11 +369,11 @@ function FilterPanel({ open, applied, onClose, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Marketing date range — filters by the item's expiry date */}
                     <div className="flex flex-col gap-1.5">
-                        <p className="text-[14px] font-medium text-[#344054]">Marketing date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Marketing date range</p>
                         <div className="flex gap-4 items-start">
                             <div className="flex-1 min-w-0">
                                 <DatePicker
@@ -399,7 +399,7 @@ function FilterPanel({ open, applied, onClose, onApply }: {
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
@@ -436,7 +436,7 @@ export default function MarketingListPage() {
         .map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })), [branches]);
     const totalBranches = branches.length;
 

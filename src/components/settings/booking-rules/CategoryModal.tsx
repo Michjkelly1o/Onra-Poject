@@ -117,16 +117,16 @@ export function CategoryModal({ existing, onClose, onSubmit, takenNames, entityL
             <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[440px] flex flex-col">
                 {/* ── Header ─────────────────────────────────────────── */}
                 <div className="relative px-6 pt-6 pb-5">
-                    <p className="text-[18px] font-semibold text-[#101828] leading-7 pr-12">
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7 pr-12">
                         {title}
                     </p>
                     <button
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        className="absolute top-[16px] right-[16px] w-[44px] h-[44px] flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
-                        <XClose className="w-6 h-6 text-[#98a2b3]" />
+                        <XClose className="w-6 h-6 text-[var(--colors-fg-quaternary)]" />
                     </button>
                 </div>
 
@@ -201,12 +201,12 @@ export function CategoryModal({ existing, onClose, onSubmit, takenNames, entityL
 function CategoryAvatar({ src }: { src: string }) {
     return (
         <div
-            className="relative w-[96px] h-[96px] rounded-full bg-[#f2f4f7] shrink-0 overflow-hidden flex items-center justify-center"
+            className="relative w-[96px] h-[96px] rounded-full bg-[var(--colors-bg-tertiary)] shrink-0 overflow-hidden flex items-center justify-center"
         >
             {src
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={src} alt="" className="w-full h-full object-cover rounded-full" />
-                : <Image01 className="w-12 h-12 text-[#475467]" />
+                : <Image01 className="w-12 h-12 text-[var(--colors-text-tertiary)]" />
             }
             <div className="absolute inset-0 rounded-full border-1 border-[rgba(0,0,0,0.08)] pointer-events-none" />
         </div>

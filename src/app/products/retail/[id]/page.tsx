@@ -121,7 +121,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}>
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
@@ -132,8 +132,8 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 function SidebarField({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <p className="text-[16px] font-medium text-[#101828]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{value}</p>
         </div>
     );
 }
@@ -155,7 +155,7 @@ function ProductBanner({ imageUrl, name, status }: {
                     onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
             ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-[#e9fff3] to-[#f5fffa]" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--colors-secondary-50)] to-[#f5fffa]" />
             )}
             <div className="absolute top-3 right-3">
                 <StatusBadge type="product" status={status} size="lg" />
@@ -227,15 +227,15 @@ function LeftSidebar({
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <div className="w-[320px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             <ProductBanner imageUrl={product.imageUrl} name={product.name} status={status} />
 
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div>
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{product.name}</h2>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{product.name}</h2>
                         {product.description && (
-                            <p className="text-[14px] text-[#667085] leading-[20px] mt-1 line-clamp-2">{product.description}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] mt-1 line-clamp-2">{product.description}</p>
                         )}
                     </div>
 
@@ -250,8 +250,8 @@ function LeftSidebar({
                 </div>
 
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Retail product actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Retail product actions</p>
                     <div className="flex flex-col gap-4">{actions}</div>
                 </div>
             </div>
@@ -279,16 +279,16 @@ function RightPanel({ product, categoryLabel, stockRows, adjRows, branches }: {
     ];
 
     return (
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
-            <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[var(--colors-border-secondary)] rounded-[20px]">
+            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                 <div className="flex gap-1">
                     {tabsCopy.map(t => (
                         <button key={t.id} type="button" onClick={() => setTab(t.id)}
                             className={cn(
                                 "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
                                 tab === t.id
-                                    ? "border-b-2 border-[#101828] text-[#101828]"
-                                    : "text-[#667085] hover:text-[#344054]",
+                                    ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                    : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                             )}>
                             {t.label}
                         </button>
@@ -318,15 +318,15 @@ function RightPanel({ product, categoryLabel, stockRows, adjRows, branches }: {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
     return (
-        <p className="text-[14px] text-[#667085] mt-2 first:mt-0">{children}</p>
+        <p className="text-[14px] text-[var(--colors-text-quaternary)] mt-2 first:mt-0">{children}</p>
     );
 }
 
 function DescriptionCard({ label, body }: { label: string; body: string }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-            <p className="text-[16px] text-[#101828] leading-6 whitespace-pre-line">{body || "—"}</p>
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+            <p className="text-[16px] text-[var(--colors-text-primary)] leading-6 whitespace-pre-line">{body || "—"}</p>
         </div>
     );
 }
@@ -342,12 +342,12 @@ function InlineStat({ icon, label, value }: {
 }) {
     return (
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center shrink-0 text-[#475467]">
+            <div className="w-10 h-10 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center shrink-0 text-[var(--colors-text-tertiary)]">
                 {icon}
             </div>
             <div className="flex flex-col min-w-0">
-                <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-                <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{value}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+                <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">{value}</p>
             </div>
         </div>
     );
@@ -359,18 +359,18 @@ function InlineStat({ icon, label, value }: {
 function SizesCard({ sizes }: { sizes: string[] }) {
     const [open, setOpen] = useState(true);
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5">Sizes</p>
-                    <p className="text-[14px] text-[#667085] leading-5">The sizes this product is stocked in.</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Sizes</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">The sizes this product is stocked in.</p>
                 </div>
-                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054] shrink-0">
+                <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {sizes.length} sizes
                 </span>
                 <button type="button" onClick={() => setOpen(p => !p)}
                     aria-label={open ? "Collapse" : "Expand"}
-                    className="w-5 h-5 flex items-center justify-center text-[#667085] shrink-0 hover:text-[#344054] transition-colors">
+                    className="w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] shrink-0 hover:text-[var(--colors-text-secondary)] transition-colors">
                     {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
             </div>
@@ -378,10 +378,10 @@ function SizesCard({ sizes }: { sizes: string[] }) {
                 <div className="flex flex-col gap-3">
                     {sizes.map(s => (
                         <div key={s} className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-[6px] bg-[#f2f4f7] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0">
-                                <Check className="w-3 h-3 text-[#98a2b3]" />
+                            <span className="w-5 h-5 rounded-[6px] bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0">
+                                <Check className="w-3 h-3 text-[var(--colors-fg-quaternary)]" />
                             </span>
-                            <span className="text-[14px] font-medium text-[#101828]">{s}</span>
+                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s}</span>
                         </div>
                     ))}
                 </div>
@@ -522,7 +522,7 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
                             return (
                                 <tr key={c.key}>
                                     <td className={TD}>{c.branchName}</td>
-                                    {isSized && <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{c.size}</td>}
+                                    {isSized && <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{c.size}</td>}
                                     <td className={cn(TD, "whitespace-nowrap")}>
                                         <span className={cn(
                                             isOut && "text-[#b42318] font-medium",
@@ -534,10 +534,10 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
                                     <td className={cn(TD, "whitespace-nowrap tabular-nums")}>
                                         {c.sold > 0 ? `${c.sold} units` : "—"}
                                     </td>
-                                    <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
+                                    <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
                                         {product.reorderThreshold}
                                     </td>
-                                    <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
+                                    <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
                                         {formatDate(c.row?.lastAdjustedAt)}
                                     </td>
                                 </tr>
@@ -595,13 +595,13 @@ function ActivityTab({ product, adjRows, branches }: {
                             const positive = a.delta > 0;
                             return (
                                 <tr key={a.id}>
-                                    <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{formatDate(a.createdAt)}</td>
+                                    <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{formatDate(a.createdAt)}</td>
                                     <td className={TD}>{branch?.name ?? "—"}</td>
                                     <td className={cn(TD)}>{KIND_LABEL[a.kind]}</td>
                                     <td className={cn(TD, "whitespace-nowrap font-medium", positive ? "text-[#067647]" : "text-[#b42318]")}>
                                         {positive ? `+${a.delta} units` : `${a.delta} units`}
                                     </td>
-                                    <td className={cn(TD, "text-[#475467]")}>{a.reason ?? "—"}</td>
+                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{a.reason ?? "—"}</td>
                                 </tr>
                             );
                         })}
@@ -660,8 +660,8 @@ function RetailProductDetailPageInner() {
         return (
             <div className="h-screen bg-white flex items-center justify-center px-6 py-10">
                 <div className="max-w-md text-center flex flex-col gap-3">
-                    <p className="text-[18px] font-semibold text-[#101828]">Product not found</p>
-                    <p className="text-[14px] text-[#667085]">
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Product not found</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                         This product may have been deleted. Head back to the retail list.
                     </p>
                     <Button variant="primary" size="md" onClick={() => router.push("/admin/products/retail")}>
@@ -729,13 +729,13 @@ function RetailProductDetailPageInner() {
                 <button
                     type="button"
                     onClick={() => router.push("/admin/products/retail")}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                     aria-label="Close"
                 >
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Retail product details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Retail product details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>

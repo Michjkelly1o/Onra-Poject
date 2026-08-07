@@ -392,7 +392,11 @@ export const class_bookings: ClassBooking[] = [
     },
     {
         id: "bk_mia_cancel_3", class_schedule_id: "class_sched_2026_05_11_0700",
-        customer_id: "cust_mia_anderson", branch_id: "branch_forma_south",
+        // branch_id must match the booked class's branch — this class
+        // (class_sched_2026_05_11_0700) is Hot Yoga at Forma East, not South.
+        // Audit Phase 7, 2026-08-05 — keeps booking.branch_id in sync with the
+        // schedule so branch-scoped reports/dashboards filter it correctly.
+        customer_id: "cust_mia_anderson", branch_id: "branch_forma_east",
         status: "cancelled", attendance_status: "late_cancel",
         booked_at: "2026-05-04T18:00:00Z",
         cancelled_at: "2026-05-11T06:30:00Z",

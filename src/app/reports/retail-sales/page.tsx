@@ -14,7 +14,7 @@ import { getReportById, resolveSelector } from "@/config/reports-registry";
 import type { RetailSalesRow } from "@/lib/reports/selectors";
 
 const CHANNEL_LABEL: Record<RetailSalesRow["salesChannel"], string> = {
-    "in-person": "In person",
+    "in-person": "POS",
     online:      "Online",
 };
 
@@ -80,7 +80,7 @@ export default function RetailSalesReportPage() {
 
     if (!report) {
         return (
-            <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">
+            <div className="px-[24px] py-[48px] text-[14px] text-[var(--colors-text-tertiary)]">
                 Retail Sales report definition is missing from the registry.
             </div>
         );

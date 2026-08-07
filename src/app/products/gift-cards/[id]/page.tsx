@@ -107,7 +107,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}>
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
@@ -205,27 +205,27 @@ function LeftSidebar({ design, customerCount, onAction }: {
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <div className="w-[320px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             <DecorativeBanner bannerHeight={156} iconBox={72} icon={Gift01} {...BANNER_TINTS.giftCard} />
 
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
-                    <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{design.name}</h2>
+                    <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{design.name}</h2>
 
                     <div className="flex flex-col gap-3">
                         <SidebarField label="Price" value={formatAed(design.price_aed ?? 0)} />
                         <SidebarField label="Valid until" value={validUntilLabel(design)} />
                         <SidebarField label="Active customers" value={`${customerCount} ${customerCount === 1 ? "Customer" : "Customers"}`} />
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Status</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Status</p>
                             <div><StatusBadge type="gift-card" status={status} size="lg" label={status === "archived" ? "Archive" : undefined} /></div>
                         </div>
                     </div>
                 </div>
 
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Gift card actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Gift card actions</p>
                     <div className="flex flex-col gap-4">{actions}</div>
                 </div>
             </div>
@@ -236,8 +236,8 @@ function LeftSidebar({ design, customerCount, onAction }: {
 function SidebarField({ label, value, suffix }: { label: string; value: string; suffix?: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[14px] text-[#667085]">{label}</p>
-            <p className="text-[16px] font-medium text-[#101828]">{value}</p>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{value}</p>
             {suffix}
         </div>
     );
@@ -259,16 +259,16 @@ function RightPanel({ design, holders }: {
     ];
 
     return (
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[#e4e7ec] rounded-[20px]">
-            <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[var(--colors-border-secondary)] rounded-[20px]">
+            <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                 <div className="flex gap-1">
                     {tabsCopy.map(t => (
                         <button key={t.id} type="button" onClick={() => setTab(t.id)}
                             className={cn(
                                 "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
                                 tab === t.id
-                                    ? "border-b-2 border-[#101828] text-[#101828]"
-                                    : "text-[#667085] hover:text-[#344054]",
+                                    ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                    : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                             )}>
                             {t.label}
                         </button>
@@ -347,7 +347,7 @@ function DetailsTab({ design }: { design: GiftCardDesign }) {
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
-    return <p className="text-[14px] text-[#667085] mt-2 first:mt-0">{children}</p>;
+    return <p className="text-[14px] text-[var(--colors-text-quaternary)] mt-2 first:mt-0">{children}</p>;
 }
 
 function DescriptionCard({ body }: { body: string }) {
@@ -355,12 +355,12 @@ function DescriptionCard({ body }: { body: string }) {
     const isTruncatable = body.length > 280;
     const shown = expanded || !isTruncatable ? body : `${body.slice(0, 280).trimEnd()}…`;
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <p className="text-[14px] text-[#667085] leading-5">Description</p>
-            <p className="text-[16px] text-[#101828] leading-6 whitespace-pre-line">{shown}</p>
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-2 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Description</p>
+            <p className="text-[16px] text-[var(--colors-text-primary)] leading-6 whitespace-pre-line">{shown}</p>
             {isTruncatable && (
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="self-start text-[14px] font-medium text-[#658774] hover:text-[#4f6e5d] transition-colors">
+                    className="self-start text-[14px] font-medium text-[var(--colors-secondary-600)] hover:text-[#4f6e5d] transition-colors">
                     {expanded ? "See less" : "See more"}
                 </button>
             )}
@@ -377,15 +377,15 @@ function InlineStat({ icon, label, value, tooltip, suffix }: {
 }) {
     return (
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[8px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center shrink-0 text-[#475467]">
+            <div className="w-10 h-10 rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center shrink-0 text-[var(--colors-text-tertiary)]">
                 {icon}
             </div>
             <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1.5">
-                    <p className="text-[14px] text-[#667085] leading-5">{label}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
                     {tooltip && <HelpTooltip text={tooltip} />}
                 </div>
-                <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{value}</p>
+                <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">{value}</p>
                 {suffix}
             </div>
         </div>
@@ -401,7 +401,7 @@ function HelpTooltip({ text }: { text: string }) {
                 onMouseLeave={() => setOpen(false)}
                 onFocus={() => setOpen(true)}
                 onBlur={() => setOpen(false)}
-                className="text-[#98a2b3] hover:text-[#667085] transition-colors">
+                className="text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-quaternary)] transition-colors">
                 <HelpCircle className="w-4 h-4" />
             </button>
             {open && (
@@ -455,8 +455,8 @@ function ActiveCustomersTab({ holders, cardName }: {
             {/* Toolbar */}
             <div className="shrink-0 flex items-center gap-3 px-6 py-4">
                 <div className="flex-1">
-                    <p className="text-[14px] text-[#667085]">Total</p>
-                    <p className="text-[14px] font-medium text-[#101828]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">
                         {filtered.length} {filtered.length === 1 ? "Customer" : "Customers"}
                     </p>
                 </div>
@@ -477,16 +477,16 @@ function ActiveCustomersTab({ holders, cardName }: {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]">
                                         <SortableHeader sortKey="name"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
                                     </th>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]">
                                         <SortableHeader sortKey="contact" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Contact</SortableHeader>
                                     </th>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]">
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]">
                                         <SortableHeader sortKey="balance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Amount left &amp; expired</SortableHeader>
                                     </th>
-                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec] w-[52px]"></th>
+                                    <th className="px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)] w-[52px]"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -518,37 +518,37 @@ function HolderRow({ holder }: { holder: GiftCardHolder }) {
 
     return (
         <tr onClick={goToCustomer}
-            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
-            <td className="px-4 py-4 border-b border-[#f2f4f7]">
+            className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
+            <td className="px-4 py-4 border-b border-[var(--colors-bg-tertiary)]">
                 <div className="flex items-center gap-3">
                     <CustomerAvatar customer={c} />
-                    <span className="text-[14px] font-medium text-[#101828]">{c.firstName} {c.lastName}</span>
+                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{c.firstName} {c.lastName}</span>
                 </div>
             </td>
-            <td className="px-4 py-4 border-b border-[#f2f4f7]">
+            <td className="px-4 py-4 border-b border-[var(--colors-bg-tertiary)]">
                 <div className="flex flex-col">
-                    <span className="text-[14px] text-[#101828]">{c.email}</span>
-                    {c.phone && <span className="text-[14px] text-[#667085]">{c.phone}</span>}
+                    <span className="text-[14px] text-[var(--colors-text-primary)]">{c.email}</span>
+                    {c.phone && <span className="text-[14px] text-[var(--colors-text-quaternary)]">{c.phone}</span>}
                 </div>
             </td>
-            <td className="px-4 py-4 border-b border-[#f2f4f7]">
+            <td className="px-4 py-4 border-b border-[var(--colors-bg-tertiary)]">
                 <div className="flex flex-col">
-                    <span className="text-[14px] font-medium text-[#101828]">{formatAed(holder.issuedCard.current_balance_aed)} left</span>
-                    <span className="text-[14px] text-[#475467]">{formatExpiry(holder.issuedCard.expires_at)}</span>
+                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{formatAed(holder.issuedCard.current_balance_aed)} left</span>
+                    <span className="text-[14px] text-[var(--colors-text-tertiary)]">{formatExpiry(holder.issuedCard.expires_at)}</span>
                 </div>
             </td>
             <td onClick={e => e.stopPropagation()}
-                className="px-4 py-4 border-b border-[#f2f4f7]">
+                className="px-4 py-4 border-b border-[var(--colors-bg-tertiary)]">
                 <div className="relative">
                     <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                        <DotsVertical className="w-4 h-4 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-tertiary)] transition-colors">
+                        <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={180}>
                         <button type="button"
                             onClick={() => { setOpen(false); goToCustomer(); }}
-                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                            <Eye className="w-4 h-4 text-[#667085]" />View customer
+                            className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                            <Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />View customer
                         </button>
                     </FixedDropdown>
                 </div>
@@ -582,30 +582,30 @@ function CustomersPagination({ page, total, pageSize, onPage, onPageSize }: {
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
     return (
-        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[#e4e7ec]">
+        <div className="shrink-0 flex items-center gap-3 py-4 border-t border-[var(--colors-border-secondary)]">
             <div ref={sizeRef} className="relative flex items-center gap-2 flex-1">
                 <button type="button" onClick={() => setSizeOpen(p => !p)}
-                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054]">
-                    {pageSize}<ChevronLeft className="w-4 h-4 text-[#667085] rotate-90" />
+                    className="flex items-center gap-1 px-3 py-[7px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[var(--colors-text-secondary)]">
+                    {pageSize}<ChevronLeft className="w-4 h-4 text-[var(--colors-text-quaternary)] rotate-90" />
                 </button>
                 {sizeOpen && (
-                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
+                    <div className="absolute bottom-[calc(100%+4px)] left-0 z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1 min-w-[80px]">
                         {[10, 20, 30].map(s => (
                             <button key={s} type="button" onClick={() => { onPageSize(s); setSizeOpen(false); }}
-                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[#f9fafb] transition-colors", s === pageSize ? "text-[#101828] font-semibold" : "text-[#344054]")}>{s}</button>
+                                className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium hover:bg-[var(--colors-bg-secondary)] transition-colors", s === pageSize ? "text-[var(--colors-text-primary)] font-semibold" : "text-[var(--colors-text-secondary)]")}>{s}</button>
                         ))}
                     </div>
                 )}
-                <span className="text-[14px] font-medium text-[#344054]">per page</span>
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">per page</span>
             </div>
             <div className="flex items-center gap-3">
-                <span className="text-[14px] font-medium text-[#344054] whitespace-nowrap">Page {page} of {totalPages}</span>
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] whitespace-nowrap">Page {page} of {totalPages}</span>
                 <button type="button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}
                     className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page <= 1 ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Previous</button>
+                        page <= 1 ? "border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed bg-white" : "border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)]")}>Previous</button>
                 <button type="button" disabled={page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}
                     className={cn("px-3 py-[7px] border-1 rounded-[8px] text-[14px] font-semibold shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
-                        page >= totalPages ? "border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed bg-white" : "border-[#d0d5dd] text-[#344054] bg-white hover:bg-[#f9fafb]")}>Next</button>
+                        page >= totalPages ? "border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed bg-white" : "border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)]")}>Next</button>
             </div>
         </div>
     );
@@ -640,9 +640,9 @@ function GiftCardDetailPageInner() {
     if (!design) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">Gift card not found</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Gift card not found</p>
                 <button type="button" onClick={() => router.push(returnTo)}
-                    className="mt-4 text-[14px] text-[#658774] hover:underline">
+                    className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                     Back to gift cards
                 </button>
             </div>
@@ -690,11 +690,11 @@ function GiftCardDetailPageInner() {
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Gift card details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Gift card details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>

@@ -9,11 +9,11 @@
 // likely shared elsewhere too).
 //
 // Visual chrome:
-//   • Container: `flex items-center gap-... border-b border-[#e4e7ec]`
+//   • Container: `flex items-center gap-... border-b border-[var(--colors-border-secondary)]`
 //     (passed from caller, the row gap depends on call site)
 //   • Active button: `h-[48px] px-3 text-[14px] font-semibold whitespace-nowrap
-//     border-b-2 border-[#101828] text-[#101828]`
-//   • Inactive: `text-[#667085] hover:text-[#344054]`
+//     border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]`
+//   • Inactive: `text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]`
 //
 // API: a `tabs` array of `{ key, label, count?, hidden? }` entries + the
 // current `activeKey` + `onChange`. The caller still owns the URL or store
@@ -39,7 +39,7 @@ export interface DetailPageTabsProps {
     tabs: DetailPageTabDef[];
     activeKey: string;
     onChange: (key: string) => void;
-    /** Wrapper className. Default: `flex items-center gap-1 border-b border-[#e4e7ec]`.
+    /** Wrapper className. Default: `flex items-center gap-1 border-b border-[var(--colors-border-secondary)]`.
      *  Pass `gap-4` or other tweaks via this prop. */
     className?: string;
     /** Compact tab metrics that match the dashboard tab strip exactly
@@ -71,14 +71,14 @@ export function DetailPageTabs({ tabs, activeKey, onChange, className, compact =
                             // taller detail-page default.
                             compact ? "h-8 pb-3 flex items-center" : "h-[48px]",
                             active
-                                ? "border-b-2 border-[#101828] text-[#101828]"
-                                : "text-[#667085] hover:text-[#344054]",
+                                ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                             t.disabled && "opacity-50 cursor-not-allowed",
                         )}
                     >
                         {t.label}
                         {t.count != null && (
-                            <span className="ml-1 text-[#667085] font-normal">({t.count})</span>
+                            <span className="ml-1 text-[var(--colors-text-quaternary)] font-normal">({t.count})</span>
                         )}
                     </button>
                 );

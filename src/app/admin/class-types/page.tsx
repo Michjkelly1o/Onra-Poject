@@ -149,9 +149,9 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
         <div
             onClick={() => router.push(detailHref)}
             className={cn(
-                "bg-white border border-[#e4e7ec] rounded-[16px] overflow-hidden flex flex-col cursor-pointer",
+                "bg-white border border-[var(--colors-border-secondary)] rounded-[16px] overflow-hidden flex flex-col cursor-pointer",
                 "transition-all duration-150",
-                "hover:border-[#658774] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
+                "hover:border-[var(--colors-secondary-600)] hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.08),0px_2px_4px_-2px_rgba(16,24,40,0.03)]",
             )}>
             {/* Banner — fixed 4:3 so the cover image stays the same shape at
                 every screen width instead of stretching wide on large monitors. */}
@@ -173,8 +173,8 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
             <div className="flex flex-col gap-4 px-5 pb-5 pt-4">
                 <div className="flex flex-row items-start gap-2">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <h3 className="font-medium text-[18px] leading-[28px] text-[#101828]">{template.name}</h3>
-                        <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-2">{template.description}</p>
+                        <h3 className="font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{template.name}</h3>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] line-clamp-2">{template.description}</p>
                     </div>
                     {/* Kebab — stop click propagation so the card's own onClick
                         (view details) doesn't fire alongside a menu open. */}
@@ -185,22 +185,22 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
                 <div className="flex flex-col gap-2">
                     <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <Grid01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085] truncate">{template.category}</span>
+                            <Grid01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{template.category}</span>
                         </div>
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <User01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085] truncate">{template.locationType}</span>
+                            <User01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{template.locationType}</span>
                         </div>
                     </div>
                     <div className="flex gap-2">
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <ClockFastForward className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085]">{template.durationMin} min</span>
+                            <ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)]">{template.durationMin} min</span>
                         </div>
                         <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                            <span className="text-[14px] text-[#667085]">{template.capacity} max</span>
+                            <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[14px] text-[var(--colors-text-quaternary)]">{template.capacity} max</span>
                         </div>
                     </div>
                 </div>
@@ -237,8 +237,8 @@ function Pill({ label, selected, onClick }: { label: string; selected: boolean; 
             className={cn(
                 "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all whitespace-nowrap",
                 selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                    ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                    : "bg-white border border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
             )}
         >
             {label}
@@ -286,14 +286,14 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
     return (
         <SlidePanel open={open} onClose={onClose} width={400} zIndex={50}>
 {/* Header */}
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -301,7 +301,7 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {ALL_STATUSES.map(s => (
                                 <Pill
@@ -315,11 +315,11 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
                     </div>
 
                     {/* Divider */}
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Categories */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Categories</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Categories</p>
                         <div className="flex flex-wrap gap-2">
                             {allCategories.map(c => (
                                 <Pill
@@ -334,7 +334,7 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button
                         variant="secondary-gray"
                        
@@ -364,15 +364,15 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
 
 function EmptyStateIllustration() {
     return (
-        <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
+        <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
             <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02),-3px_4.4px_10.2px_rgba(0,0,0,0.02)]">
-                <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center shadow-[0px_1.5px_1.5px_rgba(0,0,0,0.04)]">
-                    <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center shadow-[0px_1.5px_1.5px_rgba(0,0,0,0.04)]">
+                    <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                 </div>
             </div>
             <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
             </div>
         </div>
     );
@@ -426,21 +426,21 @@ export default function ClassTypesPage() {
                     <div className="flex flex-col items-center gap-6 pointer-events-auto">
                         <EmptyStateIllustration />
                         <div className="flex flex-col items-center gap-1 text-center max-w-[352px]">
-                            <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">No class templates yet</p>
-                            <p className="text-[14px] text-[#475467] leading-[20px]">Create your first template to start scheduling classes.</p>
+                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">No class templates yet</p>
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Create your first template to start scheduling classes.</p>
                         </div>
                     </div>
                 </div>
             ) : visible.length === 0 ? (
                 /* Filtered/search empty */
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
-                    <p className="text-[16px] font-medium text-[#344054]">No templates found</p>
-                    <p className="text-[14px] text-[#667085]">
+                    <p className="text-[16px] font-medium text-[var(--colors-text-secondary)]">No templates found</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                         {hasActiveFilters ? "Try adjusting your filters" : `No results for "${search}"`}
                     </p>
                     {hasActiveFilters && (
                         <button type="button" onClick={() => setApplied({ statuses: [], categories: [] })}
-                            className="text-[14px] text-[#658774] hover:underline font-medium">
+                            className="text-[14px] text-[var(--colors-secondary-600)] hover:underline font-medium">
                             Clear all filters
                         </button>
                     )}

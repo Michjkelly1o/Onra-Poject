@@ -218,7 +218,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                                     className={`flex h-8 flex-1 items-center justify-center px-2 pb-3 text-sm leading-5 transition-colors ${
                                         active
                                             ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
-                                            : "font-medium text-[#667085]"
+                                            : "font-medium text-[var(--colors-text-quaternary)]"
                                     }`}
                                 >
                                     {t === "upcoming" ? "Upcoming" : "Past"}
@@ -232,9 +232,9 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                     type="button"
                     onClick={() => router.push("/customer/profile")}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">Bookings</p>
                 <button
@@ -244,9 +244,9 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
                         setFilterOpen(true);
                     }}
                     aria-label="Filter"
-                    className="relative flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="relative flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <Sliders02 className="size-5 text-[#344054]" aria-hidden />
+                    <Sliders02 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     {fcount > 0 && (
                         <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[var(--brand-primary)] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                             {fcount}
@@ -258,7 +258,7 @@ export function BookingsView({ tab }: { tab: BookingTab }) {
             <div className="flex flex-1 flex-col px-4 pb-4 pt-[116px]">
                 {/* Result total — shown whenever a filter narrows the list. */}
                 {fcount > 0 && (
-                    <p className="pb-3 text-sm font-normal leading-5 text-[#475467]">
+                    <p className="pb-3 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         {list.length + filteredAppts.length} result{list.length + filteredAppts.length === 1 ? "" : "s"}
                     </p>
                 )}

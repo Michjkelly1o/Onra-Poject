@@ -24,19 +24,19 @@ export function SalesCommissionCard({ commission, embedded = false }: { commissi
     const pendingBonuses = commission.bonusLines.filter(b => !b.fired);
 
     return (
-        <div className={embedded ? "flex flex-col gap-4" : "border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-4 bg-white"}>
+        <div className={embedded ? "flex flex-col gap-4" : "border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6 flex flex-col gap-4 bg-white"}>
             {!embedded && (
                 <>
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] font-semibold text-[#101828]">Sales commission</p>
-                            <p className="text-[13px] text-[#667085] leading-[18px]">
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)]">Sales commission</p>
+                            <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px]">
                                 Earned on sales &amp; bookings credited to this staff in the selected period.
                             </p>
                         </div>
-                        <p className="text-[20px] font-semibold text-[#101828] leading-[28px]">{aed(commission.totalCommission)}</p>
+                        <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">{aed(commission.totalCommission)}</p>
                     </div>
-                    {(lines.length > 0 || commission.bonusLines.length > 0) && <div className="h-px w-full bg-[#e4e7ec]" />}
+                    {(lines.length > 0 || commission.bonusLines.length > 0) && <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />}
                 </>
             )}
 
@@ -50,7 +50,7 @@ export function SalesCommissionCard({ commission, embedded = false }: { commissi
             {/* Bonuses */}
             {commission.bonusLines.length > 0 && (
                 <>
-                    <p className="text-[13px] font-medium text-[#667085]">Bonuses</p>
+                    <p className="text-[13px] font-medium text-[var(--colors-text-quaternary)]">Bonuses</p>
                     <div className="flex flex-col gap-2">
                         {firedBonuses.map((b, i) => <BonusRow key={`bf${i}`} bonus={b} />)}
                         {pendingBonuses.map((b, i) => <BonusRow key={`bp${i}`} bonus={b} />)}
@@ -59,11 +59,11 @@ export function SalesCommissionCard({ commission, embedded = false }: { commissi
             )}
 
             {lines.length === 0 && commission.bonusLines.length === 0 && (
-                <p className="text-[13px] text-[#667085]">No commission configured on this pay rate.</p>
+                <p className="text-[13px] text-[var(--colors-text-quaternary)]">No commission configured on this pay rate.</p>
             )}
 
             {commission.refundTransactionIds.length > 0 && (
-                <p className="text-[12px] text-[#667085] leading-[16px]">
+                <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[16px]">
                     Refunds &amp; voids in the period reduce the net sales figure before commission is applied.
                 </p>
             )}
@@ -79,11 +79,11 @@ function CommissionRow({ line }: { line: CommissionLine }) {
     const subLabel = line.valueType === "percent" ? "net sales" : "sales";
     return (
         <div className="flex flex-col gap-1">
-            <p className="text-[13px] text-[#667085]">{label}</p>
-            <p className="text-[15px] font-medium text-[#101828] leading-[22px]">
+            <p className="text-[13px] text-[var(--colors-text-quaternary)]">{label}</p>
+            <p className="text-[15px] font-medium text-[var(--colors-text-primary)] leading-[22px]">
                 {line.count} {subLabel}
             </p>
-            <p className="text-[13px] text-[#475467]">{math} = <span className="font-medium text-[#101828]">{aed(line.commissionAed)}</span></p>
+            <p className="text-[13px] text-[var(--colors-text-tertiary)]">{math} = <span className="font-medium text-[var(--colors-text-primary)]">{aed(line.commissionAed)}</span></p>
         </div>
     );
 }
@@ -93,12 +93,12 @@ function BonusRow({ bonus }: { bonus: BonusLine }) {
     const reward = bonus.valueType === "percent" ? `${bonus.value}%` : aed(bonus.value);
     return (
         <div className="flex items-center justify-between gap-3">
-            <p className="text-[13px] text-[#475467]">
+            <p className="text-[13px] text-[var(--colors-text-tertiary)]">
                 {label} — {reward} after {bonus.threshold} ({bonus.count}/{bonus.threshold})
             </p>
             {bonus.fired
                 ? <span className="text-[13px] font-medium text-[#067647]">{aed(bonus.bonusAed)}</span>
-                : <span className="text-[12px] font-medium text-[#98a2b3]">Not yet</span>}
+                : <span className="text-[12px] font-medium text-[var(--colors-fg-quaternary)]">Not yet</span>}
         </div>
     );
 }

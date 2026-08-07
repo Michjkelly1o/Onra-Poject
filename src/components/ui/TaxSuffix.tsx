@@ -49,7 +49,7 @@ export function TaxSuffix({ category, branchId, className }: TaxSuffixProps) {
     if (match.rate.type === "exempt") return null;
 
     return (
-        <span className={cn("text-[12px] text-[#667085] whitespace-nowrap", className)}>
+        <span className={cn("text-[12px] text-[var(--colors-text-quaternary)] whitespace-nowrap", className)}>
             {pricesIncludeTax
                 ? `Inc. ${match.rate.ratePercentage}% tax`
                 : `+ ${match.rate.ratePercentage}% tax`}

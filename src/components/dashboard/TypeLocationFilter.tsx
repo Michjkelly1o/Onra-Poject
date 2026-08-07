@@ -70,15 +70,15 @@ function FilterTrigger({
             aria-expanded={open}
             className={cn(
                 "flex items-center gap-[8px] h-[40px] px-[14px]",
-                "bg-white border-1 border-[#d0d5dd] rounded-[8px] whitespace-nowrap",
+                "bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] whitespace-nowrap",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)]",
-                "focus:outline-none focus:ring-2 focus:ring-[#aad4bd] transition-all",
+                "focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] transition-all",
                 className,
             )}
         >
             {icon}
-            <span className="text-[14px] font-semibold text-[#344054]">{label}</span>
-            <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+            <span className="text-[14px] font-semibold text-[var(--colors-text-secondary)]">{label}</span>
+            <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", open && "rotate-180")} />
         </button>
     );
 }
@@ -120,12 +120,12 @@ export function TypeFilter({ value, onChange, className }: TypeFilterProps) {
                 <div
                     className={cn(
                         "absolute right-0 top-[calc(100%+4px)] z-50",
-                        "bg-white border-1 border-[#e4e7ec] rounded-[12px]",
+                        "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]",
                         "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
                         "flex flex-col gap-[4px] px-[16px] py-[12px] min-w-[220px]",
                     )}
                 >
-                    <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">
+                    <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">
                         Type
                     </p>
                     <TypeRow
@@ -201,19 +201,19 @@ export function LocationsFilter({ value, onChange, options, className }: Locatio
             <FilterTrigger
                 open={open}
                 onToggle={() => setOpen((p) => !p)}
-                icon={<MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />}
+                icon={<MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />}
                 label={label}
             />
             {open && (
                 <div
                     className={cn(
                         "absolute right-0 top-[calc(100%+4px)] z-50",
-                        "bg-white border-1 border-[#e4e7ec] rounded-[12px]",
+                        "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]",
                         "shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]",
                         "flex flex-col gap-[4px] px-[16px] py-[12px] min-w-[220px]",
                     )}
                 >
-                    <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">
+                    <p className="px-[8px] pt-1 pb-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">
                         Locations
                     </p>
                     {/* Master checkbox — clicking fills or clears every branch. */}
@@ -256,8 +256,8 @@ function TypeRow({
                 "w-full h-[36px] px-[8px] flex items-center gap-[10px] rounded-[6px]",
                 "text-[14px] text-left transition-colors",
                 active
-                    ? "bg-[#f9fafb] text-[#101828] font-semibold"
-                    : "text-[#344054] hover:bg-[#f9fafb]",
+                    ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)] font-semibold"
+                    : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
             )}
         >
             {dot ? (
@@ -270,7 +270,7 @@ function TypeRow({
                 <span className="w-2 h-2 shrink-0" aria-hidden />
             )}
             <span className="flex-1">{label}</span>
-            {active && <Check className="w-4 h-4 text-[#98a2b3] shrink-0" />}
+            {active && <Check className="w-4 h-4 text-[var(--colors-fg-quaternary)] shrink-0" />}
         </button>
     );
 }
@@ -296,16 +296,16 @@ function LocationRow({
                 "w-full h-[36px] px-[8px] flex items-center gap-[10px] rounded-[6px]",
                 "text-[14px] text-left transition-colors",
                 active
-                    ? "bg-[#f9fafb] text-[#101828]"
-                    : "text-[#344054] hover:bg-[#f9fafb]",
+                    ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]"
+                    : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
             )}
         >
             <span
                 className={cn(
                     "w-[18px] h-[18px] rounded-[4px] shrink-0 flex items-center justify-center border-1 transition-colors",
                     active
-                        ? "bg-[#7ba08c] border-[#7ba08c]"
-                        : "bg-white border-[#d0d5dd]",
+                        ? "bg-[var(--colors-secondary-500)] border-[var(--colors-secondary-500)]"
+                        : "bg-white border-[var(--colors-border-primary)]",
                 )}
                 aria-hidden
             >

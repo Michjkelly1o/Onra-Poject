@@ -125,7 +125,7 @@ export default function MembershipsPackagesReportPage() {
 
     if (!report) {
         return (
-            <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">
+            <div className="px-[24px] py-[48px] text-[14px] text-[var(--colors-text-tertiary)]">
                 Memberships & Packages report definition is missing from the registry.
             </div>
         );

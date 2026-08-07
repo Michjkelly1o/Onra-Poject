@@ -142,15 +142,15 @@ function InsightsInner() {
     return (
         <div className="flex flex-col gap-6 animate-fade-in">
             {/* Tab strip */}
-            <div className="border-b border-[#e4e7ec]">
+            <div className="border-b border-[var(--colors-border-secondary)]">
                 <div className="flex gap-3 items-start">
                     {TABS.map(t => (
                         <button key={t.key} type="button" onClick={() => setTab(t.key)}
                             className={cn(
                                 "flex gap-2 h-8 items-center justify-center pb-3 px-1 transition-colors",
                                 tab === t.key
-                                    ? "border-b-2 border-[#101828] text-[#101828] font-semibold"
-                                    : "text-[#667085] font-semibold hover:text-[#344054]",
+                                    ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)] font-semibold"
+                                    : "text-[var(--colors-text-quaternary)] font-semibold hover:text-[var(--colors-text-secondary)]",
                             )}>
                             <span className="text-sm">{t.label}</span>
                         </button>
@@ -185,9 +185,9 @@ function InsightsInner() {
 
             {/* Empty state (search matched nothing) */}
             {q && filteredMetrics.length === 0 && filteredWidgets.length === 0 && (
-                <div className="bg-white border-1 border-dashed border-[#e4e7ec] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
-                    <p className="text-[16px] font-semibold text-[#101828]">No insights found</p>
-                    <p className="text-[14px] text-[#475467]">Try a different search term.</p>
+                <div className="bg-white border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[16px] p-12 flex flex-col items-center gap-1 text-center">
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">No insights found</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)]">Try a different search term.</p>
                 </div>
             )}
         </div>

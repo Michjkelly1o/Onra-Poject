@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Clock, MarkerPin01, Users01 } from "@untitledui/icons";
+import { Check, Clock, MarkerPin01, Users01, XClose } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import type { SessionType } from "@/lib/store";
 import { SESSION_TYPE_TAG_LABEL, SESSION_TYPE_TAG_COLORS } from "@/lib/session-type";
@@ -149,10 +149,23 @@ function instructorShortName(full: string): string {
 
 export function ScheduleClassCard({ cls, size, onClick, className, absolute, moreCount }: Props) {
     const isFull = cls.booked >= cls.capacity;
+    // Private / recovery are 1-on-1 appointments — the "1/1 (FULL)" occupancy
+    // read-out (and the capacity bar) is meaningless for them, so hide it.
+    const isAppointment = cls.type === "private" || cls.type === "recovery";
     const startLabel = fmt12(cls.startTime);
     const rangeLabel = cls.displayTime
         ?? (cls.endTime ? `${fmt12(cls.startTime)} - ${fmt12(cls.endTime)}` : startLabel);
     const hasMore = !!moreCount && moreCount > 0;
+    // Cancelled classes render their name struck-through in red across every
+    // size variant (client 2026-08) so a dead class reads at a glance on the
+    // day/week/month grid without being hidden.
+    const isCancelled = cls.status === "Cancelled";
+    const CANCELLED_RED = "#d92c20";
+    // Completed classes get a small green ✓ before the name so past/done classes
+    // read as finished — distinct from cancelled, which gets a red ✕ + red
+    // strikethrough name (the class did NOT happen). (client 2026-08)
+    const isCompleted = cls.status === "Completed";
+    const COMPLETED_GREEN = "#067647";
 
     // `minHeight: 72` guarantees a 45-min class still has room for title +
     // instructor + meta row at the current 88px-per-hour week-view scale
@@ -205,7 +218,9 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 )}>
                 {/* Title row + type tag + Ongoing pill / participant glyph. */}
                 <div className="flex items-start gap-2 w-full">
-                    <span className="min-w-0 block text-[14px] font-medium text-[#101828] leading-[20px] truncate shrink" style={{ color: cls.color.text }}>{cls.name}</span>
+                    {isCompleted && <Check className="w-4 h-4 shrink-0 mt-[2px]" style={{ color: COMPLETED_GREEN }} />}
+                    {isCancelled && <XClose className="w-4 h-4 shrink-0 mt-[2px]" style={{ color: CANCELLED_RED }} />}
+                    <span className={cn("min-w-0 block text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px] truncate shrink", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} className="mt-px" />}
                     <span className="flex-1" />
                     {isOngoing && (
@@ -213,32 +228,42 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                             Ongoing
                         </span>
                     )}
-                    <Users01 className="w-4 h-4 text-[#667085] shrink-0 mt-0.5" />
+                    <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 mt-0.5" />
                 </div>
                 {/* Meta row — time · instructor · room · count. Single
                     line separated by bullets so the card matches Figma
                     7798:80399's compact density. */}
-                <div className="flex items-center gap-2 min-w-0 text-[14px] text-[#667085]">
+                <div className="flex items-center gap-2 min-w-0 text-[14px] text-[var(--colors-text-quaternary)]">
                     <span className="shrink-0">{rangeLabel}</span>
-                    <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
-                    <div className="flex items-center gap-1.5 min-w-0">
-                        <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={16} />
-                        <span className="truncate">{instructorShortName(cls.instructorName)}</span>
-                    </div>
+                    {/* Instructor — hidden when there's none (e.g. an open
+                        recovery session), so no empty gray avatar shows. */}
+                    {cls.instructorName && (
+                        <>
+                            <span className="w-px h-3 bg-[var(--colors-border-primary)] shrink-0" />
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={16} />
+                                <span className="truncate">{instructorShortName(cls.instructorName)}</span>
+                            </div>
+                        </>
+                    )}
                     {cls.room && (
                         <>
-                            <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
+                            <span className="w-px h-3 bg-[var(--colors-border-primary)] shrink-0" />
                             <div className="flex items-center gap-1 min-w-0">
-                                <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                                <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                 <span className="truncate">{cls.room}</span>
                             </div>
                         </>
                     )}
-                    <span className="w-px h-3 bg-[#d0d5dd] shrink-0" />
-                    <span className="shrink-0">
-                        {cls.booked}/{cls.capacity}
-                        {isFull && <span className="text-[#98a2b3] ml-1">(FULL)</span>}
-                    </span>
+                    {!isAppointment && (
+                        <>
+                            <span className="w-px h-3 bg-[var(--colors-border-primary)] shrink-0" />
+                            <span className="shrink-0">
+                                {cls.booked}/{cls.capacity}
+                                {isFull && <span className="text-[var(--colors-fg-quaternary)] ml-1">(FULL)</span>}
+                            </span>
+                        </>
+                    )}
                 </div>
                 {/* Capacity progress bar — inline at the bottom of the
                     card body with the same horizontal padding as the
@@ -247,12 +272,14 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     so it reads as an extension of the left accent
                     stripe. mt-auto pushes it to the bottom so short
                     cards still align their bars. */}
-                <div className="mt-auto w-full h-1.5 bg-white/70 rounded-full overflow-hidden">
-                    <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${fillPct}%`, backgroundColor: cls.color.border }}
-                    />
-                </div>
+                {!isAppointment && (
+                    <div className="mt-auto w-full h-1.5 bg-white/70 rounded-full overflow-hidden">
+                        <div
+                            className="h-full rounded-full transition-all"
+                            style={{ width: `${fillPct}%`, backgroundColor: cls.color.border }}
+                        />
+                    </div>
+                )}
             </button>
         );
     }
@@ -268,24 +295,32 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     className,
                 )}>
                 <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="block text-[14px] font-medium leading-[20px] truncate" style={{ color: cls.color.text }}>{cls.name}</span>
+                    {isCompleted && <Check className="w-[13px] h-[13px] shrink-0" style={{ color: COMPLETED_GREEN }} />}
+                    {isCancelled && <XClose className="w-[13px] h-[13px] shrink-0" style={{ color: CANCELLED_RED }} />}
+                    <span className={cn("block text-[14px] font-medium leading-[20px] truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                    <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={14} />
-                    <span className="text-[12px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
-                </div>
+                {cls.instructorName && (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={14} />
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)] truncate">{instructorShortName(cls.instructorName)}</span>
+                    </div>
+                )}
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <div className="flex items-center gap-1">
-                        <Clock className="w-[12px] h-[12px] text-[#667085] shrink-0" />
-                        <span className="text-[12px] text-[#667085]">{startLabel}</span>
+                        <Clock className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)]">{startLabel}</span>
                     </div>
-                    <span className="text-[#98a2b3] text-[12px]">•</span>
-                    <div className="flex items-center gap-1">
-                        <Users01 className="w-[12px] h-[12px] text-[#667085] shrink-0" />
-                        <span className="text-[12px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
-                    </div>
-                    {isFull && <span className="text-[11px] font-semibold text-[#b42318]">(FULL)</span>}
+                    {!isAppointment && (
+                        <>
+                            <span className="text-[var(--colors-fg-quaternary)] text-[12px]">•</span>
+                            <div className="flex items-center gap-1">
+                                <Users01 className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)] shrink-0" />
+                                <span className="text-[12px] text-[var(--colors-text-quaternary)]">{cls.booked}/{cls.capacity}</span>
+                            </div>
+                            {isFull && <span className="text-[11px] font-semibold text-[#b42318]">(FULL)</span>}
+                        </>
+                    )}
                 </div>
             </button>
         );
@@ -302,15 +337,16 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     className,
                 )}>
                 <div className="flex items-center gap-1 min-w-0">
-                    <span className="block text-[13px] font-medium leading-[18px] truncate" style={{ color: cls.color.text }}>{cls.name}</span>
+                    {isCompleted && <Check className="w-3 h-3 shrink-0" style={{ color: COMPLETED_GREEN }} />}{isCancelled && <XClose className="w-3 h-3 shrink-0" style={{ color: CANCELLED_RED }} />}
+                    <span className={cn("block text-[13px] font-medium leading-[18px] truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
                 <div className="flex items-center gap-1 min-w-0">
                     <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={12} />
-                    <span className="text-[11px] text-[#667085] truncate">{instructorShortName(cls.instructorName)}</span>
+                    <span className="text-[11px] text-[var(--colors-text-quaternary)] truncate">{instructorShortName(cls.instructorName)}</span>
                 </div>
                 {hasMore && (
-                    <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[#475467] bg-white border border-[#e4e7ec] rounded-full px-2 py-[1px]">
+                    <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[var(--colors-text-tertiary)] bg-white border border-[var(--colors-border-secondary)] rounded-full px-2 py-[1px]">
                         +{moreCount} more
                     </span>
                 )}
@@ -326,9 +362,10 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 "w-full rounded-[4px] px-1.5 py-[3px] flex items-center gap-1 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden",
                 className,
             )}>
+            {isCompleted && <Check className="w-3 h-3 shrink-0" style={{ color: COMPLETED_GREEN }} />}{isCancelled && <XClose className="w-3 h-3 shrink-0" style={{ color: CANCELLED_RED }} />}
             <span className="text-[11px] font-medium whitespace-nowrap shrink-0" style={{ color: cls.color.border }}>{cls.leadLabel ?? startLabel}</span>
-            <span className="text-[11px] text-[#98a2b3] shrink-0">•</span>
-            <span className="text-[11px] font-medium truncate" style={{ color: cls.color.text }}>{cls.name}</span>
+            <span className="text-[11px] text-[var(--colors-fg-quaternary)] shrink-0">•</span>
+            <span className={cn("text-[11px] font-medium truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
         </button>
     );
 }
@@ -343,7 +380,7 @@ export function ScheduleMorePill({ count, onClick }: {
 }) {
     return (
         <button type="button" onClick={onClick}
-            className="text-[11px] font-medium text-[#475467] hover:text-[#101828] px-1.5 py-[3px] w-full text-left transition-colors">
+            className="text-[11px] font-medium text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] px-1.5 py-[3px] w-full text-left transition-colors">
             + {count} more
         </button>
     );

@@ -113,7 +113,7 @@ export function ToolbarSearch({
 
     return (
         <div className={cn("relative", expandedWidth, className)}>
-            <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
+            <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)] pointer-events-none" />
             <input
                 ref={inputRef}
                 type="text"
@@ -124,7 +124,7 @@ export function ToolbarSearch({
                 placeholder={placeholder}
                 className={cn(
                     inputHeight,
-                    "w-full pl-[36px] pr-[36px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
+                    "w-full pl-[36px] pr-[36px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                 )}
             />
             {value && (
@@ -132,7 +132,7 @@ export function ToolbarSearch({
                     type="button"
                     onClick={handleClear}
                     aria-label="Clear search"
-                    className="absolute right-[8px] top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md text-[#667085] hover:bg-[#f2f4f7] hover:text-[#344054] transition-colors"
+                    className="absolute right-[8px] top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-md text-[var(--colors-text-quaternary)] hover:bg-[var(--colors-bg-tertiary)] hover:text-[var(--colors-text-secondary)] transition-colors"
                 >
                     <XClose className="w-4 h-4" />
                 </button>

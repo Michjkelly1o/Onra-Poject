@@ -56,7 +56,7 @@ export function OptionSheet({
                             type="button"
                             onClick={() => setDraft(opt)}
                             className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-colors ${
-                                draft === opt ? "border-2 border-[var(--brand-primary)] bg-[#fbfdfc]" : "border border-[#e4e7ec]"
+                                draft === opt ? "border-2 border-[var(--brand-primary)] bg-[#fbfdfc]" : "border border-[var(--colors-border-secondary)]"
                             }`}
                         >
                             <span className="flex-1 text-base leading-6 text-[var(--brand-text)]">{opt}</span>

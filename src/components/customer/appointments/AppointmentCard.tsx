@@ -54,7 +54,7 @@ export function AppointmentCard({
                     onBook();
                 }
             }}
-            className="flex w-full cursor-pointer flex-col gap-3 rounded-2xl border border-[#e4e7ec] bg-white p-4 text-left transition-shadow active:shadow-sm"
+            className="flex w-full cursor-pointer flex-col gap-3 rounded-2xl border border-[var(--colors-border-secondary)] bg-white p-4 text-left transition-shadow active:shadow-sm"
         >
             {/* Top row: thumb + name/price + session badge */}
             <div className="flex w-full items-center gap-3">
@@ -70,14 +70,14 @@ export function AppointmentCard({
 
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <p className="truncate text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
-                    <p className="truncate text-xs font-normal leading-[18px] text-[#667085]">AED {price}</p>
+                    <p className="truncate text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">AED {price}</p>
                 </div>
 
                 {/* Capacity — only for GROUP (open) sessions, e.g. Group Recovery
                     ("Up to X"). Private 1-on-1 appointments show no indicator. */}
                 {!isPrivate && (
-                    <span className="flex shrink-0 items-center gap-1 text-xs font-medium leading-[18px] text-[#475467]">
-                        <BadgeIcon className="size-3.5 shrink-0 text-[#667085]" aria-hidden />
+                    <span className="flex shrink-0 items-center gap-1 text-xs font-medium leading-[18px] text-[var(--colors-text-tertiary)]">
+                        <BadgeIcon className="size-3.5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                         {badgeLabel}
                     </span>
                 )}
@@ -86,12 +86,12 @@ export function AppointmentCard({
             {/* Location + duration */}
             <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                    <MarkerPin01 className="size-4 shrink-0 text-[#475467]" aria-hidden />
-                    <p className="min-w-0 flex-1 truncate text-xs font-medium leading-[18px] text-[#344054]">{branch}</p>
+                    <MarkerPin01 className="size-4 shrink-0 text-[var(--colors-text-tertiary)]" aria-hidden />
+                    <p className="min-w-0 flex-1 truncate text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">{branch}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Clock className="size-4 shrink-0 text-[#475467]" aria-hidden />
-                    <p className="text-xs font-medium leading-[18px] text-[#344054]">{durationMins} mins</p>
+                    <Clock className="size-4 shrink-0 text-[var(--colors-text-tertiary)]" aria-hidden />
+                    <p className="text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">{durationMins} mins</p>
                 </div>
             </div>
 

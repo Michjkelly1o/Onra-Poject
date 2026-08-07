@@ -17,19 +17,19 @@ export interface RefundLine {
 export function RefundDetailsSection({ lines }: { lines: RefundLine[] }) {
     return (
         <>
-            <div className="h-px w-full bg-[#e4e7ec]" />
+            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
             <section className="flex flex-col gap-3">
                 <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Refund details</h2>
                 <div className="flex flex-col gap-2 text-sm leading-5">
                     {lines.map((l, i) => (
                         <div key={i} className="flex items-center justify-between gap-4">
-                            <span className="font-normal text-[#475467]">{l.label}</span>
+                            <span className="font-normal text-[var(--colors-text-tertiary)]">{l.label}</span>
                             <span
                                 className={`text-right font-medium ${
                                     l.tone === "success"
                                         ? "text-[var(--brand-primary)]"
                                         : l.tone === "muted"
-                                          ? "text-[#667085]"
+                                          ? "text-[var(--colors-text-quaternary)]"
                                           : "text-[var(--brand-text)]"
                                 }`}
                             >

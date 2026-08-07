@@ -72,8 +72,8 @@ export function Breadcrumbs({ className }: BreadcrumbsProps = {}) {
                         className={cn(
                             "truncate",
                             isLast
-                                ? "text-[#344054] font-semibold"
-                                : "text-[#667085]",
+                                ? "text-[var(--colors-text-secondary)] font-semibold"
+                                : "text-[var(--colors-text-quaternary)]",
                         )}
                         title={seg.label}
                     >
@@ -82,13 +82,13 @@ export function Breadcrumbs({ className }: BreadcrumbsProps = {}) {
                 );
                 return (
                     <div key={i} className="flex items-center gap-1.5 min-w-0">
-                        {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-[#d0d5dd] shrink-0" />}
+                        {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-[var(--colors-border-primary)] shrink-0" />}
                         {isLast || !seg.href ? (
                             inner
                         ) : (
                             <Link
                                 href={seg.href}
-                                className="flex items-center min-w-0 hover:text-[#101828] transition-colors"
+                                className="flex items-center min-w-0 hover:text-[var(--colors-text-primary)] transition-colors"
                             >
                                 {inner}
                             </Link>

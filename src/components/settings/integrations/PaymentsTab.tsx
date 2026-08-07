@@ -134,7 +134,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
             onClick={onClick}
             className={cn(
                 "relative w-9 h-5 rounded-full transition-colors shrink-0 flex items-center px-0.5",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}
         >
             <span
@@ -154,8 +154,8 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 function ManualMethodIcon({ slug }: { slug: PaymentProviderSlug }) {
     const Icon = slug === "cash" ? BankNote01 : CreditCardCheck;
     return (
-        <div className="w-[46px] h-8 rounded-[4px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center shrink-0">
-            <Icon className="w-4 h-4 text-[#475467]" />
+        <div className="w-[46px] h-8 rounded-[4px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center shrink-0">
+            <Icon className="w-4 h-4 text-[var(--colors-text-tertiary)]" />
         </div>
     );
 }
@@ -172,7 +172,7 @@ function LogoTile({ provider, size = "card" }: {
     const cfg = configFor(provider);
     return (
         <div className={cn(
-            "relative rounded-[4px] border-1 border-[#e4e7ec] bg-white overflow-hidden flex items-center justify-center shrink-0",
+            "relative rounded-[4px] border-1 border-[var(--colors-border-secondary)] bg-white overflow-hidden flex items-center justify-center shrink-0",
             size === "card"    && "w-[46px] h-8",
             size === "modal"   && "w-[58px] h-10 rounded-[6px]",
             size === "loading" && "w-[34px] h-6",
@@ -196,9 +196,9 @@ function RequiresStripeTooltip() {
     return (
         <span className="relative group inline-flex items-center" tabIndex={0} aria-label="Requires Stripe to be connected to enable">
             <InfoCircle className="w-4 h-4 text-[#dc6803] shrink-0 cursor-help" />
-            <span className="absolute left-1/2 -translate-x-1/2 -top-[34px] z-20 whitespace-nowrap bg-[#101828] text-white text-[12px] font-medium px-3 py-1.5 rounded-[6px] shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
+            <span className="absolute left-1/2 -translate-x-1/2 -top-[34px] z-20 whitespace-nowrap bg-[var(--colors-text-primary)] text-white text-[12px] font-medium px-3 py-1.5 rounded-[6px] shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity">
                 Requires Stripe to be connected to enable
-                <span className="absolute left-1/2 -translate-x-1/2 -bottom-[5px] border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-[#101828]" />
+                <span className="absolute left-1/2 -translate-x-1/2 -bottom-[5px] border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-[var(--colors-text-primary)]" />
             </span>
         </span>
     );
@@ -219,12 +219,12 @@ function ProviderCard({ provider, gatewayConnected, onConnect, onEnable, onView,
     const showStripeHint = isWallet && !connected && !gatewayConnected;
 
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-4 w-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-4 w-full">
             <div className="relative flex flex-col gap-4 w-full">
                 <LogoTile provider={provider} size="card" />
                 <div className="flex flex-col gap-1 w-full pr-[88px]">
                     <div className="flex items-center gap-1.5">
-                        <p className="text-[16px] font-semibold text-[#101828] leading-6">{provider.name}</p>
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{provider.name}</p>
                         {showStripeHint && <RequiresStripeTooltip />}
                     </div>
                     <p className="text-[14px] text-[#6e776f] leading-5">{provider.description}</p>
@@ -282,20 +282,20 @@ function ModalShell({ title, subtitle, onClose, children, footer, width = 560 }:
             <div
                 className="relative bg-white rounded-[16px] max-w-[90vw] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
                 style={{ width }}>
-                <div className="pt-6 px-6 pb-5 border-b border-[#e4e7ec] relative">
+                <div className="pt-6 px-6 pb-5 border-b border-[var(--colors-border-secondary)] relative">
                     <div className="flex flex-col gap-1 pr-10">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
                         {subtitle && (
-                            <p className="text-[14px] text-[#475467] leading-5">{subtitle}</p>
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{subtitle}</p>
                         )}
                     </div>
                     <button type="button" onClick={onClose}
-                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        className="absolute right-[12px] top-[12px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="px-6 py-5">{children}</div>
-                <div className="border-t border-[#e4e7ec] px-6 py-5">{footer}</div>
+                <div className="border-t border-[var(--colors-border-secondary)] px-6 py-5">{footer}</div>
             </div>
         </div>
     );
@@ -332,7 +332,7 @@ function ConnectModal({ provider, onContinue, onClose }: {
             }
         >
             <div className="flex flex-col gap-4">
-                <h4 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Choose your option</h4>
+                <h4 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Choose your option</h4>
                 <RadioCard
                     selected={!createNew}
                     label={`I already have a ${provider.name} account`}
@@ -356,13 +356,13 @@ function RadioCard({ selected, label, onSelect }: {
             className={cn(
                 "w-full flex items-center p-4 rounded-[12px] bg-white transition-all text-left",
                 selected
-                    ? "border-2 border-[#658774]"
-                    : "border-1 border-[#e4e7ec] hover:bg-[#fafafa]",
+                    ? "border-2 border-[var(--colors-secondary-600)]"
+                    : "border-1 border-[var(--colors-border-secondary)] hover:bg-[#fafafa]",
             )}>
-            <span className="flex-1 text-[16px] font-medium text-[#344054]">{label}</span>
+            <span className="flex-1 text-[16px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
             <span className={cn(
                 "w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                selected ? "bg-[#658774]" : "border-1 border-[#d0d5dd] bg-white",
+                selected ? "bg-[var(--colors-secondary-600)]" : "border-1 border-[var(--colors-border-primary)] bg-white",
             )}>
                 {selected && <span className="w-2 h-2 rounded-full bg-white" />}
             </span>
@@ -390,24 +390,24 @@ function LoadingModal({ provider, createNew, onClose }: {
                     5360:62349 — wider than the Integrations Loading variant,
                     with the logo top-left + two skeleton text columns + a
                     skeleton button on the right). */}
-                <div className="bg-[#f9fafb] rounded-[16px] h-[150px] w-[320px] flex flex-col justify-between p-3 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] mb-6">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] h-[150px] w-[320px] flex flex-col justify-between p-3 shadow-[0px_1px_1px_rgba(16,24,40,0.05)] mb-6">
                     <div className="bg-white rounded-[10.18px] w-[50.9px] h-[50.9px] flex items-center justify-center shadow-[0px_1.48px_3.82px_rgba(0,0,0,0.02),-2.96px_4.44px_10.18px_rgba(0,0,0,0.02)]">
                         <LogoTile provider={provider} size="loading" />
                     </div>
                     <div className="flex items-center justify-between w-full">
                         <div className="flex flex-col gap-2 w-[100px]">
-                            <div className="h-[13px] rounded-full bg-[#f2f4f7] w-full" />
-                            <div className="h-[13px] rounded-full bg-[#f2f4f7] w-[32px]" />
+                            <div className="h-[13px] rounded-full bg-[var(--colors-bg-tertiary)] w-full" />
+                            <div className="h-[13px] rounded-full bg-[var(--colors-bg-tertiary)] w-[32px]" />
                         </div>
-                        <div className="h-[18px] rounded-full bg-[#f2f4f7] w-[64px]" />
+                        <div className="h-[18px] rounded-full bg-[var(--colors-bg-tertiary)] w-[64px]" />
                     </div>
                 </div>
 
                 <div className="flex flex-col items-center gap-1 text-center max-w-[352px]">
-                    <p className="font-semibold text-[16px] leading-6 text-[#101828]">
+                    <p className="font-semibold text-[16px] leading-6 text-[var(--colors-text-primary)]">
                         Redirecting to {provider.name} account...
                     </p>
-                    <p className="text-[14px] text-[#475467] leading-5">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                         {subtitle}
                     </p>
                 </div>
@@ -467,8 +467,8 @@ function ViewField({ label, value, valueColor }: {
 }) {
     return (
         <div className="flex flex-col">
-            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-            <p className={cn("text-[16px] font-medium leading-6", valueColor ?? "text-[#101828]")}>
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+            <p className={cn("text-[16px] font-medium leading-6", valueColor ?? "text-[var(--colors-text-primary)]")}>
                 {value}
             </p>
         </div>
@@ -495,23 +495,23 @@ function EnableWalletModal({ provider, onConfirm, onClose }: {
                         SVG logo — swap to the same icon tile the row uses
                         so the modal logo matches what the admin tapped. */}
                     {provider.kind === "manual"
-                        ? <div className="w-[58px] h-10 rounded-[6px] border-1 border-[#e4e7ec] bg-white flex items-center justify-center shrink-0">
+                        ? <div className="w-[58px] h-10 rounded-[6px] border-1 border-[var(--colors-border-secondary)] bg-white flex items-center justify-center shrink-0">
                             {provider.slug === "cash"
-                                ? <BankNote01 className="w-5 h-5 text-[#475467]" />
-                                : <CreditCardCheck className="w-5 h-5 text-[#475467]" />}
+                                ? <BankNote01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
+                                : <CreditCardCheck className="w-5 h-5 text-[var(--colors-text-tertiary)]" />}
                           </div>
                         : <LogoTile provider={provider} size="modal" />}
                     <div className="flex flex-col items-center gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                             Enable {provider.name}?
                         </h3>
-                        <p className="text-[14px] text-[#475467] leading-5">
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                             {cfg.enableSubtitle}
                         </p>
                     </div>
                     <button type="button" onClick={onClose}
-                        className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                        className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 {/* Footer — no border-top, header carries no border-bottom */}
@@ -545,11 +545,11 @@ function DisconnectConfirm({ provider, cascadeWalletNames, onConfirm, onCancel }
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <LogoTile provider={provider} size="card" />
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                             {provider.kind === "gateway" ? "Disconnect" : "Disable"} {provider.name}?
                         </h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
-                            <span className="font-medium text-[#344054]">{provider.name}</span>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{provider.name}</span>
                             {" "}will stop processing payments at the studio. You can re-{provider.kind === "gateway" ? "connect" : "enable"} at any time.
                         </p>
                         {cascadeWalletNames.length > 0 && (
@@ -692,12 +692,12 @@ export function PaymentsTab() {
         <div className="flex flex-col gap-6">
             {/* ── Gateway block: Stripe + payment-method rows ─────────── */}
             {stripe && (
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
                     {/* Stripe row — Connect or View / Disconnect actions */}
                     <div className="px-6 py-5 flex items-center gap-4">
                         <LogoTile provider={stripe} size="card" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-[16px] font-semibold text-[#101828] leading-6">{stripe.name}</p>
+                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{stripe.name}</p>
                             <p className="text-[14px] text-[#6e776f] leading-5">{stripe.description}</p>
                         </div>
                         {stripeConnected ? (
@@ -713,17 +713,17 @@ export function PaymentsTab() {
                     </div>
 
                     {/* "Payment methods" sub-header + the 3 wallet rows */}
-                    <div className="border-t border-[#e4e7ec]" />
+                    <div className="border-t border-[var(--colors-border-secondary)]" />
                     <div className="px-6 pt-4 pb-2">
-                        <p className="text-[14px] font-medium text-[#475467]">Payment methods</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-tertiary)]">Payment methods</p>
                     </div>
                     {stripeWallets.map((w, i) => (
                         <div key={w.id}>
-                            {i > 0 && <div className="border-t border-[#e4e7ec]" />}
+                            {i > 0 && <div className="border-t border-[var(--colors-border-secondary)]" />}
                             <div className="px-6 py-4 flex items-center gap-4">
                                 <LogoTile provider={w} size="card" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[16px] font-semibold text-[#101828] leading-6">{w.name}</p>
+                                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{w.name}</p>
                                     <p className="text-[14px] text-[#6e776f] leading-5">{w.description}</p>
                                 </div>
                                 {stripeConnected ? (
@@ -742,18 +742,18 @@ export function PaymentsTab() {
 
             {/* ── Other methods block: Cash + Bank transfer ──────────── */}
             {manualMethods.length > 0 && (
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
                     <div className="px-6 pt-5 pb-3 flex flex-col gap-0.5">
-                        <p className="text-[16px] font-semibold text-[#101828] leading-6">Other methods</p>
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Other methods</p>
                         <p className="text-[14px] text-[#6e776f] leading-5">No providers needed</p>
                     </div>
                     {manualMethods.map((m, i) => (
                         <div key={m.id}>
-                            <div className={cn("border-t border-[#e4e7ec]", i === 0 && "border-t")} />
+                            <div className={cn("border-t border-[var(--colors-border-secondary)]", i === 0 && "border-t")} />
                             <div className="px-6 py-4 flex items-center gap-4">
                                 <ManualMethodIcon slug={m.slug} />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[16px] font-semibold text-[#101828] leading-6">{m.name}</p>
+                                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{m.name}</p>
                                     <p className="text-[14px] text-[#6e776f] leading-5">{m.description}</p>
                                 </div>
                                 <Toggle on={m.status === "connected"} onClick={() => handlePaymentToggle(m)} />
@@ -764,10 +764,10 @@ export function PaymentsTab() {
             )}
 
             {/* ── Add a payment provider footer ──────────────────────── */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] overflow-hidden">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
                 <div className="px-6 py-5 flex items-center gap-4">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[16px] font-semibold text-[#101828] leading-6">Add a payment provider</p>
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Add a payment provider</p>
                         <p className="text-[14px] text-[#6e776f] leading-5">
                             UAE options : Tap Payments, Pay Tabs, Telr, Network International (N-Genius) · BNPL: Tabby, Tamara
                         </p>

@@ -20,14 +20,14 @@ export function InstructorAvatar({
 }) {
     return (
         <span
-            className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]"
+            className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]"
             style={{ width: size, height: size }}
         >
             {imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imageUrl} alt="" className="size-full scale-[1.4] object-cover" />
             ) : (
-                <span className="font-semibold leading-none text-[#667085]" style={{ fontSize: size >= 28 ? 12 : 9 }}>
+                <span className="font-semibold leading-none text-[var(--colors-text-quaternary)]" style={{ fontSize: size >= 28 ? 12 : 9 }}>
                     {initials}
                 </span>
             )}

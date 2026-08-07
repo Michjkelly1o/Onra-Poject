@@ -33,7 +33,7 @@ export function MarketingBanner({ title, image, onClick }: MarketingBannerProps)
                       onKeyDown: (e: React.KeyboardEvent) => (e.key === "Enter" || e.key === " ") && onClick?.(),
                   }
                 : {})}
-            className={`relative aspect-[343/140] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467] ${interactive ? "cursor-pointer outline-none" : ""}`}
+            className={`relative aspect-[343/140] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-[#1d2939] via-[var(--colors-text-secondary)] to-[var(--colors-text-tertiary)] ${interactive ? "cursor-pointer outline-none" : ""}`}
         >
             {image ? (
                 // eslint-disable-next-line @next/next/no-img-element

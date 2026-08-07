@@ -123,10 +123,10 @@ function ModalShell({
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6 pb-5 shrink-0">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <p className="font-semibold text-[20px] text-[#101828] leading-[30px]">
+                        <p className="font-semibold text-[20px] text-[var(--colors-text-primary)] leading-[30px]">
                             {title}
                         </p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             {subtitle}
                         </p>
                     </div>
@@ -134,12 +134,12 @@ function ModalShell({
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                        className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
-                <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                 {/* Body — scrolls when the table overflows. Each modal's
                     body wraps its table in an inner `px-6` container so
                     the table edges align with the header padding — same
@@ -150,7 +150,7 @@ function ModalShell({
                 {/* Footer — pagination */}
                 {footer && (
                     <>
-                        <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                         <div className="px-6 py-4 shrink-0">
                             {footer}
                         </div>
@@ -179,8 +179,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]"
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]"
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -208,15 +208,15 @@ function RenewalBulkBar({ count, onClear, onSendReminder }: {
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-[210]">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+            <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors whitespace-nowrap shrink-0">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex items-center gap-3">
                     <Button variant="secondary-gray" size="sm"
-                        leftIcon={<Bell01 className="w-5 h-5 text-[#667085]" />}
+                        leftIcon={<Bell01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                         onClick={onSendReminder}>
                         Send reminder
                     </Button>
@@ -251,7 +251,7 @@ function Avatar({
                 backgroundColor: "#f2f4f7",
                 fontSize: size * 0.32,
             }}
-            className="rounded-full flex items-center justify-center shrink-0 text-[#475467] font-semibold border border-black/[0.04]"
+            className="rounded-full flex items-center justify-center shrink-0 text-[var(--colors-text-tertiary)] font-semibold border border-black/[0.04]"
         >
             {initials}
         </div>
@@ -266,10 +266,10 @@ function CustomerCell({ c }: { c: Customer }) {
         <div className="flex items-center gap-3">
             <Avatar imageUrl={c.imageUrl} initials={initials} name={name} />
             <div className="flex flex-col min-w-0">
-                <p className="text-[14px] font-semibold text-[#101828] leading-[20px] truncate">
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px] truncate">
                     {name}
                 </p>
-                <p className="text-[14px] text-[#667085] leading-[20px] truncate">
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] truncate">
                     {c.email}
                 </p>
             </div>
@@ -438,11 +438,11 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
             title="Renewal due"
             subtitle={
                 <>
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         {totalRows} membership{totalRows === 1 ? "" : "s"}
                     </span>{" "}
                     renew in the next {forwardRangeDays ?? 30} days ·{" "}
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         AED {totalAtStake.toLocaleString("en-US")}
                     </span>{" "}
                     recurring at stake
@@ -497,7 +497,7 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
                     </thead>
                     <tbody>
                         {paged.map(r => (
-                            <tr key={r.plan.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                            <tr key={r.plan.id} className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors">
                                 <td className={TD}>
                                     <CheckboxCell
                                         checked={selected.has(r.plan.id)}
@@ -507,8 +507,8 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
                                 </td>
                                 <td className={TD}><CustomerCell c={r.customer} /></td>
                                 <td className={TD}>
-                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.plan.name}</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px]">AED {(r.plan.priceAed ?? 0).toLocaleString("en-US")}</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{r.plan.name}</p>
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">AED {(r.plan.priceAed ?? 0).toLocaleString("en-US")}</p>
                                 </td>
                                 <td className={TD}>
                                     <StatusBadge
@@ -518,7 +518,7 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
                                         className={r.isExpired ? "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" : ""}
                                     />
                                 </td>
-                                <td className={cn(TD, "text-[14px] text-[#475467]")}>{fmtDate(r.plan.expiryISO)}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{fmtDate(r.plan.expiryISO)}</td>
                                 <td className={TD}>
                                     <RowActions
                                         items={r.isExpired ? [
@@ -545,7 +545,7 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
                         ))}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={6} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     No memberships due in the next {forwardRangeDays ?? 30} days.
                                 </td>
                             </tr>
@@ -662,11 +662,11 @@ export function FailedPaymentsModal({ open, onClose, branchIds, pastRangeDays, r
             title="Failed payments"
             subtitle={
                 <>
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         {totalRows} payment{totalRows === 1 ? "" : "s"}
                     </span>{" "}
                     failed · AED{" "}
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         {recoverableAed.toLocaleString("en-US")}
                     </span>{" "}
                     recoverable now
@@ -705,23 +705,23 @@ export function FailedPaymentsModal({ open, onClose, branchIds, pastRangeDays, r
                         {paged.map(r => (
                             <tr key={r.txn.id}
                                 onClick={() => openCustomerPayments(r.customer.id)}
-                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors cursor-pointer">
                                 <td className={TD}><CustomerCell c={r.customer} /></td>
                                 <td className={TD}>
-                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.txn.name}</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px]">AED {Math.abs(r.txn.amountAed).toLocaleString("en-US")}</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{r.txn.name}</p>
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">AED {Math.abs(r.txn.amountAed).toLocaleString("en-US")}</p>
                                 </td>
                                 <td className={TD}>
                                     <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]">
                                         Failed
                                     </span>
                                 </td>
-                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.txn.createdAtISO)}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(r.txn.createdAtISO)}</td>
                             </tr>
                         ))}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={4} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     No failed payments to recover.
                                 </td>
                             </tr>
@@ -850,7 +850,7 @@ export function AtRiskClientsModal({ open, onClose, branchIds }: AtRiskClientsMo
             title="At-risk clients"
             subtitle={
                 <>
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         {totalRows} customer{totalRows === 1 ? "" : "s"}
                     </span>{" "}
                     haven&apos;t visited in 14-30 days
@@ -890,11 +890,11 @@ export function AtRiskClientsModal({ open, onClose, branchIds }: AtRiskClientsMo
                         {paged.map(r => (
                             <tr key={r.customer.id}
                                 onClick={() => viewCustomer(r.customer.id)}
-                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors cursor-pointer">
                                 <td className={TD}><CustomerCell c={r.customer} /></td>
-                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDate(r.customer.lastVisitISO)}</td>
-                                <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.planLabel}</td>
-                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{r.pattern}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDate(r.customer.lastVisitISO)}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{r.planLabel}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{r.pattern}</td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         items={[
@@ -915,7 +915,7 @@ export function AtRiskClientsModal({ open, onClose, branchIds }: AtRiskClientsMo
                         ))}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={5} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     No customers in the at-risk window right now.
                                 </td>
                             </tr>
@@ -1092,10 +1092,10 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
                         {paged.map(s => {
                             const fillPct = s.capacity > 0 ? Math.min(100, Math.round((s.booked / s.capacity) * 100)) : 0;
                             return (
-                                <tr key={s.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                                <tr key={s.id} className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors">
                                     <td className={TD}>
-                                        <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{fmtDayDate(s.dateISO)}</p>
-                                        <p className="text-[14px] text-[#667085] leading-[20px] whitespace-nowrap">{fmtStartEnd(s.startTime, s.endTime)}</p>
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{fmtDayDate(s.dateISO)}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] whitespace-nowrap">{fmtStartEnd(s.startTime, s.endTime)}</p>
                                     </td>
                                     <td className={TD}>
                                         <div className="flex items-center gap-3">
@@ -1104,30 +1104,30 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
                                                 same shape + fallback logic /admin/schedule uses
                                                 in its list table (schedule/page.tsx:678). */}
                                             <div
-                                                className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-1 border-[#e4e7ec] flex items-center justify-center"
+                                                className="w-9 h-9 rounded-full overflow-hidden shrink-0 border-1 border-[var(--colors-border-secondary)] flex items-center justify-center"
                                                 style={{ backgroundColor: s.coverColor }}
                                             >
                                                 {s.coverImage ? (
                                                     <img src={s.coverImage} alt={s.name} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <span className="text-[12px] font-semibold text-[#475467]">
+                                                    <span className="text-[12px] font-semibold text-[var(--colors-text-tertiary)]">
                                                         {s.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
                                                     </span>
                                                 )}
                                             </div>
                                             <div className="flex flex-col min-w-0">
-                                                <p className="text-[14px] font-semibold text-[#101828] leading-[20px] truncate">{s.name}</p>
-                                                <p className="text-[14px] text-[#667085] leading-[20px] truncate">with {s.instructorName}</p>
+                                                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px] truncate">{s.name}</p>
+                                                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] truncate">with {s.instructorName}</p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className={cn(TD, "text-[14px] text-[#475467]")}>{s.room ?? "—"}</td>
+                                    <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{s.room ?? "—"}</td>
                                     <td className={TD}>
                                         <div className="flex items-center gap-2 min-w-[100px]">
-                                            <div className="flex-1 h-1.5 bg-[#e4e7ec] rounded-full overflow-hidden">
-                                                <div className="h-full bg-[#658774] transition-all" style={{ width: `${fillPct}%` }} />
+                                            <div className="flex-1 h-1.5 bg-[var(--colors-bg-quaternary)] rounded-full overflow-hidden">
+                                                <div className="h-full bg-[var(--colors-secondary-400)] transition-all" style={{ width: `${fillPct}%` }} />
                                             </div>
-                                            <span className="text-[14px] text-[#475467] whitespace-nowrap">{s.booked}/{s.capacity}</span>
+                                            <span className="text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap">{s.booked}/{s.capacity}</span>
                                         </div>
                                     </td>
                                     <td className={TD}>
@@ -1150,7 +1150,7 @@ export function UnderFilledModal({ open, onClose, branchIds, forwardRangeDays }:
                         })}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={6} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     No under-filled classes in the next {forwardRangeDays ?? 30} days.
                                 </td>
                             </tr>
@@ -1284,12 +1284,12 @@ function WinBackModal({
                 <div className="flex items-start gap-3 px-6 pt-6 pb-4 shrink-0">
                     <Avatar imageUrl={customer.imageUrl} initials={initials} name={name} size={48} />
                     <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[18px] leading-[28px] text-[#101828] truncate">Win back — {name}</p>
-                        <p className="text-[14px] text-[#667085] leading-[20px]">Last visit {lastVisitLabel} · {daysAgo} days ago</p>
+                        <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)] truncate">Win back — {name}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Last visit {lastVisitLabel} · {daysAgo} days ago</p>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Close"
-                        className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -1297,10 +1297,10 @@ function WinBackModal({
                 <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-2 flex flex-col gap-4">
                     {/* Why flagged — standard neutral info alert (matches the
                         app's info-banner pattern used across forms). */}
-                    <div className="flex items-start gap-3 p-3 rounded-[10px] bg-[#f9fafb] border-1 border-[#e4e7ec]">
-                        <AlertCircle className="w-4 h-4 text-[#667085] shrink-0 mt-[2px]" />
-                        <p className="text-[13px] text-[#475467] leading-[18px]">
-                            <span className="font-semibold text-[#344054]">Why they&apos;re flagged:</span>{" "}
+                    <div className="flex items-start gap-3 p-3 rounded-[10px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)]">
+                        <AlertCircle className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 mt-[2px]" />
+                        <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-[18px]">
+                            <span className="font-semibold text-[var(--colors-text-secondary)]">Why they&apos;re flagged:</span>{" "}
                             No bookings since {lastVisitLabel}.
                             {credits > 0 && (
                                 <> Holds {credits} unused credit{credits === 1 ? "" : "s"}.</>
@@ -1324,10 +1324,10 @@ function WinBackModal({
                                         className={cn(
                                             "inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[14px] font-medium transition-colors border-1",
                                             ch.disabled
-                                                ? "bg-[#f9fafb] border-[#e4e7ec] text-[#98a2b3] cursor-not-allowed"
+                                                ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed"
                                                 : active
-                                                    ? "bg-[#f5fffa] border-[#7ba08c] text-[#3b5446]"
-                                                    : "bg-white border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)] text-[#3b5446]"
+                                                    : "bg-white border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                         )}>
                                         {ch.icon}
                                         {ch.label}
@@ -1336,7 +1336,7 @@ function WinBackModal({
                             })}
                         </div>
                         {!waConnected && (
-                            <p className="text-[12px] text-[#667085]">
+                            <p className="text-[12px] text-[var(--colors-text-quaternary)]">
                                 WhatsApp is unavailable — connect WhatsApp Business in Settings → Integrations to enable it.
                             </p>
                         )}
@@ -1344,12 +1344,12 @@ function WinBackModal({
 
                     {/* Editable message */}
                     <div className="flex flex-col gap-1.5">
-                        <p className="text-[13px] text-[#667085]">Message · editable{edited ? " (edited)" : ""}</p>
+                        <p className="text-[13px] text-[var(--colors-text-quaternary)]">Message · editable{edited ? " (edited)" : ""}</p>
                         <textarea
                             value={message}
                             onChange={e => { setMessage(e.target.value); setEdited(true); }}
                             rows={5}
-                            className="w-full resize-none rounded-[10px] border-1 border-[#d0d5dd] bg-white px-3.5 py-3 text-[15px] leading-[24px] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all"
+                            className="w-full resize-none rounded-[10px] border-1 border-[var(--colors-border-primary)] bg-white px-3.5 py-3 text-[15px] leading-[24px] text-[var(--colors-text-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all"
                         />
                     </div>
                 </div>
@@ -1392,22 +1392,22 @@ function CancelClassConfirmModal({
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10"
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10"
                     aria-label="Close"
                 >
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <Trash01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this class?</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
-                            <span className="font-medium text-[#344054]">{schedule.name}</span>{" "}
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this class?</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{schedule.name}</span>{" "}
                             on {schedule.date} • {schedule.displayTime} will be cancelled.
                             {bookedCount > 0 && (
-                                <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and credits refunded.</>
+                                <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and credits refunded.</>
                             )}
                         </p>
                     </div>
@@ -1496,11 +1496,11 @@ export function RefundRequestsModal({ open, onClose, branchIds }: RefundRequests
             title="Refund requests"
             subtitle={
                 <>
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         {totalRows} request{totalRows === 1 ? "" : "s"}
                     </span>{" "}
                     awaiting your decision · AED{" "}
-                    <span className="font-semibold text-[#101828]">{atStakeAed.toLocaleString("en-US")}</span>{" "}
+                    <span className="font-semibold text-[var(--colors-text-primary)]">{atStakeAed.toLocaleString("en-US")}</span>{" "}
                     at stake
                 </>
             }
@@ -1526,14 +1526,14 @@ export function RefundRequestsModal({ open, onClose, branchIds }: RefundRequests
                         {paged.map(r => (
                             <tr key={r.txn.id}
                                 onClick={() => openCustomerPayments(r.customer.id)}
-                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors cursor-pointer">
                                 <td className={TD}><CustomerCell c={r.customer} /></td>
                                 <td className={TD}>
-                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.txn.name}</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px]">AED {Math.abs(r.txn.amountAed).toLocaleString("en-US")}</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{r.txn.name}</p>
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">AED {Math.abs(r.txn.amountAed).toLocaleString("en-US")}</p>
                                 </td>
-                                <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.txn.refundRequestReason ?? "—"}</td>
-                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.txn.refundRequestedAtISO)}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{r.txn.refundRequestReason ?? "—"}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(r.txn.refundRequestedAtISO)}</td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         items={[
@@ -1546,7 +1546,7 @@ export function RefundRequestsModal({ open, onClose, branchIds }: RefundRequests
                         ))}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={5} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     No refund requests awaiting a decision.
                                 </td>
                             </tr>
@@ -1630,7 +1630,7 @@ export function WaitlistConfirmModal({ open, onClose, branchIds }: WaitlistConfi
             title="Waitlist confirmations"
             subtitle={
                 <>
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         {totalRows} spot{totalRows === 1 ? "" : "s"}
                     </span>{" "}
                     opened on today&apos;s classes need confirmation
@@ -1657,13 +1657,13 @@ export function WaitlistConfirmModal({ open, onClose, branchIds }: WaitlistConfi
                         {paged.map(r => (
                             <tr key={r.booking.id}
                                 onClick={() => openClass(r.sched.id)}
-                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors cursor-pointer">
                                 <td className={TD}><CustomerCell c={r.customer} /></td>
                                 <td className={TD}>
-                                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{r.sched.name}</p>
-                                    <p className="text-[14px] text-[#667085] leading-[20px]">{r.sched.displayTime} · {r.sched.booked}/{r.sched.capacity} booked</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{r.sched.name}</p>
+                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{r.sched.displayTime} · {r.sched.booked}/{r.sched.capacity} booked</p>
                                 </td>
-                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>#{r.booking.waitlistPosition ?? 1}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>#{r.booking.waitlistPosition ?? 1}</td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         items={[
@@ -1676,7 +1676,7 @@ export function WaitlistConfirmModal({ open, onClose, branchIds }: WaitlistConfi
                         ))}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={4} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     No waitlist spots need confirming today.
                                 </td>
                             </tr>
@@ -1802,7 +1802,7 @@ export function TrialsEndingModal({ open, onClose, branchIds, forwardRangeDays }
             title="Trials ending soon"
             subtitle={
                 <>
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         {totalRows} trial{totalRows === 1 ? "" : "s"}
                     </span>{" "}
                     end within {forwardRangeDays ?? 7} days — follow up before the intro window closes
@@ -1855,11 +1855,11 @@ export function TrialsEndingModal({ open, onClose, branchIds, forwardRangeDays }
                             return (
                                 <tr key={r.plan.id}
                                     onClick={() => viewCustomer(r.customer.id)}
-                                    className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                    className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors cursor-pointer">
                                     <td className={TD}><CustomerCell c={r.customer} /></td>
-                                    <td className={cn(TD, "text-[14px] text-[#475467]")}>{r.plan.name}</td>
-                                    <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{creditsLabel}</td>
-                                    <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}
+                                    <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)]")}>{r.plan.name}</td>
+                                    <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{creditsLabel}</td>
+                                    <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}
                                         title={fmtDate(r.expiryDate)}>
                                         {expiresLabel}
                                     </td>
@@ -1876,7 +1876,7 @@ export function TrialsEndingModal({ open, onClose, branchIds, forwardRangeDays }
                         })}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={5} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     No trials ending in the next {forwardRangeDays ?? 7} days.
                                 </td>
                             </tr>
@@ -1941,7 +1941,7 @@ export function NewSignupsModal({ open, onClose, branchIds }: NewSignupsModalPro
             title="New sign-ups today"
             subtitle={
                 <>
-                    <span className="font-semibold text-[#101828]">
+                    <span className="font-semibold text-[var(--colors-text-primary)]">
                         {totalRows} customer{totalRows === 1 ? "" : "s"}
                     </span>{" "}
                     signed up today with no first booking yet
@@ -1967,9 +1967,9 @@ export function NewSignupsModal({ open, onClose, branchIds }: NewSignupsModalPro
                         {paged.map(r => (
                             <tr key={r.customer.id}
                                 onClick={() => viewCustomer(r.customer.id)}
-                                className="hover:bg-[#f9fafb]/50 transition-colors cursor-pointer">
+                                className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors cursor-pointer">
                                 <td className={TD}><CustomerCell c={r.customer} /></td>
-                                <td className={cn(TD, "text-[14px] text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.customer.createdAt)}</td>
+                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(r.customer.createdAt)}</td>
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions
                                         items={[
@@ -1982,7 +1982,7 @@ export function NewSignupsModal({ open, onClose, branchIds }: NewSignupsModalPro
                         ))}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={3} className="py-16 text-center text-[14px] text-[#667085]">
+                                <td colSpan={3} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
                                     No new sign-ups without a first booking today.
                                 </td>
                             </tr>

@@ -145,6 +145,6 @@ export default function AcquisitionEfficiencyReportPage() {
         [branches],
     );
 
-    if (!report) return <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">Acquisition Efficiency report definition is missing from the registry.</div>;
+    if (!report) return <div className="px-[24px] py-[48px] text-[14px] text-[var(--colors-text-tertiary)]">Acquisition Efficiency report definition is missing from the registry.</div>;
     return <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />;
 }

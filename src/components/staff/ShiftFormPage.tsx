@@ -262,8 +262,8 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
     if (mode === "edit" && !existing) {
         const notFound = (
             <div className="flex flex-1 flex-col items-center justify-center gap-3">
-                <p className="font-semibold text-[18px] text-[#101828]">Shift not found</p>
-                <p className="text-[14px] text-[#667085]">The shift you're trying to edit no longer exists.</p>
+                <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Shift not found</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">The shift you're trying to edit no longer exists.</p>
                 <Button variant="primary" size="md" onClick={exit}>Back to shifts</Button>
             </div>
         );
@@ -277,23 +277,23 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
     // ── Field content — shared by the side-panel + full-page layouts. ──
     const fields = (
         <>
-            <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Shift details</h2>
+            <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Shift details</h2>
 
             {/* Shift name */}
             <div className="flex flex-col gap-[6px]">
-                <label className="text-[14px] font-medium text-[#344054]">Shift name</label>
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Shift name</label>
                 <input
                     type="text"
                     value={form.name}
                     onChange={e => set({ name: e.target.value })}
                     placeholder="Enter shift name"
-                    className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                    className="h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
                 />
             </div>
 
             {/* Branch location */}
             <div className="flex flex-col gap-[6px]">
-                <label className="text-[14px] font-medium text-[#344054]">Branch location</label>
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Branch location</label>
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                     placeholder="Select branch"
@@ -309,7 +309,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
             {/* Shift hour — start / end constrained to the selected branch's open
                 window. Falls back to the full 24h range when no branch is picked. */}
             <div className="flex flex-col gap-[6px]">
-                <label className="text-[14px] font-medium text-[#344054]">Shift hour</label>
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Shift hour</label>
                 <div className="flex items-center gap-2">
                     <div className="flex-1">
                         <SelectInput
@@ -322,7 +322,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
                             disabled={!form.branchId}
                         />
                     </div>
-                    <span className="text-[14px] text-[#667085] shrink-0">—</span>
+                    <span className="text-[14px] text-[var(--colors-text-quaternary)] shrink-0">—</span>
                     <div className="flex-1">
                         <SelectInput
                             triggerIcon={<Clock className="w-4 h-4" />}
@@ -336,7 +336,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
                     </div>
                 </div>
                 {!form.branchId && (
-                    <p className="text-[13px] text-[#667085]">Select a branch first — shift hours follow the branch's working hours.</p>
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">Select a branch first — shift hours follow the branch's working hours.</p>
                 )}
                 {form.branchId && form.startTime >= form.endTime && (
                     <p className="text-[13px] text-[#b42318]">End time must be after start time.</p>
@@ -346,7 +346,7 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
             {/* Shift days — pill multi-toggle in Mon..Sun visual order. Disabled
                 until a branch is picked; closed days stay disabled. */}
             <div className="flex flex-col gap-[6px]">
-                <label className="text-[14px] font-medium text-[#344054]">Shift days</label>
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Shift days</label>
                 <div className="flex flex-wrap gap-2">
                     {DAY_PILLS.map(d => {
                         const selected = form.workingDays[d.index];
@@ -358,10 +358,10 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
                                 className={cn(
                                     "px-4 py-[8px] rounded-[8px] text-[14px] font-medium transition-all",
                                     dayDisabled
-                                        ? "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#d0d5dd] cursor-not-allowed"
+                                        ? "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-border-primary)] cursor-not-allowed"
                                         : selected
-                                            ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                            : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                            ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                                            : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}>
                                 {d.label}
                             </button>
@@ -369,9 +369,9 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
                     })}
                 </div>
                 {!form.branchId ? (
-                    <p className="text-[13px] text-[#667085]">Select a branch first — shift days follow the branch's operating days.</p>
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">Select a branch first — shift days follow the branch's operating days.</p>
                 ) : !form.workingDays.some(Boolean) && (
-                    <p className="text-[13px] text-[#475467]">Pick at least one day.</p>
+                    <p className="text-[13px] text-[var(--colors-text-tertiary)]">Pick at least one day.</p>
                 )}
             </div>
         </>
@@ -388,17 +388,17 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
     if (panel) {
         return (
             <>
-                <div className="flex items-center justify-between px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{pageTitle}</h2>
+                <div className="flex items-center justify-between px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{pageTitle}</h2>
                     <button type="button" onClick={exit} aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {fields}
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-end gap-3">
                     <Button variant="secondary-gray" size="md" onClick={exit}>Cancel</Button>
                     {submitBtn}
                 </div>
@@ -412,11 +412,11 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={exit}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{pageTitle}</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{pageTitle}</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -425,14 +425,14 @@ export function ShiftFormPage({ mode, shiftId, returnTo = "/admin/staff", onClos
                 <div className="flex gap-8 px-6 py-6 h-full items-start">
                     <div className="w-[260px] shrink-0 pt-2">
                         <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] bg-[#f5fffa]">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
                                 1
                             </div>
                             <span className="text-[14px] font-semibold text-[#3b5446]">Shift details</span>
                         </div>
                     </div>
 
-                    <div className="flex-1 max-w-[628px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden self-stretch shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <div className="flex-1 max-w-[628px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden self-stretch shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                         <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
                             {fields}
                         </div>

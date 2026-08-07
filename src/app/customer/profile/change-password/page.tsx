@@ -57,9 +57,9 @@ export default function ChangePasswordPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">{title}</h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -81,7 +81,7 @@ export default function ChangePasswordPage() {
                         placeholder="Confirm your password"
                         error={confirm.length > 0 && confirm !== next}
                     />
-                    <p className="text-xs leading-[18px] text-[#667085]">Make sure it matches your password.</p>
+                    <p className="text-xs leading-[18px] text-[var(--colors-text-quaternary)]">Make sure it matches your password.</p>
                 </div>
             </div>
 

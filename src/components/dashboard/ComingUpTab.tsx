@@ -151,7 +151,7 @@ export function ComingUpTab({
                 granularity={granularity}
             />
 
-            <p className="text-[11.5px] text-[#98a2b3] italic mt-1">
+            <p className="text-[11.5px] text-[var(--colors-fg-quaternary)] italic mt-1">
                 Individual items to fix live in Today → Act on it. Click a
                 {granularity === "day" ? " day" : " week"} to open its schedule.
             </p>

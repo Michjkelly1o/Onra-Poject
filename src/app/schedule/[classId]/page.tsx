@@ -109,18 +109,18 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
 {/* Header */}
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Plan</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Plan</p>
                         <div className="flex flex-wrap gap-2">
                             <FilterPill label="Membership" selected={pending.plans.includes("membership")}
                                 onClick={() => togglePlan("membership")} />
@@ -128,9 +128,9 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
                                 onClick={() => togglePlan("package")} />
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Booking date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Booking date range</p>
                         <div className="flex gap-2">
                             <div className="flex-1">
                                 <DatePicker value={pending.startDate}
@@ -150,7 +150,7 @@ function BookingFilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 {/* Footer */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                         Clear filter
@@ -202,18 +202,18 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
 {/* Header */}
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date range</p>
                         <div className="flex gap-2">
                             <div className="flex-1">
                                 <DatePicker value={pending.startDate}
@@ -232,20 +232,20 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                             </div>
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">What stood out</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">What stood out</p>
                         <div className="flex flex-wrap gap-2">
                             {STOOD_OUT_OPTIONS.map(t => (
                                 <FilterPill key={t} label={t} selected={pending.tags.includes(t)} onClick={() => toggleTag(t)} />
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Ratings</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Ratings</p>
                         <div className="flex flex-wrap gap-2">
                             {[5, 4, 3, 2, 1].map(n => {
                                 const sel = pending.ratings.includes(n);
@@ -253,8 +253,8 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                                     <button key={n} type="button" onClick={() => toggleRating(n)}
                                         className={cn("h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors inline-flex items-center gap-1.5",
                                             sel
-                                                ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                                                : "bg-white border-[#d0d5dd] text-[#344054] hover:border-[#aad4bd]")}>
+                                                ? "bg-[var(--colors-secondary-50)] border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                                                : "bg-white border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] hover:border-[var(--colors-secondary-300)]")}>
                                         <Star01 className="w-4 h-4 text-[#fdb022]" fill="#fdb022" />
                                         {n} star
                                     </button>
@@ -265,7 +265,7 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 {/* Footer */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_REVIEW_FILTER); onApply(EMPTY_REVIEW_FILTER); onClose(); }}>
                         Clear filter
@@ -288,7 +288,7 @@ function Toggle({ on, onChange, disabled = false }: { on: boolean; onChange: (ne
             onClick={() => !disabled && onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full p-0.5 flex items-center transition-colors shrink-0",
-                on ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                on ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed"
             )}>
             <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -322,8 +322,8 @@ function CancelBookingModal({ open, count, sampleName, defaultRefund = true, onC
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 {/* Header */}
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
@@ -331,17 +331,17 @@ function CancelBookingModal({ open, count, sampleName, defaultRefund = true, onC
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{!isBulk && sampleName ? <>Are you sure you want to cancel <span className="font-medium text-[#344054]">{sampleName}</span> from the booked session? This action cannot be undone.</> : desc}</p>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{!isBulk && sampleName ? <>Are you sure you want to cancel <span className="font-medium text-[var(--colors-text-secondary)]">{sampleName}</span> from the booked session? This action cannot be undone.</> : desc}</p>
                     </div>
                 </div>
                 <div className="h-5 shrink-0" />
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                 {/* Refund toggle row */}
                 <div className="flex items-center justify-between gap-4 px-6 py-5">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[16px] font-medium text-[#101828]">Refund class session</p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{refundDesc}</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class session</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{refundDesc}</p>
                     </div>
                     <Toggle on={refund} onChange={setRefund} />
                 </div>
@@ -374,29 +374,29 @@ function CancelClassModal({ open, classInstance, bookedCount, onClose, onConfirm
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this class?</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
-                            <span className="font-medium text-[#344054]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this class?</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
+                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
                         </p>
                     </div>
                 </div>
                 {bookedCount > 0 && (
                     <>
                         <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[#e4e7ec]" />
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                         <div className="flex items-center justify-between gap-4 px-6 py-5">
                             <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[#101828]">Refund class credit</p>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">When the studio cancels a class, each customer is always refunded.</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class credit</p>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">When the studio cancels a class, each customer is always refunded.</p>
                             </div>
                             {/* Locked ON — class cancellation by admin always grants a no-charge refund. */}
                             <Toggle on={true} onChange={() => { /* locked */ }} disabled />
@@ -473,27 +473,27 @@ function AddCustomerModal({ open, existingCustomerIds, applicableMembershipIds, 
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[16px] w-full max-w-[720px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[80vh] overflow-hidden">
                 {/* Header */}
-                <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[#e4e7ec]">
+                <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[var(--colors-border-secondary)]">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Add customer</p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Add customer</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             {restricted
                                 ? `This class is open to ${genderWord} customers only — pick one to add.`
                                 : "Select a customer to add to this class."}
                         </p>
                     </div>
-                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 {/* Search + add new */}
                 <div className="px-6 pt-5 pb-4 flex items-center gap-3">
                     <div className="relative flex-1">
-                        <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085] pointer-events-none" />
+                        <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--colors-text-quaternary)] pointer-events-none" />
                         <input
                             type="text" value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Search customer"
-                            className="w-full h-10 pl-10 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            className="w-full h-10 pl-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </div>
                     <Button
@@ -502,23 +502,23 @@ function AddCustomerModal({ open, existingCustomerIds, applicableMembershipIds, 
                         onClick={() => router.push(`/customers/new?returnTo=${encodeURIComponent(window.location.pathname + "?openAddCustomer=1")}`)}
                         title="Create new customer"
                     >
-                        <Plus className="w-5 h-5 text-[#344054]" />
+                        <Plus className="w-5 h-5 text-[var(--colors-text-secondary)]" />
                     </Button>
                 </div>
                 {/* Customer list */}
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
                     {available.length === 0 ? (
-                        <p className="text-[14px] text-[#667085] text-center py-8">No matching customers.</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] text-center py-8">No matching customers.</p>
                     ) : (
                         <div className="flex flex-col">
                             {available.map((c, i) => (
-                                <div key={c.id} className={cn("grid grid-cols-[1fr_140px_140px] items-center gap-4 py-3", i > 0 && "border-t border-[#e4e7ec]")}>
+                                <div key={c.id} className={cn("grid grid-cols-[1fr_140px_140px] items-center gap-4 py-3", i > 0 && "border-t border-[var(--colors-border-secondary)]")}>
                                     {/* Customer */}
                                     <div className="flex items-center gap-3 min-w-0">
                                         <TableAvatar initials={c.initials} imageUrl={c.imageUrl} size={40} />
                                         <div className="min-w-0">
-                                            <p className="text-[14px] font-medium text-[#101828] truncate">{c.firstName} {c.lastName}</p>
-                                            <p className="text-[14px] text-[#667085] truncate">{c.email}</p>
+                                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{c.firstName} {c.lastName}</p>
+                                            <p className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{c.email}</p>
                                         </div>
                                     </div>
                                     {/* Plan badge — wrapped in flex so the inline-flex pill sits left-aligned at content width */}
@@ -550,7 +550,7 @@ function PlanIconBadge({ kind, size = 40 }: { kind: "membership" | "package"; si
     const inner = size === 40 ? 24 : 20;
     const tint = kind === "membership"
         ? { bg: "bg-[#e0eaff]", icon: "text-[#3538cd]" }
-        : { bg: "bg-[var(--brand-tertiary)]", icon: "text-[#658774]" };
+        : { bg: "bg-[var(--brand-tertiary)]", icon: "text-[var(--colors-secondary-600)]" };
     const Icon = kind === "membership" ? CreditCard02 : Package;
     return (
         <div
@@ -648,84 +648,84 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6">
                     <div className="flex-1 flex flex-col gap-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Payment confirmation</p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">Review customer details and complete the payment to finalize this booking.</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Payment confirmation</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Review customer details and complete the payment to finalize this booking.</p>
                     </div>
-                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="h-5 shrink-0" />
                 {/* Header → body divider runs edge-to-edge (no horizontal gap). */}
-                <div className="h-px bg-[#e4e7ec] shrink-0" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                 {/* Body — scrollable. Section dividers inside are inset 24px each side. */}
                 <div className="flex-1 overflow-y-auto flex flex-col">
                     {/* Customer section — clicking the row swaps the customer
                         via onSwitchCustomer (re-opens AddCustomerModal). */}
                     <div className="flex flex-col gap-4 px-6 py-5">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Customer</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Customer</p>
                         <button type="button" onClick={onSwitchCustomer}
-                            className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] w-full text-left hover:bg-[#f9fafb] transition-colors">
+                            className="flex items-center gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] w-full text-left hover:bg-[var(--colors-bg-secondary)] transition-colors">
                             <TableAvatar initials={customer.initials} imageUrl={customer.imageUrl} size={40} />
                             <div className="flex-1 min-w-0 flex items-center gap-4">
                                 <div className="flex flex-col">
-                                    <p className="text-[14px] font-medium text-[#101828] truncate">{customer.firstName} {customer.lastName}</p>
-                                    <p className="text-[14px] text-[#475467] truncate">{customer.email}</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{customer.firstName} {customer.lastName}</p>
+                                    <p className="text-[14px] text-[var(--colors-text-tertiary)] truncate">{customer.email}</p>
                                 </div>
                                 {customer.planKind === null ? <NoPlanBadge /> : <PlanBadge kind={customer.planKind} />}
                             </div>
-                            <SwitchHorizontal01 className="w-5 h-5 text-[#667085] shrink-0" />
+                            <SwitchHorizontal01 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
                         </button>
                     </div>
 
-                    <div className="mx-6 h-px bg-[#e4e7ec] shrink-0" />
+                    <div className="mx-6 h-px bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Detail class section */}
                     <div className="flex flex-col gap-4 px-6 py-5">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Detail class</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Detail class</p>
                         <div className="flex items-center gap-3 w-full">
-                            <div className="w-16 h-16 rounded-[8px] border-1 border-[#e4e7ec] overflow-hidden shrink-0 bg-white">
+                            <div className="w-16 h-16 rounded-[8px] border-1 border-[var(--colors-border-secondary)] overflow-hidden shrink-0 bg-white">
                                 {classInstance.coverImage
                                     ? <img src={classInstance.coverImage} alt={classInstance.name} className="w-full h-full object-cover" />
                                     : <div className="w-full h-full" style={{ backgroundColor: classInstance.coverColor }} />}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-medium text-[#101828]">{classInstance.name}</p>
-                                <p className="text-[14px] text-[#475467]">{classInstance.date} • {classInstance.displayTime}</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{classInstance.name}</p>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)]">{classInstance.date} • {classInstance.displayTime}</p>
                                 <div className="flex items-center gap-1 mt-0.5">
                                     <div className="w-4 h-4 rounded-full overflow-hidden bg-[#e0e0e0] shrink-0 flex items-center justify-center">
                                         <span className="text-[8px] font-semibold text-white" style={{ backgroundColor: classInstance.instructorColor }}>
                                             {classInstance.instructorInitials}
                                         </span>
                                     </div>
-                                    <p className="text-[12px] text-[#667085]">{classInstance.instructorName.split(" ")[0]} {classInstance.instructorName.split(" ").slice(-1)[0][0]}.</p>
+                                    <p className="text-[12px] text-[var(--colors-text-quaternary)]">{classInstance.instructorName.split(" ")[0]} {classInstance.instructorName.split(" ").slice(-1)[0][0]}.</p>
                                 </div>
                             </div>
-                            <p className="text-[14px] font-medium text-[#101828] whitespace-nowrap">1 credit</p>
+                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">1 credit</p>
                         </div>
                     </div>
 
-                    <div className="mx-6 h-px bg-[#e4e7ec] shrink-0" />
+                    <div className="mx-6 h-px bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Spot section */}
                     <div className="flex flex-col gap-4 px-6 py-5">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Spot</p>
-                        <div className="flex items-center gap-4 p-4 bg-[#e9fff3] border-1 border-[#7ba08c] rounded-[12px]">
-                            <Lightbulb02 className="w-5 h-5 text-[#475467] shrink-0" />
-                            <p className="text-[14px] text-[#475467] flex-1">A spot will be auto assigned to this customer.</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Spot</p>
+                        <div className="flex items-center gap-4 p-4 bg-[var(--colors-secondary-50)] border-1 border-[var(--colors-secondary-500)] rounded-[12px]">
+                            <Lightbulb02 className="w-5 h-5 text-[var(--colors-text-tertiary)] shrink-0" />
+                            <p className="text-[14px] text-[var(--colors-text-tertiary)] flex-1">A spot will be auto assigned to this customer.</p>
                         </div>
                     </div>
 
-                    <div className="mx-6 h-px bg-[#e4e7ec] shrink-0" />
+                    <div className="mx-6 h-px bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     {/* Select plan section — variants */}
                     <div className="flex flex-col px-6 py-5">
                     {hasPlan ? (
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center gap-4">
-                                <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">Select plan</p>
-                                <button type="button" onClick={onSelectMembership} className="flex items-center gap-2 text-[16px] font-semibold text-[#475467] hover:text-[#344054] transition-colors">
+                                <p className="flex-1 text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Select plan</p>
+                                <button type="button" onClick={onSelectMembership} className="flex items-center gap-2 text-[16px] font-semibold text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)] transition-colors">
                                     <ShoppingBag03 className="w-5 h-5" />
                                     Purchase new
                                 </button>
@@ -739,7 +739,7 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                                         <div className="absolute inset-[-37.5%] rounded-full border-[1.667px] border-[#dc6803] opacity-10" />
                                         <AlertCircle className="w-5 h-5 text-[#dc6803]" />
                                     </div>
-                                    <p className="flex-1 text-[14px] text-[#475467] leading-[20px]">
+                                    <p className="flex-1 text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                                         This customer has an active plan for this class with 0 credit. A new plan purchase is required to continue.
                                     </p>
                                 </div>
@@ -754,16 +754,16 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                                             <button key={pkg.id} type="button" onClick={() => setSelectedPackageId(pkg.id)}
                                                 className={cn(
                                                     "flex items-center gap-3 p-4 rounded-[12px] text-left transition-colors w-full",
-                                                    selected ? "border-2 border-[#658774] bg-[#f5fffa]" : "border-1 border-[#e4e7ec] bg-white hover:bg-[#f9fafb]",
+                                                    selected ? "border-2 border-[var(--colors-secondary-600)] bg-[#f5fffa]" : "border-1 border-[var(--colors-border-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)]",
                                                 )}>
                                                 <PackageIconBadge />
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-[14px] font-medium text-[#101828] truncate">{pkg.name}</p>
-                                                    <p className="text-[14px] text-[#667085]">{pkg.credits} credit{pkg.credits === 1 ? "" : "s"} • Active</p>
+                                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{pkg.name}</p>
+                                                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">{pkg.credits} credit{pkg.credits === 1 ? "" : "s"} • Active</p>
                                                 </div>
                                                 <div className={cn(
                                                     "w-4 h-4 rounded-full flex items-center justify-center shrink-0 border-1",
-                                                    selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                                    selected ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]",
                                                 )}>
                                                     {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                                                 </div>
@@ -773,25 +773,25 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                                 </div>
                             ) : (
                                 // Single-plan customers (membership OR 1 package) — non-selectable card.
-                                <div className="flex items-start gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
+                                <div className="flex items-start gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]">
                                     {customer.planKind === "membership" ? <MembershipIconBadge /> : <PackageIconBadge />}
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[14px] font-medium text-[#101828]">{customer.planName}</p>
-                                        <p className="text-[14px] text-[#667085]">{planSubtitle}</p>
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{customer.planName}</p>
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">{planSubtitle}</p>
                                     </div>
                                 </div>
                             )}
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4">
-                            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Buy packages</p>
+                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Buy packages</p>
                             <button type="button" onClick={onSelectMembership}
-                                className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] w-full text-left hover:bg-[#f9fafb] transition-colors">
-                                <div className="w-10 h-10 rounded-[6px] bg-[#f9fafb] border-1 border-[#e4e7ec] flex items-center justify-center shrink-0 shadow-[0px_1px_1px_rgba(0,0,0,0.04)]">
-                                    <ShoppingBag03 className="w-5 h-5 text-[#475467]" />
+                                className="flex items-center gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] w-full text-left hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <div className="w-10 h-10 rounded-[6px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] flex items-center justify-center shrink-0 shadow-[0px_1px_1px_rgba(0,0,0,0.04)]">
+                                    <ShoppingBag03 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                                 </div>
-                                <p className="flex-1 text-[16px] font-medium text-[#344054]">Select membership</p>
-                                <ChevronRight className="w-5 h-5 text-[#667085] shrink-0" />
+                                <p className="flex-1 text-[16px] font-medium text-[var(--colors-text-secondary)]">Select membership</p>
+                                <ChevronRight className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
                             </button>
                         </div>
                     )}
@@ -799,7 +799,7 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                 </div>
 
                 {/* Footer — body→footer divider runs edge-to-edge (no horizontal gap). */}
-                <div className="h-px bg-[#e4e7ec] shrink-0" />
+                <div className="h-px bg-[var(--colors-bg-quaternary)] shrink-0" />
                 <div className="flex gap-3 px-6 pt-6 pb-6 shrink-0">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
@@ -825,16 +825,16 @@ function RoomCapacityModal({ open, onClose, onConfirm }: {
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fef0c7] flex items-center justify-center shrink-0">
                         <Users01 className="w-6 h-6 text-[#dc6803]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Room capacity limit reached</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Room capacity limit reached</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             This booking exceeds the room capacity. The client will be placed on the waitlist.
                         </p>
                     </div>
@@ -843,7 +843,7 @@ function RoomCapacityModal({ open, onClose, onConfirm }: {
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button variant="primary" size="lg" className="flex-1 bg-[#fdb022] text-[#101828] hover:bg-[#f79009] active:bg-[#dc6803]" onClick={onConfirm}>
+                    <Button variant="primary" size="lg" className="flex-1 bg-[#fdb022] text-[var(--colors-text-primary)] hover:bg-[#f79009] active:bg-[#dc6803]" onClick={onConfirm}>
                         Add to waitlist
                     </Button>
                 </div>
@@ -866,16 +866,16 @@ function AddCustomerConfirmationModal({ open, onClose, onConfirm }: {
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#d7ffe9] flex items-center justify-center shrink-0">
-                        <Users01 className="w-6 h-6 text-[#658774]" />
+                        <Users01 className="w-6 h-6 text-[var(--colors-secondary-600)]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Add customer to this class?</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Add customer to this class?</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             The customer will be added to this class and their balance may be updated accordingly.
                         </p>
                     </div>
@@ -1014,20 +1014,20 @@ function POSModal({ open, onClose, onContinue, customer, applicableMembershipIds
             <div className="relative bg-white rounded-[16px] w-full max-w-[1080px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[90vh] overflow-hidden">
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6">
-                    <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">Point of Sale</p>
-                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                    <p className="flex-1 text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Point of Sale</p>
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="h-5 shrink-0" />
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Body — 3-col grid of POS cards (filtered by class template applicable plans) */}
                 <div className="flex-1 overflow-y-auto px-6 py-5">
                     {applicableProducts.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 gap-2">
-                            <p className="text-[16px] font-medium text-[#101828]">No applicable plans</p>
-                            <p className="text-[14px] text-[#667085]">This class template doesn&rsquo;t accept any memberships or packages yet.</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">No applicable plans</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">This class template doesn&rsquo;t accept any memberships or packages yet.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-3 gap-4">
@@ -1051,7 +1051,7 @@ function POSModal({ open, onClose, onContinue, customer, applicableMembershipIds
                 </div>
 
                 {/* Footer */}
-                <div className="flex gap-3 px-6 pt-4 pb-6 border-t border-[#e4e7ec] shrink-0">
+                <div className="flex gap-3 px-6 pt-4 pb-6 border-t border-[var(--colors-border-secondary)] shrink-0">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Back
                     </Button>
@@ -1171,55 +1171,55 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
             <div className="relative bg-white rounded-[16px] w-full max-w-[720px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col max-h-[90vh] overflow-hidden">
                 {/* Header */}
                 <div className="flex items-start gap-4 px-6 pt-6">
-                    <p className="flex-1 text-[18px] font-semibold text-[#101828] leading-[28px]">Checkout confirmation</p>
-                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0 -mt-1 -mr-2">
-                        <XClose className="w-6 h-6 text-[#667085]" />
+                    <p className="flex-1 text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Checkout confirmation</p>
+                    <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0 -mt-1 -mr-2">
+                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="h-5 shrink-0" />
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Body — scrollable. Customer + Products sections. */}
                 <div className="flex-1 overflow-y-auto flex flex-col">
                     {/* Customer */}
-                    <div className="flex flex-col gap-4 px-6 py-5 border-b border-[#e4e7ec]">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Customer</p>
-                        <div className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px] w-full">
+                    <div className="flex flex-col gap-4 px-6 py-5 border-b border-[var(--colors-border-secondary)]">
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Customer</p>
+                        <div className="flex items-center gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] w-full">
                             <TableAvatar initials={customer.initials} imageUrl={customer.imageUrl} size={40} />
                             <div className="flex-1 min-w-0 flex flex-col">
-                                <p className="text-[14px] font-medium text-[#101828] truncate">{customer.firstName} {customer.lastName}</p>
-                                <p className="text-[14px] text-[#475467] truncate">{customer.email}</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{customer.firstName} {customer.lastName}</p>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] truncate">{customer.email}</p>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-[#667085] shrink-0" />
+                            <ChevronRight className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
                         </div>
                     </div>
 
                     {/* Products list */}
                     <div className="flex flex-col gap-4 px-6 py-5">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Products</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Products</p>
                         <div className="flex flex-col gap-3">
                             {lineItems.map((it, idx) => (
-                                <div key={it.productId} className="flex items-center gap-3 p-4 bg-white border-1 border-[#e4e7ec] rounded-[12px]">
+                                <div key={it.productId} className="flex items-center gap-3 p-4 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px]">
                                     <div className={cn(
                                         "w-10 h-10 rounded-[8px] flex items-center justify-center shrink-0 shadow-[inset_2px_2px_3px_rgba(255,255,255,0.2)]",
                                         it.productType === "membership" ? "bg-[#e0eaff]" : "bg-[var(--brand-tertiary)]"
                                     )}>
                                         {it.productType === "membership"
                                             ? <CreditCard02 className="w-5 h-5 text-[#3538cd]" />
-                                            : <Package className="w-5 h-5 text-[#658774]" />}
+                                            : <Package className="w-5 h-5 text-[var(--colors-secondary-600)]" />}
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                        <p className="text-[14px] font-medium text-[#101828] truncate">{it.name}</p>
+                                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{it.name}</p>
                                         <div className="flex items-center gap-1.5 text-[14px] font-medium">
-                                            <span className="text-[#658774]">AED {it.unitPrice}</span>
+                                            <span className="text-[var(--colors-secondary-600)]">AED {it.unitPrice}</span>
                                         </div>
                                     </div>
-                                    <div className="border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-3 px-1.5 py-1.5 shrink-0">
-                                        <button type="button" onClick={() => decrementQty(idx)} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] transition-colors">
+                                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[8px] flex items-center gap-3 px-1.5 py-1.5 shrink-0">
+                                        <button type="button" onClick={() => decrementQty(idx)} className="w-[18px] h-[18px] flex items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] transition-colors">
                                             <Minus className="w-[18px] h-[18px]" />
                                         </button>
-                                        <span className="text-[12px] font-semibold text-[#101828] min-w-[16px] text-center">{it.quantity}</span>
-                                        <button type="button" onClick={() => incrementQty(idx)} disabled={it.productType === "membership"} className="w-[18px] h-[18px] flex items-center justify-center text-[#667085] hover:text-[#101828] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                                        <span className="text-[12px] font-semibold text-[var(--colors-text-primary)] min-w-[16px] text-center">{it.quantity}</span>
+                                        <button type="button" onClick={() => incrementQty(idx)} disabled={it.productType === "membership"} className="w-[18px] h-[18px] flex items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                                             <Plus className="w-[18px] h-[18px]" />
                                         </button>
                                     </div>
@@ -1230,20 +1230,20 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
                 </div>
 
                 {/* Sticky footer panel — discount controls + totals + buttons */}
-                <div className="bg-[#f8f8f6] border-t border-[#e4e7ec] flex flex-col gap-5 px-6 py-6 shrink-0">
+                <div className="bg-[#f8f8f6] border-t border-[var(--colors-border-secondary)] flex flex-col gap-5 px-6 py-6 shrink-0">
                     <div className="flex flex-col gap-3">
                         {customDiscountChecked ? (
                             // Custom discount input (replaces promo input when admin opts in)
                             <>
                                 <div className="flex items-end gap-3">
                                     <div className="flex flex-col gap-1.5 flex-1">
-                                        <label className="text-[14px] font-medium text-[#344054]">Custom discount</label>
-                                        <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Custom discount</label>
+                                        <div className="flex items-center h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                             <input type="number" min="0" max="100" value={customDiscountInput}
                                                 onChange={e => setCustomDiscountInput(e.target.value.replace(/^0+(?=\d)/, ""))}
                                                 placeholder="0"
-                                                className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none" />
-                                            <span className="text-[16px] text-[#667085] ml-2">%</span>
+                                                className="flex-1 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder-[var(--colors-text-quaternary)] focus:outline-none" />
+                                            <span className="text-[16px] text-[var(--colors-text-quaternary)] ml-2">%</span>
                                         </div>
                                     </div>
                                     <Button variant="secondary-gray" size="md" onClick={handleApplyCustomDiscount}>Apply</Button>
@@ -1254,23 +1254,23 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
                             <>
                                 <div className="flex items-end gap-3">
                                     <div className="flex flex-col gap-1.5 flex-1">
-                                        <label className="text-[14px] font-medium text-[#344054]">Promotion</label>
-                                        <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                            <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
+                                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Promotion</label>
+                                        <div className="flex items-center h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                            <Sale04 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
                                             <input type="text" value={promoCode}
                                                 onChange={e => setPromoCode(e.target.value)}
                                                 placeholder="Enter promotion"
-                                                className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none ml-2" />
+                                                className="flex-1 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder-[var(--colors-text-quaternary)] focus:outline-none ml-2" />
                                         </div>
                                     </div>
                                     <Button variant="secondary-gray" size="md" onClick={handleApplyPromo}>Apply</Button>
                                 </div>
                                 {appliedPromo && (
                                     <div className="flex flex-col gap-1.5">
-                                        <p className="text-[14px] text-[#667085]">Applied promo</p>
-                                        <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
-                                            <span className="flex-1 text-[14px] font-medium text-[#344054]">{appliedPromo}</span>
-                                            <button type="button" onClick={() => setAppliedPromo(null)} className="text-[#667085] hover:text-[#101828]">
+                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">Applied promo</p>
+                                        <div className="bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
+                                            <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-secondary)]">{appliedPromo}</span>
+                                            <button type="button" onClick={() => setAppliedPromo(null)} className="text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)]">
                                                 <XClose className="w-3 h-3" />
                                             </button>
                                         </div>
@@ -1284,28 +1284,28 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
                             <button type="button" onClick={handleCustomDiscountToggle} className="flex items-start gap-2 text-left">
                                 <span className={cn(
                                     "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center mt-0.5 shrink-0 transition-colors",
-                                    customDiscountChecked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]"
+                                    customDiscountChecked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]"
                                 )}>
                                     {customDiscountChecked && <Check className="w-3 h-3 text-white" />}
                                 </span>
-                                <span className="text-[14px] font-medium text-[#344054]">Apply custom discount</span>
+                                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Apply custom discount</span>
                             </button>
                         )}
                     </div>
 
                     {/* Detail payment */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#101828]">Detail payment</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Detail payment</p>
                         <div className="flex items-center justify-between">
-                            <p className="text-[14px] text-[#667085]">Subtotal</p>
-                            <p className="text-[16px] font-medium text-[#101828]">AED {subtotal.toLocaleString()}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Subtotal</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">AED {subtotal.toLocaleString()}</p>
                         </div>
                         {discountPercent > 0 && (
                             <div className="flex items-center justify-between">
-                                <p className="text-[14px] text-[#667085]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                                     {appliedCustomDiscount !== null
-                                        ? <>Discount (<span className="font-medium text-[#101828]">{discountPercent}%</span>)</>
-                                        : <>Promotion (<span className="font-medium text-[#101828]">{appliedPromo}</span>)</>
+                                        ? <>Discount (<span className="font-medium text-[var(--colors-text-primary)]">{discountPercent}%</span>)</>
+                                        : <>Promotion (<span className="font-medium text-[var(--colors-text-primary)]">{appliedPromo}</span>)</>
                                     }
                                 </p>
                                 <p className="text-[16px] font-medium text-[#d92d20]">-AED {discountAmount.toLocaleString()}</p>
@@ -1315,14 +1315,14 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
                             (Tax settings / PRD 11 ships per-product rates). */}
                         {taxRate > 0 && (
                             <div className="flex items-center justify-between">
-                                <p className="text-[14px] text-[#667085]">Tax rate (<span className="font-medium text-[#101828]">{taxRate}%</span>)</p>
-                                <p className="text-[16px] font-medium text-[#101828]">AED {taxAmount.toLocaleString()}</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Tax rate (<span className="font-medium text-[var(--colors-text-primary)]">{taxRate}%</span>)</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">AED {taxAmount.toLocaleString()}</p>
                             </div>
                         )}
-                        <div className="h-px w-full bg-[#e4e7ec] my-1" />
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)] my-1" />
                         <div className="flex items-center justify-between">
-                            <p className="text-[14px] font-semibold text-[#101828]">Total</p>
-                            <p className="text-[16px] font-semibold text-[#101828]">AED {total.toLocaleString()}</p>
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)]">Total</p>
+                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">AED {total.toLocaleString()}</p>
                         </div>
                     </div>
 
@@ -1347,15 +1347,15 @@ function CheckoutConfirmationModal({ open, customer, items, onClose, onBackToCar
 
 function EmptyTableIllustration() {
     return (
-        <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
+        <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
             <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02),-3px_4.4px_10.2px_rgba(0,0,0,0.02)]">
-                <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center shadow-[0px_1.5px_1.5px_rgba(0,0,0,0.04)]">
-                    <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center shadow-[0px_1.5px_1.5px_rgba(0,0,0,0.04)]">
+                    <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                 </div>
             </div>
             <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                <div className="h-2 bg-[#e4e7ec] rounded-full w-3/4" />
-                <div className="h-2 bg-[#e4e7ec] rounded-full w-1/2" />
+                <div className="h-2 bg-[var(--colors-bg-quaternary)] rounded-full w-3/4" />
+                <div className="h-2 bg-[var(--colors-bg-quaternary)] rounded-full w-1/2" />
             </div>
         </div>
     );
@@ -1372,8 +1372,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]"
+                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]"
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -1412,8 +1412,8 @@ function RemoveBookingModal({ open, count, sampleName, defaultRefund = true, onC
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 {/* Header */}
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
@@ -1421,21 +1421,21 @@ function RemoveBookingModal({ open, count, sampleName, defaultRefund = true, onC
                         <Trash02 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             {!isBulk && sampleName
-                                ? <>Are you sure you want to remove <span className="font-medium text-[#344054]">{sampleName}</span> from the booked session? This action cannot be undone.</>
+                                ? <>Are you sure you want to remove <span className="font-medium text-[var(--colors-text-secondary)]">{sampleName}</span> from the booked session? This action cannot be undone.</>
                                 : desc}
                         </p>
                     </div>
                 </div>
                 <div className="h-5 shrink-0" />
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                 {/* Refund toggle row */}
                 <div className="flex items-center justify-between gap-4 px-6 py-5">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[16px] font-medium text-[#101828]">Refund class session</p>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">{refundDesc}</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class session</p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{refundDesc}</p>
                     </div>
                     <Toggle on={refund} onChange={setRefund} />
                 </div>
@@ -1493,18 +1493,18 @@ function BulkActionBar({ variant, count, onClear, onCancel, onRemove, onPresent,
     if (count === 0) return null;
     return (
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
-            <div className="pointer-events-auto bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
+            <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 {/* Selection counter pill */}
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[#f9fafb] transition-colors">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 {/* Actions */}
                 <div className="flex items-center gap-3">
                     {variant === "upcoming" && (
                         <>
-                            <Button variant="secondary-gray" size="sm" leftIcon={<SlashCircle01 className="w-5 h-5 text-[#667085]" />} onClick={onCancel}>
+                            <Button variant="secondary-gray" size="sm" leftIcon={<SlashCircle01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={onCancel}>
                                 Cancel
                             </Button>
                             <Button variant="secondary-gray" size="sm" className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]" leftIcon={<Trash02 className="w-5 h-5 text-[#b42318]" />} onClick={onRemove}>
@@ -1541,21 +1541,21 @@ function DeleteReviewModal({ open, count, sampleName, onClose, onConfirm }: {
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <Trash02 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
                             {isBulk ? `Delete ${count} reviews?` : "Delete this review?"}
                         </h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             {isBulk
                                 ? "These reviews will be hidden from the class page and moved to the deletion log."
-                                : <>The review from <span className="font-medium text-[#344054]">{sampleName}</span> will be hidden from the class page and moved to the deletion log.</>}
+                                : <>The review from <span className="font-medium text-[var(--colors-text-secondary)]">{sampleName}</span> will be hidden from the class page and moved to the deletion log.</>}
                         </p>
                     </div>
                 </div>
@@ -1583,7 +1583,7 @@ function StarRow({ score, size = 20 }: { score: number; size?: number }) {
                 return (
                     <Star01 key={i}
                         style={{ width: size, height: size }}
-                        className={cn(filled || half ? "text-[#fdb022]" : "text-[#e4e7ec]")}
+                        className={cn(filled || half ? "text-[#fdb022]" : "text-[var(--colors-border-secondary)]")}
                         fill={filled ? "#fdb022" : half ? "url(#half-star)" : "none"} />
                 );
             })}
@@ -1595,7 +1595,7 @@ function StarRow({ score, size = 20 }: { score: number; size?: number }) {
 
 function StoodOutTag({ label }: { label: string }) {
     return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full border-1 border-[#e4e7ec] bg-white text-[12px] font-medium text-[#344054] whitespace-nowrap">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full border-1 border-[var(--colors-border-secondary)] bg-white text-[12px] font-medium text-[var(--colors-text-secondary)] whitespace-nowrap">
             {label}
         </span>
     );
@@ -1608,19 +1608,19 @@ function RatingSummary({ rating, count }: { rating: number; count: number }) {
     const filled = Math.round(rating);
     return (
         <div className="px-6 pb-6 mt-auto">
-            <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-            <p className="text-[14px] text-[#667085] mb-3">Rating summary</p>
+            <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-3">Rating summary</p>
             <div className="flex flex-col gap-1">
                 <div className="flex gap-1 items-center">
                     {[0, 1, 2, 3, 4].map(i => (
                         <Star01 key={i}
-                            className={cn("w-8 h-8", i < filled ? "text-[#fdb022]" : "text-[#e4e7ec]")}
+                            className={cn("w-8 h-8", i < filled ? "text-[#fdb022]" : "text-[var(--colors-border-secondary)]")}
                             fill={i < filled ? "#fdb022" : "none"} />
                     ))}
                 </div>
                 <div className="flex gap-1 items-center">
-                    <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">{rating > 0 ? rating.toFixed(1) : "0"}</p>
-                    <p className="text-[14px] text-[#667085]">({count} {count === 1 ? "rating" : "ratings"})</p>
+                    <p className="font-semibold text-[24px] leading-[32px] text-[var(--colors-text-primary)]">{rating > 0 ? rating.toFixed(1) : "0"}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">({count} {count === 1 ? "rating" : "ratings"})</p>
                 </div>
             </div>
         </div>
@@ -1641,7 +1641,7 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
     const showRatingSummary = isCancelled || isCompleted;
     const noActions = !canAddCustomer && !canEdit && !canCancelClass;
     return (
-        <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
             <div className="relative h-[155px] shrink-0 overflow-hidden" style={{ backgroundColor: ci.coverColor }}>
                 {ci.coverImage ? (
@@ -1664,25 +1664,25 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     {/* Name + description */}
                     <div>
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{ci.name}</h2>
-                        <p className="text-[14px] text-[#667085] leading-[20px] mt-1 line-clamp-2">{ci.description}</p>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{ci.name}</h2>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] mt-1 line-clamp-2">{ci.description}</p>
                     </div>
 
                     {/* Info fields */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Date &amp; time</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{ci.date} • {ci.displayTime}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Date &amp; time</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{ci.date} • {ci.displayTime}</p>
                             {branchTzShort && (
-                                <p className="text-[13px] font-normal text-[#667085]">{branchTzShort}</p>
+                                <p className="text-[13px] font-normal text-[var(--colors-text-quaternary)]">{branchTzShort}</p>
                             )}
                         </div>
                         {/* Class type row removed — class schedules always represent
                             Group classes; Private 1-on-1 lives in the Services module. */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[#667085]">Gender access</p>
-                                <p className="text-[16px] font-medium text-[#101828]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Gender access</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                     {ci.genderAccess === "female" ? "Female only"
                                         : ci.genderAccess === "male" ? "Male only"
                                         : "All genders"}
@@ -1690,25 +1690,25 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                             </div>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Duration</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{diffMinutes(ci.startTime, ci.endTime)} minutes</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Duration</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{diffMinutes(ci.startTime, ci.endTime)} minutes</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Class capacity</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{ci.capacity} participants</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Class capacity</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{ci.capacity} participants</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Location</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{ci.room}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Location</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{ci.room}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Instructor</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Instructor</p>
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
                                     style={{ backgroundColor: ci.instructorColor }}>
                                     {ci.instructorInitials}
                                 </div>
-                                <p className="text-[16px] font-medium text-[#101828]">
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                     {(() => {
                                         const parts = ci.instructorName.split(" ");
                                         if (parts.length === 1) return parts[0];
@@ -1725,19 +1725,19 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                     <RatingSummary rating={ci.rating} count={ci.ratingCount} />
                 ) : (
                     <div className="px-6 pb-6 mt-auto">
-                        <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                        <p className="text-[14px] text-[#667085] mb-4">Class actions</p>
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Class actions</p>
                         <div className="flex flex-col gap-4">
                             {canAddCustomer && (
                                 <button type="button" onClick={onAddCustomer}
-                                    className="flex items-center gap-2 text-[16px] font-semibold text-[#475467] hover:text-[#101828] transition-colors">
+                                    className="flex items-center gap-2 text-[16px] font-semibold text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] transition-colors">
                                     <UserPlus01 className="w-5 h-5" />
                                     Add customer
                                 </button>
                             )}
                             {canEdit && (
                                 <button type="button" onClick={onEdit}
-                                    className="flex items-center gap-2 text-[16px] font-semibold text-[#475467] hover:text-[#101828] transition-colors">
+                                    className="flex items-center gap-2 text-[16px] font-semibold text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] transition-colors">
                                     <Edit02 className="w-5 h-5" />
                                     Edit class
                                 </button>
@@ -1750,7 +1750,7 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                                 </button>
                             )}
                             {noActions && (
-                                <p className="text-[14px] text-[#98a2b3] italic">No actions available for {ci.status.toLowerCase()} classes.</p>
+                                <p className="text-[14px] text-[var(--colors-fg-quaternary)] italic">No actions available for {ci.status.toLowerCase()} classes.</p>
                             )}
                         </div>
                     </div>
@@ -1970,9 +1970,9 @@ export default function ClassDetailPage() {
         return (
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-[18px] font-semibold text-[#101828]">Class not found</p>
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class not found</p>
                     <button type="button" onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] text-[#658774] hover:underline">
+                        className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                         Back to schedule
                     </button>
                 </div>
@@ -2350,11 +2350,11 @@ export default function ClassDetailPage() {
             {/* Header */}
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Class details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -2373,9 +2373,9 @@ export default function ClassDetailPage() {
                 }
                 main={
                     /* Right panel */
-                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px] relative">
+                    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px] relative">
                         {/* Tabs */}
-                        <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                        <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                             <div className="flex gap-1">
                                 {TABS.map(t => {
                                     const badge = t.id === "booked" ? `${bookedCount}/${ci.capacity}`
@@ -2387,12 +2387,12 @@ export default function ClassDetailPage() {
                                             onClick={() => handleTabChange(t.id)}
                                             className={cn(
                                                 "h-[48px] px-3 text-[14px] font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
-                                                tab === t.id ? "border-b-2 border-[#101828] text-[#101828]" : "text-[#667085] hover:text-[#344054]",
+                                                tab === t.id ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                                             )}>
                                             {t.label}
                                             {badge != null && (
                                                 <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
-                                                    tab === t.id ? "bg-[#f2f4f7] text-[#344054]" : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#667085]"
+                                                    tab === t.id ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)]" : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)]"
                                                 )}>{badge}</span>
                                             )}
                                         </button>
@@ -2404,7 +2404,7 @@ export default function ClassDetailPage() {
                         {/* Reviews tab — sub-tab pill switcher */}
                         {tab === "reviews" && (
                             <div className="shrink-0 px-6 pt-5">
-                                <div className="flex bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px] p-1">
+                                <div className="flex bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[10px] p-1">
                                     {([
                                         { id: "ratings" as const, label: "Rating & reviews" },
                                         { id: "deletion-log" as const, label: "Deletion log" },
@@ -2413,7 +2413,7 @@ export default function ClassDetailPage() {
                                             onClick={() => { setReviewsSubTab(s.id); setSearch(""); setPage(1); setSelectedIds(new Set()); }}
                                             className={cn(
                                                 "flex-1 h-10 rounded-[8px] text-[14px] font-medium transition-colors",
-                                                reviewsSubTab === s.id ? "bg-white text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" : "text-[#667085] hover:text-[#344054]"
+                                                reviewsSubTab === s.id ? "bg-white text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]"
                                             )}>
                                             {s.label}
                                         </button>
@@ -2425,8 +2425,8 @@ export default function ClassDetailPage() {
                         {/* Toolbar */}
                         <div className="shrink-0 flex items-center gap-3 px-6 py-4">
                             <div className="flex-1">
-                                <p className="text-[14px] text-[#667085]">Total</p>
-                                <p className="text-[14px] font-medium text-[#101828]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">
                                     {tab === "reviews" ? `${reviewsList.length} ratings` : `${tabTotal} customers`}
                                 </p>
                             </div>
@@ -2451,10 +2451,10 @@ export default function ClassDetailPage() {
                                         <div className="flex flex-col items-center gap-6 pointer-events-auto">
                                             <EmptyTableIllustration />
                                             <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                                                <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{
+                                                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{
                                                     reviewsSubTab === "ratings" ? "No reviews yet" : "No deleted reviews"
                                                 }</p>
-                                                <p className="text-[14px] text-[#475467] leading-[20px]">{
+                                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{
                                                     reviewsSubTab === "ratings"
                                                         ? "Customer ratings and reviews for this class will appear here."
                                                         : "Reviews you remove will be listed here for audit."
@@ -2496,7 +2496,7 @@ export default function ClassDetailPage() {
                                             </thead>
                                             <tbody>
                                                 {paginatedReviews.map(r => (
-                                                    <tr key={r.id} className="hover:bg-[#f9fafb] transition-colors">
+                                                    <tr key={r.id} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                                         {reviewsSubTab === "ratings" && (
                                                             <td className={TD}>
                                                                 <CheckboxCell ariaLabel={`Select review by ${customerName(r.customerId)}`}
@@ -2512,13 +2512,13 @@ export default function ClassDetailPage() {
                                                             <div className="flex items-center gap-3">
                                                                 <TableAvatar initials={customerById.get(r.customerId)?.initials ?? ""} imageUrl={customerById.get(r.customerId)?.imageUrl} size={40} />
                                                                 <div>
-                                                                    <div className="text-[14px] font-medium text-[#101828]">{customerName(r.customerId)}</div>
-                                                                    <div className="text-[13px] text-[#667085]">{fmtBookingTime(r.submittedAt)}</div>
+                                                                    <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{customerName(r.customerId)}</div>
+                                                                    <div className="text-[13px] text-[var(--colors-text-quaternary)]">{fmtBookingTime(r.submittedAt)}</div>
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className={TD}><StarRow score={r.score} /></td>
-                                                        <td className={cn(TD, "text-[14px] text-[#475467] leading-[20px]")}>
+                                                        <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]")}>
                                                             <p className="max-w-[420px]">{r.comment}</p>
                                                         </td>
                                                         <td className={TD}>
@@ -2544,12 +2544,12 @@ export default function ClassDetailPage() {
                                     <div className="flex flex-col items-center gap-6 pointer-events-auto">
                                         <EmptyTableIllustration />
                                         <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                                            <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{
+                                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{
                                                 tab === "booked" ? "No customers booked"
                                                     : tab === "waitlisted" ? "No one on the waitlist"
                                                         : "No cancellations"
                                             }</p>
-                                            <p className="text-[14px] text-[#475467] leading-[20px]">{
+                                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{
                                                 tab === "booked" ? "Customers who book this class will appear here."
                                                     : tab === "waitlisted" ? "When the class fills up, new bookings join the waitlist."
                                                         : "Cancelled bookings for this class will appear here."
@@ -2652,7 +2652,7 @@ export default function ClassDetailPage() {
                                                             : (b.spot ?? spotForIndex(bookedIndexById.get(b.id) ?? 0));
                                                         const isSelected = selectedIds.has(b.id);
                                                         return (
-                                                            <tr key={b.id} className="hover:bg-[#f9fafb] transition-colors">
+                                                            <tr key={b.id} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                                                 {showCheckbox && (
                                                                     <td className={TD}>
                                                                         <CheckboxCell
@@ -2671,13 +2671,13 @@ export default function ClassDetailPage() {
                                                                         <TableAvatar initials={customerById.get(b.customerId)?.initials ?? ""} imageUrl={customerById.get(b.customerId)?.imageUrl} size={40} />
                                                                         <div className="min-w-0">
                                                                             <div className="flex items-center gap-2 flex-wrap">
-                                                                                <span className="text-[14px] font-medium text-[#101828] truncate">{customerName(b.customerId)}</span>
+                                                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{customerName(b.customerId)}</span>
                                                                                 {/* Context pills — "1st class", "100th class", "Birthday",
                                                                                     "New member". Priority-sorted, capped at 2 by the
                                                                                     component. Renders nothing when the customer has none. */}
                                                                                 <ClassCustomerBadges customerId={b.customerId} classDateISO={classInstance?.dateISO ?? ""} />
                                                                             </div>
-                                                                            <div className="text-[13px] text-[#667085]">{customerById.get(b.customerId)?.email ?? ""}</div>
+                                                                            <div className="text-[13px] text-[var(--colors-text-quaternary)]">{customerById.get(b.customerId)?.email ?? ""}</div>
                                                                         </div>
                                                                     </div>
                                                                 </td>
@@ -2888,16 +2888,16 @@ export default function ClassDetailPage() {
                     <div className="absolute inset-0 bg-[#0c111d]/60" onClick={() => setBulkPresentOpen(false)} />
                     <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                         <button type="button" onClick={() => setBulkPresentOpen(false)}
-                            className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                            <XClose className="w-6 h-6 text-[#667085]" />
+                            className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                            <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                         </button>
                         <div className="flex flex-col items-center gap-4 pt-6 px-6">
                             <div className="w-12 h-12 rounded-full bg-[#ecfdf3] flex items-center justify-center shrink-0">
                                 <CheckCircle className="w-6 h-6 text-[#067647]" />
                             </div>
                             <div className="flex flex-col gap-1 text-center w-full">
-                                <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Mark {selectedIds.size} customer{selectedIds.size === 1 ? "" : "s"} as present?</h3>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">
+                                <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Mark {selectedIds.size} customer{selectedIds.size === 1 ? "" : "s"} as present?</h3>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                                     The selected customers will be marked as present for this class.
                                 </p>
                             </div>

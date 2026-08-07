@@ -327,13 +327,13 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <div className="flex items-center gap-1">
-                        <Clock className="w-[12px] h-[12px] text-[#667085] shrink-0" />
-                        <span className="text-[12px] text-[#667085]">{startLabel}</span>
+                        <Clock className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)]">{startLabel}</span>
                     </div>
-                    <span className="text-[#98a2b3] text-[12px]">•</span>
+                    <span className="text-[var(--colors-fg-quaternary)] text-[12px]">•</span>
                     <div className="flex items-center gap-1">
-                        <Users01 className="w-[12px] h-[12px] text-[#667085] shrink-0" />
-                        <span className="text-[12px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
+                        <Users01 className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)] shrink-0" />
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)]">{cls.booked}/{cls.capacity}</span>
                     </div>
                     {isFull && <span className="text-[11px] font-semibold text-[#b42318]">(FULL)</span>}
                 </div>
@@ -364,19 +364,19 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
                     {cls.name}
                 </span>
                 {hasMore ? (
-                    <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[#475467] bg-white border border-[#e4e7ec] rounded-full px-2 py-[1px]">
+                    <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[var(--colors-text-tertiary)] bg-white border border-[var(--colors-border-secondary)] rounded-full px-2 py-[1px]">
                         +{moreCount} more
                     </span>
                 ) : (
                     <div className="flex items-center gap-1 flex-wrap">
                         <div className="flex items-center gap-1">
-                            <Clock className="w-[11px] h-[11px] text-[#667085] shrink-0" />
-                            <span className="text-[11px] text-[#667085]">{startLabel}</span>
+                            <Clock className="w-[11px] h-[11px] text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[11px] text-[var(--colors-text-quaternary)]">{startLabel}</span>
                         </div>
-                        <span className="text-[#98a2b3] text-[11px]">•</span>
+                        <span className="text-[var(--colors-fg-quaternary)] text-[11px]">•</span>
                         <div className="flex items-center gap-1">
-                            <Users01 className="w-[11px] h-[11px] text-[#667085] shrink-0" />
-                            <span className="text-[11px] text-[#667085]">{cls.booked}/{cls.capacity}</span>
+                            <Users01 className="w-[11px] h-[11px] text-[var(--colors-text-quaternary)] shrink-0" />
+                            <span className="text-[11px] text-[var(--colors-text-quaternary)]">{cls.booked}/{cls.capacity}</span>
                         </div>
                         {isFull && <span className="text-[10px] font-semibold text-[#b42318]">(FULL)</span>}
                     </div>
@@ -397,7 +397,7 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
             )}
         >
             <span className="text-[11px] font-medium whitespace-nowrap shrink-0" style={{ color: c.border }}>{startLabel}</span>
-            <span className="text-[11px] text-[#98a2b3] shrink-0">•</span>
+            <span className="text-[11px] text-[var(--colors-fg-quaternary)] shrink-0">•</span>
             <span className="text-[11px] font-medium truncate" style={{ color: c.text }}>{cls.name}</span>
         </button>
     );
@@ -406,7 +406,7 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
 function ClassMorePill({ count }: { count: number }) {
     // Admin's verbatim "+N more" pill.
     return (
-        <span className="text-[11px] font-medium text-[#475467] px-1.5 py-[3px] w-full text-left block">
+        <span className="text-[11px] font-medium text-[var(--colors-text-tertiary)] px-1.5 py-[3px] w-full text-left block">
             + {count} more
         </span>
     );
@@ -418,20 +418,20 @@ function ScheduleEmptyState({ title, subtitle }: { title: string; subtitle: stri
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <Calendar className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <Calendar className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -505,11 +505,11 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
                 {/* Header — verbatim admin chrome
                     ([admin/schedule/page.tsx:556-561](src/app/admin/schedule/page.tsx#L556)).
                     Title uses `flex-1` to push the close button to the right. */}
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose} aria-label="Close filter"
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -568,8 +568,8 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
                                         className={cn(
                                             "px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
                                             on
-                                                ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                                : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                                ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                                                : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                         )}
                                     >
                                         {cat}
@@ -584,7 +584,7 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
                     ([admin/schedule/page.tsx:644-654](src/app/admin/schedule/page.tsx#L644)).
                     `justify-between` pushes the two buttons to opposite edges
                     at their natural widths — NOT split full-width. */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md"
                         onClick={onClear} disabled={!hasAnyFilter(pending)}>
                         Clear filter
@@ -600,19 +600,19 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-2.5 w-full">
-            <p className="text-[14px] font-semibold text-[#101828] leading-5">{title}</p>
+            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">{title}</p>
             {children}
         </div>
     );
 }
-function Divider() { return <div className="h-px w-full bg-[#e4e7ec] shrink-0" />; }
+function Divider() { return <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />; }
 
 function TimeInput({ value, onChange, ariaLabel, min, placeholder }: {
     value: string; onChange: (v: string) => void; ariaLabel: string; min?: string; placeholder?: string;
 }) {
     return (
         <div className="relative">
-            <Clock className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
+            <Clock className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)] pointer-events-none" />
             <input
                 type="time"
                 value={value}
@@ -620,7 +620,7 @@ function TimeInput({ value, onChange, ariaLabel, min, placeholder }: {
                 aria-label={ariaLabel}
                 placeholder={placeholder}
                 min={min}
-                className="w-full h-10 pl-9 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                className="w-full h-10 pl-9 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
             />
         </div>
     );
@@ -633,7 +633,7 @@ interface SegmentedPillsProps<T extends string> {
 }
 function SegmentedPills<T extends string>({ options, value, onChange }: SegmentedPillsProps<T>) {
     return (
-        <div className="flex items-center bg-white border-1 border-[#d0d5dd] rounded-[8px] overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+        <div className="flex items-center bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
             {options.map((o, idx) => {
                 const active = o.value === value;
                 return (
@@ -644,8 +644,8 @@ function SegmentedPills<T extends string>({ options, value, onChange }: Segmente
                         aria-pressed={active}
                         className={cn(
                             "flex-1 h-10 text-[14px] font-medium transition-colors",
-                            active ? "bg-[#e9fff3] text-[#101828]" : "bg-white text-[#475467] hover:bg-[#f9fafb]",
-                            idx < options.length - 1 && "border-r-1 border-[#d0d5dd]",
+                            active ? "bg-[var(--colors-secondary-50)] text-[var(--colors-text-primary)]" : "bg-white text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-secondary)]",
+                            idx < options.length - 1 && "border-r-1 border-[var(--colors-border-primary)]",
                         )}
                     >
                         {o.label}
@@ -707,12 +707,12 @@ function ClassPopup({ schedule, anchor, onClose, onViewDetails }: {
     return (
         <div ref={popupRef}
             style={{ position: "fixed", top, left, width: WIDTH, zIndex: 9999 }}
-            className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+            className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
         >
             {/* X close — top-right */}
             <div className="flex items-center justify-end px-3 pt-3 pb-1">
                 <button type="button" onClick={onClose} aria-label="Close popup"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors text-[#667085]">
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)]">
                     <XClose className="w-5 h-5" />
                 </button>
             </div>
@@ -722,7 +722,7 @@ function ClassPopup({ schedule, anchor, onClose, onViewDetails }: {
                     ([admin/schedule/page.tsx:1190-1204](src/app/admin/schedule/page.tsx#L1190)):
                     cover tile on the left, status badge top-aligned on the right. */}
                 <div className="flex items-start justify-between gap-3">
-                    <div className="w-[88px] h-[72px] rounded-[10px] border-1 border-[#e4e7ec] overflow-hidden flex items-center justify-center shrink-0"
+                    <div className="w-[88px] h-[72px] rounded-[10px] border-1 border-[var(--colors-border-secondary)] overflow-hidden flex items-center justify-center shrink-0"
                         style={{ backgroundColor: schedule.coverColor }}>
                         {schedule.coverImage ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -737,8 +737,8 @@ function ClassPopup({ schedule, anchor, onClose, onViewDetails }: {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{schedule.name}</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px] line-clamp-2">{schedule.description}</p>
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">{schedule.name}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] line-clamp-2">{schedule.description}</p>
                 </div>
 
                 <div className="flex flex-col gap-2.5">
@@ -763,8 +763,8 @@ function ClassPopup({ schedule, anchor, onClose, onViewDetails }: {
 function MetaRow({ icon: Icon, children }: { icon: React.FC<{ className?: string }>; children: React.ReactNode }) {
     return (
         <div className="flex items-center gap-2">
-            <Icon className="w-4 h-4 text-[#667085] shrink-0" />
-            <span className="text-[14px] text-[#475467] leading-[20px]">{children}</span>
+            <Icon className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+            <span className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{children}</span>
         </div>
     );
 }
@@ -828,7 +828,7 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, blockedTimes, 
                 {/* Hour labels — admin's exact 64px-wide column + right-aligned text */}
                 <div className="w-16 shrink-0 flex flex-col">
                     {hours.map(h => (
-                        <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
+                        <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[var(--colors-text-quaternary)]"
                             style={{ height: HOUR_HEIGHT }}>
                             {formatHour(h)}
                         </div>
@@ -838,7 +838,7 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, blockedTimes, 
                 {/* Single full-width timeline */}
                 <div className="flex-1 relative">
                     {hours.map((_, i) => (
-                        <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * HOUR_HEIGHT }} />
+                        <div key={i} className="absolute left-0 right-0 border-t border-[var(--colors-bg-tertiary)]" style={{ top: i * HOUR_HEIGHT }} />
                     ))}
 
                     {/* Personal blocked-time strips — instructor's own
@@ -963,20 +963,20 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
     return (
         <div className="flex flex-col overflow-hidden flex-1">
             {/* Day column headers — admin's exact: day name + 32px circle date (today filled green) */}
-            <div className="flex shrink-0 border-b border-[#e4e7ec] pl-6">
+            <div className="flex shrink-0 border-b border-[var(--colors-border-secondary)] pl-6">
                 <div className="w-16 shrink-0" />
                 {cols.map(col => (
                     <div key={col.day} className={cn(
-                        "flex-1 min-w-0 flex flex-col items-center py-3 border-l border-[#f2f4f7]",
+                        "flex-1 min-w-0 flex flex-col items-center py-3 border-l border-[var(--colors-bg-tertiary)]",
                         col.isToday && "bg-[#f5fffa]",
                     )}>
                         <p className={cn(
                             "text-[11px] font-semibold uppercase tracking-wider",
-                            col.isToday ? "text-[#658774]" : "text-[#667085]",
+                            col.isToday ? "text-[var(--colors-secondary-600)]" : "text-[var(--colors-text-quaternary)]",
                         )}>{col.day}</p>
                         <div className={cn(
                             "w-8 h-8 rounded-full flex items-center justify-center text-[16px] font-semibold mt-0.5",
-                            col.isToday ? "bg-[#658774] text-white" : "text-[#101828]",
+                            col.isToday ? "bg-[var(--colors-secondary-600)] text-white" : "text-[var(--colors-text-primary)]",
                         )}>
                             {col.date}
                         </div>
@@ -997,7 +997,7 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
                     <div className="flex" style={{ minHeight: gridHeight }}>
                         <div className="w-16 shrink-0 flex flex-col">
                             {hours.map(h => (
-                                <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[#667085]"
+                                <div key={h} className="flex items-start justify-end pr-3 pt-1 text-[12px] text-[var(--colors-text-quaternary)]"
                                     style={{ height: WEEK_HOUR_HEIGHT }}>
                                     {formatHour(h)}
                                 </div>
@@ -1006,7 +1006,7 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
 
                         <div className="flex-1 relative">
                             {hours.map((_, i) => (
-                                <div key={i} className="absolute left-0 right-0 border-t border-[#f2f4f7]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
+                                <div key={i} className="absolute left-0 right-0 border-t border-[var(--colors-bg-tertiary)]" style={{ top: i * WEEK_HOUR_HEIGHT }} />
                             ))}
 
                             {showCurrentTime && (
@@ -1027,7 +1027,7 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
                                     const lanes = computeOverlapLanes(dayClasses);
                                     return (
                                         <div key={col.day} className={cn(
-                                            "flex-1 min-w-0 relative border-l border-[#f2f4f7]",
+                                            "flex-1 min-w-0 relative border-l border-[var(--colors-bg-tertiary)]",
                                             col.isToday && "bg-[#f5fffa]/30",
                                         )} style={{ minHeight: gridHeight }}>
                                             {/* Personal blocked-time strips on this column. */}
@@ -1121,25 +1121,25 @@ function MonthView({ classes, monthYear, branchId, businessHoursRows, blockedTim
 
     return (
         <div className="flex flex-col overflow-y-auto scrollbar-hide flex-1">
-            <div className="grid grid-cols-7 border-b border-[#e4e7ec] shrink-0 px-6">
+            <div className="grid grid-cols-7 border-b border-[var(--colors-border-secondary)] shrink-0 px-6">
                 {WEEK_DAY_NAMES.map(d => (
-                    <div key={d} className="py-3 text-[11px] font-semibold tracking-wider text-center text-[#667085]">{d}</div>
+                    <div key={d} className="py-3 text-[11px] font-semibold tracking-wider text-center text-[var(--colors-text-quaternary)]">{d}</div>
                 ))}
             </div>
 
             <div className="grid grid-cols-7 flex-1 px-6">
                 {grid.map((day, i) => {
-                    if (!day) return <div key={i} className="border-r border-b border-[#f2f4f7] min-h-[110px] bg-[#fafafa]" />;
+                    if (!day) return <div key={i} className="border-r border-b border-[var(--colors-bg-tertiary)] min-h-[110px] bg-[#fafafa]" />;
                     const isToday = day.iso === TODAY_ISO;
                     const closed = isBranchClosed(businessHoursRows, branchId, day.iso);
                     const dayClasses: ClassSchedule[] = DAY_CLASSES[day.iso] || [];
 
                     return (
-                        <div key={i} className="border-r border-b border-[#f2f4f7] p-2 min-h-[110px] relative overflow-hidden">
+                        <div key={i} className="border-r border-b border-[var(--colors-bg-tertiary)] p-2 min-h-[110px] relative overflow-hidden">
                             <div className="flex justify-center mb-1.5">
                                 <div className={cn(
                                     "w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-semibold",
-                                    isToday ? "bg-[#658774] text-white" : "text-[#344054]",
+                                    isToday ? "bg-[var(--colors-secondary-600)] text-white" : "text-[var(--colors-text-secondary)]",
                                 )}>
                                     {day.num}
                                 </div>
@@ -1148,7 +1148,7 @@ function MonthView({ classes, monthYear, branchId, businessHoursRows, blockedTim
                                 <>
                                     <div className="absolute inset-0 pointer-events-none opacity-40"
                                         style={{ backgroundImage: "repeating-linear-gradient(45deg, #e4e7ec 0, #e4e7ec 4px, transparent 0, transparent 50%)", backgroundSize: "8px 8px" }} />
-                                    <p className="text-center text-[12px] font-medium text-[#667085] relative z-10 mt-4">Closed</p>
+                                    <p className="text-center text-[12px] font-medium text-[var(--colors-text-quaternary)] relative z-10 mt-4">Closed</p>
                                 </>
                             ) : (
                                 <div className="flex flex-col gap-0.5">
@@ -1159,7 +1159,7 @@ function MonthView({ classes, monthYear, branchId, businessHoursRows, blockedTim
                                         as the BlockedStrip used in Day +
                                         Week views below. */}
                                     {blockedDates.has(day.iso) && (
-                                        <div className="text-[10px] font-semibold text-[#475467] px-1.5 py-0.5 rounded border-1 border-[#d0d5dd] bg-[repeating-linear-gradient(45deg,_#f2f4f7_0,_#f2f4f7_3px,_transparent_0,_transparent_6px)] truncate"
+                                        <div className="text-[10px] font-semibold text-[var(--colors-text-tertiary)] px-1.5 py-0.5 rounded border-1 border-[var(--colors-border-primary)] bg-[repeating-linear-gradient(45deg,_#f2f4f7_0,_#f2f4f7_3px,_transparent_0,_transparent_6px)] truncate"
                                             title="Time off on this day">
                                             Blocked
                                         </div>
@@ -1353,7 +1353,7 @@ export default function InstructorSchedulePage() {
     function NavBtn({ onClick, children, label }: { onClick?: () => void; children: React.ReactNode; label?: string }) {
         return (
             <button type="button" onClick={onClick} aria-label={label}
-                className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[#e4e7ec] transition-colors">
+                className="w-8 bg-surface-secondary h-8 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-quaternary)] transition-colors">
                 {children}
             </button>
         );
@@ -1367,8 +1367,8 @@ export default function InstructorSchedulePage() {
             {/* ── Top row: Total counter + Search — admin pattern ──────── */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
-                    <p className="text-[14px] text-[#667085] leading-5">Total</p>
-                    <p className="text-[16px] font-medium text-[#101828]">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
+                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                         {periodCount} class {periodCount === 1 ? "schedule" : "schedules"}
                     </p>
                 </div>
@@ -1378,7 +1378,7 @@ export default function InstructorSchedulePage() {
             {/* ── View card ── Fills remaining viewport height (was a fixed
                 760px surface — now `flex-1 min-h-0` so the inner view body
                 absorbs every available pixel). */}
-            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row — verbatim admin chrome (relative + absolute-centered date nav) */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs — admin's exact bg-surface-secondary container */}
@@ -1393,7 +1393,7 @@ export default function InstructorSchedulePage() {
                         <NavBtn onClick={prev} label="Previous"><ChevronLeft className="w-4 h-4" /></NavBtn>
                         <button type="button" onClick={jumpToday}
                             className={cn(
-                                "px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[#344054] text-center transition-colors hover:bg-[#e4e7ec]",
+                                "px-3 bg-surface-secondary rounded-[8px] py-[6px] text-[14px] font-semibold text-[var(--colors-text-secondary)] text-center transition-colors hover:bg-[var(--colors-bg-quaternary)]",
                                 viewMode === "day"   && "min-w-[152px]",
                                 viewMode === "week"  && "min-w-[168px]",
                                 viewMode === "month" && "min-w-[130px]",

@@ -100,11 +100,11 @@ export function RangeSlider({ floor, ceiling, step = 1, minValue, maxValue, onCh
             <div
                 ref={trackRef}
                 onMouseDown={handleTrackMouseDown}
-                className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2 bg-[#e4e7ec] rounded-full cursor-pointer"
+                className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-2 bg-[var(--colors-bg-quaternary)] rounded-full cursor-pointer"
             >
                 {isActive && (
                     <div
-                        className="absolute top-0 bottom-0 bg-[#658774] rounded-full"
+                        className="absolute top-0 bottom-0 bg-[var(--colors-secondary-600)] rounded-full"
                         style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }}
                     />
                 )}
@@ -143,7 +143,7 @@ function Thumb({ pct, ariaLabel, value, onMouseDown, onKeyDown, zIndex }: {
             tabIndex={0}
             onMouseDown={e => { e.preventDefault(); onMouseDown(); }}
             onKeyDown={onKeyDown}
-            className="absolute top-1/2 w-6 h-6 -mt-3 -ml-3 rounded-full bg-white border-2 border-[#658774] shadow-[0px_1px_2px_rgba(16,24,40,0.05)] cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-[#aad4bd]"
+            className="absolute top-1/2 w-6 h-6 -mt-3 -ml-3 rounded-full bg-white border-2 border-[var(--colors-secondary-600)] shadow-[0px_1px_2px_rgba(16,24,40,0.05)] cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]"
             style={{ left: `${pct}%`, zIndex }}
         />
     );

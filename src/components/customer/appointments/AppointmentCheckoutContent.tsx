@@ -80,7 +80,7 @@ export function AppointmentCheckoutContent({
                     <AlertCircle className="size-6 text-[#d92d20]" aria-hidden />
                 </div>
                 <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Your membership is frozen</p>
-                <p className="max-w-[280px] text-sm leading-5 text-[#475467]">
+                <p className="max-w-[280px] text-sm leading-5 text-[var(--colors-text-tertiary)]">
                     Your <span className="font-semibold text-[var(--brand-text)]">{frozenMembership.planName}</span> is paused.
                     You can book again on {shortDate(frozenMembership.resumeISO)}.
                 </p>
@@ -115,7 +115,7 @@ export function AppointmentCheckoutContent({
             {/* Appointment summary — location merged in (mirrors Review & Book). */}
             <div className="flex w-full items-start gap-3">
                 <div
-                    className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[#e4e7ec]"
+                    className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--colors-border-secondary)]"
                     style={!appointment.coverImage ? { backgroundColor: appointment.coverColor } : undefined}
                 >
                     {appointment.coverImage && (
@@ -124,29 +124,29 @@ export function AppointmentCheckoutContent({
                     )}
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <p className="truncate text-sm font-medium leading-5 text-[#101828]">{appointment.name}</p>
-                    <p className="text-xs font-normal leading-[18px] text-[#475467]">{fullDate} at {timeInZoneLabel(appointmentDraft.slotISO ?? "", appointmentDraft.slotTime, branch, timezone)}</p>
+                    <p className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">{appointment.name}</p>
+                    <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">{fullDate} at {timeInZoneLabel(appointmentDraft.slotISO ?? "", appointmentDraft.slotTime, branch, timezone)}</p>
                     <div className="flex items-start gap-1.5">
-                        <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
-                        <p className="text-xs font-normal leading-[18px] text-[#475467]">{locationLine}</p>
+                        <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                        <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">{locationLine}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="flex items-center gap-1 text-xs font-normal leading-[18px] text-[#475467]">
-                            <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />
+                        <span className="flex items-center gap-1 text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
+                            <Clock className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                             {appointment.durationMins} mins
                         </span>
                         {isPrivate && instructor && (
                             <>
-                                <span className="text-xs leading-[18px] text-[#475467]" aria-hidden>
+                                <span className="text-xs leading-[18px] text-[var(--colors-text-tertiary)]" aria-hidden>
                                     •
                                 </span>
-                                <span className="flex items-center gap-1.5 text-xs font-normal leading-[18px] text-[#475467]">
-                                    <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                <span className="flex items-center gap-1.5 text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
+                                    <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
                                         {instructor.imageUrl ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img src={instructor.imageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                                         ) : (
-                                            <span className="text-[9px] font-semibold leading-none text-[#667085]">{instructor.initials}</span>
+                                            <span className="text-[9px] font-semibold leading-none text-[var(--colors-text-quaternary)]">{instructor.initials}</span>
                                         )}
                                     </span>
                                     {instructor.name}
@@ -156,7 +156,7 @@ export function AppointmentCheckoutContent({
                         {/* Flexible preference — instructor is auto-assigned at booking. */}
                         {isPrivate && appointmentDraft.flexible && (
                             <>
-                                <span className="text-xs leading-[18px] text-[#475467]" aria-hidden>•</span>
+                                <span className="text-xs leading-[18px] text-[var(--colors-text-tertiary)]" aria-hidden>•</span>
                                 <span className="text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
                                     Flexible — instructor assigned at booking
                                 </span>
@@ -166,7 +166,7 @@ export function AppointmentCheckoutContent({
                 </div>
             </div>
 
-            <div className="h-px w-full bg-[#e4e7ec]" />
+            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
         </div>
     );
 

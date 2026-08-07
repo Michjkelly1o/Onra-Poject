@@ -128,29 +128,29 @@ function ProfileDropdown({ accountHref }: { accountHref: string }) {
                 onClick={() => setOpen(p => !p)}
                 className={cn(
                     "flex items-center gap-2 h-10 px-1.5 rounded-[10px] transition-colors",
-                    open ? "bg-[#f5fffa]" : "hover:bg-[#f9fafb]",
+                    open ? "bg-[#f5fffa]" : "hover:bg-[var(--colors-bg-secondary)]",
                 )}
                 aria-label="Open profile menu"
             >
                 <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full shrink-0" />
-                <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", open && "rotate-180")} />
             </button>
 
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] w-[280px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50">
+                <div className="absolute right-0 top-[calc(100%+6px)] w-[280px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50">
                     {/* Profile info row — name + role (plain text) */}
-                    <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f2f4f7]">
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--colors-bg-tertiary)]">
                         <img src={avatarUrl} alt="" className="w-10 h-10 rounded-full shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-semibold text-[#101828] truncate leading-5">{displayName}</p>
-                            <p className="text-[12px] text-[#667085] truncate leading-[18px] mt-0.5">{persona}</p>
+                            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] truncate leading-5">{displayName}</p>
+                            <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate leading-[18px] mt-0.5">{persona}</p>
                         </div>
                     </div>
 
                     {/* Account settings */}
                     <Link href={accountHref} onClick={() => setOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] border-b border-[#f2f4f7] transition-colors">
-                        <UserCircle className="w-4 h-4 text-[#667085]" />
+                        className="flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] border-b border-[var(--colors-bg-tertiary)] transition-colors">
+                        <UserCircle className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                         Account settings
                     </Link>
 
@@ -158,9 +158,9 @@ function ProfileDropdown({ accountHref }: { accountHref: string }) {
                     <button
                         type="button"
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
-                        <LogOut01 className="w-4 h-4 text-[#667085]" />
+                        <LogOut01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                         Sign out
                     </button>
                 </div>
@@ -209,7 +209,7 @@ export default function Header() {
                 would be a single crumb). Same title→breadcrumb spacing the
                 detail-takeover pages use, so every surface reads the same. */}
             <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-                <h1 className="text-[24px] font-semibold text-[#101828] leading-tight">
+                <h1 className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-tight">
                     {pageTitle}
                 </h1>
                 <Breadcrumbs className="p-0 text-[12px]" />
@@ -237,7 +237,7 @@ export default function Header() {
                         type="button"
                         onClick={() => setSearchOpen(true)}
                         aria-label="Open global search"
-                        className="relative w-9 h-9 flex items-center justify-center rounded-[8px] text-[#667085] hover:text-[#101828] hover:bg-[#f9fafb] transition-colors"
+                        className="relative w-9 h-9 flex items-center justify-center rounded-[8px] text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
                         <SearchMd className="w-[21px] h-[21px]" />
                     </button>

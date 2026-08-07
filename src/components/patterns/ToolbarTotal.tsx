@@ -39,8 +39,8 @@ export function ToolbarTotal({ count, entitySingular, entityPlural, className }:
     const entity = count === 1 ? entitySingular : (entityPlural ?? `${entitySingular}s`);
     return (
         <div className={cn("flex flex-col gap-1 flex-1 min-w-0", className)}>
-            <p className="text-[14px] text-[#667085] leading-5">Total</p>
-            <p className="text-[16px] font-medium text-[#101828] leading-6">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">
                 {count} {entity}
             </p>
         </div>

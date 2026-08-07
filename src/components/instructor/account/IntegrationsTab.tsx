@@ -146,9 +146,9 @@ export function IntegrationsTab({ staffProfileId }: IntegrationsTabProps) {
         // fill, not hug content. Without it the Integrations + Notification
         // settings cards would render dramatically shorter than the
         // Personal info one, and the page would jump between tabs.
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full min-h-[760px]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full min-h-[760px]">
             <div className="flex flex-col gap-5 w-full">
-                <p className="text-[18px] font-semibold text-[#101828] leading-7">Integrations</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Integrations</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                     {myIntegrations.map(integration => (

@@ -36,7 +36,7 @@ export function PayrollAccordion({ title, subtitle, value, defaultOpen = false, 
 }) {
     const [open, setOpen] = useState(defaultOpen);
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3">
             <button
                 type="button"
                 onClick={() => setOpen(o => !o)}
@@ -44,17 +44,17 @@ export function PayrollAccordion({ title, subtitle, value, defaultOpen = false, 
                 className="w-full flex items-center justify-between gap-4 text-left"
             >
                 <div className="flex-1 min-w-0 flex flex-col">
-                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
-                    {subtitle && <p className="text-[14px] font-normal text-[#667085] leading-[20px]">{subtitle}</p>}
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                    {subtitle && <p className="text-[14px] font-normal text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    {value && <span className="text-[16px] font-semibold text-[#101828] leading-[24px] whitespace-nowrap">{value}</span>}
-                    <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
+                    {value && <span className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px] whitespace-nowrap">{value}</span>}
+                    <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] transition-transform", open && "rotate-180")} />
                 </div>
             </button>
             {open && (
                 <>
-                    <div className="h-px w-full bg-[#e4e7ec]" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                     {children}
                 </>
             )}
@@ -67,8 +67,8 @@ export function PayrollAccordion({ title, subtitle, value, defaultOpen = false, 
 export function BreakdownRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex items-center justify-between w-full">
-            <span className="text-[14px] font-normal text-[#667085] leading-[20px]">{label}</span>
-            <span className="text-[14px] font-medium text-[#101828] leading-[20px]">{value}</span>
+            <span className="text-[14px] font-normal text-[var(--colors-text-quaternary)] leading-[20px]">{label}</span>
+            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{value}</span>
         </div>
     );
 }
@@ -108,8 +108,8 @@ export function TotalEarningsBreakdown({ trackBreakdown, commissionAed, total, i
                     )}
                 </div>
                 <div className="flex items-center justify-between w-full">
-                    <span className="text-[14px] font-semibold text-[#101828] leading-[20px]">Total earnings</span>
-                    <span className="text-[16px] font-semibold text-[#101828] leading-[24px]">{aed(total)}</span>
+                    <span className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">Total earnings</span>
+                    <span className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{aed(total)}</span>
                 </div>
             </div>
         </PayrollAccordion>

@@ -76,17 +76,17 @@ export function BarChart({
             {bars.map((b, i) => (
                 <div key={i} className="flex flex-col gap-1">
                     <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-[13px] text-[#344054] truncate">
+                        <span className="text-[13px] text-[var(--colors-text-secondary)] truncate">
                             {b.label}
                             {b.sublabel && (
-                                <span className="text-[#98a2b3]"> · {b.sublabel}</span>
+                                <span className="text-[var(--colors-fg-quaternary)]"> · {b.sublabel}</span>
                             )}
                         </span>
-                        <span className="text-[13px] font-medium text-[#101828] tabular-nums shrink-0">
+                        <span className="text-[13px] font-medium text-[var(--colors-text-primary)] tabular-nums shrink-0">
                             {fmt(b.value, unit)}
                         </span>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-[#f2f4f7] overflow-hidden">
+                    <div className="h-2 w-full rounded-full bg-[var(--colors-bg-tertiary)] overflow-hidden">
                         <div
                             data-bar-fill
                             className="h-full rounded-full"

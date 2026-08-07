@@ -77,10 +77,13 @@ interface TotalSalesDisplayRow {
 
 // ─── Label helpers ────────────────────────────────────────────────────────
 
+// Sales channel is only ever "Online" (self-service customer portal) or "POS"
+// (any in-person sale — till / front desk / admin). Client 2026-08.
 const SALES_CHANNEL_LABEL: Record<string, string> = {
-    pos:             "Point of Sale",
-    customer_portal: "Customer portal",
-    admin:           "Admin",
+    customer_portal: "Online",
+    pos:             "POS",
+    admin:           "POS",
+    front_desk:      "POS",
 };
 
 const REVENUE_CATEGORY_LABEL: Record<string, string> = {
@@ -158,7 +161,7 @@ export default function TotalSalesReportPageV2() {
             const netPaymentAmount = paid ? netInclTax : 0;
             const paymentAmountDue = paid ? 0 : netInclTax;
 
-            const salesChannel = SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "Point of Sale";
+            const salesChannel = SALES_CHANNEL_LABEL[r.paymentSource ?? "pos"] ?? "POS";
 
             return {
                 orderDateISO: r.createdAtISO.slice(0, 10),
@@ -178,7 +181,7 @@ export default function TotalSalesReportPageV2() {
                 // narrower display type.
                 revenueCategory: r.kind as "membership" | "package",
                 revenueCategoryLabel: REVENUE_CATEGORY_LABEL[r.kind as "membership" | "package"] ?? r.kind,
-                saleItems: `${r.name} × 1`,
+                saleItems: r.name,
                 quantity: 1,
                 grossSales: signed,
                 discountCode: "",       // POS doesn't write back promo FK yet — Phase 4 wires when available
@@ -208,7 +211,7 @@ export default function TotalSalesReportPageV2() {
 
     if (!report) {
         return (
-            <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">
+            <div className="px-[24px] py-[48px] text-[14px] text-[var(--colors-text-tertiary)]">
                 Total Sales report definition is missing from the registry.
             </div>
         );

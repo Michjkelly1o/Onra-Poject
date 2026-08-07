@@ -81,7 +81,7 @@ export function SlidePanel({
             <div
                 style={{ width, right: shown ? 0 : -width }}
                 className={cn(
-                    "fixed top-0 h-full bg-white border-l border-[#e4e7ec]",
+                    "fixed top-0 h-full bg-white border-l border-[var(--colors-border-secondary)]",
                     "shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
                     "transition-[right] duration-300 ease-out",
                     panelClassName,

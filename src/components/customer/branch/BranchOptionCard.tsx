@@ -31,18 +31,18 @@ export function BranchOptionCard({ name, subtitle, selected, onClick, operationa
             onClick={onClick}
             aria-pressed={selected}
             className={`flex w-full flex-col gap-3 rounded-2xl bg-white p-4 text-left transition-colors ${
-                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec]"
+                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[var(--colors-border-secondary)]"
             }`}
         >
             <div className="flex flex-col gap-3">
                 {/* Featured icon — modern style (border + skeuomorphic shadow). */}
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                    <Building01 className="size-5 text-[#344054]" aria-hidden />
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[var(--colors-border-secondary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <Building01 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </span>
 
                 <div className="flex flex-col gap-1">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
-                    <p className="line-clamp-2 text-sm font-normal leading-5 text-[#475467]">{subtitle}</p>
+                    <p className="line-clamp-2 text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{subtitle}</p>
                 </div>
             </div>
 
@@ -57,8 +57,8 @@ export function BranchOptionCard({ name, subtitle, selected, onClick, operationa
                     >
                         {operational.isOpen ? "Open" : "Closed"}
                     </span>
-                    <span className="flex items-center gap-1 rounded-full border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
-                        <Clock className="size-3 shrink-0 text-[#344054]" aria-hidden />
+                    <span className="flex items-center gap-1 rounded-full border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">
+                        <Clock className="size-3 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
                         {operational.hoursLabel}
                     </span>
                 </div>

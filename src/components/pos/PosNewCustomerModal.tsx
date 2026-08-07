@@ -41,8 +41,8 @@ import { COUNTRIES, statesForCountry, stateLabelForCountry, citiesForState, hasC
 
 const GENDER_OPTIONS = ["Male", "Female"];
 
-const inputCls = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
-const labelCls = "text-[14px] font-medium text-[#344054]";
+const inputCls = "h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const labelCls = "text-[14px] font-medium text-[var(--colors-text-secondary)]";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -267,16 +267,16 @@ export function PosNewCustomerModal({
             <div
                 style={{ right: shown ? 0 : -480 }}
                 className={cn(
-                    "fixed top-0 w-[480px] h-full bg-white border-l border-[#e4e7ec] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
+                    "fixed top-0 w-[480px] h-full bg-white border-l border-[var(--colors-border-secondary)] shadow-[-12px_0px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col",
                     "transition-[right] duration-300 ease-out",
                 )}
             >
                 {/* Header — matches the customer-module filter panel chrome */}
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Add new customer</p>
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Add new customer</p>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
@@ -321,12 +321,12 @@ export function PosNewCustomerModal({
                         </Field>
 
                         <Field label="Phone number">
-                            <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                            <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                 <PhoneCountryDropdown value={phoneCountry} onChange={setPhoneCountry} />
                                 <input type="tel" value={phone}
                                     onChange={e => setPhone(e.target.value.replace(/\D/g, ""))}
                                     placeholder="Phone number..."
-                                    className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent rounded-r-[8px]" />
+                                    className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent rounded-r-[8px]" />
                             </div>
                         </Field>
 
@@ -415,7 +415,7 @@ export function PosNewCustomerModal({
                             <textarea value={streetAddress} onChange={e => setStreetAddress(e.target.value)}
                                 rows={3} placeholder="Enter street address..."
                                 className={cn(
-                                    "w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none",
+                                    "w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none",
                                 )} />
                         </Field>
                     </div>
@@ -453,7 +453,7 @@ export function PosNewCustomerModal({
                 {/* Footer — Cancel (left) + Add customer (right), matches
                     the filter-panel pattern: `justify-between` so the
                     actions split to opposite edges instead of clustering. */}
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" onClick={onClose}>Cancel</Button>
                     <Button variant="primary" size="md" disabled={!canSave} onClick={handleSave}>
                         Add customer

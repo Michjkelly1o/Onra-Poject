@@ -48,7 +48,7 @@ const GROUP_B: Row[] = [
     { icon: Users01, label: "Invite friends", href: "/customer/profile/referrals" },
 ];
 
-const CARD = "rounded-2xl border border-[#eaecf0] bg-white";
+const CARD = "rounded-2xl border border-[var(--colors-border-tertiary)] bg-white";
 
 /** Faint concentric arcs anchored to the card's top-right corner (Figma). */
 function CardArcs() {
@@ -56,7 +56,7 @@ function CardArcs() {
         <svg
             aria-hidden
             viewBox="0 0 336 336"
-            className="pointer-events-none absolute right-[-153.5px] top-[-159px] size-[336px] text-[#e4e7ec] opacity-[0.72]"
+            className="pointer-events-none absolute right-[-153.5px] top-[-159px] size-[336px] text-[var(--colors-border-secondary)] opacity-[0.72]"
         >
             {[168, 136, 104, 72, 40].map((r) => (
                 <circle key={r} cx="168" cy="168" r={r} fill="none" stroke="currentColor" strokeWidth="1" />
@@ -107,12 +107,12 @@ export default function ProfilePage() {
                             type="button"
                             onClick={() => router.push(row.href)}
                             className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-gray-50 ${
-                                i > 0 ? "border-t border-[#f2f4f7]" : ""
+                                i > 0 ? "border-t border-[var(--colors-bg-tertiary)]" : ""
                             }`}
                         >
-                            <Icon className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                            <Icon className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
                             <span className="flex-1 text-sm font-semibold leading-5 text-[var(--brand-text)]">{row.label}</span>
-                            <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
+                            <ChevronRight className="size-5 shrink-0 text-[var(--colors-fg-quaternary)]" aria-hidden />
                         </button>
                     );
                 })}
@@ -126,12 +126,12 @@ export default function ProfilePage() {
         return (
             <div className="flex min-h-full flex-col gap-4 px-4 pt-8">
                 <div className={`flex items-center gap-4 p-4 ${CARD}`}>
-                    <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7]">
-                        <User01 className="size-7 text-[#667085]" aria-hidden />
+                    <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)]">
+                        <User01 className="size-7 text-[var(--colors-text-quaternary)]" aria-hidden />
                     </div>
                     <div className="min-w-0 flex-1">
                         <p className="truncate text-lg font-semibold leading-7 text-[var(--brand-text)]">Hi guest</p>
-                        <p className="truncate text-base leading-6 text-[#667085]">You&apos;re browsing as a guest</p>
+                        <p className="truncate text-base leading-6 text-[var(--colors-text-quaternary)]">You&apos;re browsing as a guest</p>
                     </div>
                 </div>
 
@@ -139,7 +139,7 @@ export default function ProfilePage() {
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Hey there!</p>
-                        <p className="text-sm leading-5 text-[#475467]">
+                        <p className="text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             Log in or sign up to access your profile, bookings, and memberships.
                         </p>
                         <Button
@@ -169,13 +169,13 @@ export default function ProfilePage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={member.imageUrl} alt="" className="size-[72px] shrink-0 rounded-full border-[3px] border-white object-cover shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.1),0px_2px_4px_-2px_rgba(16,24,40,0.06)]" />
                 ) : (
-                    <div className="flex size-[72px] shrink-0 items-center justify-center rounded-full border-[3px] border-white bg-[#f2f4f7] text-lg font-semibold text-[#475467] shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.1),0px_2px_4px_-2px_rgba(16,24,40,0.06)]">
+                    <div className="flex size-[72px] shrink-0 items-center justify-center rounded-full border-[3px] border-white bg-[var(--colors-bg-tertiary)] text-lg font-semibold text-[var(--colors-text-tertiary)] shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.1),0px_2px_4px_-2px_rgba(16,24,40,0.06)]">
                         {member?.initials}
                     </div>
                 )}
                 <div className="flex flex-col items-center">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{name}</p>
-                    <p className="text-sm leading-5 text-[#344054]">{member?.email}</p>
+                    <p className="text-sm leading-5 text-[var(--colors-text-secondary)]">{member?.email}</p>
                 </div>
             </button>
 
@@ -188,16 +188,16 @@ export default function ProfilePage() {
                         { icon: CalendarCheck01, label: "Past", tab: "past" },
                     ] as { icon: typeof Calendar; label: string; tab: BookingTab }[]).map(({ icon: Icon, label, tab }, i) => (
                         <Fragment key={label}>
-                            {i > 0 && <div className="w-px self-stretch bg-[#e4e7ec]" aria-hidden />}
+                            {i > 0 && <div className="w-px self-stretch bg-[var(--colors-bg-quaternary)]" aria-hidden />}
                             <button
                                 type="button"
                                 onClick={() => router.push(`/customer/bookings/${tab}`)}
                                 className="flex flex-1 items-center gap-3 text-left transition-opacity active:opacity-70"
                             >
-                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#e9fff3] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]">
+                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[var(--colors-secondary-50)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]">
                                     <Icon className="size-4 text-[var(--brand-primary)]" aria-hidden />
                                 </span>
-                                <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{label}</span>
+                                <span className="text-sm font-semibold leading-5 text-[var(--colors-text-secondary)]">{label}</span>
                             </button>
                         </Fragment>
                     ))}
@@ -213,22 +213,22 @@ export default function ProfilePage() {
                 >
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
-                        <p className="text-sm font-normal leading-5 text-[#475467]">Credit balance</p>
+                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">Credit balance</p>
                         <div className="flex flex-col gap-2">
                             <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{creditLabel}</p>
-                            <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
-                                <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${progressPct}%` }} />
+                            <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--colors-bg-quaternary)]">
+                                <div className="h-full rounded-full bg-[var(--colors-secondary-400)]" style={{ width: `${progressPct}%` }} />
                             </div>
                         </div>
                         <div className="flex items-start gap-4">
                             <div className="flex min-w-0 flex-1 flex-col">
-                                <p className="text-xs font-normal leading-[18px] text-[#667085]">{planTypeLabel}</p>
+                                <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">{planTypeLabel}</p>
                                 <p className="truncate text-xs font-medium leading-[18px] text-[var(--brand-text)]">{totalCreditsValue}</p>
                             </div>
                             {bal?.expiryISO && (
                                 <div className="flex min-w-0 flex-1 flex-col">
                                     <div className="flex items-center gap-1">
-                                        <p className="text-xs font-normal leading-[18px] text-[#667085]">
+                                        <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">
                                             {bal.kind === "membership" ? "Renews on" : "Expires on"}
                                         </p>
                                         {multiExpiry && (
@@ -240,7 +240,7 @@ export default function ProfilePage() {
                                                 onKeyDown={(e) => {
                                                     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setExpiryOpen(true); }
                                                 }}
-                                                className="flex size-4 shrink-0 items-center justify-center text-[#98a2b3] transition-colors active:text-[#667085]"
+                                                className="flex size-4 shrink-0 items-center justify-center text-[var(--colors-text-tertiary)] transition-colors active:text-[var(--colors-text-quaternary)]"
                                             >
                                                 <InfoCircle className="size-3.5" aria-hidden />
                                             </span>
@@ -270,9 +270,9 @@ export default function ProfilePage() {
                 >
                     <CardArcs />
                     <div className="relative flex flex-col gap-3">
-                        <p className="text-sm font-normal leading-5 text-[#475467]">Credit balance</p>
+                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">Credit balance</p>
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">No active plan</p>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]" />
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--colors-bg-quaternary)]" />
                         <Button
                             variant="primary"
                             size="lg"
@@ -298,18 +298,18 @@ export default function ProfilePage() {
                     onClick={() => router.push("/customer/profile/about")}
                     className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors active:bg-gray-50"
                 >
-                    <InfoCircle className="size-5 shrink-0 text-[#344054]" aria-hidden />
+                    <InfoCircle className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
                     <span className="flex-1 text-sm font-semibold leading-5 text-[var(--brand-text)]">About</span>
-                    <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
+                    <ChevronRight className="size-5 shrink-0 text-[var(--colors-fg-quaternary)]" aria-hidden />
                 </button>
                 <button
                     type="button"
                     onClick={() => setLogoutOpen(true)}
-                    className="flex w-full items-center gap-3 border-t border-[#f2f4f7] px-4 py-3.5 text-left transition-colors active:bg-gray-50"
+                    className="flex w-full items-center gap-3 border-t border-[var(--colors-bg-tertiary)] px-4 py-3.5 text-left transition-colors active:bg-gray-50"
                 >
                     <LogOut01 className="size-5 shrink-0 text-[#d92d20]" aria-hidden />
                     <span className="flex-1 text-sm font-semibold leading-5 text-[#d92d20]">Logout</span>
-                    <ChevronRight className="size-5 shrink-0 text-[#98a2b3]" aria-hidden />
+                    <ChevronRight className="size-5 shrink-0 text-[var(--colors-fg-quaternary)]" aria-hidden />
                 </button>
             </div>
 
@@ -321,7 +321,7 @@ export default function ProfilePage() {
                     </div>
                     <div>
                         <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">Log out of your account?</p>
-                        <p className="mt-1 text-sm leading-5 text-[#475467]">
+                        <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">
                             You&apos;ll need to sign in again to access your bookings.
                         </p>
                     </div>

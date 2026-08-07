@@ -122,7 +122,7 @@ function classInitials(name: string): string {
 
 function BookingStatusBadge({ status, waitlistPosition }: { status: BookingDisplayStatus; waitlistPosition?: number }) {
     const styles: Record<BookingDisplayStatus, string> = {
-        Upcoming: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+        Upcoming: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         Waitlisted: "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
         Ongoing: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
         Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
@@ -173,10 +173,10 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
@@ -184,7 +184,7 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                         Appointment). Mirrors the class schedule filter
                         panel pattern. Click the active option to clear. */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Type</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Type</p>
                         <div className="grid grid-cols-2 gap-2">
                             {ALL_BOOKING_KINDS.map(k => {
                                 const selected = pending.type === k;
@@ -194,8 +194,8 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                                         className={cn(
                                             "h-10 px-3 rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
                                             selected
-                                                ? "bg-[#f5fffa] border-2 border-[#7ba08c] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                                : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                                                ? "bg-[#f5fffa] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                                : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                         )}>
                                         {k}
                                     </button>
@@ -203,10 +203,10 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                             })}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date range</p>
                         <div className="grid grid-cols-2 gap-3">
                             <DatePicker value={pending.dateStart} placeholder="Start date"
                                 onChange={v => setPending(p => ({
@@ -218,10 +218,10 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                                 onChange={v => setPending(p => ({ ...p, dateEnd: v }))} />
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {STATUSES.map(s => (
                                 <FilterPill key={s} label={s} selected={pending.statuses.includes(s)}
@@ -229,10 +229,10 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Time of the day */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Time of the day</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Time of the day</p>
                         <div className="flex flex-wrap gap-2">
                             {TIMES.map(t => (
                                 <FilterPill key={t} label={t} selected={pending.times.includes(t)}
@@ -240,24 +240,24 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Instructor */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Instructor</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Instructor</p>
                         <SelectInput value={pending.instructor} placeholder="All instructors"
                             options={[{ value: "", label: "All instructors" }, ...instructorOptions.map(i => ({ value: i, label: i }))]}
                             onChange={v => setPending(p => ({ ...p, instructor: v }))} width="w-full" />
                     </div>
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                     {/* Class */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Class</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Class</p>
                         <SelectInput value={pending.className} placeholder="All classes"
                             options={[{ value: "", label: "All classes" }, ...classOptions.map(c => ({ value: c, label: c }))]}
                             onChange={v => setPending(p => ({ ...p, className: v }))} width="w-full" />
                     </div>
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_BOOKING_FILTER); onApply(EMPTY_BOOKING_FILTER); onClose(); }}>Clear filter</Button>
                     <Button variant="primary" disabled={!hasAny}
@@ -277,20 +277,20 @@ function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -532,14 +532,14 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                 unified rows above and surface via the `kind` field on
                 each row. */}
             <div className="shrink-0 px-6 pt-5 pb-4">
-                <div className="flex bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[10px] p-1">
+                <div className="flex bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[10px] p-1">
                     {([["overview", "Overview"], ["history", "Booking history"]] as const).map(([id, label]) => (
                         <button key={id} type="button" onClick={() => setInner(id)}
                             className={cn(
                                 "flex-1 h-9 rounded-[8px] text-[14px] font-semibold transition-all",
                                 inner === id
-                                    ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                    : "text-[#667085] hover:text-[#344054]",
+                                    ? "bg-white text-[var(--colors-text-primary)] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                    : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                             )}>
                             {label}
                         </button>
@@ -552,20 +552,20 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                     {/* Metric cards */}
                     <div className="flex gap-4">
                         {metrics.map(m => (
-                            <div key={m.label} className="flex-1 border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-2">
-                                <p className="text-[14px] text-[#667085]">{m.label}</p>
-                                <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{m.value}</p>
+                            <div key={m.label} className="flex-1 border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-2">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{m.label}</p>
+                                <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-[32px]">{m.value}</p>
                             </div>
                         ))}
                     </div>
 
                     {/* Upcoming bookings */}
                     <div className="flex flex-col gap-3">
-                        <p className="text-[16px] font-medium text-[#667085]">Upcoming booking</p>
+                        <p className="text-[16px] font-medium text-[var(--colors-text-quaternary)]">Upcoming booking</p>
                         {upcoming.length === 0 ? (
-                            <div className="border-1 border-dashed border-[#e4e7ec] rounded-[12px] py-10 flex flex-col items-center gap-1">
-                                <p className="text-[14px] font-medium text-[#344054]">No upcoming bookings</p>
-                                <p className="text-[13px] text-[#667085]">This customer has no upcoming class bookings.</p>
+                            <div className="border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[12px] py-10 flex flex-col items-center gap-1">
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">No upcoming bookings</p>
+                                <p className="text-[13px] text-[var(--colors-text-quaternary)]">This customer has no upcoming class bookings.</p>
                             </div>
                         ) : (
                             <div className="flex flex-col gap-3">
@@ -590,35 +590,35 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                     return (
                                         <button key={r.bookingId} type="button"
                                             onClick={() => router.push(targetHref)}
-                                            className="relative bg-[#e9fff3] rounded-[6px] overflow-hidden pl-5 pr-3 py-3 text-left hover:bg-[#defaef] transition-colors">
+                                            className="relative bg-[var(--colors-secondary-50)] rounded-[6px] overflow-hidden pl-5 pr-3 py-3 text-left hover:bg-[#defaef] transition-colors">
                                             {/* Left accent bar — spans the full card height so it never looks clipped */}
-                                            <div className="absolute inset-y-0 left-0 w-[6px] bg-[#92baa4]" />
+                                            <div className="absolute inset-y-0 left-0 w-[6px] bg-[var(--colors-secondary-400)]" />
                                             {/* Status badge */}
                                             <span className={cn(
                                                 "absolute right-3 top-3 inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium",
                                                 waitlisted
                                                     ? "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]"
-                                                    : "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+                                                    : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
                                             )}>
                                                 {waitlistLabel}
                                             </span>
                                             <div className="flex flex-col gap-1 pr-20">
-                                                <p className="text-[14px] font-medium text-[#101828]">{r.className}</p>
-                                                <p className="text-[14px] text-[#667085]">{to12h(r.startTime)} – {to12h(r.endTime)}</p>
-                                                <div className="flex items-center gap-2 flex-wrap text-[14px] text-[#667085]">
+                                                <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.className}</p>
+                                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">{to12h(r.startTime)} – {to12h(r.endTime)}</p>
+                                                <div className="flex items-center gap-2 flex-wrap text-[14px] text-[var(--colors-text-quaternary)]">
                                                     <span className="flex items-center gap-1.5">
                                                         <TableAvatar initials={r.instructorInitials} size={16} />
                                                         {r.instructorName}
                                                     </span>
-                                                    <span className="w-px h-3 bg-[#e4e7ec]" />
+                                                    <span className="w-px h-3 bg-[var(--colors-bg-quaternary)]" />
                                                     <span className="flex items-center gap-1">
-                                                        <MarkerPin01 className="w-4 h-4 text-[#667085]" />{r.room}
+                                                        <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />{r.room}
                                                     </span>
-                                                    <span className="w-px h-3 bg-[#e4e7ec]" />
+                                                    <span className="w-px h-3 bg-[var(--colors-bg-quaternary)]" />
                                                     <span className="flex items-center gap-1">
-                                                        <Users01 className="w-4 h-4 text-[#667085]" />{r.booked}/{r.capacity}
+                                                        <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />{r.booked}/{r.capacity}
                                                     </span>
-                                                    <span className="w-px h-3 bg-[#e4e7ec]" />
+                                                    <span className="w-px h-3 bg-[var(--colors-bg-quaternary)]" />
                                                     {/* Type — plain text beside the capacity
                                                         ratio. "Group" for normal class
                                                         schedules, "Appointment" for open
@@ -691,24 +691,24 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                         {pagedHistory.map(r => (
                                             <tr key={r.bookingId}
                                                 onClick={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}` : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`)}
-                                                className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
+                                                className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <TableAvatar initials={classInitials(r.className)} imageUrl={r.coverImage} size={40} />
-                                                        <span className="text-[14px] font-medium text-[#101828]">{r.className}</span>
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.className}</span>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "text-[#475467]")}>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>
                                                     {r.kind}
                                                 </td>
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-2">
                                                         <TableAvatar initials={r.instructorInitials} size={24} />
-                                                        <span className="text-[14px] text-[#475467]">{r.instructorName}</span>
+                                                        <span className="text-[14px] text-[var(--colors-text-tertiary)]">{r.instructorName}</span>
                                                     </div>
                                                 </td>
                                                 <td className={TD}><BookingStatusBadge status={r.displayStatus} waitlistPosition={r.waitlistPosition} /></td>
-                                                <td className={cn(TD, "text-[#475467] whitespace-nowrap")}>{fmtDateTime(r.dateISO, r.startTime)}</td>
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(r.dateISO, r.startTime)}</td>
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions
                                                         minWidth={190}

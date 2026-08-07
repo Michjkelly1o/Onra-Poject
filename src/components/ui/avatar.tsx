@@ -72,14 +72,14 @@ export function TableAvatar({ initials, imageUrl, size = 40, className }: {
     const trimmed = (initials ?? "").trim().slice(0, 2).toUpperCase();
     return (
         <div
-            className={cn("relative rounded-full bg-[#f2f4f7] shrink-0 overflow-hidden", className)}
+            className={cn("relative rounded-full bg-[var(--colors-bg-tertiary)] shrink-0 overflow-hidden", className)}
             style={{ width: size, height: size }}
         >
             {imageUrl ? (
                 <img src={imageUrl} alt={initials ?? ""} className="absolute inset-0 w-full h-full object-cover" />
             ) : (
                 <span
-                    className="absolute inset-0 flex items-center justify-center font-semibold text-[#667085] leading-none"
+                    className="absolute inset-0 flex items-center justify-center font-semibold text-[var(--colors-text-quaternary)] leading-none"
                     style={{ fontSize: textPx }}
                 >
                     {trimmed}

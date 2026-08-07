@@ -289,13 +289,13 @@ export default function BusinessLocationsPage() {
             />
 
             {/* ── Location & rooms ────────────────────────────────────── */}
-            <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-6 w-full">
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-6 w-full">
                 <div className="flex items-center justify-between gap-6 w-full">
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <p className="text-[16px] font-semibold text-[#101828] leading-6">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">
                             Location &amp; rooms
                         </p>
-                        <p className="text-[14px] text-[#475467] leading-5">
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                             Manage your studio locations and rooms for scheduling classes and sessions.
                         </p>
                     </div>
@@ -461,10 +461,10 @@ function StudioCard({ name, logoUrl, legalBusinessName, tradeLicenseNumber, coun
     onEdit: () => void;
 }) {
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-6 flex items-center gap-6 w-full">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex items-center gap-6 w-full">
             <StudioAvatar logoUrl={logoUrl} />
             <div className="flex-1 min-w-0 flex flex-col gap-3">
-                <p className="text-[20px] font-semibold text-[#101828] leading-[30px]">
+                <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">
                     {name}
                 </p>
                 {/* Studio-wide "Time zone" tile removed per client Jul 2026 —
@@ -493,7 +493,7 @@ function StudioCard({ name, logoUrl, legalBusinessName, tradeLicenseNumber, coun
 function StudioAvatar({ logoUrl }: { logoUrl?: string }) {
     return (
         <div
-            className="relative w-[96px] h-[96px] rounded-full bg-[#f2f4f7] border-4 border-white shrink-0 overflow-hidden flex items-center justify-center"
+            className="relative w-[96px] h-[96px] rounded-full bg-[var(--colors-bg-tertiary)] border-4 border-white shrink-0 overflow-hidden flex items-center justify-center"
             style={{
                 boxShadow:
                     "0px 12px 16px -4px rgba(16,24,40,0.08), 0px 4px 6px -2px rgba(16,24,40,0.03)",
@@ -501,7 +501,7 @@ function StudioAvatar({ logoUrl }: { logoUrl?: string }) {
         >
             {logoUrl
                 ? <img src={logoUrl} alt="" className="w-full h-full object-cover rounded-full" />
-                : <Image01 className="w-12 h-12 text-[#98a2b3]" />
+                : <Image01 className="w-12 h-12 text-[var(--colors-fg-quaternary)]" />
             }
             <div className="absolute inset-0 rounded-full border border-[rgba(0,0,0,0.08)] pointer-events-none" />
         </div>
@@ -511,8 +511,8 @@ function StudioAvatar({ logoUrl }: { logoUrl?: string }) {
 function InfoTile({ label, value }: { label: string; value: string }) {
     return (
         <div className="flex flex-col">
-            <p className="text-[14px] text-[#667085] leading-5">{label}</p>
-            <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">
+            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{label}</p>
+            <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">
                 {value}
             </p>
         </div>
@@ -550,8 +550,8 @@ function FilterDropdown({ open, onToggle, onClose, value, onPick }: {
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[160px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2">
-                    <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">Status</p>
+                <div className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[160px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-2">
+                    <p className="px-5 pt-1 pb-2 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">Status</p>
                     {STATUS_OPTIONS.map(o => {
                         const active = value === o.value;
                         return (
@@ -562,12 +562,12 @@ function FilterDropdown({ open, onToggle, onClose, value, onPick }: {
                                 className={cn(
                                     "w-full flex items-center justify-between text-left px-5 py-3 text-[15px] font-medium transition-colors",
                                     active
-                                        ? "bg-[#f9fafb] text-[#101828]"
-                                        : "text-[#344054] hover:bg-[#f9fafb]",
+                                        ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]"
+                                        : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}
                             >
                                 {o.label}
-                                {active && <Check className="w-4 h-4 text-[#658774]" />}
+                                {active && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                             </button>
                         );
                     })}
@@ -596,9 +596,9 @@ function AddLocationDropdown({ open, onToggle, onClose, onAddBranch, onAddRoom }
                 Add
             </Button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
-                    <MenuItem icon={<Building01 className="w-4 h-4 text-[#667085]" />} label="Branch" onClick={onAddBranch} />
-                    <MenuItem icon={<LayoutGrid01 className="w-4 h-4 text-[#667085]" />} label="Room" onClick={onAddRoom} />
+                <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[180px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
+                    <MenuItem icon={<Building01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Branch" onClick={onAddBranch} />
+                    <MenuItem icon={<LayoutGrid01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Room" onClick={onAddRoom} />
                 </div>
             )}
         </div>
@@ -615,12 +615,12 @@ function MenuItem({ icon, label, onClick, danger = false }: {
         <button
             type="button"
             onClick={onClick}
-            className="flex items-center gap-3 px-3 py-2 mx-1 rounded-[6px] hover:bg-[#f9fafb] text-left"
+            className="flex items-center gap-3 px-3 py-2 mx-1 rounded-[6px] hover:bg-[var(--colors-bg-secondary)] text-left"
         >
             {icon}
             <span className={cn(
                 "text-[14px] font-medium",
-                danger ? "text-[#d92d20]" : "text-[#344054]",
+                danger ? "text-[#d92d20]" : "text-[var(--colors-text-secondary)]",
             )}>
                 {label}
             </span>
@@ -637,7 +637,7 @@ function TableHeader() {
     // Same requestToggle → applyPendingToggle flow, just wired into the
     // menu instead of a dedicated column.
     return (
-        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[44px] border-b border-[#e4e7ec] bg-white">
+        <div className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[44px] border-b border-[var(--colors-border-secondary)] bg-white">
             <TableHeaderCell className="pl-8 pr-6">Location name</TableHeaderCell>
             <TableHeaderCell className="px-6">Working days</TableHeaderCell>
             <TableHeaderCell className="px-6">Working hour</TableHeaderCell>
@@ -650,7 +650,7 @@ function TableHeader() {
 
 function TableHeaderCell({ children, className }: { children?: React.ReactNode; className?: string }) {
     return (
-        <p className={cn("text-[12px] font-medium text-[#475467] leading-[18px] truncate", className)}>
+        <p className={cn("text-[12px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] truncate", className)}>
             {children}
         </p>
     );
@@ -684,13 +684,13 @@ function BranchRow({
     return (
         <div
             onClick={onView}
-            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[72px] border-b border-[#e4e7ec] hover:bg-[#f9fafb] transition-colors cursor-pointer">
+            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[72px] border-b border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
             {/* Col 1 — Location name (with expand chevron) */}
             <div className="flex items-center gap-2 pl-3 pr-6 h-full">
                 <button
                     type="button"
                     onClick={e => { e.stopPropagation(); onToggleExpand(); }}
-                    className="w-6 h-6 flex items-center justify-center text-[#475467] hover:bg-[#f9fafb] rounded-[6px] shrink-0"
+                    className="w-6 h-6 flex items-center justify-center text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-secondary)] rounded-[6px] shrink-0"
                     aria-label={expanded ? "Collapse rooms" : "Expand rooms"}
                 >
                     {expanded
@@ -698,17 +698,17 @@ function BranchRow({
                         : <ChevronRight className="w-4 h-4" />
                     }
                 </button>
-                <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border-1 border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0 overflow-hidden">
                     {branch.image_url
                         ? <img src={branch.image_url} alt="" className="w-full h-full object-cover" />
-                        : <Building01 className="w-5 h-5 text-[#475467]" />
+                        : <Building01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                     }
                 </div>
                 <div className="flex flex-col min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5 truncate">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 truncate">
                         {branch.name}
                     </p>
-                    <p className="text-[14px] text-[#475467] leading-5 truncate">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 truncate">
                         {emailFromBranchName(branch.name)}
                     </p>
                 </div>
@@ -719,7 +719,7 @@ function BranchRow({
             </div>
             {/* Col 3 — Working hour */}
             <div className="px-6">
-                <p className="text-[14px] text-[#101828] leading-5 truncate">
+                <p className="text-[14px] text-[var(--colors-text-primary)] leading-5 truncate">
                     {primaryHoursDisplay(hours)}
                 </p>
             </div>
@@ -728,10 +728,10 @@ function BranchRow({
                 multi-timezone studios can see "Riyadh vs Dubai" at a
                 glance without opening each branch's detail page. */}
             <div className="px-6 flex flex-col gap-0.5">
-                <p className="text-[14px] text-[#101828] leading-5 line-clamp-2">
+                <p className="text-[14px] text-[var(--colors-text-primary)] leading-5 line-clamp-2">
                     {branch.address ?? "—"}
                 </p>
-                <p className="text-[12px] text-[#667085] leading-4 truncate">
+                <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-4 truncate">
                     {timezoneLabel(branch.timezone ?? resolveBranchTimezone(branch.country, branch.state, branch.city))}
                 </p>
             </div>
@@ -744,10 +744,10 @@ function BranchRow({
                 <button
                     type="button"
                     onClick={actionMenuOpen ? onCloseActionMenu : onOpenActionMenu}
-                    className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#f2f4f7] transition-colors"
+                    className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[var(--colors-bg-tertiary)] transition-colors"
                     aria-label="Open actions"
                 >
-                    <DotsVertical className="w-4 h-4 text-[#667085]" />
+                    <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                 </button>
                 {actionMenuOpen && (
                     <BranchActionMenu
@@ -787,17 +787,17 @@ function RoomRow({
     return (
         <div
             onClick={onView}
-            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[72px] border-b border-[#e4e7ec] bg-white hover:bg-[#f9fafb] transition-colors cursor-pointer">
+            className="grid grid-cols-[280px_minmax(160px,1fr)_minmax(140px,1fr)_minmax(180px,1.4fr)_120px_56px] items-center h-[72px] border-b border-[var(--colors-border-secondary)] bg-white hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
             {/* Col 1 — Room name (indented under branch) */}
             <div className="flex items-center gap-3 pl-[60px] pr-6 h-full">
-                <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
-                    <LayoutGrid01 className="w-5 h-5 text-[#475467]" />
+                <div className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] border border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
+                    <LayoutGrid01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-5 truncate">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 truncate">
                         {room.name}
                     </p>
-                    <p className="text-[14px] text-[#475467] leading-5 truncate">
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 truncate">
                         {room.capacity} max
                     </p>
                 </div>
@@ -815,10 +815,10 @@ function RoomRow({
                 <button
                     type="button"
                     onClick={actionMenuOpen ? onCloseActionMenu : onOpenActionMenu}
-                    className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[#f2f4f7] transition-colors"
+                    className="w-9 h-9 rounded-[8px] flex items-center justify-center hover:bg-[var(--colors-bg-tertiary)] transition-colors"
                     aria-label="Open actions"
                 >
-                    <DotsVertical className="w-4 h-4 text-[#667085]" />
+                    <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                 </button>
                 {actionMenuOpen && (
                     <RoomActionMenu
@@ -859,24 +859,24 @@ function BranchActionMenu({
 }) {
     const archived = status === "archive";
     return (
-        <div className="absolute right-2 top-[calc(100%+4px)] z-30 w-[200px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
-            <MenuItem icon={<Eye className="w-4 h-4 text-[#667085]" />}        label="View details" onClick={onView} />
+        <div className="absolute right-2 top-[calc(100%+4px)] z-30 w-[200px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
+            <MenuItem icon={<Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}        label="View details" onClick={onView} />
             {!archived && (
                 <>
-                    <MenuItem icon={<Pencil01 className="w-4 h-4 text-[#667085]" />} label="Edit branch" onClick={onEdit} />
-                    <MenuItem icon={<Plus className="w-4 h-4 text-[#667085]" />}     label="Add room"    onClick={onAddRoom} />
+                    <MenuItem icon={<Pencil01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Edit branch" onClick={onEdit} />
+                    <MenuItem icon={<Plus className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}     label="Add room"    onClick={onAddRoom} />
 
                     {status === "inactive" && (
                         <MenuItem icon={<Check className="w-4 h-4 text-[#067647]" />}  label="Reactivate"  onClick={onToggleEnable} />
                     )}
-                    <MenuItem icon={<Archive className="w-4 h-4 text-[#667085]" />}  label="Archive"     onClick={onArchive} />
+                    <MenuItem icon={<Archive className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}  label="Archive"     onClick={onArchive} />
                     {status === "active" && (
                         <MenuItem icon={<SlashCircle01 className="w-4 h-4 text-[#d92d20]" />} label="Deactivate" onClick={onToggleEnable} danger />
                     )}
                 </>
             )}
             {archived && (
-                <MenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[#667085]" />} label="Recover" onClick={onRecover} />
+                <MenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Recover" onClick={onRecover} />
             )}
             {canDelete && (
                 <MenuItem icon={<Trash04 className="w-4 h-4 text-[#d92d20]" />} label="Delete" onClick={onDelete} danger />
@@ -901,15 +901,15 @@ function RoomActionMenu({
 }) {
     const archived = status === "archive";
     return (
-        <div className="absolute right-2 top-[calc(100%+4px)] z-30 w-[180px] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
-            <MenuItem icon={<Eye className="w-4 h-4 text-[#667085]" />}      label="View details" onClick={onView} />
+        <div className="absolute right-2 top-[calc(100%+4px)] z-30 w-[180px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
+            <MenuItem icon={<Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}      label="View details" onClick={onView} />
             {!archived && (
                 <>
-                    <MenuItem icon={<Pencil01 className="w-4 h-4 text-[#667085]" />} label="Edit room" onClick={onEdit} />
+                    <MenuItem icon={<Pencil01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Edit room" onClick={onEdit} />
                     {status === "inactive" && (
                         <MenuItem icon={<Check className="w-4 h-4 text-[#067647]" />}  label="Reactivate" onClick={onToggleEnable} />
                     )}
-                    <MenuItem icon={<Archive className="w-4 h-4 text-[#667085]" />}  label="Archive"   onClick={onArchive} />
+                    <MenuItem icon={<Archive className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}  label="Archive"   onClick={onArchive} />
                     {status === "active" && (
                         <MenuItem icon={<SlashCircle01 className="w-4 h-4 text-[#d92d20]" />} label="Deactivate" onClick={onToggleEnable} danger />
                     )}
@@ -917,7 +917,7 @@ function RoomActionMenu({
             )}
             {archived && (
                 <>
-                    <MenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[#667085]" />} label="Recover" onClick={onRecover} />
+                    <MenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Recover" onClick={onRecover} />
                     <MenuItem icon={<Trash04 className="w-4 h-4 text-[#d92d20]" />}      label="Delete"  onClick={onDelete} danger />
                 </>
             )}
@@ -944,7 +944,7 @@ function WorkingDaysStrip({ hours }: { hours: BusinessHours[] }) {
                         key={i}
                         className={cn(
                             "text-[14px] font-semibold leading-5",
-                            closed ? "text-[#98a2b3]" : "text-[#101828]",
+                            closed ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-primary)]",
                         )}
                     >
                         {letter}
@@ -996,7 +996,7 @@ function Toggle({ on, onChange, ariaLabel }: {
             onClick={onChange}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}
         >
             <div className={cn(

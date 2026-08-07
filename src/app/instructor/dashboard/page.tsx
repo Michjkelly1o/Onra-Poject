@@ -111,7 +111,7 @@ function deltaSuffixFor(filter: DateFilter): string {
 // ────────────────────────────────────────────────────────────────────────────
 function SectionCard({ children, className }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={cn("bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6", className)}>
+        <div className={cn("bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6", className)}>
             {children}
         </div>
     );
@@ -129,9 +129,9 @@ function SectionHeader({
     return (
         <div className="flex items-start justify-between gap-4 mb-5">
             <div className="min-w-0">
-                <h2 className="text-lg font-semibold text-[#101828] leading-7">{title}</h2>
+                <h2 className="text-lg font-semibold text-[var(--colors-text-primary)] leading-7">{title}</h2>
                 {description && (
-                    <p className="text-sm font-normal text-[#475467] leading-5 mt-1">{description}</p>
+                    <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 mt-1">{description}</p>
                 )}
             </div>
             {right}
@@ -163,8 +163,8 @@ function ChartTooltip(props: {
     const { active, payload, label, formatter } = props;
     if (!active || !payload || payload.length === 0) return null;
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] px-3 py-2 min-w-[140px]">
-            <p className="text-xs font-medium text-[#101828] leading-4 mb-1.5">{String(label ?? "")}</p>
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] px-3 py-2 min-w-[140px]">
+            <p className="text-xs font-medium text-[var(--colors-text-primary)] leading-4 mb-1.5">{String(label ?? "")}</p>
             <div className="flex flex-col gap-1">
                 {payload.map((p, idx) => {
                     const entry = formatter
@@ -174,9 +174,9 @@ function ChartTooltip(props: {
                         <div key={idx} className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-1.5">
                                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-                                <span className="text-xs font-normal text-[#475467] leading-4">{entry.name}</span>
+                                <span className="text-xs font-normal text-[var(--colors-text-tertiary)] leading-4">{entry.name}</span>
                             </div>
-                            <span className="text-xs font-medium text-[#101828] leading-4">{entry.value}</span>
+                            <span className="text-xs font-medium text-[var(--colors-text-primary)] leading-4">{entry.value}</span>
                         </div>
                     );
                 })}
@@ -387,7 +387,7 @@ export default function InstructorDashboardPage() {
         <div className="flex flex-col gap-6">
             {/* ── Welcome header ─────────────────────────────────────────── */}
             <div className="flex items-center justify-between gap-4">
-                <h1 className="text-[24px] font-semibold text-[#101828] leading-8 truncate">
+                <h1 className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8 truncate">
                     Welcome back, {currentUser.first_name}!
                 </h1>
                 <DateRangeFilter value={period} onChange={setPeriod} />
@@ -483,8 +483,8 @@ export default function InstructorDashboardPage() {
                 <SectionHeader
                     title="Upcoming classes"
                     right={
-                        <span className="inline-flex items-center gap-2 h-9 px-3 bg-[#fbfffd] border-1 border-[#e4e7ec] rounded-[8px] text-sm font-medium text-[#344054]">
-                            <Calendar className="w-4 h-4 text-[#667085]" />
+                        <span className="inline-flex items-center gap-2 h-9 px-3 bg-[#fbfffd] border-1 border-[var(--colors-border-secondary)] rounded-[8px] text-sm font-medium text-[var(--colors-text-secondary)]">
+                            <Calendar className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                             {upcomingDateLabel}
                         </span>
                     }
@@ -506,13 +506,13 @@ export default function InstructorDashboardPage() {
                                             key={slot.hour}
                                             className={cn(
                                                 "flex items-stretch w-full flex-shrink-0",
-                                                !isLast && "border-b border-[#e4e7ec]",
+                                                !isLast && "border-b border-[var(--colors-border-secondary)]",
                                             )}
                                         >
                                             {/* Time column — right-aligned hour
                                                 label matches the admin pattern */}
                                             <div className="w-[70px] flex items-center justify-end px-4 py-3 flex-shrink-0">
-                                                <p className="font-medium text-sm text-[#667085] whitespace-nowrap">
+                                                <p className="font-medium text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap">
                                                     {slot.timeLabel}
                                                 </p>
                                             </div>
@@ -638,7 +638,7 @@ export default function InstructorDashboardPage() {
                         description="Track attendance rate, cancellations, and no-shows across all classes."
                     />
                     {/* Legend */}
-                    <div className="flex items-center gap-4 mb-2 text-xs font-normal text-[#475467]">
+                    <div className="flex items-center gap-4 mb-2 text-xs font-normal text-[var(--colors-text-tertiary)]">
                         <LegendDot color="#7ba08c" label="Total visits" />
                         <LegendDot color="#f97066" label="Total cancellations" />
                         <LegendDot color="#aad4bd" label="Total no show" />

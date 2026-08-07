@@ -27,7 +27,7 @@ function MetricTile({ value, label }: { value: string; label: string }) {
         <div className={`flex min-h-[87px] items-center justify-center ${TILE_CLASS}`} style={tileStyle()}>
             <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                 <p className="whitespace-nowrap text-xl font-semibold leading-[30px] text-[var(--brand-text)]">{value}</p>
-                <p className="whitespace-nowrap text-xs font-normal leading-[18px] text-[#667085]">{label}</p>
+                <p className="whitespace-nowrap text-xs font-normal leading-[18px] text-[var(--colors-text-quaternary)]">{label}</p>
             </div>
         </div>
     );

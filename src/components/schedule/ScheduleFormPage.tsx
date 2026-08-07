@@ -10,7 +10,7 @@ import {
 } from "@untitledui/icons";
 import { cn, formatTimeRange12 } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAppStore, SCHEDULE_INSTRUCTORS, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess, type ClassCategory } from "@/lib/store";
+import { useAppStore, SCHEDULE_INSTRUCTORS, deriveScheduleInstructors, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess, type ClassCategory } from "@/lib/store";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByShift as gateSlotsByShiftHelper, instructorBlockedSlots as instructorBlockedSlotsHelper } from "@/lib/instructor-availability";
 import { Toast } from "@/components/ui/Toast";
@@ -166,14 +166,14 @@ function StepItem({ step, current, total }: { step: { n: number; label: string }
         <div className={cn("flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full", active && "bg-[#f5fffa]")}>
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active   ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                    : complete ? "bg-[#658774] text-white"
-                    : "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#98a2b3]")}>
+                    active   ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    : complete ? "bg-[var(--colors-secondary-600)] text-white"
+                    : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]")}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
-                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />}
+                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {step.label}
             </span>
         </div>
@@ -182,9 +182,9 @@ function StepItem({ step, current, total }: { step: { n: number; label: string }
 
 // ─── Form helpers ─────────────────────────────────────────────────────────────
 
-const inputCls  = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
-const labelCls  = "text-[14px] font-medium text-[#344054]";
-const hintCls   = "text-[14px] text-[#475467]";
+const inputCls  = "h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const labelCls  = "text-[14px] font-medium text-[var(--colors-text-secondary)]";
+const hintCls   = "text-[14px] text-[var(--colors-text-tertiary)]";
 
 // Local FieldLabel removed — uses canonical `<FieldLabel label hint />` from
 // `@/components/patterns/FieldLabel`.
@@ -250,17 +250,17 @@ function SimpleSelect({ label, value, options, onChange, disabled = false, menuH
     return (
         <div ref={ref} className="relative">
             <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(p => !p)}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] bg-white",
-                    disabled ? "cursor-not-allowed text-[#98a2b3] bg-[#f9fafb]" : "text-[#101828] hover:border-[#7ba08c]",
-                    open && "ring-2 ring-[#aad4bd] border-[#7ba08c]")}>
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] bg-white",
+                    disabled ? "cursor-not-allowed text-[var(--colors-fg-quaternary)] bg-[var(--colors-bg-secondary)]" : "text-[var(--colors-text-primary)] hover:border-[var(--colors-secondary-500)]",
+                    open && "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]")}>
                 <span className="flex-1 text-left">{value || label}</span>
-                <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             {open && (
                 <div ref={menuRef} style={menuStyle}
-                    className="bg-white border-1 border-[#e4e7ec] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] flex flex-col overflow-hidden">
+                    className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[8px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] flex flex-col overflow-hidden">
                     {menuHeader && (
-                        <div className="border-b border-[#e4e7ec] shrink-0">
+                        <div className="border-b border-[var(--colors-border-secondary)] shrink-0">
                             {menuHeader({ close: () => setOpen(false) })}
                         </div>
                     )}
@@ -268,7 +268,7 @@ function SimpleSelect({ label, value, options, onChange, disabled = false, menuH
                         {options.map(o => (
                             <button key={o} type="button" onClick={() => { onChange(o); setOpen(false); }}
                                 className={cn("flex items-center w-full px-4 py-[9px] text-[14px] font-medium transition-colors text-left",
-                                    value === o ? "text-[#101828] bg-[#f9fafb] font-semibold" : "text-[#344054] hover:bg-[#f9fafb]")}>
+                                    value === o ? "text-[var(--colors-text-primary)] bg-[var(--colors-bg-secondary)] font-semibold" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]")}>
                                 {o}
                             </button>
                         ))}
@@ -307,13 +307,13 @@ function TemplateDropdown({ templates, value, onChange, disabled = false }: {
             <button type="button" onClick={() => !disabled && setOpen(p => !p)} disabled={disabled}
                 className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 rounded-[8px] text-[16px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
                     disabled
-                        ? "bg-[#f9fafb] border-[#d0d5dd] cursor-not-allowed text-[#667085]"
-                        : cn("bg-white border-[#d0d5dd]", (selected || isScratch) ? "text-[#101828]" : "text-[#667085]", open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]"))}>
+                        ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-primary)] cursor-not-allowed text-[var(--colors-text-quaternary)]"
+                        : cn("bg-white border-[var(--colors-border-primary)]", (selected || isScratch) ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]", open ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-500)]"))}>
                 <span className="flex-1 text-left truncate">{triggerLabel}</span>
-                <ChevronDown className={cn("w-4 h-4 shrink-0", disabled ? "text-[#98a2b3]" : "text-[#667085]")} />
+                <ChevronDown className={cn("w-4 h-4 shrink-0", disabled ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-quaternary)]")} />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] z-50 p-[8px] max-h-[420px] overflow-y-auto">
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] z-50 p-[8px] max-h-[420px] overflow-y-auto">
                     {/* "Create from scratch" — always pinned at top. Lets the
                         admin build a one-off class without inheriting from
                         any template. Selecting this routes the form through
@@ -324,50 +324,50 @@ function TemplateDropdown({ templates, value, onChange, disabled = false }: {
                         onClick={() => { onChange(SCRATCH_TEMPLATE_ID); setOpen(false); }}
                         className={cn(
                             "flex items-center gap-[16px] w-full pl-[8px] pr-[10px] py-[10px] text-left rounded-[12px] transition-colors",
-                            isScratch ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                            isScratch ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
                         )}
                     >
                         {/* Plus tile in place of a thumbnail */}
-                        <div className="w-[82px] h-[82px] shrink-0 rounded-[10px] border-1 border-dashed border-[#d0d5dd] bg-[#fcfcfd] flex items-center justify-center">
-                            <Plus className="w-7 h-7 text-[#667085]" />
+                        <div className="w-[82px] h-[82px] shrink-0 rounded-[10px] border-1 border-dashed border-[var(--colors-border-primary)] bg-[#fcfcfd] flex items-center justify-center">
+                            <Plus className="w-7 h-7 text-[var(--colors-text-quaternary)]" />
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
-                            <p className="text-[14px] font-medium text-[#101828] truncate">Create from scratch</p>
-                            <p className="text-[12px] text-[#475467] line-clamp-2 leading-[18px]">
+                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">Create from scratch</p>
+                            <p className="text-[12px] text-[var(--colors-text-tertiary)] line-clamp-2 leading-[18px]">
                                 Build a one-off class without using an existing template.
                             </p>
                         </div>
                     </button>
-                    {templates.length > 0 && <div className="h-px bg-[#e4e7ec] my-[8px]" />}
+                    {templates.length > 0 && <div className="h-px bg-[var(--colors-bg-quaternary)] my-[8px]" />}
                     {templates.map(t => (
                         <button key={t.id} type="button" onClick={() => { onChange(t.id); setOpen(false); }}
                             className={cn("flex items-center gap-[16px] w-full pl-[8px] pr-[10px] py-[10px] text-left rounded-[12px] transition-colors",
-                                value === t.id ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                                value === t.id ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
                             {/* Thumbnail */}
-                            <div className="w-[82px] h-[82px] shrink-0 rounded-[10px] border-1 border-[#e4e7ec] overflow-hidden flex items-center justify-center"
+                            <div className="w-[82px] h-[82px] shrink-0 rounded-[10px] border-1 border-[var(--colors-border-secondary)] overflow-hidden flex items-center justify-center"
                                 style={{ backgroundColor: t.coverColor }}>
                                 {t.coverImage
                                     ? <img src={t.coverImage} alt={t.name} className="w-full h-full object-cover" />
-                                    : <span className="text-[18px] font-bold text-[#344054]">{t.name.split(" ").map(w => w[0]).join("").slice(0, 2)}</span>
+                                    : <span className="text-[18px] font-bold text-[var(--colors-text-secondary)]">{t.name.split(" ").map(w => w[0]).join("").slice(0, 2)}</span>
                                 }
                             </div>
                             {/* Info */}
                             <div className="flex-1 min-w-0 flex flex-col gap-[8px]">
                                 <div className="flex flex-col gap-[2px]">
-                                    <p className="text-[14px] font-medium text-[#344054] truncate">{t.name}</p>
-                                    <p className="text-[12px] text-[#475467] line-clamp-2 leading-[18px]">{t.description}</p>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] truncate">{t.name}</p>
+                                    <p className="text-[12px] text-[var(--colors-text-tertiary)] line-clamp-2 leading-[18px]">{t.description}</p>
                                 </div>
                                 <div className="flex items-center gap-[12px]">
-                                    <span className="flex items-center gap-[4px] text-[12px] text-[#667085]">
+                                    <span className="flex items-center gap-[4px] text-[12px] text-[var(--colors-text-quaternary)]">
                                         <Grid01 className="w-4 h-4 shrink-0" />{t.category}
                                     </span>
-                                    <span className="flex items-center gap-[4px] text-[12px] text-[#667085]">
+                                    <span className="flex items-center gap-[4px] text-[12px] text-[var(--colors-text-quaternary)]">
                                         <MarkerPin01 className="w-4 h-4 shrink-0" />{t.locationType}
                                     </span>
-                                    <span className="flex items-center gap-[4px] text-[12px] text-[#667085]">
+                                    <span className="flex items-center gap-[4px] text-[12px] text-[var(--colors-text-quaternary)]">
                                         <ClockFastForward className="w-4 h-4 shrink-0" />{t.durationMin} min
                                     </span>
-                                    <span className="flex items-center gap-[4px] text-[12px] text-[#667085]">
+                                    <span className="flex items-center gap-[4px] text-[12px] text-[var(--colors-text-quaternary)]">
                                         <Users01 className="w-4 h-4 shrink-0" />{t.capacity} max
                                     </span>
                                 </div>
@@ -405,37 +405,37 @@ function LocationDropdown({ classCapacity, value, onChange, branchRooms, onAddRo
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
-                    selectedRoom ? "text-[#101828]" : "text-[#667085]",
-                    open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#7ba08c]")}>
-                <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] transition-all",
+                    selectedRoom ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
+                    open ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-500)]")}>
+                <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                 <span className="flex-1 text-left text-[16px]">
                     {selectedRoom ? (
                         <span className="flex items-center gap-2">
                             {selectedRoom.name}
-                            <span className="text-[13px] text-[#667085]">({selectedRoom.capacity} max)</span>
+                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">({selectedRoom.capacity} max)</span>
                             {selectedRoom.capacity < classCapacity && (
                                 <span className="text-[12px] font-medium text-[#dc6803] bg-[#fffaeb] border-1 border-[#fedf89] rounded-full px-3 py-[2px]">Over capacity</span>
                             )}
                         </span>
                     ) : "Select location"}
                 </span>
-                <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             {open && (
-                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 overflow-hidden max-h-[360px] overflow-y-auto">
+                <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] z-50 overflow-hidden max-h-[360px] overflow-y-auto">
                     {branchRooms.map((group, gi) => (
-                        <div key={group.branchId} className={gi > 0 ? "border-t border-[#e4e7ec]" : ""}>
+                        <div key={group.branchId} className={gi > 0 ? "border-t border-[var(--colors-border-secondary)]" : ""}>
                             {/* Branch header — no bg, dark add room */}
                             <div className="flex items-center justify-between px-4 py-3">
                                 <div className="flex items-center gap-2">
-                                    <Building01 className="w-4 h-4 text-[#667085]" />
-                                    <span className="text-[14px] font-semibold text-[#101828]">{group.branch}</span>
+                                    <Building01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                                    <span className="text-[14px] font-semibold text-[var(--colors-text-primary)]">{group.branch}</span>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setOpen(false); onAddRoom(group.branchId); }}
-                                    className="flex items-center gap-1 text-[13px] font-semibold text-[#344054] hover:text-[#101828] transition-colors"
+                                    className="flex items-center gap-1 text-[13px] font-semibold text-[var(--colors-text-secondary)] hover:text-[var(--colors-text-primary)] transition-colors"
                                 >
                                     <Plus className="w-3.5 h-3.5" />Add room
                                 </button>
@@ -448,14 +448,14 @@ function LocationDropdown({ classCapacity, value, onChange, branchRooms, onAddRo
                                     <button key={room.id} type="button"
                                         onClick={() => { if (!isUsed) { onChange(room.id); setOpen(false); } }}
                                         className={cn("flex items-center justify-between w-full pl-10 pr-4 py-3 text-[14px] transition-colors",
-                                            isUsed ? "cursor-not-allowed" : "hover:bg-[#f9fafb]",
+                                            isUsed ? "cursor-not-allowed" : "hover:bg-[var(--colors-bg-secondary)]",
                                             value === room.id && "bg-[#f0fff8]")}>
-                                        <span className={cn("font-semibold", isUsed ? "text-[#98a2b3]" : "text-[#101828]")}>
+                                        <span className={cn("font-semibold", isUsed ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-primary)]")}>
                                             {room.name}
-                                            <span className={cn("ml-1.5 font-normal", isUsed ? "text-[#c8cdd5]" : "text-[#98a2b3]")}>({room.capacity} max)</span>
+                                            <span className={cn("ml-1.5 font-normal", isUsed ? "text-[#c8cdd5]" : "text-[var(--colors-fg-quaternary)]")}>({room.capacity} max)</span>
                                         </span>
                                         {isUsed && (
-                                            <span className="text-[12px] font-medium text-[#667085] bg-[#f2f4f7] rounded-full px-3 py-[2px]">Used by other class</span>
+                                            <span className="text-[12px] font-medium text-[var(--colors-text-quaternary)] bg-[var(--colors-bg-tertiary)] rounded-full px-3 py-[2px]">Used by other class</span>
                                         )}
                                         {!isUsed && isOverCap && (
                                             <span className="text-[12px] font-medium text-[#dc6803] bg-[#fffaeb] border-1 border-[#fedf89] rounded-full px-3 py-[2px]">Over capacity</span>
@@ -498,8 +498,8 @@ function InstructorCard({ instructor, selected, disabled = false, disabledReason
             aria-disabled={disabled}
             className={cn(
                 "flex flex-col items-center w-[150px] shrink-0 rounded-[12px] border overflow-hidden transition-all relative",
-                selected && !disabled ? "border-[#658774]" : "border-[#e4e7ec]",
-                disabled ? "opacity-50 cursor-not-allowed grayscale" : "hover:border-[#aad4bd]",
+                selected && !disabled ? "border-[var(--colors-secondary-600)]" : "border-[var(--colors-border-secondary)]",
+                disabled ? "opacity-50 cursor-not-allowed grayscale" : "hover:border-[var(--colors-secondary-300)]",
             )}>
             {/* Avatar area */}
             <div className="relative w-full flex justify-center pt-5 px-4">
@@ -510,17 +510,17 @@ function InstructorCard({ instructor, selected, disabled = false, disabledReason
                 {/* Radio — hidden when disabled. */}
                 {!disabled && (
                     <div className={cn("absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                        selected ? "border-[#658774] bg-[#658774]" : "border-[#d0d5dd] bg-white")}>
+                        selected ? "border-[var(--colors-secondary-600)] bg-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)] bg-white")}>
                         {selected && <div className="w-2 h-2 rounded-full bg-white" />}
                     </div>
                 )}
             </div>
             {/* Info */}
             <div className="w-full p-4 pt-3 flex flex-col gap-1">
-                <p className="text-[14px] font-medium text-[#101828] truncate">{instructor.name}</p>
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{instructor.name}</p>
                 <div className="flex items-center gap-1">
                     <Star01 className="w-3.5 h-3.5 text-[#f79009]" />
-                    <span className="text-[12px] text-[#667085]">{rating.score} ({rating.reviews})</span>
+                    <span className="text-[12px] text-[var(--colors-text-quaternary)]">{rating.score} ({rating.reviews})</span>
                 </div>
             </div>
         </button>
@@ -555,12 +555,12 @@ function RepeatEndRadio({
                 <span
                     className={cn(
                         "w-5 h-5 rounded-full border-1 flex items-center justify-center transition-colors",
-                        checked ? "border-[#658774]" : "border-[#d0d5dd] group-hover:border-[#98a2b3]",
+                        checked ? "border-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)] group-hover:border-[var(--colors-fg-quaternary)]",
                     )}
                 >
-                    {checked && <span className="w-2.5 h-2.5 rounded-full bg-[#658774]" />}
+                    {checked && <span className="w-2.5 h-2.5 rounded-full bg-[var(--colors-secondary-600)]" />}
                 </span>
-                <span className="text-[14px] font-medium text-[#344054]">{label}</span>
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
             </button>
             {children}
         </div>
@@ -589,10 +589,10 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
     const branchClosed = availableSlots !== undefined && availableSlots.length === 0;
     const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
     return (
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-3">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3">
             <div className="flex flex-col">
-                <p className="text-[14px] font-medium text-[#101828]">{DAY_FULL[day] ?? day}</p>
-                <p className="text-[14px] text-[#667085]">Set schedule for this day.</p>
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{DAY_FULL[day] ?? day}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Set schedule for this day.</p>
             </div>
             <div className="flex flex-col gap-3">
                 {slots.map((slot, i) => {
@@ -636,7 +636,7 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
                             entirely — see the parent's `deleteSlot`. */}
                         <button type="button" onClick={() => onDeleteSlot(i)}
                             aria-label="Remove time slot"
-                            className="w-11 h-11 flex items-center justify-center rounded-[8px] border-1 border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] shrink-0 text-[#d92d20] hover:bg-[#fef3f2] hover:border-[#fda29b] transition-colors">
+                            className="w-11 h-11 flex items-center justify-center rounded-[8px] border-1 border-[var(--colors-border-secondary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] shrink-0 text-[#d92d20] hover:bg-[#fef3f2] hover:border-[#fda29b] transition-colors">
                             <Trash01 className="w-5 h-5" />
                         </button>
                     </div>
@@ -644,7 +644,7 @@ function TimeSlotRow({ day, slots, unavailable, onChange, onAddSlot, onDeleteSlo
                 })}
             </div>
             <button type="button" onClick={onAddSlot}
-                className="self-start flex items-center gap-1 px-3 py-2 border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                className="self-start flex items-center gap-1 px-3 py-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_0px_rgba(16,24,40,0.18),inset_0px_-1px_0px_0px_rgba(16,24,40,0.05)] text-[14px] font-semibold text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                 <Plus className="w-5 h-5" />
                 <span className="px-0.5">Add time slot</span>
             </button>
@@ -682,35 +682,35 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
     const instructorChanged = !!original?.instructorName && !!instructor && original.instructorName !== instructor.name;
 
     return (
-        <div className="w-[352px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] overflow-hidden flex flex-col">
+        <div className="w-[352px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="px-6 pt-6 pb-4">
-                <p className="text-[18px] font-semibold text-[#101828]">Class preview</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class preview</p>
                 <p className="text-[14px] text-[#6e776f] mt-1">This is how your class schedule will look like.</p>
             </div>
             {/* Preview content */}
             <div className="bg-[#f6f6f3] flex-1 p-6">
-                <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] p-5">
+                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-5">
                     {/* Cover image */}
                     <div className="w-[100px] h-[100px] rounded-[14px] overflow-hidden mb-4 flex items-center justify-center"
                         style={{ backgroundColor: form.coverColor || "#f2f4f7" }}>
                         {form.coverImage ? (
                             <img src={form.coverImage} alt={displayName} className="w-full h-full object-cover" />
                         ) : hasTemplate ? (
-                            <span className="text-[28px] font-bold text-[#344054]">
+                            <span className="text-[28px] font-bold text-[var(--colors-text-secondary)]">
                                 {displayName.split(" ").map(w => w[0]).join("").slice(0, 2)}
                             </span>
                         ) : null}
                     </div>
 
                     {/* Class name + description */}
-                    <p className="text-[18px] font-medium text-[#101828] mb-1">{displayName}</p>
-                    <p className="text-[14px] text-[#667085] mb-4 line-clamp-2">{displayDesc}</p>
+                    <p className="text-[18px] font-medium text-[var(--colors-text-primary)] mb-1">{displayName}</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4 line-clamp-2">{displayDesc}</p>
 
                     {/* Info rows */}
                     <div className="flex flex-col gap-3">
                         <PreviewRow
-                            icon={<Calendar className="w-4 h-4 text-[#667085]" />}
+                            icon={<Calendar className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}
                             label={dateTimeLabel || "Date & time"}
                             empty={!dateTimeLabel}
                         />
@@ -718,16 +718,16 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                         {/* Location — with change indicator when editing */}
                         {locationChanged && location ? (
                             <div className="flex items-center gap-2">
-                                <MarkerPin01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                <span className="text-[14px] text-[#667085] line-through">{original!.location}</span>
-                                <ArrowRight className="w-3.5 h-3.5 text-[#658774] shrink-0" />
+                                <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.location}</span>
+                                <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
                                 <span className="text-[14px] font-semibold text-[#3b5446]">{location.name}</span>
                             </div>
                         ) : (
-                            <PreviewRow icon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />} label={location?.name ?? "Location"} empty={!location} />
+                            <PreviewRow icon={<MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label={location?.name ?? "Location"} empty={!location} />
                         )}
 
-                        <PreviewRow icon={<ClockFastForward className="w-4 h-4 text-[#667085]" />}
+                        <PreviewRow icon={<ClockFastForward className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}
                             label={form.durationMin ? `${form.durationMin} min` : "Duration"} empty={!form.durationMin} />
 
                         {/* Capacity — three exclusive rendering branches:
@@ -759,12 +759,12 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 // Orange when the room itself is the limit; sage when
                                 // the room fits but the admin's spot customization
                                 // restricted further.
-                                const arrowClass = roomBelowTemplate ? "text-[#dc6803]" : "text-[#658774]";
+                                const arrowClass = roomBelowTemplate ? "text-[#dc6803]" : "text-[var(--colors-secondary-600)]";
                                 const numClass   = roomBelowTemplate ? "text-[#dc6803]" : "text-[#3b5446]";
                                 return (
                                     <div className="flex items-center gap-2">
-                                        <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                        <span className="text-[14px] text-[#667085]">{templateCapacity}/{templateCapacity}</span>
+                                        <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">{templateCapacity}/{templateCapacity}</span>
                                         <ArrowRight className={cn("w-3.5 h-3.5 shrink-0", arrowClass)} />
                                         <span className={cn("text-[14px] font-semibold", numClass)}>
                                             {currentCap}/{denomCap ?? currentCap}
@@ -775,28 +775,28 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                             if (capacityChanged && form.capacity) {
                                 return (
                                     <div className="flex items-center gap-2">
-                                        <Users01 className="w-4 h-4 text-[#667085] shrink-0" />
-                                        <span className="text-[14px] text-[#667085] line-through">{original!.capacity}</span>
-                                        <ArrowRight className="w-3.5 h-3.5 text-[#658774] shrink-0" />
+                                        <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                                        <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.capacity}</span>
+                                        <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
                                         <span className="text-[14px] font-semibold text-[#3b5446]">{form.capacity}</span>
                                     </div>
                                 );
                             }
                             return (
-                                <PreviewRow icon={<Users01 className="w-4 h-4 text-[#667085]" />}
+                                <PreviewRow icon={<Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}
                                     label={form.capacity ? `${form.capacity}` : "Capacity"} empty={!form.capacity} />
                             );
                         })()}
 
-                        <PreviewRow icon={genderAccessIcon(form.gender, "w-4 h-4 text-[#667085]")}
+                        <PreviewRow icon={genderAccessIcon(form.gender, "w-4 h-4 text-[var(--colors-text-quaternary)]")}
                             label={form.gender || "Gender access"} empty={!form.gender} />
 
                         {/* Instructor — with change indicator when editing */}
                         {instructorChanged && instructor ? (
                             <div className="flex items-center gap-2 flex-wrap">
                                 <div className="w-4 h-4 rounded-full bg-[#e0e0e0] shrink-0" />
-                                <span className="text-[14px] text-[#667085] line-through">{original!.instructorName}</span>
-                                <ArrowRight className="w-3.5 h-3.5 text-[#658774] shrink-0" />
+                                <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.instructorName}</span>
+                                <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
                                 <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: instructor.color }} />
                                 <span className="text-[14px] font-semibold text-[#3b5446]">{instructor.name}</span>
                             </div>
@@ -805,12 +805,12 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 {instructor ? (
                                     <>
                                         <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: instructor.color }} />
-                                        <span className="text-[14px] text-[#667085]">{instructor.name}</span>
+                                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">{instructor.name}</span>
                                     </>
                                 ) : (
                                     <>
                                         <div className="w-4 h-4 rounded-full bg-[#e0e0e0] shrink-0" />
-                                        <span className="text-[14px] text-[#98a2b3]">Instructor</span>
+                                        <span className="text-[14px] text-[var(--colors-fg-quaternary)]">Instructor</span>
                                     </>
                                 )}
                             </div>
@@ -826,7 +826,7 @@ function PreviewRow({ icon, label, empty }: { icon: React.ReactNode; label: stri
     return (
         <div className="flex items-center gap-2">
             {icon}
-            <span className={cn("text-[14px]", empty ? "text-[#98a2b3]" : "text-[#667085]")}>{label}</span>
+            <span className={cn("text-[14px]", empty ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-quaternary)]")}>{label}</span>
         </div>
     );
 }
@@ -863,19 +863,19 @@ function CsSpotCircle({ id, blocked, active, customized, onClick, onMouseEnter, 
     return (
         <div className="flex flex-col items-center gap-2 relative">
             {tooltip && customized && !active && (
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap bg-[#101828] text-white text-[12px] font-medium px-3 py-1.5 rounded-[6px] shadow-lg pointer-events-none">
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap bg-[var(--colors-text-primary)] text-white text-[12px] font-medium px-3 py-1.5 rounded-[6px] shadow-lg pointer-events-none">
                     {blocked ? "Select spot to unblock" : "Select spot to block"}
-                    <div className="absolute left-1/2 -translate-x-1/2 -bottom-[5px] border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-[#101828]" />
+                    <div className="absolute left-1/2 -translate-x-1/2 -bottom-[5px] border-l-[5px] border-r-[5px] border-t-[5px] border-l-transparent border-r-transparent border-t-[var(--colors-text-primary)]" />
                 </div>
             )}
             <button type="button" disabled={!customized} onClick={onClick} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
                 className={cn("w-16 h-16 rounded-full transition-all",
                     !customized && "cursor-default",
                     blocked ? "bg-[#fecdca] border-2 border-[#f04438]"
-                    : active ? "bg-[var(--brand-tertiary)] border-2 border-[#658774] scale-105"
+                    : active ? "bg-[var(--brand-tertiary)] border-2 border-[var(--colors-secondary-600)] scale-105"
                     : customized ? "bg-[var(--brand-tertiary)] hover:brightness-95 hover:scale-105 cursor-pointer border-2 border-transparent"
                     : "bg-[var(--brand-tertiary)] border-2 border-transparent")} />
-            <span className="text-[16px] font-semibold text-[#475467]">{id}</span>
+            <span className="text-[16px] font-semibold text-[var(--colors-text-tertiary)]">{id}</span>
         </div>
     );
 }
@@ -886,21 +886,21 @@ function CsNumberStepper({ label, value, onChange, min=1, max=12, disabled=false
 }) {
     return (
         <div className="flex flex-col gap-1.5 flex-1">
-            <label className="text-[14px] font-medium text-[#344054]">{label}</label>
-            <div className={cn("flex items-center border-1 border-[#d0d5dd] rounded-[8px] overflow-hidden",
-                disabled ? "bg-[#f9fafb]" : "bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]")}>
+            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
+            <div className={cn("flex items-center border-1 border-[var(--colors-border-primary)] rounded-[8px] overflow-hidden",
+                disabled ? "bg-[var(--colors-bg-secondary)]" : "bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]")}>
                 <input type="number" value={value} min={min} max={max} disabled={disabled}
                     onChange={e => { const v = Number(e.target.value); if (v >= min && v <= max) onChange(v); }}
                     className={cn("flex-1 px-[14px] py-[10px] text-[16px] border-0 focus:outline-none",
-                        disabled ? "bg-[#f9fafb] text-[#667085] cursor-not-allowed" : "text-[#101828]")} />
-                <div className="flex flex-col border-l border-[#e4e7ec]">
+                        disabled ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-quaternary)] cursor-not-allowed" : "text-[var(--colors-text-primary)]")} />
+                <div className="flex flex-col border-l border-[var(--colors-border-secondary)]">
                     <button type="button" disabled={disabled || value >= max} onClick={() => value < max && onChange(value+1)}
-                        className="flex items-center justify-center h-[20px] w-8 hover:bg-[#f9fafb] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                        <ChevronUp className="w-3 h-3 text-[#667085]" />
+                        className="flex items-center justify-center h-[20px] w-8 hover:bg-[var(--colors-bg-secondary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                        <ChevronUp className="w-3 h-3 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <button type="button" disabled={disabled || value <= min} onClick={() => value > min && onChange(value-1)}
-                        className="flex items-center justify-center h-[20px] w-8 border-t border-[#e4e7ec] hover:bg-[#f9fafb] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                        <ChevronDown className="w-3 h-3 text-[#667085]" />
+                        className="flex items-center justify-center h-[20px] w-8 border-t border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                        <ChevronDown className="w-3 h-3 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
             </div>
@@ -913,15 +913,15 @@ function CsBlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
 }) {
     return (
         <div className="absolute inset-0 pointer-events-none flex items-end justify-center pb-8 z-20">
-            <div className="pointer-events-auto bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_8px_16px_-4px_rgba(16,24,40,0.12)] px-5 py-3 flex items-center gap-4">
-                <span className="text-[14px] font-medium text-[#344054]">
+            <div className="pointer-events-auto bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_8px_16px_-4px_rgba(16,24,40,0.12)] px-5 py-3 flex items-center gap-4">
+                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                     {blocked ? `Unblock spot ${spotId}?` : `Block spot ${spotId}?`}
                 </span>
                 <button type="button" onClick={onDismiss}
-                    className="text-[14px] font-semibold text-[#667085] hover:text-[#344054] transition-colors">Dismiss</button>
+                    className="text-[14px] font-semibold text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)] transition-colors">Dismiss</button>
                 {blocked ? (
                     <button type="button" onClick={onUnblock}
-                        className="px-4 py-2 rounded-[8px] bg-[#658774] text-white text-[14px] font-semibold hover:bg-[#3b5446] transition-colors">Unblock</button>
+                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#3b5446] transition-colors">Unblock</button>
                 ) : (
                     <button type="button" onClick={onBlock}
                         className="px-4 py-2 rounded-[8px] bg-[#d92d20] text-white text-[14px] font-semibold hover:bg-[#b42318] transition-colors">Block</button>
@@ -1180,8 +1180,54 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // + Spa branches onto South's business hours, which is a bug the moment
     // more than two branches exist. Falls back to the South branch id when
     // no room is picked yet, matching the pre-heuristic default.
-    const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
-    const selectedBranchId = selectedBranchGroup?.branchId ?? "branch_forma_south";
+    // When editing, the class's OWN branch is the authoritative source — fall
+    // back to it whenever the room can't be resolved (renamed / inactive room),
+    // so the branch scope never silently collapses to South and branch-excludes
+    // (then blanks) the class's real instructor. Audit Phase 5, 2026-08-05.
+    const selectedBranchGroup = branchRooms.find(b => b.rooms.some(r => r.id === locationId))
+        ?? (editing?.branchId ? branchRooms.find(b => b.branchId === editing.branchId) : undefined);
+    const selectedBranchId = selectedBranchGroup?.branchId ?? editing?.branchId ?? "branch_forma_south";
+
+    // True while editing an existing class and NOTHING that shapes its
+    // time slot has been touched — same date, instructor, room and duration
+    // as the stored class. In that state the class's own start time is valid
+    // by definition (it passed every check when created), so the form must
+    // keep it selected + saveable even if the recomputed window would exclude
+    // it (a shift edge, an instructor with no shift that day, a room whose name
+    // no longer resolves to a slot list, etc.). Client 2026-08: turning off spot
+    // selection on an unchanged class wiped its start time and blocked save. The
+    // moment the admin changes the date / instructor / room / duration this
+    // flips false and the normal availability gating takes over again.
+    //
+    // NB: this deliberately does NOT compare the current start time — an earlier
+    // version did, which was self-defeating: once the reset effect cleared the
+    // time, the flag went false and could never restore it.
+    const editWindowUnchanged = !!editing
+        && selectedDate === editing.dateISO
+        && instructorId === (editing.instructorId ?? "")
+        && locationId === editingRoomId
+        && duration === calcMinutes(editing.startTime, editing.endTime);
+
+    // Looser sibling of the flag above: TRUE whenever we're editing this class
+    // on its own calendar day — regardless of instructor / room / duration /
+    // spot-selection edits (none of which change the day's open window, so the
+    // class's own start time stays a legal, offerable slot). This is the gate
+    // that GUARANTEES an edited class always shows its start time in the input.
+    // `editWindowUnchanged` was too brittle for that job: any single mismatch —
+    // or an async store rehydrate that resolved `editing` AFTER the useState
+    // initializers ran (leaving date/time blank) — silently dropped the time and
+    // the field went empty. This depends only on the day, which is stable.
+    const editSameDay = !!editing && selectedDate === editing.dateISO;
+
+    // ── Keep-assigned instructor (mirrors the start-time keep-assigned guard) ──
+    // The class's own instructor is valid for the class's own category + branch
+    // by construction. While the admin hasn't moved the class to a different
+    // category or branch, keep that instructor selectable + never auto-clear it —
+    // a safety net so a legacy / edited / async-hydrated row can never blank the
+    // instructor on open (the "shown in the list, unavailable on edit" bug).
+    const originalInstructorId = editing?.instructorId ?? "";
+    const inOriginalCategory = !!editing && category === (editing.category ?? "");
+    const inOriginalBranch = !!editing && selectedBranchId === editing.branchId;
 
     // ─── Conflict scan ─────────────────────────────────────────────────────
     // Given a list of dates, return every start-time slot that would
@@ -1389,6 +1435,19 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         [staffSlice],
     );
 
+    // Live schedulable-instructor pool derived from the runtime `staff` slice
+    // (Phase 1 unification) — reflects staff edits (rename / re-category / branch
+    // move / deactivate) instead of a frozen seed const, and carries categoryIds
+    // so the pool the form SELECTS from and the CAN-TEACH gate read one source.
+    const activeBranchIdSet = useMemo(
+        () => new Set(liveBranches.filter(b => b.status === "active").map(b => b.id)),
+        [liveBranches],
+    );
+    const schedulePool = useMemo(
+        () => deriveScheduleInstructors(staffSlice, activeBranchIdSet),
+        [staffSlice, activeBranchIdSet],
+    );
+
     // ── Category-id resolved from the selected category NAME ─────────────
     const selectedCategoryId = useMemo(
         () => resolveCategoryId(category, classCategories),
@@ -1407,6 +1466,8 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // ineligible — no modal, the admin just notices the radio is reset.
     useEffect(() => {
         if (!instructorId) return;
+        // Never clear the class's own instructor while still in its own category.
+        if (instructorId === originalInstructorId && inOriginalCategory) return;
         if (!instructorTeachesCategory(instructorId)) {
             setInstructorId("");
         }
@@ -1448,7 +1509,12 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // whose start time has already passed is dropped — you can't create a
     // class that begins in the past. Slots on a future date are unaffected.
     const singleDateSlots = useMemo(() => {
-        if (!selectedDate || !selectedBranchGroup) return [];
+        // An unchanged edit's own time is ALWAYS offerable (see
+        // `editWindowUnchanged`) — even in the early-return paths below where
+        // the branch/hours don't resolve, so the picker shows the class's time
+        // instead of "Branch is closed" and the form stays saveable.
+        const editSlot = editSameDay && editing?.startTime ? [editing.startTime] : [];
+        if (!selectedDate || !selectedBranchGroup) return editSlot;
         let slots = buildTimeSlots(getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate), duration);
         if (selectedDate === todayISO()) {
             const now = new Date();
@@ -1462,8 +1528,17 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         // separately via `singleDateBlockedSlots` below + the
         // TimeDropdown's `unavailable` prop so the admin sees blocked
         // slots greyed out rather than as silent gaps.
-        return gateSlotsByShift(slots, selectedDate);
-    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice]);
+        const gated = gateSlotsByShift(slots, selectedDate);
+        // Keep the unchanged-edit time in the list even if the recomputed
+        // window would drop it at a boundary. Conflict detection
+        // (`unavailableTimes`) still runs, so a time that clashes with ANOTHER
+        // class is still flagged — we only ever bypass the window gate here.
+        if (editSlot.length && !gated.includes(editSlot[0])) {
+            return [...gated, editSlot[0]].sort();
+        }
+        return gated;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedBranchId, selectedBranchGroup, selectedDate, duration, liveBusinessHours, instructorId, staffById, shiftsSlice, shiftAssignmentsSlice, editSameDay, editing?.startTime]);
 
     // Per-weekday slot map for the repeat-weekly path. Each selected weekday
     // gets its own window since branches can have different hours per day —
@@ -1516,12 +1591,57 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         return false;
     }, [repeat, selectedDate, selectedDays, daySlots]);
 
+    // Editing an unchanged class whose start time is empty (never populated on a
+    // slow hydrate, restored empty from a stale draft, or wiped by the reset
+    // effect below on a previous open) — restore it to the class's real time.
+    // Only while the time-defining fields still match the stored class, so it
+    // never fights a genuine user change. Pairs with `editWindowUnchanged`
+    // keeping that time in `singleDateSlots`, so the pair self-stabilises: the
+    // restored time is a valid slot, the reset effect leaves it alone.
+    useEffect(() => {
+        if (!editing) return;
+        // Async store rehydration can resolve `editing` AFTER the useState
+        // initializers ran, leaving date + time blank; the reset effects below
+        // can also wipe the time at a window edge. Re-seed BOTH from the class
+        // whenever they're empty and we're still on its own day — so an edited
+        // class ALWAYS opens with its real start time filled, for every class,
+        // not just some. Skips only when the class's own time would genuinely
+        // double-book (instructor swapped to a busy one), so it never fights the
+        // conflict-clear effect below into a loop.
+        if (!selectedDate) { setSelectedDate(editing.dateISO); return; }
+        if (selectedDate !== editing.dateISO) return;
+        if (!startTime && !unavailableTimes.includes(editing.startTime)) {
+            setStartTime(editing.startTime);
+        }
+    }, [editing, selectedDate, startTime, unavailableTimes]);
+
+    // Restore the class's SAVED spot layout on edit (async-safe, one-shot per
+    // edited id). Without this the customize-spot state stays at its defaults
+    // (4×2), so an unchanged edit's save would overwrite the class's real grid
+    // (e.g. a 5×3 grid for a 15-cap class) with the wrong 8-spot default —
+    // corrupting the customer-facing spot picker. Audit Phase 5, 2026-08-05.
+    const spotRestoredRef = useRef<string | null>(null);
+    useEffect(() => {
+        const sl = editing?.spotLayout;
+        if (!editing || !sl) return;
+        if (spotRestoredRef.current === editing.id) return;
+        spotRestoredRef.current = editing.id;
+        setCsCols(sl.cols); setCsRows(sl.rows);
+        setCsPendingCols(sl.cols); setCsPendingRows(sl.rows);
+        setCsBlocked(new Set(sl.blockedSpots ?? []));
+        if ((sl.blockedSpots?.length ?? 0) > 0) setCsCustomized(true);
+    }, [editing]);
+
     // When the date/duration/branch changes the valid slot list reshapes —
     // any previously-picked start time outside the new window has to be
     // cleared so the user can't submit a class that runs past close-time.
     // The Create button gates on `startTime` being set, so clearing here also
-    // disables submission until the user re-picks a legal slot.
+    // disables submission until the user re-picks a legal slot. Skipped for an
+    // unchanged edit — the class's own time is valid by definition and is kept
+    // in `singleDateSlots`, so it must never be wiped just because the
+    // recomputed window omits it at a boundary.
     useEffect(() => {
+        if (editSameDay) return;
         if (!startTime) return;
         if (singleDateSlots.length === 0) { setStartTime(""); return; }
         if (!singleDateSlots.includes(startTime)) setStartTime("");
@@ -1530,7 +1650,11 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Clear a picked start time the instant it becomes a conflict — e.g. the
     // admin picks a time, then assigns an instructor or room already booked
     // for that slot. Stops the form from ever submitting a double-booking.
+    // Skipped for an unchanged edit: the class already occupies that slot (the
+    // conflict scan excludes itself), so its own time can never be a conflict —
+    // and skipping here also prevents a tug-of-war with the restore effect.
     useEffect(() => {
+        if (editWindowUnchanged) return;
         if (startTime && unavailableTimes.includes(startTime)) setStartTime("");
     }, [unavailableTimes]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1570,7 +1694,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         setCsCols(dc); setCsRows(dr); setCsPendingCols(dc); setCsPendingRows(dr);
         setCsBlocked(new Set()); setCsCustomized(false); setCsSelected(null);
     }
-    const selectedInstructor = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
+    const selectedInstructor = schedulePool.find(i => i.id === instructorId);
     // Branch-scope guard: a class booked into branch X can only be taught
     // by an instructor of branch X (or a null-branch "all locations"
     // staff row, e.g. an Owner covering a class). Applied BEFORE the name
@@ -1578,11 +1702,11 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // no room is picked yet, the picker stays permissive so the admin
     // can eyeball the roster before committing to a room.
     const branchScopedInstructors = useMemo(() => {
-        if (!selectedBranchGroup) return SCHEDULE_INSTRUCTORS;
-        return SCHEDULE_INSTRUCTORS.filter(i =>
+        if (!selectedBranchGroup) return schedulePool;
+        return schedulePool.filter(i =>
             i.branchId === null || i.branchId === selectedBranchGroup.branchId,
         );
-    }, [selectedBranchGroup]);
+    }, [selectedBranchGroup, schedulePool]);
     const filteredInstructors = instrSearch
         ? branchScopedInstructors.filter(i => i.name.toLowerCase().includes(instrSearch.toLowerCase()))
         : branchScopedInstructors;
@@ -1593,6 +1717,8 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // needs to write back into `instructorId` — the stateful source of truth.
     useEffect(() => {
         if (!instructorId || !selectedBranchGroup) return;
+        // Never clear the class's own instructor while still on its own branch.
+        if (instructorId === originalInstructorId && inOriginalBranch) return;
         const stillValid = branchScopedInstructors.some(i => i.id === instructorId);
         if (!stillValid) setInstructorId("");
     }, [instructorId, selectedBranchGroup, branchScopedInstructors]);
@@ -1873,7 +1999,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Create class instances
     function handleCreate() {
         const instances: Omit<ClassInstance, "id">[] = [];
-        const instName     = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
+        const instName     = schedulePool.find(i => i.id === instructorId);
         const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
         // Read the ACTUAL branch id (was previously a broken heuristic that
@@ -1983,12 +2109,14 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
     function handleSaveEdit() {
         if (!editingId || !editing) return;
-        const instName = SCHEDULE_INSTRUCTORS.find(i => i.id === instructorId);
-        const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId));
+        const instName = schedulePool.find(i => i.id === instructorId);
+        // Resolve the branch from the picked room, falling back to the class's
+        // OWN branch when the room can't be resolved (renamed / inactive) — so a
+        // save never silently reassigns the class to South. Audit Phase 5.
+        const branchGroup  = branchRooms.find(b => b.rooms.some(r => r.id === locationId))
+            ?? branchRooms.find(b => b.branchId === editing.branchId);
         const room         = branchGroup?.rooms.find(r => r.id === locationId);
-        // Same fix as handleCreate — use the actual `branchId` field on the
-        // group instead of a broken name-substring heuristic.
-        const branchId     = branchGroup?.branchId ?? "branch_forma_south";
+        const branchId     = branchGroup?.branchId ?? editing.branchId ?? "branch_forma_south";
 
         // ─── Date / time reschedule block ─────────────────────────────────
         // Only emitted when canReschedule AND the user actually changed the
@@ -2049,6 +2177,10 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
         updateClassSchedule(editingId, {
             templateId, name, description: desc, category,
             branchId,
+            // Keep the denormalized branch display string in sync with branchId —
+            // handleCreate writes it but edit previously didn't, so moving a class
+            // to another branch's room left a stale `location`. Audit Phase 5.
+            location: branchGroup?.branch ?? editing.location,
             instructorId,
             instructorName: instName?.name ?? editing.instructorName,
             instructorInitials: instName?.initials ?? editing.instructorInitials,
@@ -2165,11 +2297,11 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                         try { sessionStorage.removeItem(DRAFT_KEY); } catch { /* noop */ }
                         router.push(returnTo);
                     }}
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                        <p className="text-[20px] font-semibold text-[#101828]">{isEditing ? "Edit class" : isDuplicating ? "Duplicate class" : "Add schedule"}</p>
+                        <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">{isEditing ? "Edit class" : isDuplicating ? "Duplicate class" : "Add schedule"}</p>
                         <Breadcrumbs className="p-0 text-[12px]" />
                     </div>
                 </div>
@@ -2185,7 +2317,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                 </div>
 
                 {/* Form card */}
-                <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <div className="flex-1 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-6">
 
                         {/* ── Class details ── */}
@@ -2196,20 +2328,20 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     Date & time block instead. */}
                                 {isEditing && editing && !canReschedule && (
                                     <div className="flex flex-col gap-4">
-                                        <p className="text-[18px] font-semibold text-[#101828]">Date &amp; time</p>
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Date &amp; time</p>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1.5">
                                                 <label className={labelCls}>Date</label>
-                                                <div className="flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] bg-[#f9fafb] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                                    <Calendar className="w-5 h-5 text-[#98a2b3] shrink-0" />
-                                                    <span className="flex-1 text-[16px] text-[#667085]">{editing.date}</span>
+                                                <div className="flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-[var(--colors-bg-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                                    <Calendar className="w-5 h-5 text-[var(--colors-fg-quaternary)] shrink-0" />
+                                                    <span className="flex-1 text-[16px] text-[var(--colors-text-quaternary)]">{editing.date}</span>
                                                 </div>
                                             </div>
                                             <div className="flex flex-col gap-1.5">
                                                 <label className={labelCls}>Time</label>
-                                                <div className="flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] bg-[#f9fafb] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                                    <ClockFastForward className="w-5 h-5 text-[#98a2b3] shrink-0" />
-                                                    <span className="flex-1 text-[16px] text-[#667085]">
+                                                <div className="flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-[var(--colors-bg-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                                    <ClockFastForward className="w-5 h-5 text-[var(--colors-fg-quaternary)] shrink-0" />
+                                                    <span className="flex-1 text-[16px] text-[var(--colors-text-quaternary)]">
                                                         {editing.displayTime} ({calcMinutes(editing.startTime, editing.endTime)} min)
                                                     </span>
                                                 </div>
@@ -2220,7 +2352,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
                                 {/* Template selector */}
                                 <div className="flex flex-col gap-4">
-                                    <p className="text-[18px] font-semibold text-[#101828]">Class template</p>
+                                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class template</p>
                                     <div className="flex flex-col gap-1.5">
                                         <label className={labelCls}>Class template</label>
                                         <TemplateDropdown
@@ -2243,7 +2375,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 {/* Template detail (visible after template selected) */}
                                 {templateId && (
                                     <div className="flex flex-col gap-5">
-                                        <p className="text-[18px] font-semibold text-[#101828]">
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">
                                             {isScratch ? "Class details" : "Class template detail"}
                                         </p>
 
@@ -2285,7 +2417,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                         <button
                                                             type="button"
                                                             onClick={() => { close(); setCreatingCategory(true); }}
-                                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors"
+                                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-[14px] font-medium text-[var(--colors-secondary-600)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                                                         >
                                                             <Plus className="w-4 h-4" />
                                                             Create class category
@@ -2331,7 +2463,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                             <>
                                 {/* Class location */}
                                 <div className="flex flex-col gap-4">
-                                    <p className="text-[18px] font-semibold text-[#101828]">Class location</p>
+                                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class location</p>
                                     <div className="flex flex-col gap-1.5">
                                         <label className={labelCls}>Location</label>
                                         <LocationDropdown
@@ -2362,13 +2494,13 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     </div>
                                 </div>
 
-                                <div className="h-px bg-[#e4e7ec]" />
+                                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
 
                                 {/* Spot selection */}
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-start justify-between gap-6">
                                         <div className="flex flex-col gap-1">
-                                            <p className="text-[18px] font-semibold text-[#101828]">Spot selection</p>
+                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot selection</p>
                                             <p className="text-[14px] text-[#6e776f]">Turn on spot selection to let your customers choose a spot in the room when booking this class.</p>
                                         </div>
                                         {/* Toggle — disabled until room selected */}
@@ -2376,8 +2508,8 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                             disabled={!locationId}
                                             onClick={() => locationId && setSpotEnabled(p => !p)}
                                             className={cn("relative w-[36px] h-[20px] rounded-full transition-colors shrink-0 mt-1",
-                                                !locationId ? "bg-[#e4e7ec] cursor-not-allowed"
-                                                : spotEnabled ? "bg-[#658774]" : "bg-[#f2f4f7]")}>
+                                                !locationId ? "bg-[var(--colors-bg-quaternary)] cursor-not-allowed"
+                                                : spotEnabled ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]")}>
                                             <div className={cn("absolute top-[2px] w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_rgba(16,24,40,0.1),0px_1px_2px_rgba(16,24,40,0.06)] transition-transform",
                                                 spotEnabled ? "translate-x-[18px]" : "translate-x-[2px]")} />
                                         </button>
@@ -2394,24 +2526,28 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     )}
                                 </div>
 
-                                <div className="h-px bg-[#e4e7ec]" />
+                                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
 
                                 {/* Instructor */}
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-[18px] font-semibold text-[#101828]">Instructor</p>
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Instructor</p>
                                         <div className="relative w-[220px]">
-                                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
+                                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)]" />
                                             <input type="text" value={instrSearch} onChange={e => setInstrSearch(e.target.value)}
                                                 placeholder="Search instructor..."
-                                                className="w-full h-9 pl-9 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]" />
+                                                className="w-full h-9 pl-9 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]" />
                                         </div>
                                     </div>
                                     <div className="relative">
                                         {/* pt-2 pb-2 gives room for the focus ring not to be clipped */}
                                         <div className="flex gap-4 overflow-x-auto pt-2 pb-3 scrollbar-hide">
                                             {filteredInstructors.map(instr => {
-                                                const canTeach = instructorTeachesCategory(instr.id);
+                                                // The class's own instructor stays selectable in its own
+                                                // category even if the gate would otherwise grey them out —
+                                                // keep-assigned safety net (see originalInstructorId).
+                                                const canTeach = instructorTeachesCategory(instr.id)
+                                                    || (instr.id === originalInstructorId && inOriginalCategory);
                                                 return (
                                                     <InstructorCard key={instr.id} instructor={instr}
                                                         selected={instructorId === instr.id}
@@ -2434,7 +2570,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 <div className="flex flex-col gap-8">
                                     {/* Date & time section */}
                                     <div className="flex flex-col gap-4">
-                                        <p className="text-[18px] font-semibold text-[#101828]">Date & time</p>
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Date & time</p>
 
                                         {/* Row 1: Repeat + Date.
                                             In edit mode the form targets a single class instance, so
@@ -2486,19 +2622,25 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                         disabled={!selectedDate}
                                                         emptyLabel={!selectedDate
                                                             ? "Pick a date first."
-                                                            : `Branch is closed on ${new Date(selectedDate + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}.`}
+                                                            : getBusinessHours(liveBusinessHours, selectedBranchId, selectedDate) === null
+                                                                // Branch genuinely has no hours this weekday.
+                                                                ? `Branch is closed on ${new Date(selectedDate + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })}.`
+                                                                // Branch IS open — the list is empty for another reason
+                                                                // (instructor has no shift that day, or every slot is
+                                                                // already past). Don't falsely blame the branch.
+                                                                : "No available times for this day."}
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-1.5">
                                                     <label className={labelCls}>End time</label>
-                                                    <div className="flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[#d0d5dd] rounded-[8px] bg-[#f9fafb] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                                        <ClockFastForward className="w-4 h-4 text-[#98a2b3] shrink-0" />
-                                                        <span className="flex-1 text-[16px] text-[#667085]">
+                                                    <div className="flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-[var(--colors-bg-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                                        <ClockFastForward className="w-4 h-4 text-[var(--colors-fg-quaternary)] shrink-0" />
+                                                        <span className="flex-1 text-[16px] text-[var(--colors-text-quaternary)]">
                                                             {startTime ? fmtTime(endTime) : "—"}
                                                         </span>
                                                     </div>
                                                     {startTime && duration > 0 && (
-                                                        <span className="text-[13px] text-[#98a2b3]">Auto-calculated from {duration} min duration</span>
+                                                        <span className="text-[13px] text-[var(--colors-fg-quaternary)]">Auto-calculated from {duration} min duration</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -2516,7 +2658,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                         so the section reads top-down. */}
                                     {repeat === "Repeat weekly" && (
                                         <div className="flex flex-col gap-4">
-                                            <p className="text-[18px] font-semibold text-[#101828]">Recurring Ends</p>
+                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Recurring Ends</p>
 
                                             <div className="flex flex-col items-start gap-3">
                                                 <RepeatEndRadio
@@ -2546,7 +2688,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                         <div className="w-[100px]">
                                                             <NumericInput value={endAfter} onChange={setEndAfter} min={1} max={365} />
                                                         </div>
-                                                        <span className="text-[14px] text-[#475467]">classes</span>
+                                                        <span className="text-[14px] text-[var(--colors-text-tertiary)]">classes</span>
                                                     </div>
                                                 </RepeatEndRadio>
                                             </div>
@@ -2572,7 +2714,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     {/* Select days */}
                                     {repeat === "Repeat weekly" && (
                                         <div className="flex flex-col gap-4">
-                                            <p className="text-[18px] font-semibold text-[#101828]">Select days</p>
+                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Select days</p>
                                             <div className="flex gap-3">
                                                 {WEEK_DAYS.map(d => {
                                                     const isSel = selectedDays.includes(d);
@@ -2581,8 +2723,8 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                             className={cn(
                                                                 "flex-1 h-11 flex items-center justify-center rounded-[8px] text-[16px] font-medium transition-all",
                                                                 isSel
-                                                                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                                                                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:border-[#aad4bd]"
+                                                                    ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                                                                    : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:border-[var(--colors-secondary-300)]"
                                                             )}>
                                                             {d}
                                                         </button>
@@ -2595,7 +2737,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     {/* General schedule */}
                                     {repeat === "Repeat weekly" && selectedDays.length > 0 && (
                                         <div className="flex flex-col gap-4">
-                                            <p className="text-[18px] font-semibold text-[#101828]">General schedule</p>
+                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">General schedule</p>
 
                                             {/* Past-time booking notice — only surfaces once the admin
                                                 has actually picked a slot whose first occurrence is today
@@ -2637,20 +2779,20 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
                                     {/* Preview of scheduled classes */}
                                     {repeat === "Repeat weekly" && selectedDays.length > 0 && (
-                                        <div className="bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] p-4 flex flex-col gap-4">
+                                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] p-4 flex flex-col gap-4">
                                             {/* Header */}
                                             <div className="flex items-center gap-4">
                                                 <div className="flex-1 min-w-0 flex flex-col">
-                                                    <p className="text-[14px] font-medium text-[#101828]">Preview of scheduled classes</p>
-                                                    <p className="text-[14px] text-[#667085] truncate">Review all upcoming scheduled dates and time slots.</p>
+                                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Preview of scheduled classes</p>
+                                                    <p className="text-[14px] text-[var(--colors-text-quaternary)] truncate">Review all upcoming scheduled dates and time slots.</p>
                                                 </div>
-                                                <div className="shrink-0 bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-full px-2 py-0.5">
-                                                    <p className="text-[12px] font-medium text-[#344054]">
+                                                <div className="shrink-0 bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-full px-2 py-0.5">
+                                                    <p className="text-[12px] font-medium text-[var(--colors-text-secondary)]">
                                                         {previewItems.length} {previewItems.length === 1 ? "class" : "classes"}
                                                     </p>
                                                 </div>
                                                 <button type="button" onClick={() => setPreviewOpen(o => !o)}
-                                                    className="shrink-0 w-5 h-5 flex items-center justify-center text-[#667085] hover:text-[#344054] transition-colors">
+                                                    className="shrink-0 w-5 h-5 flex items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)] transition-colors">
                                                     <ChevronUp className={cn("w-5 h-5 transition-transform", !previewOpen && "rotate-180")} />
                                                 </button>
                                             </div>
@@ -2686,15 +2828,15 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                                 onClick={() => setCalMonthOffset(o => Math.max(0, o - 1))}
                                                                 className={cn(
                                                                     "w-8 h-8 flex items-center justify-center rounded-[6px] transition-colors",
-                                                                    canCalGoBack ? "text-[#344054] hover:bg-[#f9fafb]" : "text-[#d0d5dd] cursor-not-allowed",
+                                                                    canCalGoBack ? "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]" : "text-[var(--colors-border-primary)] cursor-not-allowed",
                                                                 )}
                                                                 aria-label="Previous month"
                                                             >
                                                                 <ChevronLeft className="w-4 h-4" />
                                                             </button>
                                                             <div className="flex items-center gap-2">
-                                                                <Calendar className="w-4 h-4 text-[#344054]" />
-                                                                <p className="text-[14px] font-semibold text-[#101828]">
+                                                                <Calendar className="w-4 h-4 text-[var(--colors-text-secondary)]" />
+                                                                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)]">
                                                                     {MONTH_NAMES_LONG[month]} {year}
                                                                 </p>
                                                             </div>
@@ -2704,7 +2846,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                                 onClick={() => setCalMonthOffset(o => Math.min(CAL_FORWARD_CAP_MONTHS, o + 1))}
                                                                 className={cn(
                                                                     "w-8 h-8 flex items-center justify-center rounded-[6px] transition-colors",
-                                                                    canCalGoForward ? "text-[#344054] hover:bg-[#f9fafb]" : "text-[#d0d5dd] cursor-not-allowed",
+                                                                    canCalGoForward ? "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]" : "text-[var(--colors-border-primary)] cursor-not-allowed",
                                                                 )}
                                                                 aria-label="Next month"
                                                             >
@@ -2718,15 +2860,15 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                             background + 1px gap; each cell paints itself
                                                             white over the top. Outer rounded wrapper keeps
                                                             the edges clean. */}
-                                                        <div className="rounded-[10px] overflow-hidden border-1 border-[#e4e7ec]">
+                                                        <div className="rounded-[10px] overflow-hidden border-1 border-[var(--colors-border-secondary)]">
                                                             {/* Weekday header */}
-                                                            <div className="grid grid-cols-7 bg-white border-b border-[#e4e7ec]">
+                                                            <div className="grid grid-cols-7 bg-white border-b border-[var(--colors-border-secondary)]">
                                                                 {WEEKDAYS_SHORT.map(d => (
-                                                                    <div key={d} className="text-center text-[12px] font-medium text-[#667085] py-2">{d.toUpperCase()}</div>
+                                                                    <div key={d} className="text-center text-[12px] font-medium text-[var(--colors-text-quaternary)] py-2">{d.toUpperCase()}</div>
                                                                 ))}
                                                             </div>
                                                             {/* Day grid */}
-                                                            <div className="grid grid-cols-7 bg-[#e4e7ec] gap-[1px]">
+                                                            <div className="grid grid-cols-7 bg-[var(--colors-bg-quaternary)] gap-[1px]">
                                                                 {cells.map((cell, i) => {
                                                                     if (!cell) {
                                                                         return <div key={`empty-${i}`} className="min-h-[88px] bg-white" />;
@@ -2736,18 +2878,18 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                                         <div key={cell.iso} className="min-h-[88px] bg-white flex flex-col items-stretch gap-1 p-2">
                                                                             <div className="flex justify-center">
                                                                                 {hasClasses ? (
-                                                                                    <div className="w-6 h-6 rounded-full bg-[#658774] flex items-center justify-center">
+                                                                                    <div className="w-6 h-6 rounded-full bg-[var(--colors-secondary-600)] flex items-center justify-center">
                                                                                         <span className="text-[12px] font-semibold leading-5 text-white">{cell.day}</span>
                                                                                     </div>
                                                                                 ) : (
-                                                                                    <span className="w-6 h-6 flex items-center justify-center text-[12px] text-[#667085]">{cell.day}</span>
+                                                                                    <span className="w-6 h-6 flex items-center justify-center text-[12px] text-[var(--colors-text-quaternary)]">{cell.day}</span>
                                                                                 )}
                                                                             </div>
                                                                             {hasClasses && (
                                                                                 <div className="flex flex-col gap-1">
                                                                                     {cell.times.map((t, ti) => (
-                                                                                        <div key={ti} className="relative bg-[#e9fff3] border-1 border-[var(--brand-tertiary)] rounded-[4px] h-5 px-1.5 flex items-center overflow-hidden">
-                                                                                            <p className="text-[10px] leading-[14px] text-[#475467] truncate">{t}</p>
+                                                                                        <div key={ti} className="relative bg-[var(--colors-secondary-50)] border-1 border-[var(--brand-tertiary)] rounded-[4px] h-5 px-1.5 flex items-center overflow-hidden">
+                                                                                            <p className="text-[10px] leading-[14px] text-[var(--colors-text-tertiary)] truncate">{t}</p>
                                                                                         </div>
                                                                                     ))}
                                                                                 </div>
@@ -2760,14 +2902,14 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
 
                                                         {/* Bottom info banner */}
                                                         {recurrenceSummary && (
-                                                            <div className="flex items-start gap-3 p-3 rounded-[10px] bg-[#f9fafb] border-1 border-[#e4e7ec]">
-                                                                <AlertCircle className="w-4 h-4 text-[#667085] shrink-0 mt-[2px]" />
-                                                                <p className="text-[13px] text-[#475467] leading-[18px]">{recurrenceSummary}</p>
+                                                            <div className="flex items-start gap-3 p-3 rounded-[10px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)]">
+                                                                <AlertCircle className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 mt-[2px]" />
+                                                                <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-[18px]">{recurrenceSummary}</p>
                                                             </div>
                                                         )}
 
                                                         {previewItems.length === 0 && (
-                                                            <p className="text-center text-[14px] text-[#98a2b3] py-2">Configure your schedule to see the preview.</p>
+                                                            <p className="text-center text-[14px] text-[var(--colors-fg-quaternary)] py-2">Configure your schedule to see the preview.</p>
                                                         )}
                                                     </div>
                                                 );
@@ -2820,7 +2962,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 if (currentKind === "datetime") {
                                     return (
                                         <Button variant="primary" size="md"
-                                            disabled={!selectedDate || !startTime}
+                                            disabled={!selectedDate || !startTime || !instructorId}
                                             onClick={handleSaveEdit}>
                                             Save changes
                                         </Button>
@@ -2895,39 +3037,39 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                         <div className="shrink-0 h-[72px] flex items-center px-6">
                             <div className="flex items-center gap-3">
                                 <button type="button" onClick={() => setShowCustomizeSpot(false)}
-                                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                                    <ChevronLeft className="w-5 h-5 text-[#667085]" />
+                                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                    <ChevronLeft className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                                 </button>
-                                <p className="text-[20px] font-semibold text-[#101828]">Customize spot</p>
+                                <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">Customize spot</p>
                             </div>
                         </div>
 
                         {/* Body */}
                         <div className="flex-1 overflow-y-auto px-6 py-6 flex justify-center">
-                            <div className="w-full max-w-[812px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col gap-6 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] h-fit">
+                            <div className="w-full max-w-[812px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col gap-6 p-6 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] h-fit">
 
                                 {/* Customize area */}
                                 <div className="flex flex-col gap-4">
                                     <div className="flex items-end justify-between">
                                         <div className="flex flex-col gap-1">
-                                            <p className="text-[18px] font-semibold text-[#101828]">Customize area</p>
+                                            <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Customize area</p>
                                             <p className="text-[14px] text-[#6e776f]">Select spot to block or unblock.</p>
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full bg-[var(--brand-tertiary)]" />
-                                                <span className="text-[14px] text-[#667085]">Available spot</span>
+                                                <span className="text-[14px] text-[var(--colors-text-quaternary)]">Available spot</span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full bg-[#f04438]" />
-                                                <span className="text-[14px] text-[#475467]">Blocked spot</span>
+                                                <span className="text-[14px] text-[var(--colors-text-tertiary)]">Blocked spot</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="bg-[#f8f8f6] rounded-[16px] px-10 py-10 flex flex-col items-center gap-8 min-h-[280px]">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-[140px] h-[48px] rounded-[10px] bg-[#717bbc]" />
-                                            <span className="text-[16px] font-semibold text-[#475467]">Instructor</span>
+                                            <span className="text-[16px] font-semibold text-[var(--colors-text-tertiary)]">Instructor</span>
                                         </div>
                                         <div className="flex flex-col gap-8">
                                             {csSpots.map((row, ri) => (
@@ -2951,7 +3093,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 {/* Spot layout */}
                                 <div className="flex flex-col gap-4">
                                     <div className="flex flex-col gap-1">
-                                        <p className="text-[18px] font-semibold text-[#101828]">Spot layout</p>
+                                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot layout</p>
                                         <p className="text-[14px] text-[#6e776f]">
                                             Define the number of rows and columns to arrange the {roomCap} spots in this room.
                                         </p>
@@ -2971,7 +3113,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                         </div>
                                     )}
                                     {csCustomized && !csLayoutExceeds && csPendingCols * csPendingRows < roomCap && (
-                                        <p className="text-[13px] text-[#667085]">
+                                        <p className="text-[13px] text-[var(--colors-text-quaternary)]">
                                             {csPendingCols * csPendingRows} of {roomCap} spots will be visible in this layout.
                                         </p>
                                     )}

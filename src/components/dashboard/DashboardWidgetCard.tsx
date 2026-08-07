@@ -78,12 +78,11 @@ const STATIC: Record<string, object[]> = {
         { name: "30 Credit", v: 18 },
         { name: "Advanced",  v: 38 },
     ],
-    "class-by-popularity": [
-        { name: "Reformer Pilates", instructor: "Sara Al-Rashid", color: "#b892ba", bookings: 142, occupancy: 89 },
-        { name: "Mat Pilates",      instructor: "Liam Chen",      color: "#92baa4", bookings: 98,  occupancy: 78 },
-        { name: "Barre",            instructor: "Maya Johnson",   color: "#92d1de", bookings: 87,  occupancy: 72 },
-        { name: "Hot Yoga",         instructor: "Liam Chen",      color: "#dc6803", bookings: 45,  occupancy: 65 },
-    ],
+    // class-by-popularity: live-derived from `classSchedules` (see
+    // `computeClassPopularity`). STATIC entry retired 2026-08-05 (audit) — it
+    // invented a "Mat Pilates" class and mismatched instructors. Live
+    // derivation ranks the studio's REAL scheduled classes by bookings, with
+    // the real teaching instructor + occupancy, branch-scoped.
     // KPI · Marketing — funnel stages, descending. Values sized to the
     // demo seed's 20-lead scale.
     "kpi-lead-funnel": [
@@ -122,13 +121,11 @@ const STATIC: Record<string, object[]> = {
     // future pass can period-scope them if the client wants trailing-N-day
     // leaderboards. Colours picked from the existing widget palette so
     // charts read as one visual family.
-    "private-top-trainers": [
-        { name: "Sara Al-Rashid", v: 42 },
-        { name: "Liam Chen",      v: 36 },
-        { name: "Maya Johnson",   v: 28 },
-        { name: "Priya Nair",     v: 19 },
-        { name: "Dan Rivera",     v: 14 },
-    ],
+    // private-top-trainers: live-derived from private `appointments` (see
+    // `computeTopPrivateTrainers`). STATIC entry retired 2026-08-05 (audit) —
+    // it listed non-existent trainers "Priya Nair" / "Dan Rivera". Live
+    // derivation ranks the studio's REAL instructors by private-session count,
+    // branch-scoped.
     // recovery-top-services: live-derived from services + appointments,
     // see `computeTopServices()` below. STATIC entry retired 2026-07-20
     // (was invented names like "Ice bath" / "Cryo" that didn't match the
@@ -481,8 +478,8 @@ const ChartTooltip = ({ active, payload, label, valueFormatter }: {
 }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[140px]">
-            <p className="font-semibold text-[#101828] mb-1.5">{label}</p>
+        <div className="bg-white border border-[var(--colors-border-secondary)] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[140px]">
+            <p className="font-semibold text-[var(--colors-text-primary)] mb-1.5">{label}</p>
             {payload.map((p) => {
                 const display = valueFormatter
                     ? valueFormatter({ value: p.value, dataKey: p.dataKey, name: p.name })
@@ -490,8 +487,8 @@ const ChartTooltip = ({ active, payload, label, valueFormatter }: {
                 return (
                     <p key={String(p.dataKey ?? p.name)} className="flex items-center gap-1.5 mb-0.5">
                         <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: p.color }} />
-                        <span className="text-[#475467]">{p.name}:</span>
-                        <span className="font-medium text-[#101828]">{display}</span>
+                        <span className="text-[var(--colors-text-tertiary)]">{p.name}:</span>
+                        <span className="font-medium text-[var(--colors-text-primary)]">{display}</span>
                     </p>
                 );
             })}
@@ -516,7 +513,7 @@ function Legend({ items }: { items: { color: string; label: string }[] }) {
             {items.map(l => (
                 <div key={l.label} className="flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
-                    <span className="text-xs text-[#667085]">{l.label}</span>
+                    <span className="text-xs text-[var(--colors-text-quaternary)]">{l.label}</span>
                 </div>
             ))}
         </div>
@@ -816,6 +813,74 @@ function computeTopServices(
     return ranked.sort((a, b) => b.v - a.v).slice(0, 5);
 }
 
+// Accent colours for the class-popularity rows, keyed by class category. Only
+// styling — the DATA (name / instructor / bookings / occupancy) is live.
+const _CLASS_ACCENT: Record<string, string> = {
+    Pilates: "#b892ba", Barre: "#92d1de", Yoga: "#dc6803",
+};
+
+/** Top classes ranked by total bookings, branch-scoped. Live-derived from
+ *  `classSchedules` (audit 2026-08-05 — replaces the static seed that invented
+ *  "Mat Pilates" + mismatched instructors). Groups every non-cancelled
+ *  scheduled class by template name, sums bookings, averages occupancy, and
+ *  attributes it to the instructor who teaches it most often. Period-agnostic
+ *  (a leaderboard reads as a snapshot); branch filter still applies. Top 4. */
+function computeClassPopularity(
+    schedules: Array<import("@/lib/store").ClassSchedule>,
+    branchIds: string[] | undefined,
+): Array<{ name: string; instructor: string; color: string; bookings: number; occupancy: number }> {
+    const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
+    interface Agg { name: string; category: string; booked: number; capacity: number; instr: Map<string, number>; }
+    const groups = new Map<string, Agg>();
+    for (const s of schedules) {
+        if (s.status === "Cancelled") continue;
+        if (scoped && !scoped.includes(s.branchId)) continue;
+        let g = groups.get(s.name);
+        if (!g) { g = { name: s.name, category: s.category, booked: 0, capacity: 0, instr: new Map() }; groups.set(s.name, g); }
+        g.booked += s.booked;
+        g.capacity += s.capacity;
+        if (s.instructorName) g.instr.set(s.instructorName, (g.instr.get(s.instructorName) ?? 0) + 1);
+    }
+    const rows = Array.from(groups.values()).map(g => {
+        let topInstr = "—", topN = -1;
+        g.instr.forEach((n, name) => { if (n > topN) { topN = n; topInstr = name; } });
+        return {
+            name: g.name,
+            instructor: topInstr,
+            color: _CLASS_ACCENT[g.category] ?? "#98a2b3",
+            bookings: g.booked,
+            occupancy: g.capacity > 0 ? Math.round((g.booked / g.capacity) * 100) : 0,
+        };
+    });
+    return rows.sort((a, b) => b.bookings - a.bookings).slice(0, 4);
+}
+
+/** Top trainers ranked by private-session bookings, branch-scoped. Live-derived
+ *  from private `appointments` (audit 2026-08-05 — replaces the static seed that
+ *  listed non-existent trainers "Priya Nair" / "Dan Rivera"). Counts each
+ *  trainer's private sessions in scope. Period-agnostic snapshot; branch filter
+ *  applies. Top 5. */
+function computeTopPrivateTrainers(
+    appointments: Array<import("@/lib/store").Appointment>,
+    branchIds: string[] | undefined,
+): Array<{ name: string; v: number }> {
+    const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
+    const totals = new Map<string, number>();
+    for (const a of appointments) {
+        if (a.type !== "private") continue;
+        if (scoped && !scoped.includes(a.branchId)) continue;
+        const name = a.instructorName;
+        if (!name) continue;
+        // Count every private session the trainer holds (a private appointment
+        // is one 1:1 booking), so the leaderboard reflects real workload even
+        // for slots still being filled.
+        totals.set(name, (totals.get(name) ?? 0) + 1);
+    }
+    const rows: Array<{ name: string; v: number }> = [];
+    totals.forEach((v, name) => rows.push({ name, v }));
+    return rows.sort((a, b) => b.v - a.v).slice(0, 5);
+}
+
 // ─── Referral share of new customers — live derivation ─────────────────────
 //
 // Stacked bar per period-bucket: "All new customers" (light grey background)
@@ -935,6 +1000,12 @@ function renderChart(
      *  (all new customers, new customers via referral) plus the header
      *  first-vs-last-period share numbers. Null on every other widget. */
     referralShareResult: ReferralShareResult | null = null,
+    /** Class-by-popularity widget only — live-derived ranked classes with real
+     *  instructor / bookings / occupancy. Null on every other widget. */
+    classPopularityRows: Array<{ name: string; instructor: string; color: string; bookings: number; occupancy: number }> | null = null,
+    /** Private-top-trainers widget only — live-derived ranked trainers by
+     *  private-session count. Null on every other widget. */
+    topTrainersRows: Array<{ name: string; v: number }> | null = null,
 ): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
@@ -954,7 +1025,11 @@ function renderChart(
             ? (topServicesRows as unknown as object[])
             : id === "referral-share" && referralShareResult
                 ? (referralShareResult.rows as unknown as object[])
-                : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
+                : id === "class-by-popularity" && classPopularityRows
+                    ? (classPopularityRows as unknown as object[])
+                    : id === "private-top-trainers" && topTrainersRows
+                        ? (topTrainersRows as unknown as object[])
+                        : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
@@ -1004,8 +1079,8 @@ function renderChart(
                             </ChipTag>
                         ) : <span />}
                         <div className="text-right">
-                            <p className="text-[16px] font-semibold text-[#101828] leading-tight">{aedMoney(totalCollected)}</p>
-                            <p className="text-[11px] text-[#667085]">this period</p>
+                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-tight">{aedMoney(totalCollected)}</p>
+                            <p className="text-[11px] text-[var(--colors-text-quaternary)]">this period</p>
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={h}>
@@ -1216,20 +1291,20 @@ function renderChart(
             return (
                 <div className="flex flex-col gap-0 mt-1">
                     {rows.map((cls, idx) => (
-                        <div key={cls.name} className={cn("flex items-center gap-3 py-3", idx < rows.length - 1 && "border-b border-[#f9fafb]")}>
-                            <div className="w-10 h-10 rounded-md flex-shrink-0 border border-[#e4e7ec] overflow-hidden" style={{ backgroundColor: cls.color + "40" }}>
+                        <div key={cls.name} className={cn("flex items-center gap-3 py-3", idx < rows.length - 1 && "border-b border-[var(--colors-bg-secondary)]")}>
+                            <div className="w-10 h-10 rounded-md flex-shrink-0 border border-[var(--colors-border-secondary)] overflow-hidden" style={{ backgroundColor: cls.color + "40" }}>
                                 <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${cls.color}80, ${cls.color}20)` }} />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-sm text-[#101828] truncate">{cls.name}</p>
+                                <p className="font-semibold text-sm text-[var(--colors-text-primary)] truncate">{cls.name}</p>
                                 <div className="flex items-center gap-1 mt-0.5">
                                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: cls.color }} />
-                                    <span className="text-xs text-[#667085]">{cls.instructor}</span>
+                                    <span className="text-xs text-[var(--colors-text-quaternary)]">{cls.instructor}</span>
                                 </div>
                             </div>
                             <div className="text-right flex-shrink-0">
-                                <p className="text-xs text-[#667085]">{cls.bookings} bookings</p>
-                                <p className="text-xs font-medium text-[#475467] mt-0.5">{cls.occupancy}% occupancy</p>
+                                <p className="text-xs text-[var(--colors-text-quaternary)]">{cls.bookings} bookings</p>
+                                <p className="text-xs font-medium text-[var(--colors-text-tertiary)] mt-0.5">{cls.occupancy}% occupancy</p>
                             </div>
                         </div>
                     ))}
@@ -1269,8 +1344,8 @@ function renderChart(
                 <div className="flex-1 flex flex-col justify-around gap-3 mt-1 min-h-0">
                     {rows.map(row => (
                         <div key={row.stage} className="flex items-center gap-3">
-                            <p className="text-sm text-[#344054] w-32 flex-shrink-0">{row.stage}</p>
-                            <div className="flex-1 h-8 bg-[#f9fafb] rounded-md overflow-hidden">
+                            <p className="text-sm text-[var(--colors-text-secondary)] w-32 flex-shrink-0">{row.stage}</p>
+                            <div className="flex-1 h-8 bg-[var(--colors-bg-secondary)] rounded-md overflow-hidden">
                                 <div className="h-full rounded-md flex items-center justify-end px-2"
                                     style={{ width: `${(row.v / maxV) * 100}%`, backgroundColor: row.color }}>
                                     <span className="text-xs font-semibold text-white">{row.v}</span>
@@ -1394,17 +1469,17 @@ function renderChart(
             return (
                 <div className="flex flex-col gap-3 mt-1">
                     {/* Legend */}
-                    <div className="flex items-center justify-end gap-1.5 text-xs text-[#667085]">
+                    <div className="flex items-center justify-end gap-1.5 text-xs text-[var(--colors-text-quaternary)]">
                         <span className="inline-block w-2 h-2 rounded-full bg-[var(--brand-tertiary)]" />
                         <span>Light = Lower</span>
-                        <span className="text-[#98a2b3]">·</span>
+                        <span className="text-[var(--colors-fg-quaternary)]">·</span>
                         <span>Dark = Higher</span>
                     </div>
                     {/* Grid — first column band label, then N col cells */}
                     <div className="flex flex-col gap-2">
                         {BANDS.map(band => (
                             <div key={band} className="flex items-center gap-2">
-                                <div className="w-10 shrink-0 text-[12px] font-medium text-[#667085] text-right">
+                                <div className="w-10 shrink-0 text-[12px] font-medium text-[var(--colors-text-quaternary)] text-right">
                                     {band}
                                 </div>
                                 <div style={gridStyle}>
@@ -1438,7 +1513,7 @@ function renderChart(
                                 {cols.map((col, i) => (
                                     <div
                                         key={col}
-                                        className={cn(labelTextClass, "text-[#667085] text-center truncate")}
+                                        className={cn(labelTextClass, "text-[var(--colors-text-quaternary)] text-center truncate")}
                                     >
                                         {i % step === 0 ? col : ""}
                                     </div>
@@ -1483,8 +1558,8 @@ function renderChart(
                                 {/* Between-stage caption — arrow + mint pill */}
                                 {i > 0 && (
                                     <div className="flex items-center gap-2 pl-[180px]">
-                                        <span className="text-[#98a2b3] text-[13px]">↓</span>
-                                        <span className="inline-flex items-center bg-[#f1f5f0] border-1 border-[#e4e7ec] rounded-full px-2.5 py-0.5 text-[12px] font-medium text-[#475467]">
+                                        <span className="text-[var(--colors-fg-quaternary)] text-[13px]">↓</span>
+                                        <span className="inline-flex items-center bg-[#f1f5f0] border-1 border-[var(--colors-border-secondary)] rounded-full px-2.5 py-0.5 text-[12px] font-medium text-[var(--colors-text-tertiary)]">
                                             {stepPct}% {stepCaption[i - 1] ?? ""}
                                         </span>
                                     </div>
@@ -1492,8 +1567,8 @@ function renderChart(
                                 {/* Stage row — label left, bar right */}
                                 <div className="flex items-center gap-4">
                                     <div className="w-[168px] shrink-0">
-                                        <p className="text-[14px] font-semibold text-[#101828] leading-tight">{row.stage}</p>
-                                        <p className="text-[12px] text-[#98a2b3] leading-tight mt-0.5">{row.sublabel}</p>
+                                        <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-tight">{row.stage}</p>
+                                        <p className="text-[12px] text-[var(--colors-fg-quaternary)] leading-tight mt-0.5">{row.sublabel}</p>
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div
@@ -1501,7 +1576,7 @@ function renderChart(
                                             style={{ width: `${barWidth}%` }}
                                         >
                                             <span className="text-[14px] font-semibold text-[#194b30]">{row.count}</span>
-                                            <span className="text-[12px] text-[#658774]">{pctOfTop}%</span>
+                                            <span className="text-[12px] text-[var(--colors-secondary-600)]">{pctOfTop}%</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1636,11 +1711,11 @@ function renderChart(
                 <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-center gap-3">
-                            <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
-                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden">
+                            <span className="w-28 shrink-0 text-[13px] font-medium text-[var(--colors-text-secondary)] truncate">{r.name}</span>
+                            <div className="flex-1 h-3 bg-[var(--colors-bg-tertiary)] rounded-full overflow-hidden">
                                 <div className="h-full rounded-full bg-[#b892ba]" style={{ width: `${(r.v / maxV) * 100}%` }} />
                             </div>
-                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold">{r.v}</span>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[var(--colors-text-primary)] font-semibold">{r.v}</span>
                         </div>
                     ))}
                 </div>
@@ -1656,11 +1731,11 @@ function renderChart(
                 <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-center gap-3">
-                            <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
-                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden">
+                            <span className="w-28 shrink-0 text-[13px] font-medium text-[var(--colors-text-secondary)] truncate">{r.name}</span>
+                            <div className="flex-1 h-3 bg-[var(--colors-bg-tertiary)] rounded-full overflow-hidden">
                                 <div className="h-full rounded-full bg-[#f7b955]" style={{ width: `${(r.v / maxV) * 100}%` }} />
                             </div>
-                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold">{r.v}</span>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[var(--colors-text-primary)] font-semibold">{r.v}</span>
                         </div>
                     ))}
                 </div>
@@ -1704,11 +1779,11 @@ function renderChart(
                 <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-center gap-3">
-                            <span className="w-24 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
-                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden">
+                            <span className="w-24 shrink-0 text-[13px] font-medium text-[var(--colors-text-secondary)] truncate">{r.name}</span>
+                            <div className="flex-1 h-3 bg-[var(--colors-bg-tertiary)] rounded-full overflow-hidden">
                                 <div className="h-full rounded-full" style={{ width: `${(r.v / maxV) * 100}%`, backgroundColor: r.color }} />
                             </div>
-                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold">{r.v}</span>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[var(--colors-text-primary)] font-semibold">{r.v}</span>
                         </div>
                     ))}
                 </div>
@@ -1751,11 +1826,11 @@ function renderChart(
                 <div className="flex-1 flex flex-col justify-around gap-3 mt-2 min-h-0">
                     {rows.map(r => (
                         <div key={r.name} className="flex items-center gap-3">
-                            <span className="w-28 shrink-0 text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
-                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden">
-                                <div className="h-full rounded-full bg-[#92baa4]" style={{ width: `${(r.v / maxV) * 100}%` }} />
+                            <span className="w-28 shrink-0 text-[13px] font-medium text-[var(--colors-text-secondary)] truncate">{r.name}</span>
+                            <div className="flex-1 h-3 bg-[var(--colors-bg-tertiary)] rounded-full overflow-hidden">
+                                <div className="h-full rounded-full bg-[var(--colors-secondary-400)]" style={{ width: `${(r.v / maxV) * 100}%` }} />
                             </div>
-                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold">{r.v}</span>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[var(--colors-text-primary)] font-semibold">{r.v}</span>
                         </div>
                     ))}
                 </div>
@@ -1811,22 +1886,22 @@ function renderChart(
                 const p = payload[0]?.payload;
                 if (!p) return null;
                 return (
-                    <div className="bg-white border border-[#e4e7ec] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[180px]">
-                        <p className="font-semibold text-[#101828] mb-1.5">{label ?? p.date}</p>
+                    <div className="bg-white border border-[var(--colors-border-secondary)] rounded-lg shadow-lg px-3 py-2 text-xs min-w-[180px]">
+                        <p className="font-semibold text-[var(--colors-text-primary)] mb-1.5">{label ?? p.date}</p>
                         <p className="flex items-center gap-1.5 mb-0.5">
-                            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#92baa4]" />
-                            <span className="text-[#475467]">Via referral:</span>
-                            <span className="font-medium text-[#101828]">{p.referral}</span>
+                            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[var(--colors-secondary-400)]" />
+                            <span className="text-[var(--colors-text-tertiary)]">Via referral:</span>
+                            <span className="font-medium text-[var(--colors-text-primary)]">{p.referral}</span>
                         </p>
                         <p className="flex items-center gap-1.5 mb-0.5">
-                            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[#e4e7ec]" />
-                            <span className="text-[#475467]">All new customers:</span>
-                            <span className="font-medium text-[#101828]">{p.all}</span>
+                            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-[var(--colors-bg-quaternary)]" />
+                            <span className="text-[var(--colors-text-tertiary)]">All new customers:</span>
+                            <span className="font-medium text-[var(--colors-text-primary)]">{p.all}</span>
                         </p>
                         <p className="flex items-center gap-1.5">
                             <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 opacity-0" />
-                            <span className="text-[#475467]">Share:</span>
-                            <span className="font-medium text-[#101828]">{p.share}%</span>
+                            <span className="text-[var(--colors-text-tertiary)]">Share:</span>
+                            <span className="font-medium text-[var(--colors-text-primary)]">{p.share}%</span>
                         </p>
                     </div>
                 );
@@ -1844,13 +1919,13 @@ function renderChart(
                         client 2026-07-22 flag). */}
                     <div className="flex items-center justify-between gap-3 px-1">
                         {first && last ? (
-                            <p className="text-[13px] font-medium text-[#98a2b3]">
+                            <p className="text-[13px] font-medium text-[var(--colors-fg-quaternary)]">
                                 <span>{first.share}%</span>
                                 <span className="mx-2">→</span>
-                                <span className="text-[#101828]">{last.share}%</span>
+                                <span className="text-[var(--colors-text-primary)]">{last.share}%</span>
                             </p>
                         ) : (
-                            <span className="text-[13px] text-[#98a2b3]">—</span>
+                            <span className="text-[13px] text-[var(--colors-fg-quaternary)]">—</span>
                         )}
                         <Legend items={[
                             { color: "#92baa4", label: "Via referral" },
@@ -1905,13 +1980,13 @@ function renderChart(
                     {rows.map(r => (
                         <div key={r.name} className="flex items-start gap-3">
                             <div className="w-24 shrink-0 flex flex-col">
-                                <span className="text-[13px] font-medium text-[#344054] truncate">{r.name}</span>
-                                <span className="text-[11px] text-[#667085]">{aedMoney(r.revenueAed)}</span>
+                                <span className="text-[13px] font-medium text-[var(--colors-text-secondary)] truncate">{r.name}</span>
+                                <span className="text-[11px] text-[var(--colors-text-quaternary)]">{aedMoney(r.revenueAed)}</span>
                             </div>
-                            <div className="flex-1 h-3 bg-[#f2f4f7] rounded-full overflow-hidden mt-1">
-                                <div className="h-full rounded-full bg-[#7ba08c]" style={{ width: `${(r.v / maxV) * 100}%` }} />
+                            <div className="flex-1 h-3 bg-[var(--colors-bg-tertiary)] rounded-full overflow-hidden mt-1">
+                                <div className="h-full rounded-full bg-[var(--colors-secondary-500)]" style={{ width: `${(r.v / maxV) * 100}%` }} />
                             </div>
-                            <span className="w-8 shrink-0 text-right text-[13px] text-[#101828] font-semibold mt-1">{r.v}</span>
+                            <span className="w-8 shrink-0 text-right text-[13px] text-[var(--colors-text-primary)] font-semibold mt-1">{r.v}</span>
                         </div>
                     ))}
                 </div>
@@ -1942,12 +2017,12 @@ export function WidgetKebabMenu({ onRemove }: { onRemove: () => void }) {
             <button
                 type="button"
                 onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] border border-[#d0d5dd] bg-white hover:bg-[#f9fafb] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors"
+                className="w-9 h-9 flex items-center justify-center rounded-[8px] border border-[var(--colors-border-primary)] bg-white hover:bg-[var(--colors-bg-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors"
             >
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
+                <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+4px)] z-30 bg-white border border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
+                <div className="absolute right-0 top-[calc(100%+4px)] z-30 bg-white border border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
                     <button
                         type="button"
                         onClick={() => { onRemove(); setOpen(false); }}
@@ -2057,6 +2132,28 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
         widgetId === "referral-share" && referralCustomers
             ? computeReferralShare(referralCustomers, branchIds, period ?? DEFAULT_PERIOD)
             : null;
+
+    // Class-by-popularity — live-derived ranked classes from `classSchedules`
+    // (audit 2026-08-05, was a static seed with a phantom "Mat Pilates" +
+    // mismatched instructors). Only reads on this widget.
+    const popSchedules = useAppStore(s =>
+        widgetId === "class-by-popularity" ? s.classSchedules : null,
+    );
+    const classPopularityRows =
+        widgetId === "class-by-popularity" && popSchedules
+            ? computeClassPopularity(popSchedules, branchIds)
+            : null;
+
+    // Private-top-trainers — live-derived from private `appointments` (audit
+    // 2026-08-05, was a static seed listing non-existent trainers). Only reads
+    // on this widget.
+    const trainerAppts = useAppStore(s =>
+        widgetId === "private-top-trainers" ? s.appointments : null,
+    );
+    const topTrainersRows =
+        widgetId === "private-top-trainers" && trainerAppts
+            ? computeTopPrivateTrainers(trainerAppts, branchIds)
+            : null;
     if (!meta) return null;
 
     return (
@@ -2067,7 +2164,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
         // visually lifts the WHOLE card as the cursor ghost.
         <div
             data-widget-card="true"
-            className={cn("bg-white border border-[#e4e7ec] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]", className)}
+            className={cn("bg-white border border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]", className)}
         >
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
@@ -2078,14 +2175,14 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                             onDragStart={onDragStart}
                             aria-label="Drag to reorder"
                             role="button"
-                            className="mt-1 shrink-0 text-[#98a2b3] hover:text-[#475467] cursor-grab active:cursor-grabbing transition-colors"
+                            className="mt-1 shrink-0 text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-tertiary)] cursor-grab active:cursor-grabbing transition-colors"
                         >
                             <DotsGrid className="w-5 h-5" />
                         </span>
                     )}
                     <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
-                            <p className="font-semibold text-[18px] leading-[28px] text-[#101828] truncate">{meta.title}</p>
+                            <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)] truncate">{meta.title}</p>
                             {/* Info glyph — added for widgets whose value
                                 isn't obvious from the title alone (client
                                 2026-07-22: Utilization / Under-filled trend
@@ -2096,7 +2193,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                                     <button
                                         type="button"
                                         aria-label={`About ${meta.title}`}
-                                        className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] transition-colors"
+                                        className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-tertiary)] transition-colors"
                                     >
                                         <InfoCircle className="w-4 h-4" />
                                     </button>
@@ -2116,9 +2213,9 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                     <button
                         type="button"
                         onClick={onAdd}
-                        className="w-9 h-9 flex items-center justify-center shrink-0 rounded-[8px] border border-[#d0d5dd] bg-white hover:bg-[#f9fafb] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors"
+                        className="w-9 h-9 flex items-center justify-center shrink-0 rounded-[8px] border border-[var(--colors-border-primary)] bg-white hover:bg-[var(--colors-bg-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors"
                     >
-                        <Plus className="w-5 h-5 text-[#344054]" />
+                        <Plus className="w-5 h-5 text-[var(--colors-text-secondary)]" />
                     </button>
                 )}
                 {action === "kebab" && onRemove && (
@@ -2133,7 +2230,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                 fill (e.g. the intro funnel's `h-full flex justify-center`)
                 will stretch to close the gap and prevent visible white space. */}
             <div className="min-w-0 flex-1 flex flex-col">
-                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows, referralShareResult)}
+                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows, referralShareResult, classPopularityRows, topTrainersRows)}
             </div>
         </div>
     );

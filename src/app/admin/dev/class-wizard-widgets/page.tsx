@@ -360,21 +360,21 @@ function TraceBlock({ title, script }: { title: string; script: Partial<WizardAn
     return (
         <div>
             <div className="mb-2 flex items-baseline justify-between gap-3">
-                <h3 className="text-[13px] font-medium text-[#475467]">{title}</h3>
+                <h3 className="text-[13px] font-medium text-[var(--colors-text-tertiary)]">{title}</h3>
                 <span className={cn("text-[12px] font-medium shrink-0", done ? "text-[#067647]" : "text-[#b42318]")}>
                     {done ? "✓ complete" : "✗ incomplete"}
                 </span>
             </div>
             <div className="mb-3 flex flex-wrap gap-1.5">
                 {steps.map((s, i) => (
-                    <span key={i} className="inline-flex items-center rounded-[4px] bg-[#f2f4f7] px-1.5 py-0.5 text-[11px] font-medium text-[#475467]">
+                    <span key={i} className="inline-flex items-center rounded-[4px] bg-[var(--colors-bg-tertiary)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--colors-text-tertiary)]">
                         {i + 1}. {s.q}
                     </span>
                 ))}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                 <SchedulePreviewCard data={preview} />
-                <pre className="text-[11px] leading-[16px] text-[#344054] bg-white border border-[#e4e7ec] rounded-[8px] p-3 overflow-x-auto">
+                <pre className="text-[11px] leading-[16px] text-[var(--colors-text-secondary)] bg-white border border-[var(--colors-border-secondary)] rounded-[8px] p-3 overflow-x-auto">
                     {JSON.stringify(draft, null, 2)}
                 </pre>
             </div>
@@ -390,12 +390,12 @@ export default function ClassWizardWidgetsDevPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#f9fafb] py-10">
+        <div className="min-h-screen bg-[var(--colors-bg-secondary)] py-10">
             <div className="mx-auto w-full max-w-[720px] px-6">
                 <header className="mb-8">
-                    <p className="text-[12px] font-semibold uppercase tracking-wide text-[#667085]">Dev preview</p>
-                    <h1 className="text-[24px] font-semibold text-[#101828] leading-8">Class-creation wizard widgets</h1>
-                    <p className="mt-1 text-[14px] text-[#475467]">
+                    <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--colors-text-quaternary)]">Dev preview</p>
+                    <h1 className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">Class-creation wizard widgets</h1>
+                    <p className="mt-1 text-[14px] text-[var(--colors-text-tertiary)]">
                         Phase 1 · every <code className="text-[#3f8f68]">AiQuestionPrompt</code> kind + rich-option state,
                         mock data only. No agent, no store writes.
                     </p>
@@ -403,7 +403,7 @@ export default function ClassWizardWidgetsDevPage() {
 
                 <div className="flex flex-col gap-10">
                     <div>
-                        <h2 className="mb-3 text-[15px] font-semibold text-[#101828]">
+                        <h2 className="mb-3 text-[15px] font-semibold text-[var(--colors-text-primary)]">
                             Phase 3 — headless state machine (scripted trace)
                         </h2>
                         <div className="flex flex-col gap-8">
@@ -414,10 +414,10 @@ export default function ClassWizardWidgetsDevPage() {
 
                     <div>
                         <div className="mb-2 flex items-baseline justify-between gap-3">
-                            <h2 className="text-[15px] font-semibold text-[#101828]">
+                            <h2 className="text-[15px] font-semibold text-[var(--colors-text-primary)]">
                                 Appointment preview (private / recovery variant)
                             </h2>
-                            <span className="text-[12px] text-[#98a2b3] shrink-0">Phase 8</span>
+                            <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">Phase 8</span>
                         </div>
                         <SchedulePreviewCard
                             data={PREVIEW_APPOINTMENT}
@@ -428,15 +428,15 @@ export default function ClassWizardWidgetsDevPage() {
                     </div>
 
                     <div>
-                        <h2 className="mb-3 text-[15px] font-semibold text-[#101828]">
+                        <h2 className="mb-3 text-[15px] font-semibold text-[var(--colors-text-primary)]">
                             Live preview card — fill levels
                         </h2>
                         <div className="flex flex-col gap-6">
                             {PREVIEW_LEVELS.map((p) => (
                                 <div key={p.caption}>
                                     <div className="mb-2 flex items-baseline justify-between gap-3">
-                                        <h3 className="text-[13px] font-medium text-[#475467]">{p.caption}</h3>
-                                        <span className="text-[12px] text-[#98a2b3] shrink-0">{p.frame}</span>
+                                        <h3 className="text-[13px] font-medium text-[var(--colors-text-tertiary)]">{p.caption}</h3>
+                                        <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">{p.frame}</span>
                                     </div>
                                     <SchedulePreviewCard data={p.data} />
                                 </div>
@@ -447,8 +447,8 @@ export default function ClassWizardWidgetsDevPage() {
                     {DEMOS.map((d) => (
                         <section key={d.id}>
                             <div className="mb-2 flex items-baseline justify-between gap-3">
-                                <h2 className="text-[15px] font-semibold text-[#101828]">{d.caption}</h2>
-                                <span className="text-[12px] text-[#98a2b3] tabular-nums shrink-0">{d.frame}</span>
+                                <h2 className="text-[15px] font-semibold text-[var(--colors-text-primary)]">{d.caption}</h2>
+                                <span className="text-[12px] text-[var(--colors-fg-quaternary)] tabular-nums shrink-0">{d.frame}</span>
                             </div>
                             <AiQuestionPrompt
                                 questions={[d.spec]}
@@ -456,28 +456,28 @@ export default function ClassWizardWidgetsDevPage() {
                                 onGroupAction={(g) => setLog((prev) => ({ ...prev, [d.id]: `+ Add room in ${g}` }))}
                             />
                             {log[d.id] && (
-                                <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log[d.id]}</p>
+                                <p className="mt-2 text-[12px] text-[var(--colors-text-tertiary)] font-mono break-all">→ {log[d.id]}</p>
                             )}
                         </section>
                     ))}
 
                     <section>
                         <div className="mb-2 flex items-baseline justify-between gap-3">
-                            <h2 className="text-[15px] font-semibold text-[#101828]">
+                            <h2 className="text-[15px] font-semibold text-[var(--colors-text-primary)]">
                                 Multi-step (pager · 1 of 3, mixed kinds)
                             </h2>
-                            <span className="text-[12px] text-[#98a2b3] shrink-0">pager</span>
+                            <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">pager</span>
                         </div>
                         <AiQuestionPrompt questions={MULTI_STEP} onComplete={(a) => record("multi", a)} />
                         {log["multi"] && (
-                            <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["multi"]}</p>
+                            <p className="mt-2 text-[12px] text-[var(--colors-text-tertiary)] font-mono break-all">→ {log["multi"]}</p>
                         )}
                     </section>
 
                     <section>
                         <div className="mb-2 flex items-baseline justify-between gap-3">
-                            <h2 className="text-[15px] font-semibold text-[#101828]">Select-days editor (recurring)</h2>
-                            <span className="text-[12px] text-[#98a2b3] shrink-0">frames 22 / 28</span>
+                            <h2 className="text-[15px] font-semibold text-[var(--colors-text-primary)]">Select-days editor (recurring)</h2>
+                            <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">frames 22 / 28</span>
                         </div>
                         <SelectDaysEditor
                             durationMinutes={60}
@@ -485,14 +485,14 @@ export default function ClassWizardWidgetsDevPage() {
                             onConfirm={(config) => setLog((prev) => ({ ...prev, days: JSON.stringify(config) }))}
                         />
                         {log["days"] && (
-                            <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["days"]}</p>
+                            <p className="mt-2 text-[12px] text-[var(--colors-text-tertiary)] font-mono break-all">→ {log["days"]}</p>
                         )}
                     </section>
 
                     <section>
                         <div className="mb-2 flex items-baseline justify-between gap-3">
-                            <h2 className="text-[15px] font-semibold text-[#101828]">Recurring preview (session list)</h2>
-                            <span className="text-[12px] text-[#98a2b3] shrink-0">frame 28 / 33</span>
+                            <h2 className="text-[15px] font-semibold text-[var(--colors-text-primary)]">Recurring preview (session list)</h2>
+                            <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">frame 28 / 33</span>
                         </div>
                         <SchedulePreviewCard
                             data={PREVIEW_FULL}
@@ -508,8 +508,8 @@ export default function ClassWizardWidgetsDevPage() {
 
                     <section>
                         <div className="mb-2 flex items-baseline justify-between gap-3">
-                            <h2 className="text-[15px] font-semibold text-[#101828]">Spot layout editor (default + customize)</h2>
-                            <span className="text-[12px] text-[#98a2b3] shrink-0">frames 9–11</span>
+                            <h2 className="text-[15px] font-semibold text-[var(--colors-text-primary)]">Spot layout editor (default + customize)</h2>
+                            <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">frames 9–11</span>
                         </div>
                         <SpotLayoutEditor
                             capacity={8}
@@ -523,18 +523,18 @@ export default function ClassWizardWidgetsDevPage() {
                             }
                         />
                         {log["spot"] && (
-                            <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["spot"]}</p>
+                            <p className="mt-2 text-[12px] text-[var(--colors-text-tertiary)] font-mono break-all">→ {log["spot"]}</p>
                         )}
                     </section>
 
                     <section>
                         <div className="mb-2 flex items-baseline justify-between gap-3">
-                            <h2 className="text-[15px] font-semibold text-[#101828]">Compact panel (checkbox — Confirm required)</h2>
-                            <span className="text-[12px] text-[#98a2b3] shrink-0">compact</span>
+                            <h2 className="text-[15px] font-semibold text-[var(--colors-text-primary)]">Compact panel (checkbox — Confirm required)</h2>
+                            <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">compact</span>
                         </div>
                         <AiQuestionPrompt compact questions={[EQUIPMENT]} onComplete={(a) => record("compact-multi", a)} />
                         {log["compact-multi"] && (
-                            <p className="mt-2 text-[12px] text-[#475467] font-mono break-all">→ {log["compact-multi"]}</p>
+                            <p className="mt-2 text-[12px] text-[var(--colors-text-tertiary)] font-mono break-all">→ {log["compact-multi"]}</p>
                         )}
                     </section>
                 </div>

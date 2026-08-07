@@ -28,8 +28,8 @@ export function FilterPill({ label, selected, onClick, className }: FilterPillPr
             className={cn(
                 "px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
                 selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
+                    ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
+                    : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                 className,
             )}>
             {label}

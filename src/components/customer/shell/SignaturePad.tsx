@@ -98,10 +98,10 @@ export function SignaturePad({
                 onPointerUp={end}
                 onPointerLeave={end}
                 onPointerCancel={end}
-                className="h-40 w-full touch-none rounded-xl border border-[#d0d5dd] bg-white"
+                className="h-40 w-full touch-none rounded-xl border border-[var(--colors-border-primary)] bg-white"
             />
             {!hasInk && (
-                <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-normal leading-5 text-[#98a2b3]">
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm font-normal leading-5 text-[var(--colors-fg-quaternary)]">
                     Sign with your finger
                 </span>
             )}
@@ -109,7 +109,7 @@ export function SignaturePad({
                 <button
                     type="button"
                     onClick={clear}
-                    className="absolute right-3 top-3 flex items-center gap-1 rounded-full border border-[#e4e7ec] bg-white/90 px-2.5 py-1 text-xs font-medium leading-[18px] text-[#344054] backdrop-blur-sm transition-colors active:bg-gray-50"
+                    className="absolute right-3 top-3 flex items-center gap-1 rounded-full border border-[var(--colors-border-secondary)] bg-white/90 px-2.5 py-1 text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)] backdrop-blur-sm transition-colors active:bg-gray-50"
                 >
                     <RefreshCcw01 className="size-3" aria-hidden />
                     Clear

@@ -69,15 +69,15 @@ import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 
 function EmptyTableIllustration() {
     return (
-        <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
+        <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)] shrink-0">
             <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02),-3px_4.4px_10.2px_rgba(0,0,0,0.02)]">
-                <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center shadow-[0px_1.5px_1.5px_rgba(0,0,0,0.04)]">
-                    <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center shadow-[0px_1.5px_1.5px_rgba(0,0,0,0.04)]">
+                    <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                 </div>
             </div>
             <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
             </div>
         </div>
     );
@@ -89,8 +89,8 @@ function EmptyTablePane({ title, subtitle }: { title: string; subtitle: string }
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
                 <EmptyTableIllustration />
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -111,7 +111,7 @@ function ActionBtn({ icon, label, danger, onClick }: {
             onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
             )}
         >
             <span className="w-5 h-5 shrink-0">{icon}</span>
@@ -162,7 +162,7 @@ function LeftPanel({ service, hasAppointments, onAction }: {
     })();
 
     return (
-        <div className="w-[320px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+        <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
             <div
                 className="relative h-[200px] shrink-0 overflow-hidden"
@@ -185,9 +185,9 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     {/* Name + description */}
                     <div>
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{service.name}</h2>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{service.name}</h2>
                         {service.description && (
-                            <p className="text-[14px] text-[#667085] leading-[20px] mt-1 line-clamp-3">{service.description}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] mt-1 line-clamp-3">{service.description}</p>
                         )}
                     </div>
 
@@ -198,45 +198,45 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                         recovery services are always Private (no group cap). */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Service category</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{service.category || "—"}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Service category</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{service.category || "—"}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Duration</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{durationMin} minutes</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Duration</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{durationMin} minutes</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Location</p>
-                            <p className="text-[16px] font-medium text-[#101828]">{service.branchName || "—"}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Location</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{service.branchName || "—"}</p>
                             {branchTz && (
-                                <p className="text-[13px] font-normal text-[#667085]">{branchTz}</p>
+                                <p className="text-[13px] font-normal text-[var(--colors-text-quaternary)]">{branchTz}</p>
                             )}
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Session type</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Session type</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                 {service.type === "recovery" ? "Recovery" : "Private session"}
                             </p>
                         </div>
                         {service.type === "recovery" && (
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[#667085]">Open sessions</p>
-                                <p className="text-[16px] font-medium text-[#101828]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Open sessions</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                     {openSession ? `Yes${capacity > 0 ? ` · ${capacity} capacity` : ""}` : "No"}
                                 </p>
                             </div>
                         )}
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Fixed price</p>
-                            <p className="text-[16px] font-medium text-[#101828]">AED {service.price.toLocaleString()}</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Fixed price</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">AED {service.price.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Actions */}
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
-                    <p className="text-[14px] text-[#667085] mb-4">Service actions</p>
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Service actions</p>
                     <div className="flex flex-col gap-4">
                         {actions}
                     </div>
@@ -300,17 +300,17 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400} zIndex={50}>
-<div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
+<div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
                     <button type="button" onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {APPOINTMENT_STATUSES.map(s => (
                                 <FilterPill
@@ -323,10 +323,10 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Custom date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Custom date range</p>
                         <div className="grid grid-cols-2 gap-2">
                             <DatePicker
                                 value={pending.startDate}
@@ -350,10 +350,10 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Day of week</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Day of week</p>
                         <div className="flex flex-wrap gap-2">
                             {DAYS.map(d => (
                                 <FilterPill
@@ -366,10 +366,10 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
 
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Time of the day</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Time of the day</p>
                         <div className="flex flex-wrap gap-2">
                             {TIMES.map(t => (
                                 <FilterPill
@@ -383,7 +383,7 @@ function AppointmentFilterPanel({ open, onClose, applied, onApply }: {
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button
                         variant="secondary-gray"
                        
@@ -421,37 +421,37 @@ const MODAL_CONFIG: Record<ModalAction, {
     tone: "destructive" | "primary";
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Archive this service?",
-        description: name => <><span className="font-medium text-[#344054]">{name}</span> will be hidden from the default service list. You can recover archived services at any time.</>,
+        description: name => <><span className="font-medium text-[var(--colors-text-secondary)]">{name}</span> will be hidden from the default service list. You can recover archived services at any time.</>,
         confirmLabel: "Archive",
         tone: "primary",
     },
     deactivate: {
         iconBg: "bg-[#fee4e2]", IconComp: SlashCircle01, iconColor: "text-[#d92d20]",
         title: "Deactivate this service?",
-        description: name => <><span className="font-medium text-[#344054]">{name}</span> will stop accepting new appointment bookings. Existing appointments are not cancelled.</>,
+        description: name => <><span className="font-medium text-[var(--colors-text-secondary)]">{name}</span> will stop accepting new appointment bookings. Existing appointments are not cancelled.</>,
         confirmLabel: "Deactivate",
         tone: "destructive",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Recover this service?",
-        description: name => <><span className="font-medium text-[#344054]">{name}</span> will be restored to Active status and become bookable again.</>,
+        description: name => <><span className="font-medium text-[var(--colors-text-secondary)]">{name}</span> will be restored to Active status and become bookable again.</>,
         confirmLabel: "Recover",
         tone: "primary",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Check, iconColor: "text-[var(--colors-secondary-600)]",
         title: "Reactivate this service?",
-        description: name => <><span className="font-medium text-[#344054]">{name}</span> will become available for new appointments again.</>,
+        description: name => <><span className="font-medium text-[var(--colors-text-secondary)]">{name}</span> will become available for new appointments again.</>,
         confirmLabel: "Reactivate",
         tone: "primary",
     },
     delete: {
         iconBg: "bg-[#fee4e2]", IconComp: Trash02, iconColor: "text-[#d92d20]",
         title: "Delete this service?",
-        description: name => <><span className="font-medium text-[#344054]">{name}</span> will be permanently removed. This action cannot be undone.</>,
+        description: name => <><span className="font-medium text-[var(--colors-text-secondary)]">{name}</span> will be permanently removed. This action cannot be undone.</>,
         confirmLabel: "Delete",
         tone: "destructive",
     },
@@ -471,13 +471,13 @@ function ViewDetailsAction({ onView }: { onView: () => void }) {
     return (
         <div className="relative">
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
-                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f2f4f7] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[#667085]" />
+                className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-tertiary)] transition-colors">
+                <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
                 <button type="button" onClick={() => { setOpen(false); onView(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
-                    <Eye className="w-4 h-4 text-[#667085]" />View details
+                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />View details
                 </button>
             </FixedDropdown>
         </div>
@@ -500,13 +500,13 @@ function RatingCell({ rating, count }: { rating: number; count: number }) {
             <div className="flex gap-0.5 items-center">
                 {[0, 1, 2, 3, 4].map(i => (
                     <Star01 key={i}
-                        className={cn("w-4 h-4", i < filled ? "text-[#fdb022]" : "text-[#e4e7ec]")}
+                        className={cn("w-4 h-4", i < filled ? "text-[#fdb022]" : "text-[var(--colors-border-secondary)]")}
                         fill={i < filled ? "#fdb022" : "none"} />
                 ))}
             </div>
             <div className="flex gap-1 items-center">
-                <p className="text-[13px] font-medium text-[#344054]">{rating > 0 ? rating.toFixed(1) : "0"}</p>
-                <p className="text-[12px] text-[#667085]">({count} {count === 1 ? "rating" : "ratings"})</p>
+                <p className="text-[13px] font-medium text-[var(--colors-text-secondary)]">{rating > 0 ? rating.toFixed(1) : "0"}</p>
+                <p className="text-[12px] text-[var(--colors-text-quaternary)]">({count} {count === 1 ? "rating" : "ratings"})</p>
             </div>
         </div>
     );
@@ -557,15 +557,15 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                     {rows.map(a => (
                         <tr key={a.id}
                             onClick={() => onView(a)}
-                            className="hover:bg-[#f9fafb] transition-colors cursor-pointer">
+                            className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
                             <td className={TD}>
-                                <div className="text-[14px] font-medium text-[#101828]">{a.date}</div>
-                                <div className="text-[13px] text-[#667085] mt-0.5">{a.displayTime}</div>
+                                <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{a.date}</div>
+                                <div className="text-[13px] text-[var(--colors-text-quaternary)] mt-0.5">{a.displayTime}</div>
                             </td>
                             <td className={TD}>
                                 <div className="flex items-center gap-3">
                                     {a.coverImage ? (
-                                        <div className="relative shrink-0 size-9 rounded-full overflow-hidden bg-[#f2f4f7]">
+                                        <div className="relative shrink-0 size-9 rounded-full overflow-hidden bg-[var(--colors-bg-tertiary)]">
                                             <img src={a.coverImage} alt={a.serviceName}
                                                 className={cn("absolute inset-0 w-full h-full object-cover", a.status === "Cancelled" && "grayscale")}
                                                 onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -573,15 +573,15 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                                             <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
                                         </div>
                                     ) : (
-                                        <div className="size-9 rounded-full shrink-0 flex items-center justify-center text-[12px] font-semibold text-[#344054]"
+                                        <div className="size-9 rounded-full shrink-0 flex items-center justify-center text-[12px] font-semibold text-[var(--colors-text-secondary)]"
                                             style={{ backgroundColor: a.coverColor || "#f1f2ed" }}>
                                             {(a.serviceName?.[0] ?? "S").toUpperCase()}
                                         </div>
                                     )}
                                     <div>
-                                        <div className="text-[14px] font-medium text-[#101828]">{a.serviceName}</div>
+                                        <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{a.serviceName}</div>
                                         {a.instructorName && (
-                                            <div className="text-[13px] text-[#667085]">with {a.instructorName}</div>
+                                            <div className="text-[13px] text-[var(--colors-text-quaternary)]">with {a.instructorName}</div>
                                         )}
                                     </div>
                                 </div>
@@ -592,7 +592,7 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                                 {/* Rating only shown once the appointment has happened —
                                     Upcoming / Ongoing rows show a dash per client Jul 2026. */}
                                 {a.status === "Upcoming" || a.status === "Ongoing"
-                                    ? <span className="text-[14px] text-[#98a2b3]">—</span>
+                                    ? <span className="text-[14px] text-[var(--colors-fg-quaternary)]">—</span>
                                     : <RatingCell rating={a.rating} count={a.ratingCount} />}
                             </td>
                             <td className={TD}><StatusBadge type="appointment" status={a.status} /></td>
@@ -634,7 +634,7 @@ function Toggle({ on, onChange, disabled = false }: { on: boolean; onChange: (ne
             onClick={() => !disabled && onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full p-0.5 flex items-center transition-colors shrink-0",
-                on ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                on ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -653,29 +653,29 @@ function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[#667085]" />
+                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
+                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this appointment?</h3>
-                        <p className="text-[14px] text-[#475467] leading-[20px]">
-                            <span className="font-medium text-[#344054]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this appointment?</h3>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
+                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
                         </p>
                     </div>
                 </div>
                 {bookedCount > 0 && (
                     <>
                         <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[#e4e7ec]" />
+                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                         <div className="flex items-center justify-between gap-4 px-6 py-5">
                             <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[#101828]">Refund class credit</p>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">When the studio cancels an appointment, each customer is always refunded.</p>
+                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class credit</p>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">When the studio cancels an appointment, each customer is always refunded.</p>
                             </div>
                             {/* Locked ON — admin cancellation always refunds, same rule as class schedule. */}
                             <Toggle on={true} onChange={() => { /* locked */ }} disabled />
@@ -784,17 +784,17 @@ function RightPanel({ service }: { service: Service }) {
 
     return (
         <>
-            <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[#e4e7ec] rounded-[20px] bg-white">
+            <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-1 border-[var(--colors-border-secondary)] rounded-[20px] bg-white">
                 {/* Tabs */}
-                <div className="shrink-0 border-b border-[#e4e7ec] px-6 pt-6">
+                <div className="shrink-0 border-b border-[var(--colors-border-secondary)] px-6 pt-6">
                     <div className="flex gap-1">
                         {TABS.map(t => (
                             <button key={t.id} type="button" onClick={() => handleTab(t.id)}
                                 className={cn(
                                     "h-[48px] px-3 text-[14px] font-semibold transition-colors whitespace-nowrap",
                                     tab === t.id
-                                        ? "border-b-2 border-[#101828] text-[#101828]"
-                                        : "text-[#667085] hover:text-[#344054]",
+                                        ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                        : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                                 )}>
                                 {t.label}
                             </button>
@@ -926,9 +926,9 @@ export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: S
         return (
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-[18px] font-semibold text-[#101828]">Service not found</p>
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Service not found</p>
                     <button type="button" onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] text-[#658774] hover:underline">
+                        className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                         Back to services
                     </button>
                 </div>
@@ -1001,12 +1001,12 @@ export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: S
                 <button
                     type="button"
                     onClick={() => router.push(returnTo)}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0"
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                 >
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                         {service.type === "private"  ? "Private session details" :
                          service.type === "recovery" ? "Recovery details" :
                          "Service details"}

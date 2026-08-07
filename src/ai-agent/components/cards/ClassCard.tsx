@@ -13,13 +13,11 @@
 //   • class_empty    → plain note.
 //   • class_options  → renders nothing (data-only, feeds the model).
 
-import { useState, useEffect } from "react";
-import { CheckCircle, Lightbulb02, Stars01, AlertCircle } from "@untitledui/icons";
+import { useState } from "react";
+import { CheckCircle, Lightbulb02, AlertCircle } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { SchedulePreviewCard } from "@/ai-agent/components/SchedulePreviewCard";
 import { SpotLayoutEditor } from "@/ai-agent/components/SpotLayoutEditor";
-import { SelectDaysEditor, type RecurrenceConfig } from "@/ai-agent/components/SelectDaysEditor";
-import { SingleDateTimeEditor, type SingleDateTimePick } from "@/ai-agent/components/SingleDateTimeEditor";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 
 const NOUN: Record<string, string> = { class: "class schedule", private: "private session", recovery: "recovery session" };
@@ -46,72 +44,19 @@ function SpotEditorCard({ capacity, send }: { capacity: number; send: (text: str
     );
 }
 
-/** Recurrence editor card — sends the full recurring config as JSON the model
- *  maps onto the recur* arguments. */
-function DaysEditorCard({ durationMinutes, send }: { durationMinutes: number; send: (text: string) => void }) {
-    const [confirmed, setConfirmed] = useState<RecurrenceConfig | null>(null);
-    return (
-        <SelectDaysEditor
-            durationMinutes={durationMinutes}
-            confirmed={confirmed}
-            onConfirm={(config) => {
-                if (confirmed) return;
-                setConfirmed(config);
-                send(`Recurrence confirmed — config: ${JSON.stringify(config)}`);
-            }}
-        />
-    );
-}
-
-/** Single date + time picker card — sends the chosen slot the model maps onto
- *  dateISO / startTime (with recurring=false). */
-function SingleDatetimeEditorCard({ durationMinutes, instructorId, roomId, send }: {
-    durationMinutes: number; instructorId?: string; roomId?: string; send: (text: string) => void;
-}) {
-    const [confirmed, setConfirmed] = useState<SingleDateTimePick | null>(null);
-    return (
-        <SingleDateTimeEditor
-            durationMinutes={durationMinutes}
-            instructorId={instructorId}
-            roomId={roomId}
-            confirmed={confirmed}
-            onConfirm={(pick) => {
-                if (confirmed) return;
-                setConfirmed(pick);
-                send(`Session date & time confirmed — dateISO: ${pick.dateISO}, startTime: ${pick.startTime}`);
-            }}
-        />
-    );
-}
-
-/** Terminal card — plays a brief "Validating…" sparkle (frame 36) then flips to
- *  the published confirmation (the class is already written; this is the
- *  optimistic-UI flourish the Figma shows between publish and success). */
+/** Terminal card — the published/booked confirmation. The "publishing…" loader
+ *  is no longer in-chat: a fullscreen takeover (ChatThread's ImportingScreen,
+ *  raised on the Publish/Book pick) covers the round-trip, then this success
+ *  card renders in the revealed chat. */
 function ResultCard({ noun, summary, verb }: { noun: string; summary: string; verb: string }) {
-    const [done, setDone] = useState(false);
-    useEffect(() => {
-        const t = setTimeout(() => setDone(true), 1300);
-        return () => clearTimeout(t);
-    }, []);
-
-    if (!done) {
-        return (
-            <div className="w-full flex items-center gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-white px-4 py-3">
-                <Stars01 className="size-4 text-[#3f8f68] shrink-0 animate-pulse" />
-                <p className="text-[14px] text-[#475467] leading-5">
-                    Validating your {noun} data. Moving to the next step…
-                </p>
-            </div>
-        );
-    }
     return (
-        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-white px-4 py-3">
+        <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-white px-4 py-3">
             <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
             <div className="min-w-0">
-                <p className="text-[14px] font-medium text-[#101828] leading-5">
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">
                     Your {noun} has been {verb}.
                 </p>
-                <p className="text-[13px] text-[#475467] leading-5 mt-0.5">{summary}</p>
+                <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5">{summary}</p>
             </div>
         </div>
     );
@@ -124,19 +69,18 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
         return <SpotEditorCard capacity={data.capacity} send={send} />;
     }
 
-    if (data.card === "class_days_editor") {
-        return <DaysEditorCard durationMinutes={data.durationMinutes} send={send} />;
-    }
-
-    if (data.card === "class_single_datetime") {
-        return <SingleDatetimeEditorCard durationMinutes={data.durationMinutes} instructorId={data.instructorId} roomId={data.roomId} send={send} />;
+    // Date & time editors (single + recurring) render in the panel ABOVE the
+    // composer now — same treatment as ask_questions — not inline in the chat.
+    // ChatThread's scheduleEditorPanel mounts them; nothing to show inline.
+    if (data.card === "class_days_editor" || data.card === "class_single_datetime") {
+        return null;
     }
 
     if (data.card === "class_room_created") {
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#aad4bd] bg-[#f1f7f4] px-4 py-3">
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-secondary-300)] bg-[#f1f7f4] px-4 py-3">
                 <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
-                <p className="text-[14px] text-[#101828] leading-5">
+                <p className="text-[14px] text-[var(--colors-text-primary)] leading-5">
                     Added <span className="font-medium">{data.room.name}</span> to {data.branchName} (capacity{" "}
                     {data.room.capacity}). It&rsquo;s selected for this class.
                 </p>
@@ -146,18 +90,18 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
 
     if (data.card === "class_denied") {
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f1f2ed] px-4 py-3">
-                <Lightbulb02 className="size-4 text-[#475467] shrink-0 mt-0.5" />
-                <p className="text-[14px] text-[#475467] leading-5 whitespace-pre-line">{data.reason}</p>
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-[var(--colors-tertiary-50)] px-4 py-3">
+                <Lightbulb02 className="size-4 text-[var(--colors-text-tertiary)] shrink-0 mt-0.5" />
+                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 whitespace-pre-line">{data.reason}</p>
             </div>
         );
     }
 
     if (data.card === "class_empty") {
         return (
-            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[#e4e7ec] bg-[#f9fafb] px-4 py-3">
-                <Lightbulb02 className="size-4 text-[#475467] shrink-0 mt-0.5" />
-                <p className="text-[14px] text-[#475467] leading-5">{data.message}</p>
+            <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-4 py-3">
+                <Lightbulb02 className="size-4 text-[var(--colors-text-tertiary)] shrink-0 mt-0.5" />
+                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{data.message}</p>
             </div>
         );
     }

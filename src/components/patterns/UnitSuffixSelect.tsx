@@ -14,7 +14,7 @@
 // USAGE — wrap the numeric input + this suffix in a single bordered
 // flex container:
 //
-//   <div className="flex items-stretch h-10 border-1 border-[#d0d5dd]
+//   <div className="flex items-stretch h-10 border-1 border-[var(--colors-border-primary)]
 //                    rounded-[8px] overflow-hidden ...">
 //       <input ... />
 //       <UnitSuffixSelect value={unit} onChange={setUnit} options={UNITS} />
@@ -54,13 +54,13 @@ export function UnitSuffixSelect({
                 disabled={disabled}
                 style={{ width }}
                 className={cn(
-                    "shrink-0 h-full flex items-center justify-between gap-2 px-3 border-l border-[#d0d5dd] bg-[#f9fafb] text-[14px] text-[#344054] transition-colors",
-                    !disabled && "hover:bg-[#f2f4f7]",
+                    "shrink-0 h-full flex items-center justify-between gap-2 px-3 border-l border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)] text-[14px] text-[var(--colors-text-secondary)] transition-colors",
+                    !disabled && "hover:bg-[var(--colors-bg-tertiary)]",
                     disabled && "cursor-not-allowed opacity-70",
                 )}
             >
                 <span className="truncate">{current}</span>
-                <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
             </button>
             <FixedDropdown
                 triggerRef={btnRef}
@@ -76,8 +76,8 @@ export function UnitSuffixSelect({
                         className={cn(
                             "w-full flex items-center px-3 py-2 text-[14px] font-medium transition-colors text-left",
                             value === o.value
-                                ? "bg-[#f9fafb] text-[#101828]"
-                                : "text-[#344054] hover:bg-[#f9fafb]",
+                                ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]"
+                                : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                         )}
                     >
                         {o.label}

@@ -59,7 +59,7 @@ export function ToolbarExport({ onExportCsv, disabled = false, label = "Export",
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[160px]">
                     {EXPORT_FORMATS.map(fmt => (
                         <button
                             key={fmt}
@@ -68,7 +68,7 @@ export function ToolbarExport({ onExportCsv, disabled = false, label = "Export",
                                 setOpen(false);
                                 if (fmt === "CSV") onExportCsv();
                             }}
-                            className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                            className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                         >
                             {fmt}
                         </button>

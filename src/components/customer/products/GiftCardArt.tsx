@@ -22,7 +22,7 @@ export const FORMA_GRADIENT =
 export function GiftCardMark({ className }: { className?: string }) {
     return (
         <span
-            className={`relative h-8 w-[46px] shrink-0 overflow-hidden rounded border-[0.17px] border-[#e4e7ec] ${className ?? ""}`}
+            className={`relative h-8 w-[46px] shrink-0 overflow-hidden rounded border-[0.17px] border-[var(--colors-border-secondary)] ${className ?? ""}`}
             style={{ backgroundImage: FORMA_GRADIENT }}
         >
             {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -273,7 +273,7 @@ const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    monthly: "bg-[#f5fffa] border-1 border-[#aad4bd] text-[#3b5446]",
+    monthly: "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#3b5446]",
 };
 const TYPE_PREVIEW_LABEL: Record<PayRateType, string> = {
     flat: "Flat", tiered: "Tiered", revenue: "% revenue", hybrid: "Hybrid", monthly: "Monthly",
@@ -284,8 +284,8 @@ const TYPE_PREVIEW_LABEL: Record<PayRateType, string> = {
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
     return (
         <div className="flex flex-col gap-1 w-full">
-            <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</p>
-            {subtitle && <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>}
+            <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</p>
+            {subtitle && <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>}
         </div>
     );
 }
@@ -297,7 +297,7 @@ function TextInput({ value, onChange, placeholder }: {
 }) {
     return (
         <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-            className="h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+            className="h-10 w-full px-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
         />
     );
 }
@@ -316,7 +316,7 @@ function NumberInput({ value, onChange, placeholder = "0", className }: {
             }}
             placeholder={placeholder}
             className={cn(
-                "flex-1 min-w-0 px-[14px] py-[10px] text-[16px] text-[#101828] placeholder:text-[#667085] bg-transparent border-0 focus:outline-none",
+                "flex-1 min-w-0 px-[14px] py-[10px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-transparent border-0 focus:outline-none",
                 className,
             )}
         />
@@ -324,8 +324,8 @@ function NumberInput({ value, onChange, placeholder = "0", className }: {
 }
 
 // Shared chrome for prefix/suffix wrappers — gets the focus-within ring
-// (same palette as the customer form: `focus:ring-[#aad4bd] focus:border-[#7ba08c]`).
-const PREFIX_WRAP_CLS = "group flex items-stretch w-full bg-white border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden cursor-text transition-all focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c]";
+// (same palette as the customer form: `focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)]`).
+const PREFIX_WRAP_CLS = "group flex items-stretch w-full bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden cursor-text transition-all focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)]";
 
 /** AED-prefixed input — used for every monetary amount in this form. The
  *  whole pill is a `<label>` so clicking anywhere (AED chip or empty padding)
@@ -335,7 +335,7 @@ function AedInput({ value, onChange, placeholder = "Enter amount" }: {
 }) {
     return (
         <label className={PREFIX_WRAP_CLS}>
-            <span className="flex items-center px-[14px] text-[16px] text-[#475467] leading-[24px] border-r border-[#d0d5dd] shrink-0 select-none">AED</span>
+            <span className="flex items-center px-[14px] text-[16px] text-[var(--colors-text-tertiary)] leading-[24px] border-r border-[var(--colors-border-primary)] shrink-0 select-none">AED</span>
             <NumberInput value={value} onChange={onChange} placeholder={placeholder} />
         </label>
     );
@@ -348,8 +348,8 @@ function PercentInput({ value, onChange, placeholder = "0" }: {
     return (
         <label className={PREFIX_WRAP_CLS}>
             <NumberInput value={value} onChange={onChange} placeholder={placeholder} />
-            <span className="flex items-center justify-center px-3 border-l border-[#d0d5dd] bg-white shrink-0">
-                <Percent01 className="w-5 h-5 text-[#667085]" />
+            <span className="flex items-center justify-center px-3 border-l border-[var(--colors-border-primary)] bg-white shrink-0">
+                <Percent01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
             </span>
         </label>
     );
@@ -368,7 +368,7 @@ function PlainNumberInput({ value, onChange, placeholder = "0" }: {
 }
 
 function HelperText({ children }: { children: React.ReactNode }) {
-    return <p className="text-[14px] text-[#475467] leading-[20px]">{children}</p>;
+    return <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{children}</p>;
 }
 
 function Toggle({ value, onChange }: { value: boolean; onChange: (next: boolean) => void }) {
@@ -377,7 +377,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (next: boolean)
             onClick={() => onChange(!value)}
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
-                value ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                value ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
         </button>
@@ -390,11 +390,11 @@ function ToggleCard({ title, subtitle, value, onChange }: {
     return (
         <div className={cn(
             "w-full bg-white rounded-[12px] p-4 flex items-center gap-3",
-            value ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec]",
+            value ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)]",
         )}>
             <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
+                <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>
             </div>
             <Toggle value={value} onChange={onChange} />
         </div>
@@ -405,7 +405,7 @@ function Radio({ checked }: { checked: boolean }) {
     return (
         <div className={cn(
             "w-4 h-4 rounded-full border flex items-center justify-center shrink-0",
-            checked ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+            checked ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]",
         )}>
             {checked && <span className="block w-1.5 h-1.5 rounded-full bg-white" />}
         </div>
@@ -426,19 +426,19 @@ function TypePicker({ value, onChange }: { value: PayRateType; onChange: (next: 
                         <button key={card.value} type="button" onClick={() => onChange(card.value)}
                             className={cn(
                                 "flex items-center gap-3 p-4 rounded-[12px] bg-white text-left transition-colors min-h-[92px]",
-                                selected ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec] hover:bg-[#f9fafb]",
+                                selected ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             <div className={cn(
                                 "w-8 h-8 rounded-[6px] flex items-center justify-center shrink-0",
                                 selected
                                     ? "bg-gradient-to-br from-[#edfdf5] to-[#dcfae9]"
-                                    : "bg-[#f9fafb] border-1 border-[#e4e7ec]",
+                                    : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)]",
                             )}>
-                                <Icon className={cn("w-4 h-4", selected ? "text-[#658774]" : "text-[#475467]")} />
+                                <Icon className={cn("w-4 h-4", selected ? "text-[var(--colors-secondary-600)]" : "text-[var(--colors-text-tertiary)]")} />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-medium text-[#344054] leading-[20px]">{card.label}</p>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">{card.subtitle}</p>
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px]">{card.label}</p>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{card.subtitle}</p>
                             </div>
                         </button>
                     );
@@ -483,21 +483,21 @@ function TieredRateSection({ form, set }: { form: FormValue; set: (patch: Partia
     return (
         <div className="flex flex-col gap-4 w-full">
             {form.tiers.map((tier, i) => (
-                <div key={tier.id} className="relative bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-3">
+                <div key={tier.id} className="relative bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6 flex flex-col gap-3">
                     {form.tiers.length > 1 && (
                         <button type="button" onClick={() => remove(i)}
-                            className="absolute -top-[7px] -right-[7px] w-7 h-7 rounded-[8px] border-1 border-[#d0d5dd] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex items-center justify-center hover:bg-[#f9fafb]">
-                            <Minus className="w-4 h-4 text-[#475467]" />
+                            className="absolute -top-[7px] -right-[7px] w-7 h-7 rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex items-center justify-center hover:bg-[var(--colors-bg-secondary)]">
+                            <Minus className="w-4 h-4 text-[var(--colors-text-tertiary)]" />
                         </button>
                     )}
                     {/* If customers between [X] and [Y] */}
                     <div className="flex items-center gap-2 w-full">
-                        <span className="px-2 py-[2px] rounded-full bg-[#f9fafb] border-1 border-[#e4e7ec] text-[12px] font-medium text-[#344054] shrink-0">If</span>
-                        <span className="text-[14px] text-[#475467] shrink-0">customers between</span>
+                        <span className="px-2 py-[2px] rounded-full bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[12px] font-medium text-[var(--colors-text-secondary)] shrink-0">If</span>
+                        <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">customers between</span>
                         <div className="flex-1 min-w-0">
                             <PlainNumberInput value={tier.from} onChange={v => update(i, { from: v === "" ? 0 : v })} />
                         </div>
-                        <span className="text-[14px] text-[#475467] shrink-0">and</span>
+                        <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">and</span>
                         <div className="flex-1 min-w-0">
                             <PlainNumberInput value={tier.to} onChange={v => update(i, { to: v === "" ? 0 : v })} />
                         </div>
@@ -505,7 +505,7 @@ function TieredRateSection({ form, set }: { form: FormValue; set: (patch: Partia
                     {/* Then instructor receives AED [Z] */}
                     <div className="flex items-center gap-2 w-full">
                         <span className="px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[12px] font-medium text-[#067647] shrink-0">Then</span>
-                        <span className="text-[14px] text-[#475467] shrink-0">instructor receives</span>
+                        <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">instructor receives</span>
                         <div className="flex-1 min-w-0">
                             <AedInput value={tier.aed === 0 ? "" : tier.aed} onChange={v => update(i, { aed: v === "" ? 0 : v })} placeholder="0" />
                         </div>
@@ -553,12 +553,12 @@ function HybridRateSection({ form, set }: { form: FormValue; set: (patch: Partia
                     onClick={() => set({ hybridConditionKind: "bonus_attendance" })}
                     className={cn(
                         "w-full bg-white rounded-[12px] p-4 flex flex-col gap-3 text-left transition-colors",
-                        isBonus ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec] hover:bg-[#f9fafb]",
+                        isBonus ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                     )}>
                     <div className="flex items-center justify-between gap-3 w-full">
                         <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-medium text-[#101828] leading-[20px]">Bonus by attendance</p>
-                            <p className="text-[14px] text-[#667085] leading-[20px]">Get rewarded when your attendance reaches the required target.</p>
+                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">Bonus by attendance</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Get rewarded when your attendance reaches the required target.</p>
                         </div>
                         <Radio checked={isBonus} />
                     </div>
@@ -566,18 +566,18 @@ function HybridRateSection({ form, set }: { form: FormValue; set: (patch: Partia
                         <div className="flex flex-col gap-3 w-full pt-1" onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-2 w-full">
                                 <span className="px-2 py-[2px] rounded-full bg-[#fffaeb] border-1 border-[#fedf89] text-[12px] font-medium text-[#b54708] shrink-0">Once</span>
-                                <span className="text-[14px] text-[#475467] shrink-0">customers reach</span>
+                                <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">customers reach</span>
                                 <div className="flex-1 min-w-0">
                                     <PlainNumberInput value={form.hybridBonusThreshold} onChange={v => set({ hybridBonusThreshold: v })} />
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 w-full">
                                 <span className="px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[12px] font-medium text-[#067647] shrink-0">Then</span>
-                                <span className="text-[14px] text-[#475467] shrink-0">instructor receives</span>
+                                <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">instructor receives</span>
                                 <div className="flex-1 min-w-0">
                                     <AedInput value={form.hybridBonusPerCustomer} onChange={v => set({ hybridBonusPerCustomer: v })} placeholder="0" />
                                 </div>
-                                <span className="text-[14px] text-[#475467] shrink-0">per customer</span>
+                                <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">per customer</span>
                             </div>
                         </div>
                     )}
@@ -588,12 +588,12 @@ function HybridRateSection({ form, set }: { form: FormValue; set: (patch: Partia
                     onClick={() => set({ hybridConditionKind: "revenue" })}
                     className={cn(
                         "w-full bg-white rounded-[12px] p-4 flex flex-col gap-3 text-left transition-colors",
-                        isRevenue ? "border-2 border-[#7ba08c]" : "border-1 border-[#e4e7ec] hover:bg-[#f9fafb]",
+                        isRevenue ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                     )}>
                     <div className="flex items-center justify-between gap-3 w-full">
                         <div className="flex-1 min-w-0">
-                            <p className="text-[14px] font-medium text-[#101828] leading-[20px]">Percentage of revenue</p>
-                            <p className="text-[14px] text-[#667085] leading-[20px]">Instructor earns a share of total class revenue on top of the base.</p>
+                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-[20px]">Percentage of revenue</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">Instructor earns a share of total class revenue on top of the base.</p>
                         </div>
                         <Radio checked={isRevenue} />
                     </div>
@@ -736,7 +736,7 @@ function RateRow({
 }) {
     const isBonus = threshold !== undefined;
     return (
-        <div className="border-1 border-[#e4e7ec] rounded-[12px] p-3 flex flex-col gap-3 w-full">
+        <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-3 flex flex-col gap-3 w-full">
             <div className="flex items-center gap-2 w-full">
                 <div className="flex-1 min-w-0">
                     <SelectInput
@@ -748,7 +748,7 @@ function RateRow({
                     />
                 </div>
                 <button type="button" onClick={onRemove} aria-label="Remove row"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] text-[#667085] hover:bg-[#f9fafb] hover:text-[#b42318] transition-colors shrink-0">
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] text-[var(--colors-text-quaternary)] hover:bg-[var(--colors-bg-secondary)] hover:text-[#b42318] transition-colors shrink-0">
                     <Trash01 className="w-4 h-4" />
                 </button>
             </div>
@@ -777,7 +777,7 @@ function RateRow({
 function AddRowButton({ label, onClick }: { label: string; onClick: () => void }) {
     return (
         <button type="button" onClick={onClick}
-            className="flex items-center gap-1.5 text-[14px] font-medium text-[#658774] hover:opacity-80 w-fit">
+            className="flex items-center gap-1.5 text-[14px] font-medium text-[var(--colors-secondary-600)] hover:opacity-80 w-fit">
             <Plus className="w-4 h-4" />
             {label}
         </button>
@@ -798,20 +798,20 @@ function StepRow({ index, label, active, done, isLast }: {
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[#658774] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c]"
                         : done
-                            ? "bg-[#658774] text-white"
-                            : "bg-[#f2f4f7] border-[1.5px] border-[#e4e7ec] text-[#98a2b3]",
+                            ? "bg-[var(--colors-secondary-600)] text-white"
+                            : "bg-[var(--colors-bg-tertiary)] border-[1.5px] border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
                     {done && !active ? <Check className="w-3.5 h-3.5" /> : index}
                 </div>
                 {!isLast && (
-                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />
+                    <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />
                 )}
             </div>
             <p className={cn(
                 "flex-1 text-[14px] leading-[20px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]",
+                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {label}
             </p>
@@ -851,19 +851,19 @@ function PayRatePreview({ form }: { form: FormValue }) {
     if (validBonuses.length > 0) monthlyBullets.push(`${validBonuses.length} sales bonus${validBonuses.length === 1 ? "" : "es"}`);
 
     return (
-        <div className="w-[400px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shrink-0">
+        <div className="w-[400px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shrink-0">
             <div className="p-6 flex flex-col gap-1">
-                <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">Pay rate preview</p>
-                <p className="text-[14px] text-[#667085] leading-[20px]">This is how pay rate overview will look like.</p>
+                <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Pay rate preview</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">This is how pay rate overview will look like.</p>
             </div>
             <div className="bg-[#f6f6f3] flex flex-col gap-5 py-10 w-full">
                 <div className="px-6 w-full">
-                    <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] overflow-hidden">
+                    <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden">
                         {/* Banner */}
-                        <div className="relative h-[156px] bg-[#f9fafb] flex items-center justify-center">
+                        <div className="relative h-[156px] bg-[var(--colors-bg-secondary)] flex items-center justify-center">
                             <div className="w-[72px] h-[72px] rounded-[16px] flex items-center justify-center"
                                 style={{ background: "linear-gradient(135deg, #ebfff5 0%, #d7ffe9 100%)" }}>
-                                <CoinsHand className="w-[42px] h-[42px] text-[#658774]" />
+                                <CoinsHand className="w-[42px] h-[42px] text-[var(--colors-secondary-600)]" />
                             </div>
                             <span className={cn(
                                 "absolute top-3 right-3 px-[10px] py-[2px] rounded-full text-[14px] font-medium leading-[20px]",
@@ -874,15 +874,15 @@ function PayRatePreview({ form }: { form: FormValue }) {
                         </div>
                         {/* Content */}
                         <div className="px-6 pt-5 pb-6 flex flex-col gap-5">
-                            <p className="font-semibold text-[20px] leading-[30px] text-[#101828]">{previewName}</p>
+                            <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{previewName}</p>
                             <div className="flex flex-col gap-1">
-                                <p className="font-semibold text-[20px] leading-[30px] text-[#658774]">{display.main}</p>
-                                <p className="text-[14px] text-[#667085] leading-[20px]">{display.subtitle}</p>
+                                <p className="font-semibold text-[20px] leading-[30px] text-[var(--colors-secondary-600)]">{display.main}</p>
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{display.subtitle}</p>
                             </div>
                             {monthlyBullets.length > 0 && (
-                                <ul className="flex flex-col gap-1 pl-1 list-disc list-inside marker:text-[#667085]">
+                                <ul className="flex flex-col gap-1 pl-1 list-disc list-inside marker:text-[var(--colors-text-quaternary)]">
                                     {monthlyBullets.map(line => (
-                                        <li key={line} className="text-[14px] text-[#667085] leading-[20px]">{line}</li>
+                                        <li key={line} className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{line}</li>
                                     ))}
                                 </ul>
                             )}
@@ -901,7 +901,7 @@ function BranchStep({ form, set, branches }: { form: FormValue; set: (patch: Par
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -911,7 +911,7 @@ function BranchStep({ form, set, branches }: { form: FormValue; set: (patch: Par
             <div className="flex flex-col gap-[6px] w-full max-w-[580px]">
                 <FieldLabel label="Branch location" />
                 <SelectInput
-                    triggerIcon={<MarkerPin01 className="w-5 h-5 text-[#667085]" />}
+                    triggerIcon={<MarkerPin01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
                     placeholder="Select location"
                     options={branchOptions}
                     value={form.branchId}
@@ -1041,11 +1041,11 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={handleClose}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
                         {mode === "edit" ? "Edit pay rate" : "Add pay rate"}
                     </h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
@@ -1061,7 +1061,7 @@ export default function PayRateFormPage({ mode, payRateId, returnTo = "/admin/st
                 </div>
 
                 {/* Center — content card */}
-                <div className="flex-1 min-w-0 max-w-[628px] h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 max-w-[628px] h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] flex flex-col overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide p-6">
                         {step === 1 ? (
                             <div className="flex flex-col gap-8 w-full">

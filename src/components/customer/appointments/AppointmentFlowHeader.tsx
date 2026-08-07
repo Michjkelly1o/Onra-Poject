@@ -35,9 +35,9 @@ export function AppointmentFlowHeader({ title, progress, onBack, onClose }: Appo
                         type="button"
                         onClick={onBack}
                         aria-label="Back"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 ) : (
                     <div className="size-10 shrink-0" aria-hidden />
@@ -50,18 +50,18 @@ export function AppointmentFlowHeader({ title, progress, onBack, onClose }: Appo
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <XClose className="size-5 text-[#344054]" aria-hidden />
+                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 ) : (
                     <div className="size-10 shrink-0" aria-hidden />
                 )}
             </div>
             {progress !== undefined && (
-                <div className="h-1 w-full bg-[#e4e7ec]">
+                <div className="h-1 w-full bg-[var(--colors-bg-quaternary)]">
                     <div
-                        className="h-full rounded-r-full bg-[var(--brand-primary)] transition-all duration-300"
+                        className="h-full rounded-r-full bg-[var(--colors-secondary-400)] transition-all duration-300"
                         style={{ width: `${progress}%` }}
                     />
                 </div>

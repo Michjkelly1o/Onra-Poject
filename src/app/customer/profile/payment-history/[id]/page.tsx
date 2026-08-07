@@ -38,9 +38,9 @@ export default function PaymentDetailPage() {
                         type="button"
                         onClick={goBack}
                         aria-label="Go back"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                     <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Payment details</h1>
                     <span aria-hidden className="size-10 shrink-0" />
@@ -64,9 +64,9 @@ export default function PaymentDetailPage() {
                     type="button"
                     onClick={goBack}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">Payment details</h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -87,7 +87,7 @@ export default function PaymentDetailPage() {
                     <p className="text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">
                         {ok ? "Payment successful" : "Payment failed"}
                     </p>
-                    <p className="text-center text-sm font-normal leading-5 text-[#475467]">
+                    <p className="text-center text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         {PAYMENT_TYPE_LABEL[record.type]} of AED {record.amount.toLocaleString("en-US")}
                         {ok ? " was successfully processed." : " could not be processed."}
                     </p>

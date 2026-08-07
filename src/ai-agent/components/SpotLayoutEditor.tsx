@@ -18,7 +18,7 @@
 // Once confirmed the editor locks (mirrors an answered ask_questions panel).
 
 import { useMemo, useState } from "react";
-import { Settings03, ChevronUp, ChevronDown } from "@untitledui/icons";
+import { ChevronUp, ChevronDown } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -52,11 +52,11 @@ function Stepper({
 }) {
     return (
         <div className="flex flex-col gap-1.5 flex-1">
-            <label className="text-[13px] font-medium text-[#344054]">{label}</label>
+            <label className="text-[13px] font-medium text-[var(--colors-text-secondary)]">{label}</label>
             <div
                 className={cn(
-                    "flex items-center border border-[#d0d5dd] rounded-[8px] overflow-hidden",
-                    disabled ? "bg-[#f9fafb]" : "bg-white",
+                    "flex items-center border border-[var(--colors-border-primary)] rounded-[8px] overflow-hidden",
+                    disabled ? "bg-[var(--colors-bg-secondary)]" : "bg-white",
                 )}
             >
                 <input
@@ -72,25 +72,25 @@ function Stepper({
                     }}
                     className={cn(
                         "flex-1 min-w-0 px-3 py-2 text-[14px] border-0 focus:outline-none",
-                        disabled ? "bg-[#f9fafb] text-[#667085]" : "text-[#101828]",
+                        disabled ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-quaternary)]" : "text-[var(--colors-text-primary)]",
                     )}
                 />
-                <div className="flex flex-col border-l border-[#e4e7ec]">
+                <div className="flex flex-col border-l border-[var(--colors-border-secondary)]">
                     <button
                         type="button"
                         disabled={disabled || value >= max}
                         onClick={() => value < max && onChange(value + 1)}
-                        className="flex items-center justify-center h-[17px] w-7 hover:bg-[#f9fafb] disabled:opacity-40"
+                        className="flex items-center justify-center h-[17px] w-7 hover:bg-[var(--colors-bg-secondary)] disabled:opacity-40"
                     >
-                        <ChevronUp className="w-3 h-3 text-[#667085]" />
+                        <ChevronUp className="w-3 h-3 text-[var(--colors-text-quaternary)]" />
                     </button>
                     <button
                         type="button"
                         disabled={disabled || value <= min}
                         onClick={() => value > min && onChange(value - 1)}
-                        className="flex items-center justify-center h-[17px] w-7 border-t border-[#e4e7ec] hover:bg-[#f9fafb] disabled:opacity-40"
+                        className="flex items-center justify-center h-[17px] w-7 border-t border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)] disabled:opacity-40"
                     >
-                        <ChevronDown className="w-3 h-3 text-[#667085]" />
+                        <ChevronDown className="w-3 h-3 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
             </div>
@@ -156,19 +156,19 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
     };
 
     return (
-        <div className="w-full bg-white border border-[#e4e7ec] rounded-[12px] p-4 flex flex-col gap-8">
+        <div className="w-full bg-white border border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-8">
             {/* ── Section 1 · Customize area (grid always visible, Figma 380-122725) ── */}
             <div className="flex flex-col gap-4">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[16px] font-semibold text-[#101828] leading-6">Customize area</p>
-                        <p className="text-[14px] text-[#344054] leading-5">Select spot to block or unblock.</p>
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Customize area</p>
+                        <p className="text-[14px] text-[var(--colors-text-secondary)] leading-5">Select spot to block or unblock.</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0 pt-0.5">
-                        <span className="flex items-center gap-2 text-[14px] text-[#667085] whitespace-nowrap">
+                        <span className="flex items-center gap-2 text-[14px] text-[var(--colors-text-quaternary)] whitespace-nowrap">
                             <span className="size-2 rounded-full bg-[#17b26a]" /> Available spot
                         </span>
-                        <span className="flex items-center gap-2 text-[14px] text-[#475467] whitespace-nowrap">
+                        <span className="flex items-center gap-2 text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap">
                             <span className="size-2 rounded-full bg-[#f04438]" /> Blocked spot
                         </span>
                     </div>
@@ -177,7 +177,7 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                 <div className="bg-[#f8f8f6] rounded-[16px] px-4 py-6 flex flex-col items-center gap-6 overflow-x-auto">
                     <div className="flex flex-col items-center gap-2">
                         <div className="w-[137px] h-12 rounded-[10px] bg-[#717bbc]" />
-                        <span className="text-[16px] font-semibold text-[#475467]">Instructor</span>
+                        <span className="text-[16px] font-semibold text-[var(--colors-text-tertiary)]">Instructor</span>
                     </div>
                     {/* w-max so a wide grid (many columns) scrolls horizontally
                         inside the card at narrow widths instead of overflowing. */}
@@ -203,12 +203,12 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                                                     isB
                                                         ? "bg-[#fecdca] border-[#f04438]"
                                                         : cn(
-                                                              "bg-[#c4edd6] border-transparent",
+                                                              "bg-[var(--colors-secondary-200)] border-transparent",
                                                               !locked && "group-hover:scale-105",
                                                           ),
                                                 )}
                                             />
-                                            <span className="text-[16px] font-semibold text-[#475467]">{id}</span>
+                                            <span className="text-[16px] font-semibold text-[var(--colors-text-tertiary)]">{id}</span>
                                         </button>
                                     );
                                 })}
@@ -221,7 +221,7 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
             {/* ── Section 2 · Spot layout controls ── */}
             <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                    <p className="text-[18px] font-semibold text-[#101828] leading-7">Spot layout</p>
+                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Spot layout</p>
                     <p className="text-[14px] text-[#6e776f] leading-5">
                         Define the number of rows and columns to generate the room&rsquo;s spot layout.
                     </p>
@@ -254,10 +254,9 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                         variant="primary"
                         size="sm"
                         disabled={locked}
-                        leftIcon={<Settings03 className="w-4 h-4" />}
                         onClick={() => onConfirm(cols, rows, liveBlocked())}
                     >
-                        Customize spot
+                        Continue
                     </Button>
                 </div>
             </div>

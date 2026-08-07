@@ -116,7 +116,7 @@ export function EditInstructorProfileModal({
                         {avatar ? (
                             <img src={avatar} alt="" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[#667085] text-[20px] font-semibold">
+                            <div className="w-full h-full flex items-center justify-center text-[var(--colors-text-quaternary)] text-[20px] font-semibold">
                                 {(firstName[0] ?? "").toUpperCase()}{(lastName[0] ?? "").toUpperCase()}
                             </div>
                         )}
@@ -175,30 +175,30 @@ export function EditInstructorProfileModal({
                 {/* Phone — country code dropdown + numeric input.
                     Mirrors the composite the customer form uses. */}
                 <div className="flex flex-col gap-1.5 w-full">
-                    <p className="text-[14px] font-medium text-[#344054] leading-5">Phone number</p>
-                    <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">Phone number</p>
+                    <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                         <PhoneCountryDropdown value={country} onChange={setCountry} />
                         <input
                             type="tel"
                             value={number}
                             onChange={e => setNumber(e.target.value.replace(/[^\d\s+]/g, ""))}
                             placeholder="Enter phone number"
-                            className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent min-w-0 rounded-r-[8px]"
+                            className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent min-w-0 rounded-r-[8px]"
                         />
                     </div>
                 </div>
 
                 {/* Introduction textarea — customer-facing bio */}
                 <div className="flex flex-col gap-1.5 w-full">
-                    <p className="text-[14px] font-medium text-[#344054] leading-5">Introduction</p>
+                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">Introduction</p>
                     <textarea
                         value={introduction}
                         onChange={e => setIntroduction(e.target.value)}
                         rows={6}
                         placeholder="Tell customers about your experience and teaching style…"
-                        className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none"
+                        className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none"
                     />
-                    <p className="text-[14px] text-[#667085] leading-5">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">
                         This introduction will be show in customer side
                     </p>
                 </div>

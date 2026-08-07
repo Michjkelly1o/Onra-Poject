@@ -28,7 +28,7 @@ export function PromoBanner({
         // Image-only banner — the voucher artwork carries all copy. Sized to the
         // 343x140 ratio so it never crops as the phone frame width changes.
         <div
-            className={`relative aspect-[343/140] w-full shrink-0 overflow-hidden bg-gradient-to-br from-[#1d2939] via-[#344054] to-[#475467] ${
+            className={`relative aspect-[343/140] w-full shrink-0 overflow-hidden bg-gradient-to-br from-[#1d2939] via-[var(--colors-text-secondary)] to-[var(--colors-text-tertiary)] ${
                 rounded ? "rounded-2xl" : ""
             }`}
         >
@@ -77,7 +77,7 @@ export function PromoCard({ promo, disabled = false, onOpen, onApply, applied = 
                 }
             }}
             className={`w-full shrink-0 overflow-hidden rounded-2xl bg-white text-left ${
-                applied ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec]"
+                applied ? "border-2 border-[var(--brand-primary)]" : "border border-[var(--colors-border-secondary)]"
             } ${disabled ? "cursor-default" : "cursor-pointer transition-shadow active:shadow-sm"}`}
         >
             <PromoBanner promo={promo} disabled={disabled} />
@@ -87,7 +87,7 @@ export function PromoCard({ promo, disabled = false, onOpen, onApply, applied = 
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{promo.label}</p>
                         <SaleBadge />
                     </div>
-                    <p className="line-clamp-2 text-xs font-normal leading-[18px] text-[#475467]">
+                    <p className="line-clamp-2 text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
                         {promo.description}
                     </p>
                 </div>
@@ -100,7 +100,7 @@ export function PromoCard({ promo, disabled = false, onOpen, onApply, applied = 
                 />
                 <div className="flex items-center gap-2">
                     <p className="min-w-0 flex-1 text-xs leading-[18px]">
-                        <span className="font-normal text-[#667085]">Valid until </span>
+                        <span className="font-normal text-[var(--colors-text-quaternary)]">Valid until </span>
                         <span className="font-medium text-[var(--brand-text)]">{promo.validUntil}</span>
                     </p>
                     {applied ? (

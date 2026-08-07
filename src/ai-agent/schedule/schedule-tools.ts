@@ -29,6 +29,20 @@ import type { AiAgentStateSnapshot } from "@/ai-agent/types/request";
 import type { ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 import type { SchedulePreviewData } from "@/ai-agent/components/SchedulePreviewCard";
 import {
+    classDetailsQuestions,
+    scratchDetailsQuestions,
+    locationInstructorQuestions,
+    repeatQuestion,
+    publishConfirmQuestion,
+    dateQuestion,
+    singleTimeQuestion,
+    recurEndRuleQuestion,
+    recurEndAfterQuestion,
+    recurIntervalQuestion,
+    type ClassOptionsData,
+    type DateOpt,
+} from "@/ai-agent/schedule/class-questions";
+import {
     toPreview,
     toDraft,
     isComplete,
@@ -39,7 +53,7 @@ import {
     type AppointmentDraft,
 } from "@/ai-agent/schedule/schedule-wizard";
 import { expandRecurrence } from "@/ai-agent/schedule/apply-class-schedule";
-import { validateClassSchedule, validateAppointment, type ScheduleClock } from "@/ai-agent/schedule/validate-schedule";
+import { validateClassSchedule, validateAppointment, computeAvailableTimes, type ScheduleClock } from "@/ai-agent/schedule/validate-schedule";
 
 const GENDER = z.enum(["all", "female", "male"]);
 
@@ -135,6 +149,8 @@ function hydrate(a: ScheduleArgs, seePayRate: boolean): { config: WizardConfig; 
         ...(a.isScratch
             ? {
                   scratchName: a.templateName,
+                  scratchDescription: a.templateDescription,
+                  scratchCoverImage: a.coverImage,
                   scratchCategory: a.category,
                   scratchDurationMinutes: a.durationMinutes,
                   scratchCapacity: a.capacity,
@@ -170,6 +186,21 @@ function hydrate(a: ScheduleArgs, seePayRate: boolean): { config: WizardConfig; 
     };
 
     return { config, answers, lookups };
+}
+
+/** Scratch classes carry a category NAME but no template, so toDraft can't set
+ *  a category-derived cover colour (it defaults to neutral). Resolve the
+ *  category's color_hex here so the created schedule's detail banner matches an
+ *  admin-created class — the admin schedule form sets coverColor =
+ *  category.color_hex too. No-op for the template path / unknown category. */
+function applyScratchCategoryColor(
+    draft: { category: string; coverColor: string },
+    config: { isScratch: boolean },
+    snapshot: AiAgentStateSnapshot,
+): void {
+    if (!config.isScratch || !draft.category) return;
+    const cat = snapshot.classCategories.find((c) => c.name === draft.category);
+    if (cat?.color_hex) draft.coverColor = cat.color_hex;
 }
 
 /** Per-instructor aggregate rating + review count from class ratings. */
@@ -261,6 +292,29 @@ function apptDraft(a: AppointmentArgs): AppointmentDraft {
     };
 }
 
+/** ISO "YYYY-MM-DD" `n` days after `iso` (local calendar, no tz drift). */
+function addDaysISO(iso: string, n: number): string {
+    const [y, m, d] = iso.split("-").map(Number);
+    const dt = new Date(y, m - 1, d + n);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+/** "Fri, 26 Feb 2026". */
+function fmtDayLabel(iso: string): string {
+    const [y, m, d] = iso.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    const wd = dt.toLocaleDateString("en-US", { weekday: "short" });
+    const mon = dt.toLocaleDateString("en-US", { month: "short" });
+    return `${wd}, ${d} ${mon} ${y}`;
+}
+/** The next 4 day rows starting the day after `fromISO`; first badged label. */
+function nextDayRows(fromISO: string, firstBadge?: string): DateOpt[] {
+    const start = addDaysISO(fromISO, 1);
+    return [0, 1, 2, 3].map((n, i) => {
+        const iso = addDaysISO(start, n);
+        return { iso, label: fmtDayLabel(iso), ...(i === 0 && firstBadge ? { badge: firstBadge } : {}) };
+    });
+}
+
 export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) {
     const caps = ctx.scheduleCaps;
     // Client-local clock (falls back to the server clock) — drives past-time
@@ -277,6 +331,52 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
             .map((id) => catNameById.get(id))
             .filter((n): n is string => !!n);
 
+    const branchNameById = (id: string) => snapshot.branches.find((b) => b.id === id)?.name ?? "";
+
+    // The studio data every class question is built from — the SINGLE source
+    // shared by list_class_options AND the code-driven question tools, so the
+    // options a question shows always match the live studio.
+    const buildOptions = (): ClassOptionsData => {
+        const ratings = instructorRatings(snapshot);
+        return {
+            templates: snapshot.classTemplates
+                .filter((t) => t.status === "Active" && t.type === "class")
+                .map((t) => ({
+                    id: t.id,
+                    name: t.name,
+                    description: t.description,
+                    category: t.category,
+                    durationMin: t.durationMin,
+                    capacity: t.capacity,
+                    coverImage: t.coverImage,
+                    coverColor: t.coverColor,
+                })),
+            rooms: snapshot.rooms
+                .filter((r) => r.status === "active" && inScope(ctx, r.branch_id))
+                .map((r) => ({ id: r.id, name: r.name, branchId: r.branch_id, branchName: branchNameById(r.branch_id), capacity: r.capacity })),
+            instructors: snapshot.instructors
+                .filter((i) => inScope(ctx, i.branchId))
+                .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count, teaches: teachesOf(i.id) })),
+            categories: snapshot.classCategories
+                .filter((c) => c.status === "active")
+                .map((c) => ({ id: c.id, name: c.name })),
+            payRates: caps.seePayRate
+                ? snapshot.payRates.filter((p) => p.status === "active").map((p) => ({ id: p.id, name: p.name }))
+                : [],
+            branches: snapshot.branches
+                .filter((b) => b.status === "active" && inScope(ctx, b.id))
+                .map((b) => ({ id: b.id, name: b.name })),
+            // Applicable-plans step (from scratch) — active memberships +
+            // packages, same products the admin class-template form offers.
+            memberships: snapshot.memberships
+                .filter((m) => m.status === "active")
+                .map((m) => ({ id: m.id, name: m.name })),
+            packages: snapshot.packages
+                .filter((p) => p.status === "active")
+                .map((p) => ({ id: p.id, name: p.name })),
+        };
+    };
+
     return {
         list_class_options: tool({
             description:
@@ -289,39 +389,168 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin to set this one up.",
                     };
                 }
-                const branchName = (id: string) => snapshot.branches.find((b) => b.id === id)?.name ?? "";
-                const ratings = instructorRatings(snapshot);
-                return {
-                    card: "class_options",
-                    templates: snapshot.classTemplates
-                        .filter((t) => t.status === "Active" && t.type === "class")
-                        .map((t) => ({
-                            id: t.id,
-                            name: t.name,
-                            description: t.description,
-                            category: t.category,
-                            durationMin: t.durationMin,
-                            capacity: t.capacity,
-                            coverImage: t.coverImage,
-                            coverColor: t.coverColor,
-                        })),
-                    rooms: snapshot.rooms
-                        .filter((r) => r.status === "active" && inScope(ctx, r.branch_id))
-                        .map((r) => ({ id: r.id, name: r.name, branchId: r.branch_id, branchName: branchName(r.branch_id), capacity: r.capacity })),
+                return { card: "class_options", ...buildOptions() };
+            },
+        }),
 
-                    instructors: snapshot.instructors
-                        .filter((i) => inScope(ctx, i.branchId))
-                        .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count, teaches: teachesOf(i.id) })),
-                    categories: snapshot.classCategories
-                        .filter((c) => c.status === "active")
-                        .map((c) => ({ id: c.id, name: c.name })),
-                    payRates: caps.seePayRate
-                        ? snapshot.payRates.filter((p) => p.status === "active").map((p) => ({ id: p.id, name: p.name }))
-                        : [],
-                    branches: snapshot.branches
-                        .filter((b) => b.status === "active" && inScope(ctx, b.id))
-                        .map((b) => ({ id: b.id, name: b.name })),
+        // ── Code-driven wizard questions ─────────────────────────────────────
+        // These four tools BUILD the class-creation questions from the live
+        // studio data (buildOptions) and return a ready-made `questions` card.
+        // The model calls them instead of composing ask_questions itself, so the
+        // questions never drift — same wording, order, and options every run.
+        // The model's only job is to read the picked answer and map its LABEL
+        // back to the matching id from list_class_options.
+        ask_class_details: tool({
+            description:
+                "STEP 1 (Class details). Returns the template-picker + gender-access questions BUILT from the studio's real templates. Call this INSTEAD of composing the questions yourself. Read the answers: map the picked template label back to its id via list_class_options (or 'Create from scratch' = no template), and the gender (All genders/Women only/Men only).",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return {
+                    card: "questions" as const,
+                    stepLabel: "Step 1",
+                    title: "Class details",
+                    message: "Let's start building the class schedule.",
+                    questions: classDetailsQuestions(buildOptions()),
                 };
+            },
+        }),
+        ask_scratch_details: tool({
+            description:
+                "STEP 1b (Create from scratch ONLY — skip entirely when a real template was picked). Returns the 7 code-driven class-template detail questions BUILT from live data — in order: cover image · class name · class description · class category · duration · capacity · applicable plans (memberships + packages). Same fields, order and options as the admin class-template form. Call this INSTEAD of composing the questions yourself. Read the answers: name/description are the free-text values; category → map its label to the category id; duration/capacity → the picked number (or the typed custom number); applicable plans → the picked membership + package ids. The cover image is handled by the app (do NOT pass it as text) — it arrives with publish. Then continue to ask_location_instructor (omit templateId).",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return {
+                    card: "questions" as const,
+                    stepLabel: "Step 1",
+                    title: "Class details",
+                    message: "Let's set up the class from scratch.",
+                    questions: scratchDetailsQuestions(buildOptions()),
+                };
+            },
+        }),
+        ask_location_instructor: tool({
+            description:
+                "STEP 2 (Location & instructor). Pass the templateId chosen in step 1 (omit for Create-from-scratch). Returns the room (grouped by branch, over-capacity badged), equipment, spot, instructor (ONLY those who teach the template's category) and — when allowed — pay-rate questions, all BUILT from live data. Call this INSTEAD of composing the questions yourself. Read the answers and map each picked label back to its id via list_class_options. After: if spot=Yes call open_spot_editor(capacity); then preview_class_schedule.",
+            parameters: z.object({
+                templateId: z.string().optional().describe("The template picked in step 1 — omit for Create-from-scratch."),
+            }),
+            execute: async ({ templateId }) => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const opts = buildOptions();
+                const template = opts.templates.find((t) => t.id === templateId);
+                // Mirror the admin gate: if a template's category has no
+                // instructor who teaches it, don't offer an empty picker.
+                if (template && !opts.instructors.some((i) => i.teaches.includes(template.category))) {
+                    return {
+                        card: "class_empty" as const,
+                        message: `No active instructor teaches ${template.category}. Pick a different template or category, or add an instructor who teaches it in Staff.`,
+                    };
+                }
+                return {
+                    card: "questions" as const,
+                    stepLabel: "Step 2",
+                    title: "Location & instructor",
+                    message: "Where it runs and who teaches it.",
+                    questions: locationInstructorQuestions(opts, templateId, caps.seePayRate, caps.addRoom),
+                };
+            },
+        }),
+        ask_repeat: tool({
+            description:
+                "STEP 3's first question — does the class repeat? Returns the Single / Recurring choice. After the answer: Single → open_single_datetime_editor; Recurring → open_days_editor.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", message: "When does it run?", questions: repeatQuestion() };
+            },
+        }),
+        ask_publish_confirm: tool({
+            description:
+                "The publish confirmation — call ONLY once preview_class_schedule returns readyToPublish:true. Returns the 'Publish schedule / Edit a field' choice. If the user picks Publish, call publish_class_schedule; if Edit a field, follow the Edit-a-field rule.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Ready to publish", questions: publishConfirmQuestion() };
+            },
+        }),
+
+        // ── Recurring sub-steps (code-driven, one card each) ─────────────────
+        // Flow after the user picks "Recurring": ask_recur_start →
+        // ask_recur_end_rule → (On → ask_recur_end_on · After → ask_recur_end_after
+        // · Never → skip) → ask_recur_interval → open_days_editor → preview →
+        // ask_publish_confirm. The model maps each answer onto preview_class_schedule.
+        ask_recur_start: tool({
+            description:
+                "RECURRING — 'When should the recurring schedule start?'. Returns the next days + a 'Pick a custom date' option. Read the picked date → recurStartISO (YYYY-MM-DD): a custom pick returns the ISO directly; a preset row returns its date label (convert to YYYY-MM-DD).",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const tomorrow = addDaysISO(ctx.nowISO, 1);
+                const days: DateOpt[] = nextDayRows(ctx.nowISO, "Tomorrow");
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", message: "Set when this recurring class starts.", questions: dateQuestion("When should the recurring schedule start?", days, tomorrow) };
+            },
+        }),
+        ask_recur_end_rule: tool({
+            description:
+                "RECURRING — 'How should this recurring schedule end?'. Returns Never / On / After. Then: Never → ask_recur_interval; On → ask_recur_end_on; After → ask_recur_end_after. Set recurEndRule = never|on|after.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: recurEndRuleQuestion() };
+            },
+        }),
+        ask_recur_end_on: tool({
+            description:
+                "RECURRING (End = On) — 'When should this recurring schedule end?'. Pass startISO (the recurring start) so the day options come after it. Read the picked date → recurEndOnISO. Then call ask_recur_interval.",
+            parameters: z.object({
+                startISO: z.string().optional().describe("The recurring start date (YYYY-MM-DD), so end options come after it."),
+            }),
+            execute: async ({ startISO }) => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const base = startISO && /^\d{4}-\d{2}-\d{2}$/.test(startISO) ? startISO : ctx.nowISO;
+                const minDate = addDaysISO(base, 1);
+                const days: DateOpt[] = nextDayRows(base);
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: dateQuestion("When should this recurring schedule end?", days, minDate) };
+            },
+        }),
+        ask_recur_end_after: tool({
+            description:
+                "RECURRING (End = After) — 'After how many class sessions should the schedule end?'. Returns 10/20/30/40 + a 'Type number of classes' manual row. Read the number → recurEndAfterCount. Then call ask_recur_interval.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: recurEndAfterQuestion() };
+            },
+        }),
+        ask_recur_interval: tool({
+            description:
+                "RECURRING — 'Repeat every X week?'. Returns 1 week (Default) / 2 / 3 / 4 + a 'Custom X' manual row. Read the number of weeks → recurEveryWeeks. After this, call open_days_editor to collect the weekdays + per-day time slots, then preview_class_schedule.",
+            parameters: z.object({}),
+            execute: async () => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: recurIntervalQuestion() };
             },
         }),
 
@@ -377,31 +606,51 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
 
         open_days_editor: tool({
             description:
-                "Open the interactive RECURRENCE editor for a RECURRING schedule — the user sets the start date, how the series ends, the repeat interval, the weekdays, and the per-day time slots all in ONE editor (same controls as the admin schedule form). Call this for ANY recurring schedule; do NOT ask start date / end rule / repeat interval as separate questions — the editor collects them. Pass the class duration so end times auto-fill. The result returns as a 'Recurrence confirmed — config: <JSON>' message; map its fields onto preview_class_schedule (startISO→recurStartISO, endRule→recurEndRule, endOnISO→recurEndOnISO, endAfter→recurEndAfterCount, everyWeeks→recurEveryWeeks, days→recurDays).",
+                "Open the 'Select days & General schedule' editor — the user picks the WEEKDAYS and a start time slot (or several) for each day. Call this in the RECURRING flow AFTER ask_recur_interval (the start date, end rule and interval are their own question cards). Pass the class duration AND the instructorId + roomId chosen in step 2 so each weekday only offers times inside the branch's hours + the instructor's availability. The result returns as a 'Days confirmed — days: <JSON>' message; map days → recurDays on preview_class_schedule.",
             parameters: z.object({
                 durationMinutes: z.number().describe("Class length in minutes (from the template) — drives auto end-time."),
+                instructorId: z.string().optional().describe("The instructor chosen in step 2 — gates each weekday's offered times."),
+                roomId: z.string().optional().describe("The room chosen in step 2 — resolves the branch whose hours bound the times."),
             }),
             execute: async (a): Promise<ClassCardData> => {
                 if (!caps.createSchedule) {
                     return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
                 }
-                return { card: "class_days_editor", durationMinutes: a.durationMinutes ?? 60 };
+                return { card: "class_days_editor", durationMinutes: a.durationMinutes ?? 60, instructorId: a.instructorId, roomId: a.roomId };
             },
         }),
 
-        open_single_datetime_editor: tool({
+        ask_single_date: tool({
             description:
-                "Open the interactive DATE & TIME picker for a SINGLE (non-recurring) class — the user picks the session date (from the next open days at the branch, or a custom date via the calendar) then a start time. ONLY genuinely-available times are offered — computed with the SAME logic the admin form uses (branch hours, gated by the chosen instructor's shift + free slots + room availability). Call this for ANY single class INSTEAD of asking date/time as separate questions. Pass durationMinutes, and the instructorId + roomId already chosen in step 2 so availability is correct. The result returns as a 'Session date & time confirmed — dateISO: <YYYY-MM-DD>, startTime: <HH:MM>' message; set recurring=false, dateISO, startTime on preview_class_schedule from it.",
-            parameters: z.object({
-                durationMinutes: z.number().describe("Class length in minutes (from the template) — bounds the last start slot."),
-                instructorId: z.string().optional().describe("The instructor chosen in step 2 — gates the offered times to their availability."),
-                roomId: z.string().optional().describe("The room chosen in step 2 — no other class may hold it at that time."),
-            }),
-            execute: async (a): Promise<ClassCardData> => {
+                "SINGLE class — 'When is the session?'. Returns the next days + a 'Pick a custom date' option. Read the picked date → dateISO (a custom pick returns the ISO; a preset returns a date label — convert to YYYY-MM-DD). Then call ask_single_time with that date.",
+            parameters: z.object({}),
+            execute: async () => {
                 if (!caps.createSchedule) {
-                    return { card: "class_denied", reason: "Creating class schedules isn't part of your access." };
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
                 }
-                return { card: "class_single_datetime", durationMinutes: a.durationMinutes ?? 60, instructorId: a.instructorId, roomId: a.roomId };
+                const tomorrow = addDaysISO(ctx.nowISO, 1);
+                const days: DateOpt[] = nextDayRows(ctx.nowISO, "Tomorrow");
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", message: "Set when this class runs.", questions: dateQuestion("When is the session?", days, tomorrow) };
+            },
+        }),
+        ask_single_time: tool({
+            description:
+                "SINGLE class — 'When does the class start?'. Pass the chosen dateISO plus the instructorId + roomId + durationMinutes from step 2. Returns ONLY the genuinely-available start times (same availability logic as the admin form — branch hours, the instructor's shift + free slots, no room double-booking, not in the past). Read the picked time → startTime (HH:MM). Then set recurring=false, dateISO, startTime and call preview_class_schedule.",
+            parameters: z.object({
+                dateISO: z.string().describe("The session date (YYYY-MM-DD) from ask_single_date."),
+                instructorId: z.string().optional().describe("The instructor chosen in step 2 — gates the offered times."),
+                roomId: z.string().optional().describe("The room chosen in step 2 — no other class may hold it then."),
+                durationMinutes: z.number().optional().describe("Class length in minutes (from the template)."),
+            }),
+            execute: async ({ dateISO, instructorId, roomId, durationMinutes }) => {
+                if (!caps.createSchedule) {
+                    return { card: "class_denied" as const, reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin." };
+                }
+                const times = computeAvailableTimes({ snapshot, clock, dateISO, instructorId, roomId, durationMins: durationMinutes ?? 60 });
+                if (times.length === 0) {
+                    return { card: "class_empty" as const, message: `No available times on ${dateISO} — the instructor is fully booked or off that day, or the branch is closed. Go back and pick another date.` };
+                }
+                return { card: "questions" as const, stepLabel: "Step 3", title: "Date & time", questions: singleTimeQuestion(times) };
             },
         }),
 
@@ -416,10 +665,48 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         reason: "Creating class schedules isn't part of your access. Ask an Owner or Branch Admin to set this one up.",
                     };
                 }
-                const { config, answers, lookups } = hydrate(args, caps.seePayRate);
+                // Resolve the display fields (cover image, name, description,
+                // category, duration, capacity, room label, instructor avatar)
+                // from the REAL studio data by id — so the preview never depends
+                // on what the model remembered to pass. Model-passed values only
+                // fill the scratch path (no templateId).
+                const args2: ScheduleArgs = { ...args };
+                if (!args.isScratch && args.templateId) {
+                    const t = snapshot.classTemplates.find((tt) => tt.id === args.templateId && tt.type === "class");
+                    if (t) {
+                        args2.templateName = t.name;
+                        args2.templateDescription = t.description;
+                        args2.category = t.category;
+                        args2.durationMinutes = t.durationMin;
+                        args2.capacity = t.capacity;
+                        args2.coverImage = t.coverImage;
+                        args2.coverColor = t.coverColor;
+                        args2.classTypeLabel = "Group class";
+                    }
+                }
+                // From scratch — pull the cover image the user uploaded in the
+                // wizard (stashed on the snapshot, never relayed through the
+                // model as a base64 blob).
+                if (args.isScratch && !args2.coverImage && snapshot.aiScratchCoverImage) {
+                    args2.coverImage = snapshot.aiScratchCoverImage;
+                }
+                if (args.instructorId) {
+                    const inst = snapshot.instructors.find((i) => i.id === args.instructorId);
+                    if (inst) {
+                        args2.instructorName = inst.name;
+                        args2.instructorInitials = inst.initials;
+                        args2.instructorAvatarUrl = inst.imageUrl;
+                    }
+                }
+                if (args.roomId) {
+                    const room = snapshot.rooms.find((r) => r.id === args.roomId);
+                    if (room) args2.roomLabel = room.name;
+                }
+                const { config, answers, lookups } = hydrate(args2, caps.seePayRate);
                 const preview = toPreview(config, answers, lookups);
                 const ready = isComplete(config, answers);
                 const draft = ready ? toDraft(config, answers) : undefined;
+                if (draft) applyScratchCategoryColor(draft, config, snapshot);
                 // Recurring — expand to the session list for the preview (past
                 // occurrences pruned against the studio's local clock).
                 const sessions =
@@ -453,11 +740,18 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                         reason: "You don't have permission to publish class schedules.",
                     };
                 }
-                const { config, answers } = hydrate(args, caps.seePayRate);
+                // From scratch — inject the uploaded cover image off the
+                // snapshot (never relayed through the model), same as preview.
+                const args2: ScheduleArgs = { ...args };
+                if (args.isScratch && !args2.coverImage && snapshot.aiScratchCoverImage) {
+                    args2.coverImage = snapshot.aiScratchCoverImage;
+                }
+                const { config, answers } = hydrate(args2, caps.seePayRate);
                 if (!isComplete(config, answers)) {
                     return { card: "class_empty", message: "Some details are still missing — let's finish the preview first." };
                 }
                 const draft = toDraft(config, answers);
+                applyScratchCategoryColor(draft, config, snapshot);
                 // Hard gate — the SAME rules the admin form enforces. Refuse the
                 // publish and explain exactly what to fix.
                 const { errors } = validateClassSchedule({ draft, snapshot, clock });

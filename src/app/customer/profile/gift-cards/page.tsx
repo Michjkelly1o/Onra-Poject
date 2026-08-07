@@ -69,9 +69,9 @@ export default function GiftCardPage() {
                     type="button"
                     onClick={goBack}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Gift cards</h1>
                 <span aria-hidden className="size-10 shrink-0" />
@@ -98,10 +98,10 @@ export default function GiftCardPage() {
                 <div className="relative mt-6">
                     <div
                         className={`flex items-center gap-2 rounded-lg border bg-white px-3.5 py-2.5 shadow-[0px_1px_1px_0px_rgba(16,24,40,0.05)] ${
-                            error ? "border-[#fda29b]" : "border-[#d0d5dd]"
+                            error ? "border-[#fda29b]" : "border-[var(--colors-border-primary)]"
                         }`}
                     >
-                        <Gift01 className="size-5 shrink-0 text-[#667085]" aria-hidden />
+                        <Gift01 className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
                         <input
                             value={code}
                             onChange={(e) => {
@@ -110,7 +110,7 @@ export default function GiftCardPage() {
                             }}
                             onKeyDown={(e) => e.key === "Enter" && confirm()}
                             placeholder="Enter gift card code"
-                            className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[#667085]"
+                            className="min-w-0 flex-1 bg-transparent text-base leading-6 text-[var(--brand-text)] outline-none placeholder:text-[var(--colors-text-quaternary)]"
                         />
                     </div>
                     {error && <p className="mt-1.5 text-sm leading-5 text-[#d92d20]">{error}</p>}
@@ -130,28 +130,28 @@ export default function GiftCardPage() {
                 {redeemed.length > 0 ? (
                     <div className="relative flex flex-col gap-3">
                         {redeemed.map((r) => (
-                            <div key={r.id} className="rounded-xl border border-[#e4e7ec] bg-white p-4">
+                            <div key={r.id} className="rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
                                 <div className="flex items-center gap-3">
                                     <GiftCardMark />
                                     <div className="min-w-0 flex-1">
                                         <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">Gift card</p>
-                                        <p className="truncate text-sm font-normal leading-5 text-[#667085]">Code: {r.code}</p>
+                                        <p className="truncate text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">Code: {r.code}</p>
                                     </div>
                                     <div className="flex shrink-0 flex-col items-end">
                                         <p className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">{aed(r.faceValue)}</p>
-                                        <p className="text-sm font-normal leading-5 text-[#667085]">{validityLabel(r)}</p>
+                                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{validityLabel(r)}</p>
                                     </div>
                                 </div>
-                                <div className="mt-4 rounded-[10px] bg-[#f2f4f7] px-3 pb-4 pt-3">
-                                    <div className="flex items-center justify-between text-sm font-normal leading-5 text-[#667085]">
+                                <div className="mt-4 rounded-[10px] bg-[var(--colors-bg-tertiary)] px-3 pb-4 pt-3">
+                                    <div className="flex items-center justify-between text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">
                                         <span>
                                             AED {r.balance}/{r.faceValue} left
                                         </span>
                                         <span>End {shortDate(r.expiresISO)}</span>
                                     </div>
-                                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#e4e7ec]">
+                                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[var(--colors-bg-quaternary)]">
                                         <div
-                                            className="h-full rounded-full bg-[var(--brand-primary)]"
+                                            className="h-full rounded-full bg-[var(--colors-secondary-400)]"
                                             style={{ width: `${(r.balance / r.faceValue) * 100}%` }}
                                         />
                                     </div>

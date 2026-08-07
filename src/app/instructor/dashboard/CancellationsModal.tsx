@@ -171,16 +171,16 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                 {/* ── Table ─────────────────────────────────────────────── */}
                 <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
                     {/* Header row */}
-                    <div className="grid grid-cols-[1.4fr_1fr_1fr_40px] gap-4 items-center pb-3 border-b-1 border-[#e4e7ec] sticky top-0 bg-white z-10">
-                        <div className="text-sm font-normal text-[#475467] leading-5">Name</div>
-                        <div className="text-sm font-normal text-[#475467] leading-5">Class</div>
-                        <div className="text-sm font-normal text-[#475467] leading-5">Status</div>
+                    <div className="grid grid-cols-[1.4fr_1fr_1fr_40px] gap-4 items-center pb-3 border-b-1 border-[var(--colors-border-secondary)] sticky top-0 bg-white z-10">
+                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Name</div>
+                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Class</div>
+                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Status</div>
                         <div />
                     </div>
 
                     {/* Body */}
                     {visibleRows.length === 0 ? (
-                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[#667085]">
+                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[var(--colors-text-quaternary)]">
                             No cancellations in this view.
                         </div>
                     ) : (
@@ -218,7 +218,7 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                         onMouseDown={e => e.stopPropagation()}
                         onClick={e => e.stopPropagation()}
                         style={{ position: "fixed", top: openMenu.top, right: openMenu.right }}
-                        className="z-[61] w-44 bg-white border-1 border-[#e4e7ec] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden"
+                        className="z-[61] w-44 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden"
                     >
                         <button
                             type="button"
@@ -234,9 +234,9 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                                 if (row) handleViewDetails(row);
                                 else setOpenMenu(null);
                             }}
-                            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                         >
-                            <Eye className="w-4 h-4 text-[#667085]" />
+                            <Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                             View details
                         </button>
                     </div>
@@ -255,7 +255,7 @@ interface CancellationRowItemProps {
 function CancellationRowItem({ row, isMenuOpen, onToggleMenu }: CancellationRowItemProps) {
     const btnRef = useRef<HTMLButtonElement>(null);
     return (
-        <div className="grid grid-cols-[1.4fr_1fr_1fr_40px] gap-4 items-center py-3 border-b-1 border-[#f2f4f7] last:border-b-0">
+        <div className="grid grid-cols-[1.4fr_1fr_1fr_40px] gap-4 items-center py-3 border-b-1 border-[var(--colors-bg-tertiary)] last:border-b-0">
             {/* Customer cell — avatar + name + email */}
             <div className="flex items-center gap-3 min-w-0">
                 {row.customerImageUrl ? (
@@ -273,13 +273,13 @@ function CancellationRowItem({ row, isMenuOpen, onToggleMenu }: CancellationRowI
                     </div>
                 )}
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#101828] leading-5 truncate">{row.customerName}</p>
-                    <p className="text-sm font-normal text-[#475467] leading-5 truncate">{row.customerEmail}</p>
+                    <p className="text-sm font-medium text-[var(--colors-text-primary)] leading-5 truncate">{row.customerName}</p>
+                    <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{row.customerEmail}</p>
                 </div>
             </div>
 
             {/* Class cell */}
-            <div className="text-sm font-normal text-[#475467] leading-5 truncate">{row.className}</div>
+            <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{row.className}</div>
 
             {/* Status cell */}
             <div>
@@ -303,8 +303,8 @@ function CancellationRowItem({ row, isMenuOpen, onToggleMenu }: CancellationRowI
                     className={cn(
                         "w-8 h-8 flex items-center justify-center rounded-md transition-colors",
                         isMenuOpen
-                            ? "text-[#101828] bg-[#f9fafb]"
-                            : "text-[#98a2b3] hover:text-[#101828] hover:bg-[#f9fafb]",
+                            ? "text-[var(--colors-text-primary)] bg-[var(--colors-bg-secondary)]"
+                            : "text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)]",
                     )}
                 >
                     <DotsVertical className="w-5 h-5" />
@@ -334,8 +334,8 @@ function TabButton({ label, count, active, onClick }: TabButtonProps) {
             className={cn(
                 "flex-1 flex items-center justify-center gap-2 px-4 py-[6px] rounded-[8px] text-[14px] font-medium transition-all whitespace-nowrap",
                 active
-                    ? "bg-white text-[#101828] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                    : "text-[#667085] hover:text-[#344054]",
+                    ? "bg-white text-[var(--colors-text-primary)] shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                    : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
             )}
         >
             <span>{label}</span>
@@ -343,8 +343,8 @@ function TabButton({ label, count, active, onClick }: TabButtonProps) {
                 className={cn(
                     "inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full text-[12px] font-medium border-1",
                     active
-                        ? "bg-white border-[#e4e7ec] text-[#344054]"
-                        : "bg-surface-secondary border-[#e4e7ec] text-[#667085]",
+                        ? "bg-white border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]"
+                        : "bg-surface-secondary border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)]",
                 )}
             >
                 {count}

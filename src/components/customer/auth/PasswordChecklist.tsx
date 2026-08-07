@@ -11,8 +11,8 @@ export function PasswordChecklist({ password }: { password: string }) {
                 const ok = checks[r.key];
                 return (
                     <div key={r.key} className="flex items-center gap-2 text-sm leading-5">
-                        <Check className={`size-4 shrink-0 ${ok ? "text-[var(--brand-primary)]" : "text-[#98a2b3]"}`} aria-hidden />
-                        <span className={ok ? "text-[#344054]" : "text-[#667085]"}>{r.label}</span>
+                        <Check className={`size-4 shrink-0 ${ok ? "text-[var(--brand-primary)]" : "text-[var(--colors-fg-quaternary)]"}`} aria-hidden />
+                        <span className={ok ? "text-[var(--colors-text-secondary)]" : "text-[var(--colors-text-quaternary)]"}>{r.label}</span>
                     </div>
                 );
             })}

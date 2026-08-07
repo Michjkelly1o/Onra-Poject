@@ -207,19 +207,19 @@ function FilterPanel({ open, onClose, applied, onApply }: {
     const hasAny = pending.dataTypes.length > 0 || pending.statuses.length > 0
         || !!pending.fromISO || !!pending.toISO;
 
-    const Divider = () => <div className="h-px w-full bg-[#e4e7ec] shrink-0" />;
+    const Divider = () => <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />;
     const SectionLabel = ({ label }: { label: string }) => (
-        <p className="text-[14px] font-medium text-[#344054]">{label}</p>
+        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
     );
 
     return (
         <SlidePanel open={open} onClose={onClose} width={420}>
             {/* Header — matches the customer-module filter panel */}
-            <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
+            <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
                 <button type="button" onClick={onClose}
-                    className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
             </div>
 
@@ -287,7 +287,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
             {/* Footer — buttons are fit-width (no flex-1) and pinned to
                 the edges via justify-between, matching the customer-module
                 filter (client 2026-07-20). */}
-            <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+            <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                 <Button variant="secondary-gray" disabled={!hasAny}
                     onClick={() => { setPending(EMPTY_FILTER); onApply(EMPTY_FILTER); onClose(); }}>
                     Clear filter
@@ -330,7 +330,7 @@ export default function MigrationsImportsPage() {
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
         })),
         [branches],
     );
@@ -440,7 +440,7 @@ export default function MigrationsImportsPage() {
                                         <SortableHeader sortKey="invalidRows" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Invalid rows</SortableHeader>
                                     </th>
                                     <th className={TH}>
-                                        <span className="text-[12px] font-medium text-[#475467]">Invalid rows data</span>
+                                        <span className="text-[12px] font-medium text-[var(--colors-text-tertiary)]">Invalid rows data</span>
                                     </th>
                                     <th className={TH}>
                                         <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
@@ -449,20 +449,20 @@ export default function MigrationsImportsPage() {
                             </thead>
                             <tbody>
                                 {paged.map(row => (
-                                    <tr key={row.id} className="hover:bg-[#f9fafb]/50 transition-colors">
+                                    <tr key={row.id} className="hover:bg-[var(--colors-bg-secondary)]/50 transition-colors">
                                         <td className={TD}>
                                             <div className="flex flex-col">
-                                                <span className="text-[14px] font-medium text-[#101828]">{DATA_TYPE_LABEL[row.data_type]}</span>
-                                                <span className="text-[14px] text-[#667085]">{fmtImportedAt(row.imported_at)}</span>
+                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{DATA_TYPE_LABEL[row.data_type]}</span>
+                                                <span className="text-[14px] text-[var(--colors-text-quaternary)]">{fmtImportedAt(row.imported_at)}</span>
                                             </div>
                                         </td>
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
                                                 <FileTypeChip type={row.file_type} />
-                                                <span className="text-[14px] font-medium text-[#101828]">{row.file_name}</span>
+                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{row.file_name}</span>
                                             </div>
                                         </td>
-                                        <td className={cn(TD, "text-[14px] font-medium text-[#101828]")}>
+                                        <td className={cn(TD, "text-[14px] font-medium text-[var(--colors-text-primary)]")}>
                                             {row.total_rows.toLocaleString("en-US")}
                                         </td>
                                         <td className={cn(TD, "text-[14px] font-medium text-[#079455]")}>
@@ -471,7 +471,7 @@ export default function MigrationsImportsPage() {
                                         <td className={cn(TD, "text-[14px] font-medium")}>
                                             {row.invalid_rows > 0
                                                 ? <span className="text-[#b42318]">{row.invalid_rows.toLocaleString("en-US")}</span>
-                                                : <span className="text-[#101828]">-</span>}
+                                                : <span className="text-[var(--colors-text-primary)]">-</span>}
                                         </td>
                                         <td className={TD}>
                                             {row.invalid_rows_file_name ? (
@@ -480,20 +480,20 @@ export default function MigrationsImportsPage() {
                                                         type="button"
                                                         onClick={() => downloadInvalidRowsReport(row)}
                                                         aria-label={`Download ${row.invalid_rows_file_name}`}
-                                                        className="flex items-center gap-3 max-w-[240px] rounded-[6px] px-1 py-0.5 -mx-1 -my-0.5 hover:bg-[#f2f4f7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd] transition-colors cursor-pointer text-left"
+                                                        className="flex items-center gap-3 max-w-[240px] rounded-[6px] px-1 py-0.5 -mx-1 -my-0.5 hover:bg-[var(--colors-bg-tertiary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--colors-secondary-300)] transition-colors cursor-pointer text-left"
                                                     >
                                                         <FileTypeChip type={
                                                             row.invalid_rows_file_name.toLowerCase().endsWith(".xlsx") ? "xlsx"
                                                             : row.invalid_rows_file_name.toLowerCase().endsWith(".xls") ? "xls"
                                                             : "csv"
                                                         } />
-                                                        <span className="text-[14px] font-medium text-[#101828] truncate underline decoration-transparent hover:decoration-[#7ba08c] underline-offset-2">
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate underline decoration-transparent hover:decoration-[var(--colors-secondary-500)] underline-offset-2">
                                                             {row.invalid_rows_file_name}
                                                         </span>
                                                     </button>
                                                 </IconTooltip>
                                             ) : (
-                                                <span className="text-[14px] font-medium text-[#101828]">-</span>
+                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">-</span>
                                             )}
                                         </td>
                                         <td className={TD}>

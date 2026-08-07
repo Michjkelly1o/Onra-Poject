@@ -55,9 +55,9 @@ export function NotificationSettingsTab() {
         // `min-h-[760px]` follows CLAUDE.md rule #7 — view cards fill,
         // never hug. Keeps this tab the same visual footprint as the
         // Personal info one so the page doesn't jump between tabs.
-        <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full min-h-[760px]">
+        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] shadow-[0px_1px_1px_rgba(16,24,40,0.05)] p-6 w-full min-h-[760px]">
             <div className="flex flex-col gap-5 w-full">
-                <p className="text-[18px] font-semibold text-[#101828] leading-7">Notification settings</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Notification settings</p>
 
                 <div className="flex flex-col gap-3 w-full">
                     {CHANNELS.map(ch => {
@@ -90,13 +90,13 @@ function ChannelRow({ title, description, on, onToggle }: ChannelRowProps) {
             className={cn(
                 "flex items-center justify-between gap-4 px-5 py-3.5 rounded-[12px] border-1 transition-colors",
                 on
-                    ? "border-[#7ba08c] bg-white"
-                    : "border-[#e4e7ec] bg-white",
+                    ? "border-[var(--colors-secondary-500)] bg-white"
+                    : "border-[var(--colors-border-secondary)] bg-white",
             )}
         >
             <div className="flex-1 min-w-0">
-                <p className="text-[16px] font-semibold text-[#101828] leading-6">{title}</p>
-                <p className="text-[14px] text-[#667085] leading-5 mt-0.5">{description}</p>
+                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{title}</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 mt-0.5">{description}</p>
             </div>
             <Toggle on={on} onChange={onToggle} ariaLabel={title} />
         </div>
@@ -119,7 +119,7 @@ function Toggle({ on, onChange, ariaLabel }: {
             onClick={onChange}
             className={cn(
                 "w-9 h-5 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
             )}
         >
             <div className={cn(

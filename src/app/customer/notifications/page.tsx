@@ -88,7 +88,7 @@ function Section({
                 {rows.map((n, i) => (
                     <div key={n.id} className="flex flex-col gap-3">
                         <NotificationRow notification={n} timeAgo={timeAgo(n.createdAtISO)} onClick={() => onOpen(n)} />
-                        {i < rows.length - 1 && <div className="h-px w-full bg-[#e4e7ec]" />}
+                        {i < rows.length - 1 && <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />}
                     </div>
                 ))}
             </div>
@@ -152,11 +152,11 @@ export default function NotificationsPage() {
                                     className={`flex h-8 flex-1 items-center justify-center gap-2 px-2 pb-3 text-sm leading-5 transition-colors ${
                                         active
                                             ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
-                                            : "font-medium text-[#667085]"
+                                            : "font-medium text-[var(--colors-text-quaternary)]"
                                     }`}
                                 >
                                     {t.label}
-                                    <span className="flex items-center rounded-full border border-[#e4e7ec] bg-[#f9fafb] px-2 py-0.5 text-xs font-medium leading-[18px] text-[#344054]">
+                                    <span className="flex items-center rounded-full border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">
                                         {countFor(t.id)}
                                     </span>
                                 </button>
@@ -169,9 +169,9 @@ export default function NotificationsPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Go back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <h1 className="min-w-0 flex-1 truncate text-center text-lg font-semibold leading-7 text-[var(--brand-text)]">
                     Notifications

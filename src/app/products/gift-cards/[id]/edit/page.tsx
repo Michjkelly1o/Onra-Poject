@@ -56,9 +56,9 @@ function EditGiftCardRouteInner() {
     if (!design) {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">Gift card not found</p>
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Gift card not found</p>
                 <button type="button" onClick={() => router.push(returnTo)}
-                    className="mt-4 text-[14px] text-[#658774] hover:underline">
+                    className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                     Back to gift cards
                 </button>
             </div>
@@ -70,12 +70,12 @@ function EditGiftCardRouteInner() {
     if (design.status !== "active") {
         return (
             <div className="h-screen bg-white flex flex-col items-center justify-center">
-                <p className="text-[18px] font-semibold text-[#101828]">This gift card can&apos;t be edited</p>
-                <p className="mt-1 text-[14px] text-[#475467]">
+                <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">This gift card can&apos;t be edited</p>
+                <p className="mt-1 text-[14px] text-[var(--colors-text-tertiary)]">
                     Only active gift cards are editable. Reactivate or recover it first.
                 </p>
                 <button type="button" onClick={() => router.push(`/products/gift-cards/${id}`)}
-                    className="mt-4 text-[14px] text-[#658774] hover:underline">
+                    className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
                     Back to gift card details
                 </button>
             </div>

@@ -97,16 +97,16 @@ function MultiStaffDropdown({ options, selectedIds, onChange, placeholder }: {
         <div data-multi-staff-dropdown className="relative w-full">
             <button type="button" onClick={() => setOpen(p => !p)}
                 className={cn(
-                    "flex items-center gap-2 w-full min-h-[40px] px-[14px] py-[6px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
-                    open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#aad4bd]",
+                    "flex items-center gap-2 w-full min-h-[40px] px-[14px] py-[6px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                    open ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-300)]",
                 )}>
                 <div className="flex-1 flex flex-wrap items-center gap-1.5">
                     {selectedOptions.length === 0 ? (
-                        <span className="text-[14px] text-[#667085]">{placeholder}</span>
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">{placeholder}</span>
                     ) : (
                         selectedOptions.map(o => (
                             <span key={o.id}
-                                className="inline-flex items-center gap-1.5 pl-1 pr-1 py-[2px] rounded-full text-[13px] font-medium bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]">
+                                className="inline-flex items-center gap-1.5 pl-1 pr-1 py-[2px] rounded-full text-[13px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]">
                                 {o.imageUrl ? (
                                     <img src={o.imageUrl} alt={o.fullName}
                                         className="w-5 h-5 rounded-full object-cover" />
@@ -120,36 +120,36 @@ function MultiStaffDropdown({ options, selectedIds, onChange, placeholder }: {
                                 <span role="button" tabIndex={0} aria-label={`Remove ${o.fullName}`}
                                     onClick={e => { e.stopPropagation(); remove(o.id); }}
                                     onKeyDown={e => { if (e.key === "Enter") { e.stopPropagation(); remove(o.id); } }}
-                                    className="w-4 h-4 inline-flex items-center justify-center rounded-full text-[#98a2b3] hover:text-[#475467] hover:bg-[#f2f4f7] transition-colors text-[16px] leading-none cursor-pointer">×</span>
+                                    className="w-4 h-4 inline-flex items-center justify-center rounded-full text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-tertiary)] transition-colors text-[16px] leading-none cursor-pointer">×</span>
                             </span>
                         ))
                     )}
                 </div>
-                <ChevronDown className={cn("w-4 h-4 text-[#667085] shrink-0 transition-transform", open && "rotate-180")} />
+                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0 transition-transform", open && "rotate-180")} />
             </button>
             {open && (
-                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col max-h-[320px] overflow-hidden">
+                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col max-h-[320px] overflow-hidden">
                     {/* Search input — matches Figma 7413:257445 */}
-                    <div className="px-3 pt-3 pb-2 shrink-0 border-b border-[#e4e7ec]">
+                    <div className="px-3 pt-3 pb-2 shrink-0 border-b border-[var(--colors-border-secondary)]">
                         <div className="relative">
-                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
+                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)] pointer-events-none" />
                             <input type="text" autoFocus value={search} onChange={e => setSearch(e.target.value)}
                                 placeholder="Search"
-                                className="h-9 w-full pl-9 pr-3 bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]" />
+                                className="h-9 w-full pl-9 pr-3 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]" />
                         </div>
                     </div>
                     {/* List */}
                     <div className="flex-1 overflow-y-auto py-1.5">
                         {filtered.length === 0 ? (
-                            <p className="px-4 py-3 text-[14px] text-[#667085]">No staff found.</p>
+                            <p className="px-4 py-3 text-[14px] text-[var(--colors-text-quaternary)]">No staff found.</p>
                         ) : filtered.map(s => {
                             const selected = selectedIds.includes(s.id);
                             return (
                                 <button key={s.id} type="button" onClick={() => toggle(s.id)}
-                                    className="flex items-center gap-3 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors text-left">
+                                    className="flex items-center gap-3 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors text-left">
                                     <span className={cn(
                                         "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                                        selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                        selected ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]",
                                     )}>
                                         {selected && <Check className="w-3 h-3 text-white" />}
                                     </span>
@@ -163,8 +163,8 @@ function MultiStaffDropdown({ options, selectedIds, onChange, placeholder }: {
                                         </span>
                                     )}
                                     <div className="flex flex-col min-w-0">
-                                        <span className="text-[14px] font-medium text-[#101828] truncate">{s.fullName}</span>
-                                        <span className="text-[12px] text-[#667085] truncate">{s.email}</span>
+                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{s.fullName}</span>
+                                        <span className="text-[12px] text-[var(--colors-text-quaternary)] truncate">{s.email}</span>
                                     </div>
                                 </button>
                             );
@@ -427,8 +427,8 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
     if (mode === "edit" && !existing) {
         const notFound = (
             <div className="flex flex-1 flex-col items-center justify-center gap-3">
-                <p className="font-semibold text-[18px] text-[#101828]">Time off not found</p>
-                <p className="text-[14px] text-[#667085]">The entry you're trying to edit no longer exists.</p>
+                <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Time off not found</p>
+                <p className="text-[14px] text-[var(--colors-text-quaternary)]">The entry you're trying to edit no longer exists.</p>
                 <Button variant="primary" size="md" onClick={exit}>Back to list</Button>
             </div>
         );
@@ -442,14 +442,14 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
     // ── Field content — shared by the side-panel + full-page layouts. ──
     const fields = (
         <>
-            <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Time off details</h2>
+            <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Time off details</h2>
 
             {/* Reason category (Sick / Vacation / Training /
                                 Other). Client 2026-07-22 replaced the
                                 free-text-only title — reason drives
                                 payroll classification + the list chip. */}
                             <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Reason</label>
+                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Reason</label>
                                 <SelectInput
                                     placeholder="Select a reason"
                                     value={form.reason}
@@ -464,12 +464,12 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                 Kept optional; the reason chip is the
                                 primary signal on the row. */}
                             <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">Title (optional)</label>
+                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Title (optional)</label>
                                 <input
                                     type="text" value={form.title}
                                     onChange={e => set({ title: e.target.value })}
                                     placeholder="Enter title"
-                                    className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                                    className="h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
                                 />
                             </div>
 
@@ -481,7 +481,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                 `isRangeInverted` validation flag). */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex flex-col gap-[6px]">
-                                    <label className="text-[14px] font-medium text-[#344054]">From</label>
+                                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">From</label>
                                     <DatePicker
                                         value={form.dateFrom}
                                         onChange={iso => {
@@ -498,7 +498,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                     )}
                                 </div>
                                 <div className="flex flex-col gap-[6px]">
-                                    <label className="text-[14px] font-medium text-[#344054]">To</label>
+                                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">To</label>
                                     <DatePicker
                                         value={form.dateTo}
                                         onChange={iso => set({ dateTo: iso })}
@@ -517,7 +517,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                 still write 00:00/23:59 for downstream
                                 consumers). Client 2026-07-22 vacation
                                 example: Maya Aug 3 → 9 all-day. */}
-                            <div className="flex items-center gap-3 rounded-[12px] border-1 border-[#e4e7ec] bg-white p-3">
+                            <div className="flex items-center gap-3 rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-white p-3">
                                 <button
                                     type="button"
                                     role="switch"
@@ -526,7 +526,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                     onClick={() => set({ allDay: !form.allDay })}
                                     className={cn(
                                         "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                                        form.allDay ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                                        form.allDay ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
                                     )}
                                 >
                                     <span className={cn(
@@ -535,8 +535,8 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                     )} />
                                 </button>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[14px] font-semibold text-[#101828] leading-5">All day</p>
-                                    <p className="text-[13px] text-[#667085] leading-[18px] mt-0.5">Runs full days across the picked range. Turn off to set specific times.</p>
+                                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">All day</p>
+                                    <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px] mt-0.5">Runs full days across the picked range. Turn off to set specific times.</p>
                                 </div>
                             </div>
 
@@ -545,7 +545,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                 <>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="flex flex-col gap-[6px]">
-                                            <label className="text-[14px] font-medium text-[#344054]">Start time</label>
+                                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Start time</label>
                                             <SelectInput
                                                 triggerIcon={<Clock className="w-4 h-4" />}
                                                 placeholder="Select time"
@@ -556,7 +556,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                             />
                                         </div>
                                         <div className="flex flex-col gap-[6px]">
-                                            <label className="text-[14px] font-medium text-[#344054]">End time</label>
+                                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">End time</label>
                                             <SelectInput
                                                 triggerIcon={<Clock className="w-4 h-4" />}
                                                 placeholder="Select time"
@@ -567,7 +567,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                             />
                                         </div>
                                     </div>
-                                    <p className="-mt-3 text-[13px] text-[#667085]">
+                                    <p className="-mt-3 text-[13px] text-[var(--colors-text-quaternary)]">
                                         {timeWindow.source === "shift"
                                             ? "Limited to the staff's shift hours."
                                             : timeWindow.source === "branch"
@@ -580,7 +580,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                             {/* Note — becomes REQUIRED when reason=Other
                                 per client 2026-07-22 spec. */}
                             <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[#344054]">
+                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
                                     {form.reason === "other" ? "Note" : "Note (optional)"}
                                 </label>
                                 <textarea
@@ -591,7 +591,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                                         : "Enter note..."
                                     }
                                     rows={3}
-                                    className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
+                                    className="w-full px-[14px] py-[10px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
                                 />
                                 {missingOtherNote && (
                                     <p className="text-[13px] text-[#b42318]">A note is required when the reason is Other.</p>
@@ -600,14 +600,14 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
 
             {/* Staffs */}
             <div className="flex flex-col gap-[6px]">
-                <label className="text-[14px] font-medium text-[#344054]">Staff</label>
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Staff</label>
                 <MultiStaffDropdown
                     options={availableStaff}
                     selectedIds={form.staffIds}
                     onChange={ids => set({ staffIds: ids })}
                     placeholder="Search and select staff members"
                 />
-                <p className="text-[13px] text-[#667085]">Search and select staff members</p>
+                <p className="text-[13px] text-[var(--colors-text-quaternary)]">Search and select staff members</p>
             </div>
         </>
     );
@@ -622,17 +622,17 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
     if (panel) {
         return (
             <>
-                <div className="flex items-center justify-between px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <h2 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{pageTitle}</h2>
+                <div className="flex items-center justify-between px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{pageTitle}</h2>
                     <button type="button" onClick={exit} aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {fields}
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-end gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-end gap-3">
                     <Button variant="secondary-gray" size="md" onClick={exit}>Cancel</Button>
                     {submitBtn}
                 </div>
@@ -646,11 +646,11 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
         <div className="h-screen bg-white flex flex-col overflow-hidden">
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={exit}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{pageTitle}</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{pageTitle}</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -659,14 +659,14 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                 <div className="flex gap-8 px-6 py-6 h-full items-start">
                     <div className="w-[260px] shrink-0 pt-2">
                         <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] bg-[#f5fffa]">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
                                 1
                             </div>
                             <span className="text-[14px] font-semibold text-[#3b5446]">Time off details</span>
                         </div>
                     </div>
 
-                    <div className="flex-1 max-w-[628px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden self-stretch shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                    <div className="flex-1 max-w-[628px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden self-stretch shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                         <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-5">
                             {fields}
                         </div>

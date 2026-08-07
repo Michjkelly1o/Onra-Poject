@@ -53,9 +53,9 @@ export default function ReviewsPage() {
                     type="button"
                     onClick={() => router.back()}
                     aria-label="Back"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                    <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">Ratings</p>
                 <div className="size-10 shrink-0" aria-hidden />
@@ -74,33 +74,33 @@ export default function ReviewsPage() {
                                         type="button"
                                         onClick={() => setTopic(on ? null : t.tag)}
                                         className={`shrink-0 whitespace-nowrap rounded-lg px-4 py-2 text-sm leading-5 ${
-                                            on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
+                                            on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[var(--colors-border-secondary)] bg-white"
                                         }`}
                                     >
-                                        <span className="font-medium text-[#344054]">{t.tag}</span>
-                                        <span className="font-normal text-[#667085]"> ({t.count})</span>
+                                        <span className="font-medium text-[var(--colors-text-secondary)]">{t.tag}</span>
+                                        <span className="font-normal text-[var(--colors-text-quaternary)]"> ({t.count})</span>
                                     </button>
                                 );
                             })}
                         </div>
                         {/* Right fade so chips bleed under the Star control */}
-                        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#f9fafb] to-transparent" />
+                        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[var(--colors-bg-secondary)] to-transparent" />
                     </div>
 
-                    <div className="h-7 w-px shrink-0 bg-[#e4e7ec]" />
+                    <div className="h-7 w-px shrink-0 bg-[var(--colors-bg-quaternary)]" />
 
                     <button
                         type="button"
                         onClick={openFilter}
                         className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-2 ${
-                            star !== null ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
+                            star !== null ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[var(--colors-border-secondary)] bg-white"
                         }`}
                     >
                         <Star01 className="size-4" style={{ fill: "#fdb022", color: "#fdb022" }} aria-hidden />
-                        <span className="whitespace-nowrap text-sm font-medium leading-5 text-[#344054]">
+                        <span className="whitespace-nowrap text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">
                             {star !== null ? `${star} Star` : "Star"}
                         </span>
-                        <ChevronDown className="size-4 text-[#344054]" aria-hidden />
+                        <ChevronDown className="size-4 text-[var(--colors-text-secondary)]" aria-hidden />
                     </button>
                 </div>
 
@@ -117,7 +117,7 @@ export default function ReviewsPage() {
                     <div className="flex flex-col gap-6">
                         {list.map((r, i) => (
                             <Fragment key={r.id}>
-                                {i > 0 && <div className="h-px w-full bg-[#e4e7ec]" />}
+                                {i > 0 && <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />}
                                 <ReviewRow review={r} />
                             </Fragment>
                         ))}

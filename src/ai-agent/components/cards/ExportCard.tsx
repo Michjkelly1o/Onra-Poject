@@ -117,7 +117,7 @@ export function ExportCard({ exportId, title, rowCount, columns, format = "csv" 
     return (
         <div
             className={cn(
-                "bg-white border border-[#e4e7ec] rounded-2xl p-4",
+                "bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                 "flex items-center justify-between gap-3 max-w-[612px]",
             )}
@@ -127,7 +127,7 @@ export function ExportCard({ exportId, title, rowCount, columns, format = "csv" 
                     format badge stamped over the lower-left corner, per
                     Figma 528:108156. */}
                 <div className="relative size-10 shrink-0">
-                    <File04 className="absolute inset-0 size-10 text-[#667085]" />
+                    <File04 className="absolute inset-0 size-10 text-[var(--colors-text-quaternary)]" />
                     <span
                         className="absolute left-0 bottom-1 px-1 py-[2px] rounded-[2px] text-[10px] font-bold text-white leading-none"
                         style={{ backgroundColor: badge.bg }}
@@ -136,10 +136,10 @@ export function ExportCard({ exportId, title, rowCount, columns, format = "csv" 
                     </span>
                 </div>
                 <div className="flex flex-col min-w-0">
-                    <span className="text-[14px] font-medium text-[#101828] leading-5 truncate">
+                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 truncate">
                         {filename}
                     </span>
-                    <span className="text-[14px] text-[#475467] leading-5">
+                    <span className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">
                         {SUBTITLE[format]}
                     </span>
                 </div>
@@ -150,10 +150,10 @@ export function ExportCard({ exportId, title, rowCount, columns, format = "csv" 
                 disabled={busy}
                 className={cn(
                     "shrink-0 h-9 px-3 inline-flex items-center gap-1 rounded-md",
-                    "bg-white text-[#344054] text-[14px] font-semibold leading-5",
-                    "border-1 border-[#d0d5dd]",
+                    "bg-white text-[var(--colors-text-secondary)] text-[14px] font-semibold leading-5",
+                    "border-1 border-[var(--colors-border-primary)]",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                    "hover:bg-[#f9fafb] transition-colors",
+                    "hover:bg-[var(--colors-bg-secondary)] transition-colors",
                     "disabled:opacity-60 disabled:cursor-not-allowed",
                 )}
             >

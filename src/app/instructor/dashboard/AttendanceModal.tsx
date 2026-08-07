@@ -54,7 +54,7 @@ interface AttendanceRow {
 const STATUS_BADGE_STYLES: Record<"On track" | "At risk" | "Pending", string> = {
     "On track": "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     "At risk":  "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-    "Pending":  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#475467]",
+    "Pending":  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
 };
 
 export function AttendanceModal({ open, onClose, classes, bookings }: AttendanceModalProps) {
@@ -153,36 +153,36 @@ export function AttendanceModal({ open, onClose, classes, bookings }: Attendance
                 {/* Table */}
                 <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
                     {/* Header row */}
-                    <div className="grid grid-cols-[1.6fr_110px_80px_80px_80px_120px] gap-3 items-center pb-3 border-b-1 border-[#e4e7ec] sticky top-0 bg-white z-10">
-                        <div className="text-sm font-normal text-[#475467] leading-5">Class</div>
-                        <SortableHeader sortKey="date"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Date</SortableHeader>
-                        <SortableHeader sortKey="booked"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Booked</SortableHeader>
-                        <SortableHeader sortKey="attended" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Attended</SortableHeader>
-                        <SortableHeader sortKey="noShow"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">No-show</SortableHeader>
-                        <SortableHeader sortKey="rate"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[#475467] leading-5">Attendance</SortableHeader>
+                    <div className="grid grid-cols-[1.6fr_110px_80px_80px_80px_120px] gap-3 items-center pb-3 border-b-1 border-[var(--colors-border-secondary)] sticky top-0 bg-white z-10">
+                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Class</div>
+                        <SortableHeader sortKey="date"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Date</SortableHeader>
+                        <SortableHeader sortKey="booked"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Booked</SortableHeader>
+                        <SortableHeader sortKey="attended" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Attended</SortableHeader>
+                        <SortableHeader sortKey="noShow"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">No-show</SortableHeader>
+                        <SortableHeader sortKey="rate"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Attendance</SortableHeader>
                     </div>
 
                     {/* Body */}
                     {sortedRows.length === 0 ? (
-                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[#667085]">
+                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[var(--colors-text-quaternary)]">
                             No classes in this period.
                         </div>
                     ) : (
                         sortedRows.map(r => (
-                            <div key={r.classId} className="grid grid-cols-[1.6fr_110px_80px_80px_80px_120px] gap-3 items-center py-3 border-b-1 border-[#f2f4f7] last:border-b-0">
+                            <div key={r.classId} className="grid grid-cols-[1.6fr_110px_80px_80px_80px_120px] gap-3 items-center py-3 border-b-1 border-[var(--colors-bg-tertiary)] last:border-b-0">
                                 {/* Class name + time */}
                                 <div className="min-w-0">
-                                    <p className="text-sm font-medium text-[#101828] leading-5 truncate">{r.name}</p>
-                                    <p className="text-sm font-normal text-[#475467] leading-5 truncate">{r.displayTime}</p>
+                                    <p className="text-sm font-medium text-[var(--colors-text-primary)] leading-5 truncate">{r.name}</p>
+                                    <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{r.displayTime}</p>
                                 </div>
                                 {/* Date */}
-                                <div className="text-sm font-normal text-[#475467] leading-5 truncate">
+                                <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">
                                     {formatDate(r.dateISO)}
                                 </div>
                                 {/* Counts */}
-                                <div className="text-sm font-medium text-[#101828] leading-5">{r.booked}</div>
-                                <div className="text-sm font-medium text-[#101828] leading-5">{r.attended}</div>
-                                <div className="text-sm font-medium text-[#101828] leading-5">{r.noShow}</div>
+                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">{r.booked}</div>
+                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">{r.attended}</div>
+                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">{r.noShow}</div>
                                 {/* Rate badge */}
                                 <div>
                                     <RateBadge rate={r.rate} />
@@ -201,10 +201,10 @@ function SummaryCell({ label, value, accent = false }: { label: string; value: s
     return (
         <div className={cn(
             "rounded-[10px] border-1 px-4 py-3 flex flex-col gap-0.5",
-            accent ? "bg-[#f5fffa] border-[#abefc6]" : "bg-white border-[#e4e7ec]",
+            accent ? "bg-[#f5fffa] border-[#abefc6]" : "bg-white border-[var(--colors-border-secondary)]",
         )}>
-            <p className="text-xs font-normal text-[#667085] leading-4 uppercase tracking-wider">{label}</p>
-            <p className="text-lg font-semibold text-[#101828] leading-7">{value}</p>
+            <p className="text-xs font-normal text-[var(--colors-text-quaternary)] leading-4 uppercase tracking-wider">{label}</p>
+            <p className="text-lg font-semibold text-[var(--colors-text-primary)] leading-7">{value}</p>
         </div>
     );
 }

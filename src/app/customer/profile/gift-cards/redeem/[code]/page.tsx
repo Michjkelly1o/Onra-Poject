@@ -37,15 +37,15 @@ export default function RedeemGiftCardPage() {
                     type="button"
                     onClick={close}
                     aria-label="Close"
-                    className="flex size-10 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                    className="flex size-10 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
                 >
-                    <XClose className="size-5 text-[#344054]" aria-hidden />
+                    <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
             </div>
 
             <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 pb-8">
                 {!gift ? (
-                    <p className="text-base leading-6 text-[#475467]">Gift card not found.</p>
+                    <p className="text-base leading-6 text-[var(--colors-text-tertiary)]">Gift card not found.</p>
                 ) : (
                     <>
                         <GiftCardArt
@@ -55,7 +55,7 @@ export default function RedeemGiftCardPage() {
                         />
                         <div className="text-center">
                             <p className="text-lg font-semibold leading-7 text-[var(--brand-text)]">{gift.senderName} sent you a gift</p>
-                            <p className="mt-1 text-sm leading-5 text-[#475467]">{gift.message}</p>
+                            <p className="mt-1 text-sm leading-5 text-[var(--colors-text-tertiary)]">{gift.message}</p>
                         </div>
                     </>
                 )}

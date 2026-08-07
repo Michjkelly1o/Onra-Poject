@@ -15,7 +15,7 @@ export function ProductBadge({ kind, px = 64 }: { kind: PlanKind; px?: number })
     const Icon = kind === "membership" ? CreditCard02 : Package;
     return (
         <div
-            className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#e4e7ec] bg-[#fdf4ff]"
+            className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--colors-border-secondary)] bg-[#fdf4ff]"
             style={{ width: px, height: px }}
         >
             <span

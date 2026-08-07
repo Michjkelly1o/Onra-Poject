@@ -42,15 +42,15 @@ function Tile({ label, value, sub, alert, split, className }: {
     const [showTip, setShowTip] = useState(false);
     return (
         <div
-            className={cn("relative bg-white border border-[#e4e7ec] rounded-2xl p-4", className)}
+            className={cn("relative bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4", className)}
             onMouseEnter={split ? () => setShowTip(true) : undefined}
             onMouseLeave={split ? () => setShowTip(false) : undefined}
         >
-            <p className="font-normal text-sm text-[#667085] whitespace-nowrap mb-1.5">{label}</p>
-            <p className={cn("font-semibold text-xl leading-[28px] whitespace-nowrap", alert ? "text-[#b54708]" : "text-[#101828]")}>
+            <p className="font-normal text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap mb-1.5">{label}</p>
+            <p className={cn("font-semibold text-xl leading-[28px] whitespace-nowrap", alert ? "text-[#b54708]" : "text-[var(--colors-text-primary)]")}>
                 {value}
             </p>
-            {sub && <p className="font-normal text-xs text-[#667085] mt-1">{sub}</p>}
+            {sub && <p className="font-normal text-xs text-[var(--colors-text-quaternary)] mt-1">{sub}</p>}
             {split && showTip && (
                 <div
                     role="tooltip"
@@ -117,14 +117,14 @@ function BarRow({ name, value, max, color, valueLabel }: {
                 onMouseEnter={onEnter}
                 onMouseMove={onMove}
                 onMouseLeave={() => setTip(null)}
-                className="flex-1 min-w-0 truncate text-xs font-medium text-[#667085]"
+                className="flex-1 min-w-0 truncate text-xs font-medium text-[var(--colors-text-quaternary)]"
             >
                 {name}
             </span>
-            <span className="w-16 shrink-0 h-1.5 bg-[#eaecf0] rounded-full overflow-hidden">
+            <span className="w-16 shrink-0 h-1.5 bg-[var(--colors-border-tertiary)] rounded-full overflow-hidden">
                 <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
             </span>
-            <span className="w-8 shrink-0 text-right text-xs text-[#667085] tabular-nums">{valueLabel}</span>
+            <span className="w-8 shrink-0 text-right text-xs text-[var(--colors-text-quaternary)] tabular-nums">{valueLabel}</span>
             {tip && (
                 <div
                     role="tooltip"
@@ -215,8 +215,8 @@ export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProp
 
             {/* Trailing signature tile — varies by filter. */}
             {typeFilter === "" && (
-                <div className="bg-white border border-[#e4e7ec] rounded-2xl p-4">
-                    <p className="font-normal text-sm text-[#667085] whitespace-nowrap mb-2">Capacity used</p>
+                <div className="bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4">
+                    <p className="font-normal text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap mb-2">Capacity used</p>
                     <div className="flex flex-col gap-1.5">
                         {SESSION_TYPE_ORDER.map(t => (
                             <BarRow
@@ -240,8 +240,8 @@ export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProp
                 />
             )}
             {typeFilter === "recovery" && (
-                <div className="bg-white border border-[#e4e7ec] rounded-2xl p-4">
-                    <p className="font-normal text-sm text-[#667085] whitespace-nowrap mb-2">Top services</p>
+                <div className="bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4">
+                    <p className="font-normal text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap mb-2">Top services</p>
                     <div className="flex flex-col gap-1.5">
                         {m.topRecoveryServices.length > 0 ? (
                             m.topRecoveryServices.map((s, i) => (
@@ -255,7 +255,7 @@ export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProp
                                 />
                             ))
                         ) : (
-                            <p className="text-xs text-[#98a2b3] italic">No recovery bookings yet.</p>
+                            <p className="text-xs text-[var(--colors-fg-quaternary)] italic">No recovery bookings yet.</p>
                         )}
                     </div>
                 </div>

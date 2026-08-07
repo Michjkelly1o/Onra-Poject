@@ -29,6 +29,6 @@ export default function CampaignPerformanceReportPage() {
         [branches],
     );
 
-    if (!report) return <div className="px-[24px] py-[48px] text-[14px] text-[#475467]">Campaign Performance report definition is missing from the registry.</div>;
+    if (!report) return <div className="px-[24px] py-[48px] text-[14px] text-[var(--colors-text-tertiary)]">Campaign Performance report definition is missing from the registry.</div>;
     return <PivotableReportShell report={report} rows={rows as unknown as Record<string, unknown>[]} branches={branchOptions} backHref="/admin/reports" />;
 }

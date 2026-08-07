@@ -50,7 +50,7 @@ export function WaitlistClaimSheet({
                 </span>
                 <div className="flex flex-col gap-1.5">
                     <p className="text-xl font-semibold leading-[30px] text-[var(--brand-text)]">A spot is available 🎉</p>
-                    <p className="text-sm font-normal leading-5 text-[#475467]">
+                    <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
                         A spot has opened up in {className} on {when}. Claim it to confirm your booking before it&apos;s
                         offered to the next person.
                     </p>
@@ -63,7 +63,7 @@ export function WaitlistClaimSheet({
                 )}
                 {!blockedReason && expiresLabel && (
                     <div className="flex w-full items-center justify-center rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-3">
-                        <p className="text-sm font-normal leading-5 text-[#475467]">Claim within {expiresLabel}</p>
+                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">Claim within {expiresLabel}</p>
                     </div>
                 )}
                 <Button

@@ -30,11 +30,12 @@ import { useEffect, useMemo, useRef, useState, type ComponentType, type SVGProps
 import { useRouter } from "next/navigation";
 import {
     XClose, ChevronDown, Check,
-    CurrencyDollar, Grid01, Columns01, MarkerPin01, CalendarPlus01,
+    Grid01, Columns01, MarkerPin01, CalendarPlus01, Download01,
     ArrowUp, ArrowDown, ChevronSelectorVertical,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Pagination } from "@/components/ui/Pagination";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
@@ -184,7 +185,9 @@ export function PivotableReportShell({
 
     const [period, setPeriod] = useState<PeriodKey>(defaultPeriod);
     const [dimIdx, setDimIdx] = useState<number>(-1);   // -1 = None
-    const [meaIdx, setMeaIdx] = useState<number>(0);
+    // Measure is always the report's primary measure. The measure dropdown was
+    // removed (client 2026-08 — switching it changed nothing on screen).
+    const meaIdx = 0;
     const [dateFilter, setDateFilter] = useState<DateFilter | undefined>(undefined);
     const [visibleBranchIds, setVisibleBranchIds] = useState<Set<string>>(
         () => new Set(branches.map(b => b.id)),
@@ -340,11 +343,11 @@ export function PivotableReportShell({
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(backHref)}
                     aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{report.title}</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{report.title}</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -358,8 +361,8 @@ export function PivotableReportShell({
                     row. Does NOT stretch to fill the row width. */}
                 <div className="flex items-end justify-between gap-6 py-4 flex-wrap">
                     <div className="flex flex-col gap-1">
-                        <p className="text-[14px] leading-[20px] text-[#667085]">Total</p>
-                        <p className="font-semibold text-[18px] leading-[28px] text-[#101828]">{summaryText}</p>
+                        <p className="text-[14px] leading-[20px] text-[var(--colors-text-quaternary)]">Total</p>
+                        <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{summaryText}</p>
                     </div>
                     <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
                         {/* Period — no label prefix; just the selected value */}
@@ -388,19 +391,6 @@ export function PivotableReportShell({
                                 ]}
                                 value={String(dimIdx)}
                                 onChange={v => setDimIdx(Number(v))}
-                            />
-                        )}
-
-                        {/* Measure */}
-                        {report.measures.length > 1 && (
-                            <SingleSelectDropdown
-                                icon={CurrencyDollar}
-                                label=""
-                                caption="Measure"
-                                active={false}
-                                options={report.measures.map((m, i) => ({ value: String(i), label: m.label }))}
-                                value={String(meaIdx)}
-                                onChange={v => setMeaIdx(Number(v))}
                             />
                         )}
 
@@ -505,19 +495,19 @@ function SingleSelectDropdown({
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
                 className={cn(
-                    "h-[40px] bg-white rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors",
+                    "h-[40px] bg-white rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                    active ? "border-2 border-[#7ba08c]" : "border-1 border-[#d0d5dd]",
+                    active ? "border-2 border-[var(--colors-secondary-500)]" : "border-1 border-[var(--colors-border-primary)]",
                 )}>
-                <Icon className={cn("w-4 h-4", active ? "text-[#658774]" : "text-[#667085]")} />
+                <Icon className={cn("w-4 h-4", active ? "text-[var(--colors-secondary-600)]" : "text-[var(--colors-text-quaternary)]")} />
                 {label && <span>{label}:</span>}
                 <span className="text-[#182230]">{currentLabel}</span>
-                <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
+                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] transition-transform", open && "rotate-180")} />
             </button>
             {open && (
-                <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px] max-h-[360px] overflow-y-auto">
+                <div className="absolute left-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px] max-h-[360px] overflow-y-auto">
                     {caption && (
-                        <p className="px-3.5 pt-2 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">{caption}</p>
+                        <p className="px-3.5 pt-2 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">{caption}</p>
                     )}
                     {options.map(opt => (
                         <button key={opt.value} type="button"
@@ -525,11 +515,11 @@ function SingleSelectDropdown({
                             className={cn(
                                 "w-full text-left px-3.5 py-[10px] text-[14px] font-medium transition-colors flex items-center justify-between",
                                 opt.value === value
-                                    ? "bg-[#f9fafb] text-[#182230]"
-                                    : "text-[#344054] hover:bg-[#f9fafb]",
+                                    ? "bg-[var(--colors-bg-secondary)] text-[#182230]"
+                                    : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             <span>{opt.label}</span>
-                            {opt.value === value && <Check className="w-4 h-4 text-[#658774]" />}
+                            {opt.value === value && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                         </button>
                     ))}
                 </div>
@@ -567,32 +557,32 @@ function CheckListDropdown({
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(p => !p)}
                 className={cn(
-                    "h-[40px] bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors",
+                    "h-[40px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3.5 flex items-center gap-2 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors",
                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                 )}>
-                <Icon className="w-4 h-4 text-[#667085]" />
+                <Icon className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
                 <span>{label}</span>
-                <span className="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-full bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[12px] font-medium text-[#344054]">
+                <span className="inline-flex items-center justify-center min-w-[24px] h-[20px] px-1.5 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[12px] font-medium text-[var(--colors-text-secondary)]">
                     {value.size}
                 </span>
-                <ChevronDown className={cn("w-4 h-4 text-[#667085] transition-transform", open && "rotate-180")} />
+                <ChevronDown className={cn("w-4 h-4 text-[var(--colors-text-quaternary)] transition-transform", open && "rotate-180")} />
             </button>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[240px] max-h-[400px] overflow-y-auto">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[240px] max-h-[400px] overflow-y-auto">
                     {caption && (
-                        <p className="px-3.5 pt-2 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[#98a2b3] leading-4">{caption}</p>
+                        <p className="px-3.5 pt-2 pb-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--colors-fg-quaternary)] leading-4">{caption}</p>
                     )}
                     {options.map(opt => (
                         <button key={opt.value} type="button"
                             onClick={() => onToggle(opt.value)}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[#f9fafb] transition-colors">
+                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[var(--colors-bg-secondary)] transition-colors">
                             <span className={cn(
                                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                                value.has(opt.value) ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                value.has(opt.value) ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)]" : "bg-white border-[var(--colors-border-primary)]",
                             )}>
                                 {value.has(opt.value) && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                             </span>
-                            <span className="text-[14px] font-medium text-[#344054] leading-[20px] flex-1 text-left">{opt.label}</span>
+                            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-[20px] flex-1 text-left">{opt.label}</span>
                         </button>
                     ))}
                 </div>
@@ -615,18 +605,22 @@ function ExportInlineDropdown({ onExcel, onCsv }: { onExcel: () => void; onCsv: 
     }, []);
     return (
         <div ref={ref} className="relative">
-            <Button variant="primary" size="md" onClick={() => setOpen(p => !p)}
-                rightIcon={<ChevronDown className="w-4 h-4" />}>
-                Export
-            </Button>
+            {/* Icon-only trigger — matches ToolbarExport used across the other
+                modules (Download01 + hover tooltip), not a green text button. */}
+            <IconTooltip label="Export" disabled={open}>
+                <Button variant="secondary-gray" size="icon" aria-label="Export"
+                    onClick={() => setOpen(p => !p)}>
+                    <Download01 className="w-4 h-4" />
+                </Button>
+            </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[180px]">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[180px]">
                     <button type="button" onClick={() => { onExcel(); setOpen(false); }}
-                        className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         Excel (.xlsx)
                     </button>
                     <button type="button" onClick={() => { onCsv(); setOpen(false); }}
-                        className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                        className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         CSV
                     </button>
                 </div>
@@ -678,12 +672,12 @@ function ListTable({
             <div className="flex-1 min-h-0 overflow-x-auto">
                 <table className="w-full border-collapse" style={{ minWidth: columns.reduce((s, c) => s + (c.minWidth ?? 140), 0) }}>
                     <thead>
-                        <tr className="border-b border-[#e4e7ec]">
+                        <tr className="border-b border-[var(--colors-border-secondary)]">
                             {columns.map(col => (
                                 <th key={col.key}
                                     style={{ minWidth: col.minWidth ?? 140 }}
                                     className={cn(
-                                        "px-6 py-3 text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap",
+                                        "px-6 py-3 text-[12px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] whitespace-nowrap",
                                         col.kind === "currency" || col.kind === "number" || col.kind === "percent" ? "text-right" : "text-left",
                                     )}>
                                     <SortIconButton
@@ -699,12 +693,12 @@ function ListTable({
                     </thead>
                     <tbody>
                         {rows.map((r, ri) => (
-                            <tr key={ri} className="border-b border-[#e4e7ec] last:border-b-0 hover:bg-[#f9fafb] transition-colors">
+                            <tr key={ri} className="border-b border-[var(--colors-border-secondary)] last:border-b-0 hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                 {columns.map(c => (
                                     <td key={c.key}
                                         style={{ minWidth: c.minWidth ?? 140 }}
                                         className={cn(
-                                            "px-6 py-4 text-[14px] text-[#475467] leading-[20px] whitespace-nowrap",
+                                            "px-6 py-4 text-[14px] text-[var(--colors-text-tertiary)] leading-[20px] whitespace-nowrap",
                                             c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
                                         )}>
                                         {formatCell(r[c.key], c.kind)}
@@ -719,7 +713,7 @@ function ListTable({
                                 return (
                                     <td key={c.key}
                                         className={cn(
-                                            "px-6 py-4 text-[14px] font-semibold text-[#101828] whitespace-nowrap",
+                                            "px-6 py-4 text-[14px] font-semibold text-[var(--colors-text-primary)] whitespace-nowrap",
                                             c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
                                         )}>
                                         {i === 0 && total === null ? "Total" : total === null ? "" : formatCell(total, c.kind)}
@@ -741,11 +735,11 @@ function SortIconButton({ label, active, dir, align, onClick }: {
     return (
         <button type="button" onClick={onClick}
             className={cn(
-                "inline-flex items-center gap-1 hover:text-[#101828] transition-colors select-none",
+                "inline-flex items-center gap-1 hover:text-[var(--colors-text-primary)] transition-colors select-none",
                 align === "right" && "flex-row-reverse",
             )}>
             <span>{label}</span>
-            <Icon className={cn("w-3.5 h-3.5 shrink-0", active ? "text-[#475467]" : "text-[#98a2b3]")} />
+            <Icon className={cn("w-3.5 h-3.5 shrink-0", active ? "text-[var(--colors-text-tertiary)]" : "text-[var(--colors-fg-quaternary)]")} />
         </button>
     );
 }
@@ -788,11 +782,11 @@ function PivotTable({
         return NUMBER_FMT.format(Math.round(n));
     }
     function fmtDelta(d: number | null): { text: string; cls: string } {
-        if (d === null) return { text: "—", cls: "text-[#98a2b3]" };
+        if (d === null) return { text: "—", cls: "text-[var(--colors-fg-quaternary)]" };
         const abs = Math.abs(d).toFixed(0);
         if (d > 0) return { text: `▲ ${abs}%`, cls: "text-[#079455] font-semibold" };
         if (d < 0) return { text: `▼ ${abs}%`, cls: "text-[#d92d20] font-semibold" };
-        return { text: "0%", cls: "text-[#475467]" };
+        return { text: "0%", cls: "text-[var(--colors-text-tertiary)]" };
     }
 
     return (
@@ -800,19 +794,19 @@ function PivotTable({
             <div className="flex-1 min-h-0 overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>
-                        <tr className="border-b border-[#e4e7ec]">
-                            <th className="px-6 py-3 text-left text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap"
+                        <tr className="border-b border-[var(--colors-border-secondary)]">
+                            <th className="px-6 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] whitespace-nowrap"
                                 style={{ minWidth: 200 }}>
                                 {rowHeader}
                             </th>
                             {pivot.colKeys.map(ck => (
                                 <th key={ck}
-                                    className="px-6 py-3 text-right text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap"
+                                    className="px-6 py-3 text-right text-[12px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] whitespace-nowrap"
                                     style={{ minWidth: 130 }}>
                                     {periodLabelFor(ck, period, period === "month")}
                                 </th>
                             ))}
-                            <th className="px-6 py-3 text-right text-[12px] font-medium text-[#475467] leading-[18px] whitespace-nowrap"
+                            <th className="px-6 py-3 text-right text-[12px] font-medium text-[var(--colors-text-tertiary)] leading-[18px] whitespace-nowrap"
                                 style={{ minWidth: 140 }}>
                                 Total
                             </th>
@@ -820,37 +814,37 @@ function PivotTable({
                     </thead>
                     <tbody>
                         {pivot.rowKeys.map(rk => (
-                            <tr key={rk} className="border-b border-[#e4e7ec] hover:bg-[#f9fafb] transition-colors">
-                                <td className="px-6 py-4 text-[14px] text-[#344054] font-medium whitespace-nowrap">
+                            <tr key={rk} className="border-b border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <td className="px-6 py-4 text-[14px] text-[var(--colors-text-secondary)] font-medium whitespace-nowrap">
                                     {rk}
                                 </td>
                                 {pivot.colKeys.map(ck => (
                                     <td key={ck}
-                                        className="px-6 py-4 text-[14px] text-[#475467] text-right tabular-nums whitespace-nowrap">
+                                        className="px-6 py-4 text-[14px] text-[var(--colors-text-tertiary)] text-right tabular-nums whitespace-nowrap">
                                         {fmt(pivot.matrix[rk]?.[ck] ?? 0)}
                                     </td>
                                 ))}
-                                <td className="px-6 py-4 text-[14px] text-[#101828] text-right tabular-nums font-semibold whitespace-nowrap">
+                                <td className="px-6 py-4 text-[14px] text-[var(--colors-text-primary)] text-right tabular-nums font-semibold whitespace-nowrap">
                                     {fmtTotal(pivot.rowTotals[rk] ?? 0)}
                                 </td>
                             </tr>
                         ))}
                         {/* Column totals row */}
                         <tr>
-                            <td className="px-6 py-4 text-[14px] font-semibold text-[#101828]">Total</td>
+                            <td className="px-6 py-4 text-[14px] font-semibold text-[var(--colors-text-primary)]">Total</td>
                             {pivot.colKeys.map(ck => (
                                 <td key={ck}
-                                    className="px-6 py-4 text-[14px] font-semibold text-[#101828] text-right tabular-nums whitespace-nowrap">
+                                    className="px-6 py-4 text-[14px] font-semibold text-[var(--colors-text-primary)] text-right tabular-nums whitespace-nowrap">
                                     {fmtTotal(pivot.colTotals[ck] ?? 0)}
                                 </td>
                             ))}
-                            <td className="px-6 py-4 text-[14px] font-bold text-[#101828] text-right tabular-nums whitespace-nowrap">
+                            <td className="px-6 py-4 text-[14px] font-bold text-[var(--colors-text-primary)] text-right tabular-nums whitespace-nowrap">
                                 {fmtTotal(pivot.grandTotal)}
                             </td>
                         </tr>
                         {/* Period-change delta row */}
                         <tr>
-                            <td className="px-6 py-3 text-[13px] text-[#475467]">
+                            <td className="px-6 py-3 text-[13px] text-[var(--colors-text-tertiary)]">
                                 {period === "month" ? "MoM change" : period === "week" ? "WoW change" : period === "quarter" ? "QoQ change" : period === "year" ? "YoY change" : "Period change"}
                             </td>
                             {pivot.columnDeltasPct.map((d, i) => {

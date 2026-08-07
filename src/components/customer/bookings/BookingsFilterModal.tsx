@@ -70,7 +70,7 @@ export function BookingsFilterModal({
     const clearDates = () => onDraftChange({ ...draft, dateFrom: null, dateTo: null });
     const [pickerOpen, setPickerOpen] = useState(false);
     const dateFieldCls =
-        "flex w-full items-center gap-2 rounded-md border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-sm leading-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
+        "flex w-full items-center gap-2 rounded-md border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-sm leading-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50";
     const toggleInstructor = (id: string) =>
         onDraftChange({
             ...draft,
@@ -103,12 +103,12 @@ export function BookingsFilterModal({
                     onChange={(t) => onDraftChange({ ...draft, type: t })}
                 />
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Date range — filters the active tab (upcoming / past) by date */}
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium leading-5 text-[#344054]">Date range</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Date range</span>
                         {(draft.dateFrom || draft.dateTo) && (
                             <button type="button" onClick={clearDates} className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">
                                 Clear
@@ -116,19 +116,19 @@ export function BookingsFilterModal({
                         )}
                     </div>
                     <button type="button" onClick={() => setPickerOpen(true)} className={dateFieldCls}>
-                        <Calendar className="size-4 shrink-0 text-[#667085]" aria-hidden />
-                        <span className={`min-w-0 flex-1 truncate text-left ${draft.dateFrom ? "text-[var(--brand-text)]" : "text-[#667085]"}`}>
+                        <Calendar className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                        <span className={`min-w-0 flex-1 truncate text-left ${draft.dateFrom ? "text-[var(--brand-text)]" : "text-[var(--colors-text-quaternary)]"}`}>
                             {rangeLabel(draft.dateFrom, draft.dateTo)}
                         </span>
                     </button>
                 </div>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Instructor — multi-select pills + See all (>5) */}
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium leading-5 text-[#344054]">Instructor</span>
+                        <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Instructor</span>
                         {showSeeAll && (
                             <button type="button" onClick={onSeeAll} className="text-sm font-semibold leading-5 text-[var(--brand-primary)]">
                                 See all
@@ -144,22 +144,22 @@ export function BookingsFilterModal({
                                     type="button"
                                     onClick={() => toggleInstructor(i.id)}
                                     className={`flex items-center gap-3 rounded-md px-4 py-2 transition-colors ${
-                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[#e4e7ec] bg-white"
+                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)]" : "border border-[var(--colors-border-secondary)] bg-white"
                                     }`}
                                 >
                                     <InstructorAvatar imageUrl={i.imageUrl} initials={i.initials} size={20} />
-                                    <span className="text-sm font-medium leading-5 text-[#344054]">{i.name}</span>
+                                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">{i.name}</span>
                                 </button>
                             );
                         })}
                     </div>
                 </div>
 
-                <div className="h-px w-full bg-[#e4e7ec]" />
+                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
 
                 {/* Categories */}
                 <div className="flex flex-col gap-2">
-                    <span className="text-sm font-medium leading-5 text-[#344054]">Categories</span>
+                    <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Categories</span>
                     <div className="flex flex-wrap gap-2">
                         {categories.map((c) => {
                             const on = draft.categories.includes(c);
@@ -169,7 +169,7 @@ export function BookingsFilterModal({
                                     type="button"
                                     onClick={() => toggleCategory(c)}
                                     className={`rounded-lg px-4 py-2 text-sm font-medium leading-5 transition-colors ${
-                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]" : "border border-[#e4e7ec] bg-white text-[#344054]"
+                                        on ? "border-2 border-[var(--brand-primary)] bg-[var(--brand-tertiary)] text-[var(--brand-text)]" : "border border-[var(--colors-border-secondary)] bg-white text-[var(--colors-text-secondary)]"
                                     }`}
                                 >
                                     {c}

@@ -45,21 +45,21 @@ export function RoomDetailModal({ room, onClose }: {
             <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[760px] max-w-[calc(100vw-32px)] flex flex-col overflow-hidden">
                 {/* Header */}
-                <div className="flex items-center gap-3 px-6 py-4 border-b border-[#e4e7ec]">
-                    <div className="w-10 h-10 rounded-full bg-[#f2f4f7] border border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
-                        <LayoutGrid01 className="w-5 h-5 text-[#475467]" />
+                <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--colors-border-secondary)]">
+                    <div className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] border border-[rgba(0,0,0,0.08)] flex items-center justify-center shrink-0">
+                        <LayoutGrid01 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                     </div>
                     <div className="flex-1 flex flex-col">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7">{room.name}</p>
-                        <p className="text-[14px] text-[#667085] leading-5">{room.capacity} max</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">{room.name}</p>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">{room.capacity} max</p>
                     </div>
                     <button
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
-                        <XClose className="w-5 h-5 text-[#98a2b3]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-fg-quaternary)]" />
                     </button>
                 </div>
 

@@ -33,7 +33,19 @@ import type {
     CustomerPlan,
     CustomerReferral,
     IssuedGiftCard,
+    Appointment,
+    AppointmentBooking,
 } from "./_types";
+// Constraint seeds — read by the schedule assignment picker below (Phase 2
+// audit 2026-08-05) so every generated class binds to an instructor + room
+// that actually respects category / branch / shift / time-off / room fit.
+import { staff as _SEED_STAFF } from "./staff";
+import { shifts as _SEED_SHIFTS } from "./shifts";
+import { shift_assignments as _SEED_SHIFT_ASSIGNMENTS } from "./shift_assignments";
+import { blocked_times as _SEED_BLOCKED } from "./blocked_times";
+import { rooms as _SEED_ROOMS } from "./rooms";
+import { class_categories as _SEED_CATEGORIES } from "./class_categories";
+import { business_hours as _SEED_HOURS } from "./business_hours";
 
 // ─── Time anchor ────────────────────────────────────────────────────────────
 //
@@ -118,15 +130,150 @@ const PACKAGE_CREDITS: Record<typeof PACKAGES[number], number> = {
     pkg_3_class_trial:  3,
 };
 
-// Instructor + room IDs — must match the existing seeds.
-const INSTRUCTORS_BY_BRANCH: Record<string, readonly string[]> = {
-    [SOUTH]: ["staff_maya_johnson", "staff_phoenix_baker", "staff_sara_al_rashid", "staff_olivia_rhye", "staff_liam_chen"],
-    [EAST]:  ["staff_demi_wilkinson", "staff_lana_steiner", "staff_lucy_hale", "staff_candice_wu", "staff_natali_craig"],
-};
-const ROOMS_BY_BRANCH: Record<string, readonly string[]> = {
-    [SOUTH]: ["room_south_reformer", "room_south_mat", "room_south_barre"],
+// ─── Constraint-aware class assignment — schedule audit Phase 2 (2026-08-05) ──
+//
+// Replaces the old round-robin `instructors[idx % n]` / `rooms[idx % n]`, which
+// ignored category / branch / shift / time-off / room fit and produced invalid
+// rows like "Maya (Pilates/Barre) teaching Hot Yoga" — shown in the list but
+// unavailable on edit. `pickAssignment()` returns an instructor + room that:
+//   1. teaches the class's category AND belongs to its branch   (always)
+//   2. is not on time-off overlapping the slot                  (always, when any candidate is free)
+//   3. has an active shift covering the slot                    (preferred; relaxed only when no eligible
+//                                                                instructor has coverage for that fixed slot)
+//   4. uses a branch room that fits capacity + suits the
+//      template and isn't already occupied at that date/time    (always)
+// Deterministic: selection rotates on the spec index; no Math.random. A shared
+// per-slot tracker prevents an instructor OR room being double-booked.
+
+// Category NAME (as carried on TEMPLATES) → id (as carried on staff.category_ids).
+const _CAT_NAME_TO_ID: Record<string, string> =
+    Object.fromEntries(_SEED_CATEGORIES.map(c => [c.name, c.id]));
+
+// Instructor universe from the canonical staff table (active instructors only).
+const _PICK_INSTRUCTORS = _SEED_STAFF
+    .filter(s => s.role_id === "role_instructor" && s.status === "active")
+    .map(s => ({ id: s.id, branchId: s.branch_id, categoryIds: s.category_ids ?? [] }));
+
+// Rooms a CLASS may use per branch (excludes the Recovery room, reserved for
+// recovery appointments), with the preferred room per template category.
+const _CLASS_ROOMS_BY_BRANCH: Record<string, string[]> = {
+    [SOUTH]: ["room_south_reformer", "room_south_barre", "room_south_mat"],
     [EAST]:  ["room_east_studio_a"],
 };
+const _PREFERRED_ROOM: Record<string, Record<string, string>> = {
+    [SOUTH]: { Pilates: "room_south_reformer", Barre: "room_south_barre", Yoga: "room_south_mat" },
+    [EAST]:  { Pilates: "room_east_studio_a", Barre: "room_east_studio_a", Yoga: "room_east_studio_a" },
+};
+const _ROOM_CAP: Record<string, number> =
+    Object.fromEntries(_SEED_ROOMS.map(r => [r.id, r.capacity]));
+
+function _isoDayUTC(d: Date): string {
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+function _weekdayOf(iso: string): number {
+    return new Date(iso + "T00:00:00Z").getUTCDay();
+}
+function _branchClosedOn(branchId: string, iso: string): boolean {
+    const dow = _weekdayOf(iso);
+    const row = _SEED_HOURS.find(h => h.branch_id === branchId && h.day_of_week === dow);
+    return !!row?.is_closed;
+}
+/** Nudge a date forward to the branch's next OPEN day (per business hours), so
+ *  no class is ever scheduled on a day the branch is closed (e.g. East on
+ *  Sunday). South is open every day, so this is a no-op there. */
+function _nudgeToOpenDay(branchId: string, iso: string): string {
+    let d = new Date(iso + "T00:00:00Z");
+    for (let i = 0; i < 7; i++) {
+        const cur = _isoDayUTC(d);
+        if (!_branchClosedOn(branchId, cur)) return cur;
+        d = new Date(d.getTime() + MS_PER_DAY);
+    }
+    return iso;
+}
+function _shiftWindowsFor(staffId: string, dow: number): { start: string; end: string }[] {
+    const out: { start: string; end: string }[] = [];
+    for (const a of _SEED_SHIFT_ASSIGNMENTS) {
+        if (a.staff_id !== staffId || !a.days_of_week?.[dow]) continue;
+        const sh = _SEED_SHIFTS.find(s => s.id === a.shift_id);
+        if (sh && sh.status === "active") out.push({ start: sh.start_time, end: sh.end_time });
+    }
+    return out;
+}
+function _shiftCovers(staffId: string, dow: number, start: string, end: string): boolean {
+    const w = _shiftWindowsFor(staffId, dow);
+    return w.length > 0 && w.some(win => start >= win.start && end <= win.end);
+}
+function _onTimeOff(staffId: string, iso: string, start: string, end: string): boolean {
+    for (const b of _SEED_BLOCKED) {
+        if (!b.staff_ids.includes(staffId)) continue;
+        const from = b.date_from_iso ?? b.date;
+        const to   = b.date_to_iso   ?? b.date;
+        if (iso < from || iso > to) continue;
+        if (start < b.end_time && end > b.start_time) return true;
+    }
+    return false;
+}
+
+// Per-slot double-booking tracker, shared across every generator below.
+const _slotUse: Map<string, { inst: Set<string>; room: Set<string> }> = new Map();
+function _slotFor(iso: string, start: string) {
+    const key = `${iso}|${start}`;
+    let st = _slotUse.get(key);
+    if (!st) { st = { inst: new Set<string>(), room: new Set<string>() }; _slotUse.set(key, st); }
+    return st;
+}
+
+function pickAssignment(opts: {
+    branchId: string; categoryName: string; dateIso: string;
+    startTime: string; endTime: string; capacity: number; seed: number;
+    forceInstructor?: string;
+}): { instructor_id: string; room_id: string } {
+    const { branchId, categoryName, dateIso, startTime, endTime, capacity, seed, forceInstructor } = opts;
+    const catId = _CAT_NAME_TO_ID[categoryName];
+    const dow = _weekdayOf(dateIso);
+    const slot = _slotFor(dateIso, startTime);
+
+    // Category + branch valid — guaranteed non-empty (every branch has an
+    // instructor for each of its templates' categories).
+    const base = _PICK_INSTRUCTORS.filter(i => i.branchId === branchId && i.categoryIds.includes(catId));
+    const free = base.filter(i => !_onTimeOff(i.id, dateIso, startTime, endTime));
+    const shiftOk = free.filter(i => _shiftCovers(i.id, dow, startTime, endTime));
+
+    // Pick, in priority order, the first instructor in a tier who isn't already
+    // booked for this exact slot: shift-valid → time-off-free → any category+
+    // branch match. Rotating each tier by `seed` spreads the load. Falling
+    // THROUGH tiers (rather than stopping at the first non-empty one) is what
+    // prevents a double-book when a preferred tier has a single member already
+    // taken — it drops to the next tier instead of reusing them.
+    const pickFromTier = (ids: string[]): string | null => {
+        if (!ids.length) return null;
+        const off = seed % ids.length;
+        const rot = ids.slice(off).concat(ids.slice(0, off));
+        return rot.find(id => !slot.inst.has(id)) ?? null;
+    };
+    const instructor =
+        (forceInstructor && base.some(i => i.id === forceInstructor)) ? forceInstructor
+        : pickFromTier(shiftOk.map(i => i.id))
+        ?? pickFromTier(free.map(i => i.id))
+        ?? pickFromTier(base.map(i => i.id))
+        ?? base[seed % base.length].id;
+    slot.inst.add(instructor);
+
+    const branchRooms = _CLASS_ROOMS_BY_BRANCH[branchId] ?? [];
+    const preferred = _PREFERRED_ROOM[branchId]?.[categoryName];
+    const fits = (rid: string) => (_ROOM_CAP[rid] ?? 0) >= capacity;
+    let room = preferred && fits(preferred) && !slot.room.has(preferred) ? preferred : "";
+    if (!room) {
+        const off = branchRooms.length ? seed % branchRooms.length : 0;
+        const rotated = branchRooms.slice(off).concat(branchRooms.slice(0, off));
+        room = rotated.find(r => fits(r) && !slot.room.has(r))
+            ?? rotated.find(r => !slot.room.has(r))
+            ?? preferred ?? branchRooms[0] ?? "";
+    }
+    slot.room.add(room);
+
+    return { instructor_id: instructor, room_id: room };
+}
 
 const TEMPLATES = [
     { id: "tpl_reformer_pilates", name: "Reformer Pilates", category: "Pilates",
@@ -263,13 +410,20 @@ const SCHEDULE_SPECS: ScheduleSpec[] = [
 
 export const DEMO_NOW_SCHEDULES: ClassSchedule[] = SCHEDULE_SPECS.map((s, idx) => {
     const date = s.daysFromNow >= 0 ? daysAhead(s.daysFromNow) : daysAgo(-s.daysFromNow);
-    const dateIso = isoDay(date);
     const slot = SLOT_TIMES[s.slotIdx];
     const template = TEMPLATES[s.templateIdx];
-    const instructors = INSTRUCTORS_BY_BRANCH[s.branchId];
-    const rooms       = ROOMS_BY_BRANCH[s.branchId];
-    const instructor  = instructors[idx % instructors.length];
-    const room        = rooms[idx % rooms.length];
+    // Nudge off any day the branch is closed (e.g. East on Sunday), then bind a
+    // constraint-valid instructor + room (category / branch / shift / time-off).
+    const dateIso = _nudgeToOpenDay(s.branchId, isoDay(date));
+    const { instructor_id: instructor, room_id: room } = pickAssignment({
+        branchId: s.branchId,
+        categoryName: template.category,
+        dateIso,
+        startTime: slot.start,
+        endTime: slot.end,
+        capacity: s.capacity,
+        seed: idx,
+    });
 
     return {
         id: `class_sched_demo_${String(idx + 1).padStart(3, "0")}`,
@@ -304,13 +458,22 @@ export const DEMO_NOW_SCHEDULES: ClassSchedule[] = SCHEDULE_SPECS.map((s, idx) =
 // capacity) so the roster shows a checkable list. Customer offsets deliberately
 // exclude Ava (idx 1) since her bookings are curated separately.
 const MEETING_TODAY_ISO = isoDay(NOW);
+// Constraint-valid assignments for the four live-demo "today" classes. Runs
+// AFTER DEMO_NOW_SCHEDULES (above), so the shared slot tracker already knows
+// today's other bookings. Fixes the audit's two hits here: Maya was assigned
+// the 1pm/7pm classes while on vacation (Aug 3–9), and Sara was on the 2pm
+// Barre she can't teach. The 10am is pinned to Liam (his shift + time-off demo).
+const _mtg1pm  = pickAssignment({ branchId: SOUTH, categoryName: "Pilates", dateIso: MEETING_TODAY_ISO, startTime: "13:00", endTime: "14:00", capacity: 8, seed: 0 });
+const _mtg2pm  = pickAssignment({ branchId: SOUTH, categoryName: "Barre",   dateIso: MEETING_TODAY_ISO, startTime: "14:00", endTime: "15:00", capacity: 8, seed: 1 });
+const _mtg7pm  = pickAssignment({ branchId: SOUTH, categoryName: "Pilates", dateIso: MEETING_TODAY_ISO, startTime: "19:00", endTime: "20:00", capacity: 8, seed: 2 });
+const _mtg10am = pickAssignment({ branchId: SOUTH, categoryName: "Pilates", dateIso: MEETING_TODAY_ISO, startTime: "10:00", endTime: "11:00", capacity: 8, seed: 3, forceInstructor: "staff_liam_chen" });
 export const DEMO_TODAY_MEETING_SCHEDULES: ClassSchedule[] = [
     {
         id: "class_sched_demo_meeting_1pm",
         template_id: "tpl_reformer_pilates",
         branch_id: SOUTH,
-        room_id: "room_south_reformer",
-        instructor_id: "staff_maya_johnson",
+        room_id: _mtg1pm.room_id,
+        instructor_id: _mtg1pm.instructor_id,
         date_iso: MEETING_TODAY_ISO,
         start_time: "13:00",
         end_time: "14:00",
@@ -328,8 +491,8 @@ export const DEMO_TODAY_MEETING_SCHEDULES: ClassSchedule[] = [
         id: "class_sched_demo_meeting_2pm",
         template_id: "tpl_barre",
         branch_id: SOUTH,
-        room_id: "room_south_barre",
-        instructor_id: "staff_sara_al_rashid",
+        room_id: _mtg2pm.room_id,
+        instructor_id: _mtg2pm.instructor_id,
         date_iso: MEETING_TODAY_ISO,
         start_time: "14:00",
         end_time: "15:00",
@@ -350,8 +513,8 @@ export const DEMO_TODAY_MEETING_SCHEDULES: ClassSchedule[] = [
         id: "class_sched_demo_meeting_7pm",
         template_id: "tpl_reformer_pilates",
         branch_id: SOUTH,
-        room_id: "room_south_reformer",
-        instructor_id: "staff_maya_johnson",
+        room_id: _mtg7pm.room_id,
+        instructor_id: _mtg7pm.instructor_id,
         date_iso: MEETING_TODAY_ISO,
         start_time: "19:00",
         end_time: "20:00",
@@ -372,8 +535,8 @@ export const DEMO_TODAY_MEETING_SCHEDULES: ClassSchedule[] = [
         id: "class_sched_demo_today_liam_10am",
         template_id: "tpl_reformer_pilates",
         branch_id: SOUTH,
-        room_id: "room_south_reformer",
-        instructor_id: "staff_liam_chen",
+        room_id: _mtg10am.room_id,
+        instructor_id: _mtg10am.instructor_id,
         date_iso: MEETING_TODAY_ISO,
         start_time: "10:00",
         end_time: "11:00",
@@ -404,6 +567,49 @@ export const DEMO_TODAY_MEETING_BOOKINGS: ClassBooking[] = DEMO_TODAY_MEETING_SC
         booking_source: "customer_portal",
     }));
 });
+
+// Today's PRIVATE + RECOVERY appointments — so the dashboard's Today session
+// list (and the schedule day view) show a Private and a Recovery card, not just
+// classes. Each is booked with one customer so it clears the today-feed's
+// `booked > 0` gate. Reuses the same known-good SOUTH room/instructor as the
+// meeting classes (client 2026-08-05). No "1/1 (FULL)" is shown — the card hides
+// the occupancy read-out for 1-on-1 appointments.
+export const DEMO_TODAY_APPOINTMENTS: Appointment[] = [
+    {
+        id: "appt_demo_today_private",
+        service_id: "svc_private_reformer",
+        branch_id: SOUTH,
+        room_id: "room_south_reformer",
+        instructor_id: "staff_maya_johnson",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "16:00",
+        end_time: "17:00",
+        display_time: "16:00 – 17:00",
+        capacity: 1,
+        booked: 1,
+        status: "Upcoming",
+        created_at: isoStamp(daysAgo(2)),
+    },
+    {
+        id: "appt_demo_today_recovery",
+        service_id: "svc_massage",
+        branch_id: SOUTH,
+        room_id: "room_south_recovery",
+        instructor_id: "staff_maya_johnson",
+        date_iso: MEETING_TODAY_ISO,
+        start_time: "17:30",
+        end_time: "18:30",
+        display_time: "17:30 – 18:30",
+        capacity: 1,
+        booked: 1,
+        status: "Upcoming",
+        created_at: isoStamp(daysAgo(2)),
+    },
+];
+export const DEMO_TODAY_APPOINTMENT_BOOKINGS: AppointmentBooking[] = [
+    { id: "appt_book_demo_today_private", appointment_id: "appt_demo_today_private", customer_id: "cust_ahmed_zayn", status: "Booked", booked_at: isoStamp(daysAgo(2)) },
+    { id: "appt_book_demo_today_recovery", appointment_id: "appt_demo_today_recovery", customer_id: "cust_bosa_ahmed", status: "Booked", booked_at: isoStamp(daysAgo(2)) },
+];
 
 // ─── Bookings ───────────────────────────────────────────────────────────────
 //
@@ -1012,6 +1218,16 @@ export const DEMO_NOW_LIAM_SCHEDULES: ClassSchedule[] = LIAM_SPECS.map(spec => {
         waitlist_enabled: true,
     };
 });
+
+// Liam's classes are fixed to him (they back his earnings demo) and bypass the
+// picker — register them in the shared slot tracker so later generators
+// (waitlist) don't double-book Liam at the same date/time.
+for (const s of DEMO_NOW_LIAM_SCHEDULES) {
+    if (s.status === "Cancelled") continue;
+    const st = _slotFor(s.date_iso, s.start_time);
+    st.inst.add(s.instructor_id);
+    st.room.add(s.room_id);
+}
 
 /** Booking rows backing Liam's rich classes — generated off the spec's
  *  per-state arrays. The booking generator emits one row per customer
@@ -1692,14 +1908,21 @@ export const DEMO_NOW_WAITLIST_SCHEDULES: ClassSchedule[] = WAITLIST_SPECS.map((
     const today = daysAhead(0);
     const slot = SLOT_TIMES[w.slotIdx];
     const template = TEMPLATES[w.templateIdx];
-    const instructors = INSTRUCTORS_BY_BRANCH[SOUTH];
-    const rooms       = ROOMS_BY_BRANCH[SOUTH];
+    const { instructor_id, room_id } = pickAssignment({
+        branchId: SOUTH,
+        categoryName: template.category,
+        dateIso: isoDay(today),
+        startTime: slot.start,
+        endTime: slot.end,
+        capacity: w.capacity,
+        seed: idx,
+    });
     return {
         id: `class_sched_wl_demo_${String(idx + 1).padStart(3, "0")}`,
         template_id: template.id,
         branch_id: SOUTH,
-        room_id: rooms[idx % rooms.length],
-        instructor_id: instructors[idx % instructors.length],
+        room_id,
+        instructor_id,
         date_iso: isoDay(today),
         start_time: slot.start,
         end_time: slot.end,

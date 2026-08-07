@@ -76,16 +76,16 @@ function ReferralFilterPanel({ open, onClose, applied, onApply }: {
 
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
-                <div className="flex items-center px-6 border-b border-[#e4e7ec] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
-                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
+                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date range</p>
                         <div className="grid grid-cols-2 gap-3">
                             <DatePicker value={pending.dateStart} placeholder="Start date"
                                 onChange={v => setPending(p => ({
@@ -98,7 +98,7 @@ function ReferralFilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
                 </div>
-                <div className="shrink-0 border-t border-[#e4e7ec] px-6 py-4 flex items-center justify-between gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" disabled={!hasAny}
                         onClick={() => { setPending(EMPTY_REFERRAL_FILTER); onApply(EMPTY_REFERRAL_FILTER); onClose(); }}>Clear filter</Button>
                     <Button variant="primary" disabled={!hasAny}
@@ -116,20 +116,20 @@ function EmptyBlock({ title, subtitle }: { title: string; subtitle: string }) {
     return (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
+                <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
-                        <div className="bg-[#f9fafb] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
+                        <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
+                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
-                        <div className="bg-[#f2f4f7] h-[13px] w-[82px] rounded-full" />
-                        <div className="bg-[#f2f4f7] h-[13px] w-full rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-[82px] rounded-full" />
+                        <div className="bg-[var(--colors-bg-tertiary)] h-[13px] w-full rounded-full" />
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -264,22 +264,22 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
 
             {/* Metric cards */}
             <div className="shrink-0 px-6 pt-5 pb-4 flex gap-4">
-                <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
-                    <p className="text-[14px] text-[#667085]">Referral code</p>
+                <div className="flex-1 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6 flex flex-col gap-2">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Referral code</p>
                     <div className="flex items-center gap-2">
-                        <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">{referralCode}</p>
+                        <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-[32px]">{referralCode}</p>
                         {customer?.referralCode && referralProgramActive && (
                             <button type="button" onClick={copyCode}
-                                className="w-7 h-7 flex items-center justify-center rounded-[6px] hover:bg-[#f2f4f7] transition-colors"
+                                className="w-7 h-7 flex items-center justify-center rounded-[6px] hover:bg-[var(--colors-bg-tertiary)] transition-colors"
                                 title="Copy referral code">
-                                <Copy01 className="w-5 h-5 text-[#667085]" />
+                                <Copy01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                             </button>
                         )}
                     </div>
                 </div>
-                <div className="flex-1 bg-white border-1 border-[#e4e7ec] rounded-[16px] p-6 flex flex-col gap-2">
-                    <p className="text-[14px] text-[#667085]">Total referrals</p>
-                    <p className="text-[24px] font-semibold text-[#101828] leading-[32px]">
+                <div className="flex-1 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-6 flex flex-col gap-2">
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total referrals</p>
+                    <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-[32px]">
                         {/* "N / cap" when a per-member cap is set, just "N"
                             when the cap is 0 (treat as unlimited). */}
                         {maxReferralsPerMember > 0
@@ -294,23 +294,23 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                     (Class credit | Account credit) sit below in a
                     `grid-cols-2 gap-4` layout with 14px muted labels +
                     16px medium values. */}
-                <div className="flex-[1.5] min-w-0 bg-white border-1 border-[#e4e7ec] rounded-[12px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <div className="flex-[1.5] min-w-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     {/* Title style matches sibling card labels ("Referral
                         code", "Total referrals") — 14px muted `#667085`,
                         no font-medium. Renamed from "Rewards earned" (Jul
                         2026) — Account credit now shows the LIVE spendable
                         balance (nets POS debits), so "earned" was misleading. */}
-                    <p className="text-[14px] text-[#667085]">Referral benefits</p>
+                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Referral benefits</p>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Class credit earned</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Class credit earned</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                 {totalClassCredits} {totalClassCredits === 1 ? "credit" : "credits"}
                             </p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[#667085]">Account credit available</p>
-                            <p className="text-[16px] font-medium text-[#101828]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Account credit available</p>
+                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                 AED {spendableAccountCreditAed.toLocaleString("en-US")}
                             </p>
                         </div>
@@ -360,17 +360,17 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                             </thead>
                             <tbody>
                                 {paged.map(r => (
-                                    <tr key={r.id} className="hover:bg-[#f9fafb] transition-colors">
+                                    <tr key={r.id} className="hover:bg-[var(--colors-bg-secondary)] transition-colors">
                                         <td className={TD}>
                                             <div className="flex items-center gap-3">
                                                 <TableAvatar initials={nameInitials(r.referredName)} size={40} />
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className="text-[14px] font-medium text-[#101828]">{r.referredName}</span>
-                                                    <span className="text-[13px] text-[#475467]">{r.referredEmail}</span>
+                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.referredName}</span>
+                                                    <span className="text-[13px] text-[var(--colors-text-tertiary)]">{r.referredEmail}</span>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className={cn(TD, "text-[#667085]")}>
+                                        <td className={cn(TD, "text-[var(--colors-text-quaternary)]")}>
                                             <div className="flex flex-col gap-0.5">
                                                 {/* v56 — type-aware Benefit cell. Class-credit rows
                                                     read "N credit(s)"; account-credit rows read
@@ -394,8 +394,8 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className={cn(TD, "text-[#667085] whitespace-nowrap")}>{fmtDateTime(r.referredAtISO)}</td>
-                                        <td className={cn(TD, "text-[#667085] whitespace-nowrap")}>
+                                        <td className={cn(TD, "text-[var(--colors-text-quaternary)] whitespace-nowrap")}>{fmtDateTime(r.referredAtISO)}</td>
+                                        <td className={cn(TD, "text-[var(--colors-text-quaternary)] whitespace-nowrap")}>
                                             {r.expiresAtISO ? fmtDateTime(r.expiresAtISO) : "—"}
                                         </td>
                                     </tr>

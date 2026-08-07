@@ -156,10 +156,10 @@ export function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry;
     return (
         <div ref={ref} className="relative">
             <button ref={buttonRef} type="button" onClick={() => setOpen(p => !p)}
-                className="h-10 flex items-center gap-1.5 px-[14px] border-r border-[#d0d5dd] text-[16px] text-[#101828] hover:bg-[#f9fafb] transition-colors">
+                className="h-10 flex items-center gap-1.5 px-[14px] border-r border-[var(--colors-border-primary)] text-[16px] text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                 <span className="text-[16px]">{value.flag}</span>
                 {value.dial}
-                <ChevronDown className="w-4 h-4 text-[#667085]" />
+                <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
             </button>
             {open && anchor && typeof document !== "undefined" && createPortal(
                 <div
@@ -171,25 +171,25 @@ export function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry;
                         width: MENU_WIDTH,
                         maxHeight: MENU_HEIGHT,
                     }}
-                    className="z-[1000] bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden flex flex-col"
+                    className="z-[1000] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden flex flex-col"
                 >
-                    <div className="p-2 border-b border-[#e4e7ec]">
+                    <div className="p-2 border-b border-[var(--colors-border-secondary)]">
                         <div className="relative">
-                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
+                            <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)] pointer-events-none" />
                             <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
                                 placeholder="Search country or code"
-                                className="w-full h-9 pl-9 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]" />
+                                className="w-full h-9 pl-9 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)]" />
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto py-1">
                         {filtered.map(c => (
                             <button key={c.code} type="button"
                                 onClick={() => { onChange(c); setOpen(false); setSearch(""); }}
-                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[#f9fafb] text-left">
+                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-[var(--colors-bg-secondary)] text-left">
                                 <span className="text-[16px]">{c.flag}</span>
-                                <span className="flex-1 text-[14px] text-[#344054] truncate">{c.name}</span>
-                                <span className="text-[13px] text-[#667085]">{c.dial}</span>
-                                {c.code === value.code && <Check className="w-4 h-4 text-[#658774]" />}
+                                <span className="flex-1 text-[14px] text-[var(--colors-text-secondary)] truncate">{c.name}</span>
+                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">{c.dial}</span>
+                                {c.code === value.code && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
                             </button>
                         ))}
                     </div>
@@ -210,14 +210,14 @@ function StepItem({ step, current, total }: { step: { n: number; label: string }
         <div className={cn("flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full", active && "bg-[#f5fffa]")}>
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active   ? "bg-[#658774] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
-                    : complete ? "bg-[#658774] text-white"
-                    : "bg-[#f2f4f7] border-1 border-[#e4e7ec] text-[#98a2b3]")}>
+                    active   ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    : complete ? "bg-[var(--colors-secondary-600)] text-white"
+                    : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]")}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
-                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[#e4e7ec] rounded-[2px]" />}
+                {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[#667085]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {step.label}
             </span>
         </div>
@@ -226,8 +226,8 @@ function StepItem({ step, current, total }: { step: { n: number; label: string }
 
 // ─── Input field helpers ──────────────────────────────────────────────────────
 
-const inputCls = "h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
-const labelCls = "text-[14px] font-medium text-[#344054]";
+const inputCls = "h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white";
+const labelCls = "text-[14px] font-medium text-[var(--colors-text-secondary)]";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
@@ -394,7 +394,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
     if (isEditing && !editing) {
         return (
             <div className="h-screen flex flex-col items-center justify-center gap-4 bg-white">
-                <p className="text-[16px] text-[#667085]">This customer could not be found.</p>
+                <p className="text-[16px] text-[var(--colors-text-quaternary)]">This customer could not be found.</p>
                 <Button variant="secondary-gray" size="md" onClick={() => router.push("/admin/customers")}>
                     Back to customers
                 </Button>
@@ -458,11 +458,11 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
             {/* Header */}
             <div className="shrink-0 h-[72px] flex items-center px-6 gap-3">
                 <button type="button" onClick={() => router.back()}
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors">
-                    <XClose className="w-5 h-5 text-[#667085]" />
+                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <p className="text-[20px] font-semibold text-[#101828]">
+                    <p className="text-[20px] font-semibold text-[var(--colors-text-primary)]">
                         {isEditing ? "Edit customer" : "Add customer"}
                     </p>
                     <Breadcrumbs className="p-0 text-[12px]" />
@@ -477,7 +477,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                 </div>
 
                 {/* Form card */}
-                <div className="flex-1 max-w-[628px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <div className="flex-1 max-w-[628px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                     <div className="flex-1 overflow-y-auto scrollbar-hide p-6 flex flex-col gap-8">
                         {/* ─── Customer details ─── */}
                         <div className="flex flex-col gap-4">
@@ -514,12 +514,12 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                             </Field>
 
                             <Field label="Phone number">
-                                <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                     <PhoneCountryDropdown value={phoneCountry} onChange={setPhoneCountry} />
                                     <input type="tel" value={phone}
                                         onChange={e => setPhone(e.target.value.replace(/\D/g, ""))}
                                         placeholder="Phone number..."
-                                        className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent rounded-r-[8px]" />
+                                        className="flex-1 h-10 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-transparent rounded-r-[8px]" />
                                 </div>
                             </Field>
 
@@ -615,7 +615,7 @@ export function CustomerFormPage({ editingId }: { editingId?: string } = {}) {
                             <Field label="Street address">
                                 <textarea value={streetAddress} onChange={e => setStreetAddress(e.target.value)}
                                     rows={3} placeholder="Enter street address..."
-                                    className="w-full px-[14px] py-3 border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none" />
+                                    className="w-full px-[14px] py-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-none" />
                             </Field>
                         </div>
 

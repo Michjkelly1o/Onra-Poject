@@ -72,37 +72,37 @@ export function AddWidgetModal({
             {/* Modal — centered on screen (client Jul 2026, previously
                 rendered as a bottom sheet). Rounded on all corners; drop
                 shadow centered rather than bottom-anchored. */}
-            <div className="relative w-[80vw] max-w-[1080px] h-[600px] max-h-[calc(100vh-48px)] bg-white rounded-[16px] border border-[#e4e7ec] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+            <div className="relative w-[80vw] max-w-[1080px] h-[600px] max-h-[calc(100vh-48px)] bg-white rounded-[16px] border border-[var(--colors-border-secondary)] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
 
                 {/* Header */}
-                <div className="flex items-center gap-2 px-6 py-4 border-b border-[#e4e7ec] shrink-0">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Add widget</p>
+                <div className="flex items-center gap-2 px-6 py-4 border-b border-[var(--colors-border-secondary)] shrink-0">
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Add widget</p>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[#f9fafb] transition-colors"
+                        className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
-                        <XClose className="w-5 h-5 text-[#667085]" />
+                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
 
                 {/* Search */}
                 <div className="px-6 py-4 shrink-0">
                     <div className="relative">
-                        <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085]" />
+                        <SearchMd className="absolute left-[14px] top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--colors-text-quaternary)]" />
                         <input
                             ref={inputRef}
                             type="text"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder="Search..."
-                            className="w-full h-[44px] pl-[42px] pr-4 border border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all"
+                            className="w-full h-[44px] pl-[42px] pr-4 border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all"
                         />
                     </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="px-6 shrink-0 border-b border-[#e4e7ec]">
+                <div className="px-6 shrink-0 border-b border-[var(--colors-border-secondary)]">
                     <div className="flex gap-3">
                         {TABS.map(tab => (
                             <button
@@ -112,8 +112,8 @@ export function AddWidgetModal({
                                 className={cn(
                                     "h-8 pb-3 px-1 text-[14px] font-semibold transition-colors shrink-0",
                                     activeTab === tab
-                                        ? "border-b-2 border-[#101828] text-[#101828]"
-                                        : "text-[#667085] hover:text-[#344054]",
+                                        ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]"
+                                        : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
                                 )}
                             >
                                 {tab}
@@ -126,12 +126,12 @@ export function AddWidgetModal({
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6">
                     {visible.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 gap-2">
-                            <p className="text-[15px] font-medium text-[#344054]">
+                            <p className="text-[15px] font-medium text-[var(--colors-text-secondary)]">
                                 {search.trim()
                                     ? "No widgets found"
                                     : `${activeTab} widgets coming soon`}
                             </p>
-                            <p className="text-[14px] text-[#667085]">
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">
                                 {search.trim()
                                     ? "Try a different search term or category"
                                     : "This section is scheduled for an upcoming release."}

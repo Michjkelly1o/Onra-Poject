@@ -208,13 +208,13 @@ export function LineChart({ series, unit, valueLabel }: Props) {
 
             {hp && (
                 <div
-                    className="absolute top-1.5 bg-white border border-[#e4e7ec] rounded-lg shadow-[0_4px_12px_rgba(16,24,40,0.1)] px-2.5 py-2 text-[12px] pointer-events-none"
+                    className="absolute top-1.5 bg-white border border-[var(--colors-border-secondary)] rounded-lg shadow-[0_4px_12px_rgba(16,24,40,0.1)] px-2.5 py-2 text-[12px] pointer-events-none"
                     style={{
                         left: `min(${(hp.px / W) * 100}%, calc(100% - 130px))`,
                     }}
                 >
-                    <div className="font-semibold text-[#101828]">{hp.label}</div>
-                    <div className="text-[#667085]">
+                    <div className="font-semibold text-[var(--colors-text-primary)]">{hp.label}</div>
+                    <div className="text-[var(--colors-text-quaternary)]">
                         {valueLabel ?? "Value"} {fmt(hp.value, unit)}
                     </div>
                 </div>

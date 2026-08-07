@@ -68,7 +68,7 @@ function CardShell({
     return (
         <div
             className={cn(
-                "bg-white border border-[#e4e7ec] rounded-xl p-4",
+                "bg-white border border-[var(--colors-border-secondary)] rounded-xl p-4",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                 "flex flex-col gap-3",
                 className,
@@ -83,7 +83,7 @@ function StepBadge({ step }: { step: number }) {
     // Green pill per client 2026-07-23 migration UI review (Figma 214:260316).
     // utility-brand-50 bg / utility-brand-200 border / utility-brand-700 text.
     return (
-        <div className="self-start inline-flex items-center px-2 py-0.5 rounded-full bg-[#e9fff3] border border-[#c4edd6] text-[12px] font-medium leading-[18px] text-[#4f6e5d]">
+        <div className="self-start inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--colors-secondary-50)] border border-[var(--colors-secondary-200)] text-[12px] font-medium leading-[18px] text-[#4f6e5d]">
             {step} of 4 steps
         </div>
     );
@@ -91,7 +91,7 @@ function StepBadge({ step }: { step: number }) {
 
 function CardTitle({ children }: { children: React.ReactNode }) {
     return (
-        <h4 className="text-[16px] font-semibold text-[#101828] leading-6">
+        <h4 className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">
             {children}
         </h4>
     );
@@ -99,7 +99,7 @@ function CardTitle({ children }: { children: React.ReactNode }) {
 
 function CardBody({ children }: { children: React.ReactNode }) {
     return (
-        <p className="text-[13px] text-[#475467] leading-5">{children}</p>
+        <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-5">{children}</p>
     );
 }
 
@@ -116,9 +116,9 @@ function PrimaryButton({
             onClick={onClick}
             className={cn(
                 "h-9 px-3 inline-flex items-center gap-2 rounded-md",
-                "bg-[#c4edd6] text-[#0c2d34] text-[13px] font-medium border-1 border-white/[0.12]",
+                "bg-[var(--colors-secondary-200)] text-[var(--colors-brand-900)] text-[13px] font-medium border-1 border-white/[0.12]",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                "hover:bg-[#aad4bd] transition-colors",
+                "hover:bg-[var(--colors-secondary-300)] transition-colors",
             )}
         >
             {children}
@@ -139,9 +139,9 @@ function SecondaryButton({
             onClick={onClick}
             className={cn(
                 "h-9 px-3 inline-flex items-center gap-2 rounded-md",
-                "bg-white text-[#344054] text-[13px] font-medium border border-[#d0d5dd]",
+                "bg-white text-[var(--colors-text-secondary)] text-[13px] font-medium border border-[var(--colors-border-primary)]",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
-                "hover:bg-[#f9fafb] transition-colors",
+                "hover:bg-[var(--colors-bg-secondary)] transition-colors",
             )}
         >
             {children}
@@ -169,8 +169,8 @@ function Tile({
 }) {
     const color = tone ? TONE_COLOR[tone] : "#101828";
     return (
-        <div className="rounded-lg bg-[#f9fafb] border border-[#eaecf0] p-3 flex flex-col gap-1">
-            <div className="text-[12px] text-[#667085] leading-4">{label}</div>
+        <div className="rounded-lg bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-tertiary)] p-3 flex flex-col gap-1">
+            <div className="text-[12px] text-[var(--colors-text-quaternary)] leading-4">{label}</div>
             <div
                 className="text-[20px] font-semibold leading-7 tabular-nums"
                 style={{ color }}
@@ -241,19 +241,19 @@ function MappingDropdown({
                     "text-left text-[16px] leading-6",
                     needsReview
                         ? "border border-[#fec84b] text-[#dc6803]"
-                        : "border border-[#d0d5dd] text-[#101828]",
+                        : "border border-[var(--colors-border-primary)] text-[var(--colors-text-primary)]",
                 )}
                 aria-haspopup="listbox"
                 aria-expanded={open}
             >
                 <span className="flex-1 min-w-0 truncate">{selectedLabel}</span>
-                <Chevron className="size-5 shrink-0 text-[#667085]" />
+                <Chevron className="size-5 shrink-0 text-[var(--colors-text-quaternary)]" />
             </button>
             {open && (
                 <div
                     className={cn(
                         "absolute left-0 right-0 top-full mt-1 z-40",
-                        "bg-white border border-[#e4e7ec] rounded-md py-1",
+                        "bg-white border border-[var(--colors-border-secondary)] rounded-md py-1",
                         "shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]",
                         "max-h-[280px] overflow-y-auto",
                     )}
@@ -303,14 +303,14 @@ function DropdownItem({
             <span
                 className={cn(
                     "flex-1 flex items-center gap-2 rounded-md py-2.5 pl-2 pr-2.5",
-                    selected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]",
+                    selected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
                 )}
             >
-                <span className="flex-1 text-left text-[14px] leading-5 font-medium text-[#344054]">
+                <span className="flex-1 text-left text-[14px] leading-5 font-medium text-[var(--colors-text-secondary)]">
                     {label}
                 </span>
                 {selected && (
-                    <Check className="size-5 shrink-0 text-[#344054]" />
+                    <Check className="size-5 shrink-0 text-[var(--colors-text-secondary)]" />
                 )}
             </span>
         </button>
@@ -344,7 +344,7 @@ function MappingIntroBubble({
     return (
         <div
             className={cn(
-                "bg-white border border-[#e4e7ec]",
+                "bg-white border border-[var(--colors-border-secondary)]",
                 "rounded-tl-[4px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px]",
                 "p-4 flex flex-col gap-4 max-w-[612px] min-h-[56px]",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
@@ -353,10 +353,10 @@ function MappingIntroBubble({
             <div className="flex flex-col gap-2 w-full">
                 <StepBadge step={step} />
                 <div className="flex flex-col gap-1 w-full">
-                    <h4 className="text-[16px] font-semibold leading-6 text-[#101828]">
+                    <h4 className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)]">
                         Review &amp; mapping
                     </h4>
-                    <div className="flex flex-col gap-3 text-[14px] leading-5 text-[#344054]">
+                    <div className="flex flex-col gap-3 text-[14px] leading-5 text-[var(--colors-text-secondary)]">
                         {needsReview > 0 ? (
                             <p>
                                 I&rsquo;ve mapped {mappedCount} of {totalCount} columns automatically. What would you like to do with the {needsReview} unmatched column{needsReview === 1 ? "" : "s"} (
@@ -430,7 +430,7 @@ function MappingSummaryBubble({
     return (
         <div
             className={cn(
-                "bg-white border border-[#e4e7ec]",
+                "bg-white border border-[var(--colors-border-secondary)]",
                 "rounded-tl-[4px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px]",
                 "p-4 flex flex-col gap-4 max-w-[612px] min-h-[56px]",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
@@ -439,10 +439,10 @@ function MappingSummaryBubble({
             <div className="flex flex-col gap-2 w-full">
                 <StepBadge step={step} />
                 <div className="flex flex-col gap-1 w-full">
-                    <h4 className="text-[16px] font-semibold leading-6 text-[#101828]">
+                    <h4 className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)]">
                         Mapping summary
                     </h4>
-                    <p className="text-[14px] leading-5 text-[#344054]">
+                    <p className="text-[14px] leading-5 text-[var(--colors-text-secondary)]">
                         Everything looks great. Your columns have been mapped successfully and the data is ready for import. Would you like to start the import now?
                     </p>
                 </div>
@@ -450,7 +450,7 @@ function MappingSummaryBubble({
             <button
                 type="button"
                 onClick={handleDownload}
-                className="self-start inline-flex items-center gap-1.5 text-[14px] font-semibold leading-5 text-[#475467] hover:text-[#344054] transition-colors"
+                className="self-start inline-flex items-center gap-1.5 text-[14px] font-semibold leading-5 text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)] transition-colors"
             >
                 <Download01 className="size-5 shrink-0" />
                 Download pre-import report
@@ -470,8 +470,8 @@ function SummaryMetricTile({
     color: string;
 }) {
     return (
-        <div className="flex-1 min-w-0 bg-white border border-[#e4e7ec] rounded-2xl p-4 flex flex-col gap-1">
-            <div className="text-[14px] leading-5 text-[#667085]">
+        <div className="flex-1 min-w-0 bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4 flex flex-col gap-1">
+            <div className="text-[14px] leading-5 text-[var(--colors-text-quaternary)]">
                 {label}
             </div>
             <div
@@ -499,14 +499,14 @@ function MappingSummaryPanel({
     return (
         <div
             className={cn(
-                "bg-white border border-[#e4e7ec] rounded-2xl p-4",
+                "bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4",
                 "flex flex-col gap-4 max-w-[612px] w-full",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
             )}
         >
             <div className="flex items-center gap-4 w-full">
                 <div className="flex-1 min-w-0">
-                    <h4 className="text-[16px] font-semibold leading-6 text-[#101828]">
+                    <h4 className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)]">
                         Summary
                     </h4>
                 </div>
@@ -521,14 +521,14 @@ function MappingSummaryPanel({
                 <SummaryMetricTile label="Duplicate rows" value={t.duplicate} color={duplicateColor} />
             </div>
             {data.fields.length > 0 && (
-                <div className="bg-white border border-[#e4e7ec] rounded-xl overflow-hidden max-h-[320px] overflow-y-auto">
+                <div className="bg-white border border-[var(--colors-border-secondary)] rounded-xl overflow-hidden max-h-[320px] overflow-y-auto">
                     <table className="w-full border-collapse">
                         <thead>
                             <tr>
-                                <th className="text-left bg-[#f9fafb] border-b border-[#e4e7ec] px-6 py-3 text-[12px] font-medium leading-[18px] text-[#475467]">
+                                <th className="text-left bg-[var(--colors-bg-secondary)] border-b border-[var(--colors-border-secondary)] px-6 py-3 text-[12px] font-medium leading-[18px] text-[var(--colors-text-tertiary)]">
                                     Incoming fields
                                 </th>
-                                <th className="text-left bg-[#f9fafb] border-b border-[#e4e7ec] px-6 py-3 text-[12px] font-medium leading-[18px] text-[#475467]">
+                                <th className="text-left bg-[var(--colors-bg-secondary)] border-b border-[var(--colors-border-secondary)] px-6 py-3 text-[12px] font-medium leading-[18px] text-[var(--colors-text-tertiary)]">
                                     Onra fields
                                 </th>
                             </tr>
@@ -537,9 +537,9 @@ function MappingSummaryPanel({
                             {data.fields.map((f, i) => (
                                 <tr
                                     key={`${f.source}-${i}`}
-                                    className="border-b border-[#e4e7ec] last:border-b-0"
+                                    className="border-b border-[var(--colors-border-secondary)] last:border-b-0"
                                 >
-                                    <td className="px-6 py-3 text-[14px] leading-5 text-[#475467] align-middle whitespace-nowrap">
+                                    <td className="px-6 py-3 text-[14px] leading-5 text-[var(--colors-text-tertiary)] align-middle whitespace-nowrap">
                                         {f.source}
                                     </td>
                                     <td className="px-6 py-3 align-middle">
@@ -548,7 +548,7 @@ function MappingSummaryPanel({
                                                 {f.target}
                                             </span>
                                         ) : (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#f9fafb] border border-[#e4e7ec] text-[12px] font-medium leading-[18px] text-[#344054]">
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[var(--colors-bg-secondary)] border border-[var(--colors-border-secondary)] text-[12px] font-medium leading-[18px] text-[var(--colors-text-secondary)]">
                                                 Skipped this column
                                             </span>
                                         )}
@@ -579,7 +579,7 @@ function BranchMissingBubble({
     return (
         <div
             className={cn(
-                "bg-white border border-[#e4e7ec]",
+                "bg-white border border-[var(--colors-border-secondary)]",
                 "rounded-tl-[4px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px]",
                 "p-4 flex flex-col gap-2 max-w-[612px]",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
@@ -587,19 +587,19 @@ function BranchMissingBubble({
         >
             {variant === "no-column" ? (
                 <>
-                    <p className="text-[14px] leading-5 text-[#344054]">
+                    <p className="text-[14px] leading-5 text-[var(--colors-text-secondary)]">
                         I couldn&apos;t find a branch column in your file.
                     </p>
-                    <p className="text-[14px] leading-5 text-[#344054]">
+                    <p className="text-[14px] leading-5 text-[var(--colors-text-secondary)]">
                         To continue, select a branch for all imported records.
                     </p>
                 </>
             ) : (
                 <>
-                    <p className="text-[14px] leading-5 text-[#344054]">
+                    <p className="text-[14px] leading-5 text-[var(--colors-text-secondary)]">
                         I couldn&apos;t find a branch column in your file, and no studio branches have been created yet.
                     </p>
-                    <p className="text-[14px] leading-5 text-[#344054]">
+                    <p className="text-[14px] leading-5 text-[var(--colors-text-secondary)]">
                         Create a branch first to continue assigning imported records.
                     </p>
                 </>
@@ -621,23 +621,23 @@ function BranchDetectedBubble({
     return (
         <div
             className={cn(
-                "bg-white border border-[#e4e7ec]",
+                "bg-white border border-[var(--colors-border-secondary)]",
                 "rounded-tl-[4px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px]",
                 "p-4 flex flex-col gap-4 max-w-[612px]",
                 "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
             )}
         >
-            <p className="text-[14px] leading-5 text-[#344054]">
+            <p className="text-[14px] leading-5 text-[var(--colors-text-secondary)]">
                 I found branch data in your file and assigned records automatically.
             </p>
             <div className="flex flex-col gap-1">
                 {rows.map((r, i) => (
                     <div key={i} className="flex items-center gap-2 py-px">
-                        <Building01 className="size-4 text-[#344054] shrink-0" />
-                        <span className="text-[14px] font-medium text-[#344054] leading-5">
+                        <Building01 className="size-4 text-[var(--colors-text-secondary)] shrink-0" />
+                        <span className="text-[14px] font-medium text-[var(--colors-text-secondary)] leading-5">
                             {r.branch_name}
                         </span>
-                        <span className="text-[14px] text-[#667085] leading-5 tabular-nums">
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 tabular-nums">
                             : {r.count.toLocaleString("en-US")} rows
                         </span>
                     </div>
@@ -681,9 +681,9 @@ export function MigCard({
                                 onClick={() => act.openUpload()}
                                 className={cn(
                                     "h-10 px-3 rounded-md inline-flex items-center justify-center gap-2 text-[13px] font-medium transition-colors",
-                                    "bg-[#c4edd6] text-[#0c2d34] border-1 border-white/[0.12]",
+                                    "bg-[var(--colors-secondary-200)] text-[var(--colors-brand-900)] border-1 border-white/[0.12]",
                                     "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]",
-                                    "hover:bg-[#aad4bd]",
+                                    "hover:bg-[var(--colors-secondary-300)]",
                                 )}
                             >
                                 <Upload01 className="size-4" />
@@ -692,9 +692,9 @@ export function MigCard({
                         );
                     })}
                 </div>
-                <div className="text-[12px] text-[#667085] leading-4 mt-1">
+                <div className="text-[12px] text-[var(--colors-text-quaternary)] leading-4 mt-1">
                     Click{" "}
-                    <span className="font-semibold text-[#344054]">
+                    <span className="font-semibold text-[var(--colors-text-secondary)]">
                         Upload file
                     </span>{" "}
                     (or the paperclip 📎) to add your CSV — I&apos;ll read
@@ -775,14 +775,14 @@ export function MigCard({
                 />
                 <div
                     className={cn(
-                        "bg-white border border-[#e4e7ec] rounded-2xl p-4",
+                        "bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4",
                         "flex flex-col gap-4 max-w-[720px] w-full",
                         "shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]",
                     )}
                 >
                     <div className="flex items-center gap-4 w-full">
                         <div className="flex-1 min-w-0">
-                            <h4 className="text-[16px] font-semibold leading-6 text-[#101828]">
+                            <h4 className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)]">
                                 Column mapping
                             </h4>
                         </div>
@@ -799,17 +799,17 @@ export function MigCard({
                     </div>
                     <div
                         className={cn(
-                            "bg-white border border-[#e4e7ec] rounded-xl overflow-hidden",
+                            "bg-white border border-[var(--colors-border-secondary)] rounded-xl overflow-hidden",
                             "max-h-[428px] overflow-y-auto",
                         )}
                     >
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
-                                    <th className="text-left bg-[#f9fafb] border-b border-[#e4e7ec] px-6 py-3 text-[12px] font-medium leading-[18px] text-[#475467]">
+                                    <th className="text-left bg-[var(--colors-bg-secondary)] border-b border-[var(--colors-border-secondary)] px-6 py-3 text-[12px] font-medium leading-[18px] text-[var(--colors-text-tertiary)]">
                                         Incoming fields
                                     </th>
-                                    <th className="text-left bg-[#f9fafb] border-b border-[#e4e7ec] px-6 py-3 text-[12px] font-medium leading-[18px] text-[#475467]">
+                                    <th className="text-left bg-[var(--colors-bg-secondary)] border-b border-[var(--colors-border-secondary)] px-6 py-3 text-[12px] font-medium leading-[18px] text-[var(--colors-text-tertiary)]">
                                         Onra fields
                                     </th>
                                 </tr>
@@ -818,9 +818,9 @@ export function MigCard({
                                 {rowsWithEffective.map((r) => (
                                     <tr
                                         key={r.source}
-                                        className="border-b border-[#e4e7ec] last:border-b-0"
+                                        className="border-b border-[var(--colors-border-secondary)] last:border-b-0"
                                     >
-                                        <td className="px-6 py-4 text-[14px] leading-5 text-[#475467] align-middle whitespace-nowrap">
+                                        <td className="px-6 py-4 text-[14px] leading-5 text-[var(--colors-text-tertiary)] align-middle whitespace-nowrap">
                                             {r.source}
                                         </td>
                                         <td className="px-6 py-4 align-middle">
@@ -910,7 +910,7 @@ export function MigCard({
     // mode because Card.tsx isn't in the migration render path.
     if (data.card === "empty") {
         return (
-            <CardShell className="text-center text-[13px] text-[#475467] py-5">
+            <CardShell className="text-center text-[13px] text-[var(--colors-text-tertiary)] py-5">
                 {data.message}
             </CardShell>
         );
