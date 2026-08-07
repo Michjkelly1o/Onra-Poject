@@ -63,8 +63,8 @@ import { AppointmentCustomerBadges } from "@/components/customers/CustomerBadges
 
 // ─── Table constants ─────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]";
-const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     checked: boolean; onChange: (next: boolean) => void; indeterminate?: boolean; ariaLabel: string;
@@ -75,8 +75,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -92,7 +92,7 @@ function Toggle({ on, onChange, disabled = false }: { on: boolean; onChange: (ne
             onClick={() => !disabled && onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full p-0.5 flex items-center transition-colors shrink-0",
-                on ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
+                on ? "bg-[#658774] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -118,28 +118,28 @@ function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
                     className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-6 h-6 text-[#667085]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this appointment?</h3>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
-                            <span className="font-medium text-[var(--colors-text-secondary)]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this appointment?</h3>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
+                            <span className="font-medium text-[#344054]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
+                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
                         </p>
                     </div>
                 </div>
                 {bookedCount > 0 && (
                     <>
                         <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                        <div className="h-px w-full bg-[#e4e7ec]" />
                         <div className="flex items-center justify-between gap-4 px-6 py-5">
                             <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class credit</p>
-                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">When the studio cancels an appointment, each customer is always refunded.</p>
+                                <p className="text-[16px] font-medium text-[#101828]">Refund class credit</p>
+                                <p className="text-[14px] text-[#475467] leading-[20px]">When the studio cancels an appointment, each customer is always refunded.</p>
                             </div>
                             {/* Locked ON — admin cancellation always grants a no-charge refund. */}
                             <Toggle on={true} onChange={() => { /* locked */ }} disabled />
@@ -183,27 +183,27 @@ function CancelBookingModal({ open, count, sampleName, onClose, onConfirm }: {
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
                     className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-6 h-6 text-[#667085]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
                             {!isBulk && sampleName
-                                ? <>Are you sure you want to cancel <span className="font-medium text-[var(--colors-text-secondary)]">{sampleName}</span> from the booked appointment? This action cannot be undone.</>
+                                ? <>Are you sure you want to cancel <span className="font-medium text-[#344054]">{sampleName}</span> from the booked appointment? This action cannot be undone.</>
                                 : desc}
                         </p>
                     </div>
                 </div>
                 <div className="h-5 shrink-0" />
-                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                <div className="h-px w-full bg-[#e4e7ec]" />
                 <div className="flex items-center justify-between gap-4 px-6 py-5">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class session</p>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{refundDesc}</p>
+                        <p className="text-[16px] font-medium text-[#101828]">Refund class session</p>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">{refundDesc}</p>
                     </div>
                     <Toggle on={refund} onChange={setRefund} />
                 </div>
@@ -244,27 +244,27 @@ function RemoveBookingModal({ open, count, sampleName, onClose, onConfirm }: {
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
                     className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-6 h-6 text-[#667085]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <Trash02 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
                             {!isBulk && sampleName
-                                ? <>Are you sure you want to remove <span className="font-medium text-[var(--colors-text-secondary)]">{sampleName}</span> from the booked appointment? This action cannot be undone.</>
+                                ? <>Are you sure you want to remove <span className="font-medium text-[#344054]">{sampleName}</span> from the booked appointment? This action cannot be undone.</>
                                 : desc}
                         </p>
                     </div>
                 </div>
                 <div className="h-5 shrink-0" />
-                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                <div className="h-px w-full bg-[#e4e7ec]" />
                 <div className="flex items-center justify-between gap-4 px-6 py-5">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class session</p>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{refundDesc}</p>
+                        <p className="text-[16px] font-medium text-[#101828]">Refund class session</p>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">{refundDesc}</p>
                     </div>
                     <Toggle on={refund} onChange={setRefund} />
                 </div>
@@ -296,20 +296,20 @@ function DeleteReviewModal({ open, count, sampleName, onClose, onConfirm }: {
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onClose}
                     className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-6 h-6 text-[#667085]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full bg-[#fee4e2] flex items-center justify-center shrink-0">
                         <Trash02 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
                             {isBulk ? `Delete ${count} reviews?` : "Delete this review?"}
                         </h3>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
                             {isBulk
                                 ? "These reviews will be hidden from the appointment page and moved to the deletion log."
-                                : <>The review from <span className="font-medium text-[var(--colors-text-secondary)]">{sampleName}</span> will be hidden from the appointment page and moved to the deletion log.</>}
+                                : <>The review from <span className="font-medium text-[#344054]">{sampleName}</span> will be hidden from the appointment page and moved to the deletion log.</>}
                         </p>
                     </div>
                 </div>
@@ -366,8 +366,8 @@ function BulkActionBar({ count, kind, onClear, onAction }: {
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
             <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
-                    {count} selected<XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
+                    {count} selected<XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {kind === "ongoing" && (
@@ -384,7 +384,7 @@ function BulkActionBar({ count, kind, onClear, onAction }: {
                     {kind === "upcoming" && (
                         <>
                             <Button variant="secondary-gray" size="sm"
-                                leftIcon={<SlashCircle01 className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
+                                leftIcon={<SlashCircle01 className="w-5 h-5 text-[#667085]" />}
                                 onClick={() => onAction("cancel")}>
                                 Cancel
                             </Button>
@@ -420,19 +420,19 @@ function RatingSummary({ rating, count }: { rating: number; count: number }) {
     const filled = Math.round(rating);
     return (
         <div className="px-6 pb-6 mt-auto">
-            <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
-            <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-3">Rating summary</p>
+            <div className="h-px w-full bg-[#e4e7ec] mb-5" />
+            <p className="text-[14px] text-[#667085] mb-3">Rating summary</p>
             <div className="flex flex-col gap-1">
                 <div className="flex gap-1 items-center">
                     {[0, 1, 2, 3, 4].map(i => (
                         <Star01 key={i}
-                            className={cn("w-8 h-8", i < filled ? "text-[#fdb022]" : "text-[var(--colors-border-secondary)]")}
+                            className={cn("w-8 h-8", i < filled ? "text-[#fdb022]" : "text-[#e4e7ec]")}
                             fill={i < filled ? "#fdb022" : "none"} />
                     ))}
                 </div>
                 <div className="flex gap-1 items-center">
-                    <p className="font-semibold text-[24px] leading-[32px] text-[var(--colors-text-primary)]">{rating > 0 ? rating.toFixed(1) : "0"}</p>
-                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">({count} {count === 1 ? "rating" : "ratings"})</p>
+                    <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">{rating > 0 ? rating.toFixed(1) : "0"}</p>
+                    <p className="text-[14px] text-[#667085]">({count} {count === 1 ? "rating" : "ratings"})</p>
                 </div>
             </div>
         </div>
@@ -467,28 +467,28 @@ function ReassignInstructorModal({ open, instructors, currentInstructorId, servi
                 {/* Header */}
                 <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b border-[var(--colors-border-secondary)]">
                     <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Reassign instructor</p>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Pick an available instructor for {serviceName}.</p>
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Reassign instructor</p>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">Pick an available instructor for {serviceName}.</p>
                     </div>
                     <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
-                        <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
+                        <XClose className="w-6 h-6 text-[#667085]" />
                     </button>
                 </div>
                 {/* Search */}
                 <div className="px-6 pt-5 pb-4">
                     <div className="relative flex-1">
-                        <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--colors-text-quaternary)] pointer-events-none" />
+                        <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#667085] pointer-events-none" />
                         <input
                             type="text" value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Search instructor"
-                            className="w-full h-10 pl-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            className="w-full h-10 pl-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </div>
                 </div>
                 {/* Instructor list */}
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
                     {available.length === 0 ? (
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)] text-center py-8">No instructors available at this branch.</p>
+                        <p className="text-[14px] text-[#667085] text-center py-8">No instructors available at this branch.</p>
                     ) : (
                         <div className="flex flex-col">
                             {available.map((i, idx) => {
@@ -497,11 +497,11 @@ function ReassignInstructorModal({ open, instructors, currentInstructorId, servi
                                     <div key={i.id} className={cn("grid grid-cols-[1fr_150px] items-center gap-4 py-3", idx > 0 && "border-t border-[var(--colors-border-secondary)]")}>
                                         <div className="flex items-center gap-3 min-w-0">
                                             <TableAvatar initials={i.initials} imageUrl={i.imageUrl} size={40} />
-                                            <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{i.name}</p>
+                                            <p className="text-[14px] font-medium text-[#101828] truncate">{i.name}</p>
                                         </div>
                                         <div className="flex justify-end">
                                             {current ? (
-                                                <span className="inline-flex items-center gap-1 text-[14px] font-medium text-[var(--colors-secondary-600)]">
+                                                <span className="inline-flex items-center gap-1 text-[14px] font-medium text-[#658774]">
                                                     <Check className="w-4 h-4" /> Current
                                                 </span>
                                             ) : (
@@ -593,9 +593,9 @@ function LeftPanel({ appointment, onCancelAppointment }: {
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     <div>
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{appointment.serviceName}</h2>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{appointment.serviceName}</h2>
                         <div className="flex items-center flex-wrap gap-2 mt-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{appointment.openSession ? "Open session" : "Private session"}</p>
+                            <p className="text-[14px] text-[#667085] leading-[20px]">{appointment.openSession ? "Open session" : "Private session"}</p>
                             {/* Flexible booking indicator — client 2026-07-24. */}
                             {appointment.flexible && (
                                 <IconTooltip label="Flexible booking — the customer let the studio choose the instructor, so this one was auto-assigned and can be reassigned." side="below">
@@ -615,51 +615,51 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                           (private only) → Attendance (existing, kept). */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Date &amp; time</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{appointment.date}</p>
-                            <p className="text-[14px] text-[var(--colors-text-tertiary)]">{appointment.displayTime}</p>
+                            <p className="text-[14px] text-[#667085]">Date &amp; time</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{appointment.date}</p>
+                            <p className="text-[14px] text-[#475467]">{appointment.displayTime}</p>
                             {branchTzShort && (
-                                <p className="text-[13px] text-[var(--colors-text-quaternary)]">{branchTzShort}</p>
+                                <p className="text-[13px] text-[#667085]">{branchTzShort}</p>
                             )}
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Service category</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{appointment.serviceCategory || "—"}</p>
+                            <p className="text-[14px] text-[#667085]">Service category</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{appointment.serviceCategory || "—"}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Duration</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{durationMin} minutes</p>
+                            <p className="text-[14px] text-[#667085]">Duration</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{durationMin} minutes</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Location</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{appointment.branchName || "—"}</p>
-                            {appointment.roomName && <p className="text-[14px] text-[var(--colors-text-tertiary)]">{appointment.roomName}</p>}
+                            <p className="text-[14px] text-[#667085]">Location</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{appointment.branchName || "—"}</p>
+                            {appointment.roomName && <p className="text-[14px] text-[#475467]">{appointment.roomName}</p>}
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Session type</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
+                            <p className="text-[14px] text-[#667085]">Session type</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
                                 {isRecovery ? "Recovery" : "Private session"}
                             </p>
                         </div>
                         {isRecovery && (
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Open sessions</p>
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{appointment.openSession ? "Yes" : "No"}</p>
+                                <p className="text-[14px] text-[#667085]">Open sessions</p>
+                                <p className="text-[16px] font-medium text-[#101828]">{appointment.openSession ? "Yes" : "No"}</p>
                             </div>
                         )}
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Fixed price</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">AED {price.toLocaleString()}</p>
+                            <p className="text-[14px] text-[#667085]">Fixed price</p>
+                            <p className="text-[16px] font-medium text-[#101828]">AED {price.toLocaleString()}</p>
                         </div>
                         {!appointment.openSession && appointment.instructorName && (
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Instructor</p>
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{appointment.instructorName}</p>
+                                <p className="text-[14px] text-[#667085]">Instructor</p>
+                                <p className="text-[16px] font-medium text-[#101828]">{appointment.instructorName}</p>
                             </div>
                         )}
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Attendance</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{appointment.booked} / {appointment.capacity}</p>
+                            <p className="text-[14px] text-[#667085]">Attendance</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{appointment.booked} / {appointment.capacity}</p>
                         </div>
 {/* Cancellation reason intentionally NOT shown — appointments come from
     the customer side and admin cancellations don't carry an explicit
@@ -671,8 +671,8 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                     <RatingSummary rating={appointment.rating} count={appointment.ratingCount} />
                 ) : canCancel && (
                     <div className="px-6 pb-6 mt-auto">
-                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Appointment actions</p>
+                        <div className="h-px w-full bg-[#e4e7ec] mb-5" />
+                        <p className="text-[14px] text-[#667085] mb-4">Appointment actions</p>
                         <div className="flex flex-col gap-4">
                             {/* Reassign instructor — only on a Flexible appointment
                                 that's still upcoming/ongoing (studio-assigned, so
@@ -680,7 +680,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                                 modal shell as class "Add customer". */}
                             {canReassign && (
                                 <button type="button" onClick={() => setReassignOpen(true)}
-                                    className="flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] text-[var(--colors-text-secondary)] hover:text-[var(--colors-text-primary)] transition-colors">
+                                    className="flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] text-[#344054] hover:text-[#101828] transition-colors">
                                     <span className="w-5 h-5 shrink-0"><Shuffle01 className="w-5 h-5" /></span>
                                     Reassign instructor
                                 </button>
@@ -731,7 +731,7 @@ function StarRow({ score, size = 20 }: { score: number; size?: number }) {
                 return (
                     <Star01 key={i}
                         style={{ width: size, height: size }}
-                        className={cn(filled ? "text-[#fdb022]" : "text-[var(--colors-border-secondary)]")}
+                        className={cn(filled ? "text-[#fdb022]" : "text-[#e4e7ec]")}
                         fill={filled ? "#fdb022" : "none"} />
                 );
             })}
@@ -741,7 +741,7 @@ function StarRow({ score, size = 20 }: { score: number; size?: number }) {
 
 function StoodOutTag({ label }: { label: string }) {
     return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full border-1 border-[var(--colors-border-secondary)] bg-white text-[12px] font-medium text-[var(--colors-text-secondary)] whitespace-nowrap">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full border-1 border-[var(--colors-border-secondary)] bg-white text-[12px] font-medium text-[#344054] whitespace-nowrap">
             {label}
         </span>
     );
@@ -765,8 +765,8 @@ function ReviewFilterPill({ label, selected, onClick }: { label: string; selecte
             className={cn(
                 "h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors",
                 selected
-                    ? "bg-[var(--colors-secondary-50)] border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
-                    : "bg-white border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] hover:border-[var(--colors-secondary-300)]",
+                    ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
+                    : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#aad4bd]",
             )}>
             {label}
         </button>
@@ -800,17 +800,17 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose}
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                        <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     {/* Date range */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date range</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Date range</p>
                         <div className="flex gap-2">
                             <div className="flex-1">
                                 <DatePicker value={pending.startDate}
@@ -829,22 +829,22 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                             </div>
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                    <div className="h-px w-full bg-[#e4e7ec]" />
 
                     {/* What stood out */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">What stood out</p>
+                        <p className="text-[14px] font-medium text-[#344054]">What stood out</p>
                         <div className="flex flex-wrap gap-2">
                             {STOOD_OUT_OPTIONS.map(t => (
                                 <ReviewFilterPill key={t} label={t} selected={pending.tags.includes(t)} onClick={() => toggleTag(t)} />
                             ))}
                         </div>
                     </div>
-                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                    <div className="h-px w-full bg-[#e4e7ec]" />
 
                     {/* Ratings */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Ratings</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Ratings</p>
                         <div className="flex flex-wrap gap-2">
                             {[5, 4, 3, 2, 1].map(n => {
                                 const sel = pending.ratings.includes(n);
@@ -853,8 +853,8 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                                         className={cn(
                                             "h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors inline-flex items-center gap-1.5",
                                             sel
-                                                ? "bg-[var(--colors-secondary-50)] border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
-                                                : "bg-white border-[var(--colors-border-primary)] text-[var(--colors-text-secondary)] hover:border-[var(--colors-secondary-300)]",
+                                                ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
+                                                : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#aad4bd]",
                                         )}>
                                         <Star01 className="w-4 h-4 text-[#fdb022]" fill="#fdb022" />
                                         {n} star
@@ -1046,15 +1046,15 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                             }}
                             className={cn(
                                 "h-[48px] px-3 text-[14px] font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
-                                tab === t.id ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
+                                tab === t.id ? "border-b-2 border-[#101828] text-[#101828]" : "text-[#667085] hover:text-[#344054]",
                             )}>
                             {t.label}
                             {t.count != null && (
                                 <span className={cn(
                                     "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
                                     tab === t.id
-                                        ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)]"
-                                        : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)]",
+                                        ? "bg-[var(--colors-bg-tertiary)] text-[#344054]"
+                                        : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#667085]",
                                 )}>{t.count}</span>
                             )}
                         </button>
@@ -1078,8 +1078,8 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                 className={cn(
                                     "flex-1 h-10 rounded-[8px] text-[14px] font-medium transition-colors",
                                     reviewsSubTab === s.id
-                                        ? "bg-white text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                        : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
+                                        ? "bg-white text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                        : "text-[#667085] hover:text-[#344054]",
                                 )}>
                                 {s.label}
                             </button>
@@ -1093,8 +1093,8 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                 while the admin narrows results. */}
             <div className="shrink-0 flex items-center gap-3 px-6 py-4">
                 <div className="flex-1">
-                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Total</p>
-                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">
+                    <p className="text-[14px] text-[#667085]">Total</p>
+                    <p className="text-[14px] font-medium text-[#101828]">
                         {tab === "reviews"
                             ? `${reviewsCurrentList.length} ${reviewsCurrentList.length === 1 ? "rating" : "ratings"}`
                             : `${sorted.length} ${sorted.length === 1 ? "customer" : "customers"}`}
@@ -1162,15 +1162,15 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                                     <div className="flex items-center gap-3">
                                                         <TableAvatar initials={r.customerInitials} imageUrl={r.customerImageUrl} size={40} />
                                                         <div>
-                                                            <div className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.customerName}</div>
-                                                            <div className="text-[13px] text-[var(--colors-text-quaternary)]">
+                                                            <div className="text-[14px] font-medium text-[#101828]">{r.customerName}</div>
+                                                            <div className="text-[13px] text-[#667085]">
                                                                 {new Date(r.submittedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className={TD}><StarRow score={r.score} /></td>
-                                                <td className={cn(TD, "text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]")}>
+                                                <td className={cn(TD, "text-[14px] text-[#475467] leading-[20px]")}>
                                                     <p className="max-w-[420px]">{r.comment}</p>
                                                 </td>
                                                 <td className={TD}>
@@ -1248,7 +1248,7 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                                 <div className="flex items-center gap-3 min-w-0">
                                                     <TableAvatar initials={r.customerInitials} imageUrl={r.customerImageUrl} size={36} />
                                                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{r.customerName}</span>
+                                                        <span className="text-[14px] font-medium text-[#101828] truncate">{r.customerName}</span>
                                                         {/* Context pills — "1st appointment", "Birthday", "New member", etc.
                                                             Priority-sorted, capped at 2 by the component. Renders nothing
                                                             when the customer has none. */}
@@ -1256,7 +1256,7 @@ function RightPanel({ appointment, bookings, visibleRatings, deletedRatings, ...
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
+                                            <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>
                                                 {new Date(r.bookedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
                                             </td>
                                             {showStatusColumn && (
@@ -1397,9 +1397,9 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
         return (
             <div className="h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Appointment not found</p>
+                    <p className="text-[18px] font-semibold text-[#101828]">Appointment not found</p>
                     <button type="button" onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] text-[var(--colors-secondary-600)] hover:underline">
+                        className="mt-4 text-[14px] text-[#658774] hover:underline">
                         Go back
                     </button>
                 </div>
@@ -1415,10 +1415,10 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
             <div className="flex items-center gap-3 px-6 h-[72px] shrink-0">
                 <button type="button" onClick={() => router.push(returnTo)}
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">
                         {appointment.type === "private"  ? "Private session details" :
                          appointment.type === "recovery" ? "Recovery details" :
                          "Appointment details"}
@@ -1486,17 +1486,17 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                     <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
                         <button type="button" onClick={() => setModalTarget(null)}
                             className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
-                            <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
+                            <XClose className="w-6 h-6 text-[#667085]" />
                         </button>
                         <div className="flex flex-col items-center gap-4 pt-6 px-6">
                             <div className="w-12 h-12 rounded-full bg-[#ecfdf3] flex items-center justify-center shrink-0">
                                 <CheckCircle className="w-6 h-6 text-[#067647]" />
                             </div>
                             <div className="flex flex-col gap-1 text-center w-full">
-                                <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">
+                                <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">
                                     Mark {modalTarget.ids.length} customer{modalTarget.ids.length === 1 ? "" : "s"} as present?
                                 </h3>
-                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                                <p className="text-[14px] text-[#475467] leading-[20px]">
                                     The selected customers will be marked as present for this appointment.
                                 </p>
                             </div>

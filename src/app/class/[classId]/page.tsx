@@ -121,8 +121,8 @@ function fmtBookingTime(iso: string): string {
 
 // ─── Admin table chrome constants — verbatim ────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
-const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 
 // ─── First-timer pill — Figma 6338:456387 ───────────────────────────────────
@@ -156,8 +156,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
             )}
         >
             {indeterminate ? (
@@ -188,10 +188,10 @@ function BulkActionBar({ count, onClear, onPresent }: {
                 <button
                     type="button"
                     onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                 >
                     {count} selected
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {/* Same DS Button + green-override pattern admin's
@@ -221,7 +221,7 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
                 <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
                         <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <Calendar className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
+                            <Calendar className="w-[18px] h-[18px] text-[#98a2b3]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
@@ -230,8 +230,8 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -278,46 +278,46 @@ function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
                     {/* Name + description */}
                     <div>
-                        <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{schedule.name}</h2>
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px] mt-1 line-clamp-3">{schedule.description}</p>
+                        <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{schedule.name}</h2>
+                        <p className="text-[14px] text-[#667085] leading-[20px] mt-1 line-clamp-3">{schedule.description}</p>
                     </div>
 
                     {/* Info fields — admin's verbatim chrome, Figma fields only */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Date &amp; time</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{schedule.date} • {schedule.displayTime}</p>
+                            <p className="text-[14px] text-[#667085]">Date &amp; time</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{schedule.date} • {schedule.displayTime}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Class type</p>
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{schedule.classType} class</p>
+                                <p className="text-[14px] text-[#667085]">Class type</p>
+                                <p className="text-[16px] font-medium text-[#101828]">{schedule.classType} class</p>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">Gender access</p>
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{genderLabel}</p>
+                                <p className="text-[14px] text-[#667085]">Gender access</p>
+                                <p className="text-[16px] font-medium text-[#101828]">{genderLabel}</p>
                             </div>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Duration</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{diffMinutes(schedule.startTime, schedule.endTime)} minutes</p>
+                            <p className="text-[14px] text-[#667085]">Duration</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{diffMinutes(schedule.startTime, schedule.endTime)} minutes</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Class capacity</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{schedule.capacity} participants</p>
+                            <p className="text-[14px] text-[#667085]">Class capacity</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{schedule.capacity} participants</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Location</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{schedule.room}</p>
+                            <p className="text-[14px] text-[#667085]">Location</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{schedule.room}</p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Instructor</p>
+                            <p className="text-[14px] text-[#667085]">Instructor</p>
                             <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
                                     style={{ backgroundColor: schedule.instructorColor }}>
                                     {schedule.instructorInitials}
                                 </div>
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{instructorShort}</p>
+                                <p className="text-[16px] font-medium text-[#101828]">{instructorShort}</p>
                             </div>
                         </div>
                     </div>
@@ -514,12 +514,12 @@ export default function InstructorClassDetailPage() {
         return (
             <div className="h-screen bg-white flex items-center justify-center">
                 <div className="text-center max-w-[360px] px-6">
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class not found</p>
-                    <p className="text-[14px] text-[var(--colors-text-tertiary)] mt-1">The class you tried to open no longer exists.</p>
+                    <p className="text-[18px] font-semibold text-[#101828]">Class not found</p>
+                    <p className="text-[14px] text-[#475467] mt-1">The class you tried to open no longer exists.</p>
                     <button
                         type="button"
                         onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] font-semibold text-[var(--colors-secondary-600)] hover:text-[#3b5446]"
+                        className="mt-4 text-[14px] font-semibold text-[#658774] hover:text-[#3b5446]"
                     >
                         Back to my schedule
                     </button>
@@ -599,10 +599,10 @@ export default function InstructorClassDetailPage() {
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0"
                     aria-label="Back to schedule"
                 >
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Class details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Class details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>
@@ -634,13 +634,13 @@ export default function InstructorClassDetailPage() {
                                             onClick={() => setTab(t.id)}
                                             className={cn(
                                                 "h-[48px] px-3 text-[14px] font-semibold transition-colors flex items-center gap-2 whitespace-nowrap",
-                                                active ? "border-b-2 border-[var(--colors-text-primary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
+                                                active ? "border-b-2 border-[#101828] text-[#101828]" : "text-[#667085] hover:text-[#344054]",
                                             )}
                                         >
                                             {t.label}
                                             <span className={cn(
                                                 "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium",
-                                                active ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)]" : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-quaternary)]",
+                                                active ? "bg-[var(--colors-bg-tertiary)] text-[#344054]" : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#667085]",
                                             )}>
                                                 {badge}
                                             </span>
@@ -655,13 +655,13 @@ export default function InstructorClassDetailPage() {
                             `justify-between` flex with a column-stacked
                             Total / count on the left and the search input
                             (`w-[280px] h-10`) on the right. Same exact
-                            typography (label `text-[14px] text-[var(--colors-text-tertiary)]`,
+                            typography (label `text-[14px] text-[#475467]`,
                             value `text-[16px] font-semibold`) so the two
                             instructor detail pages read identically. */}
                         <div className="shrink-0 flex items-center justify-between gap-3 px-6 py-4">
                             <div className="flex flex-col">
-                                <span className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">Total</span>
-                                <span className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">
+                                <span className="text-[14px] text-[#475467] leading-5">Total</span>
+                                <span className="text-[16px] font-semibold text-[#101828] leading-6">
                                     {totalRows} customer{totalRows === 1 ? "" : "s"}
                                 </span>
                             </div>
@@ -749,14 +749,14 @@ export default function InstructorClassDetailPage() {
                                                             />
                                                             <div className="min-w-0">
                                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">
+                                                                    <span className="text-[14px] font-medium text-[#101828]">
                                                                         {customerName(b.customerId)}
                                                                     </span>
                                                                     {/* First-timer badge — only shown on the Booked tab
                                                                         where attendance / first-class context matters. */}
                                                                     {tab === "booked" && isFirstTimer(b.customerId) && <FirstTimerBadge />}
                                                                 </div>
-                                                                <div className="text-[13px] text-[var(--colors-text-quaternary)]">
+                                                                <div className="text-[13px] text-[#667085]">
                                                                     {tab === "waitlisted"
                                                                         ? customerEmail(b.customerId)
                                                                         : fmtBookingTime(b.bookingTime)}

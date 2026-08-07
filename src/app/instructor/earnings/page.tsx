@@ -54,8 +54,8 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 // because it sits in a table row alongside 14px body text.
 // ────────────────────────────────────────────────────────────────────────────
 // ─── Admin table chrome — VERBATIM PayrollInstructorDetailPage line 523-524 ─
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
-const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 /** AED money formatter — exact admin `aed()` helper. */
 function aed(n: number): string {
@@ -369,8 +369,8 @@ export default function InstructorEarningsPage() {
                 {/* Toolbar */}
                 <div className="flex items-center gap-3">
                     <div className="flex-1">
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Total</p>
-                        <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
+                        <p className="text-[14px] text-[#667085] leading-5">Total</p>
+                        <p className="text-[16px] font-medium text-[#101828]">
                             {totalRows} {totalRows === 1 ? "booking" : "bookings"}
                         </p>
                     </div>
@@ -466,20 +466,20 @@ function PayRateSnapshotCard({ payRate }: { payRate: PayRate | undefined }) {
     return (
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-5 flex flex-col justify-between gap-5">
             <div className="flex items-start gap-4 w-full">
-                <p className="flex-1 min-w-0 text-[16px] font-medium text-[var(--colors-text-quaternary)] leading-6">Pay rate</p>
-                <div className="bg-[var(--colors-tertiary-50)] rounded-full size-10 shrink-0 flex items-center justify-center">
-                    <Calendar className="w-5 h-5 text-[var(--colors-text-primary)]" />
+                <p className="flex-1 min-w-0 text-[16px] font-medium text-[#667085] leading-6">Pay rate</p>
+                <div className="bg-[#f1f2ed] rounded-full size-10 shrink-0 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-[#101828]" />
                 </div>
             </div>
             <div className="flex items-center gap-[18px] w-full">
                 <div className="flex-1 min-w-0 flex flex-col">
-                    <p className="text-[14px] font-normal text-[var(--colors-text-quaternary)] leading-5">Default rate</p>
-                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">{payRate?.name ?? "-"}</p>
+                    <p className="text-[14px] font-normal text-[#667085] leading-5">Default rate</p>
+                    <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{payRate?.name ?? "-"}</p>
                 </div>
-                <div className="self-stretch w-px bg-[var(--colors-bg-quaternary)] shrink-0" aria-hidden />
+                <div className="self-stretch w-px bg-[#e4e7ec] shrink-0" aria-hidden />
                 <div className="flex-1 min-w-0 flex flex-col">
-                    <p className="text-[14px] font-normal text-[var(--colors-text-quaternary)] leading-5">Rate</p>
-                    <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 truncate">{payRate ? defaultRateLabel(payRate) : "-"}</p>
+                    <p className="text-[14px] font-normal text-[#667085] leading-5">Rate</p>
+                    <p className="text-[16px] font-medium text-[#101828] leading-6 truncate">{payRate ? defaultRateLabel(payRate) : "-"}</p>
                 </div>
             </div>
         </div>
@@ -506,8 +506,8 @@ function KpiCard({ icon: Icon, label, value, deltaPercent, deltaSuffix = "vs pre
     return (
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-5 flex items-start justify-end gap-6">
             <div className="flex-1 min-w-0 flex flex-col gap-2 items-start">
-                <p className="text-[14px] font-normal text-[var(--colors-text-quaternary)] leading-5 whitespace-nowrap">{label}</p>
-                <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">{value}</p>
+                <p className="text-[14px] font-normal text-[#667085] leading-5 whitespace-nowrap">{label}</p>
+                <p className="text-[24px] font-semibold text-[#101828] leading-8">{value}</p>
                 <div className="flex items-center gap-1">
                     <div className="flex items-center gap-1 py-0.5 rounded-full shrink-0">
                         <ArrowIcon className={cn("w-3 h-3", deltaColor)} />
@@ -515,11 +515,11 @@ function KpiCard({ icon: Icon, label, value, deltaPercent, deltaSuffix = "vs pre
                             {Math.abs(deltaPercent)}%
                         </p>
                     </div>
-                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5 whitespace-nowrap">{deltaSuffix}</p>
+                    <p className="text-[14px] text-[#667085] leading-5 whitespace-nowrap">{deltaSuffix}</p>
                 </div>
             </div>
-            <div className="bg-[var(--colors-tertiary-50)] rounded-full size-10 shrink-0 flex items-center justify-center">
-                <Icon className="w-5 h-5 text-[var(--colors-text-primary)]" />
+            <div className="bg-[#f1f2ed] rounded-full size-10 shrink-0 flex items-center justify-center">
+                <Icon className="w-5 h-5 text-[#101828]" />
             </div>
         </div>
     );
@@ -548,8 +548,8 @@ function EarningsRow({ schedule, payRate, classesInMonth, onViewDetails }: Earni
             {/* Class name — name on top, date below; admin's exact fonts. */}
             <td className={TD}>
                 <div className="flex flex-col">
-                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{schedule.name}</span>
-                    <span className="text-[13px] text-[var(--colors-text-quaternary)]">
+                    <span className="text-[14px] font-medium text-[#101828]">{schedule.name}</span>
+                    <span className="text-[13px] text-[#667085]">
                         {schedule.dateISO}, {schedule.displayTime}
                     </span>
                 </div>
@@ -570,17 +570,17 @@ function EarningsRow({ schedule, payRate, classesInMonth, onViewDetails }: Earni
                                         "w-3.5 h-3.5",
                                         i < Math.round(schedule.rating)
                                             ? "text-[#fdb022] fill-[#fdb022]"
-                                            : "text-[var(--colors-border-secondary)]",
+                                            : "text-[#e4e7ec]",
                                     )}
                                 />
                             ))}
                         </div>
-                        <span className="text-[12px] text-[var(--colors-text-quaternary)]">
+                        <span className="text-[12px] text-[#667085]">
                             {schedule.rating.toFixed(1)} ({schedule.ratingCount} ratings)
                         </span>
                     </div>
                 ) : (
-                    <span className="text-[13px] text-[var(--colors-text-quaternary)]">No ratings</span>
+                    <span className="text-[13px] text-[#667085]">No ratings</span>
                 )}
             </td>
 
@@ -611,15 +611,15 @@ function RowKebab({ onView }: { onView: () => void }) {
                 onClick={() => setOpen(o => !o)}
                 className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-tertiary)] transition-colors"
             >
-                <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                <DotsVertical className="w-4 h-4 text-[#667085]" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)}>
                 <button
                     type="button"
                     onClick={() => { setOpen(false); onView(); }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                 >
-                    <Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                    <Eye className="w-4 h-4 text-[#667085]" />
                     View details
                 </button>
             </FixedDropdown>
@@ -636,7 +636,7 @@ function RatingStars({ rating }: { rating: number }) {
                     key={i}
                     className={cn(
                         "w-4 h-4",
-                        i < full ? "text-[#f79009] fill-[#f79009]" : "text-[var(--colors-border-primary)]",
+                        i < full ? "text-[#f79009] fill-[#f79009]" : "text-[#d0d5dd]",
                     )}
                 />
             ))}
@@ -688,14 +688,14 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
                 {/* Header — verbatim admin chrome
                     ([admin/schedule/page.tsx:556-561](src/app/admin/schedule/page.tsx#L556)). */}
                 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button
                         type="button"
                         onClick={onClose}
                         aria-label="Close filter"
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                     >
-                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                        <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
 
@@ -779,8 +779,8 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
                                         className={cn(
                                             "px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
                                             on
-                                                ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
-                                                : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
+                                                ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                                                : "bg-white border-1 border-[var(--colors-border-secondary)] text-[#344054] hover:bg-[var(--colors-bg-secondary)]",
                                         )}
                                     >
                                         {cat}
@@ -820,14 +820,14 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-2.5 w-full">
-            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">{title}</p>
+            <p className="text-[14px] font-semibold text-[#101828] leading-5">{title}</p>
             {children}
         </div>
     );
 }
 
 function Divider() {
-    return <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />;
+    return <div className="h-px w-full bg-[#e4e7ec] shrink-0" />;
 }
 
 function TimeInput({ value, onChange, ariaLabel, min }: {
@@ -843,7 +843,7 @@ function TimeInput({ value, onChange, ariaLabel, min }: {
             onChange={e => onChange(e.target.value)}
             aria-label={ariaLabel}
             min={min}
-            className="w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+            className="w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
         />
     );
 }
@@ -872,8 +872,8 @@ function SegmentedPills<T extends string>({ options, value, onChange }: Segmente
                         className={cn(
                             "flex-1 h-10 text-[14px] font-medium transition-colors",
                             active
-                                ? "bg-[var(--colors-secondary-50)] text-[var(--colors-text-primary)]"
-                                : "bg-white text-[var(--colors-text-tertiary)] hover:bg-[var(--colors-bg-secondary)]",
+                                ? "bg-[#e9fff3] text-[#101828]"
+                                : "bg-white text-[#475467] hover:bg-[var(--colors-bg-secondary)]",
                             idx < options.length - 1 && "border-r-1 border-[var(--colors-border-primary)]",
                         )}
                     >
