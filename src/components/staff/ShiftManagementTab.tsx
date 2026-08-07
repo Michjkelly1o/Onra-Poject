@@ -863,7 +863,7 @@ export function ShiftManagementTab({
     return (
         <>
             {viewMode === "week" ? (
-                <div className="relative flex flex-col flex-1">
+                <div className="relative flex flex-col flex-1 min-h-0">
                     <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart}
                         roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds} />
                 </div>
@@ -883,7 +883,7 @@ export function ShiftManagementTab({
                         />
                     </div>
                 ) : (
-                    <div className="px-6">
+                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6">
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
                                 <thead>

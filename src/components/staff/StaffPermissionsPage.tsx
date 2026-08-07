@@ -1195,15 +1195,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             : staffFilter.statuses.length > 0 || staffFilter.roleIds.length > 0;
 
     return (
-        <div className={cn(
-            "flex flex-col gap-6",
-            // Staff & shift module — fill the remaining main-content viewport
-            // height so the outer page never scrolls, only the inner table
-            // body. Mirrors /admin/schedule's outer wrapper.
-            // Roles route keeps its content-height behaviour (it has no view
-            // card; the table flows in main's normal scroll).
-            forceTab !== "roles" && "flex-1 min-h-0",
-        )}>
+        // Match /admin/schedule: the root flows to NATURAL page height so the
+        // outer <main> canvas scrolls, while each tab's fixed-height view card
+        // keeps its own inner scroll (tab strip pinned; table/calendar body
+        // scrolls). Both the outer page AND the inner card scroll.
+        <div className="flex flex-col gap-6">
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
@@ -1290,15 +1286,14 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                   • Role & permissions route → NO bordered card, NO inner
                     padding (per the brief — Figma 7413:239946 shows the
                     table flush against the page chrome).
-                  • Staff & shift route + legacy combined → bordered card
-                    that fills the remaining viewport height (was a fixed
-                    760px surface before — now `flex-1 min-h-0` so a tall
-                    screen uses every pixel and only the inner table body
-                    scrolls). Mirrors /admin/schedule's view card. */}
+                  • Staff & shift route + legacy combined → bordered card with a
+                    FIXED h-[760px] surface (matches /admin/schedule's view card),
+                    so the tab strip pins and only the inner body scrolls while
+                    the outer <main> canvas scrolls the page. */}
             <div className={cn(
                 forceTab === "roles"
                     ? "flex flex-col"
-                    : "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                    : "h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on
@@ -1388,10 +1383,17 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     </div>
                 )}
 
+                {/* Staff-schedule (week) view keeps the scrolling container it
+                    relies on — DO NOT change its behaviour. Every other sub-tab
+                    (Staff table, Shift list, Time off) is a flex column so its
+                    table self-scrolls with a pinned shrink-0 pagination footer at
+                    the card bottom, exactly like /admin/schedule. */}
                 <div className={cn(
                     forceTab === "roles"
                         ? "relative"            // flush, no scroll wrapper, no fill
-                        : "flex-1 overflow-y-auto scrollbar-hide relative",
+                        : (staffSubTab === "shift-management" && shiftsViewMode === "week")
+                            ? "flex-1 overflow-y-auto scrollbar-hide relative"
+                            : "flex-1 min-h-0 flex flex-col relative",
                 )}>
                 {/* Shift management sub-tab — fully wired (Figma 6223:378535).
                     Reads `branchId` + `search` from the parent toolbar so
@@ -1522,9 +1524,12 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     )
                 )}
 
-                {/* Table — staff (same px-6 wrap as roles) */}
+                {/* Table — staff (same px-6 wrap as roles). Wrapped in a flex-1
+                    scroll body so the table scrolls and the pagination below pins
+                    (schedule pattern). */}
                 {(forceTab !== "staff" || staffSubTab === "staff") && tab === "staff" && (
-                    staffPageRows.length === 0 ? (
+                    <div className={cn(forceTab !== "roles" && "flex-1 min-h-0 overflow-y-auto scrollbar-hide")}>
+                    {staffPageRows.length === 0 ? (
                         <EmptyState
                             title={staff.length === 0 ? "No staff members yet" : "No staff found"}
                             subtitle={staff.length === 0
@@ -1645,20 +1650,19 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             </table>
                         </div>
                     </div>
-                    )
+                    )}
+                    </div>
                 )}
 
-                {/* Pagination — rendered INSIDE the scrollable wrapper so
-                    it travels with the table on scroll (mirrors Shift
-                    management + Blocked time sub-tabs). Hidden on the
-                    placeholder sub-tabs since they don't have any rows
-                    to paginate yet. */}
+                {/* Pagination — pinned shrink-0 footer at the card bottom (schedule
+                    pattern): the table scrolls above, this stays fixed. Hidden on
+                    the placeholder sub-tabs since they have no rows to paginate. */}
                 {(forceTab !== "staff" || staffSubTab === "staff") && (
                     // Pagination padding:
                     //   • Role & permissions route → no inner padding so it
                     //     aligns with the flush table above.
                     //   • Other routes → 24px L/R to match the card chrome.
-                    <div className={cn(forceTab !== "roles" && "px-6")}>
+                    <div className={cn(forceTab !== "roles" && "px-6 shrink-0")}>
                         <Pagination
                             page={clampedPage}
                             total={tab === "roles" ? filteredRoles.length : filteredStaff.length}
