@@ -222,7 +222,7 @@ function DayAddShiftMenu({ staffBranchId, dayIdx, shifts, staffDayShiftIds, staf
 
 /** Small shift chip used inside the picker list (Figma: coloured stripe +
  *  name + "Mon - Sat • 07:00 AM - 12:00 AM"). */
-function PickerShiftRow({ shift, index, onPick }: { shift: Shift; index: number; onPick: () => void }) {
+export function PickerShiftRow({ shift, index, onPick }: { shift: Shift; index: number; onPick: () => void }) {
     const c = shiftPalette(shift, index);
     const dayLabel = workingDaysLabel(shift.working_days);
     const time = `${to12h(shift.start_time)} - ${to12h(shift.end_time)}`;
@@ -243,7 +243,7 @@ function PickerShiftRow({ shift, index, onPick }: { shift: Shift; index: number;
 /** Shared searchable shift picker — search box + PickerShiftRow chips. Used by
  *  BOTH the staff-row 3-dot "Assign shift" and the per-cell "+" so the two
  *  entry points show the exact same component (client 2026-07-24). */
-function ShiftPickerPanel({ available, emptyLabel, onPick }: {
+export function ShiftPickerPanel({ available, emptyLabel, onPick }: {
     available: Shift[];
     emptyLabel: string;
     onPick: (shiftId: string) => void;

@@ -1182,6 +1182,9 @@ export interface ClassBooking {
     /** Set when this seat was booked by `customerId` FOR another person (a guest
      *  without their own account). The seat still bumps the class count. */
     guestName?: string;
+    /** Guest contact + chosen payment, for the booking-detail "Book to" section. */
+    guestEmail?: string;
+    guestPayment?: "drop_in" | "guest_package" | "invite_link" | "booker_credit";
     branchId: string;
     /** Plan id used to pay (FK to memberships or packages). Empty string if no plan. */
     planId: string;
@@ -4693,7 +4696,7 @@ export interface AppState {
      *  row propagates to the admin roster, the customer profile, the member's
      *  Bookings list, and the class detail state in the same render cycle.
      *  Returns the new booking id. */
-    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string; guestName?: string; chargeBookerCredit?: boolean }) => string;
+    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string; guestName?: string; guestEmail?: string; guestPayment?: "drop_in" | "guest_package" | "invite_link" | "booker_credit"; chargeBookerCredit?: boolean }) => string;
     /** Insert a booking VERBATIM — no frozen-plan guard, no credit deduction,
      *  no notifications. Used by the AI Agent migration importer to bring
      *  across historical bookings without triggering the "you're frozen" gate
@@ -7332,7 +7335,7 @@ export const useAppStore = create<AppState>()(persist(
             }
         },
 
-    addClassBooking: ({ classScheduleId, customerId, status, spot, guestName, chargeBookerCredit }) => {
+    addClassBooking: ({ classScheduleId, customerId, status, spot, guestName, guestEmail, guestPayment, chargeBookerCredit }) => {
         const s0 = get();
         const schedule = s0.classSchedules.find(x => x.id === classScheduleId);
         const customer = s0.customers.find(c => c.id === customerId);
@@ -7389,6 +7392,8 @@ export const useAppStore = create<AppState>()(persist(
             classScheduleId,
             customerId,
             guestName,
+            guestEmail,
+            guestPayment,
             branchId: schedule?.branchId ?? customer?.branchId ?? "",
             planId,
             planName: usesBookerPlan ? (customer?.planName ?? "") : "",
@@ -13171,7 +13176,12 @@ export const useAppStore = create<AppState>()(persist(
         //   fixed one pre-existing seed error — booking bk_mia_cancel_3 was
         //   tagged South but its class is at East. classBookings is persisted →
         //   bump so branch-scoped reports/dashboards filter it correctly.
-        version: 109,
+        // v110 (2026-08-06): merge of the customer-experience line into the
+        //   insights/KPI line. Brings the guest-booking flags on classesSettings
+        //   (guests_use_plan_enabled / guests_allow_unlimited) for the Bring a
+        //   friend flow on top of the v106-109 schedule audits. Fresh bump so
+        //   every persisted demo re-seeds with the combined data.
+        version: 110,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

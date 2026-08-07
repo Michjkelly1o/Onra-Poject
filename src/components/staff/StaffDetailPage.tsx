@@ -23,9 +23,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
+import { AssignShiftModal } from "@/components/staff/AssignShiftModal";
 import {
     XClose, Check, Edit02, UserSquare, Archive, RefreshCcw01, SlashCircle01,
-    Trash01, Send01, ArrowUp, ArrowDown, ArrowUpRight,
+    Trash01, Send01, ClockPlus, ArrowUp, ArrowDown, ArrowUpRight,
     Calendar, CoinsHand, BarChartSquare02, Users01, ShoppingCart02, Package,
     Speaker01, Settings01, CreditCard02, User01, ChevronDown, ChevronUp,
 } from "@untitledui/icons";
@@ -72,6 +73,7 @@ const ROLE_TYPE_BADGE: Record<RoleType, string> = {
 // ─── Confirm modal ─────────────────────────────────────────────────────────
 
 type ConfirmKind = "archive" | "recover" | "deactivate" | "reactivate" | "delete";
+type SidebarActionKind = "edit_details" | "change_role" | "resend_invite" | "assign_shift" | "account_settings" | ConfirmKind;
 type ConfirmTone = "danger" | "success" | "warning" | "info";
 
 const CONFIRM_CFG: Record<ConfirmKind, {
@@ -127,13 +129,14 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
 
-function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory }: {
+function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory, isOwner }: {
     staff: Staff;
     role: Role | undefined;
     payRateName: string;
-    onAction: (kind: "edit_details" | "change_role" | "resend_invite" | ConfirmKind) => void;
+    onAction: (kind: SidebarActionKind) => void;
     branches: Branch[];
     hasHistory: boolean;
+    isOwner: boolean;
 }) {
     const isPending  = staff.status === "pending";
     const isActive   = staff.status === "active";
@@ -198,6 +201,12 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory }: {
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
                     <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Staff actions</p>
                     <div className="flex flex-col gap-4">
+                        {/* Owner is the account holder — only Account settings, same
+                            as the Staff table's owner row. */}
+                        {isOwner ? (
+                            <ActionBtn icon={<Settings01 className="w-5 h-5" />} label="Account settings" onClick={() => onAction("account_settings")} />
+                        ) : (
+                        <>
                         {isPending && (
                             <ActionBtn icon={<Send01 className="w-5 h-5" />} label="Resend invitation" onClick={() => onAction("resend_invite")} />
                         )}
@@ -205,6 +214,7 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory }: {
                             <>
                                 <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit staff details" onClick={() => onAction("edit_details")} />
                                 <ActionBtn icon={<UserSquare className="w-5 h-5" />} label="Change staff role" onClick={() => onAction("change_role")} />
+                                <ActionBtn icon={<ClockPlus className="w-5 h-5" />} label="Assign shift" onClick={() => onAction("assign_shift")} />
                                 <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive staff" onClick={() => onAction("archive")} />
                                 {hasHistory
                                     ? <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate staff" danger onClick={() => onAction("deactivate")} />
@@ -223,6 +233,8 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory }: {
                         )}
                         {isArchive && (
                             <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover staff" onClick={() => onAction("recover")} />
+                        )}
+                        </>
                         )}
                     </div>
                 </div>
@@ -874,6 +886,8 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
     const [tab, setTab] = useState<TabId>("permissions");
     const [pendingConfirm, setPendingConfirm] = useState<ConfirmKind | null>(null);
     const [changeRoleOpen, setChangeRoleOpen] = useState(false);
+    const [assignShiftOpen, setAssignShiftOpen] = useState(false);
+    const isOwnerRole = role?.type === "owner";
 
     useEffect(() => {
         if (!staff && allStaff.length > 0) {
@@ -947,16 +961,14 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
         }
         setPendingConfirm(null);
     }
-    function handleSidebarAction(kind: "edit_details" | "change_role" | "resend_invite" | ConfirmKind) {
+    function handleSidebarAction(kind: SidebarActionKind) {
         if (kind === "edit_details") {
-            // Edit → back returns to THIS detail, carrying its own returnTo so
-            // the chain lands on wherever the detail was opened from (Staff tab,
-            // or a Shift detail's roster) — not a reset to the Staff tab.
-            const selfUrl = `/staff/members/${staff!.id}?returnTo=${encodeURIComponent(returnTo)}`;
             return openStaffFormPanel({ kind: "staff", mode: "edit", id: staff!.id });
         }
         if (kind === "change_role")   return setChangeRoleOpen(true);
         if (kind === "resend_invite") return handleResend();
+        if (kind === "assign_shift")  return setAssignShiftOpen(true);
+        if (kind === "account_settings") return router.push("/admin/settings/account");
         setPendingConfirm(kind);
     }
 
@@ -983,6 +995,7 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                         onAction={handleSidebarAction}
                         branches={branches}
                         hasHistory={!canDeleteStaff(staff.id)}
+                        isOwner={isOwnerRole}
                     />
                 }
                 main={
@@ -1051,6 +1064,10 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
                         setChangeRoleOpen(false);
                     }}
                 />
+            )}
+
+            {assignShiftOpen && (
+                <AssignShiftModal staff={staff} onClose={() => setAssignShiftOpen(false)} />
             )}
 
             <Toast />

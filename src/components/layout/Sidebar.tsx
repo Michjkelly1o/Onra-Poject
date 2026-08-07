@@ -361,7 +361,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
     const navWinner = activeHrefFor(effectiveNavItems, pathname, search);
 
     return (
-        <aside className="h-full bg-[var(--colors-tertiary-50)] flex flex-col">
+        <aside className="h-full bg-[#f1f2ed] flex flex-col">
 
             {/* ── Logo ───────────────────────────────────────────── */}
             <div
@@ -384,7 +384,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                         </div>
                         <button
                             onClick={toggleSidebar}
-                            className="flex absolute right-2 items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] cursor-pointer shrink-0"
+                            className="flex absolute right-2 items-center justify-center text-[#667085] hover:text-[#101828] cursor-pointer shrink-0"
                         >
                             <ChevronRightDouble className="w-4 h-4" />
                         </button>
@@ -404,7 +404,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                         </svg>
                                     )}
                                 </div>
-                                <p className="font-bold text-[24px] leading-[28px] text-[var(--colors-brand-900)] truncate" style={{ fontVariationSettings: "'opsz' 14" }}>
+                                <p className="font-bold text-[24px] leading-[28px] text-[#0c2d34] truncate" style={{ fontVariationSettings: "'opsz' 14" }}>
                                     {/* Phase 3 sync — brand label is the single
                                         Branding-module `displayName`. Editing
                                         it through Customize design settings
@@ -414,25 +414,34 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                     {brandingSettings.displayName || studio.name || "Forma Studio"}
                                 </p>
                             </div>
-                            {/* Powered by row */}
-                            <div className="flex items-center gap-[2px]">
-                                <span className="text-[12px] font-normal text-[var(--colors-text-quaternary)] leading-[18px]">powered by</span>
-                                <div className="flex items-center gap-[2px] ml-[2px]">
-                                    {/* Onra platform logomark — 16px */}
-                                    <svg width="11" height="16" viewBox="0 0 11 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <g opacity="0.84">
-                                            <path d="M2.96925 5.73799L7.91797 2.88085L4.94874 1.16656L0.000110827 4.02366L0 9.73788L2.96923 11.4522L2.96925 5.73799Z" fill="#667085" />
-                                            <path d="M10.9655 5.9283L10.9655 11.6426L6.01675 14.4996L3.04752 12.7853L7.99623 9.92819L7.99625 4.21402L10.9655 5.9283Z" fill="#667085" />
-                                        </g>
-                                    </svg>
-                                    <span className="text-[12px] font-normal text-[var(--colors-text-quaternary)] leading-[18px]">Onra</span>
-                                </div>
+                            {/* Powered by row — Onra wordmark (masked so it renders in
+                                the same #667085 as the "powered by" label). */}
+                            <div className="flex items-center gap-[5px]">
+                                <span className="text-[12px] font-normal text-[#667085] leading-[18px]">powered by</span>
+                                <span
+                                    role="img"
+                                    aria-label="Onra"
+                                    className="block shrink-0"
+                                    style={{
+                                        width: "42px",
+                                        height: "11px",
+                                        backgroundColor: "#667085",
+                                        WebkitMaskImage: "url('/brand-logo/wordmark/Wordmark%20-%20Black.svg')",
+                                        maskImage: "url('/brand-logo/wordmark/Wordmark%20-%20Black.svg')",
+                                        WebkitMaskRepeat: "no-repeat",
+                                        maskRepeat: "no-repeat",
+                                        WebkitMaskSize: "contain",
+                                        maskSize: "contain",
+                                        WebkitMaskPosition: "left center",
+                                        maskPosition: "left center",
+                                    }}
+                                />
                             </div>
                         </div>
                         {/* Collapse button */}
                         <button
                             onClick={toggleSidebar}
-                            className="shrink-0 w-[20px] h-[20px] flex items-center justify-center text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] cursor-pointer"
+                            className="shrink-0 w-[20px] h-[20px] flex items-center justify-center text-[#667085] hover:text-[#101828] cursor-pointer"
                         >
                             <ChevronLeftDouble className="w-4 h-4" />
                         </button>
@@ -464,14 +473,14 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                     const rowCls = cn(
                         "flex w-full items-center gap-3 px-3 py-2 rounded-md relative transition-colors",
                         parentActive
-                            ? "bg-[#fbfffd] border border-[var(--colors-border-secondary)] text-[var(--colors-text-primary)]"
-                            : "border border-transparent text-[var(--colors-text-quaternary)] hover:bg-[#fbfffd] hover:text-[var(--colors-text-primary)]",
+                            ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                            : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
                         slim && "justify-center"
                     );
 
                     const iconCls = cn(
                         "w-5 h-5 shrink-0",
-                        parentActive || isChildActive ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]"
+                        parentActive || isChildActive ? "text-[#101828]" : "text-[#667085]"
                     );
 
                     return (
@@ -483,7 +492,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                 slim mode so the collapsed rail stays
                                 icon-only. */}
                             {item.sectionLabel && !slim && (
-                                <div className="mx-3 my-2 h-px bg-[var(--colors-border-primary)]" />
+                                <div className="mx-3 my-2 h-px bg-[#d0d5dd]" />
                             )}
                             {/* Parent row — wrapped so a collapsed icon shows
                                 the menu name in a tooltip on hover. */}
@@ -505,7 +514,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                             </span>
                                             <ChevronDown
                                                 className={cn(
-                                                    "w-4 h-4 shrink-0 text-[var(--colors-fg-quaternary)] transition-transform duration-200",
+                                                    "w-4 h-4 shrink-0 text-[#98a2b3] transition-transform duration-200",
                                                     open && "rotate-180"
                                                 )}
                                             />
@@ -554,8 +563,8 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                                     className={cn(
                                                         "relative flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-md text-sm font-medium transition-colors",
                                                         childActive
-                                                            ? "bg-[#fbfffd] border border-[var(--colors-border-secondary)] text-[var(--colors-text-primary)]"
-                                                            : "border border-transparent text-[var(--colors-text-quaternary)] hover:bg-[#fbfffd] hover:text-[var(--colors-text-primary)]"
+                                                            ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                                                            : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]"
                                                     )}
                                                 >
                                                     {childActive && (
@@ -564,7 +573,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                                     {ChildIcon && (
                                                         <ChildIcon className={cn(
                                                             "w-4 h-4 shrink-0",
-                                                            childActive ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
+                                                            childActive ? "text-[#101828]" : "text-[#667085]",
                                                         )} />
                                                     )}
                                                     <span className="truncate">{child.label}</span>
@@ -609,7 +618,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                          *  the section-break rule in the middle of the
                          *  nav — both now stop short of the sidebar's
                          *  edge instead of bleeding right up to it. */}
-                        <div className="h-px bg-[var(--colors-border-primary)] mx-3 my-1" />
+                        <div className="h-px bg-[#d0d5dd] mx-3 my-1" />
                     </>
                 )}
                 <SidebarProfileChip
@@ -657,8 +666,8 @@ function SidebarAiAgentChip({ slim }: { slim: boolean }) {
                 className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 rounded-md relative transition-colors",
                     isActive
-                        ? "bg-[#fbfffd] border border-[var(--colors-border-secondary)] text-[var(--colors-text-primary)]"
-                        : "border border-transparent text-[var(--colors-text-quaternary)] hover:bg-[#fbfffd] hover:text-[var(--colors-text-primary)]",
+                        ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                        : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
                     slim && "justify-center",
                 )}
             >
@@ -667,7 +676,7 @@ function SidebarAiAgentChip({ slim }: { slim: boolean }) {
                 )}
                 <Stars02 className={cn(
                     "w-5 h-5 shrink-0",
-                    isActive ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
+                    isActive ? "text-[#101828]" : "text-[#667085]",
                 )} />
                 {!slim && (
                     <span className="flex-1 text-left text-sm font-medium truncate">
@@ -719,8 +728,8 @@ function SidebarSettingsChip({ slim }: { slim: boolean }) {
                     className={cn(
                         "w-full flex items-center gap-3 px-3 py-2 rounded-md relative transition-colors",
                         (isActive || open)
-                            ? "bg-[#fbfffd] border border-[var(--colors-border-secondary)] text-[var(--colors-text-primary)]"
-                            : "border border-transparent text-[var(--colors-text-quaternary)] hover:bg-[#fbfffd] hover:text-[var(--colors-text-primary)]",
+                            ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                            : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
                         slim && "justify-center",
                     )}
                 >
@@ -729,7 +738,7 @@ function SidebarSettingsChip({ slim }: { slim: boolean }) {
                     )}
                     <Settings01 className={cn(
                         "w-5 h-5 shrink-0",
-                        (isActive || open) ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
+                        (isActive || open) ? "text-[#101828]" : "text-[#667085]",
                     )} />
                     {!slim && (
                         <>
@@ -738,8 +747,8 @@ function SidebarSettingsChip({ slim }: { slim: boolean }) {
                              *  up when the popover is open (a visual hint
                              *  the menu is elsewhere), down when closed. */}
                             {open
-                                ? <ChevronUp   className="w-4 h-4 shrink-0 text-[var(--colors-fg-quaternary)]" />
-                                : <ChevronDown className="w-4 h-4 shrink-0 text-[var(--colors-fg-quaternary)]" />}
+                                ? <ChevronUp   className="w-4 h-4 shrink-0 text-[#98a2b3]" />
+                                : <ChevronDown className="w-4 h-4 shrink-0 text-[#98a2b3]" />}
                         </>
                     )}
                 </button>
@@ -747,7 +756,7 @@ function SidebarSettingsChip({ slim }: { slim: boolean }) {
 
             {open && (
                 <div className={cn(
-                    "absolute bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
+                    "absolute bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
                     // Popover anchor — sits DIRECTLY ABOVE the chip
                     // (client feedback: prefer up over side-open). Matches
                     // the trigger's width in expanded mode; in slim mode
@@ -768,14 +777,14 @@ function SidebarSettingsChip({ slim }: { slim: boolean }) {
                                 className={cn(
                                     "flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors",
                                     isGroupActive
-                                        ? "text-[var(--colors-text-primary)] bg-[var(--colors-bg-secondary)]"
-                                        : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
-                                    i < SETTINGS_GROUPS.length - 1 && "border-b border-[var(--colors-bg-tertiary)]",
+                                        ? "text-[#101828] bg-[#f9fafb]"
+                                        : "text-[#344054] hover:bg-[#f9fafb]",
+                                    i < SETTINGS_GROUPS.length - 1 && "border-b border-[#f2f4f7]",
                                 )}
                             >
                                 <GroupIcon className={cn(
                                     "w-4 h-4",
-                                    isGroupActive ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]",
+                                    isGroupActive ? "text-[#101828]" : "text-[#667085]",
                                 )} />
                                 {g.label}
                             </Link>
@@ -829,30 +838,30 @@ function SidebarProfileChip({ slim, avatarUrl, displayName, roleLabel, accountHr
                 className={cn(
                     "w-full flex items-center gap-3 rounded-[10px] px-2 py-2 transition-colors",
                     slim ? "justify-center" : "",
-                    open ? "bg-[#fbfffd] border-1 border-[var(--colors-border-secondary)]" : "border-1 border-transparent hover:bg-[#fbfffd]",
+                    open ? "bg-[#fbfffd] border-1 border-[#e4e7ec]" : "border-1 border-transparent hover:bg-[#fbfffd]",
                 )}
             >
                 <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full shrink-0 object-cover" />
                 {!slim && (
                     <>
                         <div className="flex-1 min-w-0 text-left">
-                            <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] truncate leading-5">{displayName}</p>
-                            <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate leading-[18px] mt-0.5">{roleLabel}</p>
+                            <p className="text-[14px] font-semibold text-[#101828] truncate leading-5">{displayName}</p>
+                            <p className="text-[12px] text-[#667085] truncate leading-[18px] mt-0.5">{roleLabel}</p>
                         </div>
                         {/* Chevron matches Settings chip — up when the
                          *  popover is open (menu is elsewhere), down
                          *  when closed. Simpler + parity across footer
                          *  chips since both now open to the side. */}
                         {open
-                            ? <ChevronUp   className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
-                            : <ChevronDown className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />}
+                            ? <ChevronUp   className="w-4 h-4 text-[#667085] shrink-0" />
+                            : <ChevronDown className="w-4 h-4 text-[#667085] shrink-0" />}
                     </>
                 )}
             </button>
 
             {open && (
                 <div className={cn(
-                    "absolute bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
+                    "absolute bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden z-50",
                     // Popover anchor — sits DIRECTLY ABOVE the chip
                     // (client feedback: both footer popovers open up
                     // now, matching each other). Expanded mode spans the
@@ -865,17 +874,17 @@ function SidebarProfileChip({ slim, avatarUrl, displayName, roleLabel, accountHr
                     <Link
                         href={accountHref}
                         onClick={() => setOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] border-b border-[var(--colors-bg-tertiary)] transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] border-b border-[#f2f4f7] transition-colors"
                     >
-                        <UserCircle className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                        <UserCircle className="w-4 h-4 text-[#667085]" />
                         Account settings
                     </Link>
                     <button
                         type="button"
                         onClick={handleSignOut}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors"
                     >
-                        <LogOut01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                        <LogOut01 className="w-4 h-4 text-[#667085]" />
                         Sign out
                     </button>
                 </div>

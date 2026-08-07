@@ -174,6 +174,17 @@ export interface ClassesSettings {
      *  passes — reopen to walk-ins / keep the waitlist order / leave
      *  the spot unfilled. */
     after_cutoff_mode: "reopens_first_come" | "keep_auto_promoting" | "stays_empty";
+
+    // ── Guest bookings (Bring a friend — client 2026-08-06) ────────────
+    /** Master switch — when ON a member can pay for a guest seat with an
+     *  eligible plan (one credit/session per guest). When OFF the customer
+     *  "Use my plan" option is hidden and the guest pays the drop-in price
+     *  by card. Defaults ON. */
+    guests_use_plan_enabled: boolean;             // true
+    /** When ON, Unlimited memberships are also eligible to book guests
+     *  (subject to their own limits). When OFF (default) only Credit
+     *  Packages + Limited memberships qualify. */
+    guests_allow_unlimited: boolean;              // false
 }
 
 // ─── Booking Rules — Cancellation & no-show policies (PRD 11 §6.1) ────────

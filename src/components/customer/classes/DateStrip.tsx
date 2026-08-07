@@ -62,7 +62,11 @@ export function DateStrip({ selectedISO, onSelect, bookingOpenDays, enabledDays,
     return (
         <div
             ref={ref}
-            className="flex snap-x snap-mandatory scroll-smooth gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            // `relative` makes this the offset parent so each week page's
+            // offsetLeft is measured from the scroll container (0 for week 0) —
+            // otherwise the scroll math picks up the panel's padding and only
+            // snap-scroll hides the drift.
+            className="relative flex snap-x snap-mandatory scroll-smooth gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
             {Array.from({ length: weeks }, (_, w) => (
                 <div key={w} data-week={w} className="flex w-full shrink-0 snap-start gap-1.5">

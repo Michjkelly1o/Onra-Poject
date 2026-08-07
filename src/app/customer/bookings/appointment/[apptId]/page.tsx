@@ -29,7 +29,7 @@ import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirm
 import { RateSheet } from "@/components/customer/bookings/RateSheet";
 import { RatingsSection } from "@/components/customer/bookings/RatingsSection";
 import { Button } from "@/components/ui/button";
-import { RefundDetailsSection, type RefundLine } from "@/components/customer/bookings/RefundDetailsSection";
+import { BookingDetailSections, type BookingRefund } from "@/components/customer/bookings/GuestBookToSection";
 
 // Destructive secondary (matches the class Cancel-booking button).
 const CANCEL_BTN =
@@ -55,7 +55,7 @@ export default function AppointmentBookingDetailPage() {
     const goBack = useCustomerBack(
         backIsCancelled ? "/customer/bookings/past" : "/customer/bookings/upcoming",
     );
-    const { timezone, localTimezone } = useCurrentCustomerContext();
+    const { timezone, localTimezone, member } = useCurrentCustomerContext();
     const [cancelOpen, setCancelOpen] = useState(false);
     const [rateOpen, setRateOpen] = useState(false);
     // Rating state — keyed by the linked shared appointment (adminAppointmentId)
@@ -296,20 +296,12 @@ export default function AppointmentBookingDetailPage() {
         </div>
     );
 
-    // Refund breakdown for a cancelled appointment (paid in AED, not credit).
-    const refundLines: RefundLine[] | null = isCancelled
+    // Refund folds into Payment detail for a cancelled appointment (paid in AED):
+    // late cancel forfeits the fee, an on-time cancel refunds it in full.
+    const refund: BookingRefund | null = isCancelled
         ? booking.lateCancel
-            ? [
-                  { label: "You've paid", value: `AED ${booking.price}` },
-                  { label: "Your refund", value: "AED 0", tone: "muted" },
-                  { label: "Status", value: "Not refunded — cancelled within 24 hours", tone: "muted" },
-              ]
-            : [
-                  { label: "You've paid", value: `AED ${booking.price}` },
-                  { label: "Your refund", value: `AED ${booking.price}` },
-                  { label: "Refund via", value: booking.paymentMethod ?? "Original payment method" },
-                  { label: "Status", value: "Refunded" },
-              ]
+            ? { amount: "AED 0", status: "Not refunded — cancelled within 24 hours" }
+            : { amount: `AED ${booking.price}`, status: "Refunded" }
         : null;
 
     const actionZone = isUpcoming ? (
@@ -333,13 +325,25 @@ export default function AppointmentBookingDetailPage() {
         </Button>
     ) : undefined;
 
-    // Attended appointments show their overall rating + reviews (identical to the
-    // class Booking Detail); a cancelled one shows its refund breakdown instead.
-    const afterLocation = isAttended ? (
-        <RatingsSection reviews={reviews} onMoreReviews={() => router.push(`/customer/bookings/appointment/${apptId}/reviews`)} />
-    ) : refundLines ? (
-        <RefundDetailsSection lines={refundLines} />
-    ) : undefined;
+    // Book to (always yourself for an appointment) + Payment detail — the refund
+    // breakdown folds into Payment detail for a cancelled booking. Attended shows
+    // its rating + reviews after.
+    const afterLocation = (
+        <>
+            <BookingDetailSections
+                name={`${member?.firstName ?? ""} ${member?.lastName ?? ""}`.trim() || "You"}
+                email={member?.email}
+                initial={member?.initials}
+                imageUrl={member?.imageUrl}
+                amount={`AED ${booking.price}`}
+                payWith={booking.paymentMethod || "Card"}
+                refund={refund}
+            />
+            {isAttended && (
+                <RatingsSection reviews={reviews} onMoreReviews={() => router.push(`/customer/bookings/appointment/${apptId}/reviews`)} />
+            )}
+        </>
+    );
 
     return (
         <>

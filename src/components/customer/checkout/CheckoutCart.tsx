@@ -21,7 +21,8 @@ import {
     ensurePurchaseCart,
     purchaseCart,
     removeFromCart,
-    TAX_RATE_PCT,
+    useStandardVatPct,
+    usePricesIncludeTax,
     usePromo,
     openGiftCardPicker,
     useGiftCardApplySignal,
@@ -61,7 +62,7 @@ export interface CheckoutCartProps {
     summary?: ReactNode;
     /** Fixed subtotal (e.g. an appointment price) instead of the products cart total. */
     fixedSubtotal?: number;
-    /** Tax rate % — defaults to the products TAX_RATE_PCT; pass 0 for appointments. */
+    /** Tax rate % — defaults to the Admin VAT config; pass 0 for appointments. */
     taxRatePct?: number;
     /** Sheet mode only — suppress the internal "Payment" header when the host
      *  already renders one (e.g. embedded as a slide in the appointment flow). */
@@ -92,8 +93,8 @@ function StepBtn({
             aria-label={label}
             className={`flex size-7 shrink-0 items-center justify-center rounded-full border bg-white transition-colors ${
                 disabled
-                    ? "border-[var(--colors-border-secondary)]"
-                    : "border-[var(--colors-border-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] active:bg-gray-50"
+                    ? "border-[#e4e7ec]"
+                    : "border-[#d0d5dd] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] active:bg-gray-50"
             }`}
         >
             {children}
@@ -113,17 +114,17 @@ function MethodRow({ m, selected, disabled = false, onClick }: { m: PayMethod; s
             onClick={onClick}
             disabled={disabled}
             className={`flex h-[72px] w-full shrink-0 items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors disabled:cursor-not-allowed ${
-                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[var(--colors-border-secondary)] active:bg-gray-50"
+                selected ? "border-2 border-[var(--brand-primary)]" : "border border-[#e4e7ec] active:bg-gray-50"
             } ${disabled ? "opacity-50" : ""}`}
         >
             {m.icon === "gift" ? (
                 <GiftCardMark />
             ) : m.icon === "google" ? (
-                <span className="flex h-8 w-[46px] shrink-0 items-center justify-center rounded border border-[var(--colors-border-secondary)] bg-white text-[11px] font-semibold leading-none text-[#5f6368]">
+                <span className="flex h-8 w-[46px] shrink-0 items-center justify-center rounded border border-[#e4e7ec] bg-white text-[11px] font-semibold leading-none text-[#5f6368]">
                     G Pay
                 </span>
             ) : (
-                <span className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border border-[var(--colors-border-secondary)] bg-white">
+                <span className="relative h-8 w-[46px] shrink-0 overflow-hidden rounded border border-[#e4e7ec] bg-white">
                     <span className={`absolute ${m.inset}`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={m.logo} alt="" className="size-full object-contain" />
@@ -131,8 +132,8 @@ function MethodRow({ m, selected, disabled = false, onClick }: { m: PayMethod; s
                 </span>
             )}
             <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">{m.label}</span>
-                {m.sub && <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{m.sub}</span>}
+                <span className="truncate text-sm font-medium leading-5 text-[#344054]">{m.label}</span>
+                {m.sub && <span className="truncate text-sm font-normal leading-5 text-[#475467]">{m.sub}</span>}
             </div>
             <RadioDot checked={selected} />
         </button>
@@ -158,7 +159,11 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
     };
 
     const promo = usePromo(purchaseCart.promoId);
-    const taxPct = taxRatePct ?? TAX_RATE_PCT;
+    // VAT comes from the Admin tax config (Settings → Tax); an explicit prop
+    // (e.g. 0 for appointments) still wins.
+    const vatPct = useStandardVatPct();
+    const inclusive = usePricesIncludeTax();
+    const taxPct = taxRatePct ?? vatPct;
     // Account Credit — an ADDITIONAL balance applied after promo (never a payment
     // method). Toggle persists on the cart; the amount is clamped in computeTotals.
     const accountCredit = useAccountCreditBalance();
@@ -190,7 +195,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
     }, [subview]);
     // Appointment origins ("appointment-<id>") filter out class-only vouchers.
     const promoScope = originId.startsWith("appointment") ? "appointment" : "class";
-    const totals = computeTotals(fixedSubtotal ?? cartTotal(), promo, taxPct, redeemOn ? accountCredit : 0);
+    const totals = computeTotals(fixedSubtotal ?? cartTotal(), promo, taxPct, redeemOn ? accountCredit : 0, inclusive);
 
     // Gift-card payment reflects the customer's currently-redeemed cards: a single
     // "Forma gift card" method carrying the COMBINED balance. Hidden when none.
@@ -274,39 +279,42 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
     // ── Main checkout content, as three sections, so the sheet can host them in a
     //    sliding track panel and the page can render them linearly. ─────────────
     const mainHeader = !hideHeader && (
+        isSheet ? (
+            // Same centered header structure as every other bottom sheet
+            // (Review & Book, the appointment flow, and the sub-panels below):
+            // a centered title with the X-close absolutely pinned right.
+            <div className="relative flex shrink-0 items-center justify-center pb-3">
+                <span aria-hidden className="absolute left-0 size-8" />
+                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Payment</p>
+                <button
+                    type="button"
+                    onClick={onBack}
+                    aria-label="Close"
+                    className="absolute right-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                >
+                    <XClose className="size-5 text-[#344054]" aria-hidden />
+                </button>
+            </div>
+        ) : (
             <header
-                className={`z-20 flex w-full shrink-0 items-center gap-3 transition-colors ${
-                    isSheet ? "pb-3" : `sticky top-0 px-4 py-3 ${scrolled ? "bg-white/80 backdrop-blur-md" : ""}`
+                className={`z-20 sticky top-0 flex w-full shrink-0 items-center gap-3 px-4 py-3 transition-colors ${
+                    scrolled ? "bg-white/80 backdrop-blur-md" : ""
                 }`}
             >
-                {isSheet ? (
-                    <span aria-hidden className="size-8 shrink-0" />
-                ) : (
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        aria-label="Back"
-                        className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
-                    >
-                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
-                    </button>
-                )}
+                <button
+                    type="button"
+                    onClick={onBack}
+                    aria-label="Back"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
+                >
+                    <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
+                </button>
                 <p className="min-w-0 flex-1 truncate text-center text-base font-semibold leading-6 text-[var(--brand-text)]">
                     Payment
                 </p>
-                {isSheet ? (
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        aria-label="Close"
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
-                    >
-                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
-                    </button>
-                ) : (
-                    <div className="size-10 shrink-0" aria-hidden />
-                )}
+                <div className="size-10 shrink-0" aria-hidden />
             </header>
+        )
     );
 
     const mainBody = (
@@ -341,7 +349,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                                         <div className="flex flex-col">
                                             <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{it.name}</span>
-                                            <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">
+                                            <span className="truncate text-sm font-normal leading-5 text-[#475467]">
                                                 {it.kind === "gift_card" && it.recipientName
                                                     ? `${titleCase(it.recipientName)} • ${it.sub.replace("Valid until ", "")}`
                                                     : it.kind === "retail" && it.size
@@ -354,7 +362,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                                 </div>
                                 <div className="flex w-[72px] shrink-0 items-center justify-between">
                                     <StepBtn onClick={() => decrement(it.lineId)} disabled={false} label="Decrease quantity">
-                                        <Minus className="size-3 text-[var(--colors-text-secondary)]" aria-hidden />
+                                        <Minus className="size-3 text-[#344054]" aria-hidden />
                                     </StepBtn>
                                     <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{it.quantity}</span>
                                     <StepBtn
@@ -362,7 +370,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                                         disabled={!canIncrement}
                                         label="Increase quantity"
                                     >
-                                        <Plus className={`size-3 ${canIncrement ? "text-[var(--colors-text-secondary)]" : "text-[var(--colors-border-primary)]"}`} aria-hidden />
+                                        <Plus className={`size-3 ${canIncrement ? "text-[#344054]" : "text-[#d0d5dd]"}`} aria-hidden />
                                     </StepBtn>
                                 </div>
                             </div>
@@ -395,29 +403,31 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                 <section className="flex flex-col gap-3">
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Detail payment</p>
                     <div className="flex items-center justify-between text-sm leading-5">
-                        <span className="font-normal text-[var(--colors-text-tertiary)]">Subtotal</span>
+                        <span className="font-normal text-[#475467]">Subtotal</span>
                         <span className="font-medium text-[var(--brand-text)]">AED {totals.subtotal}</span>
                     </div>
                     {taxPct > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
-                            <span className="font-normal text-[var(--colors-text-tertiary)]">Tax rate ({taxPct}%)</span>
+                            <span className="font-normal text-[#475467]">
+                                {inclusive ? `Includes VAT (${taxPct}%)` : `Tax rate (${taxPct}%)`}
+                            </span>
                             <span className="font-medium text-[var(--brand-text)]">AED {totals.tax}</span>
                         </div>
                     )}
                     {promo && totals.discount > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
-                            <span className="font-normal text-[var(--colors-text-tertiary)]">Discount ({promo.label})</span>
+                            <span className="font-normal text-[#475467]">Discount ({promo.label})</span>
                             <span className="font-medium text-[var(--brand-primary)]">−AED {totals.discount}</span>
                         </div>
                     )}
                     {totals.accountCredit > 0 && (
                         <div className="flex items-center justify-between text-sm leading-5">
-                            <span className="font-normal text-[var(--colors-text-tertiary)]">Account credit</span>
+                            <span className="font-normal text-[#475467]">Account credit</span>
                             <span className="font-medium text-[var(--brand-primary)]">−AED {totals.accountCredit}</span>
                         </div>
                     )}
                     <div className="flex items-center justify-between text-sm leading-5">
-                        <span className="font-normal text-[var(--colors-text-tertiary)]">Total</span>
+                        <span className="font-normal text-[#475467]">Total</span>
                         <span className="font-semibold text-[var(--brand-text)]">AED {totals.total}</span>
                     </div>
                 </section>
@@ -430,7 +440,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                 <button
                     type="button"
                     onClick={() => openSub("promo")}
-                    className={`flex w-full items-center gap-2 border-b border-[var(--colors-bg-tertiary)] py-4 text-left ${hpad}`}
+                    className={`flex w-full items-center gap-2 border-b border-[#f2f4f7] py-4 text-left ${hpad}`}
                 >
                     <Ticket01 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
                     {promo ? (
@@ -440,18 +450,18 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                             </span>
                         </span>
                     ) : (
-                        <span className="flex-1 text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">Apply promo</span>
+                        <span className="flex-1 text-sm font-normal leading-5 text-[#667085]">Apply promo</span>
                     )}
-                    <ChevronRight className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
+                    <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
                 </button>
 
                 {canRedeem && (
-                    <div className={`flex w-full items-center gap-2 border-b border-[var(--colors-bg-tertiary)] py-4 ${hpad}`}>
+                    <div className={`flex w-full items-center gap-2 border-b border-[#f2f4f7] py-4 ${hpad}`}>
                         <Wallet02 className="size-5 shrink-0 text-[var(--brand-primary)]" aria-hidden />
-                        <span className="flex flex-1 items-center gap-1.5 text-sm font-normal leading-5 text-[var(--colors-text-secondary)]">
+                        <span className="flex flex-1 items-center gap-1.5 text-sm font-normal leading-5 text-[#344054]">
                             Redeem AED {accountCredit} credits
                             <button type="button" onClick={() => setCreditInfoOpen(true)} aria-label="What is account credit?">
-                                <HelpCircle className="size-4 text-[var(--colors-fg-quaternary)]" aria-hidden />
+                                <HelpCircle className="size-4 text-[#98a2b3]" aria-hidden />
                             </button>
                         </span>
                         <button
@@ -460,7 +470,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                             aria-checked={redeemOn}
                             onClick={() => setRedeem(!redeemOn)}
                             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                                redeemOn ? "bg-[var(--brand-primary)]" : "bg-[var(--colors-bg-quaternary)]"
+                                redeemOn ? "bg-[var(--brand-primary)]" : "bg-[#e4e7ec]"
                             }`}
                         >
                             <span
@@ -474,7 +484,7 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
 
                 <div className={`flex items-center gap-4 pt-4 ${isSheet ? "" : "pb-[max(16px,env(safe-area-inset-bottom))]"} ${hpad}`}>
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="text-sm font-normal leading-5 text-[var(--colors-text-secondary)]">Total</span>
+                        <span className="text-sm font-normal leading-5 text-[#344054]">Total</span>
                         <span className="text-lg font-semibold leading-7 text-[var(--brand-text)]">AED {totals.total}</span>
                     </div>
                     <Button variant="primary" size="xl" className="shrink-0 rounded-full px-[18px]" onClick={payNow}>
@@ -494,9 +504,9 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                         type="button"
                         onClick={backToMain}
                         aria-label="Back"
-                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
+                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                     </button>
                     <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Payment method</p>
                     <span aria-hidden className="absolute right-0 size-8" />

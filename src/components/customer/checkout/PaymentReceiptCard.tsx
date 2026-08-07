@@ -10,7 +10,7 @@
 
 import type { ReactNode } from "react";
 import { CheckCircle, XCircle } from "@untitledui/icons";
-import { TAX_RATE_PCT, type OrderLine } from "@/lib/customer/purchase";
+import { useStandardVatPct, usePricesIncludeTax, type OrderLine } from "@/lib/customer/purchase";
 
 function Row({ label, value }: { label: string; value: ReactNode }) {
     return (
@@ -50,6 +50,8 @@ export function PaymentReceiptCard({
     status,
 }: PaymentReceiptCardProps) {
     const ok = status === "success";
+    const vatPct = useStandardVatPct();
+    const inclusive = usePricesIncludeTax();
     return (
         <div className="flex w-full flex-col gap-5 rounded-[20px] border border-[var(--colors-border-secondary)] bg-white p-4">
             <div className="flex flex-col gap-3">
@@ -85,7 +87,7 @@ export function PaymentReceiptCard({
                 {discount > 0 && (
                     <Row label="Discount" value={<span className="text-[var(--brand-primary)]">−AED {discount}</span>} />
                 )}
-                <Row label={`Tax rate (${TAX_RATE_PCT}%)`} value={`AED ${tax}`} />
+                <Row label={inclusive ? `Includes VAT (${vatPct}%)` : `Tax rate (${vatPct}%)`} value={`AED ${tax}`} />
                 {accountCredit > 0 && (
                     <Row label="Account credit" value={<span className="text-[var(--brand-primary)]">−AED {accountCredit}</span>} />
                 )}

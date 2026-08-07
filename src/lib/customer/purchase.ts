@@ -161,8 +161,31 @@ export function consumeGiftCardApply(): void {
     }
 }
 
-/** Tax applied at checkout — matches the Figma "Tax rate (10%)" line. */
-export const TAX_RATE_PCT = 10;
+/** Fallback tax rate when the admin VAT config can't be read (SSR / empty store).
+ *  Matches the Admin default "Services VAT" (Standard, 5%). The live rate always
+ *  comes from `useStandardVatPct()` so the customer flow tracks Admin → Settings →
+ *  Tax exactly. */
+export const TAX_RATE_PCT = 5;
+
+/** The VAT % the customer pays at checkout — the active, default (Standard) VAT
+ *  rate configured on the Admin side (Settings → Tax). This is the single source
+ *  of truth so a change in Admin instantly reflects in every customer receipt. */
+export function useStandardVatPct(): number {
+    return useAppStore((s) => {
+        const vat = s.taxRates.find(
+            (t) => t.kind === "vat" && t.type === "default" && t.status === "active",
+        );
+        return vat?.ratePercentage ?? TAX_RATE_PCT;
+    });
+}
+
+/** Whether the Admin "Prices include tax" toggle is ON (Settings → Tax). When
+ *  true, catalog prices are VAT-inclusive — the tax is a portion OF the price
+ *  (extracted for the receipt line), not added on top — so the customer pays the
+ *  sticker price. Mirrors the admin POS exactly. */
+export function usePricesIncludeTax(): boolean {
+    return useAppStore((s) => s.taxSettings.pricesIncludeTax);
+}
 
 export function cartCount(): number {
     return purchaseCart.items.reduce((n, it) => n + it.quantity, 0);
@@ -406,10 +429,20 @@ export function computeTotals(
     promo: PromoVM | null,
     taxRatePct: number = TAX_RATE_PCT,
     accountCredit: number = 0,
+    /** Admin "Prices include tax" — when true the VAT is already inside
+     *  `subtotal` (extracted for the receipt, never added on top) so the total
+     *  stays the sticker price. Mirrors the admin POS. Default false = tax added
+     *  on top (kept for any legacy caller that doesn't pass it). */
+    pricesIncludeTax: boolean = false,
 ): CartTotals {
     const discount = promoDiscount(subtotal, promo);
-    const tax = Math.round((subtotal * taxRatePct) / 100);
-    const beforeCredit = subtotal + tax - discount;
+    // Inclusive → VAT is a portion of the price: tax = price − price/(1+rate).
+    // Exclusive → VAT is charged on top of the price.
+    const tax = pricesIncludeTax
+        ? subtotal - Math.round((subtotal * 100) / (100 + taxRatePct))
+        : Math.round((subtotal * taxRatePct) / 100);
+    const taxedSubtotal = pricesIncludeTax ? subtotal : subtotal + tax;
+    const beforeCredit = taxedSubtotal - discount;
     const credit = Math.min(Math.max(0, Math.round(accountCredit)), beforeCredit);
     return { subtotal, discount, tax, accountCredit: credit, total: beforeCredit - credit };
 }

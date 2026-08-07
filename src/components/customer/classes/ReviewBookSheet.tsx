@@ -20,12 +20,13 @@
 
 import { useEffect, useMemo, useState, type ComponentType, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, BankNote01, ChevronLeft, ChevronRight, Clock, CoinsStacked03, Link01, MarkerPin01, ShoppingBag03, XClose } from "@untitledui/icons";
+import { AlertCircle, BankNote01, ChevronLeft, ChevronRight, Clock, CoinsStacked03, InfoCircle, Link01, MarkerPin01, ShoppingBag03, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useClassDetail, useNeedsWaiver } from "@/lib/customer/search-data";
 import { getFrozenActiveMembership } from "@/lib/customer/freeze-eligibility";
 import { bookingDraft, ensureBookingDraft, DROP_IN_PRICE_AED, type GuestPayment } from "@/lib/customer/booking-flow";
+import { distributePackageCredits } from "@/lib/customer/credit-balance";
 import { shortDate } from "@/lib/customer/profile-format";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
 import { SpotPicker } from "@/components/customer/classes/SpotPicker";
@@ -37,11 +38,12 @@ const SLIDE_MS = 360;
 const SLIDE_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 const GUEST_INPUT =
-    "w-full rounded-xl border border-[var(--colors-border-primary)] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[var(--colors-text-quaternary)] focus:border-[var(--brand-primary)] focus:outline-none";
+    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--brand-text)] placeholder:text-[#667085] focus:border-[var(--brand-primary)] focus:outline-none";
 
 type BookTo = "myself" | "guest";
-/** Guest pay options (never the booker's own plan — client 2026-08). */
-type GuestPay = Extract<GuestPayment, "drop_in" | "guest_package" | "invite_link">;
+/** Guest pay options. `booker_credit` = "Use my plan" (host pays a credit for
+ *  the guest) — gated by the Booking Rules "Guest bookings" settings. */
+type GuestPay = Extract<GuestPayment, "drop_in" | "guest_package" | "invite_link" | "booker_credit">;
 
 export function ReviewBookSheet({
     open,
@@ -60,6 +62,10 @@ export function ReviewBookSheet({
     const allBookings = useAppStore((s) => s.classBookings);
     const customerPlans = useAppStore((s) => s.customerPlans);
     const customers = useAppStore((s) => s.customers);
+    const classesSettings = useAppStore((s) => s.classesSettings);
+    // Booking Rules → "Guest bookings" gating (defaults cover a pre-v105 store).
+    const guestsUsePlan = classesSettings.guests_use_plan_enabled ?? true;
+    const guestsAllowUnlimited = classesSettings.guests_allow_unlimited ?? false;
     const needsWaiver = useNeedsWaiver();
     const frozenMembership = member ? getFrozenActiveMembership(member.id, customerPlans) : null;
 
@@ -129,7 +135,31 @@ export function ReviewBookSheet({
     const credits = member.creditsRemaining;
     const hasCredits = typeof credits === "number";
     const creditsAfter = hasCredits ? Math.max(0, credits - CLASS_CREDIT_COST) : null;
+    // Per-PACKAGE remaining (distributed from the balance) so "credits left after"
+    // reflects the individual package, not the combined total across packages.
+    const pkgRemaining = distributePackageCredits(eligiblePlans, credits ?? 0);
+    const creditsLeftAfter = (p: (typeof eligiblePlans)[number]): number => {
+        const rem = p.kind === "package" ? (pkgRemaining.get(p.id) ?? 0) : (credits ?? 0);
+        return Math.max(0, rem - CLASS_CREDIT_COST);
+    };
     const hasEligiblePlan = eligiblePlans.length > 0 && (!hasCredits || (credits ?? 0) > 0);
+
+    // "Use my plan" (booker_credit) — the host pays a credit for the guest. Shown
+    // only when Booking Rules allow it, the host has an eligible plan, and (for an
+    // unlimited membership) unlimited plans are allowed for guests.
+    const hostGuestEligible =
+        guestsUsePlan && eligiblePlans.length > 0 && (hasCredits ? (credits ?? 0) > 0 : guestsAllowUnlimited);
+    // Clamp the selection to a still-valid option (the picked plan can become
+    // ineligible if the guest changes or the setting is off), falling back to drop-in.
+    const guestPaySafe: GuestPay =
+        guestPay === "booker_credit" && !hostGuestEligible
+            ? "drop_in"
+            : guestPay === "guest_package" && !guestHasCredits
+              ? "drop_in"
+              : guestPay;
+    // The host plan that "Use my plan" spends (auto-selected first, switchable
+    // via the plan picker when the host holds more than one eligible plan).
+    const selectedHostPlan = eligiblePlans.find((p) => p.id === selectedPlanId) ?? eligiblePlans[0];
 
     const fullDate = new Date(`${detail.dateISO}T00:00:00`).toLocaleDateString("en-GB", {
         weekday: "long",
@@ -173,7 +203,7 @@ export function ReviewBookSheet({
         bookingDraft.bookSelf = bookTo === "myself";
         bookingDraft.guests =
             bookTo === "guest" && guest
-                ? [{ name: guest.name.trim(), email: guest.email.trim(), payment: guestPay }]
+                ? [{ name: guest.name.trim(), email: guest.email.trim(), payment: guestPaySafe }]
                 : [];
         bookingDraft.spots = spotRequired ? (selectedSpots[0] ? [selectedSpots[0]] : []) : [];
         const params = new URLSearchParams({ mode });
@@ -184,8 +214,14 @@ export function ReviewBookSheet({
     }
 
     const headerTitle = step === 1 ? "Guest details" : step === 2 ? "Payment method" : "Review and book";
+    // Booking has the full form (scrolls) → fixed tall sheet. Joining a waitlist
+    // is short → let the sheet HUG its content so it doesn't leave empty space.
+    // Both booking AND joining a waitlist use the full tall sheet, with the main
+    // content scrolling — one consistent height across the flows (client 2026-08).
+    const tallMode = true;
     return (
-        <CustomerSheet open={open} onClose={onClose} tall>
+        <CustomerSheet open={open} onClose={onClose} tall={tallMode}>
+          <div className={tallMode ? "flex h-full flex-col" : "flex flex-col"}>
             {/* Sticky header — title + back (sub-panels) / X close (main). */}
             <div className="relative flex shrink-0 items-center justify-center pb-3">
                 {step !== 0 ? (
@@ -196,9 +232,9 @@ export function ReviewBookSheet({
                             setStep(0);
                         }}
                         aria-label="Back"
-                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
+                        className="absolute left-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                     >
-                        <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
+                        <ChevronLeft className="size-5 text-[#344054]" aria-hidden />
                     </button>
                 ) : (
                     <span aria-hidden className="absolute left-0 size-8" />
@@ -211,26 +247,26 @@ export function ReviewBookSheet({
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="absolute right-0 flex size-8 items-center justify-center rounded-full border border-[var(--colors-border-secondary)] bg-white transition-colors active:bg-gray-50"
+                        className="absolute right-0 flex size-8 items-center justify-center rounded-full border border-[#e4e7ec] bg-white transition-colors active:bg-gray-50"
                     >
-                        <XClose className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
+                        <XClose className="size-5 text-[#344054]" aria-hidden />
                     </button>
                 )}
             </div>
 
             {/* Sliding track — main → guest details → payment methods (seamless). */}
-            <div className="relative -mx-4 mt-1 min-h-0 flex-1 overflow-hidden">
+            <div className={`relative -mx-4 mt-1 overflow-hidden ${tallMode ? "min-h-0 flex-1" : ""}`}>
                 <div
-                    className="flex h-full w-full"
+                    className={`flex w-full ${tallMode ? "h-full" : "items-start"}`}
                     style={{ transform: `translateX(-${step * 100}%)`, transition: `transform ${SLIDE_MS}ms ${SLIDE_EASE}` }}
                 >
                     {/* Panel 0 — main */}
-                    <div className="flex h-full w-full shrink-0 flex-col px-4">
-                        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className={`flex w-full shrink-0 flex-col px-4 ${tallMode ? "h-full" : ""}`}>
+                        <div className={`flex flex-col gap-5 pt-2 ${tallMode ? "min-h-0 flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`}>
                     {/* Class Summary */}
                     <div className="flex w-full items-start gap-3">
                         <div
-                            className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[var(--colors-border-secondary)]"
+                            className="size-[82px] shrink-0 overflow-hidden rounded-[10px] border border-[#e4e7ec]"
                             style={!detail.coverImage ? { backgroundColor: detail.coverColor } : undefined}
                         >
                             {detail.coverImage && (
@@ -239,33 +275,33 @@ export function ReviewBookSheet({
                             )}
                         </div>
                         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <p className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">{detail.name}</p>
-                            <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
+                            <p className="truncate text-sm font-medium leading-5 text-[#101828]">{detail.name}</p>
+                            <p className="text-xs font-normal leading-[18px] text-[#475467]">
                                 {fullDate} at {startTime12}
                             </p>
                             <div className="flex items-start gap-1.5">
-                                <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
-                                <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
+                                <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
+                                <p className="text-xs font-normal leading-[18px] text-[#475467]">
                                     {detail.room} - {detail.branchName}
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <span className="flex items-center gap-1 text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
-                                    <Clock className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                                <span className="flex items-center gap-1 text-xs font-normal leading-[18px] text-[#475467]">
+                                    <Clock className="size-4 shrink-0 text-[#667085]" aria-hidden />
                                     {detail.durationMins} mins
                                 </span>
                                 {detail.instructorName && (
                                     <>
-                                        <span className="text-xs leading-[18px] text-[var(--colors-text-tertiary)]" aria-hidden>
+                                        <span className="text-xs leading-[18px] text-[#475467]" aria-hidden>
                                             •
                                         </span>
-                                        <span className="flex items-center gap-1.5 text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">
-                                            <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
+                                        <span className="flex items-center gap-1.5 text-xs font-normal leading-[18px] text-[#475467]">
+                                            <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
                                                 {detail.instructorImageUrl ? (
                                                     // eslint-disable-next-line @next/next/no-img-element
                                                     <img src={detail.instructorImageUrl} alt="" className="size-full scale-[1.4] object-cover" />
                                                 ) : (
-                                                    <span className="text-[9px] font-semibold leading-none text-[var(--colors-text-quaternary)]">
+                                                    <span className="text-[9px] font-semibold leading-none text-[#667085]">
                                                         {detail.instructorInitials}
                                                     </span>
                                                 )}
@@ -278,12 +314,12 @@ export function ReviewBookSheet({
                         </div>
                     </div>
 
-                    <div className="h-px w-full shrink-0 bg-[var(--colors-bg-quaternary)]" />
+                    <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
 
                     {/* Book to */}
                     <section className="flex w-full flex-col gap-3">
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Book to</p>
-                        <div className="flex rounded-full border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] p-1">
+                        <div className="flex rounded-full border border-[#e4e7ec] bg-[#f9fafb] p-1">
                             {(["myself", "guest"] as BookTo[]).map((t) => {
                                 const active = bookTo === t;
                                 return (
@@ -297,8 +333,8 @@ export function ReviewBookSheet({
                                         }}
                                         className={`flex-1 rounded-full py-1 text-sm leading-5 transition-colors ${
                                             active
-                                                ? "bg-white font-semibold text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
-                                                : "font-medium text-[var(--colors-text-quaternary)]"
+                                                ? "bg-white font-semibold text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]"
+                                                : "font-medium text-[#667085]"
                                         }`}
                                     >
                                         {t === "myself" ? "Myself" : "Guest"}
@@ -308,31 +344,31 @@ export function ReviewBookSheet({
                         </div>
 
                         {bookTo === "myself" ? (
-                            <div className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
-                                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--colors-bg-tertiary)]">
+                            <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
                                     {member.imageUrl ? (
                                         // eslint-disable-next-line @next/next/no-img-element
                                         <img src={member.imageUrl} alt="" className="size-full object-cover" />
                                     ) : (
-                                        <span className="text-xs font-semibold leading-none text-[var(--colors-text-quaternary)]">{member.initials}</span>
+                                        <span className="text-xs font-semibold leading-none text-[#667085]">{member.initials}</span>
                                     )}
                                 </span>
                                 <div className="flex min-w-0 flex-1 flex-col">
                                     <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">
                                         {`${member.firstName} ${member.lastName}`.trim()}{" "}
-                                        <span className="font-normal text-[var(--colors-text-quaternary)]">(You)</span>
+                                        <span className="font-normal text-[#667085]">(You)</span>
                                     </span>
-                                    <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{member.email}</span>
+                                    <span className="truncate text-sm font-normal leading-5 text-[#667085]">{member.email}</span>
                                 </div>
                             </div>
                         ) : guest ? (
-                            <div className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
-                                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--colors-bg-tertiary)] text-xs font-semibold text-[var(--colors-text-quaternary)]">
+                            <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7] text-xs font-semibold text-[#667085]">
                                     {guest.name.trim().slice(0, 1).toUpperCase() || "G"}
                                 </span>
                                 <div className="flex min-w-0 flex-1 flex-col">
                                     <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{guest.name}</span>
-                                    <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">
+                                    <span className="truncate text-sm font-normal leading-5 text-[#667085]">
                                         {guest.email || "Guest booking"}
                                     </span>
                                 </div>
@@ -348,7 +384,7 @@ export function ReviewBookSheet({
                             <button
                                 type="button"
                                 onClick={openGuestPanel}
-                                className="flex w-full items-center justify-center rounded-xl border border-dashed border-[var(--colors-border-primary)] bg-white p-4 text-sm font-semibold leading-5 text-[var(--brand-primary)] transition-colors active:bg-gray-50"
+                                className="flex w-full items-center justify-center rounded-xl border border-dashed border-[#d0d5dd] bg-white p-4 text-sm font-semibold leading-5 text-[var(--brand-primary)] transition-colors active:bg-gray-50"
                             >
                                 Add guest details
                             </button>
@@ -368,44 +404,43 @@ export function ReviewBookSheet({
                         )}
                     </section>
 
-                    {/* Pay with — hidden for waitlist (nothing charged until promoted). */}
-                    {mode === "book" && (
+                    {/* Pay with — for a waitlist join this records the INTENDED
+                        payment (Myself or Guest, same options); nothing is charged
+                        until the spot is promoted to booked. */}
+                    {(
                         <>
-                            <div className="h-px w-full shrink-0 bg-[var(--colors-bg-quaternary)]" />
+                            <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
                             <section className="flex w-full flex-col gap-3">
                                 <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Pay with</p>
 
                                 {bookTo === "myself" ? (
                                     hasEligiblePlan ? (
                                         <div className="flex flex-col gap-3">
-                                            {/* Only the selected (most-recent by default) plan shows;
-                                                "See more" slides to the full list to switch. */}
-                                            {(() => {
-                                                const p = eligiblePlans.find((x) => x.id === selectedPlanId) ?? eligiblePlans[0];
+                                            {/* Full list of eligible plans — pick one directly (no
+                                                "See more"). A single plan auto-selects. */}
+                                            {eligiblePlans.map((p) => {
+                                                const sel = (selectedPlanId ?? eligiblePlans[0]?.id) === p.id;
                                                 const sub = !hasCredits
                                                     ? "Included in your membership"
-                                                    : `${creditsAfter} credits left after this booking`;
+                                                    : `${creditsLeftAfter(p)} credits left after this booking`;
                                                 return (
-                                                    <div className="flex w-full items-center gap-3 rounded-xl border-2 border-[var(--brand-primary)] bg-white p-4 text-left">
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        onClick={() => setSelectedPlanId(p.id)}
+                                                        className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
+                                                            sel ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
+                                                        }`}
+                                                    >
                                                         <FeaturedIcon icon={CoinsStacked03} />
                                                         <span className="flex min-w-0 flex-1 flex-col">
                                                             <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{p.name}</span>
-                                                            <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{sub}</span>
+                                                            <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
                                                         </span>
-                                                        <RadioDot checked />
-                                                    </div>
+                                                        <RadioDot checked={sel} />
+                                                    </button>
                                                 );
-                                            })()}
-                                            {eligiblePlans.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setStep(2)}
-                                                    className="flex items-center gap-1 self-start text-sm font-semibold leading-5 text-[var(--brand-primary)]"
-                                                >
-                                                    See more
-                                                    <ChevronRight className="size-4" aria-hidden />
-                                                </button>
-                                            )}
+                                            })}
                                         </div>
                                     ) : (
                                         <button
@@ -414,45 +449,56 @@ export function ReviewBookSheet({
                                                 onClose();
                                                 router.push(`/customer/classes/${detail.id}/book/plans`);
                                             }}
-                                            className="flex w-full items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4 text-left transition-colors active:bg-gray-50"
+                                            className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4 text-left transition-colors active:bg-gray-50"
                                         >
-                                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[var(--colors-border-secondary)] bg-white">
-                                                <ShoppingBag03 className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
+                                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[#e4e7ec] bg-white">
+                                                <ShoppingBag03 className="size-5 text-[#344054]" aria-hidden />
                                             </span>
                                             <span className="min-w-0 flex-1 truncate text-base font-medium leading-6 text-[var(--brand-text)]">
                                                 Purchase plan
                                             </span>
-                                            <ChevronRight className="size-5 shrink-0 text-[var(--colors-text-secondary)]" aria-hidden />
+                                            <ChevronRight className="size-5 shrink-0 text-[#344054]" aria-hidden />
                                         </button>
                                     )
                                 ) : (
                                     <div className="flex flex-col gap-3">
                                         {([
-                                            { id: "drop_in" as GuestPay, icon: BankNote01, label: "Guest pays drop-in", sub: `AED ${DROP_IN_PRICE_AED} per class`, disabled: false },
-                                            { id: "guest_package" as GuestPay, icon: CoinsStacked03, label: "Use their credits", sub: guestHasCredits ? "1 credit from their plan" : "No eligible plan for this guest", disabled: !guestHasCredits },
-                                            { id: "invite_link" as GuestPay, icon: Link01, label: "Send invite link", sub: "Friend pays & books themselves", disabled: false },
-                                        ]).map((o) => {
-                                            const sel = guestPay === o.id;
+                                            { id: "drop_in" as GuestPay, icon: BankNote01, label: "Guest pays drop-in", sub: `AED ${DROP_IN_PRICE_AED} per class`, disabled: false, show: true },
+                                            // "Use my plan" — host pays a credit; sub shows the plan being spent.
+                                            { id: "booker_credit" as GuestPay, icon: CoinsStacked03, label: "Use my plan", sub: selectedHostPlan?.name ? `${selectedHostPlan.name} · ${CLASS_CREDIT_COST} credit` : `${CLASS_CREDIT_COST} credit from your plan`, disabled: false, show: hostGuestEligible },
+                                            // "Use their credits" — always visible; disabled when the guest has no eligible plan.
+                                            { id: "guest_package" as GuestPay, icon: CoinsStacked03, label: "Use their credits", sub: guestHasCredits ? "1 credit from their plan" : "No eligible plan for this guest", disabled: !guestHasCredits, show: true },
+                                            { id: "invite_link" as GuestPay, icon: Link01, label: "Send invite link", sub: "Friend pays & books themselves", disabled: false, show: true },
+                                        ].filter((o) => o.show)).map((o) => {
+                                            const sel = guestPaySafe === o.id;
+                                            const canSwitchPlan = o.id === "booker_credit" && sel && eligiblePlans.length > 1;
                                             return (
                                                 <button
                                                     key={o.id}
                                                     type="button"
                                                     disabled={o.disabled}
-                                                    onClick={() => !o.disabled && setGuestPay(o.id)}
+                                                    onClick={() => (canSwitchPlan ? setStep(2) : !o.disabled && setGuestPay(o.id))}
                                                     className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
                                                         o.disabled
-                                                            ? "border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] opacity-60"
+                                                            ? "border border-[#e4e7ec] bg-[#f9fafb] opacity-60"
                                                             : sel
                                                               ? "border-2 border-[var(--brand-primary)] bg-white"
-                                                              : "border border-[var(--colors-border-secondary)] bg-white"
+                                                              : "border border-[#e4e7ec] bg-white"
                                                     }`}
                                                 >
                                                     <FeaturedIcon icon={o.icon} />
                                                     <span className="flex min-w-0 flex-1 flex-col">
                                                         <span className="text-sm font-medium leading-5 text-[var(--brand-text)]">{o.label}</span>
-                                                        <span className="text-sm font-normal leading-5 text-[var(--colors-text-quaternary)]">{o.sub}</span>
+                                                        <span className="truncate text-sm font-normal leading-5 text-[#667085]">{o.sub}</span>
                                                     </span>
-                                                    <RadioDot checked={sel} />
+                                                    {canSwitchPlan ? (
+                                                        <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold leading-5 text-[var(--brand-primary)]">
+                                                            Change
+                                                            <ChevronRight className="size-4" aria-hidden />
+                                                        </span>
+                                                    ) : (
+                                                        <RadioDot checked={sel} />
+                                                    )}
                                                 </button>
                                             );
                                         })}
@@ -462,12 +508,26 @@ export function ReviewBookSheet({
                         </>
                     )}
 
-                    {/* Cancellation policy — mirrors the Class Details section. */}
-                    <div className="h-px w-full shrink-0 bg-[var(--colors-bg-quaternary)]" />
-                    <section className="flex w-full flex-col gap-2">
-                        <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Cancellation policy</p>
-                        <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">Full refund if you cancel 24 hours before.</p>
-                    </section>
+                    {/* Waitlist → a gray "nothing charged yet" note (no cancellation
+                        policy, since joining a waitlist doesn't take a credit until
+                        a spot opens). Booking → the cancellation policy. */}
+                    {mode === "waitlist" ? (
+                        <div className="flex w-full shrink-0 items-start gap-2 rounded-xl border border-[#eaecf0] bg-[#f9fafb] p-4">
+                            <InfoCircle className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
+                            <p className="text-sm font-normal leading-5 text-[#475467]">
+                                You won&apos;t be charged now. Your selected payment is applied only if a spot opens
+                                and your waitlist spot becomes a booking.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="h-px w-full shrink-0 bg-[#e4e7ec]" />
+                            <section className="flex w-full flex-col gap-2">
+                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Cancellation policy</p>
+                                <p className="text-sm font-normal leading-5 text-[#475467]">Full refund if you cancel 24 hours before.</p>
+                            </section>
+                        </>
+                    )}
 
                     {frozenMembership && (
                         <div className="flex w-full items-start gap-2 rounded-xl border border-[#fda29b] bg-[#fffbfa] p-4">
@@ -480,10 +540,18 @@ export function ReviewBookSheet({
                     )}
                         </div>
 
-                        {/* Footer — credit cost + Book now (Class Details chrome). */}
+                        {/* Footer — total reflects the chosen payment. Guest drop-in
+                            → AED; plan/credit → "1 credit"; invite link → nothing (the
+                            guest completes the booking themselves). */}
                         <div className="flex shrink-0 items-center justify-between gap-6 pt-4">
                             <span className="text-base font-semibold leading-6 text-[var(--brand-text)]">
-                                {CLASS_CREDIT_COST} credit{CLASS_CREDIT_COST === 1 ? "" : "s"}
+                                {(() => {
+                                    const creditText = `${CLASS_CREDIT_COST} credit${CLASS_CREDIT_COST === 1 ? "" : "s"}`;
+                                    if (bookTo !== "guest") return creditText;
+                                    if (guestPaySafe === "drop_in") return `AED ${DROP_IN_PRICE_AED}`;
+                                    if (guestPaySafe === "invite_link") return "";
+                                    return creditText; // booker_credit / guest_package
+                                })()}
                             </span>
                             <Button variant="primary" size="xl" className="rounded-full" disabled={!canConfirm} onClick={confirm}>
                                 {mode === "waitlist" ? "Join waitlist" : spotMissing ? "Select a spot" : "Book now"}
@@ -492,10 +560,10 @@ export function ReviewBookSheet({
                     </div>
 
                     {/* Panel 1 — Guest details (slides in from the Guest tab). */}
-                    <div className="flex h-full w-full shrink-0 flex-col px-4">
-                        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className={`flex w-full shrink-0 flex-col px-4 ${tallMode ? "h-full" : ""}`}>
+                        <div className={`flex flex-col gap-4 pt-2 ${tallMode ? "min-h-0 flex-1 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`}>
                             <label className="flex w-full flex-col gap-1.5">
-                                <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Guest name</span>
+                                <span className="text-sm font-medium leading-5 text-[#344054]">Guest name</span>
                                 <input
                                     className={GUEST_INPUT}
                                     placeholder="Enter guest name"
@@ -504,7 +572,7 @@ export function ReviewBookSheet({
                                 />
                             </label>
                             <label className="flex w-full flex-col gap-1.5">
-                                <span className="text-sm font-medium leading-5 text-[var(--colors-text-secondary)]">Email</span>
+                                <span className="text-sm font-medium leading-5 text-[#344054]">Email</span>
                                 <input
                                     className={GUEST_INPUT}
                                     type="email"
@@ -531,14 +599,17 @@ export function ReviewBookSheet({
                         </div>
                     </div>
 
-                    {/* Panel 2 — Payment methods (all eligible plans; "See more"). */}
-                    <div className="flex h-full w-full shrink-0 flex-col px-4">
+                    {/* Panel 2 — Payment methods (all eligible plans; "See more").
+                        Book-only: a waitlist join has no payment step, and leaving
+                        this panel out keeps the hugging waitlist sheet short. */}
+                    {mode === "book" && (
+                    <div className="flex w-full shrink-0 flex-col px-4 h-full">
                         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {eligiblePlans.map((p) => {
                                 const sel = selectedPlanId === p.id;
                                 const sub = !hasCredits
                                     ? "Included in your membership"
-                                    : `${creditsAfter} credits left after this booking`;
+                                    : `${creditsLeftAfter(p)} credits left after this booking`;
                                 return (
                                     <button
                                         key={p.id}
@@ -548,13 +619,13 @@ export function ReviewBookSheet({
                                             setStep(0);
                                         }}
                                         className={`flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors ${
-                                            sel ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[var(--colors-border-secondary)] bg-white"
+                                            sel ? "border-2 border-[var(--brand-primary)] bg-white" : "border border-[#e4e7ec] bg-white"
                                         }`}
                                     >
                                         <FeaturedIcon icon={CoinsStacked03} />
                                         <span className="flex min-w-0 flex-1 flex-col">
                                             <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{p.name}</span>
-                                            <span className="truncate text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{sub}</span>
+                                            <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
                                         </span>
                                         <RadioDot checked={sel} />
                                     </button>
@@ -562,8 +633,10 @@ export function ReviewBookSheet({
                             })}
                         </div>
                     </div>
+                    )}
                 </div>
             </div>
+          </div>
         </CustomerSheet>
     );
 }
@@ -573,8 +646,8 @@ function FeaturedIcon({ icon: Icon }: { icon: ComponentType<SVGProps<SVGSVGEleme
     // (no colour fill, matching the Products module). Figma uses a tint here but
     // the client wants the plain default (client 2026-08).
     return (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[var(--colors-border-secondary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-            <Icon className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <Icon className="size-5 text-[#344054]" aria-hidden />
         </span>
     );
 }
@@ -583,7 +656,7 @@ function RadioDot({ checked }: { checked: boolean }) {
     return (
         <span
             className={`flex size-5 shrink-0 items-center justify-center rounded-full border ${
-                checked ? "border-[var(--brand-primary)]" : "border-[var(--colors-border-primary)]"
+                checked ? "border-[var(--brand-primary)]" : "border-[#d0d5dd]"
             }`}
         >
             {checked && <span className="size-2.5 rounded-full bg-[var(--brand-primary)]" />}

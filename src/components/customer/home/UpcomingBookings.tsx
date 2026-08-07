@@ -23,10 +23,10 @@ import type { UpcomingCardVM } from "@/lib/customer/bookings-data";
 function EmptyUpcoming() {
     const router = useRouter();
     return (
-        <div className="flex min-h-[124px] flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--colors-border-secondary)] bg-white px-4 pb-4 pt-3 text-center">
+        <div className="flex min-h-[124px] flex-col items-center justify-center gap-3 rounded-2xl border border-[#e4e7ec] bg-white px-4 pb-4 pt-3 text-center">
             {/* Featured icon — DS skeuomorphic tile (secondary/50 wash + calendar) */}
             <span
-                className="flex size-8 items-center justify-center rounded-lg border-[2.65px] border-white/10 bg-[var(--colors-secondary-50)]"
+                className="flex size-8 items-center justify-center rounded-lg border-[2.65px] border-white/10 bg-[#e9fff3]"
                 style={{
                     boxShadow:
                         "0px 3.49px 3.49px 0px rgba(0,0,0,0.04), 0px 3.49px 20.94px 0px rgba(224,248,164,0.12), inset 4.5px 4.5px 6px 0px rgba(255,255,255,0.2)",
@@ -34,10 +34,7 @@ function EmptyUpcoming() {
             >
                 <Calendar className="size-4 text-[var(--brand-primary)]" aria-hidden />
             </span>
-            <div className="flex flex-col gap-1">
-                <p className="text-sm font-semibold leading-5 text-[var(--colors-text-primary)]">Ready for your next session?</p>
-                <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-tertiary)]">Book a session to see your upcoming bookings here.</p>
-            </div>
+            <p className="text-sm font-semibold leading-5 text-[#101828]">Ready for your next session?</p>
             {/* Same primary CTA (sm) as the "Rate class" button in Previous bookings. */}
             <Button
                 variant="primary"

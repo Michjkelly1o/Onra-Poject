@@ -524,6 +524,9 @@ export function useUpcomingBookingsMerged(): UpcomingCardVM[] {
 // <BookingCard>. Attended-and-not-yet-rated bookings expose a "Rate class" CTA.
 
 export interface PastCardVM extends UpcomingCardVM {
+    /** The session was attended (rateable). Stays true after rating so the
+     *  card remains in the Previous bookings section — client 2026-08-06. */
+    attended: boolean;
     /** Attended & not yet rated → show the "Rate class" CTA. */
     canRate: boolean;
     /** Route to the rating flow for this booking. */
@@ -561,6 +564,7 @@ export function usePastBookingsMerged(): PastCardVM[] {
                 coverColor: b.coverColor,
                 sortKey: b.sortKey,
                 href: `/customer/bookings/${b.bookingId}`,
+                attended: b.viewStatus === "attended",
                 canRate: b.viewStatus === "attended" && !ratedSchedule.has(b.scheduleId),
                 rateHref: `/customer/bookings/${b.bookingId}/rate`,
             };
@@ -590,6 +594,7 @@ export function usePastBookingsMerged(): PastCardVM[] {
                 coverColor: a.coverColor,
                 sortKey: `${a.slotISO}T${a.slotTime}`,
                 href: `/customer/bookings/appointment/${a.id}`,
+                attended: true,
                 canRate: !ratedAppt.has(a.adminAppointmentId ?? a.id),
                 rateHref: `/customer/bookings/appointment/${a.id}/rate`,
             }));

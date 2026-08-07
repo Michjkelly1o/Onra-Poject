@@ -125,10 +125,26 @@ export default function WelcomePage() {
                     <span className="text-[32px] font-semibold leading-none text-[var(--brand-text)]">{brandDisplayName}</span>
                 </div>
                 <div className="absolute bottom-[max(24px,env(safe-area-inset-bottom))] flex items-center gap-1.5">
-                    <span className="text-sm leading-5 text-[var(--colors-fg-quaternary)]">powered by</span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/images/pay/forma-logomark.svg" alt="" className="size-4 opacity-60" aria-hidden />
-                    <span className="text-sm font-semibold leading-5 text-[var(--colors-text-quaternary)]">Onra</span>
+                    <span className="text-sm leading-5 text-[#98a2b3]">powered by</span>
+                    {/* Onra wordmark, masked to the subtle powered-by gray. */}
+                    <span
+                        role="img"
+                        aria-label="Onra"
+                        className="block shrink-0"
+                        style={{
+                            width: "50px",
+                            height: "13px",
+                            backgroundColor: "#667085",
+                            WebkitMaskImage: "url('/brand-logo/wordmark/Wordmark%20-%20Black.svg')",
+                            maskImage: "url('/brand-logo/wordmark/Wordmark%20-%20Black.svg')",
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                            WebkitMaskPosition: "left center",
+                            maskPosition: "left center",
+                        }}
+                    />
                 </div>
             </button>
         );
@@ -162,7 +178,7 @@ export default function WelcomePage() {
                             onClick={() => goToSlide(i)}
                             aria-label={`Go to slide ${i + 1}`}
                             className={`h-1.5 rounded-full transition-all ${
-                                i === active ? "w-6 bg-[var(--brand-tertiary)]" : "w-1.5 bg-[var(--colors-bg-quaternary)]/70"
+                                i === active ? "w-6 bg-[var(--brand-tertiary)]" : "w-1.5 bg-[#e4e7ec]/70"
                             }`}
                         />
                     ))}
@@ -171,7 +187,7 @@ export default function WelcomePage() {
                 {/* Active slide copy */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-2xl font-semibold leading-8 text-white">{SLIDES[active].title}</h1>
-                    <p className="text-base leading-6 text-[var(--colors-border-primary)]">{SLIDES[active].subtitle}</p>
+                    <p className="text-base leading-6 text-[#d0d5dd]">{SLIDES[active].subtitle}</p>
                 </div>
 
                 <Button variant="primary" size="xl" className="w-full rounded-full" onClick={getStarted}>

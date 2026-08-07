@@ -107,11 +107,11 @@ export default function CustomerHomePage() {
                                     onSelect={(href) => router.push(href)}
                                 />
 
-                                {/* Most-recent ATTENDED booking that still needs a rating — this
-                                    section exists to surface the rating flow, so cancelled /
-                                    no-show bookings (which can't be rated) are excluded. */}
+                                {/* Most-recent ATTENDED booking (cancelled / no-show excluded).
+                                    It STAYS after rating — the Rate CTA just hides — so the
+                                    section doesn't empty out once the member rates. */}
                                 <PreviousBookings
-                                    items={pastMerged.filter((b) => b.canRate).slice(0, 1)}
+                                    items={pastMerged.filter((b) => b.attended).slice(0, 1)}
                                     onSelect={(href) => router.push(href)}
                                     onRate={(href) => setRateHref(href)}
                                 />

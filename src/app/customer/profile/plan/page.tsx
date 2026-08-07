@@ -16,6 +16,7 @@ import { FreezePlanSheet, type FreezeReasonOption } from "@/components/customer/
 import { OptionSheet } from "@/components/customer/profile/OptionSheet";
 import { Button } from "@/components/ui/button";
 import { decideFreezeCta } from "@/lib/customer/freeze-eligibility";
+import { distributePackageCredits } from "@/lib/customer/credit-balance";
 
 // Cancel-plan reasons come from the studio-wide Cancellation policy (Booking
 // rules → Cancellation policy panel) — same source the admin cancel modal
@@ -45,6 +46,15 @@ export default function MyPlanPage() {
     const freezePolicy = useAppStore((s) => s.freezePolicy);
     const cancellationPolicy = useAppStore((s) => s.cancellationPolicy);
     const customerTransactions = useAppStore((s) => s.customerTransactions);
+    const packages = useAppStore((s) => s.packages);
+    const memberships = useAppStore((s) => s.memberships);
+    // Resolve the price a plan row shows — its own snapshot, else the product's
+    // current price (package rows often don't snapshot a price → "AED 0" bug).
+    const resolvePrice = (p: CustomerPlan): number => {
+        if (typeof p.priceAed === "number" && p.priceAed > 0) return p.priceAed;
+        if (p.kind === "package") return packages.find((x) => x.id === p.productId)?.price_aed ?? p.priceAed ?? 0;
+        return memberships.find((x) => x.id === p.productId)?.price_aed ?? p.priceAed ?? 0;
+    };
 
     // Cancel-plan reasons come from Booking rules → Cancellation policy panel.
     // Fallback covers old persisted policies missing the field. When the list
@@ -160,13 +170,18 @@ export default function MyPlanPage() {
     // ("Expired plan") — same section style as the Notifications list.
     const activePlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "active" || p.status === "frozen" || p.status === "freeze_requested");
     const pastPlans = [...plans, ...freeCreditPlans].filter((p) => p.status === "cancelled" || p.status === "expired");
+    // Distribute the overall Credit Balance across the LIVE packages so every
+    // package card's "remaining" sums back to the balance (client 2026-08).
+    const pkgRemaining = distributePackageCredits(plans, member?.creditsRemaining ?? 0);
+
     const renderCard = (p: CustomerPlan) => {
         const cta = ctaFor(p);
         return (
             <PlanCard
                 key={p.id}
                 plan={p}
-                creditsRemaining={member?.creditsRemaining}
+                creditsRemaining={p.kind === "package" ? pkgRemaining.get(p.id) : member?.creditsRemaining}
+                priceAed={resolvePrice(p)}
                 canReactivate={canReactivate(p)}
                 canFreeze={cta.mode !== "hidden"}
                 freezeMode={cta.mode === "request" ? "request" : "direct"}
