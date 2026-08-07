@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, Plus, Grid01,
+    SearchMd, FilterLines, Grid01,
     ClockFastForward, Users01, User01, XClose, AlignLeft,
     Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Check, Trash02,
 } from "@untitledui/icons";
@@ -27,6 +27,7 @@ import {
     ClassCategoriesToolbar,
     ClassCategoriesPanel,
     ClassCategoriesPagination,
+    ClassAddMenu,
 } from "@/components/classes/ClassCategoriesView";
 
 // Card-embedded kebab menu actions — mirrors the detail-page action set so
@@ -400,6 +401,7 @@ export default function ClassTypesPage() {
     // ClassCategoriesView panel. Tab choice persists per-browser.
     const [tab, setTab] = usePersistedListState<"templates" | "categories">("classTypes:tab", "templates");
     const catCtrl = useClassCategoriesController();
+    const goNewTemplate = () => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`);
 
     const hasActiveFilters = applied.statuses.length > 0 || applied.categories.length > 0;
     const isDataEmpty = classTemplates.length === 0;
@@ -415,7 +417,7 @@ export default function ClassTypesPage() {
         <div className="flex flex-col gap-6">
             {/* Toolbar — adaptive per tab, above the view-card (matches Memberships & Packages) */}
             {tab === "categories" ? (
-                <ClassCategoriesToolbar ctrl={catCtrl} />
+                <ClassCategoriesToolbar ctrl={catCtrl} onAddTemplate={goNewTemplate} />
             ) : (
                 <div className="flex items-center gap-3">
                     <ToolbarTotal count={visible.length} entitySingular="class template" />
@@ -430,10 +432,9 @@ export default function ClassTypesPage() {
                         once templates exist so admins default to "Add template". */}
                     <ToolbarImportButton visible={classTemplates.length === 0 && !search.trim() && !hasActiveFilters} />
 
-                    {/* Add template */}
-                    <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`)}>
-                        Add
-                    </Button>
+                    {/* Add — dropdown: Class template / Category (client 2026-08-07),
+                        mirrors the Shift module's Add menu. */}
+                    <ClassAddMenu onAddTemplate={goNewTemplate} onAddCategory={catCtrl.handleAddCategory} />
                 </div>
             )}
 

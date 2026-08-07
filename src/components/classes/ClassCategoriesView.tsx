@@ -20,10 +20,10 @@
 // `useAppStore(s => s.classCategories)` so they see this page's edits in the
 // same render cycle.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Plus, Trash04, XClose, Image01,
-    Edit02, Trash01, Check, Trash02,
+    Edit02, Trash01, Check, Trash02, LayoutAlt01, Tag01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -229,17 +229,70 @@ export function useClassCategoriesController() {
 
 type CategoriesController = ReturnType<typeof useClassCategoriesController>;
 
+// ─── Add dropdown — "Class template" / "Category" ────────────────────────────
+//
+// Client 2026-08-07 — the merged "Class" page's Add button is a dropdown so
+// the admin can create either a class template or a category from either tab,
+// mirroring the Shift module's Add menu. Flat menu (no separators) per the
+// project's dropdown convention.
+
+export function ClassAddMenu({ onAddTemplate, onAddCategory }: {
+    onAddTemplate: () => void;
+    onAddCategory: () => void;
+}) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+
+    const items = [
+        { label: "Class template", icon: <LayoutAlt01 className="w-4 h-4 text-[#667085]" />, onClick: onAddTemplate },
+        { label: "Category",       icon: <Tag01 className="w-4 h-4 text-[#667085]" />,       onClick: onAddCategory },
+    ];
+
+    return (
+        <div ref={ref} className="relative">
+            <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setOpen(p => !p)}>
+                Add
+            </Button>
+            {open && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[#e4e7ec] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[200px]">
+                    {items.map(it => (
+                        <button key={it.label} type="button" onClick={() => { setOpen(false); it.onClick(); }}
+                            className="flex items-center gap-2.5 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors">
+                            {it.icon}{it.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Toolbar (renders above the shared view-card) ────────────────────────────
 
-export function ClassCategoriesToolbar({ ctrl }: { ctrl: CategoriesController }) {
+export function ClassCategoriesToolbar({ ctrl, onAddTemplate }: {
+    ctrl: CategoriesController;
+    /** When set (merged "Class" page), the Add button becomes the
+     *  template/category dropdown. Omitted on the standalone route, which
+     *  keeps a plain category-only Add. */
+    onAddTemplate?: () => void;
+}) {
     return (
         <div className="flex items-center gap-3 w-full">
             <ToolbarTotal count={ctrl.categories.length} entitySingular="category" entityPlural="categories" />
             <ToolbarSearch value={ctrl.search} onChange={ctrl.setSearch} placeholder="Search category..." />
             <ToolbarImportButton visible={ctrl.categories.length === 0 && !ctrl.search.trim()} />
-            <Button variant="primary" leftIcon={<Plus className="w-5 h-5" />} onClick={ctrl.handleAddCategory}>
-                Add
-            </Button>
+            {onAddTemplate ? (
+                <ClassAddMenu onAddTemplate={onAddTemplate} onAddCategory={ctrl.handleAddCategory} />
+            ) : (
+                <Button variant="primary" leftIcon={<Plus className="w-5 h-5" />} onClick={ctrl.handleAddCategory}>
+                    Add
+                </Button>
+            )}
         </div>
     );
 }
