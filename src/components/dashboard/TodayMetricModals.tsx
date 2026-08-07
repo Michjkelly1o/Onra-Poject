@@ -173,8 +173,9 @@ export function TodaySalesModal({ open, onClose, branchIds, todayISO, variant, t
         });
 
     const totalRows = sortedRows.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
     const totalAed = useMemo(() => rows.reduce((sum, r) => sum + r.txn.amountAed, 0), [rows]);
-    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+    const paged = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
     const typeNote = typeFilter ? ` · ${TYPE_LABEL[typeFilter]} only` : "";
 
     return (
@@ -198,7 +199,7 @@ export function TodaySalesModal({ open, onClose, branchIds, todayISO, variant, t
             }
             footer={
                 <Pagination
-                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
                     onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
                 />
             }
@@ -298,7 +299,8 @@ export function NewCustomersTodayModal({ open, onClose, branchIds, todayISO, typ
         });
 
     const totalRows = sortedRows.length;
-    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
@@ -315,7 +317,7 @@ export function NewCustomersTodayModal({ open, onClose, branchIds, todayISO, typ
             }
             footer={
                 <Pagination
-                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
                     onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
                 />
             }
@@ -483,7 +485,8 @@ export function BookingsTodayModal({ open, onClose, branchIds, todayISO, typeFil
         });
 
     const totalRows = sortedRows.length;
-    const paged = sortedRows.slice((page - 1) * pageSize, page * pageSize);
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
     const typeNote = typeFilter ? ` · ${TYPE_LABEL[typeFilter]} only` : "";
 
     return (
@@ -501,7 +504,7 @@ export function BookingsTodayModal({ open, onClose, branchIds, todayISO, typeFil
             }
             footer={
                 <Pagination
-                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
                     onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
                 />
             }

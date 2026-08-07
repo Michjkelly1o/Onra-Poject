@@ -109,8 +109,9 @@ export function PerfSalesModal({ open, onClose, branchIds, period }: PerfModalPr
         });
 
     const totalRows = sorted.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
     const totalAed = useMemo(() => rows.reduce((sum, r) => sum + r.txn.amountAed, 0), [rows]);
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
@@ -126,7 +127,7 @@ export function PerfSalesModal({ open, onClose, branchIds, period }: PerfModalPr
             }
             footer={
                 <Pagination
-                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
                     onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
                 />
             }
@@ -269,8 +270,9 @@ export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModal
         });
 
     const totalRows = sorted.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
     const totalAccrued = useMemo(() => rows.reduce((sum, r) => sum + r.accruedAed, 0), [rows]);
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
@@ -287,7 +289,7 @@ export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModal
             }
             footer={
                 <Pagination
-                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
                     onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
                 />
             }
@@ -372,7 +374,8 @@ export function PerfNewCustomersModal({ open, onClose, branchIds, period }: Perf
         });
 
     const totalRows = sorted.length;
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
@@ -389,7 +392,7 @@ export function PerfNewCustomersModal({ open, onClose, branchIds, period }: Perf
             }
             footer={
                 <Pagination
-                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
                     onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
                 />
             }
@@ -488,7 +491,8 @@ export function PerfBookingsModal({ open, onClose, branchIds, period }: PerfModa
         });
 
     const totalRows = sorted.length;
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
@@ -505,7 +509,7 @@ export function PerfBookingsModal({ open, onClose, branchIds, period }: PerfModa
             }
             footer={
                 <Pagination
-                    variant="compact" page={page} total={totalRows} pageSize={pageSize}
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
                     onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
                 />
             }

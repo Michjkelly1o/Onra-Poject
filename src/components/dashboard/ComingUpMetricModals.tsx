@@ -81,14 +81,15 @@ export function ComingRevenueModal({ open, onClose, rangeLabel, typeFilter, rows
             revenue: (a, b) => a.revenueAed - b.revenueAed,
         });
     const totalRows = sorted.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
     const totalAed = useMemo(() => rows.reduce((s, r) => s + r.revenueAed, 0), [rows]);
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
             open={open} onClose={onClose} title="Projected revenue"
             subtitle={<><span className="font-semibold text-[var(--colors-text-primary)]">{aedFull(totalAed)}</span> across <span className="font-semibold text-[var(--colors-text-primary)]">{totalRows} session{totalRows === 1 ? "" : "s"}</span> · {rangeLabel}{typeNote(typeFilter)}</>}
-            footer={<Pagination variant="compact" page={page} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
+            footer={<Pagination variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
         >
             <div className="px-6">
                 <table className="w-full border-collapse">
@@ -136,13 +137,14 @@ export function ComingBookingsModal({ open, onClose, rangeLabel, typeFilter, row
             date:     (a, b) => a.row.dateISO.localeCompare(b.row.dateISO),
         });
     const totalRows = sorted.length;
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
             open={open} onClose={onClose} title="Upcoming bookings"
             subtitle={<><span className="font-semibold text-[var(--colors-text-primary)]">{totalRows} booking{totalRows === 1 ? "" : "s"}</span> · {rangeLabel}{typeNote(typeFilter)}</>}
-            footer={<Pagination variant="compact" page={page} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
+            footer={<Pagination variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
         >
             <div className="px-6">
                 <table className="w-full border-collapse">
@@ -192,13 +194,14 @@ function PersonListModal({ open, onClose, title, rangeLabel, typeFilter, noun, r
             date:     (a, b) => a.row.dateISO.localeCompare(b.row.dateISO),
         });
     const totalRows = sorted.length;
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
             open={open} onClose={onClose} title={title}
             subtitle={<><span className="font-semibold text-[var(--colors-text-primary)]">{totalRows} {noun}{totalRows === 1 ? "" : "s"}</span> · {rangeLabel}{typeNote(typeFilter)}</>}
-            footer={<Pagination variant="compact" page={page} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
+            footer={<Pagination variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
         >
             <div className="px-6">
                 <table className="w-full border-collapse">
@@ -251,13 +254,14 @@ export function ComingExpiringModal({ open, onClose, rangeLabel, typeFilter, row
             expires:  (a, b) => (a.plan.expiryISO ?? "").localeCompare(b.plan.expiryISO ?? ""),
         });
     const totalRows = sorted.length;
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
             open={open} onClose={onClose} title="Expiring plans"
             subtitle={<><span className="font-semibold text-[var(--colors-text-primary)]">{totalRows} plan{totalRows === 1 ? "" : "s"}</span> expiring · {rangeLabel}{typeNote(typeFilter)}</>}
-            footer={<Pagination variant="compact" page={page} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
+            footer={<Pagination variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
         >
             <div className="px-6">
                 <table className="w-full border-collapse">
@@ -307,18 +311,19 @@ export function ComingCapacityModal({ open, onClose, rangeLabel, typeFilter, ses
             fill:    (a, b) => a.fill - b.fill,
         });
     const totalRows = sorted.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
     const avgFill = useMemo(() => {
         const cap = sessions.reduce((n, s) => n + (s.capacity ?? 0), 0);
         const book = sessions.reduce((n, s) => n + (s.booked ?? 0), 0);
         return cap > 0 ? Math.round((book / cap) * 100) : 0;
     }, [sessions]);
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
             open={open} onClose={onClose} title="Capacity used"
             subtitle={<><span className="font-semibold text-[var(--colors-text-primary)]">{avgFill}% filled</span> across <span className="font-semibold text-[var(--colors-text-primary)]">{totalRows} session{totalRows === 1 ? "" : "s"}</span> · {rangeLabel}{typeNote(typeFilter)}</>}
-            footer={<Pagination variant="compact" page={page} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
+            footer={<Pagination variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
         >
             <div className="px-6">
                 <table className="w-full border-collapse">
@@ -363,14 +368,15 @@ export function ComingTopServicesModal({ open, onClose, rangeLabel, typeFilter, 
             count:   (a, b) => a.count - b.count,
         });
     const totalRows = sorted.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
     const totalBookings = useMemo(() => services.reduce((n, s) => n + s.count, 0), [services]);
-    const paged = sorted.slice((page - 1) * pageSize, page * pageSize);
+    const paged = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     return (
         <ModalShell
             open={open} onClose={onClose} title="Top services"
             subtitle={<><span className="font-semibold text-[var(--colors-text-primary)]">{totalRows} service{totalRows === 1 ? "" : "s"}</span> · <span className="font-semibold text-[var(--colors-text-primary)]">{totalBookings} booking{totalBookings === 1 ? "" : "s"}</span> · {rangeLabel}{typeNote(typeFilter)}</>}
-            footer={<Pagination variant="compact" page={page} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
+            footer={<Pagination variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize} onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }} />}
         >
             <div className="px-6">
                 <table className="w-full border-collapse">
