@@ -16,7 +16,7 @@
 //                  hosting a search + status filter + staff table + bulk
 //                  action bar + pagination. Row actions match the main
 //                  staff dropdown EXACTLY (View details · Edit details ·
-//                  Change role · Change shift · Archive · Deactivate /
+//                  Change role · Archive · Deactivate /
 //                  Delete · Reactivate · Recover · Resend invitation).
 //
 // Cross-module sync: every mutation routes through Zustand store actions
@@ -49,7 +49,6 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { DecorativeBanner, BANNER_TINTS } from "@/components/products/DecorativeBanner";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
-import { findShiftConflict } from "@/lib/staff/shift-conflict";
 import {
     useAppStore,
     type Shift, type Staff, type StaffStatus, type Role,
@@ -162,122 +161,6 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
     );
 }
 
-// ─── Change shift modal ───────────────────────────────────────────────────
-
-function ChangeShiftModal({ staffMember, currentShiftId, onClose, onConfirmed }: {
-    staffMember: Staff;
-    /** The shift whose roster this modal was opened from. "Change shift" swaps
-     *  the staff member's assignment to THIS shift for another — it must NOT
-     *  touch the legacy `staff.shiftId` (which, for a multi-shift staffer,
-     *  points at a DIFFERENT shift). Client 2026-07-24 audit fix. */
-    currentShiftId: string;
-    onClose: () => void;
-    onConfirmed: (nextShift: Shift | null) => void;
-}) {
-    const shifts             = useAppStore(s => s.shifts);
-    const shiftAssignments   = useAppStore(s => s.shiftAssignments);
-    const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
-    const removeShiftAssignment = useAppStore(s => s.removeShiftAssignment);
-    const showToast          = useAppStore(s => s.showToast);
-
-    // Pre-select the shift they're currently on (this roster's shift).
-    const [picked, setPicked] = useState<string>(currentShiftId);
-
-    const options = shifts.filter(s => s.status === "active" && s.branch_id === staffMember.branchId);
-
-    function handleSave() {
-        // No change.
-        if (picked === currentShiftId) { onClose(); return; }
-        if (picked !== "") {
-            const pickedShift = shifts.find(s => s.id === picked);
-            // Overlap guard — the new shift must not clash on a shared weekday +
-            // time with a shift the staff STILL holds (exclude the current one,
-            // which is about to be removed).
-            const others = shiftAssignments.filter(
-                a => a.staff_id === staffMember.id && a.shift_id !== currentShiftId,
-            );
-            const clash = pickedShift ? findShiftConflict(pickedShift, others, id => shifts.find(s => s.id === id)) : null;
-            if (pickedShift && clash) {
-                showToast(
-                    "Shift conflict",
-                    `${staffMember.fullName} is already on ${clash.name}, which overlaps ${pickedShift.name}.`,
-                    "error", "alert",
-                );
-                return;
-            }
-        }
-        // Move: drop the current-shift assignment, add the picked one (if any).
-        // Other shifts the staff holds are untouched.
-        const current = shiftAssignments.find(a => a.staff_id === staffMember.id && a.shift_id === currentShiftId);
-        if (current) removeShiftAssignment(current.id);
-        if (picked !== "") addShiftAssignment({ shift_id: picked, staff_id: staffMember.id });
-        const nextShift = picked ? shifts.find(s => s.id === picked) ?? null : null;
-        onConfirmed(nextShift);
-    }
-
-    return (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
-            <div className="relative bg-white rounded-[12px] w-[480px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col overflow-hidden">
-                <button type="button" onClick={onClose}
-                    className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
-                </button>
-                <div className="px-6 pt-6 pb-2">
-                    <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Change shift</h3>
-                    <p className="text-[14px] text-[var(--colors-text-tertiary)] mt-1">
-                        Pick a new shift for <span className="font-medium text-[var(--colors-text-secondary)]">{staffMember.fullName}</span>.
-                    </p>
-                </div>
-                <div className="px-6 py-4 max-h-[360px] overflow-y-auto flex flex-col gap-2">
-                    <button type="button" onClick={() => setPicked("")}
-                        className={cn(
-                            "flex items-center justify-between gap-3 px-4 py-3 rounded-[8px] border-1 text-left transition-colors",
-                            picked === ""
-                                ? "border-[var(--colors-secondary-500)] bg-[#f5fffa]"
-                                : "border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
-                        )}>
-                        <div className="flex flex-col">
-                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">No shift</span>
-                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">Remove from current shift</span>
-                        </div>
-                        {picked === "" && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
-                    </button>
-                    {options.length === 0 ? (
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)] text-center py-4">
-                            No other active shifts at this branch yet.
-                        </p>
-                    ) : options.map(s => (
-                        <button key={s.id} type="button" onClick={() => setPicked(s.id)}
-                            className={cn(
-                                "flex items-center justify-between gap-3 px-4 py-3 rounded-[8px] border-1 text-left transition-colors",
-                                picked === s.id
-                                    ? "border-[var(--colors-secondary-500)] bg-[#f5fffa]"
-                                    : "border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
-                            )}>
-                            <div className="flex flex-col">
-                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{s.name}</span>
-                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">
-                                    {daysSummary(s.working_days)} · {fmtTime12(s.start_time)} – {fmtTime12(s.end_time)}
-                                </span>
-                            </div>
-                            {picked === s.id && <Check className="w-4 h-4 text-[var(--colors-secondary-600)]" />}
-                        </button>
-                    ))}
-                </div>
-                <div className="flex gap-3 px-6 pt-2 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>Cancel</Button>
-                    <Button variant="primary" size="lg" className="flex-1"
-                        disabled={picked === currentShiftId}
-                        onClick={handleSave}>
-                        Save
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 // ─── Status filter dropdown ───────────────────────────────────────────────
 
 type StaffStatusFilter = StaffStatus | null;
@@ -359,11 +242,11 @@ function StaffAvatar({ staff }: { staff: Staff }) {
     );
 }
 
-// ─── Row action kinds — matches the Staff & shift table dropdown + adds
-//                       `change_shift` for the assigned-staff context. ─────
+// ─── Row action kinds — matches the Staff & shift table dropdown for the
+//                       assigned-staff context. ─────
 
 type StaffRowAction =
-    | "view" | "edit_details" | "change_role" | "change_shift"
+    | "view" | "edit_details" | "change_role"
     | "resend_invite" | "archive" | "recover" | "deactivate" | "reactivate" | "delete";
 
 // Local PaginationFooter removed — uses canonical `@/components/ui/Pagination`
@@ -387,14 +270,13 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
 
 type BulkKind = "archive" | "deactivate" | "reactivate" | "recover" | "delete";
 
-function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor }: {
+function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor }: {
     shift: Shift;
     /** The Shift-detail page's own returnTo (the Shift sub-tab), preserved so
      *  a staff page opened from the roster returns here and then back to the
      *  Shift tab — not the Staff tab. */
     returnTo: string;
     onChangeRoleFor: (s: Staff) => void;
-    onChangeShiftFor: (s: Staff) => void;
 }) {
     const router = useRouter();
     const allStaff           = useAppStore(s => s.staff);
@@ -481,7 +363,6 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
         if (kind === "view")          return router.push(`/staff/members/${s.id}?returnTo=${back}`);
         if (kind === "edit_details")  return openStaffFormPanel({ kind: "staff", mode: "edit", id: s.id });
         if (kind === "change_role")   return onChangeRoleFor(s);
-        if (kind === "change_shift")  return onChangeShiftFor(s);
         if (kind === "resend_invite") {
             const ok = resendStaffInvite(s.id);
             if (ok) showToast("Invitation sent", `Invite resent to ${s.email}.`, "success", "check");
@@ -642,7 +523,6 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor, onChangeShiftFor 
                                                         { label: "Resend invitation", icon: Send01,        onClick: () => handleAction(s, "resend_invite"), hidden: s.status !== "pending" },
                                                         { label: "Edit details",      icon: Edit02,        onClick: () => handleAction(s, "edit_details"),  hidden: s.status !== "active" },
                                                         { label: "Change role",       icon: UserSquare,    onClick: () => handleAction(s, "change_role"),   hidden: s.status !== "active" },
-                                                        { label: "Change shift",      icon: Clock,         onClick: () => handleAction(s, "change_shift"),  hidden: s.status !== "active" },
                                                         { label: "Archive",           icon: Archive,       onClick: () => handleAction(s, "archive"),       hidden: !(s.status === "active" || s.status === "inactive") },
                                                         { label: "Reactivate",        icon: Check,         onClick: () => handleAction(s, "reactivate"),    hidden: s.status !== "inactive" },
                                                         { label: "Recover",           icon: RefreshCcw01,  onClick: () => handleAction(s, "recover"),       hidden: s.status !== "archive" },
@@ -874,7 +754,6 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
     const [sidebarConfirm, setSidebarConfirm] = useState<ConfirmKind | null>(null);
     const [showAssign, setShowAssign] = useState(false);
     const [changingRoleFor, setChangingRoleFor] = useState<Staff | null>(null);
-    const [changingShiftFor, setChangingShiftFor] = useState<Staff | null>(null);
 
     useEffect(() => {
         if (!shift && shifts.length > 0) {
@@ -979,7 +858,6 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
                                 shift={shift}
                                 returnTo={returnTo}
                                 onChangeRoleFor={setChangingRoleFor}
-                                onChangeShiftFor={setChangingShiftFor}
                             />
                         </div>
                     </div>
@@ -1017,23 +895,6 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
                 />
             )}
 
-            {changingShiftFor && (
-                <ChangeShiftModal
-                    staffMember={changingShiftFor}
-                    currentShiftId={shift.id}
-                    onClose={() => setChangingShiftFor(null)}
-                    onConfirmed={nextShift => {
-                        showToast(
-                            "Shift updated",
-                            nextShift
-                                ? `${changingShiftFor.fullName} moved to ${nextShift.name}.`
-                                : `${changingShiftFor.fullName} removed from ${shift.name}.`,
-                            "success", "check",
-                        );
-                        setChangingShiftFor(null);
-                    }}
-                />
-            )}
 
             <Toast />
         </div>

@@ -31,7 +31,7 @@ import { useState, useMemo, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, SearchMd, FilterLines, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-    MarkerPin01, User01, Plus, Trash01, Sale04, ShoppingBag03, Check,
+    MarkerPin01, User01, Plus, Trash01, Sale04, ShoppingBag03, Check, XCircle,
     CreditCard02, Package, Gift01, Heart,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -1035,6 +1035,7 @@ function POSInner() {
                         customDiscountPct={customDiscountPct} onCustomDiscountPct={setCustomDiscountPct}
                         appliedCustomDiscount={appliedCustomDiscount}
                         onApplyCustomDiscount={handleApplyCustomDiscount}
+                        onRemoveCustomDiscount={() => { setAppliedCustomDiscount(null); setCustomDiscountPct(""); }}
                         allowedCustomPct={allowedCustomPct}
                         subtotal={subtotal}
                         promoDiscount={promoDiscount}
@@ -1176,6 +1177,7 @@ function PosCartPanel(props: {
     customDiscountPct: string; onCustomDiscountPct: (v: string) => void;
     appliedCustomDiscount: number | null;
     onApplyCustomDiscount: () => void;
+    onRemoveCustomDiscount: () => void;
     allowedCustomPct: number;
     subtotal: number;
     promoDiscount: number;
@@ -1247,52 +1249,63 @@ function PosCartPanel(props: {
                 so both surfaces feel identical. The checkbox below swaps the
                 input + Apply button between promo and custom-discount modes;
                 discounts are mutually exclusive (applying one clears the other). */}
-            <div className="bg-[#f8f8f6] border-t border-[var(--colors-border-secondary)] px-6 py-6 flex flex-col gap-5 shrink-0">
+            <div className="bg-[#f8f8f6] border-t border-[var(--colors-border-secondary)] px-6 py-4 flex flex-col gap-2.5 shrink-0">
+                {/* Discount surface — ONE field for promo OR custom discount.
+                    Applied state shows the value inline with an ✕ to cancel (no
+                    separate "Applied promotion" box); the checkbox switches which
+                    discount the single field edits. */}
                 <div className="flex flex-col gap-3">
                     {props.customDiscountOn ? (
-                        <div className="flex items-end gap-3">
-                            <div className="flex flex-col gap-1.5 flex-1">
-                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Custom discount</label>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Custom discount</label>
+                            {props.appliedCustomDiscount != null ? (
                                 <div className="flex items-center h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                    <input type="number" min="0" max={props.allowedCustomPct} value={props.customDiscountPct}
-                                        onChange={e => props.onCustomDiscountPct(e.target.value.replace(/^0+(?=\d)/, ""))}
-                                        placeholder="0"
-                                        className="flex-1 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder-[var(--colors-text-quaternary)] focus:outline-none" />
-                                    <span className="text-[16px] text-[var(--colors-text-quaternary)] ml-2">%</span>
+                                    <Sale04 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="flex-1 text-[16px] font-medium text-[var(--colors-text-primary)] ml-2">{props.appliedCustomDiscount}% off</span>
+                                    <button type="button" onClick={props.onRemoveCustomDiscount} className="text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] shrink-0" aria-label="Cancel custom discount">
+                                        <XCircle className="w-5 h-5" />
+                                    </button>
                                 </div>
-                            </div>
-                            <Button variant="secondary-gray" size="md" onClick={props.onApplyCustomDiscount}>Apply</Button>
+                            ) : (
+                                <div className="flex items-end gap-3">
+                                    <div className="flex items-center h-10 flex-1 min-w-0 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                        <input type="number" min="0" max={props.allowedCustomPct} value={props.customDiscountPct}
+                                            onChange={e => props.onCustomDiscountPct(e.target.value.replace(/^0+(?=\d)/, ""))}
+                                            placeholder="0"
+                                            className="flex-1 min-w-0 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder-[var(--colors-text-quaternary)] focus:outline-none" />
+                                        <span className="text-[16px] text-[var(--colors-text-quaternary)] ml-2 shrink-0">%</span>
+                                    </div>
+                                    <Button variant="secondary-gray" size="md" onClick={props.onApplyCustomDiscount}>Apply</Button>
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <>
-                            <div className="flex items-end gap-3">
-                                <div className="flex flex-col gap-1.5 flex-1">
-                                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Promotion</label>
-                                    <div className="flex items-center h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Promotion</label>
+                            {props.appliedPromo ? (
+                                <div className="flex items-center h-10 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                    <Sale04 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
+                                    <span className="flex-1 min-w-0 truncate text-[16px] font-medium text-[var(--colors-text-primary)] ml-2">{props.appliedPromo.code}</span>
+                                    <button type="button" onClick={props.onRemovePromo} className="text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)] shrink-0" aria-label="Cancel promotion">
+                                        <XCircle className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-end gap-3">
+                                    <div className="flex items-center h-10 flex-1 min-w-0 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                         <Sale04 className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
                                         <input type="text" value={props.promoInput}
                                             onChange={e => props.onPromoInput(e.target.value)}
                                             placeholder="Enter promotion"
-                                            className="flex-1 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder-[var(--colors-text-quaternary)] focus:outline-none ml-2" />
+                                            className="flex-1 min-w-0 bg-transparent text-[16px] text-[var(--colors-text-primary)] placeholder-[var(--colors-text-quaternary)] focus:outline-none ml-2" />
                                     </div>
-                                </div>
-                                <Button variant="secondary-gray" size="md" onClick={props.onApplyPromo}>Apply</Button>
-                            </div>
-                            {props.appliedPromo && (
-                                <div className="flex flex-col gap-1.5">
-                                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">Applied promotion</p>
-                                    <div className="bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
-                                        <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-secondary)]">{props.appliedPromo.code}</span>
-                                        <button type="button" onClick={props.onRemovePromo} className="text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-primary)]">
-                                            <XClose className="w-3 h-3" />
-                                        </button>
-                                    </div>
+                                    <Button variant="secondary-gray" size="md" onClick={props.onApplyPromo}>Apply</Button>
                                 </div>
                             )}
                             {props.promoError && (
                                 <p className="text-[13px] text-[#b42318]">{props.promoError}</p>
                             )}
-                        </>
+                        </div>
                     )}
 
                     {/* Apply custom discount checkbox — Owner/Branch Admin only.
@@ -1310,9 +1323,12 @@ function PosCartPanel(props: {
                     )}
                 </div>
 
-                {/* Totals */}
-                <div className="flex flex-col gap-2">
-                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">Detail payment</p>
+                {/* Divider sits ABOVE the whole detail-payment block (separating the
+                    promo/discount field from the totals), not between subtotal and
+                    total — the "Detail payment" heading is dropped for compactness. */}
+                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
+
+                <div className="flex flex-col gap-1">
                     <Row label="Subtotal" value={props.subtotal} />
                     {props.appliedPromo && (
                         <Row label={`Promotion (${props.appliedPromo.code})`} value={-props.promoDiscount} />
@@ -1320,10 +1336,7 @@ function PosCartPanel(props: {
                     {props.customDiscount > 0 && props.appliedCustomDiscount != null && (
                         <Row label={`Custom discount (${props.appliedCustomDiscount}%)`} value={-props.customDiscount} />
                     )}
-                    {/* Tax row — labelled "Tax (included)" in inclusive mode
-                        because the amount is informational only (already
-                        baked into the displayed line prices). Exclusive
-                        mode labels it "Tax rate (X%)" and adds it on top. */}
+                    {/* Tax row — informational in inclusive mode, added on top in exclusive. */}
                     {props.taxRate > 0 && (
                         <Row
                             label={props.taxIncluded
@@ -1333,7 +1346,6 @@ function PosCartPanel(props: {
                         />
                     )}
                 </div>
-                <div className="h-px bg-[var(--colors-bg-quaternary)]" />
                 <div className="flex items-center">
                     <p className="flex-1 text-[18px] font-medium text-[var(--colors-text-primary)]">Total</p>
                     <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">AED {props.total.toLocaleString()}</p>
