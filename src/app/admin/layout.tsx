@@ -1,19 +1,14 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { usePathname } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { Toast } from "@/components/ui/Toast";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { account_profile } from "@/data/mock/account_profile";
-// Onra AI Agent — floating trigger, self-gated. Renders null unless
-// AI_AGENT_UI_VISIBLE + admin role. Navigates to /ai-agent (full-viewport
-// page outside admin chrome, per the Figma). While today's client push has
-// AI_AGENT_UI_VISIBLE off, the button never appears; testers reach the
-// agent by typing /ai-agent in the URL.
-import { FloatingAiButton } from "@/ai-agent/components/FloatingAiButton";
+// Onra AI Agent trigger now lives in the header (AiAgentHeaderButton), not a
+// floating pill — so the admin layout no longer mounts a FAB.
 // Staff & Shifts create/edit forms open as side panels (client 2026-07-30) —
 // this host renders them, driven by the staff-form-panel store.
 import { StaffFormPanelHost } from "@/components/staff/StaffFormPanelHost";
@@ -26,38 +21,14 @@ export default function AdminLayout({
     const { sidebarCollapsed } = useAppStore();
     const currentRole = useAppStore(s => s.currentRole);
     const setCurrentUser = useAppStore(s => s.setCurrentUser);
-    const pathname = usePathname() ?? "";
 
-    // Client 2026-07-27 (round 2) — bottom-padding is conditional.
-    //
-    // List routes (customer list, staff, schedule, POS, attendee,
-    // products, marketing, notifications) use a `flex-1 min-h-0`
-    // rounded-[20px] view card that fills the available viewport. Adding
-    // pb-24 to `main` on those pages shortens the card by ~96px and cuts
-    // off table rows — the customer list this week was down to 3 visible
-    // rows. Their pagination sits INSIDE the card, well above the
-    // floating button's ~90px overlap zone at the bottom-right corner.
-    //
-    // Every other route (dashboard, insights, KPI, reports, detail
-    // pages that scroll long profile tabs, settings sub-pages with long
-    // forms) gets `pb-24` so the last widget / row doesn't sit under the
-    // floating button when the user scrolls to the very bottom.
-    //
-    // Exact match on the list route path — a detail page like
-    // /admin/customers/[id] scrolls a long profile so it SHOULD get the
-    // padding.
-    const FIXED_CARD_LIST_ROUTES = [
-        "/admin/customers",
-        "/admin/staff",
-        "/admin/schedule",
-        "/admin/pos",
-        "/admin/products",
-        "/admin/marketing",
-        "/admin/notifications",
-    ];
-    const mainPaddingClass = FIXED_CARD_LIST_ROUTES.includes(pathname)
-        ? "p-6 pt-4"
-        : "p-6 pt-4 pb-24";
+    // The AI Agent moved from a bottom-centre floating pill into the header
+    // (client 2026-08), so the extra `pb-24` that reserved space under the FAB
+    // is gone — every module uses the same 24px card padding (16px top). Modules
+    // that fill the viewport (schedule / POS / list cards) keep their own
+    // `flex-1 min-h-0` card; scroll modules (dashboard / reports) hug + scroll
+    // inside `main`.
+    const mainPaddingClass = "p-6 pt-4";
 
     // URL-driven role reset — if the user came in from a previous
     // `/instructor/*` visit, flip `currentUser` back to the admin demo
@@ -105,7 +76,6 @@ export default function AdminLayout({
                 </div>
             </div>
             <Toast />
-            <FloatingAiButton />
             <StaffFormPanelHost />
         </>
     );

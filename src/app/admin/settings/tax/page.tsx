@@ -899,9 +899,10 @@ export default function TaxPage() {
                     </div>
 
                     {/* Table + pagination (px-6 shared wrapper per CLAUDE.md #5) */}
-                    <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                    <div className="overflow-y-auto scrollbar-hide relative min-h-0">
                         {pagedRows.length === 0 ? (
                             <EmptyState
+                                absolute={false} className="min-h-[400px]"
                                 title={isTrulyEmpty ? "No tax rates yet" : "No tax rates found"}
                                 subtitle={isTrulyEmpty
                                     ? "Add your first tax rate to apply tax to memberships, packages, retail, gift cards, or pay rates."

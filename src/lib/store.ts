@@ -430,6 +430,24 @@ export type PromoValidationResult =
     | { ok: false; reason: string };
 
 /**
+ * Shared "is this promo currently redeemable" gate — the SAME three rules the
+ * POS validator enforces below (active status + within `valid_until` + under
+ * its usage limit). The admin POS (`validatePromoCode`) and the customer
+ * voucher list (`usePromos` in lib/customer/purchase.ts) BOTH key off this, so
+ * the set of live vouchers is guaranteed identical on both sides. Keep this in
+ * sync with the status/expiry/usage checks in `validatePromoCode`.
+ */
+export function isPromoRedeemable(promo: PromoCode, nowMs: number = Date.now()): boolean {
+    if (promo.status !== "active") return false;
+    if (promo.valid_until) {
+        const expiry = new Date(promo.valid_until).getTime();
+        if (!Number.isNaN(expiry) && nowMs > expiry) return false;
+    }
+    if (promo.usage_limit != null && promo.usage_count >= promo.usage_limit) return false;
+    return true;
+}
+
+/**
  * Validate a typed code against the promo table + the current cart state.
  * `promos` defaults to the static seed; POS passes the LIVE `promoCodes`
  * store slice so created / edited / deactivated promos stay in sync.
@@ -1166,7 +1184,10 @@ export interface ClassBooking {
     /** Set when this seat was booked by `customerId` FOR another person (a guest
      *  without their own account). The seat still bumps the class count. */
     guestName?: string;
-    /** Guest contact + chosen payment, for the booking-detail "Book to" section. */
+    /** Guest contact + chosen payment, for the booking-detail "Book to" section.
+     *  Guests are captured by PHONE now (client 2026-08); `guestEmail` is kept
+     *  optional for pre-existing bookings written before the switch. */
+    guestPhone?: string;
     guestEmail?: string;
     guestPayment?: "drop_in" | "guest_package" | "invite_link" | "booker_credit";
     branchId: string;
@@ -4610,7 +4631,7 @@ export interface AppState {
      *  row propagates to the admin roster, the customer profile, the member's
      *  Bookings list, and the class detail state in the same render cycle.
      *  Returns the new booking id. */
-    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string; guestName?: string; guestEmail?: string; guestPayment?: "drop_in" | "guest_package" | "invite_link" | "booker_credit"; chargeBookerCredit?: boolean }) => string;
+    addClassBooking: (input: { classScheduleId: string; customerId: string; status: "booked" | "waitlisted"; spot?: string; guestName?: string; guestPhone?: string; guestEmail?: string; guestPayment?: "drop_in" | "guest_package" | "invite_link" | "booker_credit"; chargeBookerCredit?: boolean }) => string;
     /** Insert a booking VERBATIM — no frozen-plan guard, no credit deduction,
      *  no notifications. Used by the AI Agent migration importer to bring
      *  across historical bookings without triggering the "you're frozen" gate
@@ -7075,7 +7096,7 @@ export const useAppStore = create<AppState>()(persist(
             }
         },
 
-    addClassBooking: ({ classScheduleId, customerId, status, spot, guestName, guestEmail, guestPayment, chargeBookerCredit }) => {
+    addClassBooking: ({ classScheduleId, customerId, status, spot, guestName, guestPhone, guestEmail, guestPayment, chargeBookerCredit }) => {
         const s0 = get();
         const schedule = s0.classSchedules.find(x => x.id === classScheduleId);
         const customer = s0.customers.find(c => c.id === customerId);
@@ -7132,6 +7153,7 @@ export const useAppStore = create<AppState>()(persist(
             classScheduleId,
             customerId,
             guestName,
+            guestPhone,
             guestEmail,
             guestPayment,
             branchId: schedule?.branchId ?? customer?.branchId ?? "",
@@ -12870,7 +12892,12 @@ export const useAppStore = create<AppState>()(persist(
         // v105 (2026-08-06): classesSettings gained guest-booking flags
         //   (guests_use_plan_enabled / guests_allow_unlimited) for the Bring a
         //   friend flow. Bump so persisted demos pick up the new defaults.
-        version: 105,
+        // v106 (2026-08-06): 2026-08 rebrand fetched from main — brandingSettings
+        //   primaryColor #658774→#164E52 (Rich blue green) + tertiaryColor
+        //   #C4EDD6→#DCEBE4. brandingSettings is persisted → bump so existing
+        //   demos re-seed and the customer app's <BrandTokens> picks up the new
+        //   brand teal instead of the stale sage.
+        version: 106,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

@@ -37,9 +37,10 @@ import { BranchSelectorSheet } from "@/components/customer/branch/BranchSelector
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { ShoppingBag03 } from "@untitledui/icons";
 
-type Tab = "all" | "packages" | "giftcard" | "retail";
+type Tab = "all" | "membership" | "packages" | "giftcard" | "retail";
 const TABS: { id: Tab; label: string }[] = [
     { id: "all", label: "All" },
+    { id: "membership", label: "Membership" },
     { id: "packages", label: "Packages" },
     { id: "giftcard", label: "Gift cards" },
     { id: "retail", label: "Retail" },
@@ -249,10 +250,17 @@ export default function ProductsPage() {
 
     const showFloatingCart = cartCount() > 0;
     const showGiftCards = tab === "all" || tab === "giftcard";
-    const showPlans = tab === "all" || tab === "packages";
+    const showMemberships = tab === "all" || tab === "membership";
+    const showPackages = tab === "all" || tab === "packages";
+    const showPlans = showMemberships || showPackages; // active-plan card + gating
     const showRetail = tab === "all" || tab === "retail";
+    // Split the combined plan list into the two product families so "All" can
+    // section them (and the Membership / Packages tabs each show only theirs).
+    const membershipRows = plans.filter((p) => p.kind === "membership");
+    const packageRows = plans.filter((p) => p.kind === "package");
     const isEmpty =
-        (showPlans ? plans.length : 0) +
+        (showMemberships ? membershipRows.length : 0) +
+            (showPackages ? packageRows.length : 0) +
             (showGiftCards ? giftCards.length : 0) +
             (showRetail ? retail.length : 0) ===
         0;
@@ -262,7 +270,9 @@ export default function ProductsPage() {
             <CustomerHeader
                 overlap
                 subBar={
-                    <div className="flex w-full gap-3 pt-1">
+                    // Tabs hug their label and scroll horizontally (5 tabs no
+                    // longer fit a fixed 1/n split). Scrollbar hidden.
+                    <div className="flex w-full gap-5 overflow-x-auto pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         {TABS.map((t) => {
                             const active = tab === t.id;
                             return (
@@ -270,7 +280,7 @@ export default function ProductsPage() {
                                     key={t.id}
                                     type="button"
                                     onClick={() => setTab(t.id)}
-                                    className={`flex h-8 flex-1 items-center justify-center px-2 pb-3 text-sm leading-5 transition-colors ${
+                                    className={`flex h-8 shrink-0 items-center justify-center whitespace-nowrap px-0.5 pb-3 text-sm leading-5 transition-colors ${
                                         active
                                             ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
                                             : "font-medium text-[#667085]"
@@ -306,7 +316,23 @@ export default function ProductsPage() {
                     </div>
                 ) : (
                     <>
-                        {showPlans && plans.map((p) => <ProductCard key={p.id} product={p} {...cardProps(p)} />)}
+                        {showMemberships && membershipRows.length > 0 && (
+                            <>
+                                {tab === "all" && (
+                                    <h2 className="mt-2 text-base font-semibold leading-6 text-[var(--brand-text)]">Membership</h2>
+                                )}
+                                {membershipRows.map((p) => <ProductCard key={p.id} product={p} {...cardProps(p)} />)}
+                            </>
+                        )}
+
+                        {showPackages && packageRows.length > 0 && (
+                            <>
+                                {tab === "all" && (
+                                    <h2 className="mt-2 text-base font-semibold leading-6 text-[var(--brand-text)]">Packages</h2>
+                                )}
+                                {packageRows.map((p) => <ProductCard key={p.id} product={p} {...cardProps(p)} />)}
+                            </>
+                        )}
 
                         {showGiftCards && giftCards.length > 0 && (
                             <>

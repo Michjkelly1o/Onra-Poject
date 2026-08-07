@@ -6,6 +6,7 @@ import { SESSION_TYPE_LABEL } from "@/lib/session-type";
 import Link from "next/link";
 import { SearchMd, UserCircle, LogOut01, ChevronDown } from "@untitledui/icons";
 import NotificationBell from "@/components/NotificationBell";
+import { AiAgentHeaderButton } from "@/ai-agent/components/AiAgentHeaderButton";
 import { GlobalSearchModal } from "@/components/GlobalSearchModal";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore } from "@/lib/store";
@@ -227,6 +228,10 @@ export default function Header() {
                 {/* The Attendee entry point moved off the admin header — the
                     attendance console is now its own role-scoped persona
                     (client 2026-08-04). */}
+                {/* Order (client 2026-08-07): Ask AI Agent → Search → Bell.
+                    The AI Agent pill leads the header cluster, sitting before
+                    the search icon. */}
+                <AiAgentHeaderButton />
                 {showGlobalSearch && (
                     <button
                         type="button"

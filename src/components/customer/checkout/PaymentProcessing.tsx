@@ -41,10 +41,10 @@ function StepLine({ text, variant }: { text: string; variant: "done" | "active" 
     );
 }
 
-function Processing({ originId, successHref }: { originId: string; successHref: string }) {
+function Processing({ originId, successHref, method: methodProp, onDone }: { originId: string; successHref?: string; method?: string; onDone?: () => void }) {
     const router = useRouter();
     const search = useSearchParams();
-    const method = search.get("method") ?? "Apple pay";
+    const method = methodProp ?? search.get("method") ?? "Apple pay";
 
     const { member } = useCurrentCustomerContext();
     const applyPurchase = useAppStore((s) => s.applyPurchase);
@@ -153,7 +153,9 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
 
         const t1 = setTimeout(() => setStep(1), STEP_MS);
         const t2 = setTimeout(() => setStep(2), STEP_MS * 2);
-        const t3 = setTimeout(() => router.replace(successHref), STEP_MS * 3);
+        // In-sheet host handles the "done" transition (slide back); otherwise
+        // navigate to the standalone success route.
+        const t3 = setTimeout(() => (onDone ? onDone() : successHref && router.replace(successHref)), STEP_MS * 3);
         return () => {
             clearTimeout(t1);
             clearTimeout(t2);
@@ -184,10 +186,10 @@ function Processing({ originId, successHref }: { originId: string; successHref: 
     );
 }
 
-export function PaymentProcessing({ originId, successHref }: { originId: string; successHref: string }) {
+export function PaymentProcessing({ originId, successHref, method, onDone }: { originId: string; successHref?: string; method?: string; onDone?: () => void }) {
     return (
         <Suspense fallback={<div className="min-h-full" />}>
-            <Processing originId={originId} successHref={successHref} />
+            <Processing originId={originId} successHref={successHref} method={method} onDone={onDone} />
         </Suspense>
     );
 }

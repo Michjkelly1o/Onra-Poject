@@ -43,6 +43,60 @@ function shiftTimeCompact(start: string, end: string): string {
     return `${h(start)}-${h(end)} ${mer}`;
 }
 
+/** One shift's compact bar: a proportional timeline (session greens + time-off
+ *  hatch + hour dividers) and a name/time row. Rendered once per shift so a
+ *  staffer working multiple shifts today shows a stacked row per shift — each
+ *  session paints only in the shift window it falls inside. */
+function ShiftBar({ shift, index, classesToday, apptsToday, partialOffs }: {
+    shift: Shift;
+    index: number;
+    classesToday: ClassSchedule[];
+    apptsToday: Appointment[];
+    partialOffs: BlockedTime[];
+}) {
+    const shiftStart = toHours(shift.start_time);
+    const shiftEnd = toHours(shift.end_time);
+    const dur = Math.max(0.001, shiftEnd - shiftStart);
+    const pct = (t: number) => Math.max(0, Math.min(100, ((t - shiftStart) / dur) * 100));
+    const seg = (s0: string, e0: string) => {
+        const l = pct(toHours(s0));
+        const r = pct(toHours(e0 || s0));
+        return { left: l, width: Math.max(0, r - l) };
+    };
+    // Only paint sessions/off ranges that actually intersect THIS shift's window
+    // (zero-width means they belong to a different shift) so multi-shift rows
+    // partition the day cleanly.
+    const greens = [...classesToday, ...apptsToday].map((x) => seg(x.startTime, x.endTime)).filter((s) => s.width > 0);
+    const hatches = partialOffs.map((b) => seg(b.start_time, b.end_time)).filter((s) => s.width > 0);
+    const dividers: number[] = [];
+    for (let h = Math.floor(shiftStart) + 1; h < shiftEnd; h++) dividers.push(pct(h));
+    const pal = shiftPalette(shift, index);
+
+    return (
+        <div className="flex w-full flex-col gap-1">
+            <div className="relative h-5 w-full overflow-hidden rounded-md border border-[#e4e7ec] bg-[#f9fafb]">
+                {hatches.map((s, i) => (
+                    <div key={`h${i}`} className="absolute inset-y-0" style={{ left: `${s.left}%`, width: `${s.width}%`, backgroundColor: "#e4e7ec", backgroundImage: HATCH_OFF }} aria-hidden />
+                ))}
+                {greens.map((s, i) => (
+                    <div key={`g${i}`} className="absolute inset-y-0" style={{ left: `${s.left}%`, width: `${s.width}%`, backgroundColor: FILL_GREEN }} aria-hidden />
+                ))}
+                {dividers.map((d, i) => (
+                    <div key={`d${i}`} className="absolute inset-y-0 w-px bg-[#e4e7ec]" style={{ left: `${d}%` }} aria-hidden />
+                ))}
+            </div>
+            <div className="flex h-[18px] w-full items-center justify-between gap-2">
+                <span className="truncate text-[12px] font-medium leading-[18px]" style={{ color: pal.name }}>
+                    {shift.name}
+                </span>
+                <span className="shrink-0 text-[12px] leading-[18px] text-[#667085]">
+                    {shiftTimeCompact(shift.start_time, shift.end_time)}
+                </span>
+            </div>
+        </div>
+    );
+}
+
 export function TodayScheduleCell({
     staff,
     isInstructor,
@@ -76,26 +130,26 @@ export function TodayScheduleCell({
     const allDayOff = myOffToday.find((b) => b.all_day);
     const partialOffs = myOffToday.filter((b) => !b.all_day);
 
-    // ── Today's shift — first ACTIVE shift whose working days cover today
-    //    (M2M assignments, with a legacy staff.shiftId fallback). ───────────
-    let shiftToday: Shift | undefined;
-    let shiftIndex = 0;
+    // ── Today's shifts — EVERY active shift whose working days cover today
+    //    (M2M assignments + legacy staff.shiftId), deduped and ordered by start
+    //    time. A staffer can now hold several shifts on the same day, so we
+    //    render one compact bar per shift instead of only the first. ─────────
+    const shiftsToday: { shift: Shift; index: number }[] = [];
+    const seenShiftIds = new Set<string>();
+    const addShiftToday = (sh: Shift | undefined) => {
+        if (!sh || sh.status !== "active" || seenShiftIds.has(sh.id)) return;
+        seenShiftIds.add(sh.id);
+        shiftsToday.push({ shift: sh, index: Math.max(0, shifts.indexOf(sh)) });
+    };
     for (const a of shiftAssignments.filter((x) => x.staff_id === staff.id)) {
         if (!a.days_of_week?.[todayDow]) continue;
-        const sh = shifts.find((x) => x.id === a.shift_id && x.status === "active");
-        if (sh) {
-            shiftToday = sh;
-            shiftIndex = Math.max(0, shifts.indexOf(sh));
-            break;
-        }
+        addShiftToday(shifts.find((x) => x.id === a.shift_id));
     }
-    if (!shiftToday && staff.shiftId) {
-        const sh = shifts.find((x) => x.id === staff.shiftId && x.status === "active");
-        if (sh && sh.working_days?.[todayDow]) {
-            shiftToday = sh;
-            shiftIndex = Math.max(0, shifts.indexOf(sh));
-        }
+    if (staff.shiftId) {
+        const sh = shifts.find((x) => x.id === staff.shiftId);
+        if (sh?.working_days?.[todayDow]) addShiftToday(sh);
     }
+    shiftsToday.sort((a, b) => toHours(a.shift.start_time) - toHours(b.shift.start_time));
 
     const classesToday = classSchedules.filter(
         (c) => c.instructorId === staff.id && c.dateISO === todayISO && c.status !== "Cancelled",
@@ -113,44 +167,21 @@ export function TodayScheduleCell({
                 Time off · {TIME_OFF_REASON_LABEL[allDayOff.reason ?? "other"]}
             </span>
         );
-    } else if (shiftToday) {
-        const shiftStart = toHours(shiftToday.start_time);
-        const shiftEnd = toHours(shiftToday.end_time);
-        const dur = Math.max(0.001, shiftEnd - shiftStart);
-        const pct = (t: number) => Math.max(0, Math.min(100, ((t - shiftStart) / dur) * 100));
-        const seg = (s0: string, e0: string) => {
-            const l = pct(toHours(s0));
-            const r = pct(toHours(e0 || s0));
-            return { left: l, width: Math.max(0, r - l) };
-        };
-        const greens = [...classesToday, ...apptsToday].map((x) => seg(x.startTime, x.endTime));
-        const hatches = partialOffs.map((b) => seg(b.start_time, b.end_time));
-        // Internal hour dividers (skip the two rounded edges).
-        const dividers: number[] = [];
-        for (let h = Math.floor(shiftStart) + 1; h < shiftEnd; h++) dividers.push(pct(h));
-        const pal = shiftPalette(shiftToday, shiftIndex);
-
+    } else if (shiftsToday.length > 0) {
+        // One compact bar per shift, stacked (morning → evening). Multiple shifts
+        // stay scannable; a single shift renders exactly as before.
         body = (
             <div className="flex w-full flex-col gap-2">
-                <div className="relative h-5 w-full overflow-hidden rounded-md border border-[#e4e7ec] bg-[#f9fafb]">
-                    {hatches.map((s, i) => (
-                        <div key={`h${i}`} className="absolute inset-y-0" style={{ left: `${s.left}%`, width: `${s.width}%`, backgroundColor: "#e4e7ec", backgroundImage: HATCH_OFF }} aria-hidden />
-                    ))}
-                    {greens.map((s, i) => (
-                        <div key={`g${i}`} className="absolute inset-y-0" style={{ left: `${s.left}%`, width: `${s.width}%`, backgroundColor: FILL_GREEN }} aria-hidden />
-                    ))}
-                    {dividers.map((d, i) => (
-                        <div key={`d${i}`} className="absolute inset-y-0 w-px bg-[#e4e7ec]" style={{ left: `${d}%` }} aria-hidden />
-                    ))}
-                </div>
-                <div className="flex h-[18px] w-full items-center justify-between">
-                    <span className="truncate text-[12px] font-medium leading-[18px] text-[#101828]" style={{ color: pal.name }}>
-                        {shiftToday.name}
-                    </span>
-                    <span className="shrink-0 text-[12px] leading-[18px] text-[#667085]">
-                        {shiftTimeCompact(shiftToday.start_time, shiftToday.end_time)}
-                    </span>
-                </div>
+                {shiftsToday.map(({ shift, index }) => (
+                    <ShiftBar
+                        key={shift.id}
+                        shift={shift}
+                        index={index}
+                        classesToday={classesToday}
+                        apptsToday={apptsToday}
+                        partialOffs={partialOffs}
+                    />
+                ))}
             </div>
         );
     } else {

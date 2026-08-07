@@ -370,9 +370,10 @@ export default function MigrationsImportsPage() {
     return (
         // Settings layout wraps this in flex-col gap-6; we render the toolbar
         // + view card at the natural rhythm without extra chrome. Card gets
-        // the same 760px min-height every other admin list uses so it stays
-        // stable across filter changes (CLAUDE.md rule #7 — "fill, never hug").
-        <div className="flex flex-col gap-6">
+        // flex-1 min-h-0 so the list fills the viewport like every other admin
+        // list — the table body scrolls while the pagination stays pinned
+        // (CLAUDE.md rule #7 — "fill, never hug").
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={totalRows} entitySingular="data" entityPlural="data" />
@@ -408,7 +409,7 @@ export default function MigrationsImportsPage() {
                 `min-h` on the wrapper keeps the empty state and the
                 populated table at the same footprint so the layout
                 doesn't jump when filters narrow to zero. */}
-            <div className="flex flex-col flex-1 min-h-[560px]">
+            <div className="flex flex-col flex-1 min-h-0">
                 {totalRows === 0 ? (
                     // Empty state — Figma 196:99884.
                     <div className="relative flex-1 min-h-[400px]">
@@ -419,7 +420,7 @@ export default function MigrationsImportsPage() {
                         />
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-y-auto scrollbar-hide min-h-0">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>

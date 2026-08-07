@@ -211,7 +211,7 @@ function AdminCancelClassModal({ open, classInstance, bookedCount, onClose, onCo
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
     return (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="flex items-center justify-center pointer-events-none w-full h-full min-h-[400px]">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
                 <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
@@ -536,7 +536,7 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
     }
 
     return (
-        <div className="overflow-x-auto">
+        <div>
             <table className="w-full border-collapse">
                 <thead>
                     <tr>
@@ -1457,7 +1457,7 @@ function SchedulePage() {
                     const paginatedClasses = sortedClasses.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
                     return (
                         <>
-                            <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                            <div className="overflow-y-auto scrollbar-hide relative min-h-0">
                                 {sortedClasses.length === 0 ? (
                                     <EmptyState title="No classes scheduled" subtitle="Add a class to get started." />
                                 ) : (

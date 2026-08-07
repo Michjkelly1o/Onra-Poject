@@ -83,22 +83,25 @@ function BookingProcessing() {
                     // (spots[0]); otherwise seats are offset past the member's.
                     spot: bookingDraft.bookSelf ? spots[i + 1] : spots[i],
                     guestName: g.name,
+                    guestPhone: g.phone,
                     guestEmail: g.email,
                     guestPayment: g.payment,
                     chargeBookerCredit: g.payment === "booker_credit",
                 });
-                // Link to an existing profile by email, else create a new Lead so
-                // the guest shows up under the admin Customer module.
-                const email = (g.email ?? "").trim();
-                if (email) {
-                    const lower = email.toLowerCase();
+                // Link to an existing profile by PHONE, else create a new Lead so
+                // the guest shows up under the admin Customer module → Leads.
+                const phone = (g.phone ?? "").trim();
+                if (phone) {
+                    const norm = phone.replace(/\s+/g, "");
                     const known =
-                        customers.some((c) => c.email && c.email.toLowerCase() === lower) ||
-                        leads.some((l) => l.contact_email && l.contact_email.toLowerCase() === lower);
+                        customers.some((c) => c.phone && c.phone.replace(/\s+/g, "") === norm) ||
+                        leads.some((l) => l.phone && l.phone.replace(/\s+/g, "") === norm);
                     if (!known) {
                         addLead({
-                            contact_name: g.name.trim() || email,
-                            contact_email: email,
+                            contact_name: g.name.trim() || phone,
+                            // Guests are captured by phone; email is optional.
+                            contact_email: (g.email ?? "").trim(),
+                            phone,
                             source: "Referral",
                             stage: "new",
                             engagement_status: "warm",

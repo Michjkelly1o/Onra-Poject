@@ -95,7 +95,7 @@ const EMPTY_FILTER: FilterState = {
     statuses: [], scopes: [], effectiveStart: "", effectiveEnd: "",
 };
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#475467] border-b border-[#f2f4f7]";
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
@@ -691,9 +691,10 @@ export default function AgreementsPage() {
                 {/* Table + pagination — no inner padding now that the outer
                     card chrome is gone (admin layout's p-6 already provides
                     the page gutter). */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative pt-5">
+                <div className="overflow-y-auto scrollbar-hide relative pt-5 min-h-0">
                     {pagedRows.length === 0 ? (
                         <EmptyState
+                            absolute={false} className="min-h-[400px]"
                             title={isTrulyEmpty ? "No agreements yet" : "No agreements found"}
                             subtitle={isTrulyEmpty
                                 ? "Create your first agreement to start collecting customer signatures."

@@ -30,7 +30,7 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 const STATUS_BADGE: Record<RetailCategory["status"], string> = {
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",

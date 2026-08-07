@@ -10,7 +10,7 @@
 // ONE membership OR multiple packages — never both.
 
 import { useMemo, useSyncExternalStore } from "react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, isPromoRedeemable} from "@/lib/store";
 
 export type PlanKind = "membership" | "package" | "gift_card" | "retail";
 
@@ -362,7 +362,11 @@ export function usePromos(scope: PromoScope = "class"): PromoVM[] {
     return useMemo(
         () =>
             promoCodes
-                .filter((p) => p.status !== "archived")
+                // Same redeemability gate the admin POS validator uses, so the
+                // active voucher set is IDENTICAL on both sides (client
+                // 2026-08-07). Was `status !== "archived"`, which surfaced
+                // inactive / expired / usage-exhausted codes the admin rejects.
+                .filter((p) => isPromoRedeemable(p))
                 .map((p) => {
                     // A monetary voucher (percentage / fixed-amount) can reduce a total.
                     const monetary = p.offer_type === "percentage" || p.offer_type === "fixed_amount";

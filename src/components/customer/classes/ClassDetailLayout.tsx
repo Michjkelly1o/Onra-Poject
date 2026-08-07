@@ -16,6 +16,7 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, CheckCircle, ChevronLeft, ClockFastForward, Coins01, Share02, Tag01, UserCheck01, Users01 } from "@untitledui/icons";
+import { genderAccessIcon } from "@/components/ui/gender-icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable } from "@/lib/customer/use-scrollable";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
@@ -218,6 +219,20 @@ export function ClassDetailLayout({
                     <InfoRow icon={Users01}>
                         <span>{detail.booked}/{detail.capacity} spots</span>
                     </InfoRow>
+                    {detail.genderAccess && (() => {
+                        // Same terms + icon as the admin side (gender-icons.tsx).
+                        const genderLabel =
+                            detail.genderAccess === "female"
+                                ? "Female only"
+                                : detail.genderAccess === "male"
+                                  ? "Male only"
+                                  : "All genders";
+                        return (
+                            <InfoRow icon={({ className }) => genderAccessIcon(genderLabel, className)}>
+                                <span>{genderLabel}</span>
+                            </InfoRow>
+                        );
+                    })()}
                     <InfoRow icon={Coins01}>
                         <span>{detail.classType}</span>
                     </InfoRow>

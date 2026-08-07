@@ -94,7 +94,12 @@ export function DetailPageShell({
                     taller than the sidebar. The main card fills the wrapper
                     and scrolls its own body. */}
                 <div className="flex-1 min-w-0 relative">
-                    <div className="absolute inset-0 flex">{main}</div>
+                    {/* `gap-6` matches the outer sidebar↔main gap, so when `main`
+                        renders a second column (e.g. the staff "Internal link"
+                        card) it's spaced consistently instead of sitting flush
+                        against the main panel. A single-child `main` is
+                        unaffected (gap only applies between siblings). */}
+                    <div className="absolute inset-0 flex gap-6">{main}</div>
                 </div>
             </div>
         </div>

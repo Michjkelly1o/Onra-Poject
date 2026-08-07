@@ -75,6 +75,14 @@ export default function ProfilePage() {
     const name = member ? `${member.firstName} ${member.lastName}` : "";
     const bal = useCreditBalance();
     const hasPlan = bal !== null;
+    // Multiple credit packages can carry DIFFERENT expiry dates — surface an
+    // "(i)" next to "Expires on" that opens a sheet listing each one. Memberships
+    // never need this (one active membership at a time).
+    const [expiryOpen, setExpiryOpen] = useState(false);
+    const packageExpiries = bal?.kind === "package"
+        ? Array.from(new Set((bal.plans ?? []).map((p) => p.expiryISO).filter(Boolean)))
+        : [];
+    const multiExpiry = packageExpiries.length > 1;
     const creditLabel = bal
         ? bal.unlimited
             ? "Unlimited credits"
@@ -189,7 +197,7 @@ export default function ProfilePage() {
                                 <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#e9fff3] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]">
                                     <Icon className="size-4 text-[var(--brand-primary)]" aria-hidden />
                                 </span>
-                                <span className="text-sm font-semibold leading-5 text-[#344054]">{label}</span>
+                                <span className="text-sm font-semibold leading-5 text-[var(--brand-text)]">{label}</span>
                             </button>
                         </Fragment>
                     ))}
@@ -219,11 +227,27 @@ export default function ProfilePage() {
                             </div>
                             {bal?.expiryISO && (
                                 <div className="flex min-w-0 flex-1 flex-col">
-                                    <p className="text-xs font-normal leading-[18px] text-[#667085]">
-                                        {bal.kind === "membership" ? "Renews on" : "Expires on"}
-                                    </p>
+                                    <div className="flex items-center gap-1">
+                                        <p className="text-xs font-normal leading-[18px] text-[#667085]">
+                                            {bal.kind === "membership" ? "Renews on" : "Expires on"}
+                                        </p>
+                                        {multiExpiry && (
+                                            <span
+                                                role="button"
+                                                tabIndex={0}
+                                                aria-label="View each package's expiry date"
+                                                onClick={(e) => { e.stopPropagation(); setExpiryOpen(true); }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setExpiryOpen(true); }
+                                                }}
+                                                className="flex size-4 shrink-0 items-center justify-center text-[#98a2b3] transition-colors active:text-[#667085]"
+                                            >
+                                                <InfoCircle className="size-3.5" aria-hidden />
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="truncate text-xs font-medium leading-[18px] text-[var(--brand-text)]">
-                                        {shortDate(bal.expiryISO)}
+                                        {multiExpiry ? "Multiple dates" : shortDate(bal.expiryISO)}
                                     </p>
                                 </div>
                             )}
@@ -314,6 +338,34 @@ export default function ProfilePage() {
                     >
                         Log out
                     </Button>
+                </div>
+            </CustomerSheet>
+
+            {/* Multi-package expiry breakdown — one row per active package. */}
+            <CustomerSheet open={expiryOpen} onClose={() => setExpiryOpen(false)}>
+                <SheetToolbar title="Package expiry dates" onClose={() => setExpiryOpen(false)} />
+                <p className="mt-1 text-sm leading-5 text-[#475467]">
+                    Your credit packages expire on different dates. Credits are used from the
+                    soonest-expiring package first.
+                </p>
+                <div className="mt-4 flex flex-col gap-3">
+                    {(bal?.plans ?? []).map((p, i) => (
+                        <div key={i} className="flex items-center gap-3 rounded-2xl border border-[#eaecf0] bg-white p-4">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f2f4f7]">
+                                <Calendar className="size-5 text-[#667085]" aria-hidden />
+                            </div>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                                <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{p.name}</span>
+                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">{p.creditsLabel}</span>
+                            </div>
+                            <div className="shrink-0 text-right">
+                                <p className="text-xs font-normal leading-[18px] text-[#667085]">Expires on</p>
+                                <p className="text-sm font-medium leading-5 text-[var(--brand-text)]">
+                                    {p.expiryISO ? shortDate(p.expiryISO) : "—"}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </CustomerSheet>
         </div>

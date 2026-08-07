@@ -329,7 +329,7 @@ function BookingConfirmation() {
                             <div className="flex min-w-0 flex-1 flex-col">
                                 <span className="truncate text-sm font-medium leading-5 text-[var(--brand-text)]">{reservee.name}</span>
                                 <span className="truncate text-sm font-normal leading-5 text-[#667085]">
-                                    {reservee.email || "Reserved on your plan"}
+                                    {reservee.phone || "Reserved on your plan"}
                                 </span>
                             </div>
                             <div className="flex shrink-0 items-center gap-3">

@@ -54,9 +54,9 @@ export const branding_settings: BrandingSettings = {
     //    means a fresh workspace looks identical to what customers had
     //    before Branding shipped; admin edits then flow through
     //    `--brand-*` vars to the same surfaces (client Jul 2026).
-    primaryColor:    "#658774",
+    primaryColor:    "#164E52",  // rebrand B1 · Rich blue green-500 (was sage #658774)
     backgroundColor: "#FFFFFF",
-    tertiaryColor:   "#C4EDD6",
+    tertiaryColor:   "#DCEBE4",  // rebrand B1 · soft Tranquil mint-300 (was #C4EDD6)
     textColor:       "#101828",
     textColorLabel:  "Black",
     // ── Typeface — DM Sans is the default and pre-selected on Step 2.

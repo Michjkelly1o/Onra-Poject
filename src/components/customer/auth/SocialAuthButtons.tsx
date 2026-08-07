@@ -21,11 +21,11 @@ export function SocialAuthButtons({ onProvider }: { onProvider: (p: SocialProvid
                     key={p.id}
                     type="button"
                     onClick={() => onProvider(p.id)}
-                    className="relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-full border border-[#d0d5dd] bg-white px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50"
+                    className="relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-full border border-[var(--colors-border-primary)] bg-white px-4 py-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50"
                 >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.icon} alt="" className="size-6" aria-hidden />
-                    <span className="text-base font-semibold leading-6 text-[#344054]">{p.label}</span>
+                    <span className="text-base font-semibold leading-6 text-[var(--colors-text-secondary)]">{p.label}</span>
                     <span className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)]" />
                 </button>
             ))}

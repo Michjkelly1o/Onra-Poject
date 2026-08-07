@@ -71,6 +71,10 @@ export interface CheckoutCartProps {
      *  embedding host (the appointment flow) hide its own header while a sub-panel
      *  covers the checkout, so there's never a double header. */
     onSubviewChange?: (inSubview: boolean) => void;
+    /** When set, "Pay now" hands off to the host (with the chosen method label)
+     *  INSTEAD of navigating to `processingHref`. Used by the in-sheet plan
+     *  purchase so the flow can process + slide back without leaving the sheet. */
+    onPaid?: (method: string) => void;
 }
 
 /** Circular ± stepper button (DS Buttons/Secondary, scaled). */
@@ -140,7 +144,7 @@ function MethodRow({ m, selected, disabled = false, onClick }: { m: PayMethod; s
     );
 }
 
-export function CheckoutCart({ originId, onBack, processingHref, summary, fixedSubtotal, taxRatePct, variant = "page", hideHeader = false, onSubviewChange }: CheckoutCartProps) {
+export function CheckoutCart({ originId, onBack, processingHref, summary, fixedSubtotal, taxRatePct, variant = "page", hideHeader = false, onSubviewChange, onPaid }: CheckoutCartProps) {
     const isSheet = variant === "sheet";
     // In sheet mode the host CustomerSheet already supplies the 16px side padding
     // (exactly like Review & Book) — so the content must NOT add its own, or the
@@ -273,6 +277,8 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
         // there's neither a fixed price nor any cart items.
         if (fixedSubtotal == null && purchaseCart.items.length === 0) return;
         const label = methods.find((m) => m.id === activeMethodId)?.payLabel ?? "Apple pay";
+        // In-sheet host takes over (process + slide back) — no navigation.
+        if (onPaid) { onPaid(label); return; }
         router.push(`${processingHref}?method=${encodeURIComponent(label)}`);
     }
 

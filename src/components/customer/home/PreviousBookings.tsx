@@ -42,7 +42,7 @@ export function PreviousBookings({
 }) {
     return (
         <section className="flex w-full flex-col gap-3">
-            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Previous bookings</h2>
+            <h2 className="text-base font-semibold leading-6 text-[var(--brand-text)]">Past bookings</h2>
 
             {items.length === 0 ? (
                 <EmptyPrevious />

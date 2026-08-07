@@ -79,8 +79,11 @@ export default function AboutPage() {
                         className="flex size-[100px] items-center justify-center rounded-[24px]"
                         style={{ backgroundImage: "linear-gradient(180deg, #f5fcf8 43%, #d9f3e5 100%)" }}
                     >
+                        {/* Latest brand icon (Icon - Black.svg). object-contain keeps
+                            the SVG's ~1:1 aspect ratio inside the 60px box — never
+                            stretched, even though the artwork is 1084×1080. */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/customer/auth/forma-logomark.svg" alt="" className="size-[60px]" />
+                        <img src="/brand-logo/icon/Icon%20-%20Black.svg" alt="" className="size-[60px] object-contain" />
                     </div>
                     <div className="flex flex-col items-center gap-1">
                         <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">Onra</p>

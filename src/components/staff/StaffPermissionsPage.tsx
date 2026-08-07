@@ -662,7 +662,7 @@ function exportStaffCsv(rows: Staff[], rolesById: Map<string, Role>, branches: B
 
 // ─── Table chrome ──────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Page ──────────────────────────────────────────────────────────────────
@@ -1391,7 +1391,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 <div className={cn(
                     forceTab === "roles"
                         ? "relative"            // flush, no scroll wrapper, no fill
-                        : "flex-1 overflow-y-auto scrollbar-hide relative",
+                        : "overflow-y-auto scrollbar-hide relative min-h-0",
                 )}>
                 {/* Shift management sub-tab — fully wired (Figma 6223:378535).
                     Reads `branchId` + `search` from the parent toolbar so
@@ -1445,7 +1445,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     // permissions route, 24px L/R inside the card chrome
                     // elsewhere.
                     <div className={cn(forceTab !== "roles" && "px-6")}>
-                        <div className="overflow-x-auto">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>
@@ -1526,6 +1526,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 {(forceTab !== "staff" || staffSubTab === "staff") && tab === "staff" && (
                     staffPageRows.length === 0 ? (
                         <EmptyState
+                            absolute={false} className="min-h-[400px]"
                             title={staff.length === 0 ? "No staff members yet" : "No staff found"}
                             subtitle={staff.length === 0
                                 ? "Add your first team member to get started."
@@ -1536,7 +1537,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     // permissions route, 24px L/R inside the card chrome
                     // elsewhere.
                     <div className={cn(forceTab !== "roles" && "px-6")}>
-                        <div className="overflow-x-auto">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>

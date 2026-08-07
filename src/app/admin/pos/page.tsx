@@ -31,7 +31,7 @@ import { useState, useMemo, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, SearchMd, FilterLines, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
-    MarkerPin01, User01, Plus, Trash01, Sale04, ShoppingBag03, Check,
+    MarkerPin01, User01, Plus, Trash01, Sale04, ShoppingBag03, Check, XCircle,
     CreditCard02, Package, Gift01, Heart,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
@@ -555,9 +555,11 @@ function POSInner() {
             setGiftCardModalDesignId(p.id);
             return;
         }
-        // Sized retail — pick a size variant before adding, so the right
-        // (branch × size) stock decrements at checkout.
-        if (p.kind === "retail" && p.sizes && p.sizes.length > 0) {
+        // Retail — collected in person, so EVERY retail add needs a pickup
+        // branch. Open the picker when the product is sized (choose a size) OR
+        // the POS is on "All locations" (choose where to pick it up). A sizeless
+        // product already scoped to one branch adds straight to the cart.
+        if (p.kind === "retail" && ((p.sizes && p.sizes.length > 0) || !branchId)) {
             setSizePicker(p);
             setCartOpen(true);
             return;
@@ -895,13 +897,17 @@ function POSInner() {
     }));
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 flex-1 min-h-0">
             {/* The admin layout's Header already renders the page title from
                 the route; no in-page <h1> needed. */}
 
-            {/* ── Body: catalog card + cart side panel ─────────────────── */}
-            <div className="flex gap-6 items-start">
-                <div className="flex-1 min-w-0 flex flex-col gap-4">
+            {/* ── Body: catalog card + cart side panel — fills the remaining
+                viewport height (flex-1 min-h-0) so the catalog scrolls
+                internally and the cart CTA never gets pushed below the fold.
+                Mirrors the schedule module's view-card pattern (client
+                2026-08-07). ── */}
+            <div className="flex gap-6 flex-1 min-h-0">
+                <div className="flex-1 min-w-0 flex flex-col gap-4 min-h-0">
                     {/* Toolbar: count (left) + branch + search + cart toggle (right) */}
                     <div className="flex items-end gap-3">
                         <div className="flex-1 flex flex-col">
@@ -928,16 +934,16 @@ function POSInner() {
 
                     {/* View card.
                         ──────────────────────────────────────────────────────────
-                        IMPORTANT (per CLAUDE.md Build Convention #7):
-                        Bordered "view card" containers MUST have an explicit
-                        min-height — NEVER hug content. Without this the card
-                        shrinks when the grid is sparse (e.g. Gift cards tab
-                        with 3 products) and the page jumps as the filter
-                        changes. `min-h-[760px]` matches the schedule list
-                        view card so left/right edges stay aligned with the
-                        cart panel's fixed height.
+                        Fills the remaining viewport height (was a fixed
+                        `min-h-[760px]` floor before — now `flex-1 min-h-0`, the
+                        same as the schedule module's view card). A tall screen
+                        uses every pixel; a short screen lets the inner product
+                        grid scroll while the tab row stays pinned. The card
+                        still never hugs content (Build Convention #7) because it
+                        always grows to the full column height, so the page
+                        doesn't jump as the filter/tab changes.
                         ────────────────────────────────────────────────────────── */}
-                    <div className="bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden min-h-[760px]">
+                    <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                         {/* Tab row */}
                         <div className="flex items-center px-6 py-4 gap-3">
                             <SegmentedTabs
@@ -950,8 +956,9 @@ function POSInner() {
                             />
                         </div>
 
-                        {/* Product grid */}
-                        <div className="flex-1 px-6 pb-6 relative">
+                        {/* Product grid — scrolls internally so the tab row
+                            above stays pinned while the list overflows. */}
+                        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-6 relative">
                             {filteredProducts.length === 0 ? (
                                 <EmptyState
                                     title="No products found"
@@ -1028,6 +1035,7 @@ function POSInner() {
                         customDiscountPct={customDiscountPct} onCustomDiscountPct={setCustomDiscountPct}
                         appliedCustomDiscount={appliedCustomDiscount}
                         onApplyCustomDiscount={handleApplyCustomDiscount}
+                        onRemoveCustomDiscount={() => { setAppliedCustomDiscount(null); setCustomDiscountPct(""); }}
                         allowedCustomPct={allowedCustomPct}
                         subtotal={subtotal}
                         promoDiscount={promoDiscount}
@@ -1051,6 +1059,7 @@ function POSInner() {
             <SizePickerModal
                 product={sizePicker}
                 branchId={branchId}
+                branchOptions={branchOptions}
                 onClose={() => setSizePicker(null)}
                 onPick={(size) => { if (sizePicker) addLineToCart(sizePicker, size); setSizePicker(null); }}
             />
@@ -1162,6 +1171,7 @@ function PosCartPanel(props: {
     customDiscountOn: boolean; onCustomDiscountToggle: (v: boolean) => void;
     customDiscountPct: string; onCustomDiscountPct: (v: string) => void;
     appliedCustomDiscount: number | null;
+    onRemoveCustomDiscount: () => void;
     onApplyCustomDiscount: () => void;
     allowedCustomPct: number;
     subtotal: number;
@@ -1185,13 +1195,13 @@ function PosCartPanel(props: {
         // ──────────────────────────────────────────────────────────────────
         // IMPORTANT (per CLAUDE.md Build Convention #7):
         // Cart panel is a bordered container — height is EXPLICIT, never hugs.
-        // 860px floor gives ample room for the customer picker + line items
-        // + promo/custom-discount + totals + CTA without compressing any of
-        // them. Cap at viewport-3rem on short screens so it can't push the
-        // CTA below the fold. `sticky top-6` so the cart stays anchored
-        // while the catalog scrolls.
+        // `h-full` makes it fill the flex row (which is `flex-1 min-h-0` on the
+        // POS body), so its bottom edge lines up with the catalog card and the
+        // whole surface fits inside the viewport with no page scroll. The line
+        // items scroll internally; the customer picker, promo/discount, totals
+        // and CTA stay pinned.
         // ──────────────────────────────────────────────────────────────────
-        <aside className="w-[400px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden sticky top-6 h-[860px] max-h-[calc(100vh-3rem)]">
+        <aside className="w-[400px] shrink-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden h-full">
             {/* Customer picker */}
             <div className="px-6 pt-6 pb-5 flex flex-col gap-3">
                 <label className="text-[14px] font-medium text-[#344054]">Add a customer</label>
@@ -1234,56 +1244,66 @@ function PosCartPanel(props: {
                 so both surfaces feel identical. The checkbox below swaps the
                 input + Apply button between promo and custom-discount modes;
                 discounts are mutually exclusive (applying one clears the other). */}
-            <div className="bg-[#f8f8f6] border-t border-[#e4e7ec] px-6 py-6 flex flex-col gap-5 shrink-0">
+            <div className="bg-[#f8f8f6] border-t border-[#e4e7ec] px-6 py-4 flex flex-col gap-2.5 shrink-0">
+                {/* Discount surface — ONE field for promo OR custom discount.
+                    Applied state shows the value inline with an ✕ to cancel (no
+                    separate "Applied promotion" box); the checkbox switches which
+                    discount the single field edits. */}
                 <div className="flex flex-col gap-3">
                     {props.customDiscountOn ? (
-                        <div className="flex items-end gap-3">
-                            <div className="flex flex-col gap-1.5 flex-1">
-                                <label className="text-[14px] font-medium text-[#344054]">Custom discount</label>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[#344054]">Custom discount</label>
+                            {props.appliedCustomDiscount != null ? (
                                 <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                    <input type="number" min="0" max={props.allowedCustomPct} value={props.customDiscountPct}
-                                        onChange={e => props.onCustomDiscountPct(e.target.value.replace(/^0+(?=\d)/, ""))}
-                                        placeholder="0"
-                                        className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none" />
-                                    <span className="text-[16px] text-[#667085] ml-2">%</span>
+                                    <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
+                                    <span className="flex-1 text-[16px] font-medium text-[#101828] ml-2">{props.appliedCustomDiscount}% off</span>
+                                    <button type="button" onClick={props.onRemoveCustomDiscount} className="text-[#667085] hover:text-[#101828] shrink-0" aria-label="Cancel custom discount">
+                                        <XCircle className="w-5 h-5" />
+                                    </button>
                                 </div>
-                            </div>
-                            <Button variant="secondary-gray" size="md" onClick={props.onApplyCustomDiscount}>Apply</Button>
+                            ) : (
+                                <div className="flex items-end gap-3">
+                                    <div className="flex items-center h-10 flex-1 min-w-0 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                        <input type="number" min="0" max={props.allowedCustomPct} value={props.customDiscountPct}
+                                            onChange={e => props.onCustomDiscountPct(e.target.value.replace(/^0+(?=\d)/, ""))}
+                                            placeholder="0"
+                                            className="flex-1 min-w-0 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none" />
+                                        <span className="text-[16px] text-[#667085] ml-2 shrink-0">%</span>
+                                    </div>
+                                    <Button variant="secondary-gray" size="md" onClick={props.onApplyCustomDiscount}>Apply</Button>
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <>
-                            <div className="flex items-end gap-3">
-                                <div className="flex flex-col gap-1.5 flex-1">
-                                    <label className="text-[14px] font-medium text-[#344054]">Promotion</label>
-                                    <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[#344054]">Promotion</label>
+                            {props.appliedPromo ? (
+                                <div className="flex items-center h-10 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                                    <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
+                                    <span className="flex-1 min-w-0 truncate text-[16px] font-medium text-[#101828] ml-2">{props.appliedPromo.code}</span>
+                                    <button type="button" onClick={props.onRemovePromo} className="text-[#667085] hover:text-[#101828] shrink-0" aria-label="Cancel promotion">
+                                        <XCircle className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-end gap-3">
+                                    <div className="flex items-center h-10 flex-1 min-w-0 bg-white border-1 border-[#d0d5dd] rounded-[8px] px-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                                         <Sale04 className="w-5 h-5 text-[#667085] shrink-0" />
                                         <input type="text" value={props.promoInput}
                                             onChange={e => props.onPromoInput(e.target.value)}
                                             placeholder="Enter promotion"
-                                            className="flex-1 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none ml-2" />
+                                            className="flex-1 min-w-0 bg-transparent text-[16px] text-[#101828] placeholder-[#667085] focus:outline-none ml-2" />
                                     </div>
-                                </div>
-                                <Button variant="secondary-gray" size="md" onClick={props.onApplyPromo}>Apply</Button>
-                            </div>
-                            {props.appliedPromo && (
-                                <div className="flex flex-col gap-1.5">
-                                    <p className="text-[14px] text-[#667085]">Applied promotion</p>
-                                    <div className="bg-[#f9fafb] border-1 border-[#e4e7ec] rounded-[8px] flex items-center gap-1 pl-3 pr-2.5 py-2">
-                                        <span className="flex-1 text-[14px] font-medium text-[#344054]">{props.appliedPromo.code}</span>
-                                        <button type="button" onClick={props.onRemovePromo} className="text-[#667085] hover:text-[#101828]">
-                                            <XClose className="w-3 h-3" />
-                                        </button>
-                                    </div>
+                                    <Button variant="secondary-gray" size="md" onClick={props.onApplyPromo}>Apply</Button>
                                 </div>
                             )}
                             {props.promoError && (
                                 <p className="text-[13px] text-[#b42318]">{props.promoError}</p>
                             )}
-                        </>
+                        </div>
                     )}
 
-                    {/* Apply custom discount checkbox — Owner/Branch Admin only.
-                        Custom-styled to match the schedule modal exactly. */}
+                    {/* Apply custom discount checkbox — Owner/Branch Admin only. */}
                     {props.canApplyCustomDiscount && (
                         <button type="button" onClick={() => props.onCustomDiscountToggle(!props.customDiscountOn)} className="flex items-start gap-2 text-left">
                             <span className={cn(
@@ -1297,9 +1317,12 @@ function PosCartPanel(props: {
                     )}
                 </div>
 
-                {/* Totals */}
-                <div className="flex flex-col gap-2">
-                    <p className="text-[14px] font-medium text-[#101828]">Detail payment</p>
+                {/* Divider now sits ABOVE the whole detail-payment block (separating
+                    the promo/discount field from the totals), not between subtotal
+                    and total — the "Detail payment" heading is dropped for compactness. */}
+                <div className="h-px bg-[#e4e7ec]" />
+
+                <div className="flex flex-col gap-1">
                     <Row label="Subtotal" value={props.subtotal} />
                     {props.appliedPromo && (
                         <Row label={`Promotion (${props.appliedPromo.code})`} value={-props.promoDiscount} />
@@ -1307,10 +1330,6 @@ function PosCartPanel(props: {
                     {props.customDiscount > 0 && props.appliedCustomDiscount != null && (
                         <Row label={`Custom discount (${props.appliedCustomDiscount}%)`} value={-props.customDiscount} />
                     )}
-                    {/* Tax row — labelled "Tax (included)" in inclusive mode
-                        because the amount is informational only (already
-                        baked into the displayed line prices). Exclusive
-                        mode labels it "Tax rate (X%)" and adds it on top. */}
                     {props.taxRate > 0 && (
                         <Row
                             label={props.taxIncluded
@@ -1319,11 +1338,10 @@ function PosCartPanel(props: {
                             value={props.taxAmount}
                         />
                     )}
-                </div>
-                <div className="h-px bg-[#e4e7ec]" />
-                <div className="flex items-center">
-                    <p className="flex-1 text-[18px] font-medium text-[#101828]">Total</p>
-                    <p className="text-[18px] font-semibold text-[#101828]">AED {props.total.toLocaleString()}</p>
+                    <div className="flex items-center pt-1">
+                        <p className="flex-1 text-[18px] font-medium text-[#101828]">Total</p>
+                        <p className="text-[18px] font-semibold text-[#101828]">AED {props.total.toLocaleString()}</p>
+                    </div>
                 </div>
 
                 <Button variant="primary" size="lg" className="w-full" disabled={!canProceed} onClick={props.onProceed}>
@@ -1649,24 +1667,36 @@ interface GiftCardRecipientData {
 // locations"); a size with 0 available is disabled. Picking a size adds that
 // (product × size) line to the cart.
 
-function SizePickerModal({ product, branchId, onClose, onPick }: {
+function SizePickerModal({ product, branchId, branchOptions, onClose, onPick }: {
     product: PosProduct | null;
     branchId: string;
+    branchOptions: { value: string; label: string }[];
     onClose: () => void;
-    onPick: (size: string) => void;
+    onPick: (size?: string) => void;
 }) {
-    if (!product || !product.sizes) return null;
-    const stockForSize = (size: string): number => {
-        if (branchId) return product.sizeStockByBranch?.[branchId]?.[size] ?? 0;
-        return product.sizeStockAggregate?.[size] ?? 0;
-    };
+    // Retail is collected in person → a specific PICKUP branch is required for
+    // EVERY retail add. When the POS location filter is on "All locations" the
+    // staff picks the pickup branch here; otherwise it's the selected sale
+    // branch. Sized products also pick a size; sizeless products just confirm.
+    const [pickBranch, setPickBranch] = useState(branchId);
+    useEffect(() => { setPickBranch(branchId); }, [branchId, product?.id]);
+    if (!product) return null;
+    const isSized = !!(product.sizes && product.sizes.length > 0);
+    const effectiveBranch = branchId || pickBranch;
+    const needsBranch = !effectiveBranch;
+    const stockForSize = (size: string): number =>
+        effectiveBranch ? (product.sizeStockByBranch?.[effectiveBranch]?.[size] ?? 0) : 0;
+    const sizelessStock = effectiveBranch ? (product.perBranchStock?.[effectiveBranch] ?? 0) : 0;
+    const sizelessSoldOut = !needsBranch && sizelessStock <= 0;
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[420px] max-w-[calc(100vw-32px)] flex flex-col">
                 <div className="flex items-start gap-3 p-6 pb-4">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[#101828] leading-7">Choose a size</p>
+                        <p className="text-[18px] font-semibold text-[#101828] leading-7">
+                            {isSized ? "Choose a size" : "Choose a pickup branch"}
+                        </p>
                         <p className="text-[14px] text-[#475467] leading-5 mt-0.5 truncate">{product.name}</p>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Close"
@@ -1674,30 +1704,65 @@ function SizePickerModal({ product, branchId, onClose, onPick }: {
                         <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
-                <div className="px-6 pb-6 flex flex-col gap-2">
-                    {product.sizes.map(size => {
-                        const units = stockForSize(size);
-                        const soldOut = units <= 0;
-                        return (
-                            <button
-                                key={size}
-                                type="button"
-                                disabled={soldOut}
-                                onClick={() => onPick(size)}
-                                className={cn(
-                                    "w-full flex items-center justify-between gap-3 px-4 h-12 rounded-[10px] border-1 text-left transition-colors",
-                                    soldOut
-                                        ? "border-[#e4e7ec] bg-[#f9fafb] cursor-not-allowed"
-                                        : "border-[#d0d5dd] bg-white hover:border-[#7ba08c] hover:bg-[#f9fafb]",
-                                )}
-                            >
-                                <span className={cn("text-[15px] font-medium", soldOut ? "text-[#98a2b3]" : "text-[#101828]")}>{size}</span>
-                                <span className={cn("text-[13px] font-medium", soldOut ? "text-[#b42318]" : "text-[#667085]")}>
-                                    {soldOut ? "Out of stock" : `${units} in stock`}
+                <div className="px-6 pb-6 flex flex-col gap-3">
+                    {/* Pickup branch — required when the POS isn't scoped to a
+                        single branch. Retail is collected in person, so a sale
+                        can't be made without a pickup location. */}
+                    {!branchId && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[#344054]">Pickup branch</label>
+                            <SelectInput
+                                value={pickBranch}
+                                onChange={setPickBranch}
+                                options={branchOptions}
+                                placeholder="Select a pickup branch"
+                                width="w-full"
+                            />
+                            <p className="text-[13px] text-[#667085]">
+                                Retail is collected in person — choose where the customer picks it up.
+                            </p>
+                        </div>
+                    )}
+                    {isSized ? (
+                        <div className="flex flex-col gap-2">
+                            {product.sizes!.map(size => {
+                                const units = stockForSize(size);
+                                const soldOut = !needsBranch && units <= 0;
+                                const disabled = needsBranch || soldOut;
+                                return (
+                                    <button
+                                        key={size}
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => { if (!disabled) onPick(size); }}
+                                        className={cn(
+                                            "w-full flex items-center justify-between gap-3 px-4 h-12 rounded-[10px] border-1 text-left transition-colors",
+                                            disabled
+                                                ? "border-[#e4e7ec] bg-[#f9fafb] cursor-not-allowed"
+                                                : "border-[#d0d5dd] bg-white hover:border-[#7ba08c] hover:bg-[#f9fafb]",
+                                        )}
+                                    >
+                                        <span className={cn("text-[15px] font-medium", disabled ? "text-[#98a2b3]" : "text-[#101828]")}>{size}</span>
+                                        <span className={cn("text-[13px] font-medium", needsBranch ? "text-[#98a2b3]" : soldOut ? "text-[#b42318]" : "text-[#667085]")}>
+                                            {needsBranch ? "Select a branch" : soldOut ? "Out of stock" : `${units} in stock`}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex items-center justify-between px-1 text-[14px]">
+                                <span className="text-[#475467]">Availability</span>
+                                <span className={cn("font-medium", needsBranch ? "text-[#98a2b3]" : sizelessSoldOut ? "text-[#b42318]" : "text-[#667085]")}>
+                                    {needsBranch ? "Select a branch" : sizelessSoldOut ? "Out of stock" : `${sizelessStock} in stock`}
                                 </span>
-                            </button>
-                        );
-                    })}
+                            </div>
+                            <Button variant="primary" size="lg" className="w-full" disabled={needsBranch || sizelessSoldOut} onClick={() => onPick(undefined)}>
+                                Add to cart
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

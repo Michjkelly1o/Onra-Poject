@@ -519,13 +519,13 @@ export function useUpcomingBookingsMerged(): UpcomingCardVM[] {
 
 // ─── Merged PAST bookings (classes + appointments) + Home stat counts ─────────
 //
-// The Home "Previous bookings" section mirrors "Upcoming bookings": the single
+// The Home "Past bookings" section mirrors "Upcoming bookings": the single
 // most-recent past booking regardless of type, rendered through the shared
 // <BookingCard>. Attended-and-not-yet-rated bookings expose a "Rate class" CTA.
 
 export interface PastCardVM extends UpcomingCardVM {
     /** The session was attended (rateable). Stays true after rating so the
-     *  card remains in the Previous bookings section — client 2026-08-06. */
+     *  card remains in the Past bookings section — client 2026-08-06. */
     attended: boolean;
     /** Attended & not yet rated → show the "Rate class" CTA. */
     canRate: boolean;

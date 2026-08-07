@@ -13,7 +13,10 @@ export type GuestPayment = "drop_in" | "guest_package" | "invite_link" | "booker
 
 export interface BookingGuest {
     name: string;
-    email: string;
+    phone: string;
+    /** Optional — the guest details sheet always shows an Email field but it can
+     *  be skipped (client 2026-08). */
+    email?: string;
     payment: GuestPayment;
 }
 

@@ -884,7 +884,7 @@ export function ShiftManagementTab({
                     </div>
                 ) : (
                     <div className="px-6">
-                        <div className="overflow-x-auto">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>

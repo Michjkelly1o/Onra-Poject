@@ -33,6 +33,7 @@ import type {
 import { BookingWindowPanel } from "./BookingWindowPanel";
 import { WaitlistPanel }      from "./WaitlistPanel";
 import { CancellationPolicyPanel } from "./CancellationPolicyPanel";
+import { GuestBookingPanel } from "./GuestBookingPanel";
 // Freeze policy moved here from its own tab (client Jul 2026 — one fewer
 // settings tab, the freeze rules live alongside cancellation now). Panel
 // component unchanged; only the entry point changes.
@@ -98,6 +99,7 @@ export default function BookingRulesPage() {
     const [cpOpen, setCpOpen] = useState(false);
     const [cpTab, setCpTab]   = useState<CancellationTab>("rule");
     const [fpOpen, setFpOpen] = useState(false);
+    const [gbOpen, setGbOpen] = useState(false);
 
     // Landing's "Last minutes booking" reads the INVERSE of the cutoff
     // toggle. Cutoff ON = members can book to the last minute = "Yes".
@@ -137,32 +139,12 @@ export default function BookingRulesPage() {
         );
     }
 
-    // Guest bookings — defaults handle a persisted store from before these
-    // flags existed (v104 and earlier).
-    const guestsUsePlan   = classesSettings.guests_use_plan_enabled ?? true;
-    const guestsUnlimited = classesSettings.guests_allow_unlimited ?? false;
-    function handleToggleGuestsUsePlan(next: boolean) {
-        updateClassesSettings({ guests_use_plan_enabled: next });
-        showToast(
-            next ? "Members can use their plan for guests" : "Guests must pay drop-in",
-            next
-                ? "Customers can use an eligible plan to pay for a guest booking."
-                : "The “Use my plan” option is hidden; guests pay the drop-in price by card.",
-            next ? "success" : "error",
-            next ? "check"   : "slash",
-        );
-    }
-    function handleToggleGuestsUnlimited(next: boolean) {
-        updateClassesSettings({ guests_allow_unlimited: next });
-        showToast(
-            next ? "Unlimited plans allowed for guests" : "Unlimited plans excluded for guests",
-            next
-                ? "Unlimited memberships can now be used to book guests."
-                : "Only credit packages and limited memberships can book guests.",
-            next ? "success" : "error",
-            next ? "check"   : "slash",
-        );
-    }
+    // Guest bookings — view-only summary here; everything is edited in the
+    // GuestBookingPanel (opened via "Customize"), like the other rule cards.
+    // Defaults handle a persisted store from before these flags existed.
+    const guestsUsePlan      = classesSettings.guests_use_plan_enabled ?? true;
+    const guestsUnlimited    = classesSettings.guests_allow_unlimited ?? false;
+    const guestsMax          = classesSettings.guests_max_per_customer ?? 2;
 
     return (
         <div className="flex w-full flex-col gap-4">
@@ -228,44 +210,35 @@ export default function BookingRulesPage() {
                 )}
             </SettingsCard>
 
-            {/* ── Card: Guest bookings (Bring a friend) — same row/toggle
-                structure as the Services config (no icon, 1-line subtext). ── */}
-            <div className="flex flex-col rounded-[16px] border-1 border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <div className="flex flex-col gap-1 p-6 pb-4">
-                    <p className="text-[16px] font-semibold text-[#101828]">Guest bookings</p>
-                    <p className="text-[14px] leading-[20px] text-[#667085]">
-                        Control how members can bring and pay for a guest.
-                    </p>
-                </div>
-
-                {/* Setting 1 — Members can use their plan for guests */}
-                <div className="flex items-center gap-4 border-t border-[#eaecf0] px-6 py-5">
-                    <div className="flex flex-1 flex-col gap-1 min-w-0">
-                        <p className="text-[15px] font-semibold text-[#101828]">Members can use their plan for guests</p>
-                        <p className="text-[13px] leading-[19px] text-[#667085]">Pay for a guest with an eligible plan — 1 credit per guest.</p>
-                    </div>
-                    <Toggle
-                        on={guestsUsePlan}
-                        onChange={handleToggleGuestsUsePlan}
-                        ariaLabel="Members can use their plan for guests"
+            {/* ── Card: Guest bookings (Bring a friend) — view-only summary +
+                "Customize" side panel, matching the Waitlist / Cancellation
+                cards. All editing happens in the GuestBookingPanel. ── */}
+            <SettingsCard>
+                <CardHeader
+                    title="Guest bookings"
+                    subtitle="Control how customers can bring and pay for a guest."
+                    editLabel="Customize"
+                    onEdit={() => setGbOpen(true)}
+                />
+                <div className="grid grid-cols-3 gap-x-6 gap-y-5">
+                    <SummaryField
+                        label="Customers can use their plan for guests"
+                        value={guestsUsePlan ? "Yes" : "No"}
                     />
-                </div>
-
-                {/* Setting 2 — Allow unlimited plans for guests (only when 1 is on) */}
-                {guestsUsePlan && (
-                    <div className="flex items-center gap-4 border-t border-[#eaecf0] px-6 py-5">
-                        <div className="flex flex-1 flex-col gap-1 min-w-0">
-                            <p className="text-[15px] font-semibold text-[#101828]">Allow unlimited plans for guests</p>
-                            <p className="text-[13px] leading-[19px] text-[#667085]">Unlimited memberships can also be used to book guests.</p>
-                        </div>
-                        <Toggle
-                            on={guestsUnlimited}
-                            onChange={handleToggleGuestsUnlimited}
-                            ariaLabel="Allow unlimited plans for guests"
+                    {guestsUsePlan && (
+                        <SummaryField
+                            label="Allow unlimited plans for guests"
+                            value={guestsUnlimited ? "Yes" : "No"}
                         />
-                    </div>
-                )}
-            </div>
+                    )}
+                    {guestsUsePlan && guestsUnlimited && (
+                        <SummaryField
+                            label="Maximum guest bookings"
+                            value={`${guestsMax} ${guestsMax === 1 ? "guest" : "guests"}`}
+                        />
+                    )}
+                </div>
+            </SettingsCard>
 
             {/* ── Card 3: Cancellation policy ──────────────────────── */}
             <SettingsCard>
@@ -319,6 +292,7 @@ export default function BookingRulesPage() {
             <WaitlistPanel            open={wlOpen} onClose={() => setWlOpen(false)} />
             <CancellationPolicyPanel  open={cpOpen} onClose={() => setCpOpen(false)} />
             <FreezePolicyPanel        open={fpOpen} onClose={() => setFpOpen(false)} />
+            <GuestBookingPanel        open={gbOpen} onClose={() => setGbOpen(false)} />
 
             <Toast />
         </div>

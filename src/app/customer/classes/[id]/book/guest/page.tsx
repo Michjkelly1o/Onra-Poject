@@ -16,6 +16,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Trash01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { bookingDraft, ensureBookingDraft } from "@/lib/customer/booking-flow";
+import { PhoneCountrySheet } from "@/components/customer/profile/PhoneCountrySheet";
+import { splitPhone } from "@/components/customers/CustomerFormPage";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { Button } from "@/components/ui/button";
 
@@ -42,7 +44,10 @@ function ReserveTo() {
     const index = Math.max(0, parseInt(search.get("index") ?? "0", 10) || 0);
     const existing = bookingDraft.guests[index];
 
+    const seedPhone = splitPhone(existing?.phone);
     const [name, setName] = useState(existing?.name ?? "");
+    const [phone, setPhone] = useState(seedPhone.number);
+    const [phoneCountry, setPhoneCountry] = useState(seedPhone.country);
     const [email, setEmail] = useState(existing?.email ?? "");
 
     const canSave = name.trim().length > 0;
@@ -50,8 +55,9 @@ function ReserveTo() {
     function save() {
         if (!canSave) return;
         const guests = [...bookingDraft.guests];
+        const fullPhone = phone.trim() ? `${phoneCountry.dial} ${phone.trim()}` : "";
         // Reserved seat, paid from the member's own plan (booker_credit).
-        guests[index] = { name: name.trim(), email: email.trim(), payment: "booker_credit" };
+        guests[index] = { name: name.trim(), phone: fullPhone, email: email.trim(), payment: "booker_credit" };
         bookingDraft.guests = guests;
         router.back();
     }
@@ -109,6 +115,20 @@ function ReserveTo() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                         />
+                    </label>
+                    <label className="flex w-full flex-col gap-1.5">
+                        <span className="text-sm font-medium leading-5 text-[#344054]">Phone number (optional)</span>
+                        <div className="flex items-stretch gap-2">
+                            <PhoneCountrySheet value={phoneCountry} onChange={setPhoneCountry} />
+                            <input
+                                className={`${INPUT} flex-1`}
+                                type="tel"
+                                inputMode="tel"
+                                placeholder="Enter phone number"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                            />
+                        </div>
                     </label>
                     <label className="flex w-full flex-col gap-1.5">
                         <span className="text-sm font-medium leading-5 text-[#344054]">Email (optional)</span>

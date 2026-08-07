@@ -237,7 +237,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
     return (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="flex items-center justify-center pointer-events-none w-full h-full min-h-[400px]">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
                 <div className="bg-[#f9fafb] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
@@ -288,7 +288,7 @@ type PendingConfirm =
     | { kind: "archive" | "recover" | "delete"; ids: string[] }
     | null;
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 export default function PayRatePage() {
@@ -461,7 +461,7 @@ export default function PayRatePage() {
     }
 
     return (
-        <div className="flex flex-col gap-6 animate-fade-in">
+        <div className="flex-1 min-h-0 flex flex-col gap-6 animate-fade-in">
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={totalForBranch} entitySingular="pay rate" />
@@ -486,8 +486,8 @@ export default function PayRatePage() {
             </div>
 
             {/* Table area — borderless full-bleed (matches the customers list) */}
-            <div className="h-[760px] flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div className="overflow-y-auto scrollbar-hide relative min-h-0">
                     {pagedRows.length === 0 ? (
                         <EmptyState
                             title={isTrulyEmpty ? "No pay rates yet" : "No pay rates found"}
@@ -496,7 +496,7 @@ export default function PayRatePage() {
                                 : "Try adjusting your search or filters."}
                         />
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>

@@ -340,7 +340,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                     </div>
                 ) : (
                     <div className="px-6">
-                        <div className="overflow-x-auto">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>

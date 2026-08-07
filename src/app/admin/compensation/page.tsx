@@ -161,7 +161,7 @@ function exportCompensationCsv(rows: CompRow[], branches: Branch[]) {
 
 // ─── Table header/cell constants ───────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Page ──────────────────────────────────────────────────────────────────
@@ -420,7 +420,7 @@ export default function CompensationPage() {
         || (branchId !== "" && allRows.every(r => r.branchId !== branchId));
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* Metric cards */}
             <div className="flex items-stretch gap-4">
                 <MetricCard label="Class revenue base" value={aed(grossRevenue)}     period={metricPeriodLabel} Icon={CoinsStacked01} />
@@ -473,17 +473,18 @@ export default function CompensationPage() {
             </div>
 
             {/* Table */}
-            <div className="h-[760px] flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div className="overflow-y-auto scrollbar-hide relative min-h-0">
                     {pageRows.length === 0 ? (
                         <EmptyState
+                            absolute={false} className="min-h-[400px]"
                             title={isTrulyEmpty ? "No active staff" : "No staff found"}
                             subtitle={isTrulyEmpty
                                 ? "Add an instructor to start calculating compensation."
                                 : "Try adjusting your search or branch filter."}
                         />
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>

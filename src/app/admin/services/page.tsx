@@ -416,7 +416,7 @@ function ListView({
     const someChecked = !allChecked && rows.some(r => selectedIds.has(r.id));
 
     return (
-        <div className="overflow-x-auto">
+        <div>
             <table className="w-full border-collapse">
                 <thead>
                     <tr>
@@ -749,7 +749,7 @@ function ServicesPageInner() {
     const hasActiveFilter = filtersEnabled && (applied.statuses.length > 0 || applied.categories.length > 0);
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 {/* Total label mirrors the deep-linked scope (client 2026-07-21) —
@@ -805,7 +805,8 @@ function ServicesPageInner() {
             {/* Body — flush on the admin chrome (no nested view card). The
                 relative wrapper anchors the floating bulk-action pill so it
                 can sit over the table area without escaping the page. */}
-            <div className="relative flex flex-col flex-1">
+            <div className="relative flex flex-col flex-1 min-h-0">
+                <div className="overflow-y-auto scrollbar-hide min-h-0">
                 {sorted.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
                         <EmptyState
@@ -827,6 +828,7 @@ function ServicesPageInner() {
                         onEdit={handleEdit}
                     />
                 )}
+                </div>
 
                 <Pagination
                     page={clampedPage} total={sorted.length} pageSize={pageSize}

@@ -43,7 +43,7 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] border-b border-[#e4e7ec]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 const STATUS_BADGE: Record<ClassCategory["status"], string> = {
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
@@ -223,7 +223,7 @@ export default function CategoriesPage() {
     const isFilteredEmpty = !isTrulyEmpty && sortedRows.length === 0;
 
     return (
-        <div className="flex flex-col gap-5 w-full">
+        <div className="flex-1 min-h-0 flex flex-col gap-5 w-full">
             {/* Toolbar — Total + count on the left, search + Add new on the
                 right. Same pattern as the rest of the Classes group
                 pages. */}
@@ -248,7 +248,7 @@ export default function CategoriesPage() {
             {/* Table — flush, no bordered card per Figma. Internal row
                 dividers stay (the `border-b` on each <td>). Pagination
                 keeps its top border so it reads as a footer separator. */}
-            <div className="flex flex-col">
+            <div className="flex flex-col flex-1 min-h-0">
                 {isTrulyEmpty || isFilteredEmpty ? (
                     <div className="relative" style={{ minHeight: 360 }}>
                         <EmptyState
@@ -260,7 +260,7 @@ export default function CategoriesPage() {
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-y-auto scrollbar-hide min-h-0">
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>

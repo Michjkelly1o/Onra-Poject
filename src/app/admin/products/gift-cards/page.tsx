@@ -4,7 +4,7 @@
 // Onra Studio — Gift Cards list view (/admin/products/gift-cards)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Same chrome as the Memberships & Packages list (toolbar + 760px view card +
+// Same chrome as the Memberships & Packages list (toolbar + viewport-fill list +
 // bulk-select table + pagination + row-action ⋮) — with kind-specific
 // differences:
 //   • Single product type (no tabs)
@@ -409,7 +409,7 @@ function ListView({
     const someChecked = !allChecked && rows.some(r => selectedIds.has(r.id));
 
     return (
-        <div className="overflow-x-auto">
+        <div>
             <table className="w-full border-collapse">
                 <thead>
                     <tr>
@@ -673,7 +673,7 @@ export default function GiftCardsPage() {
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={filteredRows.length} entitySingular="gift card" />
@@ -703,7 +703,8 @@ export default function GiftCardsPage() {
                 per Figma 3726:21787. The relative wrapper anchors the
                 floating bulk-action pill so it can absolutely-position over
                 the table area without escaping the page. */}
-            <div className="relative flex flex-col flex-1">
+            <div className="relative flex flex-col flex-1 min-h-0">
+                <div className="overflow-y-auto scrollbar-hide min-h-0">
                 {sorted.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
                         <EmptyState
@@ -723,6 +724,7 @@ export default function GiftCardsPage() {
                         onEdit={handleEdit}
                     />
                 )}
+                </div>
 
                 <Pagination
                     page={clampedPage} total={sorted.length} pageSize={pageSize}

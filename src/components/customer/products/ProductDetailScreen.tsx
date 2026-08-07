@@ -16,7 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { loginHref } from "@/lib/customer/auth-flow";
 import { ChevronLeft, ChevronRight, Clock, CreditCard02, CurrencyDollarCircle, Gift01, Lightbulb02, MarkerPin01, Minus, Package, Plus, Tag03, Box, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
-import { useCurrentCustomerContext } from "@/lib/customer/context";
+import { useCurrentCustomerContext, ALL_BRANCHES } from "@/lib/customer/context";
 import { useCatalogProducts } from "@/lib/customer/products-catalog";
 import { addToCart, ensurePurchaseCart, purchaseCart, usePurchasePlans, type PlanKind, type PlanRow } from "@/lib/customer/purchase";
 import { Rings } from "@/components/customer/products/ProductArt";
@@ -70,11 +70,12 @@ export function ProductDetailScreen({
     const isSheet = variant === "sheet";
     const router = useRouter();
     const pathname = usePathname();
-    const { member } = useCurrentCustomerContext();
+    const { member, selectedBranchId } = useCurrentCustomerContext();
     const memberships = useAppStore((s) => s.memberships);
     const packages = useAppStore((s) => s.packages);
     const giftCardDesigns = useAppStore((s) => s.giftCardDesigns);
     const branches = useAppStore((s) => s.branches);
+    const retailStock = useAppStore((s) => s.retailStock);
     const customerPlans = useAppStore((s) => s.customerPlans);
     const retailProducts = useAppStore((s) => s.retailProducts);
     const showToast = useAppStore((s) => s.showToast);
@@ -163,9 +164,10 @@ export function ProductDetailScreen({
                   currentName: currentMembership.name,
               }
             : null;
-    // Retail: only "sold out at the shopper's branch" gates the button — plans
-    // don't affect retail purchases (non-exclusive). The unitsOnHand figure
-    // comes from useCatalogProducts and is scoped to the shopper's home branch.
+    // Retail: only "sold out for the selected branch scope" gates the button —
+    // plans don't affect retail purchases (non-exclusive). The unitsOnHand /
+    // sizeStock figures come from useCatalogProducts and track the HEADER branch
+    // filter (All branches = summed; a specific branch = that branch only).
     // Sized retail — the shopper picks a size before adding. Stock, the
     // "in stock" line, the qty cap, and the add gate all follow the pick.
     const hasSizes = isRetail && (product.sizes?.length ?? 0) > 0;
@@ -174,13 +176,37 @@ export function ProductDetailScreen({
     const effectiveStock = hasSizes ? selectedSizeStock : (product.unitsOnHand ?? 0);
     const needsSize = hasSizes && !selectedSize;
     const retailOutOfStock = isRetail && (hasSizes ? allSizesSoldOut : (product.unitsOnHand ?? 0) <= 0);
+    // Availability label reflects the selected branch scope, matching the count.
+    const isAllBranches = selectedBranchId === ALL_BRANCHES;
+    const stockScopeLabel = isAllBranches
+        ? "across all branches"
+        : `at ${branches.find((b) => b.id === selectedBranchId)?.name ?? "this branch"}`;
+    // Retail is collected in person at ONE branch — the customer must pick a
+    // specific pickup branch (not "All branches") before adding to cart / paying.
+    const needsBranchPick = isRetail && isAllBranches;
+    // Other ACTIVE branches that carry the (selected variant of the) product in
+    // stock — drives the "sold out here, try another branch" nudge.
+    const branchesWithStock = isRetail
+        ? branches.filter(
+              (b) =>
+                  b.status === "active" &&
+                  b.id !== selectedBranchId &&
+                  retailStock.some(
+                      (s) =>
+                          s.productId === product!.id &&
+                          s.branchId === b.id &&
+                          (hasSizes ? (selectedSize ? s.size === selectedSize : true) : true) &&
+                          (s.unitsOnHand ?? 0) > 0,
+                  ),
+          )
+        : [];
     const addDisabled =
         product.kind === "membership"
             ? holdsActivePackage || product.id === ownedMembershipId
             : product.kind === "package"
               ? !!activeMembershipPlan
               : product.kind === "retail"
-                ? retailOutOfStock || needsSize || (hasSizes && selectedSizeStock <= 0)
+                ? needsBranchPick || retailOutOfStock || needsSize || (hasSizes && selectedSizeStock <= 0)
                 : false;
 
     function onAdd() {
@@ -259,10 +285,13 @@ export function ProductDetailScreen({
             <div className={isSheet ? "flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "contents"}>
             {/* Hero — memberships/packages/gift cards render the 200px brand-
                 gradient banner with a big credit/value figure. Retail replaces
-                it with a real product photo (aspect-square, ~360px on the
-                phone-frame width) so shoppers see the item before buying. */}
+                it with a real product photo at a 4:3 aspect ratio spanning the
+                full sheet width — the SAME ratio the admin retail creation form
+                crops to (ImageBannerUpload, aspect-[4/3]) — so the photo shows
+                exactly as uploaded and stays consistent across admin + customer
+                (client 2026-08-07). Was a fixed h-[200px] that cropped tall. */}
             {isRetail && product.imageUrl ? (
-                <div className="relative h-[200px] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
+                <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-[#f9fafb]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
 {!isSheet && (
@@ -374,7 +403,7 @@ export function ProductDetailScreen({
                             <div className="h-px w-full bg-[#e4e7ec]" />
                             <InfoRow icon={Box}>
                                 {retailOutOfStock ? (
-                                    <span className="font-medium text-[#b42318]">Out of stock at your branch</span>
+                                    <span className="font-medium text-[#b42318]">Out of stock {stockScopeLabel}</span>
                                 ) : hasSizes && !selectedSize ? (
                                     <span className="font-medium text-[var(--brand-text)]">Select a size to see availability</span>
                                 ) : (
@@ -382,10 +411,31 @@ export function ProductDetailScreen({
                                         <span className="font-medium text-[var(--brand-text)]">
                                             {effectiveStock} in stock
                                         </span>
-                                        {" "}at your branch
+                                        {" "}{stockScopeLabel}
                                     </>
                                 )}
                             </InfoRow>
+                            {/* Retail is collected in person → the customer must pick
+                                a specific branch before buying. */}
+                            {needsBranchPick && (
+                                <div className="flex items-start gap-2 rounded-xl border border-[#fec84b] bg-[#fffcf5] p-3">
+                                    <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#dc6803]" aria-hidden />
+                                    <p className="text-sm leading-5 text-[#93370d]">
+                                        Retail items are collected in person. Pick a branch at the top of the
+                                        screen to check stock and buy.
+                                    </p>
+                                </div>
+                            )}
+                            {/* Sold out here, but in stock elsewhere → nudge to switch. */}
+                            {!needsBranchPick && retailOutOfStock && branchesWithStock.length > 0 && (
+                                <div className="flex items-start gap-2 rounded-xl border border-[#a6f4c5] bg-[#f6fef9] p-3">
+                                    <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#067647]" aria-hidden />
+                                    <p className="text-sm leading-5 text-[#067647]">
+                                        Available at {branchesWithStock.map((b) => b.name).join(", ")}. Switch
+                                        branch at the top of the screen to buy it there.
+                                    </p>
+                                </div>
+                            )}
                             {hasSizes && (
                                 <>
                                     <div className="h-px w-full bg-[#e4e7ec]" />

@@ -104,7 +104,9 @@ export default function BookingDetailPage() {
     const bookToName = isGuestBooking
         ? booking.guestName!
         : `${member?.firstName ?? ""} ${member?.lastName ?? ""}`.trim() || "You";
-    const bookToEmail = isGuestBooking ? booking.guestEmail : member?.email;
+    // Guests are contacted by phone now (email kept as a fallback for older
+    // bookings); a self booking still shows the member's email.
+    const bookToEmail = isGuestBooking ? (booking.guestPhone ?? booking.guestEmail) : member?.email;
     const bookToInitial = isGuestBooking ? undefined : member?.initials;
     // Real portrait only for a self booking — guests have no photo.
     const bookToImage = isGuestBooking ? undefined : member?.imageUrl;

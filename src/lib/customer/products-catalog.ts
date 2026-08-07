@@ -50,7 +50,7 @@ export interface CatalogProducts {
 }
 
 export function useCatalogProducts(): CatalogProducts {
-    const { selectedBranchId, member } = useCurrentCustomerContext();
+    const { selectedBranchId } = useCurrentCustomerContext();
     const memberships = useAppStore((s) => s.memberships);
     const packages = useAppStore((s) => s.packages);
     const giftCardDesigns = useAppStore((s) => s.giftCardDesigns);
@@ -112,18 +112,23 @@ export function useCatalogProducts(): CatalogProducts {
         // ── Retail products (Phase F, 2026-07-30) ─────────────────────────
         // Retail is studio-global (no `branch_ids` scoping on the product
         // record) so every branch surfaces the same catalogue. Stock IS
-        // per-branch — the shopper's home branch drives the "N in stock" +
-        // out-of-stock gate. A guest (no `member`) sees stock at the
-        // header-selected branch; falling back to a total-count for
-        // "All branches" so the row still displays a plausible number.
+        // per-branch and must track the HEADER branch filter (same rule as
+        // memberships/packages above), NOT the shopper's home branch:
+        //   • "All branches"   → sum on-hand across every branch.
+        //   • a specific branch → only that branch's on-hand.
+        // The header switcher updates `selectedBranchId`, and it's a `useMemo`
+        // dependency, so flipping branches recomputes every count immediately.
         const categoryLabelById = new Map(retailCategories.map((c) => [c.id, c.label] as const));
-        const shopperBranchId =
-            member?.branchId ?? (isAll ? undefined : selectedBranchId);
+        // "All branches" sums on-hand across EVERY branch — matching the admin
+        // Retail list total, which aggregates all locations (the admin counts an
+        // inactive branch's physical stock too, so we do the same to stay in
+        // lock-step). A specific branch scopes to that one branch's rows.
+        const stockBranchId = isAll ? undefined : selectedBranchId;
         const stockAt = (productId: string, size?: string): number => {
             return retailStock
                 .filter((s) =>
                     s.productId === productId &&
-                    (shopperBranchId ? s.branchId === shopperBranchId : true) &&
+                    (stockBranchId ? s.branchId === stockBranchId : true) &&
                     (size === undefined || s.size === size),
                 )
                 .reduce((n, s) => n + (s.unitsOnHand ?? 0), 0);
@@ -162,7 +167,6 @@ export function useCatalogProducts(): CatalogProducts {
         retailProducts,
         retailCategories,
         retailStock,
-        member,
     ]);
 }
 
@@ -215,6 +219,9 @@ export interface CreditBalanceVM {
     total: number;
     /** Active plan expiry (latest across packages) — drives "Expires on". */
     expiryISO?: string;
+    /** Each held plan with its own expiry — powers the multi-package "Expires
+     *  on (i)" helper sheet when packages carry different expiry dates. */
+    plans: { name: string; expiryISO?: string; creditsLabel: string }[];
 }
 
 /** Credit-balance summary for the profile card: type + credits-left + total +
@@ -256,6 +263,7 @@ export function useCreditBalance(): CreditBalanceVM | null {
             // progress bar within 0–100%).
             total: Math.max(total, remaining),
             expiryISO,
+            plans: held.map((p) => ({ name: p.name, expiryISO: p.expiryISO, creditsLabel: p.creditsLabel })),
         };
     }, [member, customerPlans]);
 }

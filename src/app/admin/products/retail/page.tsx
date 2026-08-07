@@ -745,7 +745,7 @@ export default function RetailPage() {
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar — adaptive per tab, above the view-card (matches Memberships & Packages) ── */}
             {tab === "categories" ? (
                 <RetailCategoriesToolbar ctrl={catCtrl} />
@@ -797,7 +797,7 @@ export default function RetailPage() {
             )}
 
             {/* ── View card with tabs (client 2026-08-03 — matches Memberships & Packages) ── */}
-            <div className="h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 flex items-center px-6 py-4">
                     <SegmentedTabs
                         tabs={[
@@ -808,7 +808,7 @@ export default function RetailPage() {
                         onChange={(k) => setTab(k as "products" | "categories")}
                     />
                 </div>
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                <div className="overflow-y-auto scrollbar-hide relative min-h-0">
                 {tab === "categories" ? (
                     <div className="py-4">
                         <RetailCategoriesPanel ctrl={catCtrl} />
@@ -817,11 +817,12 @@ export default function RetailPage() {
                 <>
                 {sorted.length === 0 ? (
                     <EmptyState
+                        absolute={false} className="min-h-[400px]"
                         title="No products found"
                         subtitle="Try adjusting your search or filters."
                     />
                 ) : (
-                    <div className="overflow-x-auto px-6">
+                    <div className="px-6">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>

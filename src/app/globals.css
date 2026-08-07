@@ -5,13 +5,14 @@
 @tailwind utilities;
 
 @layer utilities {
-    .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-    .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-    }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 :root {
@@ -26,11 +27,33 @@
      reference valid across the whole app (buttons, badges, chips). Values
      match the pre-Branding sage palette so nothing looks different by
      default. */
-  --brand-primary: #658774;
+  --brand-primary: #164e52;
+  /* rebrand B1 · Rich blue green-500 (was sage #658774) */
   --brand-background: #ffffff;
-  --brand-tertiary: #c4edd6;
+  --brand-tertiary: #d5e7df;
+  /* rebrand B1 · soft Tranquil mint-300 (was mint #c4edd6) */
   --brand-text: #101828;
   --brand-font: 'DM Sans', system-ui, sans-serif;
+
+  /* ── New brand palette · Rich blue green (2026-08 rebrand) ─────────────────
+     Centralized scale from new-color-brand.json. This is the single place the
+     new brand teal lives. Phase 1 wires ONLY the primary button to it (below);
+     later phases migrate the rest of the app (backgrounds, accents, borders) to
+     the new families, re-hued from these tokens. In :root so it applies on
+     every side (admin / instructor / attendee / customer). */
+  --rbg-50: #e8edee;
+  --rbg-100: #b7c8c9;
+  --rbg-200: #94aeaf;
+  --rbg-300: #63888b;
+  --rbg-400: #457175;
+  --rbg-500: #164e52;
+  /* core brand — primary button background */
+  --rbg-600: #14474b;
+  /* primary button hover */
+  --rbg-700: #10373a;
+  /* primary button active */
+  --rbg-800: #0c2b2d;
+  --rbg-900: #092122;
 
   /* ── Design token color primitives (from tokens.json) ── */
   /* Spacing */
@@ -56,33 +79,46 @@
   --radius-4xl: 24px;
   --radius-full: 9999px;
 
-  /* Brand (Teal) */
-  --colors-brand-25: #fafeff;
-  --colors-brand-50: #e9fbff;
-  --colors-brand-100: #dbf8ff;
-  --colors-brand-200: #ccf6ff;
-  --colors-brand-300: #bdf3ff;
-  --colors-brand-400: #92d1de;
-  --colors-brand-500: #6baebc;
-  --colors-brand-600: #4b8c9a;
-  --colors-brand-700: #306b78;
-  --colors-brand-800: #1b4c56;
-  --colors-brand-900: #0c2d34;
-  --colors-brand-950: #040e11;
+  /* Brand — Rich blue green (2026-08 rebrand · phase B1). Was teal.
+     Unified with the secondary scale below onto the single main brand hue. */
+  --colors-brand-25: #e8edee;
+  --colors-brand-50: #e8edee;
+  --colors-brand-100: #b7c8c9;
+  --colors-brand-200: #94aeaf;
+  --colors-brand-300: #63888b;
+  --colors-brand-400: #457175;
+  --colors-brand-500: #164e52;
+  --colors-brand-600: #14474b;
+  --colors-brand-700: #10373a;
+  --colors-brand-800: #0c2b2d;
+  --colors-brand-900: #092122;
+  --colors-brand-950: #092122;
 
-  /* Secondary (Sage green) */
-  --colors-secondary-25: #fbfffd;
-  --colors-secondary-50: #e9fff3;
-  --colors-secondary-100: #d7ffe9;
-  --colors-secondary-200: #c4edd6;
-  --colors-secondary-300: #aad4bd;
-  --colors-secondary-400: #92baa4;
-  --colors-secondary-500: #7ba08c;
-  --colors-secondary-600: #658774;
-  --colors-secondary-700: #4f6e5d;
-  --colors-secondary-800: #3b5446;
-  --colors-secondary-900: #28392f;
-  --colors-secondary-950: #151e19;
+  /* Secondary */
+  --colors-secondary-25: #fafcfb;
+  /* tranquil mint-50 */
+  --colors-secondary-50: #eff6f3;
+  /* tranquil mint-100 — pill/badge bg */
+  --colors-secondary-100: #e7f1ed;
+  /* tranquil mint-200 */
+  --colors-secondary-200: #dcebe4;
+  /* tranquil mint-300 */
+  --colors-secondary-300: #d5e7df;
+  /* tranquil mint-400 — soft borders */
+  --colors-secondary-400: #457175;
+  /* rich blue green-400 — progress fill */
+  --colors-secondary-500: #457175;
+  /* rich blue green-400 — borders */
+  --colors-secondary-600: #164e52;
+  /* rich blue green-500 — solid brand */
+  --colors-secondary-700: #14474b;
+  /* rich blue green-600 */
+  --colors-secondary-800: #10373a;
+  /* rich blue green-700 */
+  --colors-secondary-900: #0c2b2d;
+  /* rich blue green-800 */
+  --colors-secondary-950: #092122;
+  /* rich blue green-900 */
 
   /* Tertiary (Olive grey) */
   --colors-tertiary-50: #f1f2ed;
@@ -128,26 +164,30 @@
   --colors-text-tertiary: #475467;
   --colors-text-quaternary: #667085;
   --colors-text-placeholder: #667085;
+  --colors-fg-quaternary: #98a2b3;
+  /* lightest muted text / inactive icon */
 
   /* Semantic border colors */
-  --colors-border-primary: #d0d5dd;
-  --colors-border-secondary: #e4e7ec;
+  --colors-border-primary: #d9d5ce;   /* B2 warm · pastel grey-400 (was #d0d5dd) */
+  --colors-border-secondary: #e9e7e3;   /* B2 warm · pastel grey-200 (was #e4e7ec) */
+  --colors-border-tertiary: #f0efec;   /* B2 warm · pastel grey-100 (was #eaecf0) */
+  /* faint dividers */
 
   /* Semantic background colors */
   --colors-bg-primary: #ffffff;
-  --colors-bg-secondary: #f9fafb;
-  --colors-bg-tertiary: #f2f4f7;
-  --colors-bg-quaternary: #e4e7ec;
+  --colors-bg-secondary: #fbfbfa;   /* B2 warm · pampas-100 (was #f9fafb) */
+  --colors-bg-tertiary: #f6f6f4;   /* B2 warm · pampas-300 (was #f2f4f7) */
+  --colors-bg-quaternary: #e9e7e3;   /* B2 warm · pastel grey-200 (was #e4e7ec) */
 
   /* Component colors — avatar */
-  --component-avatars-bg-neutral: #e0e0e0;
+  --component-avatars-bg-neutral: #dfdbd6;   /* B2 warm · pastel grey-300 (was #e0e0e0) */
   --component-avatars-contrast-border: rgba(0, 0, 0, 0.08);
 
   /* Component colors — utility */
   --component-utility-success-700: #067647;
   --component-utility-error-700: #b42318;
-  --component-utility-gray-50: #f9fafb;
-  --component-utility-gray-200: #e4e7ec;
+  --component-utility-gray-50: #fbfbfa;   /* B2 warm · pampas-100 */
+  --component-utility-gray-200: #e9e7e3;   /* B2 warm · pastel grey-200 */
   --component-utility-gray-700: #344054;
 
   /* Effects */
@@ -166,7 +206,7 @@ html {
 
 body {
   font-family: 'DM Sans', system-ui, sans-serif;
-  background-color: #f8f9fb;
+  background-color: #fbfbfa;   /* B2 warm · pampas-100 (was #f8f9fb) */
   color: #1a1a2e;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

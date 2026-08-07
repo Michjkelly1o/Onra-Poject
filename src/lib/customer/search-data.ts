@@ -60,6 +60,9 @@ export interface ClassDetailVM extends SearchClassVM {
     branchAddress: string;
     spotSelectionEnabled: boolean;
     spotLayout?: { cols: number; rows: number; blockedSpots: string[] };
+    /** Gender restriction on who may book — "all" (open), "female", "male".
+     *  Shown in the class-detail info list; appointments leave it undefined. */
+    genderAccess?: "all" | "female" | "male";
 }
 
 function resolveState(
@@ -148,6 +151,7 @@ function buildDetailVM(
         description: schedule.description,
         equipment,
         classType: schedule.classType,
+        genderAccess: schedule.genderAccess,
         rating: schedule.rating,
         ratingCount: schedule.ratingCount,
         branchAddress,

@@ -54,7 +54,7 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 // because it sits in a table row alongside 14px body text.
 // ────────────────────────────────────────────────────────────────────────────
 // ─── Admin table chrome — VERBATIM PayrollInstructorDetailPage line 523-524 ─
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_#e4e7ec]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 /** AED money formatter — exact admin `aed()` helper. */

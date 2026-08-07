@@ -185,6 +185,14 @@ export interface ClassesSettings {
      *  (subject to their own limits). When OFF (default) only Credit
      *  Packages + Limited memberships qualify. */
     guests_allow_unlimited: boolean;              // false
+    /** When ON, a customer paying for guests with an unlimited plan is
+     *  capped at `guests_max_per_customer` guest bookings (so an unlimited
+     *  membership can't book unlimited guests). Only meaningful while
+     *  `guests_allow_unlimited` is ON. Defaults OFF. */
+    guests_limit_enabled?: boolean;               // false
+    /** Maximum guest bookings a customer may make on an unlimited plan when
+     *  `guests_limit_enabled` is ON. Defaults 2. */
+    guests_max_per_customer?: number;             // 2
 }
 
 // ─── Booking Rules — Cancellation & no-show policies (PRD 11 §6.1) ────────
