@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sliders } from "@/components/icons/Sliders";
+import { genderAccessIcon } from "@/components/ui/gender-icons";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -81,6 +82,8 @@ function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => vo
     })();
     // Attendee-only: a class reads "Ongoing" 30 min before start (client 2026-08-04).
     const ongoing = isAttendeeOngoing(ci.status, ci.dateISO, ci.startTime);
+    // Gender-access label + icon for the meta row.
+    const genderLabel = ci.genderAccess === "male" ? "Male only" : ci.genderAccess === "female" ? "Female only" : "All gender";
 
     return (
         // The whole row opens the class detail; the inner "View details" button
@@ -111,7 +114,7 @@ function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => vo
 
             {/* Content */}
             <div className="flex-1 min-w-0 flex flex-col gap-2">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-2 min-w-0">
                         <p className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)] truncate">{ci.name}</p>
                         <span className={cn(
@@ -121,25 +124,29 @@ function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => vo
                             {ongoing ? "Ongoing" : "Upcoming"}
                         </span>
                     </div>
-                    <p className="text-[14px] leading-5 text-[var(--colors-text-quaternary)] truncate">with {ci.instructorName || "Open session"}</p>
+                    {/* Instructor — avatar + name */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                            style={{ backgroundColor: ci.instructorColor }}>
+                            {ci.instructorInitials}
+                        </span>
+                        <span className="text-[14px] leading-5 text-[var(--colors-text-secondary)] truncate">{ci.instructorName || "Open session"}</span>
+                    </div>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap text-[14px]">
-                    <span className="flex items-center gap-2 text-[var(--colors-text-tertiary)]">
+                    <span className="flex items-center gap-2 text-[var(--colors-text-tertiary)] shrink-0">
                         <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                         {ci.booked}/{ci.capacity} spots
                     </span>
                     <span className="w-px h-4 bg-[var(--colors-bg-quaternary)] shrink-0" />
-                    <span className="flex items-center gap-1.5 text-[var(--colors-text-tertiary)] min-w-0">
-                        <span className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
-                            style={{ backgroundColor: ci.instructorColor }}>
-                            {ci.instructorInitials}
-                        </span>
-                        <span className="truncate">{ci.instructorName || "Open session"}</span>
-                    </span>
-                    <span className="w-px h-4 bg-[var(--colors-bg-quaternary)] shrink-0" />
-                    <span className="flex items-center gap-2 text-[var(--colors-text-quaternary)] min-w-0">
+                    <span className="flex items-center gap-2 text-[var(--colors-text-tertiary)] min-w-0">
                         <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                         <span className="truncate">{ci.room || ci.location}</span>
+                    </span>
+                    <span className="w-px h-4 bg-[var(--colors-bg-quaternary)] shrink-0" />
+                    <span className="flex items-center gap-2 text-[var(--colors-text-tertiary)] shrink-0">
+                        {genderAccessIcon(genderLabel, "w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0")}
+                        {genderLabel}
                     </span>
                 </div>
             </div>
