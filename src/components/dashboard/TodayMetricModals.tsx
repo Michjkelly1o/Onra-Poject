@@ -34,7 +34,7 @@ const TYPE_LABEL: Record<SessionType, string> = {
     class: "Class", private: "Private", recovery: "Recovery",
 };
 
-function aed(n: number): string {
+export function aed(n: number): string {
     return `AED ${n.toLocaleString("en-US")}`;
 }
 
@@ -64,7 +64,7 @@ export function txnSessionType(kind: CustomerTransaction["kind"]): SessionType |
     return null;
 }
 
-function deriveInitials(name: string): string {
+export function deriveInitials(name: string): string {
     const parts = name.trim().split(/\s+/);
     const a = parts[0]?.[0] ?? "";
     const b = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
@@ -77,7 +77,7 @@ function deriveInitials(name: string): string {
  *  dropping the row (which would make the modal count disagree with the
  *  card). Used for Sales / Revenue / Bookings; New-customers uses the shared
  *  CustomerCell directly since those rows are always real customers. */
-function PersonCell({ name, email, initials, imageUrl }: {
+export function PersonCell({ name, email, initials, imageUrl }: {
     name: string; email?: string; initials: string; imageUrl?: string;
 }) {
     return (

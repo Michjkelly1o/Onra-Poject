@@ -58,6 +58,12 @@ import {
     isBillableSaleTxn,
     txnSessionType,
 } from "@/components/dashboard/TodayMetricModals";
+import {
+    PerfSalesModal,
+    PerfRevenueModal,
+    PerfNewCustomersModal,
+    PerfBookingsModal,
+} from "@/components/dashboard/PerformanceMetricModals";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
 import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
@@ -580,7 +586,10 @@ export default function AdminDashboard() {
     // Metric-card drill-down modals (client 2026-08-07). Every KPI card opens
     // a modal listing the records behind its number, styled like the Needs-
     // attention modals. Phase 1 = the Today tab's 4 cards.
-    type MetricModal = "today-sales" | "today-revenue" | "today-newcustomers" | "today-bookings" | null;
+    type MetricModal =
+        | "today-sales" | "today-revenue" | "today-newcustomers" | "today-bookings"
+        | "perf-sales" | "perf-revenue" | "perf-newcustomers" | "perf-bookings"
+        | null;
     const [metricModal, setMetricModal] = useState<MetricModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
@@ -1038,6 +1047,7 @@ export default function AdminDashboard() {
                 change: salD.change, positive: salD.positive, comparison: suffix,
                 icon: ShoppingBag01,
                 info: "Value of what was sold, counted in full when bought.",
+                onClick: () => setMetricModal("perf-sales"),
             },
             {
                 label: "Revenue",
@@ -1046,6 +1056,7 @@ export default function AdminDashboard() {
                 icon: CurrencyDollar,
                 // Same copy as the Insights Revenue tile tooltip (consistency).
                 info: "Revenue earned (recognized) after refunds & discounts.",
+                onClick: () => setMetricModal("perf-revenue"),
             },
             {
                 label: "New customers",
@@ -1053,6 +1064,7 @@ export default function AdminDashboard() {
                 change: custD.change, positive: custD.positive, comparison: suffix,
                 icon: UserCheck01,
                 info: "First-ever bookings or purchases.",
+                onClick: () => setMetricModal("perf-newcustomers"),
             },
             {
                 label: "Bookings",
@@ -1060,6 +1072,7 @@ export default function AdminDashboard() {
                 change: bkgD.change, positive: bkgD.positive, comparison: suffix,
                 icon: TrendUp01,
                 info: "Number of spots booked: classes, private sessions and recovery.",
+                onClick: () => setMetricModal("perf-bookings"),
             },
         ];
     }, [period, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, memberships, packages]);
@@ -2166,6 +2179,35 @@ export default function AdminDashboard() {
                 branchIds={branchScopeIds}
                 todayISO={todayISO}
                 typeFilter={typeFilter}
+            />
+
+            {/* Performance-tab metric drill-downs (Phase 2, client 2026-08-07).
+                Branch + period scoped; each re-derives rows with the card's
+                predicate over dateFilterToRange(period), so count/total == card.
+                Revenue lists per-plan ACCRUED amounts summing to the card. */}
+            <PerfSalesModal
+                open={metricModal === "perf-sales"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                period={period}
+            />
+            <PerfRevenueModal
+                open={metricModal === "perf-revenue"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                period={period}
+            />
+            <PerfNewCustomersModal
+                open={metricModal === "perf-newcustomers"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                period={period}
+            />
+            <PerfBookingsModal
+                open={metricModal === "perf-bookings"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                period={period}
             />
 
             <Toast />
