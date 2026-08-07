@@ -1177,6 +1177,12 @@ function SchedulePage() {
     // view. Honour it on first mount only so a manual filter clear sticks.
     const searchParams = useSearchParams();
     const initialInstructorId = searchParams?.get("instructorId") ?? "";
+    // Capacity-heatmap deep-links (dashboard Coming Up tab) pass
+    // `?type=class|private|recovery` so the schedule opens pre-filtered to the
+    // session type of the cell the admin clicked, on that same day/week.
+    const rawType = searchParams?.get("type") ?? "";
+    const initialType: ClassTypeFilter | null =
+        rawType === "class" || rawType === "private" || rawType === "recovery" ? rawType : null;
     // Dashboard Coming Up chart deep-links land here with `?date=YYYY-MM-DD`
     // (single day, 7-day mode) or `?dateFrom=A&dateTo=B` (week span, 30-day
     // mode). Honour both on first mount so the schedule opens on the exact
@@ -1195,8 +1201,12 @@ function SchedulePage() {
     );
     const [scheduleTab, setScheduleTab] = useState<ScheduleTab>(scheduleUi.scheduleTab);
     const [applied, setApplied] = useState<FilterState>(
-        initialInstructorId
-            ? { ...EMPTY_FILTER, instructors: [initialInstructorId] }
+        (initialInstructorId || initialType)
+            ? {
+                ...EMPTY_FILTER,
+                instructors: initialInstructorId ? [initialInstructorId] : [],
+                types: initialType ? [initialType] : [],
+              }
             : scheduleUi.applied,
     );
     // Day view tracks an ISO date so prev/next can walk freely. Display label
