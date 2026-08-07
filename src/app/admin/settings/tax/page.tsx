@@ -930,7 +930,7 @@ export default function TaxPage() {
                     </div>
 
                     {/* Table + pagination (px-6 shared wrapper per CLAUDE.md #5) */}
-                    <div className="overflow-y-auto scrollbar-hide relative min-h-0">
+                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative">
                         {pagedRows.length === 0 ? (
                             <EmptyState
                                 absolute={false} className="min-h-[400px]"

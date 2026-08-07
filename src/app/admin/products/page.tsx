@@ -983,7 +983,7 @@ export default function ProductsPage() {
             </div>
 
             {/* ── View card ── */}
-            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     <SegmentedTabs
@@ -998,7 +998,7 @@ export default function ProductsPage() {
                 </div>
 
                 {/* Table + bulk bar + pagination (px-6 shared wrapper per CLAUDE.md #5) */}
-                <div className="overflow-y-auto scrollbar-hide relative min-h-0">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
                     {sorted.length === 0 ? (
                         <EmptyState
                             title={tab === "memberships" ? "No memberships found" : "No packages found"}

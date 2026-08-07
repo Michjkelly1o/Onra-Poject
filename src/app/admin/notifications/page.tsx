@@ -320,11 +320,10 @@ function NotificationsPage() {
     );
 
     return (
-        // Outer is content-sized (no `h-full`) — same pattern as the
-        // `/admin/products` view card. The bordered card below uses a fixed
-        // `h-[760px]` so its bottom edge sits 24px above main's chrome
-        // (main's own `p-6` from the admin layout).
-        <div className="flex flex-col gap-6">
+        // Fill-to-viewport: the bordered card below fills the remaining height
+        // (flex-1 min-h-0) so only its inner content scrolls — consistent with
+        // every admin list.
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* Tab strip — `px-6` on the wrapper gives 24px L/R padding so
                 the buttons + border line don't sit flush against the page
                 edge (the user explicitly asked for this). */}
@@ -351,7 +350,7 @@ function NotificationsPage() {
                 picker is rendered INLINE with the first visible section
                 header (Today / Past) — same level as the section label
                 so the right edge stays aligned with the page chrome. */}
-            <div className="relative h-[760px] border-1 border-[var(--colors-border-secondary)] rounded-[20px] bg-white overflow-hidden flex flex-col">
+            <div className="relative flex-1 min-h-0 border-1 border-[var(--colors-border-secondary)] rounded-[20px] bg-white overflow-hidden flex flex-col">
                 {activeTab === "team" ? (
                     // Team activity tab — separate render path. Reads the
                     // shared activity seed (no branch scope, different row

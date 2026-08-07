@@ -473,8 +473,8 @@ export default function CompensationPage() {
             </div>
 
             {/* Table */}
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                <div className="overflow-y-auto scrollbar-hide relative min-h-0">
+            <div className="min-h-0 flex flex-col overflow-hidden">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
                     {pageRows.length === 0 ? (
                         <EmptyState
                             absolute={false} className="min-h-[400px]"

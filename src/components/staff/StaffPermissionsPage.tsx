@@ -662,7 +662,7 @@ function exportStaffCsv(rows: Staff[], rolesById: Map<string, Role>, branches: B
 
 // ─── Table chrome ──────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] border-b border-[#e4e7ec]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-[var(--colors-bg-primary)] shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 // ─── Page ──────────────────────────────────────────────────────────────────
@@ -1195,11 +1195,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             : staffFilter.statuses.length > 0 || staffFilter.roleIds.length > 0;
 
     return (
-        // Match /admin/schedule: the root flows to NATURAL page height so the
-        // outer <main> canvas scrolls, while each tab's fixed-height view card
-        // keeps its own inner scroll (tab strip pinned; table/calendar body
-        // scrolls). Both the outer page AND the inner card scroll.
-        <div className="flex flex-col gap-6">
+        // Match /admin/schedule: fill-to-viewport — the view card fills the
+        // remaining height (flex-1 min-h-0) so the tab strip pins, the table
+        // header stays sticky, and only the inner body scrolls (pagination pinned).
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* Toolbar */}
             <div className="flex items-center gap-3">
                 <div className="flex-1">
@@ -1292,8 +1291,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     the outer <main> canvas scrolls the page. */}
             <div className={cn(
                 forceTab === "roles"
-                    ? "flex flex-col"
-                    : "h-[760px] bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                    ? "min-h-0 flex flex-col overflow-hidden"
+                    : "min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on
@@ -1390,10 +1389,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     the card bottom, exactly like /admin/schedule. */}
                 <div className={cn(
                     forceTab === "roles"
-                        ? "relative"            // flush, no scroll wrapper, no fill
+                        ? "flex-auto min-h-0 flex flex-col relative"            // fills the card
                         : (staffSubTab === "shift-management" && shiftsViewMode === "week")
-                            ? "flex-1 overflow-y-auto scrollbar-hide relative"
-                            : "flex-1 min-h-0 flex flex-col relative",
+                            ? "flex-auto min-h-0 overflow-y-auto scrollbar-hide relative"
+                            : "flex-auto min-h-0 flex flex-col relative",
                 )}>
                 {/* Shift management sub-tab — fully wired (Figma 6223:378535).
                     Reads `branchId` + `search` from the parent toolbar so
@@ -1446,8 +1445,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     // Table wrapper padding — flush on the Role &
                     // permissions route, 24px L/R inside the card chrome
                     // elsewhere.
-                    <div className={cn(forceTab !== "roles" && "px-6")}>
-                        <div className="overflow-x-auto">
+                    <div className={cn("flex-auto min-h-0 overflow-y-auto scrollbar-hide", forceTab !== "roles" && "px-6")}>
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>
@@ -1528,9 +1527,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     scroll body so the table scrolls and the pagination below pins
                     (schedule pattern). */}
                 {(forceTab !== "staff" || staffSubTab === "staff") && tab === "staff" && (
-                    <div className={cn(forceTab !== "roles" && "flex-1 min-h-0 overflow-y-auto scrollbar-hide")}>
+                    <div className={cn(forceTab !== "roles" && "flex-auto min-h-0 overflow-y-auto scrollbar-hide")}>
                     {staffPageRows.length === 0 ? (
                         <EmptyState
+                            absolute={false} className="min-h-[400px]"
                             title={staff.length === 0 ? "No staff members yet" : "No staff found"}
                             subtitle={staff.length === 0
                                 ? "Add your first team member to get started."
@@ -1541,7 +1541,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     // permissions route, 24px L/R inside the card chrome
                     // elsewhere.
                     <div className={cn(forceTab !== "roles" && "px-6")}>
-                        <div className="overflow-x-auto">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>

@@ -1388,11 +1388,11 @@ function SchedulePage() {
     }
 
     return (
-        // Every tab (List + Day/Week/Month) uses the SAME fixed-height view card
-        // and flows to natural page height, so the outer <main> canvas scrolls and
-        // main's pb-24 (admin layout) clears the floating AI button. The card keeps
-        // its own inner scroll (tabs pinned; list body / calendar grid scrolls).
-        <div className="flex flex-col gap-6">
+        // Fill-to-viewport: the view card fills the remaining height (flex-1
+        // min-h-0) on EVERY tab so only the inner body scrolls — tabs pinned at
+        // top, sticky table header, pagination pinned at the bottom (list) /
+        // calendar grid scrolls (Day/Week/Month). Consistent with every admin list.
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 {/* Schedule's pre-existing chrome hardcodes "classes" plural;
@@ -1446,10 +1446,10 @@ function SchedulePage() {
                 <AddSessionMenu router={router} />
             </div>
 
-            {/* ── View card ── Fixed h-[760px] for EVERY tab so the tab strip pins
-                and only the inner body scrolls (list table or calendar grid); the
-                outer main canvas scrolls for the rest. */}
-            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden h-[760px]">
+            {/* ── View card ── Fills the viewport (flex-1 min-h-0) for EVERY tab so
+                the tab strip pins and only the inner body scrolls (list table or
+                calendar grid). */}
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden flex-1 min-h-0">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     {/* Left: pill tabs */}
@@ -1509,7 +1509,7 @@ function SchedulePage() {
                     const paginatedClasses = sortedClasses.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
                     return (
                         <>
-                            <div className="overflow-y-auto scrollbar-hide relative min-h-0">
+                            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide relative">
                                 {sortedClasses.length === 0 ? (
                                     <EmptyState title="No classes scheduled" subtitle="Add a class to get started." />
                                 ) : (

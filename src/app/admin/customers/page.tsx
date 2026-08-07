@@ -177,7 +177,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
     return (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="flex items-center justify-center pointer-events-none w-full h-full min-h-[400px]">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
                 <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
@@ -862,7 +862,7 @@ export default function CustomersPage() {
             {/* ── View card — rounded container hosting the SegmentedTabs
                    strip + the table. Fills the remaining viewport so only
                    the table body scrolls (matches /admin/staff's chrome). */}
-            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 px-6 py-4 flex items-center gap-3">
                     <SegmentedTabs
                         tabs={segmentTabDefs}
@@ -888,7 +888,7 @@ export default function CustomersPage() {
                         </Button>
                     )}
                 </div>
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
                     {pagedRows.length === 0 ? (
                         <EmptyState
                             title={isTrulyEmpty ? "No customers yet" : "No customers found"}
@@ -897,7 +897,7 @@ export default function CustomersPage() {
                                 : "Try adjusting your search or filters."}
                         />
                     ) : (
-                        <div className="overflow-x-auto px-6">
+                        <div className="px-6">
                             {/* table-fixed — column widths follow the <th> widths, not the
                                 cell content, so the Contact (and every) column keeps a stable
                                 width when sorting reorders the rows (cells truncate instead). */}

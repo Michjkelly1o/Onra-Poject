@@ -871,7 +871,7 @@ export function ShiftManagementTab({
             /* Table card — wrapped in px-6 so the table edges line up with
                the surrounding tab nav row + the pagination row below,
                matching the staff table's padding model exactly. */
-            <div className="relative flex flex-col flex-1">
+            <div className="relative flex flex-col min-h-0">
                 {filtered.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
                         <EmptyState
@@ -883,8 +883,8 @@ export function ShiftManagementTab({
                         />
                     </div>
                 ) : (
-                    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6">
-                        <div className="overflow-x-auto">
+                    <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide px-6">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>

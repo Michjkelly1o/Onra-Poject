@@ -38,7 +38,7 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] border-b border-[var(--colors-border-secondary)]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] sticky top-0 z-[5] bg-[var(--colors-bg-primary)] shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
 const STATUS_BADGE: Record<ClassCategory["status"], string> = {
     active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
@@ -304,6 +304,7 @@ export function ClassCategoriesPanel({ ctrl }: { ctrl: CategoriesController }) {
         <>
             {ctrl.isTrulyEmpty || ctrl.isFilteredEmpty ? (
                 <EmptyState
+                    absolute={false} className="min-h-[400px]"
                     title={ctrl.isFilteredEmpty ? "No matches found" : "No categories yet"}
                     subtitle={ctrl.isFilteredEmpty
                         ? "Try a different search term."
@@ -311,7 +312,7 @@ export function ClassCategoriesPanel({ ctrl }: { ctrl: CategoriesController }) {
                 />
             ) : (
                 <div className="px-6">
-                    <div className="overflow-x-auto">
+                    <div>
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
@@ -439,10 +440,10 @@ export function ClassCategoriesPagination({ ctrl }: { ctrl: CategoriesController
 export function ClassCategoriesView() {
     const ctrl = useClassCategoriesController();
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             <ClassCategoriesToolbar ctrl={ctrl} />
-            <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative py-4">
+            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative py-4">
                     <ClassCategoriesPanel ctrl={ctrl} />
                 </div>
                 <div className="px-6 shrink-0">

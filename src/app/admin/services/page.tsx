@@ -805,8 +805,8 @@ function ServicesPageInner() {
             {/* Body — flush on the admin chrome (no nested view card). The
                 relative wrapper anchors the floating bulk-action pill so it
                 can sit over the table area without escaping the page. */}
-            <div className="relative flex flex-col flex-1 min-h-0">
-                <div className="overflow-y-auto scrollbar-hide min-h-0">
+            <div className="relative flex flex-col min-h-0">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide">
                 {sorted.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
                         <EmptyState

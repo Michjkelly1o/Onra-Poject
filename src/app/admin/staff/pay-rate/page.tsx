@@ -486,8 +486,8 @@ export default function PayRatePage() {
             </div>
 
             {/* Table area — borderless full-bleed (matches the customers list) */}
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                <div className="overflow-y-auto scrollbar-hide relative min-h-0">
+            <div className="min-h-0 flex flex-col overflow-hidden">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
                     {pagedRows.length === 0 ? (
                         <EmptyState
                             title={isTrulyEmpty ? "No pay rates yet" : "No pay rates found"}

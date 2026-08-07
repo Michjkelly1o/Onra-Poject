@@ -414,7 +414,7 @@ export default function ClassTypesPage() {
     });
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* Toolbar — adaptive per tab, above the view-card (matches Memberships & Packages) */}
             {tab === "categories" ? (
                 <ClassCategoriesToolbar ctrl={catCtrl} onAddTemplate={goNewTemplate} />
@@ -439,7 +439,7 @@ export default function ClassTypesPage() {
             )}
 
             {/* View card with tabs (client 2026-08-07 — matches Memberships & Packages) */}
-            <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 flex items-center px-6 py-4">
                     <SegmentedTabs
                         tabs={[

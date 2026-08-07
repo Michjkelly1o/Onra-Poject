@@ -645,7 +645,7 @@ export default function AgreementsPage() {
             {/* No inner border / bg — the admin layout's white-rounded shell
                 already wraps this page. Toolbar + table + pagination sit
                 flush inside the layout's `<main className="p-6">` padding. */}
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div className="min-h-0 flex flex-col">
                 {/* Toolbar — Figma 4232-52279 */}
                 <div className="shrink-0 flex items-center gap-3">
                     <ToolbarTotal count={filtered.length} entitySingular="agreement" />
@@ -691,7 +691,7 @@ export default function AgreementsPage() {
                 {/* Table + pagination — no inner padding now that the outer
                     card chrome is gone (admin layout's p-6 already provides
                     the page gutter). */}
-                <div className="overflow-y-auto scrollbar-hide relative pt-5 min-h-0">
+                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative pt-5">
                     {pagedRows.length === 0 ? (
                         <EmptyState
                             absolute={false} className="min-h-[400px]"
