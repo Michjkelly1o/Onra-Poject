@@ -64,6 +64,16 @@ import {
     PerfNewCustomersModal,
     PerfBookingsModal,
 } from "@/components/dashboard/PerformanceMetricModals";
+import {
+    ComingRevenueModal,
+    ComingBookingsModal,
+    ComingNewCustomersModal,
+    ComingReturningModal,
+    ComingExpiringModal,
+    ComingCapacityModal,
+    ComingTopServicesModal,
+} from "@/components/dashboard/ComingUpMetricModals";
+import { windowPeriods, stripDrilldown } from "@/lib/dashboard/coming-up";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
 import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
@@ -591,6 +601,12 @@ export default function AdminDashboard() {
         | "perf-sales" | "perf-revenue" | "perf-newcustomers" | "perf-bookings"
         | null;
     const [metricModal, setMetricModal] = useState<MetricModal>(null);
+    // Coming-up tile drill-down modals (Phase 3). Under-filled reuses the
+    // existing UnderFilledModal via `attentionModal`, so it's excluded here.
+    type ComingModal =
+        | "revenue" | "bookings" | "new" | "returning" | "expiring"
+        | "capacity" | "topservices" | null;
+    const [comingModal, setComingModal] = useState<ComingModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
 
@@ -726,6 +742,24 @@ export default function AdminDashboard() {
         const allowed = new Set(branchScopeIds);
         return appointments.filter(a => allowed.has(a.branchId));
     }, [appointments, branchScopeIds]);
+
+    // Coming-up tile drill-down data (Phase 3, client 2026-08-07). Runs the
+    // same window + type + branch inputs the ComingUpTab strip uses through
+    // `stripDrilldown`, which mirrors `stripMetrics` row-for-row — so each
+    // modal's count/sum equals its tile. Customer lookup uses the full slice
+    // so names always resolve, even for a cross-branch booker.
+    const comingPeriods = useMemo(() => windowPeriods(comingRange, todayISO), [comingRange, todayISO]);
+    const comingDrilldown = useMemo(() => stripDrilldown({
+        sessions:            scopedSessions,
+        classBookings:       scopedBookings,
+        appointmentBookings,
+        customerPlans:       scopedCustomerPlans,
+        appointments:        scopedAppointments,
+        periods:             comingPeriods,
+        filter:              comingType,
+    }), [scopedSessions, scopedBookings, appointmentBookings, scopedCustomerPlans, scopedAppointments, comingPeriods, comingType]);
+    const customersById = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers]);
+    const comingRangeLabel = comingRange === 7 ? "next 7 days" : "next 30 days";
 
     // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364
     // for Today, 7799:109180 for Performance). Each tab surfaces its own
@@ -1787,6 +1821,12 @@ export default function AdminDashboard() {
                     todayISO={todayISO}
                     type={comingType}
                     range={comingRange}
+                    onTileClick={(key) => {
+                        // Under-filled reuses the existing needs-attention modal;
+                        // every other tile opens its Coming-up drill-down.
+                        if (key === "underfilled") { setAttentionModal("underfilled"); return; }
+                        setComingModal(key);
+                    }}
                 />
             )}
 
@@ -2208,6 +2248,64 @@ export default function AdminDashboard() {
                 onClose={() => setMetricModal(null)}
                 branchIds={branchScopeIds}
                 period={period}
+            />
+
+            {/* Coming Up-tab tile drill-downs (Phase 3, client 2026-08-07).
+                Rows come from stripDrilldown (mirrors stripMetrics), so each
+                modal's count/sum equals its tile. Under-filled uses the
+                existing UnderFilledModal above. */}
+            <ComingRevenueModal
+                open={comingModal === "revenue"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.revenue}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingBookingsModal
+                open={comingModal === "bookings"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.bookings}
+                customersById={customersById}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingNewCustomersModal
+                open={comingModal === "new"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.newCustomers}
+                customersById={customersById}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingReturningModal
+                open={comingModal === "returning"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.returning}
+                customersById={customersById}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingExpiringModal
+                open={comingModal === "expiring"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.expiringPlans}
+                customersById={customersById}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingCapacityModal
+                open={comingModal === "capacity"}
+                onClose={() => setComingModal(null)}
+                sessions={comingDrilldown.sessionsInWindow}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingTopServicesModal
+                open={comingModal === "topservices"}
+                onClose={() => setComingModal(null)}
+                services={comingDrilldown.recoveryServices}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
             />
 
             <Toast />

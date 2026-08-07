@@ -545,6 +545,200 @@ export function stripMetrics(input: {
     };
 }
 
+// ── Drill-down rows (client 2026-08-07) ─────────────────────────────────────
+//
+// Row-level records behind each tile-strip metric, so clicking a Coming Up
+// tile can open a modal listing the underlying data. Mirrors `stripMetrics`
+// EXACTLY — same window + type + first-booking logic — so every returned
+// array's length / revenue-sum equals the matching tile value (no drift).
+
+export interface RevenueDrillRow { session: ClassInstance; revenueAed: number }
+export interface BookingDrillRow {
+    key: string;
+    customerId?: string;
+    type: SessionType;
+    sessionId: string;
+    sessionName: string;
+    dateISO: string;
+    displayTime?: string;
+    kind: "class" | "appointment";
+}
+/** New / returning customer row — one per (customer × type). Session info is
+ *  the booking that classified them (their first booking for "new"; the first
+ *  in-window booking for "returning"). */
+export interface PersonDrillRow {
+    customerId: string;
+    type: SessionType;
+    sessionId: string;
+    sessionName: string;
+    dateISO: string;
+    kind: "class" | "appointment";
+}
+export interface ExpiringDrillRow { plan: CustomerPlan }
+
+export interface StripDrilldown {
+    /** In-window, type-matched sessions (drives Revenue + Capacity modals). */
+    sessionsInWindow: ClassInstance[];
+    revenue: RevenueDrillRow[];
+    bookings: BookingDrillRow[];
+    newCustomers: PersonDrillRow[];
+    returning: PersonDrillRow[];
+    expiringPlans: ExpiringDrillRow[];
+    /** Full ranked recovery-service list (the tile shows the top 3). */
+    recoveryServices: { name: string; count: number }[];
+}
+
+export function stripDrilldown(input: {
+    sessions:            ClassInstance[];
+    classBookings:       ClassBooking[];
+    appointmentBookings: AppointmentBooking[];
+    customerPlans:       CustomerPlan[];
+    appointments:        Appointment[];
+    periods:             Period[];
+    filter:              SessionType | "";
+}): StripDrilldown {
+    const { sessions, classBookings, appointmentBookings, customerPlans, appointments, periods, filter } = input;
+
+    const dateSet = new Set(periods.flatMap(p => p.dateISOs));
+    const fromISO = periods[0].startISO;
+    const toISO = periods[periods.length - 1].endISO;
+
+    const apptTypeById = new Map<string, SessionType>();
+    const apptDateById = new Map<string, string>();
+    const apptById = new Map<string, Appointment>();
+    for (const a of appointments) {
+        apptTypeById.set(a.id, a.type);
+        apptDateById.set(a.id, a.dateISO.slice(0, 10));
+        apptById.set(a.id, a);
+    }
+
+    // ── Revenue + capacity: in-window type-matched sessions.
+    const sessionsInWindow: ClassInstance[] = [];
+    const revenue: RevenueDrillRow[] = [];
+    for (const s of sessions) {
+        if (!dateSet.has(s.dateISO.slice(0, 10))) continue;
+        if (!typeMatches(s.type, filter)) continue;
+        sessionsInWindow.push(s);
+        revenue.push({ session: s, revenueAed: sessionRevenueAed(s) });
+    }
+
+    // ── Bookings: in-window non-cancelled bookings of the active type.
+    const bookings: BookingDrillRow[] = [];
+    for (const b of classBookings) {
+        if (b.status === "cancelled") continue;
+        const s = sessions.find(x => x.id === b.classScheduleId);
+        if (!s || !dateSet.has(s.dateISO.slice(0, 10))) continue;
+        if (!typeMatches(s.type, filter)) continue;
+        bookings.push({
+            key: `c-${b.id}`, customerId: b.customerId, type: s.type,
+            sessionId: s.id, sessionName: s.name, dateISO: s.dateISO.slice(0, 10),
+            displayTime: s.displayTime, kind: "class",
+        });
+    }
+    for (const ab of appointmentBookings) {
+        if (ab.status === "Cancelled") continue;
+        const t = apptTypeById.get(ab.appointmentId);
+        if (!t) continue;
+        const iso = apptDateById.get(ab.appointmentId) ?? "";
+        if (!dateSet.has(iso)) continue;
+        if (!typeMatches(t, filter)) continue;
+        const appt = apptById.get(ab.appointmentId);
+        bookings.push({
+            key: `a-${ab.id}`, customerId: ab.customerId, type: t,
+            sessionId: ab.appointmentId, sessionName: appt?.serviceName ?? "Session",
+            dateISO: iso, displayTime: appt?.displayTime, kind: "appointment",
+        });
+    }
+
+    // ── New vs Returning: bucket by the customer's FIRST-booking date
+    //    (min over ALL of their bookings), then dedupe per (customer × type).
+    const firstBookingDate = new Map<string, string>();
+    const trackFirst = (customerId: string | undefined, iso: string) => {
+        if (!customerId || !iso) return;
+        const prev = firstBookingDate.get(customerId);
+        if (!prev || iso < prev) firstBookingDate.set(customerId, iso);
+    };
+    for (const b of classBookings) {
+        const s = sessions.find(x => x.id === b.classScheduleId);
+        if (!s) continue;
+        trackFirst(b.customerId, s.dateISO.slice(0, 10));
+    }
+    for (const ab of appointmentBookings) {
+        trackFirst(ab.customerId, apptDateById.get(ab.appointmentId) ?? "");
+    }
+
+    const newCustomers: PersonDrillRow[] = [];
+    const returning: PersonDrillRow[] = [];
+    const seenNew = new Set<string>();
+    const seenReturning = new Set<string>();
+    const bump = (
+        customerId: string | undefined, type: SessionType, bookingISO: string,
+        sessionId: string, sessionName: string, kind: "class" | "appointment",
+    ) => {
+        if (!customerId) return;
+        const first = firstBookingDate.get(customerId);
+        if (!first) return;
+        const firstInWindow = first >= fromISO && first <= toISO;
+        const bookingInWindow = bookingISO >= fromISO && bookingISO <= toISO;
+        if (!bookingInWindow) return;
+        const key = `${customerId}|${type}`;
+        if (firstInWindow && bookingISO === first) {
+            if (seenNew.has(key)) return;
+            seenNew.add(key);
+            newCustomers.push({ customerId, type, sessionId, sessionName, dateISO: bookingISO, kind });
+        } else {
+            if (seenReturning.has(key)) return;
+            seenReturning.add(key);
+            returning.push({ customerId, type, sessionId, sessionName, dateISO: bookingISO, kind });
+        }
+    };
+    for (const b of classBookings) {
+        if (b.status === "cancelled") continue;
+        const s = sessions.find(x => x.id === b.classScheduleId);
+        if (!s) continue;
+        if (!typeMatches(s.type, filter)) continue;
+        bump(b.customerId, s.type, s.dateISO.slice(0, 10), s.id, s.name, "class");
+    }
+    for (const ab of appointmentBookings) {
+        if (ab.status === "Cancelled") continue;
+        const t = apptTypeById.get(ab.appointmentId);
+        if (!t) continue;
+        if (!typeMatches(t, filter)) continue;
+        const appt = apptById.get(ab.appointmentId);
+        bump(ab.customerId, t, apptDateById.get(ab.appointmentId) ?? "", ab.appointmentId, appt?.serviceName ?? "Session", "appointment");
+    }
+
+    // ── Expiring plans: non-complimentary plans expiring in-window. Mirrors
+    //    stripMetrics, which buckets EVERY plan under "class" (memberships +
+    //    packages gate class credits) — so the Private/Recovery tiles read 0.
+    //    Gate the rows the same way so the modal count matches its tile.
+    const expiringPlans: ExpiringDrillRow[] = [];
+    if (filter === "" || filter === "class") {
+        for (const p of customerPlans) {
+            if (p.kind === "complimentary") continue;
+            const expiryDay = (p.expiryISO ?? "").slice(0, 10);
+            if (!expiryDay || expiryDay < fromISO || expiryDay > toISO) continue;
+            expiringPlans.push({ plan: p });
+        }
+    }
+
+    // ── Recovery services (full ranked list — tile shows the top 3).
+    const recoveryCounts = new Map<string, number>();
+    for (const ab of appointmentBookings) {
+        if (ab.status === "Cancelled") continue;
+        const iso = apptDateById.get(ab.appointmentId) ?? "";
+        if (!dateSet.has(iso)) continue;
+        if (apptTypeById.get(ab.appointmentId) !== "recovery") continue;
+        const name = apptById.get(ab.appointmentId)?.serviceName ?? "Recovery service";
+        recoveryCounts.set(name, (recoveryCounts.get(name) ?? 0) + 1);
+    }
+    const recoveryServices = Array.from(recoveryCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => ({ name, count }));
+
+    return { sessionsInWindow, revenue, bookings, newCustomers, returning, expiringPlans, recoveryServices };
+}
+
 // ── Formatters (shared by the tab components) ───────────────────────────────
 
 /** "1.2K" / "24K" / "980". Used for chart axis + bar totals. */

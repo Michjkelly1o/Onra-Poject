@@ -37,7 +37,7 @@ import {
     eventChips,
 } from "@/lib/dashboard/coming-up";
 import { SESSION_TYPE_LABEL } from "@/lib/session-type";
-import { ComingUpTileStrip } from "./ComingUpTileStrip";
+import { ComingUpTileStrip, type ComingTileKey } from "./ComingUpTileStrip";
 import { RevenueOutlookChart } from "./RevenueOutlookChart";
 import { CapacityHeatmap } from "./CapacityHeatmap";
 
@@ -60,6 +60,8 @@ export interface ComingUpTabProps {
     type:                SessionType | "";
     /** Range — 7 or 30 calendar days ahead. */
     range:               7 | 30;
+    /** Open a tile drill-down modal (client 2026-08-07). */
+    onTileClick?:        (key: ComingTileKey) => void;
 }
 
 export function ComingUpTab({
@@ -75,6 +77,7 @@ export function ComingUpTab({
     todayISO,
     type,
     range,
+    onTileClick,
 }: ComingUpTabProps) {
     const periods = useMemo(() => windowPeriods(range, todayISO), [range, todayISO]);
     const granularity: "day" | "week" = range === 7 ? "day" : "week";
@@ -132,7 +135,7 @@ export function ComingUpTab({
     return (
         <div className="flex flex-col gap-4">
             {/* Strip */}
-            <ComingUpTileStrip metrics={metrics} typeFilter={type} />
+            <ComingUpTileStrip metrics={metrics} typeFilter={type} onTileClick={onTileClick} />
 
             {/* Revenue outlook */}
             <RevenueOutlookChart

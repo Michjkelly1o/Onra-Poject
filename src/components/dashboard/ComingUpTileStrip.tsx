@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
  *  text-sm label, text-xl value) so the Coming-up strip reads the same
  *  as every other dashboard KPI grid. `alert` flips the value color to
  *  the amber warning tone. */
-function Tile({ label, value, sub, alert, split, className }: {
+function Tile({ label, value, sub, alert, split, className, onClick }: {
     label: string;
     value: string;
     sub?: string;
@@ -38,13 +38,25 @@ function Tile({ label, value, sub, alert, split, className }: {
     /** Rows shown in the hover tooltip — { icon color, name, value }. */
     split?: { color: string; name: string; value: string }[];
     className?: string;
+    /** When set, the whole tile becomes a drill-down trigger (client
+     *  2026-08-07) — cursor + hover affordance + keyboard activation. */
+    onClick?: () => void;
 }) {
     const [showTip, setShowTip] = useState(false);
+    const clickable = typeof onClick === "function";
     return (
         <div
-            className={cn("relative bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4", className)}
+            className={cn(
+                "relative bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4",
+                clickable && "cursor-pointer hover:border-[var(--colors-border-primary)] hover:shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-all",
+                className,
+            )}
             onMouseEnter={split ? () => setShowTip(true) : undefined}
             onMouseLeave={split ? () => setShowTip(false) : undefined}
+            onClick={onClick}
+            role={clickable ? "button" : undefined}
+            tabIndex={clickable ? 0 : undefined}
+            onKeyDown={clickable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick!(); } } : undefined}
         >
             <p className="font-normal text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap mb-1.5">{label}</p>
             <p className={cn("font-semibold text-xl leading-[28px] whitespace-nowrap", alert ? "text-[#b54708]" : "text-[var(--colors-text-primary)]")}>
@@ -158,13 +170,23 @@ function splitRows(m: StripMetrics, key: "revenue" | "bookings" | "newcust" | "r
     });
 }
 
+/** Which tile was clicked — drives the drill-down modal on the dashboard.
+ *  The trailing signature tile resolves to one of capacity / underfilled /
+ *  topservices depending on the active type filter. */
+export type ComingTileKey =
+    | "revenue" | "bookings" | "new" | "returning" | "expiring"
+    | "capacity" | "underfilled" | "topservices";
+
 export interface ComingUpTileStripProps {
     metrics: StripMetrics;
     typeFilter: SessionType | "";
+    /** Open the drill-down modal for a tile. Omit to leave tiles static. */
+    onTileClick?: (key: ComingTileKey) => void;
 }
 
-export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProps) {
+export function ComingUpTileStrip({ metrics, typeFilter, onTileClick }: ComingUpTileStripProps) {
     const m = metrics;
+    const click = (key: ComingTileKey) => (onTileClick ? () => onTileClick(key) : undefined);
 
     // Common tiles — Revenue / Bookings / New customers / Returning /
     // Expiring plans — reused across every variant. Split tooltips only
@@ -190,32 +212,46 @@ export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProp
                 label="Revenue"
                 value={revenueValue}
                 split={typeFilter === "" ? splitRows(m, "revenue") : undefined}
+                onClick={click("revenue")}
             />
             <Tile
                 label="Bookings"
                 value={bookingsValue}
                 split={typeFilter === "" ? splitRows(m, "bookings") : undefined}
+                onClick={click("bookings")}
             />
             <Tile
                 label="New customers"
                 value={newCustomers}
                 split={typeFilter === "" ? splitRows(m, "newcust") : undefined}
+                onClick={click("new")}
             />
             <Tile
                 label="Returning customers"
                 value={returning}
                 split={typeFilter === "" ? splitRows(m, "returning") : undefined}
+                onClick={click("returning")}
             />
             <Tile
                 label="Expiring plans"
                 alert
                 value={expiringPlans}
                 split={typeFilter === "" ? splitRows(m, "expiring") : undefined}
+                onClick={click("expiring")}
             />
 
             {/* Trailing signature tile — varies by filter. */}
             {typeFilter === "" && (
-                <div className="bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4">
+                <div
+                    className={cn(
+                        "bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4",
+                        onTileClick && "cursor-pointer hover:border-[var(--colors-border-primary)] hover:shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-all",
+                    )}
+                    onClick={click("capacity")}
+                    role={onTileClick ? "button" : undefined}
+                    tabIndex={onTileClick ? 0 : undefined}
+                    onKeyDown={onTileClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTileClick("capacity"); } } : undefined}
+                >
                     <p className="font-normal text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap mb-2">Capacity used</p>
                     <div className="flex flex-col gap-1.5">
                         {SESSION_TYPE_ORDER.map(t => (
@@ -237,10 +273,20 @@ export function ComingUpTileStrip({ metrics, typeFilter }: ComingUpTileStripProp
                     value={String(m.underFilledClasses)}
                     sub="below 50% capacity"
                     alert
+                    onClick={click("underfilled")}
                 />
             )}
             {typeFilter === "recovery" && (
-                <div className="bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4">
+                <div
+                    className={cn(
+                        "bg-white border border-[var(--colors-border-secondary)] rounded-2xl p-4",
+                        onTileClick && "cursor-pointer hover:border-[var(--colors-border-primary)] hover:shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)] transition-all",
+                    )}
+                    onClick={click("topservices")}
+                    role={onTileClick ? "button" : undefined}
+                    tabIndex={onTileClick ? 0 : undefined}
+                    onKeyDown={onTileClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTileClick("topservices"); } } : undefined}
+                >
                     <p className="font-normal text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap mb-2">Top services</p>
                     <div className="flex flex-col gap-1.5">
                         {m.topRecoveryServices.length > 0 ? (
