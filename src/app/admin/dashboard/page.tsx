@@ -51,6 +51,29 @@ import {
     NewSignupsModal,
     TrialsEndingModal,
 } from "@/components/dashboard/NeedsAttentionModals";
+import {
+    TodaySalesModal,
+    NewCustomersTodayModal,
+    BookingsTodayModal,
+    isBillableSaleTxn,
+    txnSessionType,
+} from "@/components/dashboard/TodayMetricModals";
+import {
+    PerfSalesModal,
+    PerfRevenueModal,
+    PerfNewCustomersModal,
+    PerfBookingsModal,
+} from "@/components/dashboard/PerformanceMetricModals";
+import {
+    ComingRevenueModal,
+    ComingBookingsModal,
+    ComingNewCustomersModal,
+    ComingReturningModal,
+    ComingExpiringModal,
+    ComingCapacityModal,
+    ComingTopServicesModal,
+} from "@/components/dashboard/ComingUpMetricModals";
+import { windowPeriods, stripDrilldown } from "@/lib/dashboard/coming-up";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
 import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
@@ -570,6 +593,20 @@ export default function AdminDashboard() {
     // tab's Payments-collected chip.
     type NeedsAttentionModal = "renewal" | "failed" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | "trials" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
+    // Metric-card drill-down modals (client 2026-08-07). Every KPI card opens
+    // a modal listing the records behind its number, styled like the Needs-
+    // attention modals. Phase 1 = the Today tab's 4 cards.
+    type MetricModal =
+        | "today-sales" | "today-revenue" | "today-newcustomers" | "today-bookings"
+        | "perf-sales" | "perf-revenue" | "perf-newcustomers" | "perf-bookings"
+        | null;
+    const [metricModal, setMetricModal] = useState<MetricModal>(null);
+    // Coming-up tile drill-down modals (Phase 3). Under-filled reuses the
+    // existing UnderFilledModal via `attentionModal`, so it's excluded here.
+    type ComingModal =
+        | "revenue" | "bookings" | "new" | "returning" | "expiring"
+        | "capacity" | "topservices" | null;
+    const [comingModal, setComingModal] = useState<ComingModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
 
@@ -706,6 +743,24 @@ export default function AdminDashboard() {
         return appointments.filter(a => allowed.has(a.branchId));
     }, [appointments, branchScopeIds]);
 
+    // Coming-up tile drill-down data (Phase 3, client 2026-08-07). Runs the
+    // same window + type + branch inputs the ComingUpTab strip uses through
+    // `stripDrilldown`, which mirrors `stripMetrics` row-for-row — so each
+    // modal's count/sum equals its tile. Customer lookup uses the full slice
+    // so names always resolve, even for a cross-branch booker.
+    const comingPeriods = useMemo(() => windowPeriods(comingRange, todayISO), [comingRange, todayISO]);
+    const comingDrilldown = useMemo(() => stripDrilldown({
+        sessions:            scopedSessions,
+        classBookings:       scopedBookings,
+        appointmentBookings,
+        customerPlans:       scopedCustomerPlans,
+        appointments:        scopedAppointments,
+        periods:             comingPeriods,
+        filter:              comingType,
+    }), [scopedSessions, scopedBookings, appointmentBookings, scopedCustomerPlans, scopedAppointments, comingPeriods, comingType]);
+    const customersById = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers]);
+    const comingRangeLabel = comingRange === 7 ? "next 7 days" : "next 30 days";
+
     // KPI aggregates — client dashboard update Jul 2026 (Figma 7798:80364
     // for Today, 7799:109180 for Performance). Each tab surfaces its own
     // metric strip:
@@ -747,24 +802,34 @@ export default function AdminDashboard() {
         // Today's completed sale transactions — used by both Total sales
         // (count) and Total revenue (sum of amounts). Filter out refund /
         // void / write-off rows so the two totals stay honest.
-        const isBillableSaleToday = (t: typeof scopedTransactions[number]): boolean =>
-            t.status === "complete"
-            && (t.transactionType === undefined || t.transactionType === "sale")
-            && t.kind !== "cancellation_penalty"
-            && t.kind !== "freeze_fee"
-            // Gift-card sales are DEFERRED revenue (recognised when the card is
-            // redeemed on another product) — excluding them here keeps the
-            // dashboard consistent with the reports and avoids double-counting.
-            && t.kind !== "gift_card";
+        // Billable-sale predicate + session-type scope shared with the Today
+        // metric modals (isBillableSaleTxn / txnSessionType) so card == modal.
+        // When the Type filter is active, Sales / Revenue / New customers
+        // narrow to that session type the data-native way the transaction
+        // ledger already models it: membership + package = Class; private /
+        // recovery map 1:1; retail / gift-card have no session type (excluded
+        // from a typed view). Location scope is already applied via scoped*.
+        const saleMatchesType = (t: typeof scopedTransactions[number]): boolean =>
+            !typeFilter || txnSessionType(t.kind) === typeFilter;
         const todaySales = scopedTransactions.filter(t =>
-            isBillableSaleToday(t) && t.createdAtISO.startsWith(todayISO),
+            isBillableSaleTxn(t) && t.createdAtISO.startsWith(todayISO) && saleMatchesType(t),
         );
         const totalSalesCount = todaySales.length;
         const totalRevenueAed = todaySales.reduce((sum, t) => sum + t.amountAed, 0);
 
-        // New customers today — count of customer.createdAt on today's date.
+        // New customers today — customers whose createdAt is today. When a Type
+        // filter is active, keep only those who ALSO made a purchase of that
+        // type today (matches the New-customers modal exactly).
+        const custHasTypedTxn = (custId: string, iso: string): boolean =>
+            scopedTransactions.some(t =>
+                t.customerId === custId
+                && isBillableSaleTxn(t)
+                && t.createdAtISO.startsWith(iso)
+                && txnSessionType(t.kind) === typeFilter,
+            );
         const newCustomers = scopedCustomers.filter(c =>
-            (c.createdAt ?? "").startsWith(todayISO),
+            (c.createdAt ?? "").startsWith(todayISO)
+            && (!typeFilter || custHasTypedTxn(c.id, todayISO)),
         ).length;
 
         // ── Yesterday's actuals — drive the "vs yesterday" delta chips ──
@@ -775,12 +840,13 @@ export default function AdminDashboard() {
         yDate.setDate(yDate.getDate() - 1);
         const yISO = format(yDate, "yyyy-MM-dd");
         const yesterdaySales = scopedTransactions.filter(t =>
-            isBillableSaleToday(t) && t.createdAtISO.startsWith(yISO),
+            isBillableSaleTxn(t) && t.createdAtISO.startsWith(yISO) && saleMatchesType(t),
         );
         const ySalesCount = yesterdaySales.length;
         const yRevenueAed = yesterdaySales.reduce((sum, t) => sum + t.amountAed, 0);
         const yNewCustomers = scopedCustomers.filter(c =>
-            (c.createdAt ?? "").startsWith(yISO),
+            (c.createdAt ?? "").startsWith(yISO)
+            && (!typeFilter || custHasTypedTxn(c.id, yISO)),
         ).length;
         // Bookings yesterday — booked seats on schedules dated yesterday
         // (mirrors sessionMetrics.bookingsToday which reads today-dated
@@ -807,18 +873,21 @@ export default function AdminDashboard() {
                 value: totalSalesCount.toLocaleString("en-US"),
                 change: salesD.change, positive: salesD.positive, comparison: "vs yesterday",
                 icon: CurrencyDollar,
+                onClick: () => setMetricModal("today-sales"),
             },
             {
                 label: "Revenue",
                 value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
                 change: revenueD.change, positive: revenueD.positive, comparison: "vs yesterday",
                 icon: CoinsStacked01,
+                onClick: () => setMetricModal("today-revenue"),
             },
             {
                 label: "New customers",
                 value: newCustomers.toLocaleString("en-US"),
                 change: customersD.change, positive: customersD.positive, comparison: "vs yesterday",
                 icon: UserPlus01,
+                onClick: () => setMetricModal("today-newcustomers"),
             },
             // Bookings — type-aware (from the merged session feed), so
             // picking a type filter recomputes it. Delta compares against
@@ -828,11 +897,12 @@ export default function AdminDashboard() {
                 value: sessionMetrics.bookingsToday.toLocaleString("en-US"),
                 change: bookingsD.change, positive: bookingsD.positive, comparison: "vs yesterday",
                 icon: TrendUp01,
+                onClick: () => setMetricModal("today-bookings"),
             },
         ];
 
         return { todayMetrics: today };
-    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics]);
+    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics, typeFilter]);
 
     // ── Performance-tab metrics — 4 cards, PERIOD-scoped ──
     //
@@ -1011,6 +1081,7 @@ export default function AdminDashboard() {
                 change: salD.change, positive: salD.positive, comparison: suffix,
                 icon: ShoppingBag01,
                 info: "Value of what was sold, counted in full when bought.",
+                onClick: () => setMetricModal("perf-sales"),
             },
             {
                 label: "Revenue",
@@ -1019,6 +1090,7 @@ export default function AdminDashboard() {
                 icon: CurrencyDollar,
                 // Same copy as the Insights Revenue tile tooltip (consistency).
                 info: "Revenue earned (recognized) after refunds & discounts.",
+                onClick: () => setMetricModal("perf-revenue"),
             },
             {
                 label: "New customers",
@@ -1026,6 +1098,7 @@ export default function AdminDashboard() {
                 change: custD.change, positive: custD.positive, comparison: suffix,
                 icon: UserCheck01,
                 info: "First-ever bookings or purchases.",
+                onClick: () => setMetricModal("perf-newcustomers"),
             },
             {
                 label: "Bookings",
@@ -1033,6 +1106,7 @@ export default function AdminDashboard() {
                 change: bkgD.change, positive: bkgD.positive, comparison: suffix,
                 icon: TrendUp01,
                 info: "Number of spots booked: classes, private sessions and recovery.",
+                onClick: () => setMetricModal("perf-bookings"),
             },
         ];
     }, [period, scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, memberships, packages]);
@@ -1747,6 +1821,12 @@ export default function AdminDashboard() {
                     todayISO={todayISO}
                     type={comingType}
                     range={comingRange}
+                    onTileClick={(key) => {
+                        // Under-filled reuses the existing needs-attention modal;
+                        // every other tile opens its Coming-up drill-down.
+                        if (key === "underfilled") { setAttentionModal("underfilled"); return; }
+                        setComingModal(key);
+                    }}
                 />
             )}
 
@@ -2105,6 +2185,127 @@ export default function AdminDashboard() {
                 onClose={() => setAttentionModal(null)}
                 branchIds={branchScopeIds}
                 forwardRangeDays={7}
+            />
+
+            {/* Today-tab metric drill-downs (Phase 1, client 2026-08-07). Each
+                re-derives its rows with the same predicate as the card + the
+                same branch scope + the page's todayISO, so count == list. */}
+            <TodaySalesModal
+                open={metricModal === "today-sales"}
+                variant="sales"
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                todayISO={todayISO}
+                typeFilter={typeFilter}
+            />
+            <TodaySalesModal
+                open={metricModal === "today-revenue"}
+                variant="revenue"
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                todayISO={todayISO}
+                typeFilter={typeFilter}
+            />
+            <NewCustomersTodayModal
+                open={metricModal === "today-newcustomers"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                todayISO={todayISO}
+                typeFilter={typeFilter}
+            />
+            <BookingsTodayModal
+                open={metricModal === "today-bookings"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                todayISO={todayISO}
+                typeFilter={typeFilter}
+            />
+
+            {/* Performance-tab metric drill-downs (Phase 2, client 2026-08-07).
+                Branch + period scoped; each re-derives rows with the card's
+                predicate over dateFilterToRange(period), so count/total == card.
+                Revenue lists per-plan ACCRUED amounts summing to the card. */}
+            <PerfSalesModal
+                open={metricModal === "perf-sales"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                period={period}
+            />
+            <PerfRevenueModal
+                open={metricModal === "perf-revenue"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                period={period}
+            />
+            <PerfNewCustomersModal
+                open={metricModal === "perf-newcustomers"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                period={period}
+            />
+            <PerfBookingsModal
+                open={metricModal === "perf-bookings"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                period={period}
+            />
+
+            {/* Coming Up-tab tile drill-downs (Phase 3, client 2026-08-07).
+                Rows come from stripDrilldown (mirrors stripMetrics), so each
+                modal's count/sum equals its tile. Under-filled uses the
+                existing UnderFilledModal above. */}
+            <ComingRevenueModal
+                open={comingModal === "revenue"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.revenue}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingBookingsModal
+                open={comingModal === "bookings"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.bookings}
+                customersById={customersById}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingNewCustomersModal
+                open={comingModal === "new"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.newCustomers}
+                customersById={customersById}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingReturningModal
+                open={comingModal === "returning"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.returning}
+                customersById={customersById}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingExpiringModal
+                open={comingModal === "expiring"}
+                onClose={() => setComingModal(null)}
+                rows={comingDrilldown.expiringPlans}
+                customersById={customersById}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingCapacityModal
+                open={comingModal === "capacity"}
+                onClose={() => setComingModal(null)}
+                sessions={comingDrilldown.sessionsInWindow}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
+            />
+            <ComingTopServicesModal
+                open={comingModal === "topservices"}
+                onClose={() => setComingModal(null)}
+                services={comingDrilldown.recoveryServices}
+                rangeLabel={comingRangeLabel}
+                typeFilter={comingType}
             />
 
             <Toast />

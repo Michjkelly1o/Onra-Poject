@@ -36,6 +36,8 @@
 
 import type { Appointment, AppointmentBooking, AppointmentRating } from "./_types";
 import { DEMO_TODAY_APPOINTMENTS, DEMO_TODAY_APPOINTMENT_BOOKINGS } from "./prototype_demo_data";
+import { blocked_times as BLOCKED_TIMES } from "./blocked_times";
+import { class_schedule as CLASS_SCHEDULE } from "./class_schedule";
 
 // ─── Time helpers (NOW-anchored) ─────────────────────────────────────────────
 
@@ -208,20 +210,56 @@ function customerForPrivate(service: ServiceSpec, statusSpec: StatusSpec): strin
     return CUSTOMERS[seed];
 }
 
-function instructorFor(service: ServiceSpec, statusSpec: StatusSpec): string {
-    const pool = service.instructorPool;
-    // Empty pool (Spa branch services have no instructor pool seeded) —
-    // return empty string and let the caller decide whether to include the
-    // field on the row (instructor_id is optional on Appointment).
-    if (pool.length === 0) return "";
-    const seed = Array.from(statusSpec).reduce((a, c) => a + c.charCodeAt(0), 0) % pool.length;
-    return pool[seed];
+/** True when `staffId` is on time-off covering `dateISO` at the appointment's
+ *  [start,end) window. All-day leave blocks the whole day; a partial block only
+ *  conflicts when the time windows overlap. Keeps generated appointments off an
+ *  instructor who is away (client 2026-08 audit — e.g. Sara's Aug 7–12 vacation
+ *  was catching the day+3 "upcoming" private session). */
+function isOnLeave(staffId: string, dateISO: string, startTime: string, endTime: string): boolean {
+    return BLOCKED_TIMES.some(b => {
+        if (!b.staff_ids.includes(staffId)) return false;
+        const from = b.date_from_iso ?? b.date;
+        const to   = b.date_to_iso   ?? b.date;
+        if (dateISO < from || dateISO > to) return false;
+        if (b.all_day) return true;
+        return startTime < b.end_time && endTime > b.start_time;
+    });
 }
-function roomFor(service: ServiceSpec, statusSpec: StatusSpec): string {
+
+// Slot trackers — an instructor or room booked in a date+time window can't be
+// reused for another appointment that overlaps it. Both private services anchor
+// to the SAME slot per status, so without this the 2nd double-books the 1st's
+// instructor + room (client 2026-08 audit — Maya had two 2pm private classes).
+const _instrBusy: { id: string; date: string; start: string; end: string }[] = [];
+const _roomBusy:  { id: string; date: string; start: string; end: string }[] = [];
+function isBusy(list: { id: string; date: string; start: string; end: string }[], id: string, date: string, start: string, end: string): boolean {
+    return list.some(x => x.id === id && x.date === date && start < x.end && end > x.start);
+}
+
+function instructorFor(service: ServiceSpec, statusSpec: StatusSpec, dateISO: string, startTime: string, endTime: string): string {
+    const pool = service.instructorPool;
+    // Empty pool (recovery services have no instructor pool seeded) — return
+    // empty string and let the caller decide whether to include the field on
+    // the row (instructor_id is optional on Appointment).
+    if (pool.length === 0) return "";
+    // Prefer an instructor who is neither on leave NOR already booked in this
+    // window. The double-book guard relaxes before the leave guard; leave is
+    // never relaxed unless literally everyone is out (which the seed avoids).
+    const notLeave = pool.filter(id => !isOnLeave(id, dateISO, startTime, endTime));
+    const free     = notLeave.filter(id => !isBusy(_instrBusy, id, dateISO, startTime, endTime));
+    const usePool  = free.length > 0 ? free : (notLeave.length > 0 ? notLeave : pool);
+    const seed = Array.from(statusSpec).reduce((a, c) => a + c.charCodeAt(0), 0) % usePool.length;
+    return usePool[seed];
+}
+function roomFor(service: ServiceSpec, statusSpec: StatusSpec, dateISO: string, startTime: string, endTime: string): string {
     const pool = service.roomPool;
     if (pool.length === 0) return "";
-    const seed = Array.from(statusSpec).reduce((a, c) => a + c.charCodeAt(0), 0) % pool.length;
-    return pool[seed];
+    // Prefer a room not already booked in this window (same slot-collision as
+    // instructors); fall back to the full pool only if all rooms are taken.
+    const free    = pool.filter(id => !isBusy(_roomBusy, id, dateISO, startTime, endTime));
+    const usePool = free.length > 0 ? free : pool;
+    const seed = Array.from(statusSpec).reduce((a, c) => a + c.charCodeAt(0), 0) % usePool.length;
+    return usePool[seed];
 }
 
 // ─── Build seed ──────────────────────────────────────────────────────────────
@@ -248,12 +286,46 @@ const SAMPLE_TAGS: AppointmentRating["tags"][] = [
     ["Instructor"],
 ];
 
+// Pre-seed the busy trackers with every non-cancelled CLASS and the hand-
+// authored today appointments, so a generated appointment never shares an
+// instructor or room with a class or fixed appointment already in that window
+// (cross-system double-book — client 2026-08 audit). Classes + appointments
+// share the same South rooms and instructor pool, so they must be reconciled
+// against each other, not just within their own kind.
+for (const c of CLASS_SCHEDULE) {
+    if (c.status === "Cancelled") continue;
+    if (c.instructor_id) _instrBusy.push({ id: c.instructor_id, date: c.date_iso, start: c.start_time, end: c.end_time });
+    if (c.room_id)       _roomBusy.push({ id: c.room_id, date: c.date_iso, start: c.start_time, end: c.end_time });
+}
+for (const a of DEMO_TODAY_APPOINTMENTS) {
+    if (a.instructor_id) _instrBusy.push({ id: a.instructor_id, date: a.date_iso, start: a.start_time, end: a.end_time });
+    if (a.room_id)       _roomBusy.push({ id: a.room_id, date: a.date_iso, start: a.start_time, end: a.end_time });
+}
+
 for (const service of SERVICES) {
     for (const statusSpec of STATUS_SPECS) {
         const { date, startTime } = anchorForStatus(statusSpec, service);
         const endTime  = addMinutes(startTime, service.durationMin);
         const dateISO  = isoDay(date);
         const apptId   = `appt_${dateISO}_${startTime.replace(":", "")}_${service.id}`;
+
+        // Resolve room + instructor ONCE per appointment (slot-aware) so the
+        // rating rows and the appointment share the same assignment, and later
+        // same-slot appointments pick a DIFFERENT free resource. Record the slot.
+        const resolvedInstructor = service.open ? "" : instructorFor(service, statusSpec, dateISO, startTime, endTime);
+        const resolvedRoom = roomFor(service, statusSpec, dateISO, startTime, endTime);
+        // Resource exhausted — instructorFor/roomFor only return an already-booked
+        // resource when every free one is taken (e.g. Aug 7 both Maya + Sara on
+        // leave leaves only Phoenix for two simultaneous privates; the single
+        // recovery room can't host massage + IV at once). Skip the appointment
+        // rather than create a double-book — better one clean private than two
+        // that collide.
+        if ((resolvedInstructor && isBusy(_instrBusy, resolvedInstructor, dateISO, startTime, endTime)) ||
+            (resolvedRoom && isBusy(_roomBusy, resolvedRoom, dateISO, startTime, endTime))) {
+            continue;
+        }
+        if (resolvedInstructor) _instrBusy.push({ id: resolvedInstructor, date: dateISO, start: startTime, end: endTime });
+        if (resolvedRoom)       _roomBusy.push({ id: resolvedRoom, date: dateISO, start: startTime, end: endTime });
 
         // ── Customer roster for this appointment ────────────────────────────
         const customerIds: string[] = service.open
@@ -302,7 +374,7 @@ for (const service of SERVICES) {
             ratingsForRow.forEach((score, idx) => {
                 const customerId = attendedCustomers[idx];
                 const submittedAt = isoStamp(daysAgo(3));
-                const ratingInstructor = service.open ? "" : instructorFor(service, statusSpec);
+                const ratingInstructor = resolvedInstructor;
                 ratingRows.push({
                     id: `appt_rating_${apptId}_${customerId}`,
                     appointment_id: apptId,
@@ -320,12 +392,9 @@ for (const service of SERVICES) {
                 : 0;
         }
 
-        // Resolve room + instructor first so we can drop the keys entirely
-        // when their respective pools are empty (Spa branch — no rooms, no
-        // instructor staff). The Appointment type makes both fields
-        // optional so omitting them keeps the seed shape lean.
-        const resolvedRoom = roomFor(service, statusSpec);
-        const resolvedInstructor = service.open ? "" : instructorFor(service, statusSpec);
+        // resolvedRoom / resolvedInstructor were resolved (slot-aware) at the top
+        // of the loop. Both Appointment fields are optional, so empty values
+        // (recovery services have no room/instructor pool) drop the key entirely.
         appointmentRows.push({
             id: apptId,
             service_id: service.id,

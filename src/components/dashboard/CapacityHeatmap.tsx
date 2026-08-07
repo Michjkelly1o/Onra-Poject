@@ -83,9 +83,11 @@ export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: Ca
     const [tip, setTip] = useState<HeatTooltipPayload | null>(null);
     const activeTypes: SessionType[] = typeFilter === "" ? SESSION_TYPE_ORDER : [typeFilter];
 
-    function onCellClick(startISO: string, endISO: string) {
-        if (granularity === "day") router.push(`/admin/schedule?date=${startISO}`);
-        else                        router.push(`/admin/schedule?dateFrom=${startISO}&dateTo=${endISO}`);
+    function onCellClick(startISO: string, endISO: string, type: SessionType) {
+        // Carry the row's session type through as `?type=` so the schedule opens
+        // pre-filtered to Classes / Private / Recovery for that clicked day/week.
+        if (granularity === "day") router.push(`/admin/schedule?date=${startISO}&type=${type}`);
+        else                        router.push(`/admin/schedule?dateFrom=${startISO}&dateTo=${endISO}&type=${type}`);
     }
 
     function tipPosition(e: React.MouseEvent): { x: number; y: number } {
@@ -118,7 +120,7 @@ export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: Ca
                                             <button
                                                 key={i}
                                                 type="button"
-                                                onClick={() => onCellClick(r.period.startISO, r.period.endISO)}
+                                                onClick={() => onCellClick(r.period.startISO, r.period.endISO, type)}
                                                 onMouseEnter={(e) => setTip({
                                                     ...tipPosition(e),
                                                     title: `${SESSION_TYPE_LABEL[type]}`,
@@ -139,7 +141,7 @@ export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: Ca
                                         <button
                                             key={i}
                                             type="button"
-                                            onClick={() => onCellClick(r.period.startISO, r.period.endISO)}
+                                            onClick={() => onCellClick(r.period.startISO, r.period.endISO, type)}
                                             onMouseEnter={(e) => setTip({
                                                 ...tipPosition(e),
                                                 title: `${SESSION_TYPE_LABEL[type]}`,
@@ -164,6 +166,23 @@ export function CapacityHeatmap({ rows, typeFilter, unitLabel, granularity }: Ca
                     );
                 })}
             </div>
+
+            {/* Period date labels — aligns under the cells, matching the Revenue
+                outlook chart's x-axis (client 2026-08). The left spacer mirrors
+                the row-label column (w-[64px] + gap-3) so each date sits under
+                its column of cells. */}
+            <div className="flex items-start gap-3 mt-3">
+                <div className="w-[64px] shrink-0" aria-hidden />
+                <div className="flex-1 flex gap-1">
+                    {rows.map((r, i) => (
+                        <div key={i} className="flex-1 text-center text-xs text-[var(--colors-text-quaternary)] leading-tight">
+                            <span className="block font-semibold text-[var(--colors-text-primary)]">{r.period.label}</span>
+                            <span>{r.period.sub}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
             <HeatTooltip payload={tip} />
         </div>
     );

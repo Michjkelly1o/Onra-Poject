@@ -10,7 +10,7 @@
 //   • Customer profile "Active plans" tab (via planKind/packageIds join)
 //
 // Variety:
-//   • 4 active   (1-Class Intro / 5-Class / 10-Class / 20-Class)
+//   • 4 active   (Intro / 5-Class / 10-Class / 20-Class)
 //   • 1 inactive (Intro Trial)
 //   • 1 archived (Legacy 30-Class)
 //
@@ -69,7 +69,7 @@ const DEFAULT_WELCOME = "Welcome to the community! Your package is now active an
 export const packages: Package[] = [
     {
         id: "pkg_1_class_intro",
-        name: "1-Class Intro Package for 7 Days",
+        name: "Intro Package for 7 Days",
         description: "Single drop-in class — great for first-time visitors. Valid for 7 days from purchase.",
         credits: 1,
         validity_days: 7,

@@ -20,7 +20,6 @@ import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
-import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
@@ -613,21 +612,7 @@ function ListView({ classes, branchTzById, sortKey, sortDir, onSort, onCancel, o
                                     </div>
                                 </div>
                             </td>
-                            <td className={TD}>
-                                <div className="flex flex-col items-start gap-1.5">
-                                    <SessionTypeTag type={c.type} />
-                                    {/* Flexible badge — appointment booked with the
-                                        "Preference: Flexible" instructor preference
-                                        (studio auto-assigned). Client 2026-07-24. */}
-                                    {c.flexible && (
-                                        <IconTooltip label="Flexible booking — the customer let the studio choose the instructor, so this one was auto-assigned and can be reassigned." side="below">
-                                            <span className="inline-flex items-center gap-1 px-[10px] py-[2px] rounded-full text-[12px] font-medium bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc] cursor-default">
-                                                <Shuffle01 className="w-3 h-3" aria-hidden /> Flexible
-                                            </span>
-                                        </IconTooltip>
-                                    )}
-                                </div>
-                            </td>
+                            <td className={TD}><SessionTypeTag type={c.type} /></td>
                             <td className={TD}>{c.location}</td>
                             <td className={TD}><AttendanceBar booked={c.booked} capacity={c.capacity} /></td>
                             <td className={TD}>
@@ -1177,6 +1162,12 @@ function SchedulePage() {
     // view. Honour it on first mount only so a manual filter clear sticks.
     const searchParams = useSearchParams();
     const initialInstructorId = searchParams?.get("instructorId") ?? "";
+    // Capacity-heatmap deep-links (dashboard Coming Up tab) pass
+    // `?type=class|private|recovery` so the schedule opens pre-filtered to the
+    // session type of the cell the admin clicked, on that same day/week.
+    const rawType = searchParams?.get("type") ?? "";
+    const initialType: ClassTypeFilter | null =
+        rawType === "class" || rawType === "private" || rawType === "recovery" ? rawType : null;
     // Dashboard Coming Up chart deep-links land here with `?date=YYYY-MM-DD`
     // (single day, 7-day mode) or `?dateFrom=A&dateTo=B` (week span, 30-day
     // mode). Honour both on first mount so the schedule opens on the exact
@@ -1195,8 +1186,12 @@ function SchedulePage() {
     );
     const [scheduleTab, setScheduleTab] = useState<ScheduleTab>(scheduleUi.scheduleTab);
     const [applied, setApplied] = useState<FilterState>(
-        initialInstructorId
-            ? { ...EMPTY_FILTER, instructors: [initialInstructorId] }
+        (initialInstructorId || initialType)
+            ? {
+                ...EMPTY_FILTER,
+                instructors: initialInstructorId ? [initialInstructorId] : [],
+                types: initialType ? [initialType] : [],
+              }
             : scheduleUi.applied,
     );
     // Day view tracks an ISO date so prev/next can walk freely. Display label

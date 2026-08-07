@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, Plus, Grid01,
+    SearchMd, FilterLines, Grid01,
     ClockFastForward, Users01, User01, XClose, AlignLeft,
     Eye, Edit02, Archive, SlashCircle01, RefreshCcw01, Check, Trash02,
 } from "@untitledui/icons";
@@ -21,6 +21,14 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Toast } from "@/components/ui/Toast";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import {
+    useClassCategoriesController,
+    ClassCategoriesToolbar,
+    ClassCategoriesPanel,
+    ClassCategoriesPagination,
+    ClassAddMenu,
+} from "@/components/classes/ClassCategoriesView";
 
 // Card-embedded kebab menu actions — mirrors the detail-page action set so
 // the list can drive Archive / Deactivate / Delete / Recover / Reactivate
@@ -387,6 +395,14 @@ export default function ClassTypesPage() {
     const [filterOpen, setFilterOpen]   = useState(false);
     const [applied, setApplied]         = usePersistedListState<FilterState>("classTypes:applied", { statuses: [], categories: [] });
 
+    // Client 2026-08-07 — Class templates + Class categories merged into one
+    // "Class" menu under Products, tabbed like Memberships & Packages.
+    // "templates" shows the card grid; "categories" renders the shared
+    // ClassCategoriesView panel. Tab choice persists per-browser.
+    const [tab, setTab] = usePersistedListState<"templates" | "categories">("classTypes:tab", "templates");
+    const catCtrl = useClassCategoriesController();
+    const goNewTemplate = () => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`);
+
     const hasActiveFilters = applied.statuses.length > 0 || applied.categories.length > 0;
     const isDataEmpty = classTemplates.length === 0;
 
@@ -398,58 +414,90 @@ export default function ClassTypesPage() {
     });
 
     return (
-        <div className="flex flex-col gap-6 flex-1 relative">
-            {/* Toolbar */}
-            <div className="flex items-center gap-3">
-                <ToolbarTotal count={visible.length} entitySingular="class template" />
-
-                {/* Search — icon-only, expands on click (client 2026-07-21). */}
-                <ToolbarSearch value={search} onChange={setSearch} placeholder="Search template..." />
-
-                {/* Filter button (client 2026-07-21 — icon-only + tooltip) */}
-                <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilters} />
-
-                {/* Import — empty-state only (client 2026-07-31). Hidden
-                    once templates exist so admins default to "Add template". */}
-                <ToolbarImportButton visible={classTemplates.length === 0 && !search.trim() && !hasActiveFilters} />
-
-                {/* Add template */}
-                <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />} onClick={() => router.push(`/class-types/new?returnTo=${encodeURIComponent("/admin/class-types")}`)}>
-                    Add
-                </Button>
-            </div>
-
-            {/* Card grid / empty states */}
-            {isDataEmpty ? (
-                /* True empty — absolute overlay so it centers in the full page, not just below the toolbar */
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="flex flex-col items-center gap-6 pointer-events-auto">
-                        <EmptyStateIllustration />
-                        <div className="flex flex-col items-center gap-1 text-center max-w-[352px]">
-                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">No class templates yet</p>
-                            <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Create your first template to start scheduling classes.</p>
-                        </div>
-                    </div>
-                </div>
-            ) : visible.length === 0 ? (
-                /* Filtered/search empty */
-                <div className="flex flex-col items-center justify-center py-20 gap-3">
-                    <p className="text-[16px] font-medium text-[var(--colors-text-secondary)]">No templates found</p>
-                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">
-                        {hasActiveFilters ? "Try adjusting your filters" : `No results for "${search}"`}
-                    </p>
-                    {hasActiveFilters && (
-                        <button type="button" onClick={() => setApplied({ statuses: [], categories: [] })}
-                            className="text-[14px] text-[var(--colors-secondary-600)] hover:underline font-medium">
-                            Clear all filters
-                        </button>
-                    )}
-                </div>
+        <div className="flex flex-col gap-6">
+            {/* Toolbar — adaptive per tab, above the view-card (matches Memberships & Packages) */}
+            {tab === "categories" ? (
+                <ClassCategoriesToolbar ctrl={catCtrl} onAddTemplate={goNewTemplate} />
             ) : (
-                <div className="grid grid-cols-4 gap-4">
-                    {visible.map(t => <ClassTemplateCard key={t.id} template={t} />)}
+                <div className="flex items-center gap-3">
+                    <ToolbarTotal count={visible.length} entitySingular="class template" />
+
+                    {/* Search — icon-only, expands on click (client 2026-07-21). */}
+                    <ToolbarSearch value={search} onChange={setSearch} placeholder="Search template..." />
+
+                    {/* Filter button (client 2026-07-21 — icon-only + tooltip) */}
+                    <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilters} />
+
+                    {/* Import — empty-state only (client 2026-07-31). Hidden
+                        once templates exist so admins default to "Add template". */}
+                    <ToolbarImportButton visible={classTemplates.length === 0 && !search.trim() && !hasActiveFilters} />
+
+                    {/* Add — dropdown: Class template / Category (client 2026-08-07),
+                        mirrors the Shift module's Add menu. */}
+                    <ClassAddMenu onAddTemplate={goNewTemplate} onAddCategory={catCtrl.handleAddCategory} />
                 </div>
             )}
+
+            {/* View card with tabs (client 2026-08-07 — matches Memberships & Packages) */}
+            <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+                <div className="shrink-0 flex items-center px-6 py-4">
+                    <SegmentedTabs
+                        tabs={[
+                            { key: "templates",  label: `Templates (${classTemplates.length})` },
+                            { key: "categories", label: `Categories (${catCtrl.categories.length})` },
+                        ]}
+                        activeKey={tab}
+                        onChange={(k) => setTab(k as "templates" | "categories")}
+                    />
+                </div>
+
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                    {tab === "categories" ? (
+                        <div className="py-4">
+                            <ClassCategoriesPanel ctrl={catCtrl} />
+                        </div>
+                    ) : isDataEmpty ? (
+                        /* True empty — centered inside the card body */
+                        <div className="h-full flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-6">
+                                <EmptyStateIllustration />
+                                <div className="flex flex-col items-center gap-1 text-center max-w-[352px]">
+                                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">No class templates yet</p>
+                                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">Create your first template to start scheduling classes.</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : visible.length === 0 ? (
+                        /* Filtered/search empty */
+                        <div className="h-full flex flex-col items-center justify-center py-20 gap-3">
+                            <p className="text-[16px] font-medium text-[var(--colors-text-secondary)]">No templates found</p>
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">
+                                {hasActiveFilters ? "Try adjusting your filters" : `No results for "${search}"`}
+                            </p>
+                            {hasActiveFilters && (
+                                <button type="button" onClick={() => setApplied({ statuses: [], categories: [] })}
+                                    className="text-[14px] text-[var(--colors-secondary-600)] hover:underline font-medium">
+                                    Clear all filters
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="px-6 py-4">
+                            <div className="grid grid-cols-4 gap-4">
+                                {visible.map(t => <ClassTemplateCard key={t.id} template={t} />)}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Pagination footer — Categories tab only. Templates just
+                    scrolls inside the card (client 2026-08-07). */}
+                {tab === "categories" && (
+                    <div className="px-6 shrink-0">
+                        <ClassCategoriesPagination ctrl={catCtrl} />
+                    </div>
+                )}
+            </div>
 
             {/* Filter panel */}
             <FilterPanel
@@ -458,7 +506,6 @@ export default function ClassTypesPage() {
                 applied={applied}
                 onApply={setApplied}
             />
-
         </div>
     );
 }
