@@ -251,11 +251,21 @@ function pickAssignment(opts: {
         const rot = ids.slice(off).concat(ids.slice(0, off));
         return rot.find(id => !slot.inst.has(id)) ?? null;
     };
+    // Branch-wide, time-off-free pool (any category). Used to relax the CATEGORY
+    // match BEFORE ever relaxing time-off — an instructor on leave must never be
+    // scheduled, even when their category's own South staff are all away that day
+    // (client 2026-08 audit: the waitlist demo class landed on Sara's Aug 7
+    // vacation because Pilates' only South staff, Sara + Maya, were both out).
+    const branchFree = _PICK_INSTRUCTORS
+        .filter(i => i.branchId === branchId && !_onTimeOff(i.id, dateIso, startTime, endTime))
+        .map(i => i.id);
     const instructor =
-        (forceInstructor && base.some(i => i.id === forceInstructor)) ? forceInstructor
+        (forceInstructor && base.some(i => i.id === forceInstructor) && !_onTimeOff(forceInstructor, dateIso, startTime, endTime)) ? forceInstructor
         : pickFromTier(shiftOk.map(i => i.id))
         ?? pickFromTier(free.map(i => i.id))
-        ?? pickFromTier(base.map(i => i.id))
+        ?? pickFromTier(branchFree)
+        ?? (free.length ? free[seed % free.length].id : null)
+        ?? (branchFree.length ? branchFree[seed % branchFree.length] : null)
         ?? base[seed % base.length].id;
     slot.inst.add(instructor);
 
@@ -408,13 +418,39 @@ const SCHEDULE_SPECS: ScheduleSpec[] = [
     { daysFromNow: 4, slotIdx: 0, branchId: EAST,  templateIdx: 2, capacity: 16, booked: 9,  status: "Upcoming" }, // Hot Yoga · 09:00 · East
 ];
 
+// Room-capacity guard — a branch hosts at most (its room count) classes in one
+// time slot. _nudgeToOpenDay can collapse two same-slot classes onto a single-
+// room branch (East → one studio), which would force a shared-room double-book.
+// Reserve a slot that still has a free room, shifting to the next slot (wrapping
+// to the next open day) when the slot is full (client 2026-08 audit).
+const _roomLoad = new Map<string, number>();
+function _addDaysIso(iso: string, n: number): string {
+    const [y, m, d] = iso.split("-").map(Number);
+    return isoDay(new Date(y, m - 1, d + n));
+}
+function _placeSlot(branchId: string, dateIso: string, slotIdx: number): { dateIso: string; slotIdx: number } {
+    const roomCount = (_CLASS_ROOMS_BY_BRANCH[branchId] ?? []).length || 1;
+    let d = dateIso, s = slotIdx;
+    for (let tries = 0; tries < SLOT_TIMES.length * 6; tries++) {
+        const key = `${branchId}|${d}|${s}`;
+        if ((_roomLoad.get(key) ?? 0) < roomCount) {
+            _roomLoad.set(key, (_roomLoad.get(key) ?? 0) + 1);
+            return { dateIso: d, slotIdx: s };
+        }
+        s += 1;
+        if (s >= SLOT_TIMES.length) { s = 0; d = _nudgeToOpenDay(branchId, _addDaysIso(d, 1)); }
+    }
+    return { dateIso: d, slotIdx: s };
+}
+
 export const DEMO_NOW_SCHEDULES: ClassSchedule[] = SCHEDULE_SPECS.map((s, idx) => {
     const date = s.daysFromNow >= 0 ? daysAhead(s.daysFromNow) : daysAgo(-s.daysFromNow);
-    const slot = SLOT_TIMES[s.slotIdx];
     const template = TEMPLATES[s.templateIdx];
-    // Nudge off any day the branch is closed (e.g. East on Sunday), then bind a
-    // constraint-valid instructor + room (category / branch / shift / time-off).
-    const dateIso = _nudgeToOpenDay(s.branchId, isoDay(date));
+    // Nudge off any closed day, then reserve a slot that still has a free room at
+    // the branch (shifts same-slot collisions on single-room branches like East).
+    const nudged = _nudgeToOpenDay(s.branchId, isoDay(date));
+    const { dateIso, slotIdx } = _placeSlot(s.branchId, nudged, s.slotIdx);
+    const slot = SLOT_TIMES[slotIdx];
     const { instructor_id: instructor, room_id: room } = pickAssignment({
         branchId: s.branchId,
         categoryName: template.category,
@@ -574,13 +610,23 @@ export const DEMO_TODAY_MEETING_BOOKINGS: ClassBooking[] = DEMO_TODAY_MEETING_SC
 // `booked > 0` gate. Reuses the same known-good SOUTH room/instructor as the
 // meeting classes (client 2026-08-05). No "1/1 (FULL)" is shown — the card hides
 // the occupancy read-out for 1-on-1 appointments.
+// Pick a SOUTH instructor who ISN'T on time-off for today's appointment window.
+// These appointments are NOW-anchored while the vacations (Maya Aug 3–9, Sara
+// Aug 7–12) are absolute, so a hardcoded instructor drifts into their leave
+// (client 2026-08 audit). Phoenix carries no leave so he's first; the pool
+// falls through if a given day ever blocks him too.
+const _APPT_TODAY_POOL = ["staff_phoenix_baker", "staff_maya_johnson", "staff_sara_al_rashid"];
+function _todayFreeInstructor(startTime: string, endTime: string): string {
+    return _APPT_TODAY_POOL.find(id => !_onTimeOff(id, MEETING_TODAY_ISO, startTime, endTime)) ?? _APPT_TODAY_POOL[0];
+}
+
 export const DEMO_TODAY_APPOINTMENTS: Appointment[] = [
     {
         id: "appt_demo_today_private",
         service_id: "svc_private_reformer",
         branch_id: SOUTH,
         room_id: "room_south_reformer",
-        instructor_id: "staff_maya_johnson",
+        instructor_id: _todayFreeInstructor("16:00", "17:00"),
         date_iso: MEETING_TODAY_ISO,
         start_time: "16:00",
         end_time: "17:00",
@@ -595,7 +641,10 @@ export const DEMO_TODAY_APPOINTMENTS: Appointment[] = [
         service_id: "svc_massage",
         branch_id: SOUTH,
         room_id: "room_south_recovery",
-        instructor_id: "staff_maya_johnson",
+        // Recovery sessions are instructor-less by convention (the generated
+        // massage/IV appointments have no instructor). Omitting it also avoids a
+        // cross-system clash — on a staff-short day the only free instructor is
+        // already teaching a class in this window (client 2026-08 audit).
         date_iso: MEETING_TODAY_ISO,
         start_time: "17:30",
         end_time: "18:30",
