@@ -27,7 +27,7 @@
 // history, split payment, complimentary, wallet, drop-in classes, walk-in
 // sales. Those land with the Customer module and the transactions table.
 
-import { useState, useMemo, useRef, useEffect, Suspense } from "react";
+import { useState, useMemo, useRef, useEffect, Suspense, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
     XClose, SearchMd, FilterLines, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
@@ -562,9 +562,12 @@ function POSInner() {
             setGiftCardModalDesignId(p.id);
             return;
         }
-        // Sized retail — pick a size variant before adding, so the right
-        // (branch × size) stock decrements at checkout.
-        if (p.kind === "retail" && p.sizes && p.sizes.length > 0) {
+        // Retail is collected in person, so every retail add needs a PICKUP
+        // branch. Open the picker when the product is sized (choose a size) OR
+        // the POS is on "All locations" (choose where to pick it up). A sizeless
+        // product already scoped to one branch adds straight to the cart.
+        // (Restored local update 2026-08-08 — was dropped in the insights merge.)
+        if (p.kind === "retail" && ((p.sizes && p.sizes.length > 0) || !branchId)) {
             setSizePicker(p);
             setCartOpen(true);
             return;
@@ -613,7 +616,7 @@ function POSInner() {
      *  Cart stacking matches packages (qty+1 on repeat); memberships cap at 1.
      *  A sized retail product stacks per (product × size) — each size is its
      *  own line. */
-    function addLineToCart(p: PosProduct, size?: string) {
+    function addLineToCart(p: PosProduct, size?: string, pickupBranchId?: string) {
         setCartOpen(true);
         setCart(prev => {
             const existing = prev.find(l => l.productId === p.id && l.size === size);
@@ -632,6 +635,7 @@ function POSInner() {
                 primaryMeta: size ? `Size ${size}` : p.primaryMeta,
                 quantity: 1,
                 ...(size ? { size } : {}),
+                ...(pickupBranchId ? { pickupBranchId } : {}),
                 // Retail cart lines carry the product image so the cart
                 // renders the same photo the POS card showed.
                 imageUrl: p.kind === "retail" ? p.bannerImageUrl : undefined,
@@ -882,7 +886,10 @@ function POSInner() {
             // the checkout so retail lines decrement the SALE branch's
             // stock, not the customer's home branch. Empty = "All locations"
             // in the picker → applyPurchase falls back to buyer.branchId.
-            saleBranchId: branchId || undefined,
+            // Retail pickup branch (chosen in the size/pickup modal when the POS
+            // is on "All locations") scopes the sale so stock decrements at the
+            // pickup location. Restored local update 2026-08-08.
+            saleBranchId: branchId || cart.find(l => l.pickupBranchId)?.pickupBranchId || undefined,
         });
         // Open the checkout as a right-side slide panel over the POS page
         // (client 2026-08 — "like branding"), instead of navigating to a
@@ -1059,8 +1066,9 @@ function POSInner() {
             <SizePickerModal
                 product={sizePicker}
                 branchId={branchId}
+                branchOptions={branchOptions}
                 onClose={() => setSizePicker(null)}
-                onPick={(size) => { if (sizePicker) addLineToCart(sizePicker, size); setSizePicker(null); }}
+                onPick={(size, pickupBranchId) => { if (sizePicker) addLineToCart(sizePicker, size, pickupBranchId); setSizePicker(null); }}
             />
 
             <SessionPickerModal
@@ -1140,6 +1148,10 @@ interface CartLine {
     quantity: number;
     /** Retail only — chosen size variant. Undefined for sizeless products. */
     size?: string;
+    /** Retail only — pickup branch chosen at add time when the POS was on
+     *  "All locations". Threads to the sale's saleBranchId at checkout so
+     *  stock decrements at the pickup location. */
+    pickupBranchId?: string;
     giftCard?: PurchaseLineItem["giftCard"];
     /** Private / Recovery only (2026-08-04) — the chosen slot. On checkout the
      *  sale books this appointment (date/time/instructor) and charges for it. */
@@ -1674,24 +1686,37 @@ interface GiftCardRecipientData {
 // locations"); a size with 0 available is disabled. Picking a size adds that
 // (product × size) line to the cart.
 
-function SizePickerModal({ product, branchId, onClose, onPick }: {
+function SizePickerModal({ product, branchId, branchOptions, onClose, onPick }: {
     product: PosProduct | null;
     branchId: string;
+    branchOptions: { value: string; label: string; icon?: ReactNode }[];
     onClose: () => void;
-    onPick: (size: string) => void;
+    onPick: (size?: string, pickupBranchId?: string) => void;
 }) {
-    if (!product || !product.sizes) return null;
-    const stockForSize = (size: string): number => {
-        if (branchId) return product.sizeStockByBranch?.[branchId]?.[size] ?? 0;
-        return product.sizeStockAggregate?.[size] ?? 0;
-    };
+    // Retail is collected in person → a specific PICKUP branch is required for
+    // every retail add. On "All locations" the staff picks the pickup branch
+    // here; otherwise it's the selected sale branch. Sized products also pick a
+    // size; sizeless products just confirm. (Restored local update 2026-08-08.)
+    const [pickBranch, setPickBranch] = useState(branchId);
+    useEffect(() => { setPickBranch(branchId); }, [branchId, product?.id]);
+    if (!product) return null;
+    const isSized = !!(product.sizes && product.sizes.length > 0);
+    const effectiveBranch = branchId || pickBranch;
+    const needsBranch = !effectiveBranch;
+    const chosenBranch = branchId || pickBranch || undefined;
+    const stockForSize = (size: string): number =>
+        effectiveBranch ? (product.sizeStockByBranch?.[effectiveBranch]?.[size] ?? 0) : 0;
+    const sizelessStock = effectiveBranch ? (product.perBranchStock?.[effectiveBranch] ?? 0) : 0;
+    const sizelessSoldOut = !needsBranch && sizelessStock <= 0;
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/40" onClick={onClose} />
             <div className="relative bg-white rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] w-[420px] max-w-[calc(100vw-32px)] flex flex-col">
                 <div className="flex items-start gap-3 p-6 pb-4">
                     <div className="flex-1 min-w-0">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Choose a size</p>
+                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">
+                            {isSized ? "Choose a size" : "Choose a pickup branch"}
+                        </p>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5 truncate">{product.name}</p>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Close"
@@ -1699,30 +1724,65 @@ function SizePickerModal({ product, branchId, onClose, onPick }: {
                         <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
                     </button>
                 </div>
-                <div className="px-6 pb-6 flex flex-col gap-2">
-                    {product.sizes.map(size => {
-                        const units = stockForSize(size);
-                        const soldOut = units <= 0;
-                        return (
-                            <button
-                                key={size}
-                                type="button"
-                                disabled={soldOut}
-                                onClick={() => onPick(size)}
-                                className={cn(
-                                    "w-full flex items-center justify-between gap-3 px-4 h-12 rounded-[10px] border-1 text-left transition-colors",
-                                    soldOut
-                                        ? "border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] cursor-not-allowed"
-                                        : "border-[var(--colors-border-primary)] bg-white hover:border-[var(--colors-secondary-500)] hover:bg-[var(--colors-bg-secondary)]",
-                                )}
-                            >
-                                <span className={cn("text-[15px] font-medium", soldOut ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-primary)]")}>{size}</span>
-                                <span className={cn("text-[13px] font-medium", soldOut ? "text-[#b42318]" : "text-[var(--colors-text-quaternary)]")}>
-                                    {soldOut ? "Out of stock" : `${units} in stock`}
+                <div className="px-6 pb-6 flex flex-col gap-3">
+                    {/* Pickup branch — required when the POS isn't scoped to a
+                        single branch. Retail is collected in person, so a sale
+                        can't be made without a pickup location. */}
+                    {!branchId && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Pickup branch</label>
+                            <SelectInput
+                                value={pickBranch}
+                                onChange={setPickBranch}
+                                options={branchOptions}
+                                placeholder="Select a pickup branch"
+                                width="w-full"
+                            />
+                            <p className="text-[13px] text-[var(--colors-text-quaternary)]">
+                                Retail is collected in person — choose where the customer picks it up.
+                            </p>
+                        </div>
+                    )}
+                    {isSized ? (
+                        <div className="flex flex-col gap-2">
+                            {product.sizes!.map(size => {
+                                const units = stockForSize(size);
+                                const soldOut = !needsBranch && units <= 0;
+                                const disabled = needsBranch || soldOut;
+                                return (
+                                    <button
+                                        key={size}
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => { if (!disabled) onPick(size, chosenBranch); }}
+                                        className={cn(
+                                            "w-full flex items-center justify-between gap-3 px-4 h-12 rounded-[10px] border-1 text-left transition-colors",
+                                            disabled
+                                                ? "border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] cursor-not-allowed"
+                                                : "border-[var(--colors-border-primary)] bg-white hover:border-[var(--colors-secondary-500)] hover:bg-[var(--colors-bg-secondary)]",
+                                        )}
+                                    >
+                                        <span className={cn("text-[15px] font-medium", disabled ? "text-[var(--colors-fg-quaternary)]" : "text-[var(--colors-text-primary)]")}>{size}</span>
+                                        <span className={cn("text-[13px] font-medium", needsBranch ? "text-[var(--colors-fg-quaternary)]" : soldOut ? "text-[#b42318]" : "text-[var(--colors-text-quaternary)]")}>
+                                            {needsBranch ? "Select a branch" : soldOut ? "Out of stock" : `${units} in stock`}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex items-center justify-between px-1 text-[14px]">
+                                <span className="text-[var(--colors-text-tertiary)]">Availability</span>
+                                <span className={cn("font-medium", needsBranch ? "text-[var(--colors-fg-quaternary)]" : sizelessSoldOut ? "text-[#b42318]" : "text-[var(--colors-text-quaternary)]")}>
+                                    {needsBranch ? "Select a branch" : sizelessSoldOut ? "Out of stock" : `${sizelessStock} in stock`}
                                 </span>
-                            </button>
-                        );
-                    })}
+                            </div>
+                            <Button variant="primary" size="lg" className="w-full" disabled={needsBranch || sizelessSoldOut} onClick={() => onPick(undefined, chosenBranch)}>
+                                Add to cart
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
