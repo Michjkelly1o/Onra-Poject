@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import {
     BarChartSquare02,
     CalendarCheck01,
-    LayoutAlt01,
     ShoppingBag02,
     ShoppingBag01,
     Announcement01,
@@ -90,23 +89,18 @@ const NAV_ITEMS: NavItemDef[] = [
         //  are type-filtered views of the shared /admin/services list.
         label: "Products", icon: ShoppingBag01, permission: "manage_products",
         sectionLabel: "Studio",
-        // Client 2026-08-03 — order set by client, and "Retail categories" is
-        // no longer a standalone entry: Retail + Categories are now tabs on
-        // the one /admin/products/retail page (mirrors Memberships & Packages).
+        // Client 2026-08-07 — order set by client. "Class" is the merged
+        // Templates + Categories page (tabbed like Memberships & Packages),
+        // moved in from the old standalone "Classes" group. "Retail
+        // categories" is likewise a tab on /admin/products/retail, not a
+        // standalone entry.
         children: [
-            { label: "Memberships & packages", href: "/admin/products"              },
+            { label: "Class",                  href: "/admin/class-types"           },
             { label: "Private sessions",       href: "/admin/services?type=private" },
             { label: "Recovery",               href: "/admin/services?type=recovery" },
+            { label: "Memberships & packages", href: "/admin/products"              },
             { label: "Retail",                 href: "/admin/products/retail"        },
             { label: "Gift cards",             href: "/admin/products/gift-cards"    },
-        ],
-    },
-    {
-        // Class structure (no price) — how classes are built + organised.
-        label: "Classes", icon: LayoutAlt01, permission: "manage_schedule",
-        children: [
-            { label: "Templates",  href: "/admin/class-types" },
-            { label: "Categories", href: "/admin/categories"  },
         ],
     },
     {
