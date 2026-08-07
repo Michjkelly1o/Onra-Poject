@@ -31,7 +31,7 @@ import {
     XClose, Check, Clock,
     Edit02, Archive, RefreshCcw01, SlashCircle01, Trash01, Trash02,
     UserPlus01, SearchMd, Eye, Send01,
-    UserSquare,
+    UserSquare, LogOut01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ function daysSummary(workingDays: boolean[]): string {
 
 // ─── Confirm modal (shared chrome) ────────────────────────────────────────
 
-type ConfirmKind = "archive" | "recover" | "deactivate" | "reactivate" | "delete";
+type ConfirmKind = "archive" | "recover" | "deactivate" | "reactivate" | "delete" | "remove_from_shift";
 type ConfirmTone = "danger" | "success" | "warning" | "info";
 
 const CONFIRM_CFG: Record<ConfirmKind, {
@@ -141,6 +141,12 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         title: s => `Delete ${s}?`,
         description: "This permanently removes the record. Only allowed when no history is attached.",
         confirmLabel: "Delete", tone: "danger", Icon: Trash01,
+    },
+    // Restored local update 2026-08-08 — dropped in the insights merge.
+    remove_from_shift: {
+        title: s => `Remove ${s} from this shift?`,
+        description: "This removes them from THIS shift only — any other shifts they're assigned to are kept. You can re-assign them anytime.",
+        confirmLabel: "Remove", tone: "warning", Icon: LogOut01,
     },
 };
 
@@ -246,7 +252,7 @@ function StaffAvatar({ staff }: { staff: Staff }) {
 //                       assigned-staff context. ─────
 
 type StaffRowAction =
-    | "view" | "edit_details" | "change_role"
+    | "view" | "edit_details" | "change_role" | "remove_from_shift"
     | "resend_invite" | "archive" | "recover" | "deactivate" | "reactivate" | "delete";
 
 // Local PaginationFooter removed — uses canonical `@/components/ui/Pagination`
@@ -286,6 +292,8 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor }: {
     const deleteStaffAction  = useAppStore(s => s.deleteStaff);
     const canDeleteStaff     = useAppStore(s => s.canDeleteStaff);
     const resendStaffInvite  = useAppStore(s => s.resendStaffInvite);
+    const removeShiftAssignment = useAppStore(s => s.removeShiftAssignment);
+    const updateStaff        = useAppStore(s => s.updateStaff);
     const showToast          = useAppStore(s => s.showToast);
 
     const [search, setSearch] = useState("");
@@ -390,6 +398,16 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor }: {
         } else if (kind === "reactivate") {
             setStaffStatus([row.id], "active");
             showToast("Staff reactivated", `${subject} restored to Active.`, "success", "check");
+        } else if (kind === "remove_from_shift") {
+            // Remove the link to THIS shift only — every other shift the staffer
+            // holds stays intact. An M2M assignment row is removed directly; a
+            // staffer linked ONLY via the legacy primary shiftId gets it cleared.
+            const assignment = shiftAssignmentsSlice.find(
+                a => a.staff_id === row.id && a.shift_id === shift.id,
+            );
+            if (assignment) removeShiftAssignment(assignment.id);
+            else if (row.shiftId === shift.id) updateStaff(row.id, { shiftId: undefined });
+            showToast("Removed from shift", `${subject} removed from ${shift.name}.`, "success", "check");
         }
         setPending(null);
     }
@@ -523,6 +541,7 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor }: {
                                                         { label: "Resend invitation", icon: Send01,        onClick: () => handleAction(s, "resend_invite"), hidden: s.status !== "pending" },
                                                         { label: "Edit details",      icon: Edit02,        onClick: () => handleAction(s, "edit_details"),  hidden: s.status !== "active" },
                                                         { label: "Change role",       icon: UserSquare,    onClick: () => handleAction(s, "change_role"),   hidden: s.status !== "active" },
+                                                        { label: "Remove from shift", icon: LogOut01,      onClick: () => handleAction(s, "remove_from_shift"), hidden: s.status !== "active" },
                                                         { label: "Archive",           icon: Archive,       onClick: () => handleAction(s, "archive"),       hidden: !(s.status === "active" || s.status === "inactive") },
                                                         { label: "Reactivate",        icon: Check,         onClick: () => handleAction(s, "reactivate"),    hidden: s.status !== "inactive" },
                                                         { label: "Recover",           icon: RefreshCcw01,  onClick: () => handleAction(s, "recover"),       hidden: s.status !== "archive" },
