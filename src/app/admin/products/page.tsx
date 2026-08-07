@@ -143,7 +143,7 @@ function PriceCell({ priceAed }: { priceAed: number }) {
     // header (see `PriceColumnHeaderTaxLine` below). One row in the header
     // says it once for the whole column instead of repeating per row.
     return (
-        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{formatAed(priceAed)}</span>
+        <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">{formatAed(priceAed)}</span>
     );
 }
 
@@ -164,7 +164,7 @@ function PriceColumnHeaderTaxLine({ rows }: { rows: ProductRow[] }) {
     const match = findActiveTaxRuleFor({ taxRules, taxRates }, category, undefined);
     if (!match) return null;
     return (
-        <span className="text-[11px] font-normal text-[var(--colors-text-quaternary)] normal-case whitespace-nowrap">
+        <span className="text-[11px] font-normal text-[#667085] normal-case whitespace-nowrap">
             {pricesIncludeTax
                 ? `Inc. ${match.rate.ratePercentage}% tax`
                 : `+ ${match.rate.ratePercentage}% tax`}
@@ -201,7 +201,7 @@ const MODAL_CONFIG: Record<ModalAction, {
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
         titleSingle: "Archive this product?",
         titleBulk: n => `Archive ${n} products?`,
         description: subject => <>{subject} will be hidden from the Point of Sale catalog and the class-types Applicable Plans list. You can recover archived products at any time.</>,
@@ -215,14 +215,14 @@ const MODAL_CONFIG: Record<ModalAction, {
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
         titleSingle: "Recover this product?",
         titleBulk: n => `Recover ${n} products?`,
         description: subject => <>{subject} will be restored to Active status and become sellable again.</>,
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Check, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
         titleSingle: "Reactivate this product?",
         titleBulk: n => `Reactivate ${n} products?`,
         description: subject => <>{subject} will become available again in the Point of Sale catalog.</>,
@@ -244,12 +244,12 @@ const MODAL_CONFIG: Record<ModalAction, {
 
 function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
     return (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="flex items-center justify-center pointer-events-none w-full h-full min-h-[400px]">
             <div className="flex flex-col items-center gap-6 pointer-events-auto">
                 <div className="bg-[var(--colors-bg-secondary)] rounded-[16px] p-[10px] w-[360px] flex gap-[10px] items-center shadow-[0px_1px_1px_rgba(16,24,40,0.05)]">
                     <div className="bg-white rounded-[10px] w-[51px] h-[51px] flex items-center justify-center shrink-0 shadow-[0px_1.5px_3.8px_rgba(0,0,0,0.02)]">
                         <div className="bg-[var(--colors-bg-secondary)] rounded-[7px] w-[31px] h-[31px] flex items-center justify-center">
-                            <AlignLeft className="w-[18px] h-[18px] text-[var(--colors-fg-quaternary)]" />
+                            <AlignLeft className="w-[18px] h-[18px] text-[#98a2b3]" />
                         </div>
                     </div>
                     <div className="flex flex-col gap-[8px] flex-1 min-w-0">
@@ -258,8 +258,8 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
                     </div>
                 </div>
                 <div className="flex flex-col items-center gap-1 text-center max-w-[320px]">
-                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
-                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[#101828] leading-[24px]">{title}</p>
+                    <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
                 </div>
             </div>
         </div>
@@ -293,16 +293,16 @@ function FilterPanel({ open, onClose, applied, onApply }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={400}>
 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                        <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Status — multi-select pills */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {ALL_STATUSES.map(s => (
                                 <FilterPill key={s} label={STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
@@ -311,7 +311,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                     {/* Price range — order per user spec: Status → Price → Credits */}
                     <RangeSection
@@ -324,7 +324,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                         onMax={v => setPending(p => ({ ...p, priceMax: v }))}
                     />
 
-                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                     {/* Credits range — same RangeSection / ValueChip pattern as POS */}
                     <RangeSection
@@ -375,7 +375,7 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
 
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</p>
+            <p className="text-[14px] font-medium text-[#344054]">{label}</p>
             <div className="px-1">
                 <RangeSlider
                     floor={floor} ceiling={ceiling} step={step}
@@ -386,11 +386,11 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
             </div>
             <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-[12px] text-[var(--colors-text-quaternary)] text-center">Minimum</p>
+                    <p className="text-[12px] text-[#667085] text-center">Minimum</p>
                     <ValueChip prefix={prefix} value={sliderMin} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <p className="text-[12px] text-[var(--colors-text-quaternary)] text-center">Maximum</p>
+                    <p className="text-[12px] text-[#667085] text-center">Maximum</p>
                     <ValueChip prefix={prefix} value={sliderMax} />
                 </div>
             </div>
@@ -400,7 +400,7 @@ function RangeSection({ label, floor, ceiling, step = 1, prefix = "", minValue, 
 
 function ValueChip({ prefix, value }: { prefix: string; value: number }) {
     return (
-        <div className="h-11 px-4 flex items-center justify-center border-1 border-[var(--colors-border-secondary)] rounded-[12px] text-[14px] font-medium text-[var(--colors-text-primary)]">
+        <div className="h-11 px-4 flex items-center justify-center border-1 border-[var(--colors-border-secondary)] rounded-[12px] text-[14px] font-medium text-[#101828]">
             {prefix}{value.toLocaleString()}
         </div>
     );
@@ -435,8 +435,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]"
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]"
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -466,14 +466,14 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                     the "N selected" label stays on one line even when the
                     action button cluster grows. */}
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 {/* Actions */}
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -599,7 +599,7 @@ function ListView({
     const someChecked = !allChecked && rows.some(r => selectedIds.has(r.id));
 
     return (
-        <div className="overflow-x-auto">
+        <div>
             <table className="w-full border-collapse">
                 <thead>
                     <tr>
@@ -655,7 +655,7 @@ function ListView({
                                 <td className={TD}>
                                     <div className="flex items-center gap-3">
                                         <IconAvatar icon={r.kind === "membership" ? CreditCard02 : PackageIcon} />
-                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
+                                        <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                     </div>
                                 </td>
                                 <td className={cn(TD, "whitespace-nowrap")}><PriceCell priceAed={r.priceAed} /></td>
@@ -739,7 +739,7 @@ export default function ProductsPage() {
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
         [branches],
     );
@@ -930,16 +930,16 @@ export default function ProductsPage() {
     // ─── Modal subject (single name vs. "N selected products") ─────────────
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
         if (p.mode === "row") {
-            return { count: 1, subject: <span className="font-medium text-[var(--colors-text-secondary)]">{p.row.name}</span> };
+            return { count: 1, subject: <span className="font-medium text-[#344054]">{p.row.name}</span> };
         }
         return {
             count: p.rows.length,
-            subject: <><span className="font-medium text-[var(--colors-text-secondary)]">{p.rows.length}</span> selected products</>,
+            subject: <><span className="font-medium text-[#344054]">{p.rows.length}</span> selected products</>,
         };
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 {/* Pre-existing chrome here hardcodes always-plural for the
@@ -983,7 +983,7 @@ export default function ProductsPage() {
             </div>
 
             {/* ── View card ── */}
-            <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     <SegmentedTabs
@@ -998,7 +998,7 @@ export default function ProductsPage() {
                 </div>
 
                 {/* Table + bulk bar + pagination (px-6 shared wrapper per CLAUDE.md #5) */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                <div className="overflow-y-auto scrollbar-hide relative min-h-0">
                     {sorted.length === 0 ? (
                         <EmptyState
                             title={tab === "memberships" ? "No memberships found" : "No packages found"}

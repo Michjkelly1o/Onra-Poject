@@ -471,7 +471,7 @@ function exportRunCsv(rows: RunRow[], periodLabel: string, branches: Branch[]) {
 
 // ─── Table chrome ──────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] sticky top-0 z-[5] bg-[var(--colors-bg-primary)] shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
 
 // ─── Page ──────────────────────────────────────────────────────────────────

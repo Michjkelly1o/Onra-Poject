@@ -823,12 +823,11 @@ export default function CustomersPage() {
     ];
 
     return (
-        // Main-canvas scroll: the page flows to natural height with a fixed-height
-        // (h-[760px]) view card; main's pb-24 (admin layout) gives the bottom
-        // clearance so the outer <main> scrolls and the pagination clears the
-        // floating AI button. The card keeps its own inner scroll — tab strip
-        // pinned, only the table body scrolls.
-        <div className="flex flex-col gap-6">
+        // Fill-to-viewport: the view card fills the remaining height (flex-1
+        // min-h-0) so only the table body scrolls — sticky header pinned at top,
+        // pagination pinned at the bottom. Consistent across every admin list
+        // (the AI trigger now lives in the header, so no bottom clearance needed).
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── matches /admin/staff (Total · Location · Search
                 · Export · Filter · Assigned-to-me chip). */}
             <div className="flex items-center gap-3">
@@ -863,7 +862,7 @@ export default function CustomersPage() {
             {/* ── View card — rounded container hosting the SegmentedTabs
                    strip + the table. Fills the remaining viewport so only
                    the table body scrolls (matches /admin/staff's chrome). */}
-            <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 px-6 py-4 flex items-center gap-3">
                     <SegmentedTabs
                         tabs={segmentTabDefs}

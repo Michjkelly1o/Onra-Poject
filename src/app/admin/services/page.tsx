@@ -107,7 +107,7 @@ function ServiceAvatar({ name, coverImage, coverColor, status }: {
     const initial = (name?.[0] ?? "S").toUpperCase();
     return (
         <div
-            className="relative shrink-0 size-10 rounded-full flex items-center justify-center text-[14px] font-semibold text-[var(--colors-text-secondary)]"
+            className="relative shrink-0 size-10 rounded-full flex items-center justify-center text-[14px] font-semibold text-[#344054]"
             style={{ backgroundColor: coverColor || "#f2f4f7" }}
         >
             {initial}
@@ -132,7 +132,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
     tone: "destructive" | "primary";
 }> = {
     archive: {
-        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Archive, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
         titleSingle: "Archive this service?",
         titleBulk:   n => `Archive ${n} services?`,
         description: subject => <>{subject} will be hidden from the default service list. You can recover archived services at any time.</>,
@@ -148,7 +148,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         tone: "destructive",
     },
     recover: {
-        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
         titleSingle: "Recover this service?",
         titleBulk:   n => `Recover ${n} services?`,
         description: subject => <>{subject} will be restored to Active status and become bookable again.</>,
@@ -156,7 +156,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         tone: "primary",
     },
     reactivate: {
-        iconBg: "bg-[var(--colors-secondary-50)]", IconComp: Check, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
         titleSingle: "Reactivate this service?",
         titleBulk:   n => `Reactivate ${n} services?`,
         description: subject => <>{subject} will become available for new appointments again.</>,
@@ -194,13 +194,13 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
         <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
             <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                 <button type="button" onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                     {count} selected
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -251,8 +251,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]"
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]"
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -305,8 +305,8 @@ function Pill({ label, selected, onClick }: { label: string; selected: boolean; 
             className={cn(
                 "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all whitespace-nowrap",
                 selected
-                    ? "bg-[var(--colors-secondary-50)] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-secondary)]"
-                    : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
+                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                    : "bg-white border-1 border-[var(--colors-border-secondary)] text-[#344054] hover:bg-[var(--colors-bg-secondary)]",
             )}>
             {label}
         </button>
@@ -343,17 +343,17 @@ function FilterPanel({ open, onClose, applied, onApply, allCategories }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={400} zIndex={50}>
 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Filter</p>
+                    <p className="flex-1 font-medium text-[18px] leading-[28px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose}
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                        <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-6">
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {ALL_STATUSES.map(s => (
                                 <Pill key={s} label={s}
@@ -364,11 +364,11 @@ function FilterPanel({ open, onClose, applied, onApply, allCategories }: {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                     {/* Categories */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Categories</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Categories</p>
                         <div className="flex flex-wrap gap-2">
                             {allCategories.map(c => (
                                 <Pill key={c} label={c}
@@ -471,7 +471,7 @@ function ListView({
                                             coverColor={r.coverColor}
                                             status={r.status}
                                         />
-                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
+                                        <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                     </div>
                                 </td>
                                 <td className={cn(TD, "whitespace-nowrap")}>{r.durationMin} minutes</td>
@@ -714,11 +714,11 @@ function ServicesPageInner() {
 
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
         if (p.mode === "row") {
-            return { count: 1, subject: <span className="font-medium text-[var(--colors-text-secondary)]">{p.row.name}</span> };
+            return { count: 1, subject: <span className="font-medium text-[#344054]">{p.row.name}</span> };
         }
         return {
             count: p.rows.length,
-            subject: <><span className="font-medium text-[var(--colors-text-secondary)]">{p.rows.length}</span> selected services</>,
+            subject: <><span className="font-medium text-[#344054]">{p.rows.length}</span> selected services</>,
         };
     }
 

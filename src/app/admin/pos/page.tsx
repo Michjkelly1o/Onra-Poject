@@ -900,13 +900,15 @@ function POSInner() {
     }));
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* The admin layout's Header already renders the page title from
                 the route; no in-page <h1> needed. */}
 
-            {/* ── Body: catalog card + cart side panel ─────────────────── */}
-            <div className="flex gap-6 items-start">
-                <div className="flex-1 min-w-0 flex flex-col gap-4">
+            {/* ── Body: catalog card + cart side panel — both fill the viewport
+                (flex-1 min-h-0) so the catalog grid + cart body scroll inside
+                their own cards, matching every other admin list. ─────────── */}
+            <div className="flex-1 min-h-0 flex gap-6">
+                <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-4">
                     {/* Toolbar: count (left) + branch + search + cart toggle (right) */}
                     <div className="flex items-end gap-3">
                         <div className="flex-1 flex flex-col">
@@ -942,7 +944,7 @@ function POSInner() {
                         view card so left/right edges stay aligned with the
                         cart panel's fixed height.
                         ────────────────────────────────────────────────────────── */}
-                    <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden min-h-[760px]">
+                    <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden flex-1 min-h-0">
                         {/* Tab row */}
                         <div className="flex items-center px-6 py-4 gap-3">
                             <SegmentedTabs
@@ -956,7 +958,7 @@ function POSInner() {
                         </div>
 
                         {/* Product grid */}
-                        <div className="flex-1 px-6 pb-6 relative">
+                        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-6 relative">
                             {filteredProducts.length === 0 ? (
                                 <EmptyState
                                     title="No products found"
@@ -1202,7 +1204,7 @@ function PosCartPanel(props: {
         // CTA below the fold. `sticky top-6` so the cart stays anchored
         // while the catalog scrolls.
         // ──────────────────────────────────────────────────────────────────
-        <aside className="w-[400px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden sticky top-6 h-[860px] max-h-[calc(100vh-3rem)]">
+        <aside className="w-[400px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden h-full">
             {/* Customer picker */}
             <div className="px-6 pt-6 pb-5 flex flex-col gap-3">
                 <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Add a customer</label>

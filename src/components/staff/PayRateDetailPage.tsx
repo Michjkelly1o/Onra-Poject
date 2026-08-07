@@ -61,7 +61,7 @@ const PAY_RATE_STATUS_LABEL = { active: "Active", archive: "Archive" } as const;
 function PayRateStatusBadge({ status }: { status: PayRate["status"] }) {
     const styles = status === "active"
         ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
-        : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]";
+        : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]";
     return (
         <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium leading-[20px]", styles)}>
             {PAY_RATE_STATUS_LABEL[status]}
@@ -77,7 +77,7 @@ const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    monthly: "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#3b5446]",
+    monthly: "bg-[#f5fffa] border-1 border-[#aad4bd] text-[#3b5446]",
 };
 
 function TypeBadge({ type }: { type: PayRateType }) {
@@ -95,7 +95,7 @@ function InstructorStatusBadge({ status }: { status: InstructorStatus }) {
     const styles: Record<InstructorStatus, string> = {
         active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
         inactive: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-        archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+        archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
     };
     return (
         <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", styles[status])}>
@@ -113,7 +113,7 @@ function ActionBtn({ icon, label, danger = false, onClick }: {
         <button type="button" onClick={onClick}
             className={cn(
                 "flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] transition-colors text-left",
-                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
+                danger ? "text-[#b42318] hover:text-[#912018]" : "text-[#475467] hover:text-[#344054]",
             )}>
             <span className="w-5 h-5 shrink-0">{icon}</span>
             {label}
@@ -151,8 +151,8 @@ function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -174,36 +174,36 @@ function InstructorRowActions({ status, onAction }: {
         <div className="relative">
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
                 className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-tertiary)] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                <DotsVertical className="w-4 h-4 text-[#667085]" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
                 <button type="button" onClick={() => trigger("view")}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                    <Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />View details
+                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <Eye className="w-4 h-4 text-[#667085]" />View details
                 </button>
                 {/* Edit + Archive only when Active (parallels the global archive/inactive gates). */}
                 {status === "active" && (
                     <button type="button" onClick={() => trigger("edit")}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <Edit02 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Edit instructor
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <Edit02 className="w-4 h-4 text-[#667085]" />Edit instructor
                     </button>
                 )}
                 {status !== "archive" && (
                     <button type="button" onClick={() => trigger("archive")}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <Archive className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Archive
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <Archive className="w-4 h-4 text-[#667085]" />Archive
                     </button>
                 )}
                 {status === "inactive" && (
                     <button type="button" onClick={() => trigger("reactivate")}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <Check className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Reactivate
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <Check className="w-4 h-4 text-[#667085]" />Reactivate
                     </button>
                 )}
                 {status === "archive" && (
                     <button type="button" onClick={() => trigger("recover")}
-                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <RefreshCcw01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Recover
+                        className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                        <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
                     </button>
                 )}
                 {status === "active" && (
@@ -229,7 +229,7 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     destructive: boolean;
 }> = {
     archive: {
-        iconBg: "bg-[var(--colors-secondary-50)]", Icon: Archive, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", Icon: Archive, iconColor: "text-[#658774]",
         title: s => `Archive ${s}?`,
         description: s => `${s} will be moved to the archive. You can recover it any time.`,
         confirmLabel: "Archive", destructive: false,
@@ -241,13 +241,13 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         confirmLabel: "Deactivate", destructive: true,
     },
     recover: {
-        iconBg: "bg-[var(--colors-secondary-50)]", Icon: RefreshCcw01, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", Icon: RefreshCcw01, iconColor: "text-[#658774]",
         title: s => `Recover ${s}?`,
         description: s => `${s} will be restored to Active.`,
         confirmLabel: "Recover", destructive: false,
     },
     reactivate: {
-        iconBg: "bg-[var(--colors-secondary-50)]", Icon: Check, iconColor: "text-[var(--colors-secondary-600)]",
+        iconBg: "bg-[#e9fff3]", Icon: Check, iconColor: "text-[#658774]",
         title: s => `Reactivate ${s}?`,
         description: s => `${s} will be set back to Active.`,
         confirmLabel: "Reactivate", destructive: false,
@@ -289,29 +289,29 @@ function Sidebar({ payRate, onAction, branches }: {
             {/* Summary */}
             <div className="flex flex-col flex-1">
                 <div className="flex flex-col gap-5 px-6 pt-5 pb-6 flex-1">
-                    <h2 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">{payRate.name}</h2>
+                    <h2 className="font-semibold text-[20px] leading-[30px] text-[#101828]">{payRate.name}</h2>
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Pay rate type</p>
+                            <p className="text-[14px] text-[#667085]">Pay rate type</p>
                             <div><TypeBadge type={payRate.type} /></div>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Rate</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
-                                {display.main} <span className="text-[var(--colors-text-quaternary)] font-normal">/ {display.subtitle.replace(/^per /, "")}</span>
+                            <p className="text-[14px] text-[#667085]">Rate</p>
+                            <p className="text-[16px] font-medium text-[#101828]">
+                                {display.main} <span className="text-[#667085] font-normal">/ {display.subtitle.replace(/^per /, "")}</span>
                             </p>
                         </div>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">Branch location</p>
-                            <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">{branch?.name ?? "—"}</p>
+                            <p className="text-[14px] text-[#667085]">Branch location</p>
+                            <p className="text-[16px] font-medium text-[#101828]">{branch?.name ?? "—"}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Actions */}
                 <div className="px-6 pb-6 mt-auto">
-                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
-                    <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Pay rate actions</p>
+                    <div className="h-px w-full bg-[#e4e7ec] mb-5" />
+                    <p className="text-[14px] text-[#667085] mb-4">Pay rate actions</p>
                     <div className="flex flex-col gap-4">
                         {isActive && (
                             <>
@@ -368,24 +368,24 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
     const hasAny = pending.branchId !== "" || pending.statuses.length > 0;
     const branchOptions = branches.filter(b => b.status === "active").map(b => ({
         value: b.id, label: b.name,
-        icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
+        icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
     }));
 
     return (
         <SlidePanel open={open} onClose={onClose} width={420}>
 <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                    <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                    <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                     <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                        <XClose className="w-5 h-5 text-[#667085]" />
                     </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {/* Branch location */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Branch location</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Branch location</p>
                         <SelectInput
-                            triggerIcon={<MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}
+                            triggerIcon={<MarkerPin01 className="w-4 h-4 text-[#667085]" />}
                             placeholder="Select location"
                             options={[{ value: "", label: "All locations" }, ...branchOptions]}
                             value={pending.branchId}
@@ -394,11 +394,11 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
                         />
                     </div>
 
-                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
+                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                     {/* Status */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
+                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {(["active", "inactive", "archive"] as InstructorStatus[]).map(s => (
                                 <FilterPill key={s} label={INSTRUCTOR_STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
@@ -423,8 +423,8 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
 
 // ─── Assigned instructor tab ───────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-tertiary)] border-b border-[var(--colors-border-secondary)]";
-const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
+const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
+const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
 type InstructorPending =
     | { mode: "row"; row: Instructor; kind: ConfirmKind }
@@ -675,18 +675,18 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                                             <div className="flex items-center gap-3">
                                                 <InstructorAvatar instructor={r} />
                                                 <div className="flex flex-col">
-                                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
-                                                    <span className="text-[13px] text-[var(--colors-text-quaternary)]">Joined {r.joinedDate}</span>
+                                                    <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
+                                                    <span className="text-[13px] text-[#667085]">Joined {r.joinedDate}</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className={TD}>
                                             <div className="flex flex-col">
-                                                <span className="text-[14px] text-[var(--colors-text-primary)]">{r.email}</span>
-                                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">{r.phone}</span>
+                                                <span className="text-[14px] text-[#101828]">{r.email}</span>
+                                                <span className="text-[13px] text-[#667085]">{r.phone}</span>
                                             </div>
                                         </td>
-                                        <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{branch?.name ?? "—"}</td>
+                                        <td className={cn(TD, "text-[#475467]")}>{branch?.name ?? "—"}</td>
                                         <td className={TD}>{payRateName}</td>
                                         <td className={TD}><InstructorStatusBadge status={r.status} /></td>
                                         <td className={TD} onClick={e => e.stopPropagation()}>
@@ -719,14 +719,14 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                 <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
                     <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                         <button type="button" onClick={clearSelection}
-                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
+                            className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                             {selectionCount} selected
-                            <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                            <XClose className="w-5 h-5 text-[#667085]" />
                         </button>
                         <div className="flex items-center gap-3">
                             {hasArchivable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />}
+                                    leftIcon={<Archive className="w-5 h-5 text-[#667085]" />}
                                     onClick={() => setPendingConfirm({ mode: "bulk", rows: selectedRows, kind: "archive" })}>
                                     Archive
                                 </Button>
@@ -796,12 +796,12 @@ function SettingRow({ title, subtitle, on }: { title: string; subtitle: string; 
     return (
         <div className="flex items-start justify-between gap-6 py-5">
             <div className="flex flex-col gap-1 flex-1 min-w-0">
-                <p className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-[24px]">{title}</p>
-                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{subtitle}</p>
+                <p className="text-[16px] font-medium text-[#101828] leading-[24px]">{title}</p>
+                <p className="text-[14px] text-[#475467] leading-[20px]">{subtitle}</p>
             </div>
             <p className={cn(
                 "text-[14px] leading-[20px] shrink-0",
-                on ? "text-[#067647]" : "text-[var(--colors-fg-quaternary)]",
+                on ? "text-[#067647]" : "text-[#98a2b3]",
             )}>
                 {on ? "Active" : "Inactive"}
             </p>
@@ -811,7 +811,7 @@ function SettingRow({ title, subtitle, on }: { title: string; subtitle: string; 
 
 function AdditionalSettingsTab({ payRate }: { payRate: PayRate }) {
     return (
-        <div className="flex flex-col px-6 pb-6 divide-y divide-[var(--colors-bg-tertiary)]">
+        <div className="flex flex-col px-6 pb-6 divide-y divide-[#f2f4f7]">
             <SettingRow
                 title="Only count checked-in customers"
                 subtitle="Excludes booked-but-absent customers from pay calculation"
@@ -913,10 +913,10 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
                 <button type="button" onClick={() => router.push(returnTo)}
                     aria-label="Close"
                     className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                    <h1 className="font-semibold text-[20px] leading-[30px] text-[var(--colors-text-primary)]">Pay rate details</h1>
+                    <h1 className="font-semibold text-[20px] leading-[30px] text-[#101828]">Pay rate details</h1>
                     <Breadcrumbs className="p-0 text-[12px]" />
                 </div>
             </div>

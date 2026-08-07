@@ -119,10 +119,10 @@ function ProductThumb({ imageUrl, alt }: { imageUrl?: string; alt: string }) {
     }
     return (
         <div
-            className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-tertiary)] flex items-center justify-center shrink-0"
+            className="w-10 h-10 rounded-full bg-[var(--colors-bg-tertiary)] border-1 border-[#eaecf0] flex items-center justify-center shrink-0"
             aria-hidden
         >
-            <Image01 className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
+            <Image01 className="w-4 h-4 text-[#98a2b3]" />
         </div>
     );
 }
@@ -140,8 +140,8 @@ function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
             )}
         >
             {indeterminate ? (
@@ -228,14 +228,14 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                 <button
                     type="button"
                     onClick={onClear}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0"
+                    className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0"
                 >
                     {count} selected
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex items-center gap-3">
                     {hasArchivable && (
-                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[var(--colors-text-quaternary)]" />} onClick={() => onAction("archive")}>
+                        <Button variant="secondary-gray" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
                             Archive
                         </Button>
                     )}
@@ -310,14 +310,14 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
     return (
         <SlidePanel open={open} onClose={onClose} width={420}>
             <div className="flex items-center px-6 border-b border-[var(--colors-border-secondary)] shrink-0 h-[64px]">
-                <p className="flex-1 font-semibold text-[18px] text-[var(--colors-text-primary)]">Filter</p>
+                <p className="flex-1 font-semibold text-[18px] text-[#101828]">Filter</p>
                 <button type="button" onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                    <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-5 h-5 text-[#667085]" />
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                 <div className="flex flex-col gap-2">
-                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Retail category</p>
+                    <p className="text-[14px] font-medium text-[#344054]">Retail category</p>
                     <div className="flex flex-wrap gap-2">
                         {categories.map(c => (
                             <FilterPill key={c.id} label={c.label} selected={pending.categoryIds.includes(c.id)}
@@ -326,10 +326,10 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                     </div>
                 </div>
 
-                <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
+                <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                 <div className="flex flex-col gap-2">
-                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
+                    <p className="text-[14px] font-medium text-[#344054]">Status</p>
                     <div className="flex flex-wrap gap-2">
                         <FilterPill label="Active"    selected={pending.statuses.includes("active")}    onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, "active") }))} />
                         <FilterPill label="Inactive"  selected={pending.statuses.includes("inactive")}  onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, "inactive") }))} />
@@ -337,16 +337,16 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                     </div>
                 </div>
 
-                <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
+                <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
 
                 <div className="flex flex-col gap-2">
-                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Stock level</p>
+                    <p className="text-[14px] font-medium text-[#344054]">Stock level</p>
                     <div className="flex flex-wrap gap-2">
                         <FilterPill label="In stock"     selected={pending.stockBuckets.includes("in_stock")} onClick={() => setPending(p => ({ ...p, stockBuckets: toggle(p.stockBuckets, "in_stock") }))} />
                         <FilterPill label="Low"          selected={pending.stockBuckets.includes("low")}      onClick={() => setPending(p => ({ ...p, stockBuckets: toggle(p.stockBuckets, "low") }))} />
                         <FilterPill label="Out of stock" selected={pending.stockBuckets.includes("out")}      onClick={() => setPending(p => ({ ...p, stockBuckets: toggle(p.stockBuckets, "out") }))} />
                     </div>
-                    <p className="text-[12px] text-[var(--colors-text-quaternary)]">"Low" means at least one branch is at or below the product's reorder threshold.</p>
+                    <p className="text-[12px] text-[#667085]">"Low" means at least one branch is at or below the product's reorder threshold.</p>
                 </div>
             </div>
             <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
@@ -406,7 +406,7 @@ export default function RetailPage() {
         () => branches.filter(b => b.status === "active").map(b => ({
             value: b.id,
             label: b.name,
-            icon: <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />,
+            icon: <MarkerPin01 className="w-4 h-4 text-[#667085]" />,
         })),
         [branches],
     );
@@ -736,16 +736,16 @@ export default function RetailPage() {
 
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
         if (p.mode === "row") {
-            return { count: 1, subject: <span className="font-medium text-[var(--colors-text-secondary)]">{p.row.name}</span> };
+            return { count: 1, subject: <span className="font-medium text-[#344054]">{p.row.name}</span> };
         }
         return {
             count: p.rows.length,
-            subject: <><span className="font-medium text-[var(--colors-text-secondary)]">{p.rows.length}</span> selected products</>,
+            subject: <><span className="font-medium text-[#344054]">{p.rows.length}</span> selected products</>,
         };
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar — adaptive per tab, above the view-card (matches Memberships & Packages) ── */}
             {tab === "categories" ? (
                 <RetailCategoriesToolbar ctrl={catCtrl} />
@@ -797,7 +797,7 @@ export default function RetailPage() {
             )}
 
             {/* ── View card with tabs (client 2026-08-03 — matches Memberships & Packages) ── */}
-            <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 flex items-center px-6 py-4">
                     <SegmentedTabs
                         tabs={[
@@ -808,7 +808,7 @@ export default function RetailPage() {
                         onChange={(k) => setTab(k as "products" | "categories")}
                     />
                 </div>
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                <div className="overflow-y-auto scrollbar-hide relative min-h-0">
                 {tab === "categories" ? (
                     <div className="py-4">
                         <RetailCategoriesPanel ctrl={catCtrl} />
@@ -817,11 +817,12 @@ export default function RetailPage() {
                 <>
                 {sorted.length === 0 ? (
                     <EmptyState
+                        absolute={false} className="min-h-[400px]"
                         title="No products found"
                         subtitle="Try adjusting your search or filters."
                     />
                 ) : (
-                    <div className="overflow-x-auto px-6">
+                    <div className="px-6">
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr>
@@ -901,7 +902,7 @@ export default function RetailPage() {
                                                         onClick={() => toggleExpanded(r.id)}
                                                         aria-label={isExpanded ? `Collapse ${r.name}` : `Expand ${r.name}`}
                                                         aria-expanded={isExpanded}
-                                                        className="w-6 h-6 flex items-center justify-center rounded-[6px] hover:bg-[var(--colors-border-tertiary)] transition-colors text-[var(--colors-text-quaternary)]"
+                                                        className="w-6 h-6 flex items-center justify-center rounded-[6px] hover:bg-[#eaecf0] transition-colors text-[#667085]"
                                                     >
                                                         {isExpanded ? (
                                                             <ChevronDown className="w-4 h-4" />
@@ -913,10 +914,10 @@ export default function RetailPage() {
                                                 <td className={TD}>
                                                     <div className="flex items-center gap-3">
                                                         <ProductThumb imageUrl={r.imageUrl} alt={r.name} />
-                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
+                                                        <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{r.sku}</td>
+                                                <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{r.sku}</td>
                                                 <td className={cn(TD, "whitespace-nowrap")}>{r.categoryLabel}</td>
                                                 <td className={cn(TD, "whitespace-nowrap")}>{formatAed(r.priceAed)}</td>
                                                 <td className={cn(TD, "whitespace-nowrap")}>

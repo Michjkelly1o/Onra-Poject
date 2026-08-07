@@ -77,7 +77,7 @@ const REASON_STYLE: Record<
     sick:     { label: "Sick",     className: "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" },
     vacation: { label: "Vacation", className: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" },
     training: { label: "Training", className: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]" },
-    other:    { label: "Other",    className: "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]" },
+    other:    { label: "Other",    className: "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[#344054]" },
 };
 
 function ReasonChip({ reason }: { reason: BlockedTime["reason"] | undefined }) {
@@ -112,7 +112,7 @@ function StackedAvatars({ staffList }: { staffList: Staff[] }) {
                     )
                 ))}
             </div>
-            <span className="ml-2 text-[14px] text-[var(--colors-text-secondary)] whitespace-nowrap">
+            <span className="ml-2 text-[14px] text-[#344054] whitespace-nowrap">
                 {staffList.length} {staffList.length === 1 ? "staff" : "staff"}
             </span>
         </div>
@@ -128,12 +128,12 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
         <div className="relative">
             <button ref={btnRef} type="button" onClick={() => setOpen(p => !p)}
                 className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-tertiary)] transition-colors">
-                <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                <DotsVertical className="w-4 h-4 text-[#667085]" />
             </button>
             <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={200}>
                 <button type="button" onClick={() => { setOpen(false); onEdit(); }}
-                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                    <Edit02 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />Edit time off
+                    className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <Edit02 className="w-4 h-4 text-[#667085]" />Edit time off
                 </button>
                 <button type="button" onClick={() => { setOpen(false); onDelete(); }}
                     className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#b42318] hover:bg-[#fef3f2] transition-colors">
@@ -156,15 +156,15 @@ function DeleteModal({ count, subject, onCancel, onConfirm }: {
             <div className="relative bg-white rounded-[12px] w-[440px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08)] flex flex-col overflow-hidden">
                 <button type="button" onClick={onCancel}
                     className="absolute right-[16px] top-[16px] w-11 h-11 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors z-10">
-                    <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
+                    <XClose className="w-6 h-6 text-[#667085]" />
                 </button>
                 <div className="flex flex-col items-center gap-4 pt-6 px-6">
                     <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#fee4e2]">
                         <Trash02 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{title}</h3>
-                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{title}</h3>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">
                             {subject} will be permanently removed and the staff schedule will revert to normal. This cannot be undone.
                         </p>
                     </div>
@@ -189,8 +189,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[var(--colors-secondary-600)] border-[var(--colors-secondary-600)] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
+                    ? "bg-[#658774] border-[#658774] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -327,9 +327,9 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
             {SHOW_MONTH_VIEW && viewMode === "month" ? (
                 <TimeOffMonthView branchId={branchId ?? ""} search={search} monthCursor={monthCursor} />
             ) : (
-            <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex flex-col">
                 {filtered.length === 0 ? (
-                    <div className="relative flex-1" style={{ minHeight: 400 }}>
+                    <div className="relative" style={{ minHeight: 400 }}>
                         <EmptyState
                             title={isTrulyEmpty ? "No time off yet" : "No time off found"}
                             subtitle={isTrulyEmpty
@@ -339,9 +339,8 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                         />
                     </div>
                 ) : (
-                    <>
-                    <div className="px-6 flex-1 min-h-0 overflow-y-auto">
-                        <div className="overflow-x-auto">
+                    <div className="px-6">
+                        <div>
                             <table className="w-full border-collapse">
                                 <thead>
                                     <tr>
@@ -396,7 +395,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                                 <td className={TD}>
                                                     <div className="flex flex-col gap-1">
                                                         <div className="flex items-center gap-1.5 flex-wrap">
-                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">
+                                                            <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">
                                                                 {isRange
                                                                     ? `${fmtDate(fromISO)} – ${fmtDate(toISO)}`
                                                                     : fmtDate(fromISO)}
@@ -407,7 +406,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)] whitespace-nowrap">
+                                                        <span className="text-[13px] text-[#667085] whitespace-nowrap">
                                                             {isAllDay
                                                                 ? `All day${isRange ? ` · ${days} days` : ""}`
                                                                 : `${fmtTime12(b.start_time)} – ${fmtTime12(b.end_time)}`}
@@ -419,10 +418,10 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                                 </td>
                                                 <td className={TD}>
                                                     {staffList.length === 0
-                                                        ? <span className="text-[var(--colors-text-quaternary)]">—</span>
+                                                        ? <span className="text-[#667085]">—</span>
                                                         : <StackedAvatars staffList={staffList} />}
                                                 </td>
-                                                <td className={cn(TD, "text-[var(--colors-text-quaternary)] max-w-[400px] truncate")}>
+                                                <td className={cn(TD, "text-[#667085] max-w-[400px] truncate")}>
                                                     {note}
                                                 </td>
                                                 <td className={TD}>
@@ -437,8 +436,6 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                    <div className="px-6 shrink-0">
                         <Pagination
                             page={clamped}
                             total={sortedRows.length}
@@ -447,7 +444,6 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                             onPageSize={n => { setPageSize(n); setPage(1); }}
                         />
                     </div>
-                    </>
                 )}
 
                 {/* Bulk delete action bar */}
@@ -455,9 +451,9 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                     <div className="fixed inset-x-0 bottom-0 flex justify-center pointer-events-none pb-8 pt-6 px-6 z-50">
                         <div className="pointer-events-auto bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_rgba(16,24,40,0.04)] p-3 flex items-center justify-between gap-3 w-fit max-w-full">
                             <button type="button" onClick={clearSelection}
-                                className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
+                                className="flex items-center gap-2 px-3 py-2 bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] font-medium text-[#101828] hover:bg-[var(--colors-bg-secondary)] transition-colors whitespace-nowrap shrink-0">
                                 {selectedRows.length} selected
-                                <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                                <XClose className="w-5 h-5 text-[#667085]" />
                             </button>
                             <Button variant="secondary-gray" size="sm"
                                 className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
@@ -475,7 +471,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                 <DeleteModal
                     count={pendingDelete.mode === "row" ? 1 : pendingDelete.rows.length}
                     subject={pendingDelete.mode === "row"
-                        ? <span className="font-medium text-[var(--colors-text-secondary)]">"{pendingDelete.row.title.trim() || "Blocked"}"</span>
+                        ? <span className="font-medium text-[#344054]">"{pendingDelete.row.title.trim() || "Blocked"}"</span>
                         : <>{pendingDelete.rows.length} selected entries</>}
                     onCancel={() => setPendingDelete(null)}
                     onConfirm={performDelete}
