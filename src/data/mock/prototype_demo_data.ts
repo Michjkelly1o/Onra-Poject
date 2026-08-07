@@ -1524,7 +1524,7 @@ function humanizePackage(id: typeof PACKAGES[number]): string {
     return id === "pkg_5_class"        ? "5-Class Package for One Month"
          : id === "pkg_10_class"       ? "10-Class Package for One Month"
          : id === "pkg_20_class"       ? "20-Class Package for Two Months"
-         : id === "pkg_1_class_intro"  ? "1-Class Intro Package for 7 Days"
+         : id === "pkg_1_class_intro"  ? "Intro Package for 7 Days"
          :                               "3-Class Trial Package";
 }
 
