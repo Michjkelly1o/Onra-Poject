@@ -51,6 +51,13 @@ import {
     NewSignupsModal,
     TrialsEndingModal,
 } from "@/components/dashboard/NeedsAttentionModals";
+import {
+    TodaySalesModal,
+    NewCustomersTodayModal,
+    BookingsTodayModal,
+    isBillableSaleTxn,
+    txnSessionType,
+} from "@/components/dashboard/TodayMetricModals";
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { useTeamActivity, type TeamActivityItem } from "@/components/dashboard/team-activity";
 import { DEFAULT_ACTIVE_WIDGETS, WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
@@ -570,6 +577,11 @@ export default function AdminDashboard() {
     // tab's Payments-collected chip.
     type NeedsAttentionModal = "renewal" | "failed" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | "trials" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
+    // Metric-card drill-down modals (client 2026-08-07). Every KPI card opens
+    // a modal listing the records behind its number, styled like the Needs-
+    // attention modals. Phase 1 = the Today tab's 4 cards.
+    type MetricModal = "today-sales" | "today-revenue" | "today-newcustomers" | "today-bookings" | null;
+    const [metricModal, setMetricModal] = useState<MetricModal>(null);
     const [activeWidgets, setActiveWidgets] = useState<string[]>(DEFAULT_ACTIVE_WIDGETS);
     const today = new Date();
 
@@ -747,24 +759,34 @@ export default function AdminDashboard() {
         // Today's completed sale transactions — used by both Total sales
         // (count) and Total revenue (sum of amounts). Filter out refund /
         // void / write-off rows so the two totals stay honest.
-        const isBillableSaleToday = (t: typeof scopedTransactions[number]): boolean =>
-            t.status === "complete"
-            && (t.transactionType === undefined || t.transactionType === "sale")
-            && t.kind !== "cancellation_penalty"
-            && t.kind !== "freeze_fee"
-            // Gift-card sales are DEFERRED revenue (recognised when the card is
-            // redeemed on another product) — excluding them here keeps the
-            // dashboard consistent with the reports and avoids double-counting.
-            && t.kind !== "gift_card";
+        // Billable-sale predicate + session-type scope shared with the Today
+        // metric modals (isBillableSaleTxn / txnSessionType) so card == modal.
+        // When the Type filter is active, Sales / Revenue / New customers
+        // narrow to that session type the data-native way the transaction
+        // ledger already models it: membership + package = Class; private /
+        // recovery map 1:1; retail / gift-card have no session type (excluded
+        // from a typed view). Location scope is already applied via scoped*.
+        const saleMatchesType = (t: typeof scopedTransactions[number]): boolean =>
+            !typeFilter || txnSessionType(t.kind) === typeFilter;
         const todaySales = scopedTransactions.filter(t =>
-            isBillableSaleToday(t) && t.createdAtISO.startsWith(todayISO),
+            isBillableSaleTxn(t) && t.createdAtISO.startsWith(todayISO) && saleMatchesType(t),
         );
         const totalSalesCount = todaySales.length;
         const totalRevenueAed = todaySales.reduce((sum, t) => sum + t.amountAed, 0);
 
-        // New customers today — count of customer.createdAt on today's date.
+        // New customers today — customers whose createdAt is today. When a Type
+        // filter is active, keep only those who ALSO made a purchase of that
+        // type today (matches the New-customers modal exactly).
+        const custHasTypedTxn = (custId: string, iso: string): boolean =>
+            scopedTransactions.some(t =>
+                t.customerId === custId
+                && isBillableSaleTxn(t)
+                && t.createdAtISO.startsWith(iso)
+                && txnSessionType(t.kind) === typeFilter,
+            );
         const newCustomers = scopedCustomers.filter(c =>
-            (c.createdAt ?? "").startsWith(todayISO),
+            (c.createdAt ?? "").startsWith(todayISO)
+            && (!typeFilter || custHasTypedTxn(c.id, todayISO)),
         ).length;
 
         // ── Yesterday's actuals — drive the "vs yesterday" delta chips ──
@@ -775,12 +797,13 @@ export default function AdminDashboard() {
         yDate.setDate(yDate.getDate() - 1);
         const yISO = format(yDate, "yyyy-MM-dd");
         const yesterdaySales = scopedTransactions.filter(t =>
-            isBillableSaleToday(t) && t.createdAtISO.startsWith(yISO),
+            isBillableSaleTxn(t) && t.createdAtISO.startsWith(yISO) && saleMatchesType(t),
         );
         const ySalesCount = yesterdaySales.length;
         const yRevenueAed = yesterdaySales.reduce((sum, t) => sum + t.amountAed, 0);
         const yNewCustomers = scopedCustomers.filter(c =>
-            (c.createdAt ?? "").startsWith(yISO),
+            (c.createdAt ?? "").startsWith(yISO)
+            && (!typeFilter || custHasTypedTxn(c.id, yISO)),
         ).length;
         // Bookings yesterday — booked seats on schedules dated yesterday
         // (mirrors sessionMetrics.bookingsToday which reads today-dated
@@ -807,18 +830,21 @@ export default function AdminDashboard() {
                 value: totalSalesCount.toLocaleString("en-US"),
                 change: salesD.change, positive: salesD.positive, comparison: "vs yesterday",
                 icon: CurrencyDollar,
+                onClick: () => setMetricModal("today-sales"),
             },
             {
                 label: "Revenue",
                 value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
                 change: revenueD.change, positive: revenueD.positive, comparison: "vs yesterday",
                 icon: CoinsStacked01,
+                onClick: () => setMetricModal("today-revenue"),
             },
             {
                 label: "New customers",
                 value: newCustomers.toLocaleString("en-US"),
                 change: customersD.change, positive: customersD.positive, comparison: "vs yesterday",
                 icon: UserPlus01,
+                onClick: () => setMetricModal("today-newcustomers"),
             },
             // Bookings — type-aware (from the merged session feed), so
             // picking a type filter recomputes it. Delta compares against
@@ -828,11 +854,12 @@ export default function AdminDashboard() {
                 value: sessionMetrics.bookingsToday.toLocaleString("en-US"),
                 change: bookingsD.change, positive: bookingsD.positive, comparison: "vs yesterday",
                 icon: TrendUp01,
+                onClick: () => setMetricModal("today-bookings"),
             },
         ];
 
         return { todayMetrics: today };
-    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics]);
+    }, [scopedTransactions, scopedCustomers, scopedSchedules, scopedBookings, todayISO, sessionMetrics, typeFilter]);
 
     // ── Performance-tab metrics — 4 cards, PERIOD-scoped ──
     //
@@ -2105,6 +2132,40 @@ export default function AdminDashboard() {
                 onClose={() => setAttentionModal(null)}
                 branchIds={branchScopeIds}
                 forwardRangeDays={7}
+            />
+
+            {/* Today-tab metric drill-downs (Phase 1, client 2026-08-07). Each
+                re-derives its rows with the same predicate as the card + the
+                same branch scope + the page's todayISO, so count == list. */}
+            <TodaySalesModal
+                open={metricModal === "today-sales"}
+                variant="sales"
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                todayISO={todayISO}
+                typeFilter={typeFilter}
+            />
+            <TodaySalesModal
+                open={metricModal === "today-revenue"}
+                variant="revenue"
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                todayISO={todayISO}
+                typeFilter={typeFilter}
+            />
+            <NewCustomersTodayModal
+                open={metricModal === "today-newcustomers"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                todayISO={todayISO}
+                typeFilter={typeFilter}
+            />
+            <BookingsTodayModal
+                open={metricModal === "today-bookings"}
+                onClose={() => setMetricModal(null)}
+                branchIds={branchScopeIds}
+                todayISO={todayISO}
+                typeFilter={typeFilter}
             />
 
             <Toast />

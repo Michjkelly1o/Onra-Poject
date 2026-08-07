@@ -82,11 +82,11 @@ const MODAL_FIXED_HEIGHT = 780;
  *  dashboard's TypeLocationFilter emits — the `locations` state can be
  *  `[]`, `[oneId]`, or `[multipleIds]`, and this helper reads all three
  *  consistently so every modal filters the same way. */
-function branchInScope(rowBranchId: string, scoped: string[] | null | undefined): boolean {
+export function branchInScope(rowBranchId: string, scoped: string[] | null | undefined): boolean {
     return !scoped || scoped.length === 0 || scoped.includes(rowBranchId);
 }
 
-function ModalShell({
+export function ModalShell({
     open, onClose, title, subtitle, children, footer, width = 900,
 }: ModalShellProps) {
     // Esc closes the modal. Clicking the backdrop closes too — the card
@@ -259,7 +259,7 @@ function Avatar({
 }
 
 /** Two-line customer cell — avatar on the left, name over email. */
-function CustomerCell({ c }: { c: Customer }) {
+export function CustomerCell({ c }: { c: Customer }) {
     const initials = c.initials || `${(c.firstName?.[0] ?? "").toUpperCase()}${(c.lastName?.[0] ?? "").toUpperCase()}`;
     const name = `${c.firstName} ${c.lastName}`.trim();
     return (
@@ -286,7 +286,7 @@ const TH = TABLE_TH;
 const TD = cn(TABLE_TD, "align-middle");
 
 /** "Mar 25, 2026" — matches the Figma date format across every modal. */
-function fmtDate(iso: string | undefined): string {
+export function fmtDate(iso: string | undefined): string {
     if (!iso) return "—";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
@@ -294,7 +294,7 @@ function fmtDate(iso: string | undefined): string {
 }
 
 /** "2025-10-28, 10:00 PM" — Failed payments modal uses this stamp. */
-function fmtDateTime(iso: string | undefined): string {
+export function fmtDateTime(iso: string | undefined): string {
     if (!iso) return "—";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
