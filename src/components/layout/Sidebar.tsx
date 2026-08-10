@@ -355,7 +355,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
     const navWinner = activeHrefFor(effectiveNavItems, pathname, search);
 
     return (
-        <aside className="h-full bg-[#f1f2ed] flex flex-col">
+        <aside className="h-full bg-[var(--colors-bg-canvas)] flex flex-col">
 
             {/* ── Logo ───────────────────────────────────────────── */}
             <div

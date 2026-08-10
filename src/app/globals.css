@@ -182,7 +182,7 @@
      (admin / instructor / attendee / customer / embed). This is the ONE knob
      for the page background: change this single value and every side updates,
      with no effect on the shared surface/hover tokens below. */
-  --colors-bg-canvas: #f1f2ed;
+  --colors-bg-canvas: #F0EFEC;
   --colors-bg-secondary: #fbfbfa;
   /* B2 warm · pampas-100 (was #f9fafb) */
   --colors-bg-tertiary: #f6f6f4;
@@ -220,7 +220,8 @@ html {
 
 body {
   font-family: 'DM Sans', system-ui, sans-serif;
-  background-color: var(--colors-bg-canvas);   /* app canvas (was #fbfbfa) */
+  background-color: var(--colors-bg-canvas);
+  /* app canvas (was #fbfbfa) */
   color: #1a1a2e;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
