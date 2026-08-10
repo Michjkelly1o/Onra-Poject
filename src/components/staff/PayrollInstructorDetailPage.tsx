@@ -106,7 +106,7 @@ function ActionBtn({ icon, label, onClick }: { icon: React.ReactNode; label: str
 
 function InstructorStatusBadge({ status }: { status: Instructor["status"] }) {
     const styles: Record<Instructor["status"], string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         inactive: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
     };
@@ -123,7 +123,7 @@ function InstructorStatusBadge({ status }: { status: Instructor["status"] }) {
 type ClassStatus = ClassSchedule["status"];
 
 const CLASS_STATUS_STYLES: Record<ClassStatus, string> = {
-    Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    Completed: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     Upcoming:  "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     Ongoing:   "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
@@ -235,7 +235,7 @@ function MetricCard({ label, value, hint, Icon }: {
                 </div>
             </div>
             <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">{value}</p>
-            {hint && <p className="text-[14px] text-[#067647] leading-[20px]">{hint}</p>}
+            {hint && <p className="text-[14px] text-[#164e52] leading-[20px]">{hint}</p>}
         </div>
     );
 }

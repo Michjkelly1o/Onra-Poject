@@ -284,12 +284,12 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                         </Button>
                     )}
                     {hasReactivatable && (
-                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
+                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
                         </Button>
                     )}
                     {hasRecoverable && (
-                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
@@ -834,7 +834,7 @@ export default function TaxPage() {
                                 >
                                     <div className={cn(
                                         "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
-                                        selected ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]" : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
+                                        selected ? "bg-[#e7f7ec] border-[#94aeaf] text-[#164e52]" : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
                                     )}>
                                         <opt.Icon className="w-4 h-4" />
                                     </div>

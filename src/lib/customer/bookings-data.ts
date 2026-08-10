@@ -24,7 +24,7 @@ import type { BookingStatus } from "@/components/customer/bookings/BookingCard";
 export type BookingViewStatus = "booked" | "waitlisted" | "attended" | "cancelled_free" | "cancelled_late" | "no_show";
 export type BookingTab = "upcoming" | "past";
 
-const GREEN = "#17b26a";
+const GREEN = "#164e52";
 const GRAY = "#475467";
 const RED = "#d92d20";
 
@@ -45,7 +45,7 @@ export interface StatusPresentation {
     cardIconColor: string;
 }
 
-const GREEN_PILL = "border-[#abefc6] bg-[#ecfdf3] text-[#067647]";
+const GREEN_PILL = "border-[#94aeaf] bg-[#eff6f3] text-[#164e52]";
 const RED_PILL = "border-[#fecdca] bg-[#fef3f2] text-[#b42318]";
 const GRAY_PILL = "border-[var(--colors-border-secondary)] bg-white/90 text-[var(--colors-text-secondary)]";
 // Status card tints — Figma 3696-33904 uses the brand secondary palette for the

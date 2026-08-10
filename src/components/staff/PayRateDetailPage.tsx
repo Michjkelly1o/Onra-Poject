@@ -60,7 +60,7 @@ const PAY_RATE_STATUS_LABEL = { active: "Active", archive: "Archive" } as const;
 
 function PayRateStatusBadge({ status }: { status: PayRate["status"] }) {
     const styles = status === "active"
-        ? "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
+        ? "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]"
         : "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]";
     return (
         <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium leading-[20px]", styles)}>
@@ -75,7 +75,7 @@ const TYPE_LABEL: Record<PayRateType, string> = {
 const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     flat:    "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
-    revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    revenue: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     monthly: "bg-[#f5fffa] border-1 border-[#94aeaf] text-[#10373a]",
 };
@@ -93,7 +93,7 @@ const INSTRUCTOR_STATUS_LABEL: Record<InstructorStatus, string> = {
 };
 function InstructorStatusBadge({ status }: { status: InstructorStatus }) {
     const styles: Record<InstructorStatus, string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         inactive: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
     };
@@ -733,14 +733,14 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
                             )}
                             {hasReactivatable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Check className="w-5 h-5 text-[#067647]" />}
+                                    leftIcon={<Check className="w-5 h-5 text-[#164e52]" />}
                                     onClick={() => setPendingConfirm({ mode: "bulk", rows: selectedRows, kind: "reactivate" })}>
                                     Reactivate
                                 </Button>
                             )}
                             {hasRecoverable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />}
+                                    leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />}
                                     onClick={() => setPendingConfirm({ mode: "bulk", rows: selectedRows, kind: "recover" })}>
                                     Recover
                                 </Button>
@@ -801,7 +801,7 @@ function SettingRow({ title, subtitle, on }: { title: string; subtitle: string; 
             </div>
             <p className={cn(
                 "text-[14px] leading-[20px] shrink-0",
-                on ? "text-[#067647]" : "text-[#98a2b3]",
+                on ? "text-[#164e52]" : "text-[#98a2b3]",
             )}>
                 {on ? "Active" : "Inactive"}
             </p>

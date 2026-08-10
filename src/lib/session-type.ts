@@ -41,8 +41,8 @@ export const SESSION_TYPE_FILTER_LABEL: Record<SessionType, string> = {
  *  mid-tone for the dashboard occupancy mini bars (the badge text colours
  *  read too heavy as a filled bar). */
 export const SESSION_TYPE_TAG_COLORS: Record<SessionType, { bg: string; text: string; border: string; bar: string }> = {
-    // Green (matches the DS success badge).
-    class:    { bg: "#ecfdf3", text: "#067647", border: "#abefc6", bar: "#7cc8a0" },
+    // Brand teal (positive / Class — client 2026-08-10).
+    class:    { bg: "#eff6f3", text: "#164e52", border: "#94aeaf", bar: "#457175" },
     // Purple / indigo.
     private:  { bg: "#f4f3ff", text: "#5925dc", border: "#d9d6fe", bar: "#a99cf5" },
     // Orange.

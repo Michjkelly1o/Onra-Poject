@@ -165,7 +165,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
     // read as finished — distinct from cancelled, which gets a red ✕ + red
     // strikethrough name (the class did NOT happen). (client 2026-08)
     const isCompleted = cls.status === "Completed";
-    const COMPLETED_GREEN = "#067647";
+    const COMPLETED_GREEN = "#164e52";
 
     // `minHeight: 72` guarantees a 45-min class still has room for title +
     // instructor + meta row at the current 88px-per-hour week-view scale

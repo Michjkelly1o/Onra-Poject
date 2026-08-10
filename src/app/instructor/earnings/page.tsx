@@ -502,7 +502,7 @@ interface KpiCardProps {
 function KpiCard({ icon: Icon, label, value, deltaPercent, deltaSuffix = "vs previous period" }: KpiCardProps) {
     const isPositive = deltaPercent >= 0;
     const ArrowIcon = isPositive ? ArrowUp : ArrowDown;
-    const deltaColor = isPositive ? "text-[#067647]" : "text-[#b42318]";
+    const deltaColor = isPositive ? "text-[#164e52]" : "text-[#b42318]";
     return (
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-5 flex items-start justify-end gap-6">
             <div className="flex-1 min-w-0 flex flex-col gap-2 items-start">

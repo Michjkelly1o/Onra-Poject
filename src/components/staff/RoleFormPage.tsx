@@ -404,7 +404,7 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
                                     <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Grants per month</td>
                                     <td className="px-4 py-3">
                                         {gl.unlimited ? (
-                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Unlimited</span>
+                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52] text-[13px] font-medium">Unlimited</span>
                                         ) : (
                                             <NumberInput
                                                 value={gl.grants_per_month ?? 0}
@@ -432,7 +432,7 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
                                     <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Max grant value (AED)</td>
                                     <td className="px-4 py-3">
                                         {gl.unlimited ? (
-                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Unlimited</span>
+                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52] text-[13px] font-medium">Unlimited</span>
                                         ) : (
                                             <NumberInput
                                                 value={gl.max_grant_value_aed ?? 0}
@@ -460,7 +460,7 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
                                     <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Remove unused grants</td>
                                     <td className="px-4 py-3">
                                         {gl.allow_remove_unused ? (
-                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Enabled</span>
+                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52] text-[13px] font-medium">Enabled</span>
                                         ) : (
                                             <span className="text-[14px] text-[var(--colors-fg-quaternary)]">—</span>
                                         )}

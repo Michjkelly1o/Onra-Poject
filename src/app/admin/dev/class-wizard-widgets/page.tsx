@@ -361,7 +361,7 @@ function TraceBlock({ title, script }: { title: string; script: Partial<WizardAn
         <div>
             <div className="mb-2 flex items-baseline justify-between gap-3">
                 <h3 className="text-[13px] font-medium text-[var(--colors-text-tertiary)]">{title}</h3>
-                <span className={cn("text-[12px] font-medium shrink-0", done ? "text-[#067647]" : "text-[#b42318]")}>
+                <span className={cn("text-[12px] font-medium shrink-0", done ? "text-[#164e52]" : "text-[#b42318]")}>
                     {done ? "✓ complete" : "✗ incomplete"}
                 </span>
             </div>

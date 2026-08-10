@@ -52,7 +52,7 @@ interface AttendanceRow {
 }
 
 const STATUS_BADGE_STYLES: Record<"On track" | "At risk" | "Pending", string> = {
-    "On track": "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    "On track": "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     "At risk":  "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     "Pending":  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
 };
@@ -201,7 +201,7 @@ function SummaryCell({ label, value, accent = false }: { label: string; value: s
     return (
         <div className={cn(
             "rounded-[10px] border-1 px-4 py-3 flex flex-col gap-0.5",
-            accent ? "bg-[#f5fffa] border-[#abefc6]" : "bg-white border-[var(--colors-border-secondary)]",
+            accent ? "bg-[#f5fffa] border-[#94aeaf]" : "bg-white border-[var(--colors-border-secondary)]",
         )}>
             <p className="text-xs font-normal text-[var(--colors-text-quaternary)] leading-4 uppercase tracking-wider">{label}</p>
             <p className="text-lg font-semibold text-[var(--colors-text-primary)] leading-7">{value}</p>

@@ -986,7 +986,7 @@ function PromoPreviewPanel({ form, branches }: { form: PromoFormData; branches: 
                         )}
                         {/* Status badge — top right (system status, not voucher copy) */}
                         <div className="absolute top-3 right-3 z-10">
-                            <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
+                            <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]">
                                 Active
                             </span>
                         </div>

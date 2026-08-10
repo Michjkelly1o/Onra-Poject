@@ -245,7 +245,7 @@ function VisibilityBadge({ visible }: { visible: boolean }) {
         <span
             className={
                 visible
-                    ? "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]"
+                    ? "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]"
                     : "inline-flex items-center px-2 py-0.5 rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]"
             }
         >

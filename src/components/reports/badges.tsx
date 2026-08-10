@@ -31,7 +31,7 @@ type Tone = "green" | "red" | "yellow" | "blue" | "indigo" | "purple" | "gray";
 const TONE: Record<Tone, string> = {
     // Active / Complete / Attended / Rewarded — same green as
     // CustomerPaymentsTab `complete` and StatusBadge `active`.
-    green:  "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    green:  "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     // Failed / Removed / Late cancellation.
     red:    "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     // Pending / In progress / Waitlisted / Paused / Extended.

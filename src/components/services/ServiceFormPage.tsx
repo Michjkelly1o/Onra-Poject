@@ -180,7 +180,7 @@ function ServicePreviewCard({ data }: { data: PreviewData }) {
                     <img src={data.coverPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
                 )}
                 <div className="absolute top-3 right-3">
-                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
+                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]">
                         Active
                     </span>
                 </div>
@@ -357,7 +357,7 @@ function ServiceDetailStep({
                                                 <div className={cn(
                                                     "w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 border-1",
                                                     selected
-                                                        ? "bg-[#e7f7ec] border-[#abefc6] text-[#067647]"
+                                                        ? "bg-[#e7f7ec] border-[#94aeaf] text-[#164e52]"
                                                         : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
                                                 )}>
                                                     <opt.Icon className="w-4 h-4" />

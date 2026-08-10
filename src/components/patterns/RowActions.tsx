@@ -23,7 +23,7 @@
 //   • Items: px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)], hover
 //     bg-[var(--colors-bg-secondary)], icon w-4 h-4 text-[var(--colors-text-quaternary)]
 //   • Danger variant: text-[#b42318] for text + icon, hover bg-[#fef3f2]
-//   • Success variant: text-[#067647] for icon, used by Mark-as-paid / Present
+//   • Success variant: text-[#164e52] for icon, used by Mark-as-paid / Present
 //   • Disabled item: text-[var(--colors-fg-quaternary)] + cursor-not-allowed; icon text-[var(--colors-border-primary)]
 //   • Disabled trigger: opacity-30 + cursor-not-allowed (e.g. PayrollRunPage)
 
@@ -49,7 +49,7 @@ export interface RowActionItem {
     success?: boolean;
     /** Like `success` but also paints the TEXT green. Used by the "Present"
      *  items in BookedRowActions + AppointmentDetailPage where the original
-     *  design highlighted both icon AND label with `#067647`. Mark-as-paid
+     *  design highlighted both icon AND label with `#164e52`. Mark-as-paid
      *  in PayrollRunPage uses plain `success: true` (icon green only). */
     successText?: boolean;
     /** Hide this item entirely. Cleaner than `{cond && <Item />}` at the call
@@ -154,7 +154,7 @@ export function RowActions({
                                         : item.danger
                                             ? "text-[#b42318] hover:bg-[#fef3f2]"
                                             : item.successText
-                                                ? "text-[#067647] hover:bg-[var(--colors-bg-secondary)]"
+                                                ? "text-[#164e52] hover:bg-[var(--colors-bg-secondary)]"
                                                 : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                 )}
                             >
@@ -166,7 +166,7 @@ export function RowActions({
                                             : item.danger
                                                 ? "text-[#b42318]"
                                                 : item.success
-                                                    ? "text-[#067647]"
+                                                    ? "text-[#164e52]"
                                                     : "text-[var(--colors-text-quaternary)]",
                                     )}
                                 />

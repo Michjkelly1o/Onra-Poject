@@ -54,7 +54,7 @@ const STATUS_LABEL: Record<PayRateStatus, string> = {
 };
 
 const STATUS_BADGE_STYLE: Record<PayRateStatus, string> = {
-    active:  "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    active:  "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     archive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
 };
 
@@ -72,7 +72,7 @@ const TYPE_LABEL: Record<PayRateType, string> = {
 const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     flat:    "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
-    revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    revenue: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     monthly: "bg-[#f5fffa] border-1 border-[#94aeaf] text-[#10373a]",
 };
@@ -213,7 +213,7 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
                         </Button>
                     )}
                     {flags.hasArchive && (
-                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}

@@ -120,7 +120,7 @@ const TXN_STATUS_LABEL: Record<TxnStatus, string> = {
 
 function TxnStatusBadge({ status }: { status: TxnStatus }) {
     const styles: Record<TxnStatus, string> = {
-        complete: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        complete: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         pending: "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
         failed: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         refunded: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
@@ -211,7 +211,7 @@ function GiftCardWidget({ card, design }: { card: IssuedGiftCard; design?: GiftC
         ? Math.min(100, Math.round((card.current_balance_aed / card.face_value_aed) * 100))
         : 0;
     const statusStyle: Record<IssuedGiftCard["status"], string> = {
-        active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        active: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         redeemed: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         expired: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         refunded: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",

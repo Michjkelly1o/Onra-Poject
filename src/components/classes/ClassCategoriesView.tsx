@@ -41,7 +41,7 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] sticky top-0 z-[5] bg-[var(--colors-bg-primary)] shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
 const STATUS_BADGE: Record<ClassCategory["status"], string> = {
-    active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 const STATUS_LABEL: Record<ClassCategory["status"], string> = {

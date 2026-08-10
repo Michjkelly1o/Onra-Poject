@@ -5,7 +5,7 @@ import type { RoleType } from "@/lib/store";
 // Shared so the Staff, Payroll list and Payroll detail modules all render the
 // SAME colored role pill (client 2026-07-28).
 export const ROLE_TYPE_BADGE: Record<RoleType, string> = {
-    owner:        "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    owner:        "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     branch_admin: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     operator:     "bg-[#eff4ff] border-1 border-[#c7d7fe] text-[#3538cd]",
     front_desk:   "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",

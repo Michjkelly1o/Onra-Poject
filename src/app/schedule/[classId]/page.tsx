@@ -1457,8 +1457,8 @@ function RemoveBookingModal({ open, count, sampleName, defaultRefund = true, onC
 //     [/class/[classId]/page.tsx](src/app/class/[classId]/page.tsx#L344).
 //
 // Renders in the Status column for Ongoing rows that haven't been marked
-// yet. Same DS `secondary-gray` chrome + `#067647` green text/icon +
-// `#ecfdf3` hover tint as the bulk "Mark present" button, so the two
+// yet. Same DS `secondary-gray` chrome + `#164e52` green text/icon +
+// `#eff6f3` hover tint as the bulk "Mark present" button, so the two
 // affordances read as one language. Clicking flips the cell to a
 // `PresentBadge` (see the Status column render). A no-show is auto-
 // flagged by the system — no explicit button.
@@ -1469,8 +1469,8 @@ function PresentButton({ onClick }: { onClick: () => void }) {
             variant="secondary-gray"
             size="sm"
             onClick={onClick}
-            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
-            leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+            className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]"
+            leftIcon={<CheckCircle className="w-4 h-4 text-[#164e52]" />}
         >
             Present
         </Button>
@@ -1513,7 +1513,7 @@ function BulkActionBar({ variant, count, onClear, onCancel, onRemove, onPresent,
                         </>
                     )}
                     {variant === "ongoing" && (
-                        <Button variant="secondary-gray" size="sm" className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]" leftIcon={<CheckCircle className="w-5 h-5 text-[#067647]" />} onClick={onPresent}>
+                        <Button variant="secondary-gray" size="sm" className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]" leftIcon={<CheckCircle className="w-5 h-5 text-[#164e52]" />} onClick={onPresent}>
                             Mark present
                         </Button>
                     )}
@@ -2892,8 +2892,8 @@ export default function ClassDetailPage() {
                             <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                         </button>
                         <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                            <div className="w-12 h-12 rounded-full bg-[#ecfdf3] flex items-center justify-center shrink-0">
-                                <CheckCircle className="w-6 h-6 text-[#067647]" />
+                            <div className="w-12 h-12 rounded-full bg-[#eff6f3] flex items-center justify-center shrink-0">
+                                <CheckCircle className="w-6 h-6 text-[#164e52]" />
                             </div>
                             <div className="flex flex-col gap-1 text-center w-full">
                                 <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Mark {selectedIds.size} customer{selectedIds.size === 1 ? "" : "s"} as present?</h3>

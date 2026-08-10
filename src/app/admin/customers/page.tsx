@@ -383,12 +383,12 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
                         </Button>
                     )}
                     {flags.reactivate && (
-                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
+                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
                         </Button>
                     )}
                     {flags.recover && (
-                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}

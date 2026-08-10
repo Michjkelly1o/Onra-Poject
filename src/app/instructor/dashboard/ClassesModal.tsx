@@ -43,7 +43,7 @@ const STATUS_ORDER: Record<ClassSchedule["status"], number> = {
 const STATUS_STYLES: Record<ClassSchedule["status"], string> = {
     Upcoming: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     Ongoing:  "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-    Completed:"bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    Completed:"bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     Cancelled:"bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
 };
 

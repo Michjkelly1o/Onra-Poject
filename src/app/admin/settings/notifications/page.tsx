@@ -162,7 +162,7 @@ function Pill({ tone, children }: {
     tone: "green" | "amber" | "red" | "blue" | "gray"; children: React.ReactNode;
 }) {
     const tint =
-        tone === "green" ? "bg-[#ecfdf3] border-[#abefc6] text-[#067647]"
+        tone === "green" ? "bg-[#eff6f3] border-[#94aeaf] text-[#164e52]"
       : tone === "amber" ? "bg-[#fffaeb] border-[#fedf89] text-[#b54708]"
       : tone === "red"   ? "bg-[#fef3f2] border-[#fecdca] text-[#b42318]"
       : tone === "blue"  ? "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]"

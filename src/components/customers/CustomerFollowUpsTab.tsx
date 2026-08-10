@@ -81,7 +81,7 @@ function IconActionButton({
                 className={cn(
                     "inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors",
                     "text-[var(--colors-text-quaternary)]",
-                    tone === "success" && "hover:bg-[#ecfdf3] hover:text-[#067647]",
+                    tone === "success" && "hover:bg-[#eff6f3] hover:text-[#164e52]",
                     tone === "warning" && "hover:bg-[#fffaeb] hover:text-[#b54708]",
                     tone === "danger"  && "hover:bg-[#fef3f2] hover:text-[#b42318]",
                     tone === "neutral" && "hover:bg-[var(--colors-bg-tertiary)] hover:text-[var(--colors-text-secondary)]",
@@ -345,7 +345,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
                                                     <span
                                                         className={cn(
                                                             "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1",
-                                                            task.outcome === "reached" && "bg-[#ecfdf3] border-[#abefc6] text-[#067647]",
+                                                            task.outcome === "reached" && "bg-[#eff6f3] border-[#94aeaf] text-[#164e52]",
                                                             task.outcome === "follow_up" && "bg-[#fffaeb] border-[#fedf89] text-[#b54708]",
                                                             task.outcome === "not_interested" && "bg-[#fef3f2] border-[#fecdca] text-[#b42318]",
                                                             task.outcome === "auto_closed" && "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]",

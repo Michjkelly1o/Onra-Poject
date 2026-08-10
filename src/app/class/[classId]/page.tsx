@@ -201,8 +201,8 @@ function BulkActionBar({ count, onClear, onPresent }: {
                         variant="secondary-gray"
                         size="sm"
                         onClick={onPresent}
-                        className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
-                        leftIcon={<CheckCircle className="w-5 h-5 text-[#067647]" />}
+                        className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]"
+                        leftIcon={<CheckCircle className="w-5 h-5 text-[#164e52]" />}
                     >
                         Mark present
                     </Button>
@@ -338,8 +338,8 @@ function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
  *  verbatim (white bg, `#d0d5dd` border, inset shadow, `#f9fafb` hover
  *  bg) so it matches every other secondary-gray button in the admin +
  *  instructor surfaces. Only the text + icon are overridden to the
- *  green palette (`#067647`), and the hover bg gets a mint tint
- *  (`#ecfdf3`) — same pattern admin's bulk "Mark present" button uses
+ *  green palette (`#164e52`), and the hover bg gets a mint tint
+ *  (`#eff6f3`) — same pattern admin's bulk "Mark present" button uses
  *  ([/schedule/[classId]/page.tsx:1596](src/app/schedule/[classId]/page.tsx#L1596)).
  *  Disabled state is handled by Button's built-in `opacity-50` so the
  *  green dims uniformly. */
@@ -350,8 +350,8 @@ function PresentButton({ disabled, onClick }: { disabled: boolean; onClick: () =
             size="sm"
             disabled={disabled}
             onClick={onClick}
-            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
-            leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+            className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]"
+            leftIcon={<CheckCircle className="w-4 h-4 text-[#164e52]" />}
         >
             Present
         </Button>

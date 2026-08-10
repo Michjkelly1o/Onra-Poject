@@ -338,8 +338,8 @@ function BookedCard({ booking, customer, canPresent, onPresent, onViewDetails }:
                 <Button
                     variant="secondary-gray"
                     size="md"
-                    className="w-full text-[#067647] border-[#a9c3b4] hover:bg-[#ecfdf3] hover:text-[#067647]"
-                    leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+                    className="w-full text-[#164e52] border-[#94aeaf] hover:bg-[#eff6f3] hover:text-[#164e52]"
+                    leftIcon={<CheckCircle className="w-4 h-4 text-[#164e52]" />}
                     onClick={(e) => { e.stopPropagation(); onPresent(); }}
                 >
                     Present

@@ -25,7 +25,7 @@ export interface BookingStatus {
 }
 
 const TONE: Record<BookingTone, { Icon: ComponentType<SVGProps<SVGSVGElement>>; color: string }> = {
-    success: { Icon: CheckCircle, color: "#17b26a" },
+    success: { Icon: CheckCircle, color: "#164e52" },
     warning: { Icon: Clock, color: "#f79009" },
     error: { Icon: XCircle, color: "#f04438" },
     neutral: { Icon: SlashCircle01, color: "#667085" },

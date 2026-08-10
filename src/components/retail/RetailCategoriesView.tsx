@@ -33,7 +33,7 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 const STATUS_BADGE: Record<RetailCategory["status"], string> = {
-    active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
 };
 const STATUS_LABEL: Record<RetailCategory["status"], string> = {

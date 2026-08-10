@@ -156,7 +156,7 @@ function TemplatePreviewCard({ data }: { data: PreviewData }) {
             <div className="relative h-[156px] w-full overflow-hidden shrink-0 bg-gradient-to-br from-[#dbdbdb] to-[#dbdbdb]/20">
                 {data.coverPreview && <img src={data.coverPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />}
                 <div className="absolute top-3 right-3">
-                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#ecfdf3] border border-[#abefc6] text-[#067647]">Active</span>
+                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#eff6f3] border border-[#94aeaf] text-[#164e52]">Active</span>
                 </div>
             </div>
             <div className="flex flex-col gap-4 px-5 pb-5 pt-4">

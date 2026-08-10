@@ -66,7 +66,7 @@ export function DetailTimeRow({
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span>{time.branchTime}</span>
                 {time.yourTime && (
-                    <span className="shrink-0 rounded-md border border-[#abefc6] bg-[#ecfdf3] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#067647]">
+                    <span className="shrink-0 rounded-md border border-[#94aeaf] bg-[#eff6f3] px-1.5 py-0.5 text-xs font-medium leading-[18px] text-[#164e52]">
                         Branch time
                     </span>
                 )}

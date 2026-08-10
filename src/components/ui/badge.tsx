@@ -119,7 +119,7 @@ export function PresentBadge({ className }: { className?: string }) {
     return (
         <span className={cn(
             "inline-flex items-center px-2 py-0.5 rounded-full border text-[12px] font-medium leading-[18px] whitespace-nowrap",
-            "bg-[#ecfdf3] border-[#abefc6] text-[#067647]",
+            "bg-[#eff6f3] border-[#94aeaf] text-[#164e52]",
             className,
         )}>
             Present

@@ -71,7 +71,7 @@ const ROLE_STATUS_LABEL: Record<RoleStatus, string> = {
     active: "Active", inactive: "Inactive", archive: "Archive",
 };
 const ROLE_STATUS_BADGE: Record<RoleStatus, string> = {
-    active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
     archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
 };
@@ -83,7 +83,7 @@ const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
 };
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
-    active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
     archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
 };
@@ -91,7 +91,7 @@ const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
 // ─── Role-type badge palette (per Figma staff tab) ─────────────────────────
 
 const ROLE_TYPE_BADGE: Record<RoleType, string> = {
-    owner:        "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    owner:        "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     branch_admin: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     operator:     "bg-[#eff4ff] border-1 border-[#c7d7fe] text-[#3538cd]",
     front_desk:   "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
@@ -1753,14 +1753,14 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             )}
                             {bulkRoleReactivatable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Check className="w-5 h-5 text-[#067647]" />}
+                                    leftIcon={<Check className="w-5 h-5 text-[#164e52]" />}
                                     onClick={() => setPendingBulk({ entity: "role", kind: "reactivate" })}>
                                     Reactivate
                                 </Button>
                             )}
                             {bulkRoleRecoverable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />}
+                                    leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />}
                                     onClick={() => setPendingBulk({ entity: "role", kind: "recover" })}>
                                     Recover
                                 </Button>
@@ -1805,14 +1805,14 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             )}
                             {bulkStaffReactivatable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Check className="w-5 h-5 text-[#067647]" />}
+                                    leftIcon={<Check className="w-5 h-5 text-[#164e52]" />}
                                     onClick={() => setPendingBulk({ entity: "staff", kind: "reactivate" })}>
                                     Reactivate
                                 </Button>
                             )}
                             {bulkStaffRecoverable && (
                                 <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />}
+                                    leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />}
                                     onClick={() => setPendingBulk({ entity: "staff", kind: "recover" })}>
                                     Recover
                                 </Button>

@@ -85,7 +85,7 @@ export function RadioCardGroup<K extends string>({
                             <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px] flex items-center gap-2 flex-wrap">
                                 <span>{opt.label}</span>
                                 {opt.recommended && (
-                                    <span className="inline-flex items-center h-5 px-1.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[11px] font-medium text-[#067647] whitespace-nowrap">
+                                    <span className="inline-flex items-center h-5 px-1.5 rounded-full bg-[#eff6f3] border border-[#94aeaf] text-[11px] font-medium text-[#164e52] whitespace-nowrap">
                                         Recommended
                                     </span>
                                 )}

@@ -598,7 +598,7 @@ function ActivityTab({ product, adjRows, branches }: {
                                     <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{formatDate(a.createdAt)}</td>
                                     <td className={TD}>{branch?.name ?? "—"}</td>
                                     <td className={cn(TD)}>{KIND_LABEL[a.kind]}</td>
-                                    <td className={cn(TD, "whitespace-nowrap font-medium", positive ? "text-[#067647]" : "text-[#b42318]")}>
+                                    <td className={cn(TD, "whitespace-nowrap font-medium", positive ? "text-[#164e52]" : "text-[#b42318]")}>
                                         {positive ? `+${a.delta} units` : `${a.delta} units`}
                                     </td>
                                     <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{a.reason ?? "—"}</td>

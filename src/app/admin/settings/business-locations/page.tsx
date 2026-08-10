@@ -867,7 +867,7 @@ function BranchActionMenu({
                     <MenuItem icon={<Plus className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}     label="Add room"    onClick={onAddRoom} />
 
                     {status === "inactive" && (
-                        <MenuItem icon={<Check className="w-4 h-4 text-[#067647]" />}  label="Reactivate"  onClick={onToggleEnable} />
+                        <MenuItem icon={<Check className="w-4 h-4 text-[#164e52]" />}  label="Reactivate"  onClick={onToggleEnable} />
                     )}
                     <MenuItem icon={<Archive className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}  label="Archive"     onClick={onArchive} />
                     {status === "active" && (
@@ -907,7 +907,7 @@ function RoomActionMenu({
                 <>
                     <MenuItem icon={<Pencil01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Edit room" onClick={onEdit} />
                     {status === "inactive" && (
-                        <MenuItem icon={<Check className="w-4 h-4 text-[#067647]" />}  label="Reactivate" onClick={onToggleEnable} />
+                        <MenuItem icon={<Check className="w-4 h-4 text-[#164e52]" />}  label="Reactivate" onClick={onToggleEnable} />
                     )}
                     <MenuItem icon={<Archive className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}  label="Archive"   onClick={onArchive} />
                     {status === "active" && (

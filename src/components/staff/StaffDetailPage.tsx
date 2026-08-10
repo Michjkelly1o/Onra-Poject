@@ -57,12 +57,12 @@ const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
 };
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
-    active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 const ROLE_TYPE_BADGE: Record<RoleType, string> = {
-    owner:        "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    owner:        "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     branch_admin: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     operator:     "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     front_desk:   "bg-[#fdf2fa] border-1 border-[#fcceee] text-[#c11574]",
@@ -320,7 +320,7 @@ function PermissionCellView({ value, ariaLabel }: { value: PermissionCell; ariaL
     if (value === "na" || value === false) {
         return <span className="text-[14px] text-[var(--colors-fg-quaternary)]" aria-label={`${ariaLabel}: not applicable`}>—</span>;
     }
-    return <Check className="w-4 h-4 text-[#067647] inline-block" aria-label={ariaLabel} />;
+    return <Check className="w-4 h-4 text-[#164e52] inline-block" aria-label={ariaLabel} />;
 }
 
 function PermissionSection({ section, role }: { section: PermissionSectionSpec; role: Role }) {
@@ -423,10 +423,10 @@ function PerformanceMetricCard({ label, value, delta }: {
             <p className="font-semibold text-[28px] leading-[36px] text-[var(--colors-text-primary)]">{value}</p>
             <div className="flex items-center gap-1 text-[13px]">
                 {positive
-                    ? <ArrowUp   className="w-3.5 h-3.5 text-[#067647]" />
+                    ? <ArrowUp   className="w-3.5 h-3.5 text-[#164e52]" />
                     : <ArrowDown className="w-3.5 h-3.5 text-[#b42318]" />
                 }
-                <span className={positive ? "text-[#067647] font-medium" : "text-[#b42318] font-medium"}>
+                <span className={positive ? "text-[#164e52] font-medium" : "text-[#b42318] font-medium"}>
                     {Math.abs(delta)}%
                 </span>
                 <span className="text-[var(--colors-text-quaternary)]">vs last week</span>

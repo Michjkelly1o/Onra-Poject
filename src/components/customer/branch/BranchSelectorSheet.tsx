@@ -53,7 +53,7 @@ function BranchCard({
                     <span className="truncate text-sm font-semibold leading-5 text-[var(--brand-text)]">{name}</span>
                     {operational && (
                         <span className="flex items-center gap-1 text-sm leading-5">
-                            <span className="font-medium text-[#067647]">{operational.isOpen ? "Open" : "Closed"}</span>
+                            <span className="font-medium text-[#164e52]">{operational.isOpen ? "Open" : "Closed"}</span>
                             <span className="text-[var(--colors-text-quaternary)]">•</span>
                             <span className="truncate text-[var(--colors-text-quaternary)]">{operational.hoursLabel}</span>
                         </span>

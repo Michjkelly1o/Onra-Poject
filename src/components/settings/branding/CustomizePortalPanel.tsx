@@ -230,12 +230,12 @@ function CopyButton({ text, title }: { text: string; title: string }) {
                 className={cn(
                     "w-11 h-11 shrink-0 border-1 rounded-[8px] flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors",
                     copied
-                        ? "border-[#abefc6] bg-[#ecfdf3]"
+                        ? "border-[#94aeaf] bg-[#eff6f3]"
                         : "border-[var(--colors-border-primary)] bg-white hover:bg-[var(--colors-bg-secondary)]",
                 )}
             >
                 {copied
-                    ? <Check className="w-5 h-5 text-[#067647]" />
+                    ? <Check className="w-5 h-5 text-[#164e52]" />
                     : <Copy03 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
                 }
             </button>

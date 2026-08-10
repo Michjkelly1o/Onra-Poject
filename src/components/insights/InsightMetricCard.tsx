@@ -114,7 +114,7 @@ export function InsightMetricCard({ metric }: { metric: Metric }) {
                     <span className={cn(
                         "inline-flex items-center gap-0.5 pl-1.5 pr-2 py-0.5 rounded-full text-[12px] font-medium border-1",
                         positive
-                            ? "bg-[#ecfdf3] border-[#abefc6] text-[#067647]"
+                            ? "bg-[#eff6f3] border-[#94aeaf] text-[#164e52]"
                             : "bg-[#fef3f2] border-[#fecdca] text-[#b42318]",
                     )}>
                         {positive

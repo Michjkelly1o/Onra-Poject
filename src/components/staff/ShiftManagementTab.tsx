@@ -363,12 +363,12 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                         </Button>
                     )}
                     {hasReactivatable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
+                        <Button variant="secondary-gray" size="sm" leftIcon={<Check className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
                         </Button>
                     )}
                     {hasRecoverable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}

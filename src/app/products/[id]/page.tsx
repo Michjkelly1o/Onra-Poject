@@ -164,7 +164,7 @@ const MODAL_CONFIG: Record<ModalAction, {
 function PatternBanner({ kind }: { kind: ProductKind }) {
     const Icon = kind === "package" ? PackageIcon : CreditCard02;
     const tint = kind === "package"
-        ? { bg: "bg-[var(--brand-tertiary)]", fg: "text-[var(--colors-secondary-600)]", line: "#abefc6" }
+        ? { bg: "bg-[var(--brand-tertiary)]", fg: "text-[var(--colors-secondary-600)]", line: "#94aeaf" }
         : { bg: "bg-[#e0eaff]", fg: "text-[#3538cd]", line: "#c7d7fe" };
 
     return (

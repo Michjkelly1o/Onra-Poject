@@ -561,7 +561,7 @@ function GiftCardSection({ balance, applied, enabled, onToggle }: {
                     <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Gift card balance</p>
                     <p className="text-[14px] text-[var(--colors-text-tertiary)]">
                         {enabled && applied > 0
-                            ? <>Applying <span className="text-[#067647] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
+                            ? <>Applying <span className="text-[#164e52] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
                             : <>AED {balance.toLocaleString()} available to redeem</>
                         }
                     </p>
@@ -618,7 +618,7 @@ function AccountCreditSection({ balance, applied, enabled, onToggle }: {
                     <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Available balance</p>
                     <p className="text-[14px] text-[var(--colors-text-tertiary)]">
                         {enabled && applied > 0
-                            ? <>Applying <span className="text-[#067647] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
+                            ? <>Applying <span className="text-[#164e52] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
                             : <>AED {balance.toLocaleString()} available to apply</>
                         }
                     </p>
