@@ -159,7 +159,7 @@ function fmtReviews(n: number): string {
 
 const BADGE_TONE: Record<AiOptionBadgeTone, string> = {
     neutral: "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-secondary)]",
-    success: "bg-[#ecfdf3] text-[#067647]",
+    success: "bg-[#eff6f3] text-[#164e52]",
     warning: "bg-[#fffaeb] text-[#b54708]",
     danger: "bg-[#fef3f2] text-[#b42318]",
 };

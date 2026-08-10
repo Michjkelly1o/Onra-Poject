@@ -493,7 +493,7 @@ function MappingSummaryPanel({
     // Value tokens per Figma: neutral for total, success-600 for valid,
     // error-700 for invalid, warning-600 for duplicate. When the count is
     // zero the semantic tone is dropped so an all-zero row doesn't shout.
-    const validColor = t.valid > 0 ? "#079455" : "#101828";
+    const validColor = t.valid > 0 ? "#164e52" : "#101828";
     const invalidColor = t.invalid > 0 ? "#b42318" : "#101828";
     const duplicateColor = t.duplicate > 0 ? "#dc6803" : "#101828";
     return (
@@ -510,7 +510,7 @@ function MappingSummaryPanel({
                         Summary
                     </h4>
                 </div>
-                <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[12px] font-medium leading-[18px] text-[#067647]">
+                <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full bg-[#eff6f3] border border-[#94aeaf] text-[12px] font-medium leading-[18px] text-[#164e52]">
                     {data.columnsNote}
                 </span>
             </div>
@@ -544,7 +544,7 @@ function MappingSummaryPanel({
                                     </td>
                                     <td className="px-6 py-3 align-middle">
                                         {f.target ? (
-                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#ecfdf3] border border-[#abefc6] text-[12px] font-medium leading-[18px] text-[#067647]">
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#eff6f3] border border-[#94aeaf] text-[12px] font-medium leading-[18px] text-[#164e52]">
                                                 {f.target}
                                             </span>
                                         ) : (
@@ -787,7 +787,7 @@ export function MigCard({
                             </h4>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#ecfdf3] border border-[#abefc6] text-[12px] font-medium leading-[18px] text-[#067647]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#eff6f3] border border-[#94aeaf] text-[12px] font-medium leading-[18px] text-[#164e52]">
                                 {mappedCount} mapped
                             </span>
                             {needsReviewCount > 0 && (
@@ -876,9 +876,9 @@ export function MigCard({
         }
         return (
             <CardShell>
-                <div className="self-start inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ecfdf3] border border-[#abefc6]">
-                    <CheckCircle className="size-3.5 text-[#067647]" />
-                    <span className="text-[12px] font-medium text-[#067647]">
+                <div className="self-start inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#eff6f3] border border-[#94aeaf]">
+                    <CheckCircle className="size-3.5 text-[#164e52]" />
+                    <span className="text-[12px] font-medium text-[#164e52]">
                         Import complete
                     </span>
                 </div>
