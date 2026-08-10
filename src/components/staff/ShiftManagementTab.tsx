@@ -69,7 +69,7 @@ function EnabledToggle({ on, disabled, onChange }: {
             onClick={() => !disabled && onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full p-0.5 flex items-center transition-colors shrink-0",
-                on ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                on ? "bg-[#164e52] justify-end" : "bg-[#f2f4f7] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -147,8 +147,8 @@ function DayChip({ active, disabled, letter, onClick, title }: {
                 disabled
                     ? "border-transparent bg-[#f2f4f7] text-[#d0d5dd] cursor-not-allowed"
                     : active
-                        ? "border-[#7ba08c] bg-[#e7f2eb] text-[#3b5446]"
-                        : "border-[#e4e7ec] bg-white text-[#98a2b3] hover:border-[#aad4bd]",
+                        ? "border-[#457175] bg-[#e7f2eb] text-[#3b5446]"
+                        : "border-[#e4e7ec] bg-white text-[#98a2b3] hover:border-[#94aeaf]",
             )}
         >
             {letter}
@@ -293,7 +293,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
     edit:         {} as never,
     assign_staff: {} as never,
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Archive, iconColor: "text-[#164e52]",
         titleSingle: "Archive this shift?",
         titleBulk:   n => `Archive ${n} shifts?`,
         description: subject => <>{subject} will be hidden from the default shift list. You can recover archived shifts at any time.</>,
@@ -309,7 +309,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         tone: "destructive",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Check, iconColor: "text-[#164e52]",
         titleSingle: "Reactivate this shift?",
         titleBulk:   n => `Reactivate ${n} shifts?`,
         description: subject => <>{subject} will become assignable again.</>,
@@ -317,7 +317,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         tone: "primary",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: RefreshCcw01, iconColor: "text-[#164e52]",
         titleSingle: "Recover this shift?",
         titleBulk:   n => `Recover ${n} shifts?`,
         description: subject => <>{subject} will be restored to Active status and become assignable to staff again.</>,
@@ -421,7 +421,7 @@ function PillBtn({ label, selected, onClick }: { label: string; selected: boolea
             className={cn(
                 "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all",
                 selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                    ? "bg-[#eff6f3] border-2 border-[#457175] text-[#344054]"
                     : "bg-white border-1 border-[#e4e7ec] text-[#344054] hover:bg-[#f9fafb]",
             )}>
             {label}
@@ -568,8 +568,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[#d0d5dd] hover:border-[#457175]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}

@@ -77,7 +77,7 @@ const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    monthly: "bg-[#f5fffa] border-1 border-[#aad4bd] text-[#3b5446]",
+    monthly: "bg-[#f5fffa] border-1 border-[#94aeaf] text-[#3b5446]",
 };
 
 function TypeBadge({ type }: { type: PayRateType }) {
@@ -151,8 +151,8 @@ function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -229,7 +229,7 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     destructive: boolean;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", Icon: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", Icon: Archive, iconColor: "text-[#164e52]",
         title: s => `Archive ${s}?`,
         description: s => `${s} will be moved to the archive. You can recover it any time.`,
         confirmLabel: "Archive", destructive: false,
@@ -241,13 +241,13 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         confirmLabel: "Deactivate", destructive: true,
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", Icon: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", Icon: RefreshCcw01, iconColor: "text-[#164e52]",
         title: s => `Recover ${s}?`,
         description: s => `${s} will be restored to Active.`,
         confirmLabel: "Recover", destructive: false,
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", Icon: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", Icon: Check, iconColor: "text-[#164e52]",
         title: s => `Reactivate ${s}?`,
         description: s => `${s} will be set back to Active.`,
         confirmLabel: "Reactivate", destructive: false,

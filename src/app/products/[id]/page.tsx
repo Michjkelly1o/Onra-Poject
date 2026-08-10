@@ -1054,7 +1054,7 @@ function CustomerAvatar({ customer }: { customer: Customer }) {
     }
     return (
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[14px] font-semibold shrink-0"
-            style={{ backgroundColor: "#658774" }}>
+            style={{ backgroundColor: "#164e52" }}>
             {customer.initials}
         </div>
     );

@@ -83,7 +83,7 @@ export function ClientsModal({ open, onClose, classes, bookings }: ClientsModalP
                     email: c.email,
                     imageUrl: c.imageUrl,
                     initials: c.initials,
-                    color: "#aad4bd",
+                    color: "#94aeaf",
                     bookings: stats.bookings,
                     visits:   stats.visits,
                     lastVisitISO: stats.lastVisitISO,

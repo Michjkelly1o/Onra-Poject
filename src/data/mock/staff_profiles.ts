@@ -94,7 +94,7 @@ export const staff_profiles: StaffProfile[] = [
         branch_id: "branch_forma_south",
         full_name: "Lana Steiner",
         initials: "LS",
-        color_hex: "#658774",
+        color_hex: "#164e52",
         role: "instructor",
         status: "active",
     },

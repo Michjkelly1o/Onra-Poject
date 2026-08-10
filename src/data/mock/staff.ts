@@ -29,7 +29,7 @@ export const staff: StaffSeed[] = [
         id: "user_alex_owen",
         first_name: "Alex", last_name: "Owen", full_name: "Alex Owen",
         email: "alex@fitlab.com", phone: "+971 55 100 0001",
-        initials: "AO", color_hex: "#658774",
+        initials: "AO", color_hex: "#164e52",
         role_id: "role_owner",
         branch_id: null, // All locations
         status: "active",
@@ -268,7 +268,7 @@ export const staff: StaffSeed[] = [
         id: "staff_lana_steiner",
         first_name: "Lana", last_name: "Steiner", full_name: "Lana Steiner",
         email: "lana@email.com", phone: "+971 55 200 2007",
-        initials: "LS", color_hex: "#658774",
+        initials: "LS", color_hex: "#164e52",
         role_id: "role_instructor",
         branch_id: "branch_forma_south",
         status: "active",

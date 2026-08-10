@@ -480,14 +480,14 @@ export default function MigrationsImportsPage() {
                                                         type="button"
                                                         onClick={() => downloadInvalidRowsReport(row)}
                                                         aria-label={`Download ${row.invalid_rows_file_name}`}
-                                                        className="flex items-center gap-3 max-w-[240px] rounded-[6px] px-1 py-0.5 -mx-1 -my-0.5 hover:bg-[var(--colors-bg-tertiary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#aad4bd] transition-colors cursor-pointer text-left"
+                                                        className="flex items-center gap-3 max-w-[240px] rounded-[6px] px-1 py-0.5 -mx-1 -my-0.5 hover:bg-[var(--colors-bg-tertiary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#94aeaf] transition-colors cursor-pointer text-left"
                                                     >
                                                         <FileTypeChip type={
                                                             row.invalid_rows_file_name.toLowerCase().endsWith(".xlsx") ? "xlsx"
                                                             : row.invalid_rows_file_name.toLowerCase().endsWith(".xls") ? "xls"
                                                             : "csv"
                                                         } />
-                                                        <span className="text-[14px] font-medium text-[#101828] truncate underline decoration-transparent hover:decoration-[#7ba08c] underline-offset-2">
+                                                        <span className="text-[14px] font-medium text-[#101828] truncate underline decoration-transparent hover:decoration-[#457175] underline-offset-2">
                                                             {row.invalid_rows_file_name}
                                                         </span>
                                                     </button>

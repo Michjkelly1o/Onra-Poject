@@ -115,7 +115,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                         : complete
                             ? "bg-[var(--colors-secondary-600)] text-white"
                             : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
@@ -547,7 +547,7 @@ function NewClassTemplatePageInner() {
             capacity: Number(step1.capacity),
             status: "Active",
             coverImage: step1.coverPreview ?? undefined,
-            coverColor: cat?.color_hex ?? "#e9fff3",
+            coverColor: cat?.color_hex ?? "#eff6f3",
             applicableMembershipIds: membershipIds,
             applicablePackageIds: packageIds,
             applicableMemberships: selectedMemberships,

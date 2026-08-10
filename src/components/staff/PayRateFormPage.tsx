@@ -798,7 +798,7 @@ function StepRow({ index, label, active, done, isLast }: {
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#457175]"
                         : done
                             ? "bg-[var(--colors-secondary-600)] text-white"
                             : "bg-[var(--colors-bg-tertiary)] border-[1.5px] border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",

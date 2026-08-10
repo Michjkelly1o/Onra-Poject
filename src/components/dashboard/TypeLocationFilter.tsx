@@ -277,7 +277,7 @@ function TypeRow({
 
 /** Right-column row. Filled mint checkbox when active, unfilled box
  *  otherwise. Colour matches the multi-select palette used elsewhere in the
- *  app (#7ba08c border / #aad4bd fill), so the language reads consistent. */
+ *  app (#457175 border / #94aeaf fill), so the language reads consistent. */
 function LocationRow({
     active,
     label,

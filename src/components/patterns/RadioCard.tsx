@@ -16,7 +16,7 @@
 // rolling their own.
 //
 // Selected state matches the DS convention set by ToggleCard: mint-green
-// border (`#7ba08c`) + subtle mint tint background. "Recommended" pill
+// border (`#457175`) + subtle mint tint background. "Recommended" pill
 // uses the mint palette so it never fights the selected state.
 
 import { cn } from "@/lib/utils";

@@ -169,7 +169,7 @@ function ChartTooltip(props: {
                 {payload.map((p, idx) => {
                     const entry = formatter
                         ? formatter(p)
-                        : { name: String(p.name ?? ""), value: String(p.value ?? ""), color: p.color ?? "#7ba08c" };
+                        : { name: String(p.name ?? ""), value: String(p.value ?? ""), color: p.color ?? "#457175" };
                     return (
                         <div key={idx} className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-1.5">
@@ -191,7 +191,7 @@ function ChartTooltip(props: {
 // amber/violet tint per category that the schedule day/week view uses.
 // ────────────────────────────────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Pilates: { bg: "#eff6f3", border: "#164e52", text: "#3b5446" },
     Barre:   { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
     Yoga:    { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
     default: { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },
@@ -455,7 +455,7 @@ export default function InstructorDashboardPage() {
                                         formatter={(p) => ({
                                             name: "Retention rate",
                                             value: `${p.value ?? 0}%`,
-                                            color: "#7ba08c",
+                                            color: "#457175",
                                         })}
                                     />
                                 )}
@@ -464,7 +464,7 @@ export default function InstructorDashboardPage() {
                                 type="monotone"
                                 dataKey="value"
                                 name="Retention rate"
-                                stroke="#7ba08c"
+                                stroke="#457175"
                                 strokeWidth={2}
                                 dot={false}
                             />
@@ -614,7 +614,7 @@ export default function InstructorDashboardPage() {
                                             formatter={(p) => ({
                                                 name: "Total booking",
                                                 value: String(p.value ?? 0),
-                                                color: "#7ba08c",
+                                                color: "#457175",
                                             })}
                                         />
                                     )}
@@ -623,7 +623,7 @@ export default function InstructorDashboardPage() {
                                     type="monotone"
                                     dataKey="value"
                                     name="Bookings"
-                                    stroke="#7ba08c"
+                                    stroke="#457175"
                                     strokeWidth={2}
                                     dot={false}
                                 />
@@ -639,9 +639,9 @@ export default function InstructorDashboardPage() {
                     />
                     {/* Legend */}
                     <div className="flex items-center gap-4 mb-2 text-xs font-normal text-[var(--colors-text-tertiary)]">
-                        <LegendDot color="#7ba08c" label="Total visits" />
+                        <LegendDot color="#457175" label="Total visits" />
                         <LegendDot color="#f97066" label="Total cancellations" />
-                        <LegendDot color="#aad4bd" label="Total no show" />
+                        <LegendDot color="#94aeaf" label="Total no show" />
                     </div>
                     <div className="h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -659,14 +659,14 @@ export default function InstructorDashboardPage() {
                                             formatter={(p) => ({
                                                 name: String(p.name ?? ""),
                                                 value: String(p.value ?? 0),
-                                                color: p.color ?? "#7ba08c",
+                                                color: p.color ?? "#457175",
                                             })}
                                         />
                                     )}
                                 />
-                                <Bar dataKey="visits"        name="Visits"        fill="#7ba08c" radius={[3, 3, 0, 0]} maxBarSize={10} />
+                                <Bar dataKey="visits"        name="Visits"        fill="#457175" radius={[3, 3, 0, 0]} maxBarSize={10} />
                                 <Bar dataKey="cancellations" name="Cancellations" fill="#f97066" radius={[3, 3, 0, 0]} maxBarSize={10} />
-                                <Bar dataKey="noShow"        name="No show"       fill="#aad4bd" radius={[3, 3, 0, 0]} maxBarSize={10} />
+                                <Bar dataKey="noShow"        name="No show"       fill="#94aeaf" radius={[3, 3, 0, 0]} maxBarSize={10} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

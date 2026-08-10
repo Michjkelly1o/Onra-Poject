@@ -659,7 +659,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                 <div className="flex gap-8 px-6 py-6 h-full items-start">
                     <div className="w-[260px] shrink-0 pt-2">
                         <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] bg-[#f5fffa]">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]">
                                 1
                             </div>
                             <span className="text-[14px] font-semibold text-[#3b5446]">Time off details</span>

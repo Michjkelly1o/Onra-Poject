@@ -117,7 +117,7 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                 {/* ── Left rail (single step) ────────────────────────── */}
                 <div className="w-[220px] shrink-0">
                     <div className="flex items-center gap-4 h-[52px] p-4 rounded-[12px] bg-[#f5fffa]">
-                        <div className="w-6 h-6 rounded-full bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c] flex items-center justify-center text-[14px] font-medium">1</div>
+                        <div className="w-6 h-6 rounded-full bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#457175] flex items-center justify-center text-[14px] font-medium">1</div>
                         <p className="flex-1 text-[14px] font-semibold text-[#3b5446] leading-[20px]">Referral information</p>
                     </div>
                 </div>

@@ -120,7 +120,7 @@ function configFor(p: PaymentProvider): ProviderConfig {
 // ─── Toggle (Figma 7564:188282 — payment-method rows + Other methods) ──────
 //
 // Lightweight pill toggle matching the Figma rest state (16px white knob
-// inside 36×20 grey track) + sage-green active state (#658774 track).
+// inside 36×20 grey track) + sage-green active state (#164e52 track).
 // Inline here because the Payments tab is the only consumer in this
 // module and the chrome differs subtly from other toggles in the codebase
 // (smaller knob, no shadow rim).

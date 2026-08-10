@@ -18,7 +18,7 @@ function EmptyPrevious() {
     return (
         <div className="flex min-h-[124px] flex-col items-center justify-center gap-3 rounded-2xl border border-[#e4e7ec] bg-white px-4 pb-4 pt-3 text-center">
             <span
-                className="flex size-8 items-center justify-center rounded-lg border-[2.65px] border-white/10 bg-[#e9fff3]"
+                className="flex size-8 items-center justify-center rounded-lg border-[2.65px] border-white/10 bg-[#eff6f3]"
                 style={{
                     boxShadow:
                         "0px 3.49px 3.49px 0px rgba(0,0,0,0.04), 0px 3.49px 20.94px 0px rgba(224,248,164,0.12), inset 4.5px 4.5px 6px 0px rgba(255,255,255,0.2)",

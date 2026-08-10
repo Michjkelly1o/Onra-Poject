@@ -73,7 +73,7 @@ function StepItem({ step, current, total }: { step: { n: number; label: string }
         <div className={cn("flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full", active && "bg-[#f5fffa]")}>
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    active ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                     : complete ? "bg-[var(--colors-secondary-600)] text-white"
                     : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]")}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}

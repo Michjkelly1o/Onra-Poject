@@ -505,7 +505,7 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
             {/* Banner */}
             <div
                 className="relative h-[155px] shrink-0 overflow-hidden"
-                style={{ backgroundColor: cls.coverColor || "#aad4bd" }}
+                style={{ backgroundColor: cls.coverColor || "#94aeaf" }}
             >
                 {cls.coverImage ? (
                     <img

@@ -88,7 +88,7 @@ export function AssignShiftModal({ staff, onClose }: {
                         <input
                             type="text" value={search} onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search shifts by name"
-                            className="h-10 w-full rounded-[8px] border-1 border-[#d0d5dd] pl-10 pr-3 text-[14px] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[#667085] focus:border-[#7ba08c] focus:ring-2 focus:ring-[#aad4bd]"
+                            className="h-10 w-full rounded-[8px] border-1 border-[#d0d5dd] pl-10 pr-3 text-[14px] text-[#101828] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] outline-none placeholder:text-[#667085] focus:border-[#457175] focus:ring-2 focus:ring-[#94aeaf]"
                         />
                     </div>
                 </div>

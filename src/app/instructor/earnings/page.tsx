@@ -779,7 +779,7 @@ function FilterSidePanel({ open, onClose, applied, onApply, onClear, categories 
                                         className={cn(
                                             "px-3 py-[7px] rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
                                             on
-                                                ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                                                ? "bg-[#eff6f3] border-2 border-[#457175] text-[#344054]"
                                                 : "bg-white border-1 border-[var(--colors-border-secondary)] text-[#344054] hover:bg-[var(--colors-bg-secondary)]",
                                         )}
                                     >
@@ -843,7 +843,7 @@ function TimeInput({ value, onChange, ariaLabel, min }: {
             onChange={e => onChange(e.target.value)}
             aria-label={ariaLabel}
             min={min}
-            className="w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+            className="w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] focus:outline-none focus:ring-2 focus:ring-[#94aeaf] focus:border-[#457175] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
         />
     );
 }
@@ -855,7 +855,7 @@ interface SegmentedPillsProps<T extends string> {
 }
 /** Bordered segmented control (Figma 6616:334795). The shell is a single
  *  bordered row; each option shares the border with its neighbours. Active
- *  uses the same mint fill admin's `FilterPill` uses (`#e9fff3`) so the
+ *  uses the same mint fill admin's `FilterPill` uses (`#eff6f3`) so the
  *  side panel's two pill flavours (segmented single-select + multi-select
  *  category chips) share one active language. */
 function SegmentedPills<T extends string>({ options, value, onChange }: SegmentedPillsProps<T>) {
@@ -872,7 +872,7 @@ function SegmentedPills<T extends string>({ options, value, onChange }: Segmente
                         className={cn(
                             "flex-1 h-10 text-[14px] font-medium transition-colors",
                             active
-                                ? "bg-[#e9fff3] text-[#101828]"
+                                ? "bg-[#eff6f3] text-[#101828]"
                                 : "bg-white text-[#475467] hover:bg-[var(--colors-bg-secondary)]",
                             idx < options.length - 1 && "border-r-1 border-[var(--colors-border-primary)]",
                         )}

@@ -393,8 +393,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}

@@ -22,10 +22,10 @@ const THEME: Record<
     // gift card) — only the icon differs. Client Jul 2026. Retail falls back
     // to the Package icon when a product ships without a photo — every seeded
     // retail row carries an image_url, so this branch is defensive only.
-    membership: { Icon: CreditCard02, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
-    package: { Icon: Package, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
-    gift_card: { Icon: Gift01, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
-    retail: { Icon: Package, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#aad4bd", ringOpacity: 0.6 },
+    membership: { Icon: CreditCard02, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#94aeaf", ringOpacity: 0.6 },
+    package: { Icon: Package, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#94aeaf", ringOpacity: 0.6 },
+    gift_card: { Icon: Gift01, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#94aeaf", ringOpacity: 0.6 },
+    retail: { Icon: Package, tileBg: "var(--brand-tertiary)", iconColor: "var(--brand-primary)", ring: "#94aeaf", ringOpacity: 0.6 },
 };
 
 // DS ring sizes (px @ the 64px banner) — concentric rounded squares.

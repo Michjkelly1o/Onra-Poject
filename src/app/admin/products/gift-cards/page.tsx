@@ -157,7 +157,7 @@ function StatusFilterDropdown({ value, onChange }: {
                                 value === opt.value ? "bg-[var(--colors-bg-secondary)] text-[#101828]" : "text-[#344054] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
-                            {value === opt.value && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt.value && <Check className="w-4 h-4 text-[#164e52]" />}
                         </button>
                     ))}
                 </div>
@@ -195,7 +195,7 @@ const MODAL_CONFIG: Record<ModalAction, {
     tone: ConfirmTone;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Archive, iconColor: "text-[#164e52]",
         titleSingle: "Archive this gift card?",
         titleBulk:   n => `Archive ${n} gift cards?`,
         description: subject => <>{subject} will be removed from the Point of Sale catalog. You can recover archived gift cards at any time.</>,
@@ -211,7 +211,7 @@ const MODAL_CONFIG: Record<ModalAction, {
         tone: "destructive",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: RefreshCcw01, iconColor: "text-[#164e52]",
         titleSingle: "Recover this gift card?",
         titleBulk:   n => `Recover ${n} gift cards?`,
         description: subject => <>{subject} will be restored to Active status and become sellable again.</>,
@@ -219,7 +219,7 @@ const MODAL_CONFIG: Record<ModalAction, {
         tone: "primary",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Check, iconColor: "text-[#164e52]",
         titleSingle: "Reactivate this gift card?",
         titleBulk:   n => `Reactivate ${n} gift cards?`,
         description: subject => <>{subject} will become available again in the Point of Sale catalog.</>,
@@ -328,8 +328,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]"
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]"
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />

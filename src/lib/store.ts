@@ -12839,7 +12839,7 @@ export const useAppStore = create<AppState>()(persist(
         // v54 (2026-07-13): tertiaryColor re-anchored `#E9FFF3` → `#C4EDD6` so
         //   the seed matches the actual DS Button "primary" variant background
         //   (`bg-[var(--colors-secondary-200)]`). Before this bump, the admin form showed
-        //   `#E9FFF3` but the customer's Book class button rendered `#c4edd6`,
+        //   `#E9FFF3` but the customer's Book class button rendered `#dcebe4`,
         //   which read as "tertiary not connected" when scrubbed. Bump forces
         //   testers to reseed with the aligned value.
         // v55 (2026-07-13): customers seed re-anchored — 6 date_of_birth values

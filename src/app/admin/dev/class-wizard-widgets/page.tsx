@@ -396,7 +396,7 @@ export default function ClassWizardWidgetsDevPage() {
                     <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--colors-text-quaternary)]">Dev preview</p>
                     <h1 className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">Class-creation wizard widgets</h1>
                     <p className="mt-1 text-[14px] text-[var(--colors-text-tertiary)]">
-                        Phase 1 · every <code className="text-[#3f8f68]">AiQuestionPrompt</code> kind + rich-option state,
+                        Phase 1 · every <code className="text-[#164e52]">AiQuestionPrompt</code> kind + rich-option state,
                         mock data only. No agent, no store writes.
                     </p>
                 </header>

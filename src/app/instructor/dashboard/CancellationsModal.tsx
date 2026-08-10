@@ -108,7 +108,7 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                     customerEmail: customer.email,
                     customerImageUrl: customer.imageUrl,
                     customerInitials: customer.initials,
-                    customerColor: "#aad4bd",
+                    customerColor: "#94aeaf",
                     className: klass.name,
                     statusLabel: isLate ? "Cancelled (late)" : "Cancelled (no charge)",
                     isLate,

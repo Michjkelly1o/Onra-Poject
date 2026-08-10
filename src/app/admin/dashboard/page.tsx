@@ -116,7 +116,7 @@ interface TimeSlot {
 // Resolved hex triple per category — kept in sync with the schedule page's
 // CATEGORY_COLORS (Pilates / Barre / Yoga).
 const CATEGORY_PALETTE: Record<string, { bg: string; border: string; text: string }> = {
-    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Pilates: { bg: "#eff6f3", border: "#164e52", text: "#3b5446" },
     Barre: { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
     Yoga: { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
 };

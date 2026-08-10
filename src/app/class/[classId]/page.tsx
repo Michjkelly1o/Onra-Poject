@@ -156,8 +156,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}
         >
             {indeterminate ? (
@@ -519,7 +519,7 @@ export default function InstructorClassDetailPage() {
                     <button
                         type="button"
                         onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] font-semibold text-[#658774] hover:text-[#3b5446]"
+                        className="mt-4 text-[14px] font-semibold text-[#164e52] hover:text-[#3b5446]"
                     >
                         Back to my schedule
                     </button>

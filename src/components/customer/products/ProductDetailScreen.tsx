@@ -23,7 +23,7 @@ import { Rings } from "@/components/customer/products/ProductArt";
 import { Button } from "@/components/ui/button";
 
 // Unified brand-green hero for every product type (client Jul 2026).
-const HERO = { from: "var(--brand-tertiary)", to: "var(--brand-tertiary)", text: "var(--brand-primary)", ring: "#aad4bd" };
+const HERO = { from: "var(--brand-tertiary)", to: "var(--brand-tertiary)", text: "var(--brand-primary)", ring: "#94aeaf" };
 
 const STEP_BTN =
     "flex size-9 items-center justify-center rounded-full border border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50 disabled:opacity-40";

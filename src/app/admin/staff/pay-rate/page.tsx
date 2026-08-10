@@ -74,7 +74,7 @@ const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    monthly: "bg-[#f5fffa] border-1 border-[#aad4bd] text-[#3b5446]",
+    monthly: "bg-[#f5fffa] border-1 border-[#94aeaf] text-[#3b5446]",
 };
 
 // ─── Filter state ────────────────────────────────────────────────────────────
@@ -110,14 +110,14 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         description: s => `${s} will be moved to the archive. You can recover it any time — staff already on this rate keep it until reassigned.`,
         confirmLabel: "Archive",
         destructive: false,
-        Icon: Archive, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        Icon: Archive, iconBg: "bg-[#eff6f3]", iconColor: "text-[#164e52]",
     },
     recover: {
         title: s => `Recover ${s}?`,
         description: s => `${s} will be restored to Active and available again in the pay-rate list.`,
         confirmLabel: "Recover",
         destructive: false,
-        Icon: RefreshCcw01, iconBg: "bg-[#e9fff3]", iconColor: "text-[#658774]",
+        Icon: RefreshCcw01, iconBg: "bg-[#eff6f3]", iconColor: "text-[#164e52]",
     },
     delete: {
         title: s => `Delete ${s}?`,
@@ -178,7 +178,7 @@ function StatusFilterDropdown({ value, onChange }: {
                                 value === opt.value ? "bg-[var(--colors-bg-secondary)] text-[#101828]" : "text-[#344054] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt.label}
-                            {value === opt.value && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt.value && <Check className="w-4 h-4 text-[#164e52]" />}
                         </button>
                     ))}
                 </div>
@@ -270,8 +270,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />

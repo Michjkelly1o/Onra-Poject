@@ -19,7 +19,7 @@ export interface ShiftColor {
 }
 
 export const SHIFT_PALETTE: ShiftColor[] = [
-    { stripe: "#7ba08c", bg: "#f0faf3", border: "#dcefe3", name: "#101828", time: "#667085" }, // green
+    { stripe: "#457175", bg: "#f0faf3", border: "#dcefe3", name: "#101828", time: "#667085" }, // green
     { stripe: "#7cb9d6", bg: "#eef8fc", border: "#d8eef7", name: "#101828", time: "#667085" }, // blue
     { stripe: "#b89bd0", bg: "#f6f1fb", border: "#eaddf5", name: "#101828", time: "#667085" }, // purple
 ];

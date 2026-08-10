@@ -177,7 +177,7 @@ function ClassStatusFilterDropdown({ value, onChange }: {
                                 value === opt ? "bg-[var(--colors-bg-secondary)] text-[#101828]" : "text-[#344054] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt}
-                            {value === opt && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt && <Check className="w-4 h-4 text-[#164e52]" />}
                         </button>
                     ))}
                 </div>
@@ -254,7 +254,7 @@ function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n
             title={disabled ? "At least one pay rate must stay enabled" : undefined}
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
-                value ? "bg-[#658774] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
+                value ? "bg-[#164e52] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -267,7 +267,7 @@ function PayTrackCard({ title, subtitle, enabled, onToggle, toggleDisabled, rate
     rateValue: string; rateOptions: { value: string; label: string }[]; onRateChange: (v: string) => void;
 }) {
     return (
-        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#7ba08c]" : "border-1 border-[var(--colors-border-secondary)]")}>
+        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#457175]" : "border-1 border-[var(--colors-border-secondary)]")}>
             <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
@@ -572,7 +572,7 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, defaultRa
             {showClasses ? (
                 <>
                     <div className="w-full h-1.5 rounded-full bg-[#e4e7ec] overflow-hidden">
-                        <div className="h-full bg-[#658774]" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-[#164e52]" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex flex-col gap-1">

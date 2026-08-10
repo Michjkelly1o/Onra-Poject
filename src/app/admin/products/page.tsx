@@ -201,7 +201,7 @@ const MODAL_CONFIG: Record<ModalAction, {
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Archive, iconColor: "text-[#164e52]",
         titleSingle: "Archive this product?",
         titleBulk: n => `Archive ${n} products?`,
         description: subject => <>{subject} will be hidden from the Point of Sale catalog and the class-types Applicable Plans list. You can recover archived products at any time.</>,
@@ -215,14 +215,14 @@ const MODAL_CONFIG: Record<ModalAction, {
         confirmLabel: "Deactivate",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: RefreshCcw01, iconColor: "text-[#164e52]",
         titleSingle: "Recover this product?",
         titleBulk: n => `Recover ${n} products?`,
         description: subject => <>{subject} will be restored to Active status and become sellable again.</>,
         confirmLabel: "Recover",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Check, iconColor: "text-[#164e52]",
         titleSingle: "Reactivate this product?",
         titleBulk: n => `Reactivate ${n} products?`,
         description: subject => <>{subject} will become available again in the Point of Sale catalog.</>,
@@ -435,8 +435,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]"
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]"
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />

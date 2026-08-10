@@ -118,7 +118,7 @@ function ToggleSwitch({ on, disabled, onChange }: {
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
                 disabled && "opacity-40 cursor-not-allowed",
-                on ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                on ? "bg-[#164e52] justify-end" : "bg-[#f2f4f7] justify-start",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
         </button>
@@ -151,8 +151,8 @@ function CheckboxCell({ checked, indeterminate = false, onChange, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[#d0d5dd] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[#d0d5dd] hover:border-[#457175]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -411,7 +411,7 @@ const CONFIRM_CFG: Record<ConfirmKind, {
     destructive: boolean;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", Icon: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", Icon: Archive, iconColor: "text-[#164e52]",
         title: s => `Archive ${s}?`,
         description: s => `${s} will be hidden from default lists. You can recover it any time.`,
         confirmLabel: "Archive", destructive: false,
@@ -423,13 +423,13 @@ const CONFIRM_CFG: Record<ConfirmKind, {
         confirmLabel: "Deactivate", destructive: true,
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", Icon: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", Icon: RefreshCcw01, iconColor: "text-[#164e52]",
         title: s => `Recover ${s}?`,
         description: s => `${s} will be restored to Active.`,
         confirmLabel: "Recover", destructive: false,
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", Icon: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", Icon: Check, iconColor: "text-[#164e52]",
         title: s => `Reactivate ${s}?`,
         description: s => `${s} will be set back to Active.`,
         confirmLabel: "Reactivate", destructive: false,

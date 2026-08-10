@@ -75,8 +75,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -92,7 +92,7 @@ function Toggle({ on, onChange, disabled = false }: { on: boolean; onChange: (ne
             onClick={() => !disabled && onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full p-0.5 flex items-center transition-colors shrink-0",
-                on ? "bg-[#658774] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
+                on ? "bg-[#164e52] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -481,7 +481,7 @@ function ReassignInstructorModal({ open, instructors, currentInstructorId, servi
                         <input
                             type="text" value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Search instructor"
-                            className="w-full h-10 pl-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            className="w-full h-10 pl-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#94aeaf] focus:border-[#457175] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </div>
                 </div>
@@ -501,7 +501,7 @@ function ReassignInstructorModal({ open, instructors, currentInstructorId, servi
                                         </div>
                                         <div className="flex justify-end">
                                             {current ? (
-                                                <span className="inline-flex items-center gap-1 text-[14px] font-medium text-[#658774]">
+                                                <span className="inline-flex items-center gap-1 text-[14px] font-medium text-[#164e52]">
                                                     <Check className="w-4 h-4" /> Current
                                                 </span>
                                             ) : (
@@ -765,8 +765,8 @@ function ReviewFilterPill({ label, selected, onClick }: { label: string; selecte
             className={cn(
                 "h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors",
                 selected
-                    ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#aad4bd]",
+                    ? "bg-[#eff6f3] border-[#457175] text-[#344054]"
+                    : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#94aeaf]",
             )}>
             {label}
         </button>
@@ -853,8 +853,8 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                                         className={cn(
                                             "h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors inline-flex items-center gap-1.5",
                                             sel
-                                                ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                                                : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#aad4bd]",
+                                                ? "bg-[#eff6f3] border-[#457175] text-[#344054]"
+                                                : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#94aeaf]",
                                         )}>
                                         <Star01 className="w-4 h-4 text-[#fdb022]" fill="#fdb022" />
                                         {n} star
@@ -1399,7 +1399,7 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Appointment not found</p>
                     <button type="button" onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] text-[#658774] hover:underline">
+                        className="mt-4 text-[14px] text-[#164e52] hover:underline">
                         Go back
                     </button>
                 </div>
