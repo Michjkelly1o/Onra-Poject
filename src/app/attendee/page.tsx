@@ -561,7 +561,7 @@ function AttendeePage() {
         // white panel sits directly on it. `min-h-screen` + a `flex-1 min-h-0`
         // panel + `flex-1 min-h-0` inner card make the surface fill the viewport
         // height instead of hugging content.
-        <div className="h-screen bg-[var(--colors-tertiary-50)] p-[12px] flex flex-col overflow-hidden">
+        <div className="h-screen bg-[var(--colors-bg-canvas)] p-[12px] flex flex-col overflow-hidden">
             {/* Admin-standard white panel — ONE container (bg-white + border +
                 rounded), identical to every other admin surface. The header is
                 pinned at the top of the panel; only the calendar content below

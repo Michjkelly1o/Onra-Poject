@@ -119,7 +119,7 @@ export default function EmbedClassPage() {
 
     if (!s) {
         return (
-            <div className="min-h-screen bg-[var(--colors-bg-secondary)] flex items-center justify-center px-6">
+            <div className="min-h-screen bg-[var(--colors-bg-canvas)] flex items-center justify-center px-6">
                 <p className="text-[16px] text-[var(--colors-text-quaternary)]">This class is no longer available.</p>
             </div>
         );
@@ -223,7 +223,7 @@ export default function EmbedClassPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[var(--colors-bg-secondary)] px-6 md:px-16 py-10">
+        <div className="min-h-screen bg-[var(--colors-bg-canvas)] px-6 md:px-16 py-10">
             <div className="max-w-[1024px] mx-auto flex flex-col gap-8">
                 {/* Back + title */}
                 <div className="flex flex-col gap-4">

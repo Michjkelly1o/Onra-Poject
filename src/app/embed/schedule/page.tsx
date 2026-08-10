@@ -158,7 +158,7 @@ function EmbedScheduleInner() {
     const bookBg = accent;
 
     return (
-        <div className="min-h-screen bg-[var(--colors-bg-secondary)] px-6 md:px-16 py-10">
+        <div className="min-h-screen bg-[var(--colors-bg-canvas)] px-6 md:px-16 py-10">
             <div className="max-w-[1024px] mx-auto flex flex-col gap-8">
                 {/* Header */}
                 <h1 className="text-[30px] md:text-[36px] font-semibold tracking-[-0.72px] text-[var(--colors-text-primary)] leading-tight">
