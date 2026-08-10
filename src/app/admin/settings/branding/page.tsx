@@ -132,46 +132,29 @@ export default function BrandingPage() {
                 </div>
             </SectionCard>
 
-            {/* ── Card 2 — Portal preferences ─────────────────────────── */}
+            {/* ── Card 2 — Embed website ──────────────────────────────── */}
             <SectionCard
-                title="Portal preferences"
-                subtitle="Manage your website portal URL and navigation menu."
+                title="Embed website"
+                subtitle="Embed your class schedule on your own website."
                 onCustomize={customizePortal}
             >
                 <div className="grid grid-cols-2 gap-x-3 gap-y-3 w-full">
                     <PreviewRow
-                        label="Live portal URL"
+                        label="Schedule window"
                         value={
-                            <button
-                                type="button"
-                                onClick={openLivePortal}
-                                className="flex items-center gap-1 text-[16px] font-medium text-[var(--colors-text-primary)] leading-6 hover:text-[var(--colors-text-tertiary)] transition-colors"
-                                title="Open live customer portal"
-                            >
-                                <span>{b.portalUrl}</span>
-                                <Share04 className="w-5 h-5 text-[var(--colors-text-tertiary)]" />
-                            </button>
+                            <span className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">
+                                {({ "1w": "1 week", "2w": "2 weeks", "3w": "3 weeks", "1m": "1 month" } as Record<string, string>)[b.embedWindow ?? "2w"]}
+                            </span>
                         }
                     />
                     <PreviewRow
-                        label="Menu bar"
-                        value={<VisibilityBadge visible={b.menuBarVisible} />}
+                        label="Sessions shown"
+                        value={
+                            <span className="text-[16px] font-medium text-[var(--colors-text-primary)] leading-6">
+                                Class (group)
+                            </span>
+                        }
                     />
-                </div>
-
-                <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
-
-                <div className="flex flex-col gap-1 w-full">
-                    <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-5">Visible menu items</p>
-                    <div className="flex flex-wrap gap-2 w-full">
-                        {b.menuItems.map(item => (
-                            <MenuItemChip
-                                key={item.id}
-                                label={item.label}
-                                enabled={item.enabled}
-                            />
-                        ))}
-                    </div>
                 </div>
             </SectionCard>
 

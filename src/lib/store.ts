@@ -1922,6 +1922,11 @@ export interface BrandingSettings {
     /** The HTML/JS snippet the admin pastes into their site to embed the
      *  Forma portal. Held as a single multi-line string. */
     embedCode:       string;
+    /** How far ahead the embedded schedule shows (client 2026-08-08).
+     *  Optional so pre-existing branding literals don't need it. */
+    embedWindow?:    "1w" | "2w" | "3w" | "1m";
+    /** Which branch the embed defaults to. "" / undefined = all locations. */
+    embedLocationId?: string;
 }
 
 // ─── Payments module (PRD 11 §7) ───────────────────────────────────────────

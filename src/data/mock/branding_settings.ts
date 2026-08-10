@@ -84,4 +84,8 @@ export const branding_settings: BrandingSettings = {
   xscript.setAttribute("src","https://formastudio.onbookee.com/embed/index.js?t="+date);
   document.head.appendChild(xscript);
 </script>`,
+    // Embed schedule configuration (client 2026-08-08) — how far ahead the
+    // embedded class schedule shows + which branch it defaults to ("" = all).
+    embedWindow:     "2w",
+    embedLocationId: "",
 };
