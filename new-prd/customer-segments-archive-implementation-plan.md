@@ -185,15 +185,25 @@ Introduce a single derived selector + a clean archive flag; retire the manual `i
 
 ---
 
-## 7. Open decisions to confirm before/within the phases
-- **D1** — Keep a *manual* "suspend / block access" separate from derived-Inactive? (Default: no.)
-- **D2** — Does archived exclusion apply to the **POS customer picker**? ("access unchanged" vs
-  "excluded from search").
-- **D3** — Auto-revive trigger scope: only the customer's **own** booking/purchase (`customer_portal`),
-  not admin-initiated actions — confirm.
-- **D4** — "Bought anything" for Lead: count a paid transaction OR any plan row ever (incl.
-  fully-expired/cancelled) as "has purchased." (Default: yes — any historical purchase makes them
-  not-a-Lead.)
+## 7. Decisions (CONFIRMED 2026-08-10)
+- **D1 — NO manual "suspend / block access."** Client didn't mention it; inactivity is fully derived.
+  Remove the old Deactivate/Reactivate (active↔inactive) actions.
+- **D2 — POS keeps archived customers findable (Option B).** They stay selectable in the POS picker;
+  a customer-portal **purchase** auto-revives them (mirrors the booking rule). Archiving never blocks
+  access.
+- **D3 — Auto-revive fires only on the customer's OWN action** (`bookingSource === "customer_portal"`
+  booking, or a customer-portal purchase). Admin-made bookings/sales do NOT auto-revive. Matches the
+  client's "their own account" + "junk has no login" safeguard.
+- **D4 — Any past purchase = NOT a Lead.** A Lead is strictly someone who has *never* paid a cent and
+  never had any plan (even a fully expired/cancelled plan makes them Inactive, not Lead).
+
+### Inactive vs Archived (client POV — reference for QA)
+- **Inactive** = a *fact* the system derives from the wallet (was a customer, nothing live now).
+  Automatic; stays in the list (Inactive tab); searchable + marketable; reverses automatically when
+  they buy/renew. It's about **the customer**.
+- **Archived** = a *choice* the admin makes to tidy the list (duplicate / test / long-gone). Manual;
+  removed from all tabs/counts/search/campaigns; reachable only via "View archived (n)"; never blocks
+  access; auto-revives on the customer's own booking/purchase. It's about **your list**.
 
 ---
 
