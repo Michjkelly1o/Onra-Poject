@@ -350,7 +350,7 @@ function ClassCard({ s, cover, bookBg }: { s: ClassSchedule; cover?: string; boo
             {/* Action */}
             <div className="flex flex-col items-center gap-2 shrink-0">
                 <Link
-                    href={`/customer/classes/${s.id}?b=book`}
+                    href={`/embed/classes/${s.id}`}
                     className="w-[240px] h-11 inline-flex items-center justify-center rounded-full border-2 border-white/[0.12] text-[16px] font-semibold text-[#101828] shadow-[inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] transition-opacity hover:opacity-90"
                     style={{ backgroundColor: bookBg }}
                 >
