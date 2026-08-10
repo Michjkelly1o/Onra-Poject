@@ -332,11 +332,12 @@ function ClassCard({ s, cover, bookBg }: { s: ClassSchedule; cover?: string; boo
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="size-4 shrink-0 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center text-[9px] font-semibold text-[var(--colors-text-tertiary)]">
+                    <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                            style={{ backgroundColor: s.instructorColor }}>
                             {s.instructorInitials || (s.instructorName || "?").charAt(0)}
                         </span>
-                        <span className="text-[14px] text-[var(--colors-text-quaternary)] truncate">{s.instructorName || "Instructor"}</span>
+                        <span className="text-[14px] leading-5 text-[var(--colors-text-secondary)] truncate">{s.instructorName || "Open session"}</span>
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[14px] text-[var(--colors-text-quaternary)]">
@@ -344,7 +345,7 @@ function ClassCard({ s, cover, bookBg }: { s: ClassSchedule; cover?: string; boo
                     <span className="w-px h-4 bg-[var(--colors-border-secondary)]" aria-hidden />
                     <span className="inline-flex items-center gap-1.5"><MarkerPin01 className="w-4 h-4" />{s.room || s.location}</span>
                     <span className="w-px h-4 bg-[var(--colors-border-secondary)]" aria-hidden />
-                    <span className="inline-flex items-center gap-1.5">{genderAccessIcon(s.genderAccess, "w-4 h-4")}{genderLabel(s.genderAccess)}</span>
+                    <span className="inline-flex items-center gap-1.5">{genderAccessIcon(s.genderAccess, "w-4 h-4 text-[var(--colors-text-quaternary)]")}{genderLabel(s.genderAccess)}</span>
                 </div>
             </div>
 
