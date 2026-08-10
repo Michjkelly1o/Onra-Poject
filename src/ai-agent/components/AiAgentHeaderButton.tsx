@@ -15,6 +15,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { AI_AGENT_UI_VISIBLE, isAiAgentEnabled } from "@/ai-agent/flags";
+import { ShinyText } from "@/ai-agent/components/ShinyText";
 
 export function AiAgentHeaderButton() {
     const router = useRouter();
@@ -42,20 +43,29 @@ export function AiAgentHeaderButton() {
                 "border-1 border-[#dcebe4] " +
                 "bg-[linear-gradient(112deg,#cbe1d7_3%,#eff6f3_63%)] " +
                 "hover:brightness-[0.98] active:brightness-95 transition-[filter] " +
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#84c393]"
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#457175]"
             }
         >
             <span className="w-6 h-6 rounded-full bg-white border border-[#e4e7ec] flex items-center justify-center shrink-0 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                    src="/brand-logo/icon/Icon%20-%20Blue%20Green.svg"
-                    alt=""
-                    className="w-4 h-4 object-contain"
+                {/* Logo shimmers in sync with the label — the brand mark is a
+                    single-colour SVG masked with the same moving gradient. It
+                    rests at its natural blue-green (#164e52) and glints brighter. */}
+                <ShinyText
+                    maskUrl="/brand-logo/icon/Icon%20-%20Blue%20Green.svg"
+                    className="w-4 h-4"
+                    baseColor="#164e52"
+                    shineColor="#7ad9c2"
+                    speed={2.3}
                 />
             </span>
-            <span className="text-[14px] font-medium leading-[20px] text-[#101828] whitespace-nowrap">
-                Ask AI Agent
-            </span>
+            <ShinyText
+                text="Ask AI Agent"
+                className="text-[14px] font-medium leading-[20px] whitespace-nowrap"
+                baseColor="#101828"
+                shineColor="#45b89e"
+                speed={2.3}
+                delay={0.18}
+            />
         </button>
     );
 }

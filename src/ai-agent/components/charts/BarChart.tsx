@@ -93,7 +93,7 @@ export function BarChart({
                             style={{
                                 width: `${Math.max(2, (b.value / max) * 100)}%`,
                                 background:
-                                    "linear-gradient(90deg, #7ba08c 0%, #658774 100%)",
+                                    "linear-gradient(90deg, #457175 0%, #164e52 100%)",
                             }}
                         />
                     </div>

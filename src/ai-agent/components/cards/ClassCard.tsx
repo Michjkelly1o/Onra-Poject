@@ -51,7 +51,7 @@ function SpotEditorCard({ capacity, send }: { capacity: number; send: (text: str
 function ResultCard({ noun, summary, verb }: { noun: string; summary: string; verb: string }) {
     return (
         <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-white px-4 py-3">
-            <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
+            <CheckCircle className="size-4 text-[#164e52] shrink-0 mt-0.5" />
             <div className="min-w-0">
                 <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">
                     Your {noun} has been {verb}.
@@ -79,7 +79,7 @@ export function ClassCard({ data, send }: { data: ClassCardData; send: (text: st
     if (data.card === "class_room_created") {
         return (
             <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-secondary-300)] bg-[#f1f7f4] px-4 py-3">
-                <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
+                <CheckCircle className="size-4 text-[#164e52] shrink-0 mt-0.5" />
                 <p className="text-[14px] text-[var(--colors-text-primary)] leading-5">
                     Added <span className="font-medium">{data.room.name}</span> to {data.branchName} (capacity{" "}
                     {data.room.capacity}). It&rsquo;s selected for this class.

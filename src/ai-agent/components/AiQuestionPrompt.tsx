@@ -442,7 +442,7 @@ export function AiQuestionPrompt({ questions, onComplete, onStep, onGroupAction,
                         <span
                             className={cn(
                                 "shrink-0 size-5 flex items-center justify-center rounded-[5px] border transition-colors",
-                                active ? "border-[#3f8f68] bg-[#3f8f68]" : "border-[var(--colors-border-primary)] bg-white",
+                                active ? "border-[#164e52] bg-[#164e52]" : "border-[var(--colors-border-primary)] bg-white",
                             )}
                         >
                             {active && <Check className="size-3.5 text-white" strokeWidth={3} />}

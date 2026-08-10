@@ -30,7 +30,6 @@
 
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -323,13 +322,11 @@ export function AiAgentPage() {
                     {/* Logomark + title */}
                     <div className="flex items-center gap-2">
                         <div className="size-6 rounded-[6px] border border-[var(--colors-border-primary)] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
-                            <Image
-                                src="/Logomark.webp"
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src="/brand-logo/icon/Icon%20-%20Blue%20Green.svg"
                                 alt="Onra"
-                                width={18}
-                                height={18}
-                                className="block object-contain"
-                                priority
+                                className="w-[18px] h-[18px] object-contain"
                             />
                         </div>
                         <span className="text-[18px] font-semibold text-[var(--colors-text-secondary)] leading-7">
@@ -895,7 +892,7 @@ function AgentChatSurface({
                     into the surface toward the foot. */}
                 <ConcentricSquaresDecoration />
                 {/* Mint gradient — full-width, rising softly from the foot
-                    (Figma 783:53147). Uses the brand mint (#c4edd6 =
+                    (Figma 783:53147). Uses the brand mint (#dcebe4 =
                     rgb(196,237,214)) so it reads clearly against the white
                     canvas while staying a gentle wash — transparent at the
                     top, easing to ~70% mint at the foot. */}
@@ -992,7 +989,7 @@ function ConcentricSquaresDecoration() {
                                 height: size,
                                 borderWidth: 2.381,
                                 borderStyle: "solid",
-                                borderColor: "#7ba08c",
+                                borderColor: "#457175",
                                 // Chunky corner radius so the rounded peaks
                                 // read clearly on the visible chevron arcs.
                                 // Scales with the square so smaller rings

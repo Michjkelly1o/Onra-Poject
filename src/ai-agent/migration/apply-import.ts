@@ -380,7 +380,7 @@ function coerceRoleType(
 }
 
 /** Deterministic avatar colours for imported staff (from the studio palette). */
-const STAFF_PALETTE = ["#7ba08c", "#a3b18a", "#c4a484", "#8a9bb0", "#b0879b", "#87a8b0"];
+const STAFF_PALETTE = ["#457175", "#a3b18a", "#c4a484", "#8a9bb0", "#b0879b", "#87a8b0"];
 
 // ─── Retail SKU auto-gen (mirrors RetailProductFormPage) ─────────────────────
 //

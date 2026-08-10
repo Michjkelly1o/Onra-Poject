@@ -76,7 +76,7 @@ import { MigCard, type MigActions } from "@/ai-agent/components/cards/MigCard";
 import { ClassCard } from "@/ai-agent/components/cards/ClassCard";
 import { isClassCard, type ClassCardData } from "@/ai-agent/schedule/schedule-cards";
 import { expandDraftToRows, summariseDraft } from "@/ai-agent/schedule/apply-class-schedule";
-import { TypingDots } from "@/ai-agent/components/TypingDots";
+import { ShinyText } from "@/ai-agent/components/ShinyText";
 import { AiQuestionPrompt, type AiQuestionAnswer } from "@/ai-agent/components/AiQuestionPrompt";
 // Recurring "Select days & General schedule" editor — rendered in the panel
 // ABOVE the composer (like ask_questions), never inline (client 2026-08-04).
@@ -1273,10 +1273,7 @@ export function ChatThread({
                             />
                         ))}
                         {isBusy && messages[messages.length - 1]?.role === "user" && (
-                            <div className="flex items-start gap-3">
-                                <AssistantAvatar />
-                                <TypingDots />
-                            </div>
+                            <ThinkingIndicator />
                         )}
                         {/* Error banner — visible on 400/403/500 from
                             /api/ai-agent. Includes a Retry button so the
@@ -1350,7 +1347,7 @@ function InsightEmptyState({
                             style={{
                                 fontFamily: DM_SANS_STACK,
                                 backgroundImage:
-                                    "linear-gradient(90deg, #658774 0%, #7ba08c 100%)",
+                                    "linear-gradient(90deg, #164e52 0%, #457175 100%)",
                                 WebkitBackgroundClip: "text",
                                 backgroundClip: "text",
                                 WebkitTextFillColor: "transparent",
@@ -1426,7 +1423,7 @@ function StudioSetupEmptyState({
                         style={{
                             fontFamily: DM_SANS_STACK,
                             backgroundImage:
-                                "linear-gradient(90deg, #658774 0%, #7ba08c 100%)",
+                                "linear-gradient(90deg, #164e52 0%, #457175 100%)",
                             WebkitBackgroundClip: "text",
                             backgroundClip: "text",
                             WebkitTextFillColor: "transparent",
@@ -1470,7 +1467,7 @@ function MigrationEmptyState({
                         style={{
                             fontFamily: DM_SANS_STACK,
                             backgroundImage:
-                                "linear-gradient(90deg, #658774 0%, #7ba08c 100%)",
+                                "linear-gradient(90deg, #164e52 0%, #457175 100%)",
                             WebkitBackgroundClip: "text",
                             backgroundClip: "text",
                             WebkitTextFillColor: "transparent",
@@ -1628,8 +1625,8 @@ function SuggestionCard({
 // Message rendering
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** User message bubble — Figma 18669:24877. Brand-200 (#c4edd6) fill,
- *  brand-300 (#aad4bd) border, tail notch on the top-right, right-aligned.
+/** User message bubble — Figma 18669:24877. Brand mint (#dcebe4) fill,
+ *  soft teal (#94aeaf) border, tail notch on the top-right, right-aligned.
  *  On hover a copy + edit action pair reveals to the LEFT of the bubble.
  *  When `editable` (the LAST user message only, Claude-style), the edit icon
  *  turns the bubble into an inline textarea — saving resubmits the edited
@@ -1736,7 +1733,7 @@ function UserMessageBubble({
                         onClick={saveEdit}
                         disabled={!draft.trim()}
                         aria-label="Send edit"
-                        className="size-9 flex items-center justify-center rounded-[8px] text-white bg-[var(--colors-secondary-600)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#577665] disabled:opacity-50 transition-colors"
+                        className="size-9 flex items-center justify-center rounded-[8px] text-white bg-[var(--colors-secondary-600)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[#457175] disabled:opacity-50 transition-colors"
                     >
                         <Send03 className="size-5" />
                     </button>
@@ -1934,7 +1931,7 @@ function parseScheduleConfirmation(
 function ScheduleConfirmationBubble({ title, detail }: { title: string; detail: string }) {
     return (
         <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-border-secondary)] bg-white px-4 py-3">
-            <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
+            <CheckCircle className="size-4 text-[#164e52] shrink-0 mt-0.5" />
             <div className="min-w-0">
                 <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
                 {detail && <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5">{detail}</p>}
@@ -1980,9 +1977,11 @@ function MessageRow({
     }
 
     if (m.role === "assistant") {
+        // While any tool call is still running, the logomark shimmers too.
+        const isToolLoading = m.toolInvocations?.some((ti) => ti.state !== "result") ?? false;
         return (
             <div className="flex items-start gap-3">
-                <AssistantAvatar />
+                {isToolLoading ? <ShinyAvatar /> : <AssistantAvatar />}
                 <div className="flex-1 min-w-0 flex flex-col gap-3">
                     {/* Tool invocations render as cards. The ask_questions tool
                         renders the interactive popup in EVERY mode (checked
@@ -1991,9 +1990,10 @@ function MessageRow({
                     {m.toolInvocations?.map((ti) => {
                         if (ti.state !== "result") {
                             return (
-                                <TypingDots
+                                <ThinkingLabel
                                     key={ti.toolCallId}
-                                    label={mode === "migration" ? "Reading" : "Working"}
+                                    words={mode === "migration" ? MIGRATION_WORDS : THINKING_WORDS}
+                                    className="text-[14px] font-medium leading-5 py-1"
                                 />
                             );
                         }
@@ -2083,13 +2083,77 @@ function ErrorBanner({
 function AssistantAvatar() {
     return (
         <div className="size-8 shrink-0 rounded-[8px] border border-[var(--colors-border-primary)] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
-            <Image
-                src="/Logomark.webp"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src="/brand-logo/icon/Icon%20-%20Blue%20Green.svg"
                 alt="Onra"
-                width={22}
-                height={22}
-                className="block object-contain"
+                className="w-[22px] h-[22px] object-contain"
             />
+        </div>
+    );
+}
+
+// Loading twin of AssistantAvatar — the same tile, but the logomark shimmers
+// (its glyph is masked with the moving gradient). Rendered while the model or a
+// tool is in-flight so the whole "thinking" cluster reads as alive.
+function ShinyAvatar() {
+    return (
+        <div className="size-8 shrink-0 rounded-[8px] border border-[var(--colors-border-primary)] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
+            <ShinyText
+                maskUrl="/brand-logo/icon/Icon%20-%20Blue%20Green.svg"
+                className="w-[22px] h-[22px]"
+                baseColor="#164e52"
+                shineColor="#7ad9c2"
+                speed={2.3}
+            />
+        </div>
+    );
+}
+
+// Predefined status words the loading label cycles through — purely
+// decorative "the assistant is busy" flavour, not tied to real actions. Kept as
+// module constants so their reference is stable (the cycle effect keys off it).
+const THINKING_WORDS = ["Thinking", "Finding", "Searching", "Reasoning", "Analyzing", "Working"];
+const MIGRATION_WORDS = ["Reading", "Scanning", "Parsing", "Mapping", "Importing"];
+
+// A shimmering status word that cycles through `words` on a timer. The shine
+// keeps sweeping while the word swaps, so it reads as one continuous animation.
+function ThinkingLabel({
+    words = THINKING_WORDS,
+    className = "text-[14px] font-medium leading-5",
+    delay = 0.18,
+}: {
+    words?: string[];
+    className?: string;
+    delay?: number;
+}) {
+    const [i, setI] = useState(0);
+    useEffect(() => {
+        setI(0);
+        const id = setInterval(() => setI((prev) => (prev + 1) % words.length), 1800);
+        return () => clearInterval(id);
+    }, [words]);
+    return (
+        <ShinyText
+            text={words[i]}
+            className={className}
+            baseColor="#475467"
+            shineColor="#45b89e"
+            speed={2.3}
+            delay={delay}
+        />
+    );
+}
+
+// The "loading" cluster shown while the assistant is generating: a shimmering
+// logomark + a shimmering, cycling status word. Replaces the old three-dot
+// indicator. The label lags the logo slightly so the shine reads as sweeping
+// across the pair, matching the Ask-AI-Agent button.
+function ThinkingIndicator({ words = THINKING_WORDS }: { words?: string[] }) {
+    return (
+        <div className="flex items-center gap-2.5" role="status" aria-label="Loading">
+            <ShinyAvatar />
+            <ThinkingLabel words={words} />
         </div>
     );
 }

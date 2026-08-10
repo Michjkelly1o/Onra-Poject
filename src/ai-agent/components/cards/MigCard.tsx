@@ -153,7 +153,7 @@ function SecondaryButton({
 
 type Tone = "green" | "red" | "amber" | undefined;
 const TONE_COLOR: Record<NonNullable<Tone>, string> = {
-    green: "#658774",
+    green: "#164e52",
     red:   "#b42318",
     amber: "#b54708",
 };
