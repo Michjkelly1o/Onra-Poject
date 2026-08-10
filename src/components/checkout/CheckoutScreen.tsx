@@ -970,7 +970,7 @@ export function ReceiptStep(p: ReceiptStepProps) {
                             <ReceiptRow label="Method" value={p.paymentMethodLabel} />
                             <ReceiptRow label="Charged to" value={p.chargedTo} />
                             <ReceiptRow label="Transaction ID" value={p.transactionId} />
-                            <ReceiptRow label="Status" value="Approved" valueClass="text-[#079455]" />
+                            <ReceiptRow label="Status" value="Approved" valueClass="text-[#164e52]" />
                         </div>
                     </div>
                 </div>

@@ -465,7 +465,7 @@ export default function MigrationsImportsPage() {
                                         <td className={cn(TD, "text-[14px] font-medium text-[#101828]")}>
                                             {row.total_rows.toLocaleString("en-US")}
                                         </td>
-                                        <td className={cn(TD, "text-[14px] font-medium text-[#079455]")}>
+                                        <td className={cn(TD, "text-[14px] font-medium text-[#164e52]")}>
                                             {row.imported_rows > 0 ? row.imported_rows.toLocaleString("en-US") : "-"}
                                         </td>
                                         <td className={cn(TD, "text-[14px] font-medium")}>

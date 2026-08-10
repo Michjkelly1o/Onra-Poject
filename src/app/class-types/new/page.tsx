@@ -68,7 +68,7 @@ function MembershipFilterDropdown({ active, onChange }: {
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== null && (
-                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#47b881] border border-white" />
+                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#164e52] border border-white" />
                     )}
                 </div>
                 Filter

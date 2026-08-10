@@ -452,7 +452,7 @@ export function ViewModal({ integration, onDisconnect, onClose }: {
                 <ViewField
                     label="Status"
                     value="Connected"
-                    valueColor="text-[#079455]"
+                    valueColor="text-[#164e52]"
                 />
                 {cfg.accountFields.map(f => (
                     <ViewField key={f.label} label={f.label} value={f.value} />

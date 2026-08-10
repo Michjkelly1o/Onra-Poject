@@ -75,7 +75,7 @@ function StatusValue({ ok, onLabel, offLabel }: { ok: boolean; onLabel: string; 
         <>
             <span>{ok ? onLabel : offLabel}</span>
             {ok
-                ? <CheckCircle className="w-4 h-4 text-[#039855]" />
+                ? <CheckCircle className="w-4 h-4 text-[#164e52]" />
                 : <XCircle className="w-4 h-4 text-[#d92d20]" />}
         </>
     );

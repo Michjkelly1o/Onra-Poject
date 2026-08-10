@@ -290,7 +290,7 @@ function FilterDropdown({ open, onOpenChange, value, onChange }: {
                     <span className="relative inline-flex">
                         <Sliders className="w-5 h-5" />
                         {value && (
-                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
+                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#164e52] border-1 border-white" aria-hidden />
                         )}
                     </span>
                 </Button>

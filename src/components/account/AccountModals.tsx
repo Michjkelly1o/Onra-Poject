@@ -486,7 +486,7 @@ export function ChangeEmailVerifyModal({
     return (
         <ModalShell onClose={onClose}>
             <ModalHeaderCenter
-                icon={<Mail01 className="w-6 h-6 text-[#079455]" />}
+                icon={<Mail01 className="w-6 h-6 text-[#164e52]" />}
                 title="Verify email address"
                 supporting={
                     <>
@@ -523,7 +523,7 @@ export function ChangeEmailOtpModal({
     return (
         <ModalShell onClose={onClose}>
             <ModalHeaderCenter
-                icon={<Mail01 className="w-6 h-6 text-[#079455]" />}
+                icon={<Mail01 className="w-6 h-6 text-[#164e52]" />}
                 title="Enter code"
                 supporting="To change your email address, please enter the verification code we've sent to your current email."
             />
@@ -572,7 +572,7 @@ export function ChangeEmailNewModal({
     return (
         <ModalShell onClose={onClose}>
             <ModalHeaderCenter
-                icon={<Mail01 className="w-6 h-6 text-[#079455]" />}
+                icon={<Mail01 className="w-6 h-6 text-[#164e52]" />}
                 title="Enter a new email address"
                 supporting="Enter the new email address to update your account."
             />
@@ -628,7 +628,7 @@ export function ChangePhoneNewModal({
     return (
         <ModalShell onClose={onClose}>
             <ModalHeaderCenter
-                icon={<Phone className="w-6 h-6 text-[#079455]" />}
+                icon={<Phone className="w-6 h-6 text-[#164e52]" />}
                 title="Enter a phone number"
                 supporting="Enter your phone number to receive an OTP for verification."
             />
@@ -677,7 +677,7 @@ export function ChangePhoneOtpModal({
     return (
         <ModalShell onClose={onClose} width={460}>
             <ModalHeaderCenter
-                icon={<Phone className="w-6 h-6 text-[#079455]" />}
+                icon={<Phone className="w-6 h-6 text-[#164e52]" />}
                 title="Verify your number"
                 supporting="Enter the 4 digit code we sent to your phone number."
             />
@@ -723,7 +723,7 @@ export function ChangePasswordModal({
     return (
         <ModalShell onClose={onClose}>
             <ModalHeaderCenter
-                icon={<Lock02 className="w-6 h-6 text-[#079455]" />}
+                icon={<Lock02 className="w-6 h-6 text-[#164e52]" />}
                 title="Update your password"
                 supporting="Enter your current password and new password."
             />
@@ -775,7 +775,7 @@ function RequirementRow({ met, children }: { met: boolean; children: React.React
                     met ? "bg-[#dcfae6]" : "bg-[var(--colors-border-primary)]"
                 )}
             >
-                <Check className={cn("w-3 h-3", met ? "text-[#079455]" : "text-white")} />
+                <Check className={cn("w-3 h-3", met ? "text-[#164e52]" : "text-white")} />
             </div>
             <p className="flex-1 text-[14px] text-[var(--colors-text-quaternary)] leading-5">{children}</p>
         </div>

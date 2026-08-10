@@ -51,7 +51,7 @@ export function ToolbarFilter({ onClick, active = false, label = "Filter", size 
                     <Sliders className="w-5 h-5" />
                     {active && (
                         <span
-                            className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white"
+                            className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#164e52] border-1 border-white"
                             aria-hidden
                         />
                     )}

@@ -131,7 +131,7 @@ function FileTypeIcon({ kind, size = 40 }: { kind: "CSV" | "XLSX"; size?: number
     return (
         <div className="relative shrink-0" style={{ width: size * 0.8, height: size }}>
             <div className="absolute inset-0 rounded-[3px] border-1 border-[var(--colors-border-primary)] bg-white" />
-            <div className="absolute left-[2px] bottom-[16%] bg-[#079455] rounded-[2px] px-[3px] py-[1px]">
+            <div className="absolute left-[2px] bottom-[16%] bg-[#164e52] rounded-[2px] px-[3px] py-[1px]">
                 <span className="text-[7px] font-bold text-white leading-none tracking-tight">{kind}</span>
             </div>
         </div>
@@ -186,7 +186,7 @@ function TemplateCard({ kind, name }: { kind: "CSV" | "XLSX"; name: string }) {
 function SummaryRow({ label, value, tone, icon }: {
     label: string; value: number; tone: "default" | "success" | "error"; icon: React.ReactNode;
 }) {
-    const valueColor = tone === "success" ? "text-[#079455]" : tone === "error" ? "text-[#d92d20]" : "text-[var(--colors-text-primary)]";
+    const valueColor = tone === "success" ? "text-[#164e52]" : tone === "error" ? "text-[#d92d20]" : "text-[var(--colors-text-primary)]";
     return (
         <div className="flex items-center justify-between gap-4">
             <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
@@ -473,11 +473,11 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                                             <SummaryRow label="Total rows" value={result.total} tone="default"
                                                 icon={<Database01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} />
                                             <SummaryRow label="Valid rows" value={result.valid} tone="success"
-                                                icon={<CheckCircle className="w-4 h-4 text-[#079455]" />} />
+                                                icon={<CheckCircle className="w-4 h-4 text-[#164e52]" />} />
                                             <SummaryRow label="Invalid rows" value={result.invalid} tone="error"
                                                 icon={<XCircle className="w-4 h-4 text-[#d92d20]" />} />
                                             <SummaryRow label="Imported rows" value={result.valid} tone="success"
-                                                icon={<UploadCloud02 className="w-4 h-4 text-[#079455]" />} />
+                                                icon={<UploadCloud02 className="w-4 h-4 text-[#164e52]" />} />
                                         </div>
                                     </div>
 

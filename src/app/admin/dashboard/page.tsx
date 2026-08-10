@@ -2027,7 +2027,7 @@ export default function AdminDashboard() {
                     {
                         key: "waitlist",
                         show: needsAttention.waitlistConfirmCount > 0,
-                        icon: CalendarCheck01, iconBg: "bg-[#eff6f3]", iconFg: "text-[#079455]",
+                        icon: CalendarCheck01, iconBg: "bg-[#eff6f3]", iconFg: "text-[#164e52]",
                         title: `${needsAttention.waitlistConfirmCount} waitlist ${needsAttention.waitlistConfirmCount === 1 ? "spot" : "spots"} need confirmation`,
                         subtitle: "Spots opened on today's classes — confirm the next in line",
                         onView: () => setAttentionModal("waitlist"),

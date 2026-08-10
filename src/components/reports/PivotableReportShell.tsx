@@ -784,7 +784,7 @@ function PivotTable({
     function fmtDelta(d: number | null): { text: string; cls: string } {
         if (d === null) return { text: "—", cls: "text-[var(--colors-fg-quaternary)]" };
         const abs = Math.abs(d).toFixed(0);
-        if (d > 0) return { text: `▲ ${abs}%`, cls: "text-[#079455] font-semibold" };
+        if (d > 0) return { text: `▲ ${abs}%`, cls: "text-[#164e52] font-semibold" };
         if (d < 0) return { text: `▼ ${abs}%`, cls: "text-[#d92d20] font-semibold" };
         return { text: "0%", cls: "text-[var(--colors-text-tertiary)]" };
     }

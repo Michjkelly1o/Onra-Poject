@@ -91,7 +91,7 @@ export default function SelectInstructorPage() {
                     </span>
                     {selected === FLEXIBLE ? (
                         <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#d7ffe9]">
-                            <Check className="size-2.5 text-[#085d3a]" strokeWidth={3} aria-hidden />
+                            <Check className="size-2.5 text-[#164e52]" strokeWidth={3} aria-hidden />
                         </span>
                     ) : (
                         <span className="size-4 shrink-0 rounded-full border border-[var(--colors-border-primary)]" />
@@ -122,7 +122,7 @@ export default function SelectInstructorPage() {
                             </span>
                             {isSel ? (
                                 <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-[#d7ffe9]">
-                                    <Check className="size-2.5 text-[#085d3a]" strokeWidth={3} aria-hidden />
+                                    <Check className="size-2.5 text-[#164e52]" strokeWidth={3} aria-hidden />
                                 </span>
                             ) : (
                                 <span className="size-4 shrink-0 rounded-full border border-[var(--colors-border-primary)]" />

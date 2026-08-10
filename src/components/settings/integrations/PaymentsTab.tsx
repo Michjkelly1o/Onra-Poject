@@ -449,7 +449,7 @@ function ViewModal({ provider, onDisconnect, onClose }: {
             }
         >
             <div className="flex flex-col gap-4">
-                <ViewField label="Status" value="Connected" valueColor="text-[#079455]" />
+                <ViewField label="Status" value="Connected" valueColor="text-[#164e52]" />
                 {cfg.viewFields.map(f => (
                     <ViewField key={f.label} label={f.label} value={f.value} />
                 ))}
