@@ -293,6 +293,49 @@ function PayRateSection({ title, value, options, onChange }: {
     );
 }
 
+/** AED-prefixed amount input (matches StaffFormPage's PayAedInput). */
+function PayAedInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    return (
+        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all overflow-hidden">
+            <span className="flex items-center px-[14px] text-[16px] text-[#475467] leading-[24px] border-r border-[#d0d5dd] shrink-0 select-none">AED</span>
+            <input type="text" inputMode="numeric" value={value}
+                onChange={e => onChange(e.target.value.replace(/[^\d.]/g, ""))}
+                placeholder="Enter amount"
+                className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent" />
+        </div>
+    );
+}
+
+/** Pay per class config — Pay rate + Substitute pay rate + Substitutions
+ *  amount. Mirrors StaffFormPage so the payroll modal and the staff form
+ *  edit the exact same fields (client 2026-08-10). */
+function PayPerClassSection({ payRateId, substitutePayRateId, substitutionAmountAed, options, onChange }: {
+    payRateId: string; substitutePayRateId: string; substitutionAmountAed: string;
+    options: { value: string; label: string }[];
+    onChange: (patch: { payRateId?: string; substitutePayRateId?: string; substitutionAmountAed?: number }) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-4">
+            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Pay per class</p>
+            <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-[6px]">
+                    <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
+                    <SelectInput placeholder="Select pay rate" options={options} value={payRateId} onChange={v => onChange({ payRateId: v })} width="w-full" />
+                </div>
+                <div className="flex flex-col gap-[6px]">
+                    <p className="text-[14px] font-medium text-[#344054]">Substitute pay rate (optional)</p>
+                    <SelectInput placeholder="Select pay rate" options={options} value={substitutePayRateId} onChange={v => onChange({ substitutePayRateId: v })} width="w-full" />
+                </div>
+            </div>
+            <div className="flex flex-col gap-[6px]">
+                <p className="text-[14px] font-medium text-[#344054]">Substitutions</p>
+                <PayAedInput value={substitutionAmountAed} onChange={v => onChange({ substitutionAmountAed: v === "" ? undefined : Number(v) })} />
+                <p className="text-[14px] text-[#475467]">Per class for which the instructor is added as a substitute.</p>
+            </div>
+        </div>
+    );
+}
+
 /** A pay configuration is valid when the Default track is on, OR BOTH
  *  per-booking tracks are on. This single predicate captures every rule:
  *  at-least-one-enabled, no "Pay per class only", no "Pay per private only",
@@ -303,8 +346,11 @@ function isValidPayConfig(c: StaffPayConfig): boolean {
     return c.default.enabled || (c.perClass.enabled && c.perAppointment.enabled);
 }
 
-function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates, onCancel, onConfirm }: {
-    instructor: Instructor;
+export function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates, onCancel, onConfirm }: {
+    /** Only the display name is used inside the modal — any object with `name`
+     *  works, so the compensation main page can open it inline without a full
+     *  Instructor record. */
+    instructor: { name: string };
     /** Instructors carry all three tracks; other roles only the Default rate. */
     isInstructor: boolean;
     initialConfig: StaffPayConfig;
@@ -388,16 +434,20 @@ function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates,
                         </div>
                     </div>
 
-                    {/* Config sections — one per enabled track */}
-                    {cfg.default.enabled && (
-                        <PayRateSection title="Default pay rate" value={cfg.default.payRateId ?? ""} options={options}
-                            onChange={v => setTrack("default", { payRateId: v })} />
+                    {/* Config sections — ALWAYS shown regardless of toggle state
+                        (client 2026-08-10). Non-instructors get only Default. */}
+                    <PayRateSection title="Default pay rate" value={cfg.default.payRateId ?? ""} options={options}
+                        onChange={v => setTrack("default", { payRateId: v })} />
+                    {isInstructor && (
+                        <PayPerClassSection
+                            payRateId={cfg.perClass.payRateId ?? ""}
+                            substitutePayRateId={cfg.perClass.substitutePayRateId ?? ""}
+                            substitutionAmountAed={cfg.perClass.substitutionAmountAed != null ? String(cfg.perClass.substitutionAmountAed) : ""}
+                            options={options}
+                            onChange={patch => setTrack("perClass", patch)}
+                        />
                     )}
-                    {isInstructor && cfg.perClass.enabled && (
-                        <PayRateSection title="Pay per class" value={cfg.perClass.payRateId ?? ""} options={options}
-                            onChange={v => setTrack("perClass", { payRateId: v })} />
-                    )}
-                    {isInstructor && cfg.perAppointment.enabled && (
+                    {isInstructor && (
                         <PayRateSection title="Pay per appointment" value={cfg.perAppointment.payRateId ?? ""} options={options}
                             onChange={v => setTrack("perAppointment", { payRateId: v })} />
                     )}

@@ -991,25 +991,45 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     // instructor may use all three, every other role only Default. At least
     // one track must stay enabled, and every enabled track needs a rate.
     const pc = form.payConfig;
+    // Valid pay config (client 2026-08-10): the Default rate is the primary —
+    // at least one must be on. Disabling Default is only allowed for instructors
+    // when BOTH per-booking tracks (Pay per class + Pay per appointment) are on.
+    const isValidPayConfig = pc.default.enabled || (isInstructor && pc.perClass.enabled && pc.perAppointment.enabled);
     const enabledTracks = [
         pc.default.enabled ? pc.default : null,
         isInstructor && pc.perClass.enabled ? pc.perClass : null,
         isInstructor && pc.perAppointment.enabled ? pc.perAppointment : null,
     ].filter(Boolean) as { enabled: boolean; payRateId?: string }[];
-    const enabledCount = enabledTracks.length;
     // Every enabled track needs a rate — but only for instructors. A
-    // non-instructor's Default rate stays optional (pre-existing contract), so
-    // an Operator / Front Desk can be saved without picking a rate.
-    const step2Valid = enabledCount >= 1 && (!isInstructor || enabledTracks.every(t => !!t.payRateId));
+    // non-instructor's Default rate stays optional (pre-existing contract).
+    const step2Valid = isValidPayConfig && (!isInstructor || enabledTracks.every(t => !!t.payRateId));
     const formValid = step1Valid && step2Valid;
 
-    /** Toggle a track on/off, enforcing "at least one enabled". */
+    // Toggle lock states (mirror the change-pay-rate modal):
+    //  • Default: non-instructors can never turn it off (their only track).
+    //  • Pay per class / appointment: while Default is off, BOTH stay locked on
+    //    (else the config collapses to a single booking type).
+    const defaultToggleDisabled  = !isInstructor;
+    const perClassToggleDisabled = pc.perClass.enabled && !pc.default.enabled;
+    const perApptToggleDisabled  = pc.perAppointment.enabled && !pc.default.enabled;
+
+    /** Toggle a track, enforcing the valid-config rules. Disabling Default
+     *  AUTO-ENABLES both per-booking tracks; invalid transitions are rejected. */
     function toggleTrack(key: keyof StaffPayConfig, next: boolean) {
-        if (!next && enabledCount <= 1 && pc[key].enabled) {
-            showToast("At least one required", "Keep at least one pay rate configuration enabled.", "error");
+        let updated: StaffPayConfig = { ...pc, [key]: { ...pc[key], enabled: next } };
+        if (key === "default" && !next && isInstructor) {
+            updated = {
+                ...updated,
+                perClass:       { ...updated.perClass, enabled: true },
+                perAppointment: { ...updated.perAppointment, enabled: true },
+            };
+        }
+        const valid = updated.default.enabled || (isInstructor && updated.perClass.enabled && updated.perAppointment.enabled);
+        if (!valid) {
+            showToast("At least one required", "Keep the Default pay rate on, or enable both Pay per class and Pay per appointment.", "error");
             return;
         }
-        setPayTrack(key, { enabled: next } as never);
+        setForm(prev => ({ ...prev, payConfig: updated, payRateId: updated.default.payRateId ?? prev.payRateId }));
     }
 
     return (
@@ -1223,7 +1243,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                                 subtitle="Base salary for this staff."
                                                 enabled={form.payConfig.default.enabled}
                                                 onToggle={n => toggleTrack("default", n)}
-                                                disabled={!isInstructor}
+                                                disabled={defaultToggleDisabled}
                                             />
                                             {isInstructor && (
                                                 <PayToggleRow
@@ -1231,6 +1251,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                                     subtitle="Salary for every class taught."
                                                     enabled={form.payConfig.perClass.enabled}
                                                     onToggle={n => toggleTrack("perClass", n)}
+                                                    disabled={perClassToggleDisabled}
                                                 />
                                             )}
                                             {isInstructor && (
@@ -1239,13 +1260,14 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                                     subtitle="Salary for every appointment completed."
                                                     enabled={form.payConfig.perAppointment.enabled}
                                                     onToggle={n => toggleTrack("perAppointment", n)}
+                                                    disabled={perApptToggleDisabled}
                                                 />
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Section 2 — Default pay rate config (when Fixed salary is on) */}
-                                    {form.payConfig.default.enabled && (
+                                    {/* Section 2 — Default pay rate config (always shown) */}
+                                    {(
                                         <div className="flex flex-col gap-4">
                                             <PaySectionHeader title="Default pay rate" />
                                             <div className="flex flex-col gap-[6px]">
@@ -1261,8 +1283,8 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                         </div>
                                     )}
 
-                                    {/* Section 3 — Pay per class config */}
-                                    {isInstructor && form.payConfig.perClass.enabled && (
+                                    {/* Section 3 — Pay per class config (always shown for instructors) */}
+                                    {isInstructor && (
                                         <div className="flex flex-col gap-4">
                                             <PaySectionHeader title="Pay per class" />
                                             <div className="grid grid-cols-2 gap-3">
@@ -1298,8 +1320,8 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                         </div>
                                     )}
 
-                                    {/* Section 4 — Pay per appointment config */}
-                                    {isInstructor && form.payConfig.perAppointment.enabled && (
+                                    {/* Section 4 — Pay per appointment config (always shown for instructors) */}
+                                    {isInstructor && (
                                         <div className="flex flex-col gap-4">
                                             <PaySectionHeader title="Pay per appointment" />
                                             <div className="flex flex-col gap-[6px]">
