@@ -18,10 +18,12 @@
 // booking cancelled from the admin's class detail page or the customer
 // portal flows here on the next render.
 //
+// Uses the SAME drill-down chrome as the admin dashboard modals: shared
+// `ModalShell` (title + aggregate subtitle + paginated footer) and the
+// shared `<table>` + `TABLE_TH/TD` + `Pagination` primitives, so the
+// instructor modals look identical to admin's.
+//
 // Layout notes:
-//   • Modal is fixed-height (560px) so switching tabs (4 → 2 → 2 rows)
-//     does NOT cause the dialog to shrink/grow. The table body scrolls
-//     internally when there are more rows than fit.
 //   • The kebab row-action menu is portaled to `document.body` with
 //     fixed positioning calculated from the trigger's bounding rect —
 //     same pattern the sidebar tooltip uses. This escapes the scroll
@@ -35,9 +37,11 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { DotsVertical, Eye } from "@untitledui/icons";
 import { useAppStore, isAppointmentId, type ClassBooking, type ClassSchedule, type Customer } from "@/lib/store";
-import { Modal } from "@/components/modals/Modal";
 import { Badge } from "@/components/reports/badges";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui/Pagination";
+import { TABLE_TH, TABLE_TD } from "@/lib/table-styles";
+import { ModalShell } from "@/components/dashboard/NeedsAttentionModals";
 
 interface CancellationsModalProps {
     open: boolean;
@@ -77,6 +81,8 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
     const classSchedules = useAppStore(s => s.classSchedules);
 
     const [tab, setTab] = useState<TabKey>("all");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     /** Active row's kebab menu — id + screen-anchored position. */
     const [openMenu, setOpenMenu] = useState<{ id: string; top: number; right: number } | null>(null);
 
@@ -85,7 +91,7 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
     useEffect(() => {
         if (!open) setOpenMenu(null);
     }, [open]);
-    useEffect(() => setOpenMenu(null), [tab]);
+    useEffect(() => { setOpenMenu(null); setPage(1); }, [tab]);
 
     // Join the bookings with their customer + class. The modal renders
     // names/emails/avatars off this composite shape.
@@ -121,6 +127,10 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
     const onTimeRows  = useMemo(() => allRows.filter(r => !r.isLate), [allRows]);
     const visibleRows = tab === "late" ? lateRows : tab === "on_time" ? onTimeRows : allRows;
 
+    const totalRows = visibleRows.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = visibleRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
     /** Navigate to the class schedule detail for the row's underlying
      *  class. Instructor-scope routing (per memory: instructor side stays
      *  on instructor side) — appointments → `/appointments/[id]`,
@@ -141,26 +151,32 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
         router.push(`${base}?${qs}`);
     }
 
+    const strong = "font-semibold text-[var(--colors-text-primary)]";
+
     return (
-        <Modal
+        <ModalShell
             open={open}
             onClose={onClose}
-            maxWidth={720}
-            height={560}
-            zIndex={50}
-            ariaLabelledBy="cancellations-modal-title"
-            className="rounded-[16px]"
+            width={720}
+            title="Cancellations"
+            subtitle={
+                <>
+                    <span className={strong}>{allRows.length}</span> cancellation{allRows.length === 1 ? "" : "s"}
+                    {" · "}<span className={strong}>{lateRows.length}</span> late
+                    {" · "}<span className={strong}>{onTimeRows.length}</span> on-time
+                </>
+            }
+            footer={
+                <Pagination
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
+                    onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
+            }
         >
-            <Modal.Header
-                id="cancellations-modal-title"
-                title="Cancellations"
-                subtitle="Overview of late cancellations vs on time cancellations."
-                onClose={onClose}
-            />
-
-            {/* Tabs — same segmented pill style the admin Memberships ↔ Credit-package
-                tab uses on `/admin/products` (white-on-gray pill, inline count). */}
-            <div className="shrink-0 px-6 pb-4">
+            <div className="px-6">
+                {/* Tabs — same segmented pill style the admin Memberships ↔ Credit-package
+                    tab uses on `/admin/products` (white-on-gray pill, inline count). */}
+                <div className="pb-4">
                     <div className="flex items-center bg-surface-secondary border-1 border-gray-200 rounded-[10px] p-1 gap-1">
                         <TabButton label="All"     count={allRows.length}    active={tab === "all"}     onClick={() => setTab("all")} />
                         <TabButton label="Late"    count={lateRows.length}   active={tab === "late"}    onClick={() => setTab("late")} />
@@ -168,23 +184,17 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                     </div>
                 </div>
 
-                {/* ── Table ─────────────────────────────────────────────── */}
-                <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-                    {/* Header row */}
-                    <div className="grid grid-cols-[1.4fr_1fr_1fr_40px] gap-4 items-center pb-3 border-b-1 border-[var(--colors-border-secondary)] sticky top-0 bg-white z-10">
-                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Name</div>
-                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Class</div>
-                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Status</div>
-                        <div />
-                    </div>
-
-                    {/* Body */}
-                    {visibleRows.length === 0 ? (
-                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[var(--colors-text-quaternary)]">
-                            No cancellations in this view.
-                        </div>
-                    ) : (
-                        visibleRows.map(row => (
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TABLE_TH}>Name</th>
+                            <th className={TABLE_TH}>Class</th>
+                            <th className={TABLE_TH}>Status</th>
+                            <th className={TABLE_TH} />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(row => (
                             <CancellationRowItem
                                 key={row.bookingId}
                                 row={row}
@@ -197,8 +207,16 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                                     );
                                 }}
                             />
-                        ))
-                    )}
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
+                                    No cancellations in this view.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
 
             {/* Portaled kebab menu — escapes the modal's overflow so
@@ -211,14 +229,14 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                         aria-label="Close menu"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={e => { e.stopPropagation(); setOpenMenu(null); }}
-                        className="fixed inset-0 z-[60] cursor-default"
+                        className="fixed inset-0 z-[260] cursor-default"
                     />
                     <div
                         role="menu"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={e => e.stopPropagation()}
                         style={{ position: "fixed", top: openMenu.top, right: openMenu.right }}
-                        className="z-[61] w-44 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden"
+                        className="z-[261] w-44 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] overflow-hidden"
                     >
                         <button
                             type="button"
@@ -243,7 +261,7 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                 </>,
                 document.body,
             )}
-        </Modal>
+        </ModalShell>
     );
 }
 
@@ -255,62 +273,66 @@ interface CancellationRowItemProps {
 function CancellationRowItem({ row, isMenuOpen, onToggleMenu }: CancellationRowItemProps) {
     const btnRef = useRef<HTMLButtonElement>(null);
     return (
-        <div className="grid grid-cols-[1.4fr_1fr_1fr_40px] gap-4 items-center py-3 border-b-1 border-[var(--colors-bg-tertiary)] last:border-b-0">
+        <tr className="transition-colors">
             {/* Customer cell — avatar + name + email */}
-            <div className="flex items-center gap-3 min-w-0">
-                {row.customerImageUrl ? (
-                    <img
-                        src={row.customerImageUrl}
-                        alt=""
-                        className="w-10 h-10 rounded-full object-cover shrink-0"
-                    />
-                ) : (
-                    <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-semibold"
-                        style={{ backgroundColor: row.customerColor }}
-                    >
-                        {row.customerInitials}
+            <td className={TABLE_TD}>
+                <div className="flex items-center gap-3 min-w-0">
+                    {row.customerImageUrl ? (
+                        <img
+                            src={row.customerImageUrl}
+                            alt=""
+                            className="w-10 h-10 rounded-full object-cover shrink-0"
+                        />
+                    ) : (
+                        <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-semibold"
+                            style={{ backgroundColor: row.customerColor }}
+                        >
+                            {row.customerInitials}
+                        </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[var(--colors-text-primary)] leading-5 truncate">{row.customerName}</p>
+                        <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{row.customerEmail}</p>
                     </div>
-                )}
-                <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--colors-text-primary)] leading-5 truncate">{row.customerName}</p>
-                    <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{row.customerEmail}</p>
                 </div>
-            </div>
+            </td>
 
             {/* Class cell */}
-            <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{row.className}</div>
+            <td className={cn(TABLE_TD, "text-[var(--colors-text-tertiary)]")}>{row.className}</td>
 
             {/* Status cell */}
-            <div>
+            <td className={TABLE_TD}>
                 <Badge tone="red">{row.statusLabel}</Badge>
-            </div>
+            </td>
 
             {/* Kebab cell — clicking calls onToggleMenu with the button's
                 bounding rect so the portaled menu can fixed-position relative
                 to the viewport (not the clipped scroll container). */}
-            <div className="flex justify-end">
-                <button
-                    ref={btnRef}
-                    type="button"
-                    aria-label="Row actions"
-                    aria-haspopup="menu"
-                    aria-expanded={isMenuOpen}
-                    onClick={() => {
-                        const rect = btnRef.current?.getBoundingClientRect();
-                        if (rect) onToggleMenu(rect);
-                    }}
-                    className={cn(
-                        "w-8 h-8 flex items-center justify-center rounded-md transition-colors",
-                        isMenuOpen
-                            ? "text-[var(--colors-text-primary)] bg-[var(--colors-bg-secondary)]"
-                            : "text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)]",
-                    )}
-                >
-                    <DotsVertical className="w-5 h-5" />
-                </button>
-            </div>
-        </div>
+            <td className={TABLE_TD}>
+                <div className="flex justify-end">
+                    <button
+                        ref={btnRef}
+                        type="button"
+                        aria-label="Row actions"
+                        aria-haspopup="menu"
+                        aria-expanded={isMenuOpen}
+                        onClick={() => {
+                            const rect = btnRef.current?.getBoundingClientRect();
+                            if (rect) onToggleMenu(rect);
+                        }}
+                        className={cn(
+                            "w-8 h-8 flex items-center justify-center rounded-md transition-colors",
+                            isMenuOpen
+                                ? "text-[var(--colors-text-primary)] bg-[var(--colors-bg-secondary)]"
+                                : "text-[var(--colors-fg-quaternary)] hover:text-[var(--colors-text-primary)] hover:bg-[var(--colors-bg-secondary)]",
+                        )}
+                    >
+                        <DotsVertical className="w-5 h-5" />
+                    </button>
+                </div>
+            </td>
+        </tr>
     );
 }
 
