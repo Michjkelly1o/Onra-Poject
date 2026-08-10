@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
     ChevronLeft, Calendar, ClockFastForward, Users01, Grid01,
-    CheckCircle, Dotpoints01,
+    CheckCircle, Dotpoints01, Check, MarkerPin01, Clock,
 } from "@untitledui/icons";
 import { useAppStore, resolveTemplateCoverImage, type ClassSchedule } from "@/lib/store";
 import { useIsAuthenticated, loginCustomer } from "@/lib/customer/auth";
@@ -27,6 +27,7 @@ import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { Button } from "@/components/ui/button";
 import { SocialAuthButtons } from "@/components/customer/auth/SocialAuthButtons";
 import { BranchLocationCard } from "@/components/customer/branch/BranchLocationCard";
+import { SpotPicker } from "@/components/customer/classes/SpotPicker";
 
 function parseISO(iso: string): Date {
     const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
@@ -63,22 +64,38 @@ export default function EmbedClassPage() {
     const classCategories = useAppStore(s => s.classCategories);
     const branches = useAppStore(s => s.branches);
     const staff = useAppStore(s => s.staff);
+    const customers = useAppStore(s => s.customers);
+    const customerPlans = useAppStore(s => s.customerPlans);
+    const classBookings = useAppStore(s => s.classBookings);
+    const addClassBooking = useAppStore(s => s.addClassBooking);
+    const showToast = useAppStore(s => s.showToast);
     const branding = useAppStore(s => s.brandingSettings);
 
     const s = classSchedules.find(x => x.id === id);
     const instructorImageUrl = staff.find(st => st.id === s?.instructorId)?.imageUrl;
 
-    // Logged-in visitors skip the gate → straight to the customer flow.
-    useEffect(() => {
-        if (authed) router.replace(`/customer/classes/${id}?b=book`);
-    }, [authed, id, router]);
+    // Right-column stage machine — everything stays INSIDE the embed, we never
+    // redirect to the customer app:
+    //   "auth" → log in / sign up   →   "book" → inline book flow (Book to /
+    //   Spot / Pay with, same as the customer app)   →   "done" → confirmed.
+    type Stage = "auth" | "book" | "done";
+    const [stage, setStage] = useState<Stage>("auth");
+    // A visitor who is already signed in (or signs in via another tab) skips
+    // straight to the book flow; "done" is never rewound.
+    useEffect(() => { if (authed) setStage(st => (st === "auth" ? "book" : st)); }, [authed]);
 
     const [email, setEmail] = useState("");
+    const [bookTo, setBookTo] = useState<"myself" | "guest">("myself");
+    const [guestName, setGuestName] = useState("");
+    const [guestPhone, setGuestPhone] = useState("");
+    const [selectedSpot, setSelectedSpot] = useState<string | undefined>(undefined);
+    const [payWith, setPayWith] = useState<string | null>(null); // planId, "drop_in", or null → default
+
     function continueToBooking() {
-        // Demo auth — sign the visitor in, then hand off to the same customer
-        // checkout flow the mobile app uses.
+        // Demo auth — sign the visitor in, then swap the right column to the
+        // inline book flow (no redirect to the customer side).
         loginCustomer(DEMO_MEMBER_ID);
-        router.push(`/customer/classes/${id}?b=book`);
+        setStage("book");
     }
 
     const template = useMemo(() => classTemplates.find(t => t.id === s?.templateId), [classTemplates, s]);
@@ -94,12 +111,46 @@ export default function EmbedClassPage() {
             </div>
         );
     }
-    if (authed) return null; // redirecting to the customer flow
-
     const dur = durationMin(s.startTime, (s as ClassSchedule & { endTime?: string }).endTime);
     const dateLabel = `${parseISO(s.dateISO).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · ${to12h(s.startTime)}`;
     const equipment = (s.equipment || "").split(",").map(e => e.trim()).filter(Boolean);
     const emailValid = EMAIL_RE.test(email.trim());
+
+    // ── Inline book-flow derivations (customer-parity) ──
+    const member = customers.find(c => c.id === DEMO_MEMBER_ID);
+    // Usable plans the member can pay a credit from — same source the customer
+    // app reads. Empty → the member pays per class (drop-in).
+    const eligiblePlans = member ? customerPlans.filter(p => p.customerId === member.id && p.status === "active") : [];
+    const activePay = payWith ?? eligiblePlans[0]?.id ?? "drop_in";
+    const spotRequired = !!(s.spotSelectionEnabled && s.spotLayout);
+    const takenSpots = spotRequired
+        ? [...(s.spotLayout!.blockedSpots || []), ...classBookings.filter(b => b.classScheduleId === s.id && b.spot).map(b => b.spot as string)]
+        : [];
+    const spotReady = !spotRequired || !!selectedSpot;
+    const guestReady = bookTo === "myself" || guestName.trim().length > 0;
+    const canBook = !!member && guestReady && spotReady;
+    const instructorInitials = s.instructorInitials || (s.instructorName || "?").charAt(0);
+
+    function handleBook() {
+        if (!member || !canBook) return;
+        const usingPlan = activePay !== "drop_in";
+        if (bookTo === "myself") {
+            addClassBooking({ classScheduleId: s!.id, customerId: member.id, status: "booked", spot: selectedSpot });
+        } else {
+            addClassBooking({
+                classScheduleId: s!.id,
+                customerId: member.id,
+                status: "booked",
+                spot: selectedSpot,
+                guestName: guestName.trim(),
+                guestPhone: guestPhone.trim() || undefined,
+                guestPayment: usingPlan ? "booker_credit" : "drop_in",
+                chargeBookerCredit: usingPlan,
+            });
+        }
+        showToast("Booking confirmed", `${s!.name} booked for ${bookTo === "myself" ? "you" : guestName.trim()}.`, "success");
+        setStage("done");
+    }
 
     return (
         <div className="min-h-screen bg-[var(--colors-bg-secondary)] px-6 md:px-16 py-10">
@@ -171,39 +222,198 @@ export default function EmbedClassPage() {
                         <BranchLocationCard branch={branch} room={s.room} heading="Location" />
                     </div>
 
-                    {/* ── Right — log in / sign up ── */}
+                    {/* ── Right — log in / sign up → inline book flow → confirmed ── */}
                     <div className="w-full lg:w-[420px] shrink-0 border border-[var(--colors-border-secondary)] rounded-[24px] p-6 flex flex-col gap-6">
-                        <div className="flex flex-col gap-2">
-                            <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">Log in or sign up</p>
-                            <p className="text-[16px] text-[var(--colors-text-quaternary)] leading-6">
-                                Create an account or log in to book and manage your appointments.
-                            </p>
-                        </div>
+                        {stage === "auth" && (
+                            <>
+                                <div className="flex flex-col gap-2">
+                                    <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">Log in or sign up</p>
+                                    <p className="text-[16px] text-[var(--colors-text-quaternary)] leading-6">
+                                        Create an account or log in to book and manage your appointments.
+                                    </p>
+                                </div>
 
-                        <div className="flex flex-col gap-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Email</label>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    onKeyDown={e => { if (e.key === "Enter" && emailValid) continueToBooking(); }}
-                                    placeholder="Enter email address"
-                                    className="h-11 px-3.5 border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
-                                />
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Email</label>
+                                        <input
+                                            type="email"
+                                            value={email}
+                                            onChange={e => setEmail(e.target.value)}
+                                            onKeyDown={e => { if (e.key === "Enter" && emailValid) continueToBooking(); }}
+                                            placeholder="Enter email address"
+                                            className="h-11 px-3.5 border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                                        />
+                                    </div>
+                                    <Button variant="primary" size="xl" className="w-full rounded-full" disabled={!emailValid} onClick={continueToBooking}>
+                                        Continue
+                                    </Button>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <span className="flex-1 h-px bg-[var(--colors-border-secondary)]" />
+                                    <span className="text-[16px] text-[var(--colors-text-quaternary)]">or</span>
+                                    <span className="flex-1 h-px bg-[var(--colors-border-secondary)]" />
+                                </div>
+
+                                <SocialAuthButtons onProvider={() => continueToBooking()} />
+                            </>
+                        )}
+
+                        {stage === "book" && member && (
+                            <>
+                                <div className="flex flex-col gap-2">
+                                    <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">Book your spot</p>
+                                    <p className="text-[16px] text-[var(--colors-text-quaternary)] leading-6">
+                                        Review the details below and confirm your booking.
+                                    </p>
+                                </div>
+
+                                {/* Book to */}
+                                <section className="flex flex-col gap-3">
+                                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Book to</p>
+                                    <div className="flex rounded-full border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] p-1">
+                                        {(["myself", "guest"] as const).map(t => {
+                                            const active = bookTo === t;
+                                            return (
+                                                <button key={t} type="button" onClick={() => setBookTo(t)}
+                                                    className={`flex-1 rounded-full py-1.5 text-[14px] leading-5 transition-colors ${active ? "bg-white font-semibold text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]" : "font-medium text-[var(--colors-text-quaternary)]"}`}>
+                                                    {t === "myself" ? "Myself" : "Guest"}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {bookTo === "myself" ? (
+                                        <div className="flex items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
+                                            <InstructorAvatar imageUrl={member.imageUrl} initials={member.initials} color="#667085" size={40} />
+                                            <div className="flex min-w-0 flex-1 flex-col">
+                                                <span className="truncate text-[14px] font-medium leading-5 text-[var(--colors-text-primary)]">
+                                                    {`${member.firstName} ${member.lastName}`.trim()} <span className="font-normal text-[var(--colors-text-quaternary)]">(You)</span>
+                                                </span>
+                                                <span className="truncate text-[14px] font-normal leading-5 text-[var(--colors-text-quaternary)]">{member.email}</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Guest name</label>
+                                                <input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Full name"
+                                                    className="h-11 px-3.5 border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
+                                            </div>
+                                            <div className="flex flex-col gap-1.5">
+                                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Guest phone</label>
+                                                <input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Phone number"
+                                                    className="h-11 px-3.5 border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {spotRequired && s.spotLayout && (
+                                        <SpotPicker
+                                            cols={s.spotLayout.cols}
+                                            rows={s.spotLayout.rows}
+                                            unavailable={takenSpots}
+                                            selected={[selectedSpot]}
+                                            seats={[{ initials: member.initials, label: "You" }]}
+                                            onChange={next => setSelectedSpot(next[0])}
+                                            compact
+                                        />
+                                    )}
+                                </section>
+
+                                <Divider />
+
+                                {/* Pay with */}
+                                <section className="flex flex-col gap-3">
+                                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Pay with</p>
+                                    {eligiblePlans.length > 0 ? (
+                                        eligiblePlans.map(p => {
+                                            const sel = activePay === p.id;
+                                            return (
+                                                <button key={p.id} type="button" onClick={() => setPayWith(p.id)}
+                                                    className={`flex items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors ${sel ? "border-2" : "border border-[var(--colors-border-secondary)]"}`}
+                                                    style={sel ? { borderColor: accent } : undefined}>
+                                                    <div className="flex min-w-0 flex-1 flex-col">
+                                                        <span className="truncate text-[14px] font-medium leading-5 text-[var(--colors-text-primary)]">{p.name}</span>
+                                                        <span className="truncate text-[14px] font-normal leading-5 text-[var(--colors-text-quaternary)]">{p.creditsLabel}</span>
+                                                    </div>
+                                                    <RadioDot checked={sel} accent={accent} />
+                                                </button>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="flex items-center gap-3 rounded-xl border-2 bg-white p-4" style={{ borderColor: accent }}>
+                                            <div className="flex min-w-0 flex-1 flex-col">
+                                                <span className="truncate text-[14px] font-medium leading-5 text-[var(--colors-text-primary)]">Pay per class</span>
+                                                <span className="truncate text-[14px] font-normal leading-5 text-[var(--colors-text-quaternary)]">AED {DROP_IN_PRICE_AED} · single drop-in</span>
+                                            </div>
+                                            <RadioDot checked accent={accent} />
+                                        </div>
+                                    )}
+                                </section>
+
+                                <Button variant="primary" size="xl" className="w-full rounded-full mt-auto" disabled={!canBook} onClick={handleBook}>
+                                    Book now
+                                </Button>
+                            </>
+                        )}
+
+                        {stage === "done" && (
+                            <div className="flex flex-col items-center gap-6 py-4">
+                                {/* Ringed brand check (mirrors the customer success screen). */}
+                                <div className="relative flex size-12 shrink-0 items-center justify-center">
+                                    <span className="absolute -inset-[7px] rounded-full border-2 opacity-30" style={{ borderColor: accent }} aria-hidden />
+                                    <span className="absolute -inset-[15px] rounded-full border-2 opacity-10" style={{ borderColor: accent }} aria-hidden />
+                                    <span className="flex size-12 items-center justify-center rounded-full" style={{ backgroundColor: accent }}>
+                                        <Check className="size-6 text-white" strokeWidth={3} aria-hidden />
+                                    </span>
+                                </div>
+
+                                <p className="text-center text-[20px] font-semibold leading-[30px] text-[var(--colors-text-primary)]">
+                                    Your booking is confirmed!
+                                </p>
+
+                                <div className="w-full flex flex-col gap-4 rounded-[20px] border border-[var(--colors-border-secondary)] bg-white p-4 shadow-[0px_24px_48px_-12px_rgba(16,24,40,0.12)]">
+                                    <div className="relative h-[160px] w-full overflow-hidden rounded-2xl bg-[var(--colors-bg-secondary)]">
+                                        {cover && (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img src={cover} alt="" className="absolute inset-0 size-full object-cover" />
+                                        )}
+                                        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-xs font-medium leading-[18px]" style={{ borderColor: accent, color: accent }}>
+                                            <CheckCircle className="size-3 shrink-0" aria-hidden /> Booked
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)]">{s.name}</p>
+                                        <p className="text-[14px] font-normal leading-5 text-[var(--colors-text-tertiary)]">{dateLabel}</p>
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5 text-[14px] font-normal leading-5 text-[var(--colors-text-tertiary)]">
+                                            {dur != null && (
+                                                <span className="flex items-center gap-1">
+                                                    <Clock className="size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                                                    {dur} mins
+                                                </span>
+                                            )}
+                                            {s.instructorName && <span aria-hidden>•</span>}
+                                            {s.instructorName && (
+                                                <span className="flex items-center gap-1.5">
+                                                    <InstructorAvatar imageUrl={instructorImageUrl} initials={instructorInitials} color={s.instructorColor} size={20} />
+                                                    {s.instructorName}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-start gap-1.5 pt-1 text-[14px] font-normal leading-5 text-[var(--colors-text-tertiary)]">
+                                            <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[var(--colors-text-quaternary)]" aria-hidden />
+                                            <span className="min-w-0 flex-1">{s.room ? `${s.room} - ${branch?.name ?? ""}` : (branch?.name ?? "")}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Button variant="secondary" size="lg" className="w-full rounded-full" onClick={() => router.back()}>
+                                    Done
+                                </Button>
                             </div>
-                            <Button variant="primary" size="xl" className="w-full rounded-full" disabled={!emailValid} onClick={continueToBooking}>
-                                Continue
-                            </Button>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <span className="flex-1 h-px bg-[var(--colors-border-secondary)]" />
-                            <span className="text-[16px] text-[var(--colors-text-quaternary)]">or</span>
-                            <span className="flex-1 h-px bg-[var(--colors-border-secondary)]" />
-                        </div>
-
-                        <SocialAuthButtons onProvider={() => continueToBooking()} />
+                        )}
                     </div>
                 </div>
             </div>
@@ -229,4 +439,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 function Divider() {
     return <div className="h-px w-full bg-[var(--colors-border-secondary)]" />;
+}
+function RadioDot({ checked, accent }: { checked: boolean; accent: string }) {
+    return (
+        <span className="flex size-5 shrink-0 items-center justify-center rounded-full border"
+            style={{ borderColor: checked ? accent : "var(--colors-border-primary)" }}>
+            {checked && <span className="size-2.5 rounded-full" style={{ backgroundColor: accent }} />}
+        </span>
+    );
 }
