@@ -262,25 +262,33 @@ function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n
     );
 }
 
-function PayTrackCard({ title, subtitle, enabled, onToggle, toggleDisabled, rateValue, rateOptions, onRateChange }: {
-    title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; toggleDisabled?: boolean;
-    rateValue: string; rateOptions: { value: string; label: string }[]; onRateChange: (v: string) => void;
+/** Toggle-only row for the grouped "Pay rate configuration" section — the
+ *  toggles are separated from the per-track config now (Figma 8132:481109). */
+function PayToggleRow({ title, subtitle, enabled, onToggle, disabled }: {
+    title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; disabled?: boolean;
 }) {
     return (
-        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#7ba08c]" : "border-1 border-[var(--colors-border-secondary)]")}>
-            <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
-                </div>
-                <PayToggle value={enabled} onChange={onToggle} disabled={toggleDisabled} />
+        <div className="flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
             </div>
-            {enabled && (
-                <div className="flex flex-col gap-[6px]">
-                    <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
-                    <SelectInput placeholder="Select pay rate" options={rateOptions} value={rateValue} onChange={onRateChange} width="w-full" />
-                </div>
-            )}
+            <PayToggle value={enabled} onChange={onToggle} disabled={disabled} />
+        </div>
+    );
+}
+
+/** A titled config section with a single "Pay rate" select. */
+function PayRateSection({ title, value, options, onChange }: {
+    title: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-4">
+            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{title}</p>
+            <div className="flex flex-col gap-[6px]">
+                <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
+                <SelectInput placeholder="Select pay rate" options={options} value={value} onChange={onChange} width="w-full" />
+            </div>
         </div>
     );
 }
@@ -362,19 +370,36 @@ function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates,
                     </p>
                 </div>
 
-                <div className="px-6 pt-6 pb-2 flex flex-col gap-4 overflow-y-auto scrollbar-hide">
-                    <PayTrackCard title="Default pay rate" subtitle="Provide a base salary for this staff."
-                        enabled={cfg.default.enabled} onToggle={n => toggleTrack("default", n)} toggleDisabled={defaultToggleDisabled}
-                        rateValue={cfg.default.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("default", { payRateId: v })} />
-                    {isInstructor && (
-                        <>
-                            <PayTrackCard title="Pay per class" subtitle="Add compensation for every class taught."
-                                enabled={cfg.perClass.enabled} onToggle={n => toggleTrack("perClass", n)} toggleDisabled={perClassToggleDisabled}
-                                rateValue={cfg.perClass.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("perClass", { payRateId: v })} />
-                            <PayTrackCard title="Pay per Private" subtitle="Add compensation for every private session completed."
-                                enabled={cfg.perAppointment.enabled} onToggle={n => toggleTrack("perAppointment", n)} toggleDisabled={perApptToggleDisabled}
-                                rateValue={cfg.perAppointment.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("perAppointment", { payRateId: v })} />
-                        </>
+                <div className="px-6 pt-6 pb-2 flex flex-col gap-8 overflow-y-auto scrollbar-hide">
+                    {/* Section 1 — the toggles, grouped (Figma 8132:481109) */}
+                    <div className="flex flex-col gap-4">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Pay rate configuration</p>
+                        <div className="flex flex-col gap-4">
+                            <PayToggleRow title="Fixed salary" subtitle="Base salary for this staff."
+                                enabled={cfg.default.enabled} onToggle={n => toggleTrack("default", n)} disabled={defaultToggleDisabled} />
+                            {isInstructor && (
+                                <PayToggleRow title="Pay per class" subtitle="Salary for every class taught."
+                                    enabled={cfg.perClass.enabled} onToggle={n => toggleTrack("perClass", n)} disabled={perClassToggleDisabled} />
+                            )}
+                            {isInstructor && (
+                                <PayToggleRow title="Pay per appointment" subtitle="Salary for every appointment completed."
+                                    enabled={cfg.perAppointment.enabled} onToggle={n => toggleTrack("perAppointment", n)} disabled={perApptToggleDisabled} />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Config sections — one per enabled track */}
+                    {cfg.default.enabled && (
+                        <PayRateSection title="Default pay rate" value={cfg.default.payRateId ?? ""} options={options}
+                            onChange={v => setTrack("default", { payRateId: v })} />
+                    )}
+                    {isInstructor && cfg.perClass.enabled && (
+                        <PayRateSection title="Pay per class" value={cfg.perClass.payRateId ?? ""} options={options}
+                            onChange={v => setTrack("perClass", { payRateId: v })} />
+                    )}
+                    {isInstructor && cfg.perAppointment.enabled && (
+                        <PayRateSection title="Pay per appointment" value={cfg.perAppointment.payRateId ?? ""} options={options}
+                            onChange={v => setTrack("perAppointment", { payRateId: v })} />
                     )}
 
                     {/* Info banner — bg #f1f2ed warm-cream per Figma 7093-347698 */}
