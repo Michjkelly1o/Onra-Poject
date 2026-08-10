@@ -137,9 +137,6 @@ export function CustomizePortalPanel({ open, onClose }: {
                             width="w-full"
                         />
                     </FormField>
-                    <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-5">
-                        The embed shows class (group) sessions only — private and recovery sessions are never included.
-                    </p>
                 </div>
             </div>
 

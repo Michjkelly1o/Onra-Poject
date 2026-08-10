@@ -16,13 +16,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
     ChevronLeft, Calendar, ClockFastForward, Users01, Grid01,
-    CheckCircle, MarkerPin01, Dotpoints01,
+    CheckCircle, Dotpoints01,
 } from "@untitledui/icons";
 import { useAppStore, resolveTemplateCoverImage, type ClassSchedule } from "@/lib/store";
 import { useIsAuthenticated, loginCustomer } from "@/lib/customer/auth";
 import { DEMO_MEMBER_ID } from "@/lib/customer/context";
 import { DROP_IN_PRICE_AED } from "@/lib/customer/booking-flow";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
+import { Button } from "@/components/ui/button";
+import { SocialAuthButtons } from "@/components/customer/auth/SocialAuthButtons";
+import { BranchLocationCard } from "@/components/customer/branch/BranchLocationCard";
 
 function parseISO(iso: string): Date {
     const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
@@ -71,7 +74,6 @@ export default function EmbedClassPage() {
     const template = useMemo(() => classTemplates.find(t => t.id === s?.templateId), [classTemplates, s]);
     const cover = template ? resolveTemplateCoverImage(template, classCategories) : undefined;
     const branch = branches.find(b => b.id === s?.branchId);
-    const branchAddr = (branch as { address?: string } | undefined)?.address;
 
     const accent = branding.primaryColor || "#164E52";
 
@@ -117,8 +119,8 @@ export default function EmbedClassPage() {
                                 <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">{s.name}</p>
                                 <p className="text-[20px] font-semibold leading-[30px]" style={{ color: accent }}>1 credit or AED {DROP_IN_PRICE_AED}</p>
                             </div>
-                            {template?.description && (
-                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{template.description}</p>
+                            {s.description && (
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{s.description}</p>
                             )}
                         </div>
 
@@ -156,18 +158,7 @@ export default function EmbedClassPage() {
                         </Section>
 
                         <Divider />
-                        <Section title="Location">
-                            <MetaRow
-                                icon={<MarkerPin01 className="w-4 h-4" />}
-                                text={
-                                    <span>
-                                        <span className="font-medium text-[var(--colors-text-primary)]">{s.room || s.location}</span>
-                                        {branch?.name ? <span> — {branch.name}</span> : null}
-                                        {branchAddr ? <span className="block text-[var(--colors-text-tertiary)]">{branchAddr}</span> : null}
-                                    </span>
-                                }
-                            />
-                        </Section>
+                        <BranchLocationCard branch={branch} room={s.room} heading="Location" />
                     </div>
 
                     {/* ── Right — log in / sign up ── */}
@@ -191,15 +182,9 @@ export default function EmbedClassPage() {
                                     className="h-11 px-3.5 border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                                 />
                             </div>
-                            <button
-                                type="button"
-                                disabled={!emailValid}
-                                onClick={continueToBooking}
-                                className="h-12 rounded-full text-[16px] font-semibold text-white transition-opacity disabled:opacity-100 disabled:bg-[var(--colors-bg-disabled)] disabled:text-[var(--colors-fg-disabled)] hover:opacity-90"
-                                style={emailValid ? { backgroundColor: accent } : undefined}
-                            >
+                            <Button variant="primary" size="xl" className="w-full rounded-full" disabled={!emailValid} onClick={continueToBooking}>
                                 Continue
-                            </button>
+                            </Button>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -208,10 +193,7 @@ export default function EmbedClassPage() {
                             <span className="flex-1 h-px bg-[var(--colors-border-secondary)]" />
                         </div>
 
-                        <div className="flex flex-col gap-4">
-                            <SocialButton label="Continue with Google" onClick={continueToBooking} />
-                            <SocialButton label="Continue with Apple" onClick={continueToBooking} />
-                        </div>
+                        <SocialAuthButtons onProvider={() => continueToBooking()} />
                     </div>
                 </div>
             </div>
@@ -237,15 +219,4 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 function Divider() {
     return <div className="h-px w-full bg-[var(--colors-border-secondary)]" />;
-}
-function SocialButton({ label, onClick }: { label: string; onClick: () => void }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="h-12 rounded-full border border-[var(--colors-border-primary)] bg-white flex items-center justify-center gap-3 text-[16px] font-semibold text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors"
-        >
-            {label}
-        </button>
-    );
 }
