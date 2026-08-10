@@ -340,10 +340,13 @@ export default function EmbedClassPage() {
                                             </label>
                                             <label className="flex w-full flex-col gap-1.5">
                                                 <span className="text-sm font-medium leading-5 text-[#344054]">Phone number</span>
-                                                <div className="flex items-stretch gap-2">
+                                                {/* Country selector + number share ONE bordered box (same as the
+                                                    admin/customer phone field) so the +971 pill isn't background-less. */}
+                                                <div className="flex items-stretch rounded-xl border border-[#d0d5dd] bg-white">
                                                     <PhoneCountryDropdown value={guestPhoneCountry} onChange={setGuestPhoneCountry} />
-                                                    <input className={`${GUEST_INPUT} flex-1`} type="tel" inputMode="tel" placeholder="Enter phone number"
-                                                        value={guestPhone} onChange={e => setGuestPhone(e.target.value.replace(/[^\d\s]/g, ""))} />
+                                                    <input type="tel" inputMode="tel" placeholder="Enter phone number"
+                                                        value={guestPhone} onChange={e => setGuestPhone(e.target.value.replace(/[^\d\s]/g, ""))}
+                                                        className="flex-1 min-w-0 rounded-r-xl bg-transparent px-3.5 py-2.5 text-base leading-6 text-[var(--colors-text-primary)] placeholder:text-[#667085] focus:outline-none" />
                                                 </div>
                                             </label>
                                             <label className="flex w-full flex-col gap-1.5">
