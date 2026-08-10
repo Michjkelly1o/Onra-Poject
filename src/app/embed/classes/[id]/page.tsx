@@ -12,22 +12,30 @@
 // Real class data (cover, name, price, description, time, spots, instructor,
 // equipment, location). Uses the studio's live brand tokens.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type SVGProps } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
     ChevronLeft, Calendar, ClockFastForward, Users01, Grid01,
     CheckCircle, Dotpoints01, Check, MarkerPin01, Clock,
+    CoinsStacked03, BankNote01,
 } from "@untitledui/icons";
 import { useAppStore, resolveTemplateCoverImage, type ClassSchedule } from "@/lib/store";
 import { useIsAuthenticated, loginCustomer } from "@/lib/customer/auth";
 import { DEMO_MEMBER_ID } from "@/lib/customer/context";
 import { DROP_IN_PRICE_AED } from "@/lib/customer/booking-flow";
+import { distributePackageCredits } from "@/lib/customer/credit-balance";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
 import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { Button } from "@/components/ui/button";
 import { SocialAuthButtons } from "@/components/customer/auth/SocialAuthButtons";
 import { BranchLocationCard } from "@/components/customer/branch/BranchLocationCard";
 import { SpotPicker } from "@/components/customer/classes/SpotPicker";
+import { PhoneCountryDropdown, splitPhone } from "@/components/customers/CustomerFormPage";
+
+// Same guest-form field styling the customer Review & Book sheet uses.
+const CLASS_CREDIT_COST = 1;
+const GUEST_INPUT =
+    "w-full rounded-xl border border-[#d0d5dd] bg-white px-3.5 py-2.5 text-base leading-6 text-[var(--colors-text-primary)] placeholder:text-[#667085] focus:border-[var(--colors-secondary-500)] focus:outline-none";
 
 function parseISO(iso: string): Date {
     const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
@@ -66,6 +74,7 @@ export default function EmbedClassPage() {
     const staff = useAppStore(s => s.staff);
     const customers = useAppStore(s => s.customers);
     const customerPlans = useAppStore(s => s.customerPlans);
+    const packages = useAppStore(s => s.packages);
     const classBookings = useAppStore(s => s.classBookings);
     const addClassBooking = useAppStore(s => s.addClassBooking);
     const showToast = useAppStore(s => s.showToast);
@@ -88,6 +97,8 @@ export default function EmbedClassPage() {
     const [bookTo, setBookTo] = useState<"myself" | "guest">("myself");
     const [guestName, setGuestName] = useState("");
     const [guestPhone, setGuestPhone] = useState("");
+    const [guestPhoneCountry, setGuestPhoneCountry] = useState(() => splitPhone(undefined).country);
+    const [guestEmail, setGuestEmail] = useState("");
     const [selectedSpot, setSelectedSpot] = useState<string | undefined>(undefined);
     const [payWith, setPayWith] = useState<string | null>(null); // planId, "drop_in", or null → default
 
@@ -116,12 +127,37 @@ export default function EmbedClassPage() {
     const equipment = (s.equipment || "").split(",").map(e => e.trim()).filter(Boolean);
     const emailValid = EMAIL_RE.test(email.trim());
 
-    // ── Inline book-flow derivations (customer-parity) ──
+    // ── Inline book-flow derivations — same logic the customer Review & Book
+    //    sheet uses, reading from the SAME centralized store slices. ──
     const member = customers.find(c => c.id === DEMO_MEMBER_ID);
-    // Usable plans the member can pay a credit from — same source the customer
-    // app reads. Empty → the member pays per class (drop-in).
-    const eligiblePlans = member ? customerPlans.filter(p => p.customerId === member.id && p.status === "active") : [];
+    // Plans the member can pay a class credit from (matches customer eligibility:
+    // same plan kind, active/frozen), newest first.
+    const eligiblePlans = member?.planKind
+        ? customerPlans
+            .filter(p => p.customerId === member.id && p.kind === member.planKind
+                && (p.status === "active" || p.status === "frozen" || p.status === "freeze_requested"))
+            .sort((a, b) => (b.purchasedAtISO ?? "").localeCompare(a.purchasedAtISO ?? ""))
+        : [];
+    const credits = member?.creditsRemaining;
+    const hasCredits = typeof credits === "number";
+    // Per-package remaining so "credits left after" reflects the individual
+    // package, not the combined balance.
+    const pkgRemaining = distributePackageCredits(eligiblePlans, credits ?? 0);
+    const creditsLeftAfter = (p: (typeof eligiblePlans)[number]): number => {
+        const rem = p.kind === "package" ? (pkgRemaining.get(p.id) ?? 0) : (credits ?? 0);
+        return Math.max(0, rem - CLASS_CREDIT_COST);
+    };
+    const hasEligiblePlan = eligiblePlans.length > 0 && (!hasCredits || (credits ?? 0) > 0);
+    // "Pay per class" = cheapest active single-credit package for this branch —
+    // same computation as the customer sheet's dropInPlan.
+    const dropInPlan = (() => {
+        const cheapest = packages
+            .filter(p => p.status === "active" && p.credits === 1 && (p.branch_ids ?? []).includes(s!.branchId))
+            .sort((a, b) => a.price_aed - b.price_aed)[0];
+        return cheapest ? { name: cheapest.name, price: cheapest.price_aed } : null;
+    })();
     const activePay = payWith ?? eligiblePlans[0]?.id ?? "drop_in";
+
     const spotRequired = !!(s.spotSelectionEnabled && s.spotLayout);
     const takenSpots = spotRequired
         ? [...(s.spotLayout!.blockedSpots || []), ...classBookings.filter(b => b.classScheduleId === s.id && b.spot).map(b => b.spot as string)]
@@ -133,17 +169,19 @@ export default function EmbedClassPage() {
 
     function handleBook() {
         if (!member || !canBook) return;
-        const usingPlan = activePay !== "drop_in";
+        const usingPlan = hasEligiblePlan && activePay !== "drop_in";
         if (bookTo === "myself") {
             addClassBooking({ classScheduleId: s!.id, customerId: member.id, status: "booked", spot: selectedSpot });
         } else {
+            const phone = guestPhone.trim() ? `${guestPhoneCountry.dial} ${guestPhone.trim()}` : "";
             addClassBooking({
                 classScheduleId: s!.id,
                 customerId: member.id,
                 status: "booked",
                 spot: selectedSpot,
                 guestName: guestName.trim(),
-                guestPhone: guestPhone.trim() || undefined,
+                guestPhone: phone || undefined,
+                guestEmail: guestEmail.trim() || undefined,
                 guestPayment: usingPlan ? "booker_credit" : "drop_in",
                 chargeBookerCredit: usingPlan,
             });
@@ -178,7 +216,7 @@ export default function EmbedClassPage() {
                             </div>
                             <div className="flex flex-col gap-1">
                                 <p className="text-[20px] font-semibold text-[var(--colors-text-primary)] leading-[30px]">{s.name}</p>
-                                <p className="text-[20px] font-semibold leading-[30px]" style={{ color: accent }}>1 credit or AED {DROP_IN_PRICE_AED}</p>
+                                <p className="text-[20px] font-semibold leading-[30px]" style={{ color: accent }}>1 credit or AED {dropInPlan?.price ?? DROP_IN_PRICE_AED}</p>
                             </div>
                             {s.description && (
                                 <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">{s.description}</p>
@@ -262,22 +300,15 @@ export default function EmbedClassPage() {
 
                         {stage === "book" && member && (
                             <>
-                                <div className="flex flex-col gap-2">
-                                    <p className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">Book your spot</p>
-                                    <p className="text-[16px] text-[var(--colors-text-quaternary)] leading-6">
-                                        Review the details below and confirm your booking.
-                                    </p>
-                                </div>
-
-                                {/* Book to */}
-                                <section className="flex flex-col gap-3">
-                                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Book to</p>
-                                    <div className="flex rounded-full border border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] p-1">
+                                {/* Book to — Myself / Guest (same as the customer app). */}
+                                <section className="flex w-full flex-col gap-3">
+                                    <p className="text-base font-semibold leading-6 text-[var(--colors-text-primary)]">Book to</p>
+                                    <div className="flex rounded-full border border-[#e4e7ec] bg-[#f9fafb] p-1">
                                         {(["myself", "guest"] as const).map(t => {
                                             const active = bookTo === t;
                                             return (
                                                 <button key={t} type="button" onClick={() => setBookTo(t)}
-                                                    className={`flex-1 rounded-full py-1.5 text-[14px] leading-5 transition-colors ${active ? "bg-white font-semibold text-[var(--colors-text-secondary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]" : "font-medium text-[var(--colors-text-quaternary)]"}`}>
+                                                    className={`flex-1 rounded-full py-1 text-sm leading-5 transition-colors ${active ? "bg-white font-semibold text-[#344054] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.06)]" : "font-medium text-[#667085]"}`}>
                                                     {t === "myself" ? "Myself" : "Guest"}
                                                 </button>
                                             );
@@ -285,27 +316,40 @@ export default function EmbedClassPage() {
                                     </div>
 
                                     {bookTo === "myself" ? (
-                                        <div className="flex items-center gap-3 rounded-xl border border-[var(--colors-border-secondary)] bg-white p-4">
-                                            <InstructorAvatar imageUrl={member.imageUrl} initials={member.initials} color="#667085" size={40} />
+                                        <div className="flex w-full items-center gap-3 rounded-xl border border-[#e4e7ec] bg-white p-4">
+                                            <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f2f4f7]">
+                                                {member.imageUrl ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img src={member.imageUrl} alt="" className="size-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs font-semibold leading-none text-[#667085]">{member.initials}</span>
+                                                )}
+                                            </span>
                                             <div className="flex min-w-0 flex-1 flex-col">
-                                                <span className="truncate text-[14px] font-medium leading-5 text-[var(--colors-text-primary)]">
-                                                    {`${member.firstName} ${member.lastName}`.trim()} <span className="font-normal text-[var(--colors-text-quaternary)]">(You)</span>
+                                                <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">
+                                                    {`${member.firstName} ${member.lastName}`.trim()} <span className="font-normal text-[#667085]">(You)</span>
                                                 </span>
-                                                <span className="truncate text-[14px] font-normal leading-5 text-[var(--colors-text-quaternary)]">{member.email}</span>
+                                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">{member.email}</span>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col gap-3">
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Guest name</label>
-                                                <input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Full name"
-                                                    className="h-11 px-3.5 border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
-                                            </div>
-                                            <div className="flex flex-col gap-1.5">
-                                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Guest phone</label>
-                                                <input value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="Phone number"
-                                                    className="h-11 px-3.5 border border-[var(--colors-border-primary)] rounded-[8px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-placeholder)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]" />
-                                            </div>
+                                        <div className="flex w-full flex-col gap-4">
+                                            <label className="flex w-full flex-col gap-1.5">
+                                                <span className="text-sm font-medium leading-5 text-[#344054]">Guest name</span>
+                                                <input className={GUEST_INPUT} placeholder="Enter guest name" value={guestName} onChange={e => setGuestName(e.target.value)} />
+                                            </label>
+                                            <label className="flex w-full flex-col gap-1.5">
+                                                <span className="text-sm font-medium leading-5 text-[#344054]">Phone number</span>
+                                                <div className="flex items-stretch gap-2">
+                                                    <PhoneCountryDropdown value={guestPhoneCountry} onChange={setGuestPhoneCountry} />
+                                                    <input className={`${GUEST_INPUT} flex-1`} type="tel" inputMode="tel" placeholder="Enter phone number"
+                                                        value={guestPhone} onChange={e => setGuestPhone(e.target.value.replace(/[^\d\s]/g, ""))} />
+                                                </div>
+                                            </label>
+                                            <label className="flex w-full flex-col gap-1.5">
+                                                <span className="text-sm font-medium leading-5 text-[#344054]">Email <span className="font-normal text-[#98a2b3]">(optional)</span></span>
+                                                <input className={GUEST_INPUT} type="email" placeholder="Enter email address" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} />
+                                            </label>
                                         </div>
                                     )}
 
@@ -324,30 +368,42 @@ export default function EmbedClassPage() {
 
                                 <Divider />
 
-                                {/* Pay with */}
-                                <section className="flex flex-col gap-3">
-                                    <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Pay with</p>
-                                    {eligiblePlans.length > 0 ? (
+                                {/* Pay with — plan credit (FeaturedIcon + RadioDot) or drop-in. */}
+                                <section className="flex w-full flex-col gap-3">
+                                    <p className="text-base font-semibold leading-6 text-[var(--colors-text-primary)]">Pay with</p>
+                                    {hasEligiblePlan ? (
                                         eligiblePlans.map(p => {
                                             const sel = activePay === p.id;
+                                            const sub = !hasCredits ? "Included in your membership" : `${creditsLeftAfter(p)} credits left after this booking`;
                                             return (
                                                 <button key={p.id} type="button" onClick={() => setPayWith(p.id)}
-                                                    className={`flex items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors ${sel ? "border-2" : "border border-[var(--colors-border-secondary)]"}`}
+                                                    className={`flex w-full items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors ${sel ? "border-2" : "border border-[#e4e7ec]"}`}
                                                     style={sel ? { borderColor: accent } : undefined}>
-                                                    <div className="flex min-w-0 flex-1 flex-col">
-                                                        <span className="truncate text-[14px] font-medium leading-5 text-[var(--colors-text-primary)]">{p.name}</span>
-                                                        <span className="truncate text-[14px] font-normal leading-5 text-[var(--colors-text-quaternary)]">{p.creditsLabel}</span>
-                                                    </div>
+                                                    <FeaturedIcon icon={CoinsStacked03} />
+                                                    <span className="flex min-w-0 flex-1 flex-col">
+                                                        <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">{p.name}</span>
+                                                        <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
+                                                    </span>
                                                     <RadioDot checked={sel} accent={accent} />
                                                 </button>
                                             );
                                         })
+                                    ) : dropInPlan ? (
+                                        <div className="flex w-full items-center gap-3 rounded-xl border-2 bg-white p-4" style={{ borderColor: accent }}>
+                                            <FeaturedIcon icon={BankNote01} />
+                                            <span className="flex min-w-0 flex-1 flex-col">
+                                                <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">Pay per class</span>
+                                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">AED {dropInPlan.price} · single drop-in</span>
+                                            </span>
+                                            <RadioDot checked accent={accent} />
+                                        </div>
                                     ) : (
-                                        <div className="flex items-center gap-3 rounded-xl border-2 bg-white p-4" style={{ borderColor: accent }}>
-                                            <div className="flex min-w-0 flex-1 flex-col">
-                                                <span className="truncate text-[14px] font-medium leading-5 text-[var(--colors-text-primary)]">Pay per class</span>
-                                                <span className="truncate text-[14px] font-normal leading-5 text-[var(--colors-text-quaternary)]">AED {DROP_IN_PRICE_AED} · single drop-in</span>
-                                            </div>
+                                        <div className="flex w-full items-center gap-3 rounded-xl border-2 bg-white p-4" style={{ borderColor: accent }}>
+                                            <FeaturedIcon icon={BankNote01} />
+                                            <span className="flex min-w-0 flex-1 flex-col">
+                                                <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">Pay per class</span>
+                                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">AED {DROP_IN_PRICE_AED} · single drop-in</span>
+                                            </span>
                                             <RadioDot checked accent={accent} />
                                         </div>
                                     )}
@@ -440,10 +496,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Divider() {
     return <div className="h-px w-full bg-[var(--colors-border-secondary)]" />;
 }
+function FeaturedIcon({ icon: Icon }: { icon: ComponentType<SVGProps<SVGSVGElement>> }) {
+    // DS "Featured icon — default": white tile, subtle border + shadow, dark glyph
+    // (identical to the customer Review & Book sheet).
+    return (
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-[#e4e7ec] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+            <Icon className="size-5 text-[#344054]" aria-hidden />
+        </span>
+    );
+}
 function RadioDot({ checked, accent }: { checked: boolean; accent: string }) {
     return (
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full border"
-            style={{ borderColor: checked ? accent : "var(--colors-border-primary)" }}>
+            style={{ borderColor: checked ? accent : "#d0d5dd" }}>
             {checked && <span className="size-2.5 rounded-full" style={{ backgroundColor: accent }} />}
         </span>
     );
