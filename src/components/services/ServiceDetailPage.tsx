@@ -606,7 +606,7 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
                                         },
                                         {
                                             label: "Cancel appointment",
-                                            icon: SlashCircle01,
+                                            icon: Trash01,
                                             danger: true,
                                             hidden: !(a.status === "Upcoming" || a.status === "Ongoing"),
                                             onClick: () => onCancel(a),
@@ -627,20 +627,6 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
 // Mirrors `CancelClassModal` 1:1 — header + booked-count copy + locked-on
 // "Refund class credit" toggle row + destructive confirm. No reason field
 // (per the user feedback — class schedule's flow doesn't ask for one).
-
-function Toggle({ on, onChange, disabled = false }: { on: boolean; onChange: (next: boolean) => void; disabled?: boolean }) {
-    return (
-        <button type="button" role="switch" aria-checked={on} aria-disabled={disabled} disabled={disabled}
-            onClick={() => !disabled && onChange(!on)}
-            className={cn(
-                "relative w-9 h-5 rounded-full p-0.5 flex items-center transition-colors shrink-0",
-                on ? "bg-[var(--colors-secondary-600)] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
-                disabled && "opacity-60 cursor-not-allowed",
-            )}>
-            <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
-        </button>
-    );
-}
 
 function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
     appointment: Appointment;
@@ -664,25 +650,11 @@ function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this appointment?</h3>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             <span className="font-medium text-[var(--colors-text-secondary)]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and automatically refunded.</>}
                         </p>
                     </div>
                 </div>
-                {bookedCount > 0 && (
-                    <>
-                        <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
-                        <div className="flex items-center justify-between gap-4 px-6 py-5">
-                            <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class credit</p>
-                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">When the studio cancels an appointment, each customer is always refunded.</p>
-                            </div>
-                            {/* Locked ON — admin cancellation always refunds, same rule as class schedule. */}
-                            <Toggle on={true} onChange={() => { /* locked */ }} disabled />
-                        </div>
-                    </>
-                )}
-                <div className={cn("flex gap-3 px-6 pb-6", bookedCount > 0 ? "pt-6" : "pt-5")}>
+                <div className="flex gap-3 px-6 pt-5 pb-6">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
                     <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(true)}>
                         Yes, cancel appointment

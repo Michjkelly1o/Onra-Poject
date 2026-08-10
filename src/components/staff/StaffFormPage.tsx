@@ -655,7 +655,8 @@ function isFormValid(form: FormValue, requireTempPassword = true): boolean {
         && isValidEmail(form.email)
         // Temp password is set at creation and never re-entered on edit (the
         // edit save doesn't overwrite it), so it's only required in create mode.
-        && (!requireTempPassword || !!form.tempPassword.trim())
+        // Must be at least 8 characters.
+        && (!requireTempPassword || form.tempPassword.trim().length >= 8)
         && !!form.phone.trim()
         && !!form.roleId;
     // payRateId is required only when role.type === "instructor" — handled
@@ -808,10 +809,11 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
         });
     }
 
-    // Options: only active roles for assignment.
+    // Options: only active roles for assignment. Owner is excluded — it's the
+    // studio-owner role and isn't assignable when adding staff.
     const roleOptions = useMemo(
         () => allRoles
-            .filter(r => r.status === "active")
+            .filter(r => r.status === "active" && r.type !== "owner")
             .map(r => ({ value: r.id, label: r.name })),
         [allRoles],
     );
@@ -1063,7 +1065,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 <div className="flex flex-col gap-[6px]">
                                     <FieldLabel label="Temporary password" />
                                     <TextInput value={form.tempPassword} onChange={v => set({ tempPassword: v })} placeholder="Enter temporary password" />
-                                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">At least 8 characters.</p>
+                                    <p className={`text-[14px] leading-5 ${form.tempPassword.trim().length > 0 && form.tempPassword.trim().length < 8 ? "text-[#b42318]" : "text-[var(--colors-text-tertiary)]"}`}>At least 8 characters.</p>
                                 </div>
                             </div>
 
