@@ -1200,12 +1200,17 @@ function PosCartPanel(props: {
     onNewCustomer: () => void;
 }) {
     const cartEmpty = props.lines.length === 0;
-    // "Proceed to payment" gates: cart not empty + customer attached when any
-    // membership/package is in the cart. Gift-card-only carts still need
-    // a customer for the prototype (the brief says customer is required for
-    // membership/package; we apply the same here since the checkout screen
-    // expects one).
-    const canProceed = !cartEmpty && !!props.customerId;
+    // Customer is required to check out. Instead of silently disabling the CTA
+    // when no customer is picked, we let the admin click it (as long as the
+    // cart has items) and surface an inline error under the customer picker
+    // (client 2026-08-08) — red border + "You need to choose customer". The
+    // error clears the moment a customer is selected.
+    const [customerError, setCustomerError] = useState(false);
+    useEffect(() => { if (props.customerId) setCustomerError(false); }, [props.customerId]);
+    function handleProceedClick() {
+        if (!props.customerId) { setCustomerError(true); return; }
+        props.onProceed();
+    }
 
     return (
         // Cart panel.
@@ -1222,18 +1227,24 @@ function PosCartPanel(props: {
             {/* Customer picker */}
             <div className="px-6 pt-6 pb-5 flex flex-col gap-3">
                 <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Add a customer</label>
-                <div className="flex items-end gap-2">
-                    <div className="flex-1 min-w-0">
-                        <CustomerPickerDropdown
-                            customers={props.customers}
-                            value={props.customerId}
-                            onChange={props.onCustomerChange}
-                        />
+                <div className="flex flex-col gap-1.5">
+                    <div className="flex items-end gap-2">
+                        <div className="flex-1 min-w-0">
+                            <CustomerPickerDropdown
+                                customers={props.customers}
+                                value={props.customerId}
+                                onChange={props.onCustomerChange}
+                                error={customerError}
+                            />
+                        </div>
+                        <button type="button" onClick={props.onNewCustomer}
+                            className="w-10 h-10 flex items-center justify-center bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                            <Plus className="w-5 h-5 text-[var(--colors-text-secondary)]" />
+                        </button>
                     </div>
-                    <button type="button" onClick={props.onNewCustomer}
-                        className="w-10 h-10 flex items-center justify-center bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05),inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
-                        <Plus className="w-5 h-5 text-[var(--colors-text-secondary)]" />
-                    </button>
+                    {customerError && (
+                        <p className="text-[13px] text-[#d92d20]">You need to choose customer</p>
+                    )}
                 </div>
             </div>
 
@@ -1363,7 +1374,7 @@ function PosCartPanel(props: {
                     <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">AED {props.total.toLocaleString()}</p>
                 </div>
 
-                <Button variant="primary" size="lg" className="w-full" disabled={!canProceed} onClick={props.onProceed}>
+                <Button variant="primary" size="lg" className="w-full" disabled={cartEmpty} onClick={handleProceedClick}>
                     Proceed to payment
                 </Button>
             </div>
@@ -1486,8 +1497,11 @@ function CartIcon({ kind, imageUrl }: { kind: PosProductKind; imageUrl?: string 
 
 // ─── Customer picker (search + select) ───────────────────────────────────────
 
-function CustomerPickerDropdown({ customers, value, onChange }: {
+function CustomerPickerDropdown({ customers, value, onChange, error }: {
     customers: Customer[]; value: string | null; onChange: (id: string) => void;
+    /** When true, the trigger shows an error (red) border + focus ring —
+     *  used when checkout is attempted with no customer selected. */
+    error?: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const [q, setQ] = useState("");
@@ -1506,8 +1520,12 @@ function CustomerPickerDropdown({ customers, value, onChange }: {
     return (
         <div ref={ref} className="relative">
             <button type="button" onClick={() => setOpen(o => !o)}
-                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
-                    open ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]" : "hover:border-[var(--colors-secondary-500)]",
+                className={cn("flex items-center gap-2 w-full h-10 px-[14px] border-1 rounded-[8px] text-[14px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
+                    error
+                        ? "border-[#fda29b] ring-2 ring-[#fee4e2]"
+                        : open
+                            ? "ring-2 ring-[var(--colors-secondary-300)] border-[var(--colors-secondary-500)]"
+                            : "border-[var(--colors-border-primary)] hover:border-[var(--colors-secondary-500)]",
                     selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
                 {selected ? (
                     <>
