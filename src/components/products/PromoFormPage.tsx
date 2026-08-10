@@ -66,7 +66,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
             </div>
             <span className={cn(
                 "text-[14px]",
-                active ? "font-semibold text-[#3b5446]"
+                active ? "font-semibold text-[#10373a]"
                     : complete ? "font-medium text-[var(--colors-text-secondary)]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {step.label}

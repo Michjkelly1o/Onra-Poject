@@ -199,7 +199,7 @@ function DayAddShiftMenu({ staffBranchId, dayIdx, shifts, staffDayShiftIds, staf
             <button ref={btnRef} type="button" aria-label="Assign shift"
                 onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
                 className={cn(
-                    "mt-0.5 flex w-full items-center justify-center gap-1 rounded-[6px] border border-dashed border-[var(--colors-border-primary)] py-1 text-[12px] font-medium text-[var(--colors-text-quaternary)] transition-colors hover:border-[var(--colors-secondary-500)] hover:text-[#3b5446]",
+                    "mt-0.5 flex w-full items-center justify-center gap-1 rounded-[6px] border border-dashed border-[var(--colors-border-primary)] py-1 text-[12px] font-medium text-[var(--colors-text-quaternary)] transition-colors hover:border-[var(--colors-secondary-500)] hover:text-[#10373a]",
                     "opacity-0 group-hover/cell:opacity-100", open && "opacity-100",
                 )}>
                 <Plus className="size-3.5" /> Add

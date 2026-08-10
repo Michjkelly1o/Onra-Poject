@@ -110,7 +110,7 @@ function BlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
                 </button>
                 {blocked ? (
                     <button type="button" onClick={onUnblock}
-                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#3b5446] transition-colors">
+                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#10373a] transition-colors">
                         Unblock
                     </button>
                 ) : (

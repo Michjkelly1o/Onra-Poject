@@ -191,7 +191,7 @@ function ChartTooltip(props: {
 // amber/violet tint per category that the schedule day/week view uses.
 // ────────────────────────────────────────────────────────────────────────────
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-    Pilates: { bg: "#eff6f3", border: "#164e52", text: "#3b5446" },
+    Pilates: { bg: "#eff6f3", border: "#164e52", text: "#10373a" },
     Barre:   { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
     Yoga:    { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
     default: { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },

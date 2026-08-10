@@ -47,7 +47,7 @@ const PALETTE = {
     orange:       "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     purple:       "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     indigo:       "bg-[#eef4ff] border-1 border-[#c7d7fe] text-[#3538cd]",
-    teal:         "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#3b5446]",       // Monthly pay-rate
+    teal:         "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#10373a]",       // Monthly pay-rate
 } as const;
 export type PaletteKey = keyof typeof PALETTE;
 

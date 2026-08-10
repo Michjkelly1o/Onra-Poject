@@ -273,7 +273,7 @@ const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    monthly: "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#3b5446]",
+    monthly: "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#10373a]",
 };
 const TYPE_PREVIEW_LABEL: Record<PayRateType, string> = {
     flat: "Flat", tiered: "Tiered", revenue: "% revenue", hybrid: "Hybrid", monthly: "Monthly",
@@ -811,7 +811,7 @@ function StepRow({ index, label, active, done, isLast }: {
             </div>
             <p className={cn(
                 "flex-1 text-[14px] leading-[20px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]",
+                active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {label}
             </p>

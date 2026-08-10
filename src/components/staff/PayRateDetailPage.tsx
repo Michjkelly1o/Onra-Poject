@@ -77,7 +77,7 @@ const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    monthly: "bg-[#f5fffa] border-1 border-[#94aeaf] text-[#3b5446]",
+    monthly: "bg-[#f5fffa] border-1 border-[#94aeaf] text-[#10373a]",
 };
 
 function TypeBadge({ type }: { type: PayRateType }) {

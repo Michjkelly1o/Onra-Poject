@@ -302,7 +302,7 @@ function FilterPill({ label, selected, onClick }: {
             className={cn(
                 "px-4 py-2 rounded-[8px] text-[14px] font-medium border-1 transition-colors",
                 selected
-                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)] text-[#3b5446]"
+                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)] text-[#10373a]"
                     : "bg-white border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
             )}>
             {label}

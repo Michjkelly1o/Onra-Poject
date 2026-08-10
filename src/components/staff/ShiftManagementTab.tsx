@@ -147,7 +147,7 @@ function DayChip({ active, disabled, letter, onClick, title }: {
                 disabled
                     ? "border-transparent bg-[#f2f4f7] text-[#d0d5dd] cursor-not-allowed"
                     : active
-                        ? "border-[#457175] bg-[#e7f2eb] text-[#3b5446]"
+                        ? "border-[#457175] bg-[#e7f2eb] text-[#10373a]"
                         : "border-[#e4e7ec] bg-white text-[#98a2b3] hover:border-[#94aeaf]",
             )}
         >

@@ -1326,7 +1326,7 @@ function WinBackModal({
                                             ch.disabled
                                                 ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed"
                                                 : active
-                                                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)] text-[#3b5446]"
+                                                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)] text-[#10373a]"
                                                     : "bg-white border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                         )}>
                                         {ch.icon}

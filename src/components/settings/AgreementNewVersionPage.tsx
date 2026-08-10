@@ -108,7 +108,7 @@ export function AgreementNewVersionPage({ agreementId }: { agreementId: string }
                                     1
                                 </div>
                             </div>
-                            <span className="text-[14px] font-semibold text-[#3b5446]">Agreement</span>
+                            <span className="text-[14px] font-semibold text-[#10373a]">Agreement</span>
                         </div>
                     </div>
 

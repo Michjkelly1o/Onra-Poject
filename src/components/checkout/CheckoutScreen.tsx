@@ -110,7 +110,7 @@ export function StepItem({ n, label, current, total }: { n: number; label: strin
                 </div>
                 {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {label}
             </span>
         </div>

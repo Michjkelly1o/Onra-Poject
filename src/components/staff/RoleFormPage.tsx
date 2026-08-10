@@ -97,7 +97,7 @@ function StepRow({ index, label, active, done, isLast }: {
             </div>
             <p className={cn(
                 "flex-1 text-[14px] leading-[20px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]",
+                active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {label}
             </p>

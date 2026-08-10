@@ -662,7 +662,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                             <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]">
                                 1
                             </div>
-                            <span className="text-[14px] font-semibold text-[#3b5446]">Time off details</span>
+                            <span className="text-[14px] font-semibold text-[#10373a]">Time off details</span>
                         </div>
                     </div>
 

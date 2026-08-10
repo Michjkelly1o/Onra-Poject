@@ -548,7 +548,7 @@ function IntroductionSection({ intro }: { intro: string }) {
             </p>
             {long && (
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="self-start text-[14px] font-medium text-[var(--colors-secondary-600)] hover:text-[#3b5446] transition-colors mt-1">
+                    className="self-start text-[14px] font-medium text-[var(--colors-secondary-600)] hover:text-[#10373a] transition-colors mt-1">
                     {expanded ? "See less" : "See more"}
                 </button>
             )}

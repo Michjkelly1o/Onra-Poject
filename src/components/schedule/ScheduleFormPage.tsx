@@ -174,7 +174,7 @@ function StepItem({ step, current, total }: { step: { n: number; label: string }
                 </div>
                 {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {step.label}
             </span>
         </div>
@@ -720,7 +720,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                 <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.location}</span>
                                 <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
-                                <span className="text-[14px] font-semibold text-[#3b5446]">{location.name}</span>
+                                <span className="text-[14px] font-semibold text-[#10373a]">{location.name}</span>
                             </div>
                         ) : (
                             <PreviewRow icon={<MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label={location?.name ?? "Location"} empty={!location} />
@@ -759,7 +759,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 // the room fits but the admin's spot customization
                                 // restricted further.
                                 const arrowClass = roomBelowTemplate ? "text-[#dc6803]" : "text-[var(--colors-secondary-600)]";
-                                const numClass   = roomBelowTemplate ? "text-[#dc6803]" : "text-[#3b5446]";
+                                const numClass   = roomBelowTemplate ? "text-[#dc6803]" : "text-[#10373a]";
                                 return (
                                     <div className="flex items-center gap-2">
                                         <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
@@ -777,7 +777,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                         <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                         <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.capacity}</span>
                                         <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
-                                        <span className="text-[14px] font-semibold text-[#3b5446]">{form.capacity}</span>
+                                        <span className="text-[14px] font-semibold text-[#10373a]">{form.capacity}</span>
                                     </div>
                                 );
                             }
@@ -797,7 +797,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.instructorName}</span>
                                 <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
                                 <InstructorAvatar imageUrl={instructor.imageUrl} initials={instructor.initials} color={instructor.color} size={16} />
-                                <span className="text-[14px] font-semibold text-[#3b5446]">{instructor.name}</span>
+                                <span className="text-[14px] font-semibold text-[#10373a]">{instructor.name}</span>
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
@@ -920,7 +920,7 @@ function CsBlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
                     className="text-[14px] font-semibold text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)] transition-colors">Dismiss</button>
                 {blocked ? (
                     <button type="button" onClick={onUnblock}
-                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#3b5446] transition-colors">Unblock</button>
+                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#10373a] transition-colors">Unblock</button>
                 ) : (
                     <button type="button" onClick={onBlock}
                         className="px-4 py-2 rounded-[8px] bg-[#d92d20] text-white text-[14px] font-semibold hover:bg-[#b42318] transition-colors">Block</button>

@@ -1649,7 +1649,7 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                 ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[36px] font-bold" style={{ color: "#3b5446" }}>
+                        <span className="text-[36px] font-bold" style={{ color: "#10373a" }}>
                             {ci.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
                         </span>
                     </div>

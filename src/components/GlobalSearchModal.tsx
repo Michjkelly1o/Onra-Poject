@@ -240,7 +240,7 @@ export function GlobalSearchModal({ open, onClose }: GlobalSearchModalProps) {
                                                         setHighlight(0);
                                                         inputRef.current?.focus();
                                                     }}
-                                                    className="block w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-medium text-[var(--colors-secondary-600)] hover:text-[#3b5446] hover:bg-[var(--colors-bg-secondary)] transition-colors"
+                                                    className="block w-full text-left px-3 py-2 rounded-[8px] text-[13px] font-medium text-[var(--colors-secondary-600)] hover:text-[#10373a] hover:bg-[var(--colors-bg-secondary)] transition-colors"
                                                 >
                                                     Show all {group.overflow + group.items.length} results
                                                 </button>
