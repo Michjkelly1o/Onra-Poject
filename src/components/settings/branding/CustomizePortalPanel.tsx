@@ -17,7 +17,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { XClose, Copy03, Check, Calendar } from "@untitledui/icons";
+import { XClose, Copy03, Check, Calendar, Lightbulb02 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -113,7 +113,7 @@ export function CustomizePortalPanel({ open, onClose }: {
                 {/* Embed code */}
                 <div className="flex flex-col gap-4 w-full">
                     <SectionHeader title="Embed code" />
-                    <FormField label="Paste this into your website">
+                    <FormField label="Paste this code into your website">
                         <div className="flex items-start gap-3 w-full">
                             <textarea
                                 value={embedCode}
@@ -123,6 +123,20 @@ export function CustomizePortalPanel({ open, onClose }: {
                             <CopyButton text={embedCode} title="Copy embed code" />
                         </div>
                     </FormField>
+
+                    {/* How-to — plain steps for a non-technical studio owner. */}
+                    <div className="flex items-start gap-3 rounded-[12px] bg-[#f1f2ed] px-4 py-3.5">
+                        <Lightbulb02 className="w-5 h-5 shrink-0 text-[#475467] mt-0.5" />
+                        <div className="flex flex-col gap-1.5 text-[13px] leading-5 text-[#475467]">
+                            <p className="font-semibold">How to add this to your website</p>
+                            <ol className="list-decimal pl-4 flex flex-col gap-1">
+                                <li>Copy the code above using the copy button.</li>
+                                <li>Open the page where you want the schedule to appear. In your website builder (Wix, Squarespace, WordPress, Webflow, etc.), add an <span className="font-medium">“Embed”</span> or <span className="font-medium">“Custom HTML”</span> block.</li>
+                                <li>Paste the code into that block and place it where you want the schedule to show.</li>
+                                <li>Save and publish your page — the schedule loads automatically and always shows your live classes, so you never have to update it by hand.</li>
+                            </ol>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Configuration */}
