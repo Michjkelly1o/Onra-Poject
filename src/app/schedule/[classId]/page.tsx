@@ -27,6 +27,7 @@ import { PlanBadge, BookingStatusBadge, PresentBadge, NoShowBadge, NoPlanBadge, 
 import { ClassCustomerBadges } from "@/components/customers/CustomerBadges";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { TableAvatar } from "@/components/ui/avatar";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import type { ClassRating } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -592,6 +593,7 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
     onSelectMembership: () => void;
     onSwitchCustomer: () => void;
 }) {
+    const instructorImageUrl = useAppStore(s => s.staff.find(x => x.id === classInstance?.instructorId)?.imageUrl);
     // Track which package the admin picked (multi-package customers only).
     // Defaults to the first package; re-syncs whenever the customer changes.
     const initialPackageId = customer?.planKind === "package" ? customer.packageIds?.[0] : undefined;
@@ -694,11 +696,12 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                                 <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{classInstance.name}</p>
                                 <p className="text-[14px] text-[var(--colors-text-tertiary)]">{classInstance.date} • {classInstance.displayTime}</p>
                                 <div className="flex items-center gap-1 mt-0.5">
-                                    <div className="w-4 h-4 rounded-full overflow-hidden bg-[#e0e0e0] shrink-0 flex items-center justify-center">
-                                        <span className="text-[8px] font-semibold text-white" style={{ backgroundColor: classInstance.instructorColor }}>
-                                            {classInstance.instructorInitials}
-                                        </span>
-                                    </div>
+                                    <InstructorAvatar
+                                        imageUrl={instructorImageUrl}
+                                        initials={classInstance.instructorInitials}
+                                        color={classInstance.instructorColor}
+                                        size={16}
+                                    />
                                     <p className="text-[12px] text-[var(--colors-text-quaternary)]">{classInstance.instructorName.split(" ")[0]} {classInstance.instructorName.split(" ").slice(-1)[0][0]}.</p>
                                 </div>
                             </div>
@@ -1640,6 +1643,8 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
     const canEdit = isUpcoming || isOngoing;
     const showRatingSummary = isCancelled || isCompleted;
     const noActions = !canAddCustomer && !canEdit && !canCancelClass;
+    // Real instructor photo (colored-initials fallback inside InstructorAvatar).
+    const instructorImageUrl = useAppStore(s => s.staff.find(x => x.id === ci.instructorId)?.imageUrl);
     return (
         <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
@@ -1704,10 +1709,7 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[var(--colors-text-quaternary)]">Instructor</p>
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
-                                    style={{ backgroundColor: ci.instructorColor }}>
-                                    {ci.instructorInitials}
-                                </div>
+                                <InstructorAvatar imageUrl={instructorImageUrl} initials={ci.instructorInitials} color={ci.instructorColor} size={24} />
                                 <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                     {(() => {
                                         const parts = ci.instructorName.split(" ");

@@ -208,6 +208,9 @@ export default function InstructorDashboardPage() {
     const currentUser   = useAppStore(s => s.currentUser);
     const classSchedules = useAppStore(s => s.classSchedules);
     const classBookings  = useAppStore(s => s.classBookings);
+    const staff          = useAppStore(s => s.staff);
+    // Real instructor photo by id (colored-initials fallback inside the card).
+    const instructorImgById = useMemo(() => new Map(staff.map(s => [s.id, s.imageUrl])), [staff]);
 
     const [period, setPeriod] = useState<DateFilter>(DEFAULT_PERIOD);
     const [cancelOpen,   setCancelOpen]   = useState(false);
@@ -560,6 +563,7 @@ export default function InstructorDashboardPage() {
                                                                 instructorName: c.instructorName,
                                                                 instructorInitials: c.instructorInitials,
                                                                 instructorColor: c.instructorColor,
+                                                                instructorImageUrl: instructorImgById.get(c.instructorId),
                                                                 room: c.room,
                                                                 booked: c.booked,
                                                                 capacity: c.capacity,

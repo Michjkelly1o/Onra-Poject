@@ -70,6 +70,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type ClassBooking, type ClassSchedule, type ClassStatus } from "@/lib/store";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
@@ -241,6 +242,7 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 // ─── Left panel — admin chrome verbatim, Figma content ──────────────────────
 
 function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
+    const instructorImageUrl = useAppStore(s => s.staff.find(x => x.id === schedule.instructorId)?.imageUrl);
     const genderLabel = schedule.genderAccess === "female" ? "Female only"
         : schedule.genderAccess === "male" ? "Male only" : "All genders";
     const instructorShort = (() => {
@@ -313,10 +315,7 @@ function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Instructor</p>
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
-                                    style={{ backgroundColor: schedule.instructorColor }}>
-                                    {schedule.instructorInitials}
-                                </div>
+                                <InstructorAvatar imageUrl={instructorImageUrl} initials={schedule.instructorInitials} color={schedule.instructorColor} size={24} />
                                 <p className="text-[16px] font-medium text-[#101828]">{instructorShort}</p>
                             </div>
                         </div>
