@@ -37,7 +37,7 @@ export function PanelStepper({ steps, current, onStep }: {
                         disabled={!onStep}
                         className={cn(
                             "text-[14px] font-semibold py-1 px-1 transition-colors",
-                            current === s.n ? "text-[#4f6e5d]" : "text-[var(--colors-text-tertiary)]",
+                            current === s.n ? "text-[#164e52]" : "text-[var(--colors-text-tertiary)]",
                             onStep && current !== s.n && "hover:text-[var(--colors-text-secondary)]",
                             !onStep && "cursor-default",
                         )}

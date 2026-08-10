@@ -152,7 +152,7 @@ export function MultiSelectCard({
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5 truncate">{subtitle}</p>
+                    <p className="text-[14px] text-[#667085] leading-5 truncate">{subtitle}</p>
                 </div>
                 <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {selected.length} selected

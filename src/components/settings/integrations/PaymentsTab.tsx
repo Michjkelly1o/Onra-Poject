@@ -227,7 +227,7 @@ function ProviderCard({ provider, gatewayConnected, onConnect, onEnable, onView,
                         <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{provider.name}</p>
                         {showStripeHint && <RequiresStripeTooltip />}
                     </div>
-                    <p className="text-[14px] text-[#6e776f] leading-5">{provider.description}</p>
+                    <p className="text-[14px] text-[#667085] leading-5">{provider.description}</p>
                 </div>
                 <div className="absolute top-0 right-0">
                     <StatusBadge type="payment" status={connected ? "connected" : "disconnected"} size="sm" />
@@ -698,7 +698,7 @@ export function PaymentsTab() {
                         <LogoTile provider={stripe} size="card" />
                         <div className="flex-1 min-w-0">
                             <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{stripe.name}</p>
-                            <p className="text-[14px] text-[#6e776f] leading-5">{stripe.description}</p>
+                            <p className="text-[14px] text-[#667085] leading-5">{stripe.description}</p>
                         </div>
                         {stripeConnected ? (
                             <div className="flex items-center gap-3 shrink-0">
@@ -724,7 +724,7 @@ export function PaymentsTab() {
                                 <LogoTile provider={w} size="card" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{w.name}</p>
-                                    <p className="text-[14px] text-[#6e776f] leading-5">{w.description}</p>
+                                    <p className="text-[14px] text-[#667085] leading-5">{w.description}</p>
                                 </div>
                                 {stripeConnected ? (
                                     <Toggle on={w.status === "connected"} onClick={() => handlePaymentToggle(w)} />
@@ -745,7 +745,7 @@ export function PaymentsTab() {
                 <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] overflow-hidden">
                     <div className="px-6 pt-5 pb-3 flex flex-col gap-0.5">
                         <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Other methods</p>
-                        <p className="text-[14px] text-[#6e776f] leading-5">No providers needed</p>
+                        <p className="text-[14px] text-[#667085] leading-5">No providers needed</p>
                     </div>
                     {manualMethods.map((m, i) => (
                         <div key={m.id}>
@@ -754,7 +754,7 @@ export function PaymentsTab() {
                                 <ManualMethodIcon slug={m.slug} />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{m.name}</p>
-                                    <p className="text-[14px] text-[#6e776f] leading-5">{m.description}</p>
+                                    <p className="text-[14px] text-[#667085] leading-5">{m.description}</p>
                                 </div>
                                 <Toggle on={m.status === "connected"} onClick={() => handlePaymentToggle(m)} />
                             </div>
@@ -768,7 +768,7 @@ export function PaymentsTab() {
                 <div className="px-6 py-5 flex items-center gap-4">
                     <div className="flex-1 min-w-0">
                         <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Add a payment provider</p>
-                        <p className="text-[14px] text-[#6e776f] leading-5">
+                        <p className="text-[14px] text-[#667085] leading-5">
                             UAE options : Tap Payments, Pay Tabs, Telr, Network International (N-Genius) · BNPL: Tabby, Tamara
                         </p>
                     </div>

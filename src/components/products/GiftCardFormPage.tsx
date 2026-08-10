@@ -465,7 +465,7 @@ function GiftCardPreviewCard({ data }: { data: PreviewState }) {
             <div className="flex flex-col">
                 <div className="pt-6 px-6 flex flex-col gap-1">
                     <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5">This is how your gift card will look like.</p>
+                    <p className="text-[14px] text-[#667085] leading-5">This is how your gift card will look like.</p>
                 </div>
                 <div className="h-5" />
                 <div className="h-px bg-[var(--colors-bg-quaternary)]" />

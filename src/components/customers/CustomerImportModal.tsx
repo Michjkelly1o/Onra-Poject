@@ -152,7 +152,7 @@ function Breadcrumbs({ step }: { step: ImportStep }) {
             {crumbs.map((c, i) => (
                 <div key={c.key} className="flex items-center gap-3">
                     <span className={cn("text-[14px] font-semibold whitespace-nowrap",
-                        c.key === activeKey ? "text-[#4f6e5d]" : "text-[var(--colors-text-tertiary)]")}>
+                        c.key === activeKey ? "text-[#164e52]" : "text-[var(--colors-text-tertiary)]")}>
                         {c.label}
                     </span>
                     {i < crumbs.length - 1 && <ChevronRight className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}
@@ -388,7 +388,7 @@ export function CustomerImportModal({ open, onClose }: { open: boolean; onClose:
                                         </div>
                                         <div className="flex flex-col items-center gap-1">
                                             <p className="text-[14px]">
-                                                <span className="font-semibold text-[#4f6e5d]">Click to upload</span>
+                                                <span className="font-semibold text-[#164e52]">Click to upload</span>
                                                 <span className="text-[var(--colors-text-tertiary)]"> or drag and drop</span>
                                             </p>
                                             <p className="text-[12px] text-[var(--colors-text-tertiary)]">CSV, .xlsx, or .xls (max. 10 MB)</p>

@@ -584,7 +584,7 @@ function IntroductionCard({ text }: { text: string }) {
                 <button
                     type="button"
                     onClick={() => setExpanded(e => !e)}
-                    className="self-start text-[14px] font-semibold text-[var(--colors-secondary-500)] hover:text-[#5b8270] transition-colors"
+                    className="self-start text-[14px] font-semibold text-[var(--colors-secondary-500)] hover:text-[#164e52] transition-colors"
                 >
                     {expanded ? "See less" : "See more"}
                 </button>

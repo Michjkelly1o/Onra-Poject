@@ -762,7 +762,7 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
                         <div className="w-[340px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden self-start">
                             <div className="p-6 pb-4">
                                 <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Service preview</p>
-                                <p className="text-[14px] text-[#6e776f] mt-1">This is how your service will look like.</p>
+                                <p className="text-[14px] text-[#667085] mt-1">This is how your service will look like.</p>
                             </div>
                             <div className="bg-[#f6f6f3] px-6 py-10">
                                 <ServicePreviewCard data={previewData} />

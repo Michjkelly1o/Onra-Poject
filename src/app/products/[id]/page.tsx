@@ -702,7 +702,7 @@ function DescriptionCard({ label, body }: { label: string; body: string }) {
             <p className="text-[16px] text-[var(--colors-text-primary)] leading-6 whitespace-pre-line">{shown}</p>
             {isTruncatable && (
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="self-start text-[14px] font-medium text-[var(--colors-secondary-600)] hover:text-[#4f6e5d] transition-colors">
+                    className="self-start text-[14px] font-medium text-[var(--colors-secondary-600)] hover:text-[#164e52] transition-colors">
                     {expanded ? "See less" : "See more"}
                 </button>
             )}

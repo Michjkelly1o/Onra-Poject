@@ -343,7 +343,7 @@ function RequestIntegrationsCard({ onClick }: { onClick: () => void }) {
             </div>
             <div className="flex flex-col gap-1">
                 <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">Request integrations</p>
-                <p className="text-[14px] text-[#6e776f] leading-5">
+                <p className="text-[14px] text-[#667085] leading-5">
                     Tell us what to build next or connect anything via Zapier & our open API
                 </p>
             </div>

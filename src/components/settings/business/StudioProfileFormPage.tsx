@@ -260,7 +260,7 @@ export function StudioProfileFormPage() {
                         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                             <div className="flex flex-col gap-1 px-6 pt-6 pb-5">
                                 <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Studio preview</p>
-                                <p className="text-[14px] text-[#6e776f] leading-5">This is how studio overview will look like.</p>
+                                <p className="text-[14px] text-[#667085] leading-5">This is how studio overview will look like.</p>
                             </div>
                             <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <div className="bg-[#f8f8f6] p-6 flex items-start justify-center">

@@ -83,7 +83,7 @@ function StepBadge({ step }: { step: number }) {
     // Green pill per client 2026-07-23 migration UI review (Figma 214:260316).
     // utility-brand-50 bg / utility-brand-200 border / utility-brand-700 text.
     return (
-        <div className="self-start inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--colors-secondary-50)] border border-[var(--colors-secondary-200)] text-[12px] font-medium leading-[18px] text-[#4f6e5d]">
+        <div className="self-start inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--colors-secondary-50)] border border-[var(--colors-secondary-200)] text-[12px] font-medium leading-[18px] text-[#164e52]">
             {step} of 4 steps
         </div>
     );

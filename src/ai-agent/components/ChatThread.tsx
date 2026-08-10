@@ -1851,11 +1851,11 @@ function ImportingScreen({ label = "Checking & importing data..." }: { label?: s
         <div className="flex items-center gap-3">
             <div className="relative w-8 h-8 shrink-0">
                 <Stars02
-                    className="absolute top-0 right-0 size-4 text-[#4f6e5d]"
+                    className="absolute top-0 right-0 size-4 text-[#164e52]"
                     aria-hidden="true"
                 />
                 <Stars02
-                    className="absolute bottom-0 left-0 size-6 text-[#4f6e5d]"
+                    className="absolute bottom-0 left-0 size-6 text-[#164e52]"
                     aria-hidden="true"
                 />
             </div>
@@ -2228,7 +2228,7 @@ function Composer({
             {isUploading && !hasFile && (
                 <div className="flex items-center gap-2 text-[13px] text-[var(--colors-text-quaternary)]">
                     <RefreshCw01
-                        className="size-4 animate-spin text-[#4f6e5d]"
+                        className="size-4 animate-spin text-[#164e52]"
                         aria-hidden="true"
                     />
                     <span>Reading your CSV…</span>

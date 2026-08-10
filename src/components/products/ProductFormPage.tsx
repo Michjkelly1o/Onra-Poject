@@ -463,7 +463,7 @@ function BranchMultiSelect({ kind, selected, onChange, branches }: {
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Branches</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5 truncate">{subtitle}</p>
+                    <p className="text-[14px] text-[#667085] leading-5 truncate">{subtitle}</p>
                 </div>
                 <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {selected.length} selected
@@ -1535,7 +1535,7 @@ function TemplatePreviewCard({ data }: { data: PreviewState }) {
             <div className="flex flex-col">
                 <div className="pt-6 px-6 flex flex-col gap-1">
                     <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5">This is how your product will look like.</p>
+                    <p className="text-[14px] text-[#667085] leading-5">This is how your product will look like.</p>
                 </div>
                 <div className="h-5" />
                 <div className="h-px bg-[var(--colors-bg-quaternary)]" />

@@ -1575,7 +1575,7 @@ function renderChart(
                                             className="h-9 rounded-[8px] bg-[#dcebe4] flex items-center px-3 gap-2"
                                             style={{ width: `${barWidth}%` }}
                                         >
-                                            <span className="text-[14px] font-semibold text-[#194b30]">{row.count}</span>
+                                            <span className="text-[14px] font-semibold text-[#10373a]">{row.count}</span>
                                             <span className="text-[12px] text-[var(--colors-secondary-600)]">{pctOfTop}%</span>
                                         </div>
                                     </div>
@@ -2205,7 +2205,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                             the redundant sub-caption on the time-series widgets
                             ("Revenue over time" / "Class popularity" / etc). */}
                         {meta.description && (
-                            <p className="text-[14px] text-[#6e776f] truncate mt-0.5">{meta.description}</p>
+                            <p className="text-[14px] text-[#667085] truncate mt-0.5">{meta.description}</p>
                         )}
                     </div>
                 </div>

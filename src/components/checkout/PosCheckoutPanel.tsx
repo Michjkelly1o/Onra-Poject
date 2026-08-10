@@ -243,7 +243,7 @@ function PosCheckoutBody({ onCancel, onComplete }: {
                             onClick={() => { if (s.n <= step) setStep(s.n as 1 | 2); }}
                             className={cn(
                                 "text-[14px] font-semibold py-1 px-1 transition-colors",
-                                step === s.n ? "text-[#4f6e5d]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
+                                step === s.n ? "text-[#164e52]" : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
                             )}
                         >
                             {s.label}

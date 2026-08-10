@@ -706,7 +706,7 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
                     <PerformanceLineChart
                         title="Class bookings"
                         data={buildBookingsSeries()}
-                        color="#92baa4"
+                        color="#90a099"
                         valueLabel="Total booking"
                     />
                     <AttendanceBarChart

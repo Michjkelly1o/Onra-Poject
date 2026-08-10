@@ -685,7 +685,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
             {/* Header */}
             <div className="px-6 pt-6 pb-4">
                 <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class preview</p>
-                <p className="text-[14px] text-[#6e776f] mt-1">This is how your class schedule will look like.</p>
+                <p className="text-[14px] text-[#667085] mt-1">This is how your class schedule will look like.</p>
             </div>
             {/* Preview content */}
             <div className="bg-[#f6f6f3] flex-1 p-6">
@@ -2500,7 +2500,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     <div className="flex items-start justify-between gap-6">
                                         <div className="flex flex-col gap-1">
                                             <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot selection</p>
-                                            <p className="text-[14px] text-[#6e776f]">Turn on spot selection to let your customers choose a spot in the room when booking this class.</p>
+                                            <p className="text-[14px] text-[#667085]">Turn on spot selection to let your customers choose a spot in the room when booking this class.</p>
                                         </div>
                                         {/* Toggle — disabled until room selected */}
                                         <button type="button"
@@ -3052,7 +3052,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     <div className="flex items-end justify-between">
                                         <div className="flex flex-col gap-1">
                                             <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Customize area</p>
-                                            <p className="text-[14px] text-[#6e776f]">Select spot to block or unblock.</p>
+                                            <p className="text-[14px] text-[#667085]">Select spot to block or unblock.</p>
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="flex items-center gap-2">
@@ -3093,7 +3093,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 <div className="flex flex-col gap-4">
                                     <div className="flex flex-col gap-1">
                                         <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot layout</p>
-                                        <p className="text-[14px] text-[#6e776f]">
+                                        <p className="text-[14px] text-[#667085]">
                                             Define the number of rows and columns to arrange the {roomCap} spots in this room.
                                         </p>
                                     </div>

@@ -556,7 +556,7 @@ function MarketingBranchOverrides({
                         <button
                             type="button"
                             onClick={() => setAddOpen(o => !o)}
-                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] font-medium text-[var(--colors-secondary-600)] hover:bg-[#f5fffa] hover:text-[#4c6a5a] transition-colors"
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-[13px] font-medium text-[var(--colors-secondary-600)] hover:bg-[#f5fffa] hover:text-[#10373a] transition-colors"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             Branch overrides
