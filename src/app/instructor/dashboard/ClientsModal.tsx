@@ -158,7 +158,7 @@ export function ClientsModal({ open, onClose, classes, bookings }: ClientsModalP
                 />
             }
         >
-            <div className="px-6">
+            <div className="px-6 pt-5">
                 {/* Search */}
                 <div className="pb-4">
                     <input

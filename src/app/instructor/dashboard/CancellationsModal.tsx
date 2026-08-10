@@ -173,7 +173,7 @@ export function CancellationsModal({ open, onClose, cancelledBookings }: Cancell
                 />
             }
         >
-            <div className="px-6">
+            <div className="px-6 pt-5">
                 {/* Tabs — same segmented pill style the admin Memberships ↔ Credit-package
                     tab uses on `/admin/products` (white-on-gray pill, inline count). */}
                 <div className="pb-4">
