@@ -133,7 +133,7 @@ export function CustomizePortalPanel({ open, onClose }: {
                                 <li>Copy the code above using the copy button.</li>
                                 <li>Open the page where you want the schedule to appear. In your website builder (Wix, Squarespace, WordPress, Webflow, etc.), add an <span className="font-medium">“Embed”</span> or <span className="font-medium">“Custom HTML”</span> block.</li>
                                 <li>Paste the code into that block and place it where you want the schedule to show.</li>
-                                <li>Save and publish your page — the schedule loads automatically and always shows your live classes, so you never have to update it by hand.</li>
+                                <li>Save and publish — the schedule stays in sync with your live classes automatically.</li>
                             </ol>
                         </div>
                     </div>
