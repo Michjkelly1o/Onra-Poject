@@ -59,6 +59,14 @@ function durationMin(start?: string, end?: string): number | null {
 function genderLabel(g: string): string {
     return g === "male" ? "Male only" : g === "female" ? "Female only" : "All gender";
 }
+/** "09:00" → "9:00 AM" — single start time, like the attendee card. */
+function to12h(hhmm: string): string {
+    const [h, m] = (hhmm || "").split(":").map(Number);
+    if (Number.isNaN(h)) return hhmm;
+    const period = h >= 12 ? "PM" : "AM";
+    const hh = h % 12 === 0 ? 12 : h % 12;
+    return `${hh}:${String(m ?? 0).padStart(2, "0")} ${period}`;
+}
 
 function EmbedScheduleInner() {
     const params = useSearchParams();
@@ -308,8 +316,8 @@ function ClassCard({ s, cover, bookBg }: { s: ClassSchedule; cover?: string; boo
     return (
         <div className="bg-white border border-[var(--colors-border-secondary)] rounded-[20px] p-5 flex items-center gap-6">
             {/* Time block — FIXED width so the image aligns across every card. */}
-            <div className="w-[150px] shrink-0 flex flex-col gap-1 whitespace-nowrap">
-                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{s.displayTime}</p>
+            <div className="w-[92px] shrink-0 flex flex-col gap-1 whitespace-nowrap">
+                <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{to12h(s.startTime)}</p>
                 {dur != null && <p className="text-[14px] font-medium text-[var(--colors-text-quaternary)] leading-5">{dur} minutes</p>}
             </div>
 

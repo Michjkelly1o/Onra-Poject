@@ -42,6 +42,13 @@ function durationMin(start?: string, end?: string): number | null {
 function genderLabel(g: string): string {
     return g === "male" ? "Male only" : g === "female" ? "Female only" : "All gender";
 }
+function to12h(hhmm: string): string {
+    const [h, m] = (hhmm || "").split(":").map(Number);
+    if (Number.isNaN(h)) return hhmm;
+    const period = h >= 12 ? "PM" : "AM";
+    const hh = h % 12 === 0 ? 12 : h % 12;
+    return `${hh}:${String(m ?? 0).padStart(2, "0")} ${period}`;
+}
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function EmbedClassPage() {
@@ -87,7 +94,7 @@ export default function EmbedClassPage() {
     if (authed) return null; // redirecting to the customer flow
 
     const dur = durationMin(s.startTime, (s as ClassSchedule & { endTime?: string }).endTime);
-    const dateLabel = `${parseISO(s.dateISO).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · ${s.displayTime}`;
+    const dateLabel = `${parseISO(s.dateISO).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · ${to12h(s.startTime)}`;
     const equipment = (s.equipment || "").split(",").map(e => e.trim()).filter(Boolean);
     const emailValid = EMAIL_RE.test(email.trim());
 
