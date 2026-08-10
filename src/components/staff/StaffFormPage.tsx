@@ -1063,6 +1063,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 <div className="flex flex-col gap-[6px]">
                                     <FieldLabel label="Temporary password" />
                                     <TextInput value={form.tempPassword} onChange={v => set({ tempPassword: v })} placeholder="Enter temporary password" />
+                                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5">At least 8 characters.</p>
                                 </div>
                             </div>
 
