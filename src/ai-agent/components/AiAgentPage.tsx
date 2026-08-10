@@ -493,7 +493,7 @@ function AgentSidebar({
                                 onClick={() => t.enabled && onSelectThread(t.key)}
                                 className={cn(
                                     "flex items-center gap-3 px-2 py-3 rounded-md text-left transition-colors",
-                                    isActive && "bg-[var(--colors-secondary-100)]",
+                                    isActive && "bg-[var(--colors-secondary-50)]",
                                     !isActive && t.enabled && "hover:bg-[var(--colors-bg-secondary)]",
                                     !t.enabled && "cursor-not-allowed",
                                 )}
@@ -654,7 +654,7 @@ function RecentRow({
         <div
             className={cn(
                 "group relative flex items-center gap-2 pl-2 pr-1 py-2.5 rounded-md transition-colors",
-                isActive ? "bg-[var(--colors-secondary-100)]" : menuOpen ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
+                isActive ? "bg-[var(--colors-secondary-50)]" : menuOpen ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
             )}
         >
             <button
