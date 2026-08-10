@@ -141,7 +141,8 @@ function EmbedScheduleInner() {
     }, [classSchedules, locId]);
 
     const accent = branding.primaryColor || "#164E52";
-    const bookBg = branding.tertiaryColor || "#DCEBE4";
+    // Book now = the studio's PRIMARY brand button (solid) + white text.
+    const bookBg = accent;
 
     return (
         <div className="min-h-screen bg-[var(--colors-bg-secondary)] px-6 md:px-16 py-10">
@@ -351,7 +352,7 @@ function ClassCard({ s, cover, bookBg }: { s: ClassSchedule; cover?: string; boo
             <div className="flex flex-col items-center gap-2 shrink-0">
                 <Link
                     href={`/embed/classes/${s.id}`}
-                    className="w-[240px] h-11 inline-flex items-center justify-center rounded-full border-2 border-white/[0.12] text-[16px] font-semibold text-[#101828] shadow-[inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] transition-opacity hover:opacity-90"
+                    className="w-[240px] h-11 inline-flex items-center justify-center rounded-full border-2 border-white/[0.12] text-[16px] font-semibold text-white shadow-[inset_0px_0px_0px_1px_rgba(16,24,40,0.18),inset_0px_-2px_0px_0px_rgba(16,24,40,0.05)] transition-opacity hover:opacity-90"
                     style={{ backgroundColor: bookBg }}
                 >
                     {left === 0 ? "Join waitlist" : "Book now"}
