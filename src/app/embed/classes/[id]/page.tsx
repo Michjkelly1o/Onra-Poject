@@ -23,6 +23,7 @@ import { useIsAuthenticated, loginCustomer } from "@/lib/customer/auth";
 import { DEMO_MEMBER_ID } from "@/lib/customer/context";
 import { DROP_IN_PRICE_AED } from "@/lib/customer/booking-flow";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { Button } from "@/components/ui/button";
 import { SocialAuthButtons } from "@/components/customer/auth/SocialAuthButtons";
 import { BranchLocationCard } from "@/components/customer/branch/BranchLocationCard";
@@ -61,9 +62,11 @@ export default function EmbedClassPage() {
     const classTemplates = useAppStore(s => s.classTemplates);
     const classCategories = useAppStore(s => s.classCategories);
     const branches = useAppStore(s => s.branches);
+    const staff = useAppStore(s => s.staff);
     const branding = useAppStore(s => s.brandingSettings);
 
     const s = classSchedules.find(x => x.id === id);
+    const instructorImageUrl = staff.find(st => st.id === s?.instructorId)?.imageUrl;
 
     // Logged-in visitors skip the gate → straight to the customer flow.
     useEffect(() => {
@@ -139,7 +142,7 @@ export default function EmbedClassPage() {
                             <MetaRow icon={<Grid01 className="w-4 h-4" />} text={s.category || "Class"} />
                             <MetaRow icon={genderAccessIcon(s.genderAccess, "w-4 h-4 text-[var(--colors-text-quaternary)]")} text={genderLabel(s.genderAccess)} />
                             <MetaRow
-                                icon={<span className="size-4 rounded-full bg-[var(--colors-bg-tertiary)] flex items-center justify-center text-[9px] font-semibold text-[var(--colors-text-tertiary)]">{s.instructorInitials || (s.instructorName || "?").charAt(0)}</span>}
+                                icon={<InstructorAvatar imageUrl={instructorImageUrl} initials={s.instructorInitials || (s.instructorName || "?").charAt(0)} color={s.instructorColor} size={16} />}
                                 text={s.instructorName || "Instructor"}
                             />
                         </div>

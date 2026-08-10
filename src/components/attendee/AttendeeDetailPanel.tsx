@@ -26,6 +26,7 @@ import { Toast } from "@/components/ui/Toast";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { TableAvatar } from "@/components/ui/avatar";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { NoShowBadge } from "@/components/ui/badge";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { isAttendeeOngoing } from "@/components/attendee/attendee-status";
@@ -140,6 +141,8 @@ function InfoField({ label, children }: { label: string; children: React.ReactNo
 }
 
 function LeftPanel({ ci, instructorLabel }: { ci: ClassInstance; instructorLabel: string }) {
+    // Real instructor photo (from the instructor record), initials fallback.
+    const instructorImageUrl = useAppStore(s => s.instructors.find(i => i.id === ci.instructorId)?.imageUrl);
     return (
         <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden h-full">
             {/* Banner */}
@@ -186,10 +189,7 @@ function LeftPanel({ ci, instructorLabel }: { ci: ClassInstance; instructorLabel
                         <InfoField label="Location">{ci.room || ci.location}</InfoField>
                         <InfoField label="Instructor">
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
-                                    style={{ backgroundColor: ci.instructorColor }}>
-                                    {ci.instructorInitials}
-                                </div>
+                                <InstructorAvatar imageUrl={instructorImageUrl} initials={ci.instructorInitials} color={ci.instructorColor} size={24} />
                                 <span>{instructorLabel}</span>
                             </div>
                         </InfoField>
