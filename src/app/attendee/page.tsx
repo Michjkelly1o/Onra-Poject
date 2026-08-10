@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sliders } from "@/components/icons/Sliders";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -84,6 +85,8 @@ function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => vo
     const ongoing = isAttendeeOngoing(ci.status, ci.dateISO, ci.startTime);
     // Gender-access label + icon for the meta row.
     const genderLabel = ci.genderAccess === "male" ? "Male only" : ci.genderAccess === "female" ? "Female only" : "All gender";
+    // Real instructor photo (from the staff record), colored-initials fallback.
+    const instructorImageUrl = useAppStore(s => s.staff.find(st => st.id === ci.instructorId)?.imageUrl);
 
     return (
         // The whole row opens the class detail; the inner "View details" button
@@ -126,10 +129,7 @@ function AttendeeClassCard({ ci, onView }: { ci: ClassInstance; onView: () => vo
                     </div>
                     {/* Instructor — avatar + name */}
                     <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                            style={{ backgroundColor: ci.instructorColor }}>
-                            {ci.instructorInitials}
-                        </span>
+                        <InstructorAvatar imageUrl={instructorImageUrl} initials={ci.instructorInitials} color={ci.instructorColor} size={20} />
                         <span className="text-[14px] leading-5 text-[var(--colors-text-secondary)] truncate">{ci.instructorName || "Open session"}</span>
                     </div>
                 </div>

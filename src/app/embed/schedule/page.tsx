@@ -22,6 +22,7 @@ import { SearchMd, User01, MarkerPin01, Users01, ChevronLeft, ChevronRight } fro
 import { useAppStore, resolveTemplateCoverImage, type ClassSchedule } from "@/lib/store";
 import { SelectInput } from "@/components/ui/select-input";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { DROP_IN_PRICE_AED } from "@/lib/customer/booking-flow";
 
 const WINDOW_DAYS: Record<string, number> = { "1w": 7, "2w": 14, "3w": 21, "1m": 30 };
@@ -76,7 +77,11 @@ function EmbedScheduleInner() {
     const classTemplates = useAppStore(s => s.classTemplates);
     const classCategories = useAppStore(s => s.classCategories);
     const branches = useAppStore(s => s.branches);
+    const staff = useAppStore(s => s.staff);
     const branding = useAppStore(s => s.brandingSettings);
+
+    // Real instructor photo by instructor id (colored-initials fallback).
+    const instrImgById = useMemo(() => new Map(staff.map(st => [st.id, st.imageUrl])), [staff]);
 
     const days = WINDOW_DAYS[win] ?? 14;
     const today = new Date();
@@ -263,7 +268,7 @@ function EmbedScheduleInner() {
                     ) : (
                         <div className="flex flex-col gap-4">
                             {dayClasses.map(s => (
-                                <ClassCard key={s.id} s={s} cover={coverByTemplate.get(s.templateId)} bookBg={bookBg} />
+                                <ClassCard key={s.id} s={s} cover={coverByTemplate.get(s.templateId)} instructorImageUrl={instrImgById.get(s.instructorId)} bookBg={bookBg} />
                             ))}
                         </div>
                     )}
@@ -296,7 +301,7 @@ function EmbedScheduleInner() {
     );
 }
 
-function ClassCard({ s, cover, bookBg }: { s: ClassSchedule; cover?: string; bookBg: string }) {
+function ClassCard({ s, cover, instructorImageUrl, bookBg }: { s: ClassSchedule; cover?: string; instructorImageUrl?: string; bookBg: string }) {
     const endTime = (s as ClassSchedule & { endTime?: string }).endTime;
     const dur = durationMin(s.startTime, endTime);
     const left = Math.max(0, (s.capacity ?? 0) - (s.booked ?? 0));
@@ -341,10 +346,7 @@ function ClassCard({ s, cover, bookBg }: { s: ClassSchedule; cover?: string; boo
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
-                            style={{ backgroundColor: s.instructorColor }}>
-                            {s.instructorInitials || (s.instructorName || "?").charAt(0)}
-                        </span>
+                        <InstructorAvatar imageUrl={instructorImageUrl} initials={s.instructorInitials || (s.instructorName || "?").charAt(0)} color={s.instructorColor} size={20} />
                         <span className="text-[14px] leading-5 text-[var(--colors-text-secondary)] truncate">{s.instructorName || "Open session"}</span>
                     </div>
                 </div>

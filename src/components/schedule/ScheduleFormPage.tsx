@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore, SCHEDULE_INSTRUCTORS, deriveScheduleInstructors, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess, type ClassCategory } from "@/lib/store";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByShift as gateSlotsByShiftHelper, instructorBlockedSlots as instructorBlockedSlotsHelper } from "@/lib/instructor-availability";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { TimeDropdown, fmtTime, fmtSlotRange, DAY_FULL, DEFAULT_TIME_SLOTS } from "@/components/ui/TimeDropdown";
@@ -503,10 +504,8 @@ function InstructorCard({ instructor, selected, disabled = false, disabledReason
             )}>
             {/* Avatar area */}
             <div className="relative w-full flex justify-center pt-5 px-4">
-                <div className="w-[80px] h-[80px] rounded-full flex items-center justify-center text-white text-[28px] font-semibold"
-                    style={{ backgroundColor: instructor.color }}>
-                    {instructor.initials}
-                </div>
+                <InstructorAvatar imageUrl={instructor.imageUrl} initials={instructor.initials} color={instructor.color} size={80} />
+
                 {/* Radio — hidden when disabled. */}
                 {!disabled && (
                     <div className={cn("absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center",
@@ -797,14 +796,14 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 <div className="w-4 h-4 rounded-full bg-[#e0e0e0] shrink-0" />
                                 <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.instructorName}</span>
                                 <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
-                                <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: instructor.color }} />
+                                <InstructorAvatar imageUrl={instructor.imageUrl} initials={instructor.initials} color={instructor.color} size={16} />
                                 <span className="text-[14px] font-semibold text-[#3b5446]">{instructor.name}</span>
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
                                 {instructor ? (
                                     <>
-                                        <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: instructor.color }} />
+                                        <InstructorAvatar imageUrl={instructor.imageUrl} initials={instructor.initials} color={instructor.color} size={16} />
                                         <span className="text-[14px] text-[var(--colors-text-quaternary)]">{instructor.name}</span>
                                     </>
                                 ) : (
