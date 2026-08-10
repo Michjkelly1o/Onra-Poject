@@ -37,7 +37,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter } from "next/navigation";
 import {
-    XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, CheckCircle,
+    XClose, SlashCircle01, Trash01, Trash02, Check, CheckCircle,
     SearchMd, Eye, AlignLeft, ChevronLeft, RefreshCcw01, Star01,
     FilterLines, Shuffle01,
 } from "@untitledui/icons";
@@ -128,25 +128,11 @@ function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this appointment?</h3>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
                             <span className="font-medium text-[#344054]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and automatically refunded.</>}
                         </p>
                     </div>
                 </div>
-                {bookedCount > 0 && (
-                    <>
-                        <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[#e4e7ec]" />
-                        <div className="flex items-center justify-between gap-4 px-6 py-5">
-                            <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[#101828]">Refund class credit</p>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">When the studio cancels an appointment, each customer is always refunded.</p>
-                            </div>
-                            {/* Locked ON — admin cancellation always grants a no-charge refund. */}
-                            <Toggle on={true} onChange={() => { /* locked */ }} disabled />
-                        </div>
-                    </>
-                )}
-                <div className={cn("flex gap-3 px-6 pb-6", bookedCount > 0 ? "pt-6" : "pt-5")}>
+                <div className="flex gap-3 px-6 pt-5 pb-6">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
                     <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(true)}>
                         Yes, cancel appointment
@@ -384,7 +370,7 @@ function BulkActionBar({ count, kind, onClear, onAction }: {
                     {kind === "upcoming" && (
                         <>
                             <Button variant="secondary-gray" size="sm"
-                                leftIcon={<SlashCircle01 className="w-5 h-5 text-[#667085]" />}
+                                leftIcon={<Trash01 className="w-5 h-5 text-[#667085]" />}
                                 onClick={() => onAction("cancel")}>
                                 Cancel
                             </Button>
@@ -691,7 +677,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                                 Cancel pattern. */}
                             <button type="button" onClick={onCancelAppointment}
                                 className="flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] text-[#b42318] hover:text-[#912018] transition-colors">
-                                <span className="w-5 h-5 shrink-0"><Trash04 className="w-5 h-5" /></span>
+                                <span className="w-5 h-5 shrink-0"><Trash01 className="w-5 h-5" /></span>
                                 Cancel appointment
                             </button>
                         </div>

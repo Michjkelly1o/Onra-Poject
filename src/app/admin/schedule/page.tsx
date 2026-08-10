@@ -151,11 +151,12 @@ function ScheduleRowActions({ id, status, flexible, onCancel, onDuplicate, onAdd
 
 // ─── Cancel class modal — lightweight version for admin/schedule list & popup ──
 
-function AdminCancelClassModal({ open, classInstance, bookedCount, onClose, onConfirm }: {
-    open: boolean; classInstance: ClassInstance | null; bookedCount: number;
+function AdminCancelClassModal({ open, classInstance, isAppointment = false, bookedCount, onClose, onConfirm }: {
+    open: boolean; classInstance: ClassInstance | null; isAppointment?: boolean; bookedCount: number;
     onClose: () => void; onConfirm: () => void;
 }) {
     if (!open || !classInstance) return null;
+    const noun = isAppointment ? "appointment" : "class";
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
@@ -169,36 +170,19 @@ function AdminCancelClassModal({ open, classInstance, bookedCount, onClose, onCo
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this class?</h3>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this {noun}?</h3>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
                             <span className="font-medium text-[var(--colors-text-secondary)]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and automatically refunded.</>}
                         </p>
                     </div>
                 </div>
-                {/* Refund class credit — same row as the Class Details cancel modal.
-                    Locked ON: a studio cancellation always refunds each customer. */}
-                {bookedCount > 0 && (
-                    <>
-                        <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
-                        <div className="flex items-center justify-between gap-4 px-6 py-5">
-                            <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class credit</p>
-                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">When the studio cancels a class, each customer is always refunded.</p>
-                            </div>
-                            <span aria-hidden className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-[var(--brand-primary)] opacity-60">
-                                <span className="ml-auto mr-0.5 size-4 rounded-full bg-white shadow-[0px_1px_2px_rgba(16,24,40,0.1)]" />
-                            </span>
-                        </div>
-                    </>
-                )}
                 <div className="flex gap-3 px-6 pt-6 pb-6">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
                         Cancel
                     </Button>
                     <Button variant="destructive" size="lg" className="flex-1" onClick={onConfirm}>
-                        Yes, cancel class
+                        Yes, cancel {noun}
                     </Button>
                 </div>
             </div>
@@ -1116,7 +1100,7 @@ export default function SchedulePageRoute() {
 
 function SchedulePage() {
     const router = useRouter();
-    const { classSchedules, classTemplates, classBookings, classCategories, cancelClassSchedule, showToast } = useAppStore();
+    const { classSchedules, classTemplates, classBookings, classCategories, cancelClassSchedule, showToast, appointmentBookings, cancelAppointment } = useAppStore();
     // Categories pill list for the FilterPanel — names only, matching the
     // `c.category` denormalised field on ClassInstance.
     const categoryNames = useMemo(
@@ -1229,19 +1213,32 @@ function SchedulePage() {
         scheduleUi.monthYear = monthYear;
     }, [applied, search, location, activeTab, scheduleTab, page, dayDateISO, weekStart, monthYear]);
 
-    const cancelTarget = cancelTargetId ? classSchedules.find(c => c.id === cancelTargetId) ?? null : null;
+    // The cancel confirmation modal handles BOTH classes and appointments
+    // (recovery / private) — an `appt_`-prefixed id resolves from the
+    // appointments slice (converted to the same ClassInstance shape).
+    const cancelIsAppt = cancelTargetId ? isAppointmentId(cancelTargetId) : false;
+    const cancelTarget: ClassInstance | null = cancelTargetId
+        ? (cancelIsAppt
+            ? (() => { const a = appointments.find(x => x.id === cancelTargetId); return a ? appointmentToClassInstance(a) : null; })()
+            : classSchedules.find(c => c.id === cancelTargetId) ?? null)
+        : null;
     const cancelTargetBookedCount = cancelTargetId
-        ? classBookings.filter(b => b.classScheduleId === cancelTargetId && b.status === "booked").length
+        ? (cancelIsAppt
+            ? appointmentBookings.filter(b => b.appointmentId === cancelTargetId && b.status === "Booked").length
+            : classBookings.filter(b => b.classScheduleId === cancelTargetId && b.status === "booked").length)
         : 0;
 
     function handleConfirmCancelClass() {
-        if (!cancelTarget) return;
-        cancelClassSchedule(cancelTarget.id, true);
+        if (!cancelTarget || !cancelTargetId) return;
+        const isAppt = isAppointmentId(cancelTargetId);
+        // Studio cancellation always refunds the customer(s) — pass `true`.
+        if (isAppt) cancelAppointment(cancelTargetId, true);
+        else cancelClassSchedule(cancelTargetId, true);
         const name = cancelTarget.name;
         const date = cancelTarget.date;
         setCancelTargetId(null);
         showToast(
-            "Class cancelled successfully",
+            isAppt ? "Appointment cancelled successfully" : "Class cancelled successfully",
             `${name} on ${date} has been cancelled and customers' credits returned.`,
             "error", "slash"
         );
@@ -1518,9 +1515,7 @@ function SchedulePage() {
                                             classes={paginatedClasses}
                                             branchTzById={branchTzById}
                                             sortKey={listSortKey} sortDir={listSortDir} onSort={toggleListSort}
-                                            onCancel={id => isAppointmentId(id)
-                                                ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
-                                                : setCancelTargetId(id)}
+                                            onCancel={id => setCancelTargetId(id)}
                                             onDuplicate={handleDuplicateClass}
                                             onAddCustomer={id => router.push(`/schedule/${id}?openAddCustomer=1&returnTo=${encodeURIComponent("/admin/schedule")}`)}
                                         />
@@ -1591,19 +1586,18 @@ function SchedulePage() {
                         ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
                         : router.push(`/schedule/${id}/edit?returnTo=${encodeURIComponent("/admin/schedule")}`)}
                     onDuplicate={handleDuplicateClass}
-                    // Appointments use a different cancel flow (reason
-                    // required) — route to the appointment detail page so
-                    // the admin can cancel there with the full modal.
-                    onCancel={(id) => isAppointmentId(id)
-                        ? router.push(`/appointments/${id}?returnTo=${encodeURIComponent("/admin/schedule")}`)
-                        : setCancelTargetId(id)}
+                    // Classes AND appointments cancel through the same
+                    // confirmation modal — no redirect to the detail page.
+                    onCancel={(id) => setCancelTargetId(id)}
                 />
             )}
 
-            {/* Cancel class confirmation — opens from list dropdown OR popup */}
+            {/* Cancel confirmation — classes AND appointments, from list
+                dropdown OR the day/week/month popup */}
             <AdminCancelClassModal
                 open={!!cancelTarget}
                 classInstance={cancelTarget}
+                isAppointment={cancelIsAppt}
                 bookedCount={cancelTargetBookedCount}
                 onClose={() => setCancelTargetId(null)}
                 onConfirm={handleConfirmCancelClass}

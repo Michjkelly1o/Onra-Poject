@@ -7286,6 +7286,20 @@ export const useAppStore = create<AppState>()(persist(
             const userFullName = u ? `${u.first_name} ${u.last_name}`.trim() : "";
             const attribution = cancelledBy
                 ?? (userFullName.length > 0 ? userFullName : "Alex Owen");
+            // Symmetric credit refund (studio cancellation always refunds).
+            // Every BOOKED seat that spent a plan credit (`planKindUsed` set)
+            // returns 1 credit to that customer's balance. Waitlisted seats
+            // never spent a credit, and unlimited members carry no counter, so
+            // both are naturally excluded (the numeric-guard below matches the
+            // deduction guard in `addClassBooking`).
+            const refundByCustomer = new Map<string, number>();
+            if (refundCredits) {
+                for (const b of stateBefore.classBookings) {
+                    if (b.classScheduleId === id && b.status === "booked" && b.planKindUsed) {
+                        refundByCustomer.set(b.customerId, (refundByCustomer.get(b.customerId) ?? 0) + 1);
+                    }
+                }
+            }
             set((state) => {
                 const now = new Date().toISOString();
                 return {
@@ -7322,6 +7336,14 @@ export const useAppStore = create<AppState>()(persist(
                             ? { ...b, refundCreditIssued: refundCredits }
                             : b
                     ),
+                    // Return the spent credit to each affected customer's usable
+                    // balance so `derivePlanBalances` shows it as available again.
+                    customers: refundByCustomer.size === 0
+                        ? state.customers
+                        : state.customers.map(c =>
+                            refundByCustomer.has(c.id) && typeof c.creditsRemaining === "number"
+                                ? { ...c, creditsRemaining: c.creditsRemaining + (refundByCustomer.get(c.id) ?? 0) }
+                                : c),
                 };
             });
             // Feed: surface in the notification center (PRD 12). Click-
