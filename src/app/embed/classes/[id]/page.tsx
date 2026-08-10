@@ -17,7 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
     ChevronLeft, Calendar, ClockFastForward, Users01, Grid01,
     CheckCircle, Dotpoints01, Check, MarkerPin01, Clock,
-    CoinsStacked03, BankNote01,
+    CoinsStacked03, BankNote01, InfoCircle,
 } from "@untitledui/icons";
 import { useAppStore, resolveTemplateCoverImage, type ClassSchedule } from "@/lib/store";
 import { useIsAuthenticated, loginCustomer } from "@/lib/customer/auth";
@@ -76,7 +76,9 @@ export default function EmbedClassPage() {
     const customerPlans = useAppStore(s => s.customerPlans);
     const packages = useAppStore(s => s.packages);
     const classBookings = useAppStore(s => s.classBookings);
+    const leads = useAppStore(s => s.leads);
     const addClassBooking = useAppStore(s => s.addClassBooking);
+    const addLead = useAppStore(s => s.addLead);
     const showToast = useAppStore(s => s.showToast);
     const branding = useAppStore(s => s.brandingSettings);
 
@@ -158,35 +160,65 @@ export default function EmbedClassPage() {
     })();
     const activePay = payWith ?? eligiblePlans[0]?.id ?? "drop_in";
 
+    // At capacity → this becomes a WAITLIST join (mirrors the customer flow):
+    // nothing is charged, no spot is reserved until a seat opens.
+    const full = (s.capacity ?? 0) - (s.booked ?? 0) <= 0;
     const spotRequired = !!(s.spotSelectionEnabled && s.spotLayout);
     const takenSpots = spotRequired
         ? [...(s.spotLayout!.blockedSpots || []), ...classBookings.filter(b => b.classScheduleId === s.id && b.spot).map(b => b.spot as string)]
         : [];
-    const spotReady = !spotRequired || !!selectedSpot;
+    const spotReady = full || !spotRequired || !!selectedSpot;
     const guestReady = bookTo === "myself" || guestName.trim().length > 0;
     const canBook = !!member && guestReady && spotReady;
     const instructorInitials = s.instructorInitials || (s.instructorName || "?").charAt(0);
 
     function handleBook() {
         if (!member || !canBook) return;
-        const usingPlan = hasEligiblePlan && activePay !== "drop_in";
+        const status = full ? "waitlisted" : "booked";
+        // A waitlist seat costs nothing until promoted → never charge a credit.
+        const usingPlan = !full && hasEligiblePlan && activePay !== "drop_in";
         if (bookTo === "myself") {
-            addClassBooking({ classScheduleId: s!.id, customerId: member.id, status: "booked", spot: selectedSpot });
+            addClassBooking({ classScheduleId: s!.id, customerId: member.id, status, spot: full ? undefined : selectedSpot });
         } else {
             const phone = guestPhone.trim() ? `${guestPhoneCountry.dial} ${guestPhone.trim()}` : "";
             addClassBooking({
                 classScheduleId: s!.id,
                 customerId: member.id,
-                status: "booked",
-                spot: selectedSpot,
+                status,
+                spot: full ? undefined : selectedSpot,
                 guestName: guestName.trim(),
                 guestPhone: phone || undefined,
                 guestEmail: guestEmail.trim() || undefined,
                 guestPayment: usingPlan ? "booker_credit" : "drop_in",
                 chargeBookerCredit: usingPlan,
             });
+            // Guest → Lead: capture the prospect under admin Customers → Leads
+            // (dedup by phone), exactly like the customer booking flow.
+            const norm = phone.replace(/\s+/g, "");
+            if (norm) {
+                const known =
+                    customers.some(c => c.phone && c.phone.replace(/\s+/g, "") === norm) ||
+                    leads.some(l => l.phone && l.phone.replace(/\s+/g, "") === norm);
+                if (!known) {
+                    addLead({
+                        contact_name: guestName.trim() || phone,
+                        contact_email: guestEmail.trim(),
+                        phone,
+                        source: "Referral",
+                        stage: "new",
+                        engagement_status: "warm",
+                        branch_id: s!.branchId,
+                    });
+                }
+            }
         }
-        showToast("Booking confirmed", `${s!.name} booked for ${bookTo === "myself" ? "you" : guestName.trim()}.`, "success");
+        showToast(
+            full ? "Added to waitlist" : "Booking confirmed",
+            full
+                ? `${s!.name} — ${bookTo === "myself" ? "you're" : `${guestName.trim()} is`} on the waitlist.`
+                : `${s!.name} booked for ${bookTo === "myself" ? "you" : guestName.trim()}.`,
+            "success",
+        );
         setStage("done");
     }
 
@@ -369,51 +401,55 @@ export default function EmbedClassPage() {
                                     )}
                                 </section>
 
-                                <Divider />
+                                {/* Pay with — hidden on a waitlist join (a seat costs nothing
+                                    until it's promoted, so nothing is charged now). */}
+                                {full ? (
+                                    <div className="flex w-full items-start gap-2 rounded-xl border border-[#eaecf0] bg-[#f9fafb] p-4">
+                                        <InfoCircle className="mt-0.5 size-4 shrink-0 text-[#667085]" aria-hidden />
+                                        <p className="text-sm font-normal leading-5 text-[#475467]">
+                                            This class is full. Join the waitlist now — you&apos;ll choose how to pay if a spot opens.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Divider />
 
-                                {/* Pay with — plan credit (FeaturedIcon + RadioDot) or drop-in. */}
-                                <section className="flex w-full flex-col gap-3">
-                                    <p className="text-base font-semibold leading-6 text-[var(--colors-text-primary)]">Pay with</p>
-                                    {hasEligiblePlan ? (
-                                        eligiblePlans.map(p => {
-                                            const sel = activePay === p.id;
-                                            const sub = !hasCredits ? "Included in your membership" : `${creditsLeftAfter(p)} credits left after this booking`;
-                                            return (
-                                                <button key={p.id} type="button" onClick={() => setPayWith(p.id)}
-                                                    className={`flex w-full items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors ${sel ? "border-2" : "border border-[#e4e7ec]"}`}
-                                                    style={sel ? { borderColor: accent } : undefined}>
-                                                    <FeaturedIcon icon={CoinsStacked03} />
+                                        {/* Pay with — plan credit (FeaturedIcon + RadioDot) or drop-in. */}
+                                        <section className="flex w-full flex-col gap-3">
+                                            <p className="text-base font-semibold leading-6 text-[var(--colors-text-primary)]">Pay with</p>
+                                            {hasEligiblePlan ? (
+                                                eligiblePlans.map(p => {
+                                                    const sel = activePay === p.id;
+                                                    const sub = !hasCredits ? "Included in your membership" : `${creditsLeftAfter(p)} credits left after this booking`;
+                                                    return (
+                                                        <button key={p.id} type="button" onClick={() => setPayWith(p.id)}
+                                                            className={`flex w-full items-center gap-3 rounded-xl bg-white p-4 text-left transition-colors ${sel ? "border-2" : "border border-[#e4e7ec]"}`}
+                                                            style={sel ? { borderColor: accent } : undefined}>
+                                                            <FeaturedIcon icon={CoinsStacked03} />
+                                                            <span className="flex min-w-0 flex-1 flex-col">
+                                                                <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">{p.name}</span>
+                                                                <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
+                                                            </span>
+                                                            <RadioDot checked={sel} accent={accent} />
+                                                        </button>
+                                                    );
+                                                })
+                                            ) : (
+                                                <div className="flex w-full items-center gap-3 rounded-xl border-2 bg-white p-4" style={{ borderColor: accent }}>
+                                                    <FeaturedIcon icon={BankNote01} />
                                                     <span className="flex min-w-0 flex-1 flex-col">
-                                                        <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">{p.name}</span>
-                                                        <span className="truncate text-sm font-normal leading-5 text-[#475467]">{sub}</span>
+                                                        <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">Pay per class</span>
+                                                        <span className="truncate text-sm font-normal leading-5 text-[#667085]">AED {dropInPlan?.price ?? DROP_IN_PRICE_AED} · single drop-in</span>
                                                     </span>
-                                                    <RadioDot checked={sel} accent={accent} />
-                                                </button>
-                                            );
-                                        })
-                                    ) : dropInPlan ? (
-                                        <div className="flex w-full items-center gap-3 rounded-xl border-2 bg-white p-4" style={{ borderColor: accent }}>
-                                            <FeaturedIcon icon={BankNote01} />
-                                            <span className="flex min-w-0 flex-1 flex-col">
-                                                <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">Pay per class</span>
-                                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">AED {dropInPlan.price} · single drop-in</span>
-                                            </span>
-                                            <RadioDot checked accent={accent} />
-                                        </div>
-                                    ) : (
-                                        <div className="flex w-full items-center gap-3 rounded-xl border-2 bg-white p-4" style={{ borderColor: accent }}>
-                                            <FeaturedIcon icon={BankNote01} />
-                                            <span className="flex min-w-0 flex-1 flex-col">
-                                                <span className="truncate text-sm font-medium leading-5 text-[var(--colors-text-primary)]">Pay per class</span>
-                                                <span className="truncate text-sm font-normal leading-5 text-[#667085]">AED {DROP_IN_PRICE_AED} · single drop-in</span>
-                                            </span>
-                                            <RadioDot checked accent={accent} />
-                                        </div>
-                                    )}
-                                </section>
+                                                    <RadioDot checked accent={accent} />
+                                                </div>
+                                            )}
+                                        </section>
+                                    </>
+                                )}
 
                                 <Button variant="primary" size="xl" className="w-full rounded-full mt-auto" disabled={!canBook} onClick={handleBook}>
-                                    Book now
+                                    {full ? "Join waitlist" : "Book now"}
                                 </Button>
                             </>
                         )}
@@ -430,7 +466,7 @@ export default function EmbedClassPage() {
                                 </div>
 
                                 <p className="text-center text-[20px] font-semibold leading-[30px] text-[var(--colors-text-primary)]">
-                                    Your booking is confirmed!
+                                    {full ? "You're on the waitlist!" : "Your booking is confirmed!"}
                                 </p>
 
                                 <div className="w-full flex flex-col gap-4 rounded-[20px] border border-[var(--colors-border-secondary)] bg-white p-4 shadow-[0px_24px_48px_-12px_rgba(16,24,40,0.12)]">
@@ -439,9 +475,15 @@ export default function EmbedClassPage() {
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img src={cover} alt="" className="absolute inset-0 size-full object-cover" />
                                         )}
-                                        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-xs font-medium leading-[18px]" style={{ borderColor: accent, color: accent }}>
-                                            <CheckCircle className="size-3 shrink-0" aria-hidden /> Booked
-                                        </span>
+                                        {full ? (
+                                            <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full border border-[var(--colors-border-secondary)] bg-white px-2 py-0.5 text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">
+                                                Waitlisted
+                                            </span>
+                                        ) : (
+                                            <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-xs font-medium leading-[18px]" style={{ borderColor: accent, color: accent }}>
+                                                <CheckCircle className="size-3 shrink-0" aria-hidden /> Booked
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <p className="text-[16px] font-semibold leading-6 text-[var(--colors-text-primary)]">{s.name}</p>
