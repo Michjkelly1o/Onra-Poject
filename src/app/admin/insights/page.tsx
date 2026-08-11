@@ -30,7 +30,8 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { DashboardWidgetCard } from "@/components/dashboard/DashboardWidgetCard";
 import { WIDGET_CATALOG, type WidgetCategory } from "@/components/dashboard/widget-catalog";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
-import { InsightMetricCard, type Metric } from "@/components/insights/InsightMetricCard";
+import { InsightMetricCard } from "@/components/insights/InsightMetricCard";
+import { useInsightsMetrics } from "@/lib/insights/use-insights-metrics";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,54 +42,17 @@ interface TabConfig {
     label: string;
     /** Category used to filter the widget catalog. */
     widgetCategory: WidgetCategory;
-    metrics: Metric[];
 }
 
-// ─── Tab content ──────────────────────────────────────────────────────────────
-//
-// Finance + Memberships metric values match the Figma exactly. Classes is a
-// sensible default (no Figma supplied yet) — same shape, ready to swap when
-// the spec lands. All values are mock for now; widgets render their own
-// derived data via the existing dashboard catalog.
-
-const FINANCE_METRICS: Metric[] = [
-    { label: "Net revenue",                value: "AED 752",   change: 8 },
-    { label: "Revenue from subscriptions", value: "AED 120",   change: 2 },
-    { label: "Revenue from packages",      value: "AED 390",   change: 30 },
-    { label: "Payment amount dues",        value: "AED 345",   change: 100 },
-    { label: "Revenue from classes",       value: "AED 1,620", change: 8 },
-    { label: "Revenue from products",      value: "AED 112",   change: -5 },
-    { label: "Revenue from gift cards",    value: "AED 104",   change: 2 },
-    { label: "Payments collected",         value: "AED 407",   change: 30 },
-];
-
-const MEMBERSHIP_METRICS: Metric[] = [
-    { label: "Active memberships",               value: "7",   change: 2 },
-    { label: "Active subscriptions",             value: "14",  change: 4 },
-    { label: "Active packages",                  value: "4",   change: 4 },
-    { label: "Active intro offers",              value: "4",   change: -5 },
-    { label: "Membership cancellations",         value: "2",   change: 2 },
-    { label: "Memberships suspended",            value: "0" },
-    { label: "Memberships with billing issue",   value: "4",   change: 2 },
-    { label: "Membership cancellations %",       value: "1%",  change: 2 },
-    { label: "Memberships suspended %",          value: "0%" },
-    { label: "Memberships with billing issue %", value: "2%",  change: 2 },
-];
-
-const CLASSES_METRICS: Metric[] = [
-    { label: "Total class scheduled",     value: "175",    change: 8 },
-    { label: "Total class check-ins",     value: "5",      change: -5 },
-    { label: "Revenue per class",         value: "AED 162", change: -30 },
-    { label: "Revenue per visit",         value: "AED 62", change: -5 },
-    { label: "Unique visitors",           value: "3",      change: 8 },
-    { label: "First time class visitors", value: "1",      change: -5 },
-    { label: "Class occupancy rate",      value: "1%",     change: -10 },
-];
+// The metric tiles are now derived LIVE from the store + the shared recognized-
+// revenue engine, scoped to the selected period with a prior-period delta — see
+// `useInsightsMetrics`. The widget grid below already renders real derived data
+// via the dashboard's WIDGET_CATALOG.
 
 const TABS: TabConfig[] = [
-    { key: "finance",     label: "Finance",     widgetCategory: "Finance",     metrics: FINANCE_METRICS },
-    { key: "memberships", label: "Memberships", widgetCategory: "Memberships", metrics: MEMBERSHIP_METRICS },
-    { key: "classes",     label: "Classes",     widgetCategory: "Classes",     metrics: CLASSES_METRICS },
+    { key: "finance",     label: "Finance",     widgetCategory: "Finance" },
+    { key: "memberships", label: "Memberships", widgetCategory: "Memberships" },
+    { key: "classes",     label: "Classes",     widgetCategory: "Classes" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -129,11 +93,15 @@ function InsightsInner() {
         [activeTab.widgetCategory],
     );
 
+    // Live metric tiles for the selected period (prior-period delta baked in).
+    const metricsByTab = useInsightsMetrics(period);
+    const activeMetrics = metricsByTab[tab];
+
     // Search filters metrics + widgets simultaneously, case-insensitive.
     const q = search.trim().toLowerCase();
     const filteredMetrics = q
-        ? activeTab.metrics.filter(m => m.label.toLowerCase().includes(q))
-        : activeTab.metrics;
+        ? activeMetrics.filter(m => m.label.toLowerCase().includes(q))
+        : activeMetrics;
     const filteredWidgets = q
         ? widgetsInCategory.filter(w =>
             w.title.toLowerCase().includes(q) || w.description.toLowerCase().includes(q))
