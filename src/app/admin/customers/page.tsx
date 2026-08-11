@@ -19,7 +19,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, ChevronLeft, ArrowLeft,
+    SearchMd, FilterLines, ChevronLeft, ChevronDown,
     Eye, Edit02, Trash01, Trash02, Archive, Check, Download01,
     MarkerPin01, AlignLeft, XClose, RefreshCcw01, HeartHand,
 } from "@untitledui/icons";
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
-import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
@@ -47,7 +47,6 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
-import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
@@ -440,6 +439,113 @@ type PendingConfirm =
     | { mode: "row"; row: CustomerRow; kind: RowActionKind; note?: string }
     | { mode: "bulk"; rows: CustomerRow[]; kind: RowActionKind; note?: string };
 
+// ─── Sortable-column comparators (shared by the active + archived tables) ────
+// Order lifecycle tags by "funnel depth" so ascending puts leads at the top and
+// loyal members at the bottom — mirrors the mental model in PDF §2.1.
+const LIFECYCLE_ORDER: Record<string, number> = {
+    "Lead": 0, "Trialist": 1, "New Active": 2, "Loyal Active": 3,
+    "Won-back": 4, "At Risk": 5, "Churned": 6,
+};
+const CUSTOMER_SORT: Record<string, (a: CustomerRow, b: CustomerRow) => number> = {
+    name:      (a, b) => a.name.localeCompare(b.name),
+    contact:   (a, b) => a.email.localeCompare(b.email),
+    plan:      (a, b) => a.planType.localeCompare(b.planType),
+    lifecycle: (a, b) => (LIFECYCLE_ORDER[a.lifecycleTag ?? "Lead"] ?? 99) - (LIFECYCLE_ORDER[b.lifecycleTag ?? "Lead"] ?? 99),
+    lastVisit: (a, b) => {
+        // No-visit rows sort to the end regardless of direction by pegging them
+        // to a sentinel larger than any real ISO.
+        const av = a.lastVisitISO ?? "9999-99-99";
+        const bv = b.lastVisitISO ?? "9999-99-99";
+        return av.localeCompare(bv);
+    },
+};
+
+// ─── Customer table (header + rows) ──────────────────────────────────────────
+// Rendered for BOTH the active list and the Archived section — each passes its
+// own rows + sort; selection is shared across both. `renderRowActions` is
+// supplied by the page so all router / confirm wiring stays there.
+function CustomerTable({ rows, selectedIds, onToggleOne, onToggleAll, sortKey, sortDir, onSort, onRowClick, renderRowActions }: {
+    rows: CustomerRow[];
+    selectedIds: Set<string>;
+    onToggleOne: (id: string) => void;
+    onToggleAll: (check: boolean, rows: CustomerRow[]) => void;
+    sortKey: string | null;
+    sortDir: SortDir;
+    onSort: (key: string) => void;
+    onRowClick: (id: string) => void;
+    renderRowActions: (r: CustomerRow) => React.ReactNode;
+}) {
+    const allChecked = rows.length > 0 && rows.every(r => selectedIds.has(r.id));
+    const someChecked = !allChecked && rows.some(r => selectedIds.has(r.id));
+    return (
+        <div className="px-6">
+            {/* table-fixed — column widths follow the <th> widths, not the cell
+                content, so columns keep a stable width when sorting reorders rows. */}
+            <table className="w-full border-collapse table-fixed">
+                <thead>
+                    <tr>
+                        <th className={cn(TH, "w-[44px]")}>
+                            <CheckboxCell checked={allChecked} indeterminate={someChecked}
+                                onChange={(c) => onToggleAll(c, rows)} ariaLabel="Select all rows on this page" />
+                        </th>
+                        <th className={cn(TH, "w-[280px]")}><SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={onSort}>Name</SortableHeader></th>
+                        <th className={cn(TH, "w-[240px]")}><SortableHeader sortKey="contact"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Contact</SortableHeader></th>
+                        <th className={cn(TH, "w-[150px]")}><SortableHeader sortKey="plan"      currentSort={sortKey} dir={sortDir} onSort={onSort}>Plan</SortableHeader></th>
+                        <th className={cn(TH, "w-[160px]")}><SortableHeader sortKey="lifecycle" currentSort={sortKey} dir={sortDir} onSort={onSort}>Lifecycle</SortableHeader></th>
+                        <th className={cn(TH, "w-[140px]")}><SortableHeader sortKey="lastVisit" currentSort={sortKey} dir={sortDir} onSort={onSort}>Last visit</SortableHeader></th>
+                        <th className={cn(TH, "w-[52px]")}></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(r => {
+                        const isSelected = selectedIds.has(r.id);
+                        return (
+                            <tr key={r.id}
+                                onClick={() => onRowClick(r.id)}
+                                className={cn(
+                                    "transition-colors cursor-pointer",
+                                    isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
+                                )}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <CheckboxCell checked={isSelected} onChange={() => onToggleOne(r.id)} ariaLabel={`Select ${r.name}`} />
+                                </td>
+                                <td className={TD}>
+                                    <div className="flex items-center gap-3">
+                                        <TableAvatar initials={r.initials} imageUrl={r.imageUrl} size={40} />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{r.name}</span>
+                                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">Joined {fmtDate(r.joinedISO)}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className={TD}>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-[14px] text-[var(--colors-text-tertiary)] truncate">{r.email}</span>
+                                        <span className="text-[13px] text-[var(--colors-text-quaternary)] truncate">{r.phone || "—"}</span>
+                                    </div>
+                                </td>
+                                <td className={TD}><StatusBadge type="plan" status={r.planType} /></td>
+                                <td className={TD}>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <StatusBadge type="lifecycle" status={r.lifecycleTag ?? "Lead"} />
+                                        {r.isVip && <StatusBadge type="vip" status="vip" />}
+                                    </div>
+                                </td>
+                                <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
+                                    {r.lastVisitISO ? fmtDate(r.lastVisitISO) : "—"}
+                                </td>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    {renderRowActions(r)}
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 export default function CustomersPage() {
     const router = useRouter();
 
@@ -488,9 +594,11 @@ export default function CustomersPage() {
     //   Inactive → bought before, nothing live today
     // The tab strip reuses the same chrome as /admin/insights.
     const [segment, setSegment] = useState<"all" | "leads" | "members" | "inactive">("all");
-    // Archived is a "place", not a tab — the list excludes archived customers by
-    // default; this toggle opens the archived-only view via "View archived (n)".
-    const [viewArchived, setViewArchived] = useState(false);
+    // Archived is a "place", not a tab — archived customers leave the active
+    // table and render in a collapsible "Archived customer" SECTION below it
+    // (client 2026-08-11). Default expanded; its own page + selection is shared.
+    const [archivedCollapsed, setArchivedCollapsed] = useState(false);
+    const [archivedPage, setArchivedPage] = useState(1);
     // v83 Phase 3 — "Assigned to me" chip. Off by default; when on, filters
     // to rows whose customer.assignedTo matches the current staff id.
     const [mineOnly, setMineOnly] = useState(false);
@@ -503,7 +611,8 @@ export default function CustomersPage() {
     useEffect(() => {
         if (!didMountRef.current) { didMountRef.current = true; return; }
         setPage(1);
-    }, [search, applied, branchId, pageSize, segment, mineOnly, viewArchived]);
+        setArchivedPage(1);
+    }, [search, applied, branchId, pageSize, segment, mineOnly]);
 
     // Branch dropdown — active branches from the live `branches` slice so
     // adds/archives in Business & Locations propagate immediately.
@@ -593,9 +702,9 @@ export default function CustomersPage() {
         }
 
         return allRows.filter(r => {
-            // Archived is a "place": the default list excludes archived rows
-            // entirely; the archived-only view shows exclusively archived.
-            if (viewArchived ? r.status !== "archived" : r.status === "archived") return false;
+            // Both active AND archived pass here (branch/search/filters/mineOnly
+            // apply to both); the active vs archived split happens downstream so
+            // each renders in its own section.
             if (branchId && r.branchId !== branchId) return false;
             if (q && !(
                 r.name.toLowerCase().includes(q) ||
@@ -622,51 +731,37 @@ export default function CustomersPage() {
             if (mineOnly && meStaffId && r.assignedTo !== meStaffId) return false;
             return true;
         });
-    }, [allRows, branchId, search, applied, today, mineOnly, currentUser?.staff_id, viewArchived]);
+    }, [allRows, branchId, search, applied, today, mineOnly, currentUser?.staff_id]);
 
-    // Archived customers within the current branch scope — drives the
-    // "View archived (n)" link. Independent of search / segment / filters so the
-    // count always reflects the true archived population you can jump to.
-    const archivedCount = useMemo(
-        () => allRows.filter(r => r.status === "archived" && (!branchId || r.branchId === branchId)).length,
-        [allRows, branchId],
+    // Archived rows leave the active table → the Archived section below. Flat
+    // list (no wallet segment); search/filters/branch already applied above.
+    const archivedRows = useMemo(
+        () => scopedRows.filter(r => r.status === "archived"),
+        [scopedRows],
     );
 
-    // Final rows = scoped base narrowed to the selected wallet tab. The
-    // Lead/Member/Inactive partition is WALLET-based (client 2026-08-10) — a
-    // member with an "At Risk" lifecycle tag still sits in Members. The archived
-    // view ignores the segment tabs (it's a flat archived list).
-    const filteredRows = useMemo(() => {
-        if (viewArchived || segment === "all") return scopedRows;
+    // Active list = non-archived, narrowed to the selected wallet tab. The
+    // Lead/Member/Inactive partition is WALLET-based (client 2026-08-10) — an
+    // "At Risk" member with a live plan still sits in Members.
+    const activeRows = useMemo(() => {
+        const nonArchived = scopedRows.filter(r => r.status !== "archived");
+        if (segment === "all") return nonArchived;
         const want: CustomerSegment = segment === "leads" ? "lead" : segment === "members" ? "member" : "inactive";
-        return scopedRows.filter(r => (segmentById.get(r.id) ?? "lead") === want);
-    }, [scopedRows, segment, segmentById, viewArchived]);
+        return nonArchived.filter(r => (segmentById.get(r.id) ?? "lead") === want);
+    }, [scopedRows, segment, segmentById]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
-    // ── Sortable columns — Name / Contact / Plan / Lifecycle / Last visit. ──
-    // Order lifecycle tags by "funnel depth" so ascending puts leads at the top
-    // and loyal members at the bottom — mirrors the mental model in PDF §2.1.
-    const LIFECYCLE_ORDER: Record<string, number> = {
-        "Lead": 0, "Trialist": 1, "New Active": 2, "Loyal Active": 3,
-        "Won-back": 4, "At Risk": 5, "Churned": 6,
-    };
-    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<CustomerRow>(filteredRows, {
-        name:      (a, b) => a.name.localeCompare(b.name),
-        contact:   (a, b) => a.email.localeCompare(b.email),
-        plan:      (a, b) => a.planType.localeCompare(b.planType),
-        lifecycle: (a, b) => (LIFECYCLE_ORDER[a.lifecycleTag ?? "Lead"] ?? 99) - (LIFECYCLE_ORDER[b.lifecycleTag ?? "Lead"] ?? 99),
-        lastVisit: (a, b) => {
-            // No-visit rows sort to the end regardless of direction by
-            // pegging them to a sentinel that's larger than any real ISO.
-            const av = a.lastVisitISO ?? "9999-99-99";
-            const bv = b.lastVisitISO ?? "9999-99-99";
-            return av.localeCompare(bv);
-        },
-    });
-
+    // ── Sortable columns (shared CUSTOMER_SORT) — active + archived tables ──
+    // Each section sorts + paginates independently; they share `pageSize`.
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<CustomerRow>(activeRows, CUSTOMER_SORT);
     const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    const { sorted: archivedSortedRows, sortKey: archSortKey, sortDir: archSortDir, toggle: toggleArchSort } = useSort<CustomerRow>(archivedRows, CUSTOMER_SORT);
+    const archivedTotalPages = Math.max(1, Math.ceil(archivedSortedRows.length / pageSize));
+    const clampedArchivedPage = Math.min(Math.max(1, archivedPage), archivedTotalPages);
+    const pagedArchivedRows = archivedSortedRows.slice((clampedArchivedPage - 1) * pageSize, clampedArchivedPage * pageSize);
 
     // ─── Selection ──────────────────────────────────────────────────────────
     function toggleOne(id: string) {
@@ -674,22 +769,22 @@ export default function CustomersPage() {
         if (next.has(id)) next.delete(id); else next.add(id);
         setSelectedIds(next);
     }
-    function toggleAllOnPage(check: boolean) {
+    // Toggle every row in the given table page (active OR archived) — each
+    // <CustomerTable> passes its own visible rows. Selection is shared across
+    // both sections.
+    function toggleAllRows(check: boolean, rows: CustomerRow[]) {
         const next = new Set(selectedIds);
-        if (check) pagedRows.forEach(r => next.add(r.id));
-        else pagedRows.forEach(r => next.delete(r.id));
+        if (check) rows.forEach(r => next.add(r.id));
+        else rows.forEach(r => next.delete(r.id));
         setSelectedIds(next);
     }
     function clearSelection() { setSelectedIds(new Set()); }
 
-    const allChecked = pagedRows.length > 0 && pagedRows.every(r => selectedIds.has(r.id));
-    const someChecked = !allChecked && pagedRows.some(r => selectedIds.has(r.id));
-
-    // Selected rows resolved against the full filtered set (selection survives
-    // pagination), and bulk-bar action flags derived from them.
+    // Selected rows span BOTH sections (selection survives pagination); the
+    // bulk-bar flags derive archive/recover/delete from their statuses.
     const selectedRows = useMemo(
-        () => filteredRows.filter(r => selectedIds.has(r.id)),
-        [filteredRows, selectedIds],
+        () => [...activeRows, ...archivedRows].filter(r => selectedIds.has(r.id)),
+        [activeRows, archivedRows, selectedIds],
     );
     // Archive / Recover / Delete. Delete is offered only for history-free rows
     // (CLAUDE.md archive rule — anything with booking history can only be
@@ -799,16 +894,40 @@ export default function CustomersPage() {
         { key: "inactive", label: "Inactive" },
     ];
 
+    // Row-action menu — shared by the active + archived tables. Active rows
+    // offer Archive; archived rows offer Recover; Delete only when history-free.
+    const goToCustomer = (id: string) => router.push(`/customers/${id}?returnTo=${encodeURIComponent("/admin/customers")}`);
+    const renderRowActions = (r: CustomerRow) => (
+        <RowActions
+            items={[
+                { label: "View profile", icon: Eye, onClick: () => goToCustomer(r.id) },
+                {
+                    label: "Edit", icon: Edit02,
+                    onClick: () => router.push(`/customers/${r.id}/edit?returnTo=/admin/customers`),
+                    hidden: r.status !== "active",
+                },
+                {
+                    label: "Add complimentary credit", icon: HeartHand,
+                    onClick: () => router.push(`/customers/${r.id}/add-credit?returnTo=/admin/customers`),
+                    hidden: r.status !== "active",
+                },
+                { label: "Archive", icon: Archive, onClick: () => openRowConfirm(r, "archive"), hidden: r.status === "archived" },
+                { label: "Recover", icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"), hidden: r.status !== "archived" },
+                { label: "Delete", icon: Trash01, onClick: () => openRowConfirm(r, "delete"), danger: true, hidden: r.hasHistory },
+            ]}
+        />
+    );
+
     return (
         // Fill-to-viewport: the view card fills the remaining height (flex-1
         // min-h-0) so only the table body scrolls — sticky header pinned at top,
         // pagination pinned at the bottom. Consistent across every admin list
         // (the AI trigger now lives in the header, so no bottom clearance needed).
-        <div className="flex-1 min-h-0 flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6 overflow-y-auto scrollbar-hide">
             {/* ── Toolbar ── matches /admin/staff (Total · Location · Search
                 · Export · Filter · Assigned-to-me chip). */}
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={filteredRows.length} entitySingular="customer" />
+                <ToolbarTotal count={activeRows.length} entitySingular="customer" />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                     placeholder="Select location"
@@ -819,16 +938,17 @@ export default function CustomersPage() {
                 />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search customer..." />
                 <ToolbarExport
-                    disabled={filteredRows.length === 0}
+                    disabled={activeRows.length + archivedRows.length === 0}
                     onExportCsv={() => {
+                        const exportRows = [...activeRows, ...archivedRows];
                         exportCustomersCsv(
-                            filteredRows,
+                            exportRows,
                             new Map(staff.map(s => [
                                 s.id,
                                 (s.fullName || `${s.firstName} ${s.lastName}`).trim() || s.email,
                             ])),
                         );
-                        showToast("Customer list exported", `${filteredRows.length} customer${filteredRows.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
+                        showToast("Customer list exported", `${exportRows.length} customer${exportRows.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
                     }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
@@ -836,67 +956,28 @@ export default function CustomersPage() {
                 <ToolbarImportButton visible={customers.length === 0 && !search.trim() && !hasActiveFilter} />
             </div>
 
-            {/* ── View card — rounded container hosting the SegmentedTabs
-                   strip + the table. Fills the remaining viewport so only
-                   the table body scrolls (matches /admin/staff's chrome). */}
-            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            {/* ── Active view card — segment tabs + active customer table. Has a
+                   min-height so a sparse list never hugs (CLAUDE.md); shrink-0 so
+                   it keeps its size and the Archived section stacks below it. */}
+            <div className="shrink-0 min-h-[600px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 px-6 py-4 flex items-center gap-3">
-                    {viewArchived ? (
-                        // Archived view header — a "place", not a tab. Access is
-                        // unchanged; this is purely the tidied-away list.
-                        <>
-                            <IconTooltip label="Back to customer view">
-                                <Button
-                                    variant="secondary-gray"
-                                    size="icon"
-                                    aria-label="Back to customer view"
-                                    onClick={() => { setViewArchived(false); clearSelection(); }}
-                                >
-                                    <ArrowLeft className="w-5 h-5" />
-                                </Button>
-                            </IconTooltip>
-                            <div className="flex-1" />
-                        </>
-                    ) : (
-                        <>
-                            <SegmentedTabs
-                                tabs={segmentTabDefs}
-                                activeKey={segment}
-                                onChange={(k) => setSegment(k as typeof segment)}
-                            />
-                            {/* Client 2026-07-27 — "Assigned to me" moved from
-                                the toolbar to the tab row and restyled as a DS
-                                secondary-gray Button so it reads as a scope
-                                toggle for the visible tab, not a general filter. */}
-                            <div className="flex-1" />
-                            {/* "Assigned to me" scope toggle — hidden while lead
-                                assignment is off (boutique doesn't assign leads to a
-                                person). See @/lib/lead-assignment. */}
-                            {LEAD_ASSIGNMENT_ENABLED && currentUser?.id && (
-                                <Button
-                                    variant="secondary-gray"
-                                    onClick={() => setMineOnly(v => !v)}
-                                    className={mineOnly ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-primary)]" : undefined}
-                                >
-                                    {mineOnly ? "Showing yours only" : "Assigned to me"}
-                                </Button>
-                            )}
-                            {/* Icon-only entry point to archived customers (a
-                                place, not a tab). Same row as the tabs,
-                                right-aligned, with an "Archived" hover tooltip. */}
-                            {archivedCount > 0 && (
-                                <IconTooltip label="Archived">
-                                    <Button
-                                        variant="secondary-gray"
-                                        size="icon"
-                                        aria-label="Archived"
-                                        onClick={() => { setViewArchived(true); clearSelection(); }}
-                                    >
-                                        <Archive className="w-5 h-5" />
-                                    </Button>
-                                </IconTooltip>
-                            )}
-                        </>
+                    <SegmentedTabs
+                        tabs={segmentTabDefs}
+                        activeKey={segment}
+                        onChange={(k) => setSegment(k as typeof segment)}
+                    />
+                    <div className="flex-1" />
+                    {/* "Assigned to me" scope toggle — hidden while lead
+                        assignment is off (boutique doesn't assign leads to a
+                        person). See @/lib/lead-assignment. */}
+                    {LEAD_ASSIGNMENT_ENABLED && currentUser?.id && (
+                        <Button
+                            variant="secondary-gray"
+                            onClick={() => setMineOnly(v => !v)}
+                            className={mineOnly ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-primary)]" : undefined}
+                        >
+                            {mineOnly ? "Showing yours only" : "Assigned to me"}
+                        </Button>
                     )}
                 </div>
                 <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
@@ -908,132 +989,20 @@ export default function CustomersPage() {
                                 : "Try adjusting your search or filters."}
                         />
                     ) : (
-                        <div className="px-6">
-                            {/* table-fixed — column widths follow the <th> widths, not the
-                                cell content, so the Contact (and every) column keeps a stable
-                                width when sorting reorders the rows (cells truncate instead). */}
-                            <table className="w-full border-collapse table-fixed">
-                                <thead>
-                                    <tr>
-                                        <th className={cn(TH, "w-[44px]")}>
-                                            <CheckboxCell
-                                                checked={allChecked}
-                                                indeterminate={someChecked}
-                                                onChange={toggleAllOnPage}
-                                                ariaLabel="Select all rows on this page"
-                                            />
-                                        </th>
-                                        <th className={cn(TH, "w-[280px]")}>
-                                            <SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Name</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[240px]")}>
-                                            <SortableHeader sortKey="contact"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Contact</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[150px]")}>
-                                            <SortableHeader sortKey="plan"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Plan</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[160px]")}>
-                                            <SortableHeader sortKey="lifecycle" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Lifecycle</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="lastVisit" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Last visit</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[52px]")}></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pagedRows.map(r => {
-                                        const isSelected = selectedIds.has(r.id);
-                                        return (
-                                            <tr key={r.id}
-                                                onClick={() => router.push(`/customers/${r.id}?returnTo=${encodeURIComponent("/admin/customers")}`)}
-                                                className={cn(
-                                                    "transition-colors cursor-pointer",
-                                                    isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
-                                                )}>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <CheckboxCell
-                                                        checked={isSelected}
-                                                        onChange={() => toggleOne(r.id)}
-                                                        ariaLabel={`Select ${r.name}`}
-                                                    />
-                                                </td>
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-3">
-                                                        <TableAvatar initials={r.initials} imageUrl={r.imageUrl} size={40} />
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{r.name}</span>
-                                                            <span className="text-[13px] text-[var(--colors-text-quaternary)]">Joined {fmtDate(r.joinedISO)}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className={TD}>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="text-[14px] text-[var(--colors-text-tertiary)] truncate">{r.email}</span>
-                                                        <span className="text-[13px] text-[var(--colors-text-quaternary)] truncate">{r.phone || "—"}</span>
-                                                    </div>
-                                                </td>
-                                                <td className={TD}><StatusBadge type="plan" status={r.planType} /></td>
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                        <StatusBadge type="lifecycle" status={r.lifecycleTag ?? "Lead"} />
-                                                        {r.isVip && <StatusBadge type="vip" status="vip" />}
-                                                    </div>
-                                                </td>
-                                                <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
-                                                    {r.lastVisitISO ? fmtDate(r.lastVisitISO) : "—"}
-                                                </td>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <RowActions
-                                                        items={[
-                                                            {
-                                                                label: "View profile",
-                                                                icon: Eye,
-                                                                onClick: () => router.push(`/customers/${r.id}?returnTo=${encodeURIComponent("/admin/customers")}`),
-                                                            },
-                                                            {
-                                                                label: "Edit",
-                                                                icon: Edit02,
-                                                                onClick: () => router.push(`/customers/${r.id}/edit?returnTo=/admin/customers`),
-                                                                hidden: r.status !== "active",
-                                                            },
-                                                            {
-                                                                label: "Add complimentary credit",
-                                                                icon: HeartHand,
-                                                                onClick: () => router.push(`/customers/${r.id}/add-credit?returnTo=/admin/customers`),
-                                                                hidden: r.status !== "active",
-                                                            },
-                                                            {
-                                                                label: "Archive",
-                                                                icon: Archive,
-                                                                onClick: () => openRowConfirm(r, "archive"),
-                                                                hidden: r.status === "archived",
-                                                            },
-                                                            {
-                                                                label: "Recover",
-                                                                icon: RefreshCcw01,
-                                                                onClick: () => openRowConfirm(r, "recover"),
-                                                                hidden: r.status !== "archived",
-                                                            },
-                                                            {
-                                                                label: "Delete",
-                                                                icon: Trash01,
-                                                                onClick: () => openRowConfirm(r, "delete"),
-                                                                danger: true,
-                                                                hidden: r.hasHistory,
-                                                            },
-                                                        ]}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                        <CustomerTable
+                            rows={pagedRows}
+                            selectedIds={selectedIds}
+                            onToggleOne={toggleOne}
+                            onToggleAll={toggleAllRows}
+                            sortKey={sortKey}
+                            sortDir={sortDir}
+                            onSort={toggleSort}
+                            onRowClick={goToCustomer}
+                            renderRowActions={renderRowActions}
+                        />
                     )}
 
-                    {/* Floating bulk action pill */}
+                    {/* Floating bulk action pill — spans both sections. */}
                     <BulkActionBar
                         count={selectedIds.size}
                         flags={bulkFlags}
@@ -1049,6 +1018,55 @@ export default function CustomersPage() {
                     />
                 </div>
             </div>
+
+            {/* ── Archived section — a "place", not a tab (client 2026-08-11).
+                   Rendered ONLY when archived rows exist in the current scope;
+                   collapsible (default expanded); its own table + pagination;
+                   selection + search/filters are shared with the active list. */}
+            {archivedRows.length > 0 && (
+                <div className="shrink-0 flex flex-col gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setArchivedCollapsed(v => !v)}
+                        className="flex items-center gap-2 text-left group"
+                        aria-expanded={!archivedCollapsed}
+                    >
+                        <span className="text-[14px] font-medium text-[var(--colors-text-tertiary)] group-hover:text-[var(--colors-text-secondary)] transition-colors whitespace-nowrap">
+                            Archived customer
+                        </span>
+                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">({archivedRows.length})</span>
+                        <div className="flex-1 h-px bg-[var(--colors-border-secondary)]" />
+                        <ChevronDown className={cn(
+                            "w-5 h-5 text-[var(--colors-text-quaternary)] transition-transform shrink-0",
+                            archivedCollapsed && "-rotate-90",
+                        )} />
+                    </button>
+
+                    {!archivedCollapsed && (
+                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+                            <div className="overflow-x-auto py-2">
+                                <CustomerTable
+                                    rows={pagedArchivedRows}
+                                    selectedIds={selectedIds}
+                                    onToggleOne={toggleOne}
+                                    onToggleAll={toggleAllRows}
+                                    sortKey={archSortKey}
+                                    sortDir={archSortDir}
+                                    onSort={toggleArchSort}
+                                    onRowClick={goToCustomer}
+                                    renderRowActions={renderRowActions}
+                                />
+                            </div>
+                            <div className="shrink-0 px-6">
+                                <Pagination
+                                    page={clampedArchivedPage} total={archivedSortedRows.length} pageSize={pageSize}
+                                    onPage={setArchivedPage} onPageSize={s => { setPageSize(s); setArchivedPage(1); }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <FilterPanel
                 open={filterOpen}
