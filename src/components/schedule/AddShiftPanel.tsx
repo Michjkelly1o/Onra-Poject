@@ -15,15 +15,16 @@
 // the Day-view shift blocks — the sidebar warm-neutral tone.
 
 import { useState } from "react";
-import { Plus, XClose, Clock, DotsVertical, UserPlus01, Edit02, Trash01 } from "@untitledui/icons";
+import { Plus, XClose, Clock, DotsVertical, UserPlus01, Edit02, Trash01, SlashCircle01 } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type Shift } from "@/lib/store";
 import { AssignStaffModal } from "@/components/staff/AssignStaffModal";
 import { ShiftPeriodModal } from "@/components/schedule/ShiftPeriodModal";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
-import { findShiftConflict } from "@/lib/staff/shift-conflict";
+import { decideAssign } from "@/lib/staff/shift-assign-logic";
 
 const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // 0=Sun..6=Sat
 
@@ -74,6 +75,8 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
 }) {
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
     const addShiftAssignment = useAppStore(s => s.addShiftAssignment);
+    const removeShiftAssignment = useAppStore(s => s.removeShiftAssignment);
+    const updateShiftAssignmentDays = useAppStore(s => s.updateShiftAssignmentDays);
     const deleteShifts = useAppStore(s => s.deleteShifts);
     const showToast = useAppStore(s => s.showToast);
     const allShifts = useAppStore(s => s.shifts);
@@ -81,7 +84,11 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
     const [menuFor, setMenuFor] = useState<string | null>(null);         // shift id whose ⋮ menu is open
     const [assignFor, setAssignFor] = useState<Shift | null>(null);      // AssignStaffModal target
     const [periodFor, setPeriodFor] = useState<{ shift: Shift; staffId: string; staffName: string } | null>(null);
+    const [conflictFor, setConflictFor] = useState<{ shift: Shift; staffId: string; staffName: string; clash: Shift; replaceIds: string[] } | null>(null);
     const [deleteFor, setDeleteFor] = useState<Shift | null>(null);
+    // Single/one-off shift → pick the exact day it lands on (one day only).
+    const [singleDayFor, setSingleDayFor] = useState<{ shift: Shift; staffId: string; staffName: string } | null>(null);
+    const [singleDate, setSingleDate] = useState("");
 
     if (!open) return null;
 
@@ -97,31 +104,67 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
     );
     const weekStart = mondayISOof(dateISO);
 
-    function doAssign(shift: Shift, staffId: string, staffName: string, weeks?: number) {
-        // Overlap guard — mirror the picker's rule.
-        const mine = shiftAssignments.filter(a => a.staff_id === staffId);
-        const clash = findShiftConflict(shift, mine, id => allShifts.find(s => s.id === id));
-        if (clash) {
-            showToast("Shift conflict", `${staffName} is already on ${clash.name}, which overlaps ${shift.name}.`, "error", "alert");
-            setPeriodFor(null);
-            return;
-        }
+    // Commit the assignment (decideAssign already cleared dedup + conflict).
+    function commitAssign(shift: Shift, staffId: string, staffName: string, weeks?: number) {
         addShiftAssignment({ shift_id: shift.id, staff_id: staffId, week_start: weekStart, ...(weeks !== undefined ? { weeks } : {}) });
         showToast("Staff assigned", `${staffName} was assigned to ${shift.name}.`, "success", "check");
         setPeriodFor(null);
         setAssignFor(null);
-        // A targeted assign is a one-shot — close the panel once done.
         if (assignMode) onClose();
     }
-    // Single/one-off shifts assign immediately; recurring shifts confirm the span
-    // (1w/1m/1y) first (client 2026-08-11).
+    // Shared 4-case flow (dedup → conflict-replace → single-immediate / recurring
+    // period) so the panel matches the Day view + Staff schedule exactly.
     function requestAssign(shift: Shift, staffId: string, staffName: string) {
-        if ((shift.type ?? "recurring") === "single") doAssign(shift, staffId, staffName);
-        else setPeriodFor({ shift, staffId, staffName });
+        const decision = decideAssign(shift.id, staffId, allShifts, shiftAssignments);
+        if (!decision) return;
+        if (decision.kind === "duplicate") {
+            showToast("Shift already assigned", `${staffName} is already on ${decision.shift.name}.`, "warning", "alert");
+            return;
+        }
+        if (decision.kind === "conflict") {
+            setConflictFor({ shift: decision.shift, staffId, staffName, clash: decision.clash, replaceIds: decision.replaceIds });
+            return;
+        }
+        if (decision.immediate) {
+            // Single/one-off shift can only sit on ONE day — pick it first.
+            setAssignFor(null);
+            setSingleDate(dateISO);
+            setSingleDayFor({ shift, staffId, staffName });
+            return;
+        }
+        setPeriodFor({ shift, staffId, staffName });
     }
     function confirmAssign(weeks: number) {
         if (!periodFor) return;
-        doAssign(periodFor.shift, periodFor.staffId, periodFor.staffName, weeks);
+        commitAssign(periodFor.shift, periodFor.staffId, periodFor.staffName, weeks);
+    }
+    // Commit a single/one-off shift onto ONE specific day.
+    function commitAssignDay(shift: Shift, staffId: string, staffName: string, iso: string) {
+        const dayIdx = new Date(`${iso}T00:00:00`).getDay();
+        const ws = mondayISOof(iso);
+        const existing = shiftAssignments.find(a => a.staff_id === staffId && a.shift_id === shift.id && a.week_start === ws);
+        if (existing) {
+            updateShiftAssignmentDays(existing.id, existing.days_of_week.map((v, i) => i === dayIdx ? true : v));
+        } else {
+            const days = [false, false, false, false, false, false, false];
+            days[dayIdx] = true;
+            addShiftAssignment({ shift_id: shift.id, staff_id: staffId, days_of_week: days, week_start: ws });
+        }
+        showToast("Staff assigned", `${staffName} was assigned to ${shift.name}.`, "success", "check");
+        setSingleDayFor(null);
+        setAssignFor(null);
+        if (assignMode) onClose();
+    }
+    // Replace-confirm → drop the conflicting shift + assign the new one.
+    function confirmReplace() {
+        if (!conflictFor) return;
+        const { shift, staffId, staffName, replaceIds } = conflictFor;
+        replaceIds.forEach(id => removeShiftAssignment(id));
+        addShiftAssignment({ shift_id: shift.id, staff_id: staffId, week_start: weekStart });
+        showToast("Shift changed", `${staffName}'s shift was changed to ${shift.name}.`, "success", "check");
+        setConflictFor(null);
+        setAssignFor(null);
+        if (assignMode) onClose();
     }
 
     return (
@@ -161,7 +204,7 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
                 )}
 
                 {/* Shift template list */}
-                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-5 pb-5 pt-1 flex flex-col gap-2.5">
+                <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-5 pt-1 flex flex-col gap-2.5">
                     {list.length === 0 ? (
                         <p className="text-[13px] text-[var(--colors-text-quaternary)] text-center py-8">
                             {assignMode ? "No more shifts to assign." : "No shifts yet — create one above."}
@@ -227,13 +270,59 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
                 />
             )}
 
-            {/* Period confirmation — always shown before an assignment commits. */}
+            {/* Period confirmation — shown before a fresh recurring assign commits. */}
             <ShiftPeriodModal
                 open={!!periodFor}
                 staffName={periodFor?.staffName ?? ""}
                 onCancel={() => setPeriodFor(null)}
                 onConfirm={confirmAssign}
             />
+
+            {/* Single/one-off shift → pick the day it lands on. */}
+            {singleDayFor && (
+                <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-[#0c111d]/40" onClick={() => setSingleDayFor(null)} />
+                    <div className="relative bg-white rounded-[12px] w-[440px] max-w-full shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden">
+                        <div className="px-6 pt-6 pb-2 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <h3 className="text-[18px] font-semibold leading-[28px] text-[var(--colors-text-primary)]">Assign staff shift</h3>
+                                <p className="text-[14px] text-[var(--colors-text-tertiary)] mt-1">
+                                    Pick the day to place <span className="font-medium text-[var(--colors-text-secondary)]">{singleDayFor.shift.name}</span> for {singleDayFor.staffName}. One-off shifts run for a single day.
+                                </p>
+                            </div>
+                            <button type="button" onClick={() => setSingleDayFor(null)} aria-label="Close"
+                                className="w-9 h-9 shrink-0 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                <XClose className="w-5 h-5 text-[var(--colors-text-quaternary)]" />
+                            </button>
+                        </div>
+                        <div className="px-6 pt-4 pb-4 flex flex-col gap-2">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Day</label>
+                            <DatePicker value={singleDate} onChange={setSingleDate} placeholder="Select date" />
+                        </div>
+                        <div className="px-6 pb-6 pt-2 flex items-center gap-3">
+                            <Button variant="secondary-gray" size="lg" className="flex-1" onClick={() => setSingleDayFor(null)}>Cancel</Button>
+                            <Button variant="primary" size="lg" className="flex-1" disabled={!singleDate}
+                                onClick={() => commitAssignDay(singleDayFor.shift, singleDayFor.staffId, singleDayFor.staffName, singleDate)}>
+                                Assign shift
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Time-conflict → replace-confirm. */}
+            {conflictFor && (
+                <ConfirmModal
+                    open
+                    onClose={() => setConflictFor(null)}
+                    tone="warning"
+                    icon={SlashCircle01}
+                    title={`Change ${conflictFor.staffName}'s shift?`}
+                    description={<><span className="font-semibold">{conflictFor.staffName}</span> is already assigned to <span className="font-semibold">{conflictFor.clash.name}</span> during this time. Assigning <span className="font-semibold">{conflictFor.shift.name}</span> will replace it.</>}
+                    confirmLabel="Change shift"
+                    onConfirm={confirmReplace}
+                />
+            )}
 
             {/* Delete shift — cascades to assigned staff. */}
             <ConfirmModal

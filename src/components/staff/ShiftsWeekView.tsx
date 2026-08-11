@@ -27,7 +27,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { DotsVertical, ClockPlus, Trash01, SearchLg, Eye, Plus } from "@untitledui/icons";
+import { DotsVertical, ClockPlus, Trash01, SearchLg, Eye, Plus, SlashCircle01 } from "@untitledui/icons";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Button } from "@/components/ui/button";
 import { AssignShiftPickerCard } from "@/components/schedule/AssignShiftPickerCard";
@@ -38,7 +38,8 @@ import { SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { getCategoryColor } from "@/components/schedule/ScheduleGridViews";
 import { useAppStore, type Staff, type Shift, type ShiftAssignment, type SessionType } from "@/lib/store";
-import { findShiftConflict, timeRangesOverlap } from "@/lib/staff/shift-conflict";
+import { timeRangesOverlap } from "@/lib/staff/shift-conflict";
+import { decideAssign } from "@/lib/staff/shift-assign-logic";
 import { timeOffDuration } from "@/lib/staff/time-off";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
@@ -225,7 +226,7 @@ function ShiftSliceCard({ shift, sessions, partialOffs, onUnassign, onHoverStart
 
 type ShiftPopoverItem =
     | { kind: "session"; id: string; startTime: string; displayTime: string; name: string; type: SessionType; category: string; booked: number; capacity: number; status: string }
-    | { kind: "off"; id: string; label: string; sub: string };
+    | { kind: "off"; id: string; startTime: string; label: string; sub: string };
 
 function ShiftHoverPopover({ shift, items, anchor, onEnter, onLeave }: {
     shift: Shift;
@@ -252,7 +253,7 @@ function ShiftHoverPopover({ shift, items, anchor, onEnter, onLeave }: {
                 <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[16px]">{sliceTimeLabel(shift.start_time, shift.end_time)}</p>
             </div>
             {/* Scrollable list — one row per active session / time-off. */}
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-2 py-2 flex flex-col gap-1">
+            <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1">
                 {items.length === 0 ? (
                     <p className="px-2 py-6 text-center text-[13px] text-[var(--colors-fg-quaternary)]">No schedule for this shift.</p>
                 ) : items.map(it => it.kind === "off" ? (
@@ -559,6 +560,9 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     const [unassignStaff, setUnassignStaff] = useState<Staff | null>(null);
     // Recurring-shift period confirmation (single shifts skip it — client 2026-08-11).
     const [periodTarget, setPeriodTarget] = useState<{ staff: Staff; shift: Shift } | null>(null);
+    // Time-conflict replace confirmation — assigning a shift that overlaps one the
+    // staff already holds asks before swapping (client 2026-08).
+    const [conflictTarget, setConflictTarget] = useState<{ staff: Staff; shift: Shift; clash: Shift; replaceIds: string[] } | null>(null);
     // Per-day unassign confirmation (single shift card → this day only).
     const [unassignDay, setUnassignDay] = useState<{ assignmentId: string; shiftName: string; staffName: string; dayIdx: number; dayLabel: string } | null>(null);
     // Shift-card hover popover state (client 2026-08-11) — open/close on a short
@@ -739,17 +743,15 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
             if (!intersects(a.startTime, a.endTime)) continue;
             out.push({ kind: "session", id: a.id, startTime: a.startTime, displayTime: a.displayTime, name: a.serviceName, type: a.type, category: a.serviceCategory, booked: a.booked, capacity: a.capacity, status: a.status });
         }
-        out.sort((x, y) => {
-            const sx = x.kind === "session" ? x.startTime : "99:99";
-            const sy = y.kind === "session" ? y.startTime : "99:99";
-            return sx.localeCompare(sy);
-        });
         for (const b of blockedTimes) {
             if (b.all_day || !b.staff_ids.includes(staffId)) continue;
             if (!((b.date_from_iso ?? b.date) <= iso && iso <= (b.date_to_iso ?? b.date))) continue;
             if (!b.start_time || !b.end_time || !intersects(b.start_time, b.end_time)) continue;
-            out.push({ kind: "off", id: b.id, label: "Time off", sub: timeOffDuration(b) });
+            out.push({ kind: "off", id: b.id, startTime: b.start_time, label: "Time off", sub: timeOffDuration(b) });
         }
+        // Order EVERY row (class / private / recovery / time off) by earliest
+        // start time (client 2026-08-11).
+        out.sort((x, y) => x.startTime.localeCompare(y.startTime));
         return out;
     }
 
@@ -773,19 +775,11 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
      *  error toast naming the clash and skip the assignment; otherwise we add
      *  it and confirm with a success toast (Build Convention 4 — every action
      *  emits a toast). */
+    // Commit a whole-shift assignment (dedup + conflict already cleared by
+    // decideAssign in requestAssign / the replace confirm).
     function assignShiftToStaff(staffMember: Staff, shiftId: string, weeks?: number) {
         const newShift = shiftsById.get(shiftId);
         if (!newShift) return;
-        const mine = assignmentsByStaff.get(staffMember.id) ?? [];
-        const clash = findShiftConflict(newShift, mine, (id) => shiftsById.get(id));
-        if (clash) {
-            showToast(
-                "Shift conflict",
-                `${staffMember.fullName} is already on ${clash.name}, which overlaps ${newShift.name}.`,
-                "error", "alert",
-            );
-            return;
-        }
         addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, week_start: weekStartISO, ...(weeks !== undefined ? { weeks } : {}) });
         showToast(
             "Shift assigned",
@@ -794,12 +788,32 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
         );
     }
 
-    // 3-dot "Assign shift" — recurring only (single shifts are day-specific and
-    // live in the per-day picker). Always confirms the period first.
+    // 3-dot "Assign shift" — runs the shared 4-case flow so the Staff schedule
+    // matches the Day view + Add-shift panel: dedup toast, conflict → replace
+    // confirm, single → immediate, recurring → period modal.
     function requestAssign(staffMember: Staff, shiftId: string) {
-        const sh = shiftsById.get(shiftId);
-        if (!sh) return;
-        setPeriodTarget({ staff: staffMember, shift: sh });
+        const decision = decideAssign(shiftId, staffMember.id, shifts, shiftAssignments);
+        if (!decision) return;
+        if (decision.kind === "duplicate") {
+            showToast("Shift already assigned", `${staffMember.fullName} is already on ${decision.shift.name}.`, "warning", "alert");
+            return;
+        }
+        if (decision.kind === "conflict") {
+            setConflictTarget({ staff: staffMember, shift: decision.shift, clash: decision.clash, replaceIds: decision.replaceIds });
+            return;
+        }
+        if (decision.immediate) { assignShiftToStaff(staffMember, shiftId); return; }
+        setPeriodTarget({ staff: staffMember, shift: decision.shift });
+    }
+
+    // Replace-confirm → drop the conflicting shift + assign the new one.
+    function confirmReplaceWeek() {
+        if (!conflictTarget) return;
+        const { staff: st, shift, replaceIds } = conflictTarget;
+        replaceIds.forEach(id => removeShiftAssignment(id));
+        addShiftAssignment({ shift_id: shift.id, staff_id: st.id, week_start: weekStartISO });
+        showToast("Shift changed", `${st.fullName}'s shift was changed to ${shift.name}.`, "success", "check");
+        setConflictTarget(null);
     }
 
     // Per-day picker / drag-onto-cell. Single/one-off → assign THIS day only, no
@@ -1090,6 +1104,20 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                 onCancel={() => setPeriodTarget(null)}
                 onConfirm={(weeks) => { if (periodTarget) assignShiftToStaff(periodTarget.staff, periodTarget.shift.id, weeks); setPeriodTarget(null); }}
             />
+
+            {/* Time-conflict → replace-confirm (same flow as the Day view). */}
+            {conflictTarget && (
+                <ConfirmModal
+                    open
+                    onClose={() => setConflictTarget(null)}
+                    tone="warning"
+                    icon={SlashCircle01}
+                    title={`Change ${conflictTarget.staff.fullName}'s shift?`}
+                    description={<><span className="font-semibold">{conflictTarget.staff.fullName}</span> is already assigned to <span className="font-semibold">{conflictTarget.clash.name}</span> during this time. Assigning <span className="font-semibold">{conflictTarget.shift.name}</span> will replace it.</>}
+                    confirmLabel="Change shift"
+                    onConfirm={confirmReplaceWeek}
+                />
+            )}
 
             {/* Per-day unassign confirm — removes ONE shift on ONE day. */}
             <ConfirmModal

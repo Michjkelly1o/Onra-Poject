@@ -38,7 +38,7 @@ export function AssignShiftPickerCard({ staffName, pickList, onAddShift, onPick 
                 </Button>
             </div>
             {/* Shift list — only shifts the staff doesn't already hold. */}
-            <div className="max-h-[236px] overflow-y-auto scrollbar-hide px-5 pb-5 flex flex-col gap-2.5">
+            <div className="max-h-[236px] overflow-y-auto px-5 pb-5 flex flex-col gap-2.5">
                 {pickList.length === 0 ? (
                     <p className="text-[13px] text-[var(--colors-text-quaternary)] text-center py-8">No more shifts to assign.</p>
                 ) : pickList.map(s => (
