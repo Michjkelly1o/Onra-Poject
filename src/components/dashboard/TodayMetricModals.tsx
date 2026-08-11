@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui/Pagination";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { TABLE_TH, TABLE_TD } from "@/lib/table-styles";
+import { recognizedRevenueLineItems } from "@/lib/reports/recognized-revenue";
 import {
     ModalShell, branchInScope, CustomerCell, fmtDateTime,
 } from "./NeedsAttentionModals";
@@ -259,6 +260,108 @@ export interface NewCustomersTodayModalProps {
      *  type narrows to those who also made a purchase of that type today
      *  (same rule the card uses so count == list). */
     typeFilter: SessionType | "";
+}
+
+// ─── Today · Revenue (recognized — credits used) ─────────────────────────────
+// Lists the recognized-revenue line items so the modal SUM equals the Revenue
+// card: each class credit spent today (package / credit-based membership),
+// plus unlimited-membership straight-line earned today, plus retail/private/
+// recovery recognized at sale. Same engine the card uses.
+export function TodayRevenueModal({ open, onClose, branchIds, todayISO, typeFilter }: Omit<TodaySalesModalProps, "variant">) {
+    const router = useRouter();
+    const customers = useAppStore(s => s.customers);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const classBookings = useAppStore(s => s.classBookings);
+    const packages = useAppStore(s => s.packages);
+    const memberships = useAppStore(s => s.memberships);
+
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    useEffect(() => { if (open) setPage(1); }, [open]);
+
+    function openCustomerPayments(id: string) {
+        onClose();
+        router.push(`/customers/${id}?tab=Payments&returnTo=${encodeURIComponent("/admin/dashboard")}`);
+    }
+
+    const rows = useMemo(() => {
+        const txns = customerTransactions
+            .filter(t => branchInScope(t.branchId, branchIds))
+            .filter(t => !typeFilter || txnSessionType(t.kind) === typeFilter);
+        const bookings = classBookings.filter(b => branchInScope(b.branchId, branchIds));
+        const dayStartMs = new Date(`${todayISO}T00:00:00`).getTime();
+        const dayEndMs   = new Date(`${todayISO}T23:59:59.999`).getTime();
+        const items = recognizedRevenueLineItems({ transactions: txns, bookings, packages, memberships }, dayStartMs, dayEndMs);
+        return items.map((it, i) => {
+            const c = customers.find(cx => cx.id === it.customerId);
+            const name = c ? `${c.firstName} ${c.lastName}`.trim() : "Walk-in";
+            return {
+                key: `${it.customerId}-${i}`,
+                item: it,
+                customerId: c?.id,
+                person: { name, email: c?.email, initials: c ? (c.initials || deriveInitials(name)) : "WI", imageUrl: c?.imageUrl },
+            };
+        });
+    }, [customerTransactions, classBookings, packages, memberships, customers, branchIds, todayISO, typeFilter]);
+
+    const totalRows = rows.length;
+    const totalAed = useMemo(() => rows.reduce((sum, r) => sum + r.item.amountAed, 0), [rows]);
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = rows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    return (
+        <ModalShell
+            open={open}
+            onClose={onClose}
+            width={760}
+            title="Revenue today"
+            subtitle={
+                <>
+                    <span className="font-semibold text-[var(--colors-text-primary)]">{aed(totalAed)}</span> earned today ·
+                    recognised as credits are used ({totalRows} item{totalRows === 1 ? "" : "s"})
+                </>
+            }
+            footer={
+                <Pagination
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
+                    onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
+            }
+        >
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TH}>Customer</th>
+                            <th className={TH}>Detail</th>
+                            <th className={TH}>Recognised</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => {
+                            const clickable = !!r.customerId;
+                            return (
+                                <tr key={r.key}
+                                    onClick={clickable ? () => openCustomerPayments(r.customerId!) : undefined}
+                                    className={cn("transition-colors", clickable && "hover:bg-[var(--colors-bg-secondary)]/50 cursor-pointer")}>
+                                    <td className={TD}><PersonCell {...r.person} /></td>
+                                    <td className={TD}><p className="text-[14px] text-[var(--colors-text-primary)] leading-[20px]">{r.item.label}</p></td>
+                                    <td className={cn(TD, "whitespace-nowrap font-medium text-[var(--colors-text-primary)]")}>{aed(r.item.amountAed)}</td>
+                                </tr>
+                            );
+                        })}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={3} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
+                                    No revenue recognised today.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </ModalShell>
+    );
 }
 
 export function NewCustomersTodayModal({ open, onClose, branchIds, todayISO, typeFilter }: NewCustomersTodayModalProps) {

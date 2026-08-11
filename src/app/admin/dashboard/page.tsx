@@ -27,6 +27,7 @@ import {
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { useRouter } from "next/navigation";
 import { cn, to12hParts } from "@/lib/utils";
+import { computeRecognizedRevenue } from "@/lib/reports/recognized-revenue";
 import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
 import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
 import { format } from "date-fns";
@@ -53,6 +54,7 @@ import {
 } from "@/components/dashboard/NeedsAttentionModals";
 import {
     TodaySalesModal,
+    TodayRevenueModal,
     NewCustomersTodayModal,
     BookingsTodayModal,
     isBillableSaleTxn,
@@ -820,8 +822,17 @@ export default function AdminDashboard() {
         const todaySales = scopedTransactions.filter(t =>
             isBillableSaleTxn(t) && t.createdAtISO.startsWith(todayISO) && saleMatchesType(t),
         );
-        const totalSalesCount = todaySales.length;
-        const totalRevenueAed = todaySales.reduce((sum, t) => sum + t.amountAed, 0);
+        // Sales = gross value of today's sales ("full packages"). Revenue =
+        // recognized value of credits used today (+ straight-line unlimited
+        // memberships, at-sale retail/private/recovery) — one shared engine.
+        const totalSalesAed = todaySales.reduce((sum, t) => sum + t.amountAed, 0);
+        const typedScopedTxns = scopedTransactions.filter(saleMatchesType);
+        const dayStartMs = new Date(`${todayISO}T00:00:00`).getTime();
+        const dayEndMs   = new Date(`${todayISO}T23:59:59.999`).getTime();
+        const totalRevenueAed = computeRecognizedRevenue(
+            { transactions: typedScopedTxns, bookings: scopedBookings, packages, memberships },
+            dayStartMs, dayEndMs,
+        );
 
         // New customers today — customers whose createdAt is today. When a Type
         // filter is active, keep only those who ALSO made a purchase of that
@@ -848,8 +859,13 @@ export default function AdminDashboard() {
         const yesterdaySales = scopedTransactions.filter(t =>
             isBillableSaleTxn(t) && t.createdAtISO.startsWith(yISO) && saleMatchesType(t),
         );
-        const ySalesCount = yesterdaySales.length;
-        const yRevenueAed = yesterdaySales.reduce((sum, t) => sum + t.amountAed, 0);
+        const ySalesAed = yesterdaySales.reduce((sum, t) => sum + t.amountAed, 0);
+        const yDayStartMs = new Date(`${yISO}T00:00:00`).getTime();
+        const yDayEndMs   = new Date(`${yISO}T23:59:59.999`).getTime();
+        const yRevenueAed = computeRecognizedRevenue(
+            { transactions: typedScopedTxns, bookings: scopedBookings, packages, memberships },
+            yDayStartMs, yDayEndMs,
+        );
         const yNewCustomers = scopedCustomers.filter(c =>
             (c.createdAt ?? "").startsWith(yISO)
             && (!typeFilter || custHasTypedTxn(c.id, yISO)),
@@ -868,7 +884,7 @@ export default function AdminDashboard() {
             const d = ((current - prior) / prior) * 100;
             return { change: Math.abs(Math.round(d)), positive: d >= 0 };
         };
-        const salesD    = pctToday(totalSalesCount, ySalesCount);
+        const salesD    = pctToday(totalSalesAed, ySalesAed);
         const revenueD  = pctToday(totalRevenueAed, yRevenueAed);
         const customersD = pctToday(newCustomers,   yNewCustomers);
         const bookingsD  = pctToday(sessionMetrics.bookingsToday, yBookings);
@@ -876,14 +892,14 @@ export default function AdminDashboard() {
         const today: DashboardMetric[] = [
             {
                 label: "Sales",
-                value: totalSalesCount.toLocaleString("en-US"),
+                value: `AED ${Math.round(totalSalesAed).toLocaleString("en-US")}`,
                 change: salesD.change, positive: salesD.positive, comparison: "vs yesterday",
                 icon: CurrencyDollar,
                 onClick: () => setMetricModal("today-sales"),
             },
             {
                 label: "Revenue",
-                value: `AED ${totalRevenueAed.toLocaleString("en-US")}`,
+                value: `AED ${Math.round(totalRevenueAed).toLocaleString("en-US")}`,
                 change: revenueD.change, positive: revenueD.positive, comparison: "vs yesterday",
                 icon: CoinsStacked01,
                 onClick: () => setMetricModal("today-revenue"),
@@ -2198,9 +2214,8 @@ export default function AdminDashboard() {
                 todayISO={todayISO}
                 typeFilter={typeFilter}
             />
-            <TodaySalesModal
+            <TodayRevenueModal
                 open={metricModal === "today-revenue"}
-                variant="revenue"
                 onClose={() => setMetricModal(null)}
                 branchIds={branchScopeIds}
                 todayISO={todayISO}

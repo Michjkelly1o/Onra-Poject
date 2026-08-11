@@ -26,8 +26,20 @@ const DAY_MS = 86_400_000;
 
 /** Minimal structural shapes of the store's `packages` / `memberships` slice
  *  rows (seed shape) — decoupled so this module doesn't import the mock. */
-type PackageLike = { id: string; credits: number };
-type MembershipLike = { id: string; credits: number | string; duration_months?: number };
+type PackageLike = { id: string; credits: number; name?: string };
+type MembershipLike = { id: string; credits: number | string; duration_months?: number; name?: string };
+
+/** One recognized-revenue line — the drill-down modal lists these, and the card
+ *  is their sum, so card === modal always. */
+export interface RevenueLineItem {
+    customerId: string;
+    /** "credit" = one class credit spent (package / credit-based membership);
+     *  "membership" = unlimited-membership straight-line portion;
+     *  "sale" = retail / private / recovery recognized at sale. */
+    kind: "credit" | "membership" | "sale";
+    label: string;
+    amountAed: number;
+}
 
 /** A completed sale that counts toward Sales AND is eligible for recognition.
  *  Excludes refunds/voids/write-offs, cancellation penalties, freeze fees, and
@@ -50,20 +62,21 @@ function withinMs(iso: string, fromMs: number, toMs: number): boolean {
     return !Number.isNaN(t) && t >= fromMs && t <= toMs;
 }
 
-/** Credits spent against a specific contract, in [fromMs, toMs]. A non-cancelled
- *  booking whose `planKindUsed`/`planId` point at this sale is one credit used. */
-function creditsUsedInRange(
+/** Credit-spend bookings against a specific contract, in [fromMs, toMs]. A
+ *  non-cancelled booking whose `planKindUsed`/`planId` point at this sale is one
+ *  credit used. */
+function creditUseBookings(
     bookings: ClassBooking[], customerId: string,
     planKind: "package" | "membership", planId: string,
     fromMs: number, toMs: number,
-): number {
+): ClassBooking[] {
     return bookings.filter(b =>
         b.customerId === customerId
         && b.planKindUsed === planKind
         && b.planId === planId
         && b.status !== "cancelled"
         && withinMs(b.bookingTime, fromMs, toMs),
-    ).length;
+    );
 }
 
 /** Sales = gross value of sales landing in [fromISO, toISO] (inclusive). Caller
@@ -84,12 +97,13 @@ export interface RevenueInput {
     memberships: MembershipLike[];
 }
 
-/** Recognized (earned) Revenue for the window [fromMs, toMs]. Walks EVERY sale
- *  (not just those purchased in the window) because a package sold last month
- *  whose credits are used this month earns revenue in THIS window. */
-export function computeRecognizedRevenue(input: RevenueInput, fromMs: number, toMs: number): number {
+/** The recognized-revenue LINE ITEMS for the window [fromMs, toMs] — the modal
+ *  lists these and the card sums them (card === modal). Walks EVERY sale (not
+ *  just those purchased in the window) because a package sold last month whose
+ *  credits are used this month earns revenue in THIS window. */
+export function recognizedRevenueLineItems(input: RevenueInput, fromMs: number, toMs: number): RevenueLineItem[] {
     const { transactions, bookings, packages, memberships } = input;
-    let revenue = 0;
+    const items: RevenueLineItem[] = [];
 
     for (const t of transactions) {
         if (!isRecognizableSale(t)) continue;
@@ -99,8 +113,11 @@ export function computeRecognizedRevenue(input: RevenueInput, fromMs: number, to
         if (t.kind === "package") {
             const pkg = packages.find(p => p.id === t.productId);
             const totalCredits = Math.max(1, pkg?.credits ?? 1);
-            revenue += (t.amountAed / totalCredits)
-                * creditsUsedInRange(bookings, t.customerId, "package", t.productId, fromMs, toMs);
+            const perCredit = t.amountAed / totalCredits;
+            for (const _b of creditUseBookings(bookings, t.customerId, "package", t.productId, fromMs, toMs)) {
+                void _b;
+                items.push({ customerId: t.customerId, kind: "credit", label: `${pkg?.name ?? "Package"} · 1 credit used`, amountAed: perCredit });
+            }
             continue;
         }
 
@@ -109,24 +126,35 @@ export function computeRecognizedRevenue(input: RevenueInput, fromMs: number, to
             const credits = mem?.credits;
             if (typeof credits === "number" && credits > 0) {
                 // Credit-based membership → per-credit-used, same basis as a package.
-                revenue += (t.amountAed / credits)
-                    * creditsUsedInRange(bookings, t.customerId, "membership", t.productId, fromMs, toMs);
+                const perCredit = t.amountAed / credits;
+                for (const _b of creditUseBookings(bookings, t.customerId, "membership", t.productId, fromMs, toMs)) {
+                    void _b;
+                    items.push({ customerId: t.customerId, kind: "credit", label: `${mem?.name ?? "Membership"} · 1 credit used`, amountAed: perCredit });
+                }
             } else {
                 // Unlimited membership → straight-line over the plan's duration.
                 const durationDays = Math.max(1, (mem?.duration_months ?? 1) * 30);
                 const expiryMs = purchaseMs + durationDays * DAY_MS;
                 const overlap = Math.max(0, Math.min(expiryMs, toMs) - Math.max(purchaseMs, fromMs));
-                if (overlap > 0) revenue += t.amountAed * (overlap / (durationDays * DAY_MS));
+                if (overlap > 0) items.push({ customerId: t.customerId, kind: "membership", label: `${mem?.name ?? "Unlimited membership"} · earned this period`, amountAed: t.amountAed * (overlap / (durationDays * DAY_MS)) });
             }
             continue;
         }
 
         // Retail / Private / Recovery — single delivered item, recognized at sale.
         if (t.kind === "retail" || t.kind === "private" || t.kind === "recovery") {
-            if (purchaseMs >= fromMs && purchaseMs <= toMs) revenue += t.amountAed;
+            if (purchaseMs >= fromMs && purchaseMs <= toMs) {
+                const label = t.kind === "retail" ? "Retail sale" : t.kind === "private" ? "Private session" : "Recovery session";
+                items.push({ customerId: t.customerId, kind: "sale", label, amountAed: t.amountAed });
+            }
         }
         // gift_card / cancellation_penalty / freeze_fee already excluded above.
     }
 
-    return revenue;
+    return items;
+}
+
+/** Recognized (earned) Revenue total = sum of the line items. */
+export function computeRecognizedRevenue(input: RevenueInput, fromMs: number, toMs: number): number {
+    return recognizedRevenueLineItems(input, fromMs, toMs).reduce((sum, i) => sum + i.amountAed, 0);
 }
