@@ -31,36 +31,40 @@ Two named nuances:
 - **Removing the whole Status column is CUSTOMERS-ONLY** (inactivity is derived
   from the wallet there). **Do NOT remove status columns from other modules.**
 - What changes everywhere: **"archived" stops being an in-list status** — archived
-  rows *leave* the default list (become a hidden "place"), instead of sitting
-  inline with an "Archived" badge + filter pill.
+  rows *leave the active table* and move into a separate **Archived section**
+  rendered below it (see §3 for the exact UX), instead of sitting inline with an
+  "Archived" badge + filter pill.
 - **Memberships keep** their instance status **Active · Frozen · Cancelled ·
   Expired** — but note that lives on the **customer profile → Memberships tab**,
   NOT the product catalog. The product *catalog* just shows product status
-  (active) with archived products moved to the archived place.
+  (active) with archived products moved into the Archived section.
 
 ---
 
 ## 2. Target vs current — per module (the gaps)
 
-Reference model = **Customers** (already: `active | archived`, archive-as-a-place
-with "View archived (n)", store-guarded delete, no status column).
+Reference model = **Customers** (already: `active | archived`, store-guarded
+delete, no status column) — BUT its current archive UI (a "View archived (n)"
+toggle to a separate archived-only view) is being **replaced** by the Archived
+**accordion section** in §3, so customers gets retrofitted too.
 
-Legend: **AAP** = archive-as-a-place (hidden by default + View-archived entry).
-Today, ONLY customers are AAP; every other archive-only module keeps archived
-**inline** with a Status filter pill.
+Legend: **AAS** = the Archived accordion section (§3) — archived rows leave the
+active table and render in a collapsible "Archived <entity>" section below it.
+Today NO module uses AAS; customers use the old toggle, every other archive-only
+module keeps archived **inline** with a Status filter pill.
 
-### Bucket A — Archive-only (make AAP; keep references intact)
+### Bucket A — Archive-only (make AAS; keep references intact)
 
 | Module | Status enum today | Actions today | Gap → target |
 |---|---|---|---|
-| **Customers** ✅ | `active\|archived` | Archive/Recover/Delete, AAP | Done — reference model. |
-| **Pay rates** | `active\|archive` | Archive/Recover/Delete (guard: active+0 usage), **inline** | Make **AAP**; **add archive guard** "can't archive while staff assigned → reassign first". Keep delete only when 0 usage. |
-| **Staff** | `pending\|active\|inactive\|archive` | Full 5-action matrix, **inline** | Make **AAP**. Keep Deactivate (temporary leave) — see D-1. Delete stays guarded (`canDeleteStaff`). |
-| **Plans & packages** | `active\|inactive\|archived` | Deactivate↔Delete swap, Archive/Reactivate/Recover, **inline** | Make **AAP**. **Keep Deactivate** (D-1). **Guarantee contract-safe archive** (D-2): archived plan gone from POS/store/customer app, existing `customerPlans` keep billing/booking/freezing. Delete only when 0 holders/plans (guard already fixed). |
-| **Class templates** | `Active\|Inactive\|Archived` | Deactivate↔Delete swap, Archive/Reactivate/Recover, **inline**, **card grid** | Make **AAP** (archived cards leave the grid → "View archived"). ⚠ **Add store-side delete guard** — `deleteClassTemplate` (store 6677) is currently UNGUARDED (UI-only gate). |
-| **Retail items** | `active\|inactive\|archived` | Deactivate↔Delete swap + matrix, **inline** | Make **AAP**. Delete stays guarded (`canDeleteRetailProduct`). |
-| **Locations/Branches** | `active\|inactive\|archive` | Full matrix (branch+room), **inline** | Make **AAP**. ⚠ **Add store-side delete guards** — `deleteBranch` (6486) + `deleteRoom` (6515) are UNGUARDED (cascade unconditionally). Normalize value `"archive"`→`"archived"` (D-3). |
-| **Promo codes** | `active\|inactive\|archived` (+derived `expired`) | Deactivate↔Delete swap, **inline**, **card grid** | Make **AAP**. Delete stays guarded (0 uses). |
+| **Customers** ✅ | `active\|archived` | Archive/Recover/Delete, AAS | Done — reference model. |
+| **Pay rates** | `active\|archive` | Archive/Recover/Delete (guard: active+0 usage), **inline** | Make **AAS**; **add archive guard** "can't archive while staff assigned → reassign first". Keep delete only when 0 usage. |
+| **Staff** | `pending\|active\|inactive\|archive` | Full 5-action matrix, **inline** | Make **AAS**. Keep Deactivate (temporary leave) — see D-1. Delete stays guarded (`canDeleteStaff`). |
+| **Plans & packages** | `active\|inactive\|archived` | Deactivate↔Delete swap, Archive/Reactivate/Recover, **inline** | Make **AAS**. **Keep Deactivate** (D-1). **Guarantee contract-safe archive** (D-2): archived plan gone from POS/store/customer app, existing `customerPlans` keep billing/booking/freezing. Delete only when 0 holders/plans (guard already fixed). |
+| **Class templates** | `Active\|Inactive\|Archived` | Deactivate↔Delete swap, Archive/Reactivate/Recover, **inline**, **card grid** | Make **AAS** (archived cards move into the Archived section below, card grid, no pagination). ⚠ **Add store-side delete guard** — `deleteClassTemplate` (store 6677) is currently UNGUARDED (UI-only gate). |
+| **Retail items** | `active\|inactive\|archived` | Deactivate↔Delete swap + matrix, **inline** | Make **AAS**. Delete stays guarded (`canDeleteRetailProduct`). |
+| **Locations/Branches** | `active\|inactive\|archive` | Full matrix (branch+room), **inline** | Make **AAS**. ⚠ **Add store-side delete guards** — `deleteBranch` (6486) + `deleteRoom` (6515) are UNGUARDED (cascade unconditionally). Normalize value `"archive"`→`"archived"` (D-3). |
+| **Promo codes** | `active\|inactive\|archived` (+derived `expired`) | Deactivate↔Delete swap, **inline**, **card grid** | Make **AAS**. Delete stays guarded (0 uses). |
 
 ### Bucket B — Delete-only (remove archive entirely)
 
@@ -77,23 +81,57 @@ Today, ONLY customers are AAP; every other archive-only module keeps archived
 
 ---
 
-## 3. Cross-cutting work
+## 3. The Archived accordion section (AAS) — the shared UX (client 2026-08-11)
 
-1. **Generalize the customer archive-as-a-place pattern** into a reusable piece
-   (a `useArchiveView` hook + a shared "View archived (n)" toolbar/back-button +
-   an `<ArchivedList>` shell) so all 7 archive-only modules share ONE
-   implementation instead of 7 copies. Each list then: (a) excludes
-   `status === "archived"` by default, (b) drops "archived" from its Status
-   filter pills, (c) shows the archived place when toggled, (d) offers
-   Recover there (+ Delete when history-free).
-2. **Fix the copy/behavior mismatch:** Staff, Retail, Shifts, Branches confirm
-   dialogs already CLAIM "hidden from default lists" but the list code doesn't
-   hide archived — AAP resolves this; align the copy.
-3. **Store-side delete guards** (data-integrity, independent of UI): add history
-   checks to `deleteClassTemplate`, `deleteBranch`, `deleteRoom`, and decide
-   `deleteShifts` — today the gate is UI-only and the store hard-deletes.
-4. **Status-column policy:** leave every non-customer status column in place;
-   only ensure archived rows leave the list.
+Replaces the old "View archived (n)" toggle/navigation entirely. On every
+archive-only module the archived rows render **on the same page, below the
+active container**, in a collapsible section. Build it ONCE as a reusable piece
+so all modules (incl. the customer retrofit) share one implementation.
+
+**Behavior (locked with the client):**
+- **No entry point / no navigation** — remove the "View archived (n)" button and
+  the separate archived-only view.
+- **Conditional render:** if the module has **zero** archived rows (in the
+  current branch/search/filter scope), the section is **NOT rendered** — the page
+  looks exactly like the default (active container only). As soon as ≥1 archived
+  row exists, the section appears below.
+- **Placement:** below the active container, preceded by a **separator + section
+  label** worded per-entity: **"Archived customer" / "Archived pay rate" / …**
+  (singular, mirrors the client's "Archived study").
+- **Accordion:** the section is collapsible/expandable; **default = EXPANDED**
+  when archived data exists. It has its own container matching the module's chrome
+  (its own table header, or its own card grid for card modules).
+- **Search / filters / toolbar apply to BOTH** the active container and the
+  Archived section — the same query/filters narrow both.
+- **Pagination:** per-module. Table modules get **their own pagination** on the
+  Archived section (the active table's pagination is unchanged). Card/grid modules
+  that have no pagination today (e.g. Marketing/Campaigns, Promo codes, Class
+  templates) render the archived cards **without** pagination — fit each module's
+  existing layout.
+- **Bulk select:** the Archived section has its **own bulk-select** (Recover +
+  Delete-when-history-free), plus per-row kebab actions. Active and archived
+  selections are independent.
+- Rows show the **"Archived" status chip** + the module's real columns/data.
+
+**Reusable pieces to build (phase 1):**
+- `useArchiveView(rows)` → `{ active, archived }` split (excludes `archived` from
+  the active set; both already branch/search/filter-scoped by the page).
+- `<ArchivedSection>` shell — separator + "Archived <entity>" label + collapse
+  toggle (default open) + slot for the module's table/grid + its own
+  pagination/bulk when applicable. Card modules pass a card renderer instead.
+- Each list also **drops "archived" from its Status filter pills** (archived is
+  now a section, not a filter value).
+
+**Also fix the copy/behavior mismatch:** Staff, Retail, Shifts, Branches confirm
+dialogs already CLAIM "hidden from default lists" — align the copy to the new
+"moves to the Archived section below" behavior.
+
+**Store-side delete guards** (data-integrity, independent of the UI): add history
+checks to `deleteClassTemplate`, `deleteBranch`, `deleteRoom`, and decide
+`deleteShifts` — today the gate is UI-only and the store hard-deletes.
+
+**Status-column policy:** leave every non-customer status column in place; only
+ensure archived rows move out of the active table into the Archived section.
 
 ---
 
@@ -127,13 +165,14 @@ Today, ONLY customers are AAP; every other archive-only module keeps archived
 
 ## 5. Implications (what this changes)
 
-- **Scale:** 7 modules move to archive-as-a-place — this is the customer archive
-  UI replicated (list-hide + View-archived + Recover), so it's sizeable but
-  mechanical once the shared pattern exists. Roles + Shifts are *reductions*
-  (remove actions), which are smaller.
-- **Behavior users will notice:** archived pay rates / staff / plans / templates /
-  retail / branches / promos **disappear from their lists** and are only reachable
-  via "View archived (n)". No more "Archived" badge/filter sitting in the main list.
+- **Scale:** 7 modules gain the Archived accordion section (§3), and **customers
+  gets retrofitted** off its old toggle onto the same section. Sizeable but
+  mechanical once the shared `<ArchivedSection>` piece exists. Roles + Shifts are
+  *reductions* (remove Archive), which are smaller.
+- **Behavior users will notice:** archived rows **leave the active table** and
+  appear in an **expandable "Archived <entity>" section below** it (with its own
+  search-scoped list, pagination on table modules, and bulk actions). No more
+  "Archived" badge/filter in the active list; no separate archived page.
 - **Roles + Shifts lose Archive** (and likely Deactivate) — they become
   delete-only. Anyone relying on archiving a shift/role must delete instead
   (allowed only when unreferenced).
@@ -157,23 +196,29 @@ Today, ONLY customers are AAP; every other archive-only module keeps archived
 0. **Normalize `"archived"` app-wide** (D-3) — one pass: status enums + seeds +
    guards + StatusBadge maps + filter pills → lowercase `active|inactive|archived`
    everywhere. Do this FIRST so every later phase builds on one value.
-1. **Shared pattern** — extract `useArchiveView` + View-archived shell from the
-   customer implementation. (foundation)
-2. **Store guards** — add the 4 missing delete guards (class templates, branch,
+1. **Shared `<ArchivedSection>` piece** — build `useArchiveView` + the collapsible
+   Archived-section shell (§3): separator + "Archived <entity>" label, default
+   expanded, its own table/grid + pagination + bulk, search/filters apply to both.
+   (foundation)
+2. **Customer retrofit** — swap the "View archived (n)" toggle for the new
+   Archived section, proving the shared piece on the reference module.
+3. **Store guards** — add the 4 missing delete guards (class templates, branch,
    room, shifts). (data-integrity, no UI)
-3. **Shifts** — remove Archive (3 sites + store `"archive"` branch); KEEP Inactive;
+4. **Shifts** — remove Archive (3 sites + store `"archive"` branch); KEEP Inactive;
    delete-only for the destructive slot. (D-4)
-4. **Roles** — remove Archive/Recover; KEEP Inactive/Deactivate; Delete when
+5. **Roles** — remove Archive/Recover; KEEP Inactive/Deactivate; Delete when
    unlocked + 0 staff. (D-4)
-5. **Pay rates** — AAP + the reassign-first archive guard.
-6. **Staff** — AAP (keep Deactivate per D-1).
-7. **Plans & packages** — AAP + verify contract-safe archive (D-2).
-8. **Class templates** — AAP.
-9. **Retail items** — AAP.
-10. **Promo codes** — AAP.
-11. **Locations/Branches** — AAP.
-12. **Verify** — Scheduled classes unchanged (cancel-only, visible).
+6. **Pay rates** — AAS + the reassign-first archive guard.
+7. **Staff** — AAS (keep Deactivate per D-1).
+8. **Plans & packages** — AAS + verify contract-safe archive (D-2).
+9. **Class templates** — AAS (card grid, no pagination).
+10. **Retail items** — AAS.
+11. **Promo codes** — AAS (card grid, no pagination).
+12. **Locations/Branches** — AAS.
+13. **Verify** — Scheduled classes unchanged (cancel-only, visible).
 
-Each module: exclude archived from list + counts + search + its filter pills,
-add View-archived + Recover (+Delete when history-free), keep the status column,
-never touch existing references. `tsc --noEmit` + `next build` per phase.
+Each archive-only module: split rows into active + archived; render the Archived
+section below only when archived count > 0 (expanded); search/filters/bulk apply
+to both; drop "archived" from the Status filter pills; keep the status column;
+Recover (+Delete when history-free) in the section; never touch existing
+references. `tsc --noEmit` + `next build` per phase.
