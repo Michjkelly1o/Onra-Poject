@@ -418,42 +418,22 @@ export function ShiftPickerPanel({ available, emptyLabel, onPick }: {
 }
 
 /** 3-dot menu anchored to a staff row. Portalled + fixed-positioned so it
- *  escapes the grid's overflow. Two side-by-side panels: the action list, and
- *  (on Assign / Change) the searchable shift picker. */
-function StaffShiftMenu({
-    isInstructor,
-    hasShift,
-    assignedShiftIds,
-    staffBranchId,
-    shifts,
-    onAssign,
-    onUnassign,
-    onViewSchedule,
-}: {
+ *  escapes the grid's overflow. "Assign shift" opens the day-view-style Add-shift
+ *  panel (owned by the parent) instead of an inline picker (client 2026-08-11). */
+function StaffShiftMenu({ isInstructor, hasShift, onAssign, onUnassign, onViewSchedule }: {
     isInstructor: boolean;
     hasShift: boolean;
-    /** Shift ids the staff already holds — excluded from the Assign picker so
-     *  every pick adds a NEW shift (staff can hold multiple). */
-    assignedShiftIds: Set<string>;
-    /** The staff member's home branch. The Assign picker only offers shifts
-     *  from THIS branch — shifts are per-branch, so a South staffer can't be
-     *  put on a North shift. `null` (all-branch personas like Owner) lifts the
-     *  constraint. Mirrors AssignStaffModal, which scopes the reverse direction
-     *  by `staff.branchId === shift.branch_id`. */
-    staffBranchId: string | null;
-    shifts: Shift[];
-    onAssign: (shiftId: string) => void;
+    onAssign: () => void;
     onUnassign: () => void;
     onViewSchedule: () => void;
 }) {
     const [open, setOpen] = useState(false);
-    const [picker, setPicker] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
     const popRef = useRef<HTMLDivElement>(null);
     const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
     useEffect(() => {
-        if (!open) { setPicker(false); return; }
+        if (!open) return;
         const r = btnRef.current?.getBoundingClientRect();
         if (r) setPos({ top: r.bottom + 4, left: r.left });
     }, [open]);
@@ -469,18 +449,6 @@ function StaffShiftMenu({
         document.addEventListener("keydown", onKey);
         return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
     }, [open]);
-
-    // Assign picker only offers ACTIVE shifts, from the staff member's OWN
-    // branch, that they do NOT already hold:
-    //   • status === "active"  — mirrors the list-view row menu, which hides
-    //     "Assign staff" on inactive/archived shifts (ShiftManagementTab).
-    //   • branch match          — shifts are per-branch; a staffer can only be
-    //     put on a shift at their own branch (null branch = no constraint).
-    //   • not already assigned  — every pick adds a NEW shift.
-    const branchActive = shifts.filter(sh =>
-        sh.status === "active" && (staffBranchId == null || sh.branch_id === staffBranchId),
-    );
-    const available = branchActive.filter(sh => !assignedShiftIds.has(sh.id));
 
     return (
         <>
@@ -499,36 +467,22 @@ function StaffShiftMenu({
             </button>
 
             {open && pos && createPortal(
-                <div ref={popRef} className="fixed z-[80] flex items-start gap-3" style={{ top: pos.top, left: pos.left }}>
-                    {/* Action list */}
+                <div ref={popRef} className="fixed z-[80]" style={{ top: pos.top, left: pos.left }}>
                     <div className="w-[220px] rounded-[12px] border border-[var(--colors-border-secondary)] bg-white p-1.5 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
-                        {/* View schedule — instructors only (they have classes to view). */}
                         {isInstructor && (
                             <button type="button" onClick={() => { setOpen(false); onViewSchedule(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
                                 <Eye className="size-4 text-[var(--colors-text-quaternary)]" /> View schedule
                             </button>
                         )}
-                        {/* Assign shift — always available; adds another shift. */}
-                        <button type="button" onClick={() => setPicker(true)} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
+                        <button type="button" onClick={() => { setOpen(false); onAssign(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
                             <ClockPlus className="size-4 text-[var(--colors-text-quaternary)]" /> Assign shift
                         </button>
-                        {/* Unassign — only when the staff holds a shift. */}
                         {hasShift && (
                             <button type="button" onClick={() => { setOpen(false); onUnassign(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
                                 <Trash01 className="size-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
                             </button>
                         )}
                     </div>
-
-                    {/* Shift picker — shared ShiftPickerPanel (same component as
-                        the per-cell "+"). */}
-                    {picker && (
-                        <ShiftPickerPanel
-                            available={available}
-                            emptyLabel={branchActive.length === 0 ? "No active shifts at this branch." : "All shifts already assigned."}
-                            onPick={(id) => { setOpen(false); onAssign(id); }}
-                        />
-                    )}
                 </div>,
                 document.body,
             )}
@@ -613,9 +567,12 @@ interface ShiftsWeekViewProps {
     /** Week-view Shift-name filter. Empty = all shifts. When set, only these
      *  shifts' cards render and staff holding none of them are hidden. */
     shiftIds?: string[];
+    /** Open the day-view-style Add-shift panel in "assign to this staff" mode
+     *  (owned by StaffPermissionsPage so it floats in the non-scrolling card). */
+    onRequestAssign?: (staff: { id: string; name: string }) => void;
 }
 
-export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [] }: ShiftsWeekViewProps) {
+export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [], onRequestAssign }: ShiftsWeekViewProps) {
     const staff            = useAppStore(s => s.staff);
     const router = useRouter();
     const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
@@ -1016,16 +973,12 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                         </div>
                                         {(() => {
                                             const myAssignments = shiftAssignments.filter(a => a.staff_id === s.id);
-                                            const assignedShiftIds = new Set(myAssignments.map(a => a.shift_id));
                                             const isInstructor = roleTypeById.get(s.roleId) === "instructor";
                                             return (
                                                 <StaffShiftMenu
                                                     isInstructor={isInstructor}
                                                     hasShift={myAssignments.length > 0}
-                                                    assignedShiftIds={assignedShiftIds}
-                                                    staffBranchId={s.branchId}
-                                                    shifts={shifts}
-                                                    onAssign={(shiftId) => assignShiftToStaff(s, shiftId)}
+                                                    onAssign={() => onRequestAssign?.({ id: s.id, name: s.fullName })}
                                                     onUnassign={() => setUnassignTarget({ staffId: s.id, staffName: s.fullName })}
                                                     onViewSchedule={() => router.push(`/admin/schedule?instructorId=${s.id}`)}
                                                 />
@@ -1049,6 +1002,8 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                         return (
                                             <div
                                                 key={isoDayLocal(day)}
+                                                onDragOver={timeOff ? undefined : (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                                                onDrop={timeOff ? undefined : (e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/shift-id"); if (id) assignShiftToStaff(s, id); }}
                                                 className="group/cell relative px-2 py-3 border-l border-[var(--colors-border-secondary)] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
                                                 {timeOff ? (

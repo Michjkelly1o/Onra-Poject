@@ -51,6 +51,7 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { AssignShiftModal } from "@/components/staff/AssignShiftModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
+import { AddShiftPanel } from "@/components/schedule/AddShiftPanel";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
 import { TodayScheduleCell } from "@/components/staff/TodayScheduleCell";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -790,6 +791,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         d.setDate(d.getDate() - monIdx);
         return d;
     });
+    // Staff-schedule "Add shift" panel — ports the day-view flow. `assignToStaff`
+    // set → the panel opens in "pick a shift for {name}" mode from a row 3-dot.
+    const [staffSchedPanel, setStaffSchedPanel] = useState<{ open: boolean; assignToStaff?: { id: string; name: string } }>({ open: false });
     const [timeOffMonthCursor, setTimeOffMonthCursor] = useState<{ year: number; month: number }>(() => {
         const d = new Date();
         return { year: d.getFullYear(), month: d.getMonth() };
@@ -1290,6 +1294,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     so the tab strip pins and only the inner body scrolls while
                     the outer <main> canvas scrolls the page. */}
             <div className={cn(
+                "relative",
                 forceTab === "roles"
                     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
                     : "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
@@ -1366,6 +1371,15 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             );
                         })()}
                         <div className="flex-1" />
+                        {/* Staff-schedule "+ Add shift" — day-view secondary
+                            button, top-right, aligned with the tabs. */}
+                        {forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "week" && (
+                            <Button variant="secondary" size="sm" className="relative z-10 shrink-0"
+                                leftIcon={<Plus className="w-4 h-4" />}
+                                onClick={() => setStaffSchedPanel({ open: true })}>
+                                Add shift
+                            </Button>
+                        )}
                         {/* Date navigator — center-aligned via `absolute
                             left-1/2 -translate-x-1/2` inside the relative
                             parent (matches the /admin/schedule Week + Month
@@ -1409,6 +1423,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         onFilterStateChange={setShiftFilterActive}
                         viewMode={shiftsViewMode}
                         weekStart={shiftsWeekStart}
+                        onRequestAssignShift={(staff) => setStaffSchedPanel({ open: true, assignToStaff: staff })}
                     />
                 )}
                 {/* Blocked time sub-tab — fully wired (Figma 7413:239407). Same
@@ -1673,6 +1688,19 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     </div>
                 )}
                 </div>
+                {/* Staff-schedule "Add shift" panel — the day-view AddShiftPanel,
+                    floating top-right inside the (relative) view card. */}
+                {forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "week" && (
+                    <AddShiftPanel
+                        open={staffSchedPanel.open}
+                        onClose={() => setStaffSchedPanel({ open: false })}
+                        shifts={shifts}
+                        branchId={branchId}
+                        dateISO={`${shiftsWeekStart.getFullYear()}-${String(shiftsWeekStart.getMonth() + 1).padStart(2, "0")}-${String(shiftsWeekStart.getDate()).padStart(2, "0")}`}
+                        assignToStaff={staffSchedPanel.assignToStaff}
+                        topClass="top-[72px]"
+                    />
+                )}
             </div>
 
             <FilterPanel
