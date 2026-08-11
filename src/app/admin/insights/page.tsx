@@ -92,6 +92,9 @@ export default function InsightsPage() {
     const staff                = useAppStore(s => s.staff);
     const classSchedules       = useAppStore(s => s.classSchedules);
     const classBookings        = useAppStore(s => s.classBookings);
+    // Financial tab's MRR normalization reads `memberships` for each plan's
+    // term — must be in kpiState or computeFinancialKpis crashes on undefined.
+    const memberships          = useAppStore(s => s.memberships);
 
     // Date range → concrete current + prior windows.
     const range = useMemo(() => resolveRangePair(period), [period]);
@@ -129,10 +132,10 @@ export default function InsightsPage() {
     // one-import change.
     const kpiState = useMemo(() => ({
         customerTransactions, customerPlans, customers, customerReferrals,
-        branches, staff, classSchedules, classBookings,
+        branches, staff, classSchedules, classBookings, memberships,
         appointments, appointmentBookings, services,
     } as unknown as import("@/lib/store").AppState),
-    [customerTransactions, customerPlans, customers, customerReferrals, branches, staff, classSchedules, classBookings, appointments, appointmentBookings, services]);
+    [customerTransactions, customerPlans, customers, customerReferrals, branches, staff, classSchedules, classBookings, memberships, appointments, appointmentBookings, services]);
 
     // Marketing tab needs additional slices — subscribe once here so
     // switching to that tab doesn't lag on first render.
