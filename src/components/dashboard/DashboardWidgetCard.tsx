@@ -560,6 +560,32 @@ function aedAxisTick(value: number): string {
 
 type ChartSize = "mini" | "full";
 
+/** True when a widget's resolved rows carry no meaningful data — an empty array
+ *  (ranked/funnel with nothing) OR every numeric value across every row is 0
+ *  (a time-series filtered to a period with no activity). Drives the empty
+ *  state so a filtered-to-nothing widget never renders a blank chart. */
+function isEmptyRows(rows: readonly object[] | undefined): boolean {
+    if (!rows || rows.length === 0) return true;
+    return rows.every(r => Object.values(r).every(v => typeof v !== "number" || v === 0));
+}
+
+/** Centered empty state shown in place of a chart when the widget has no data
+ *  for the current period / branch filter. Fills the same height the chart would. */
+function WidgetEmptyState({ size }: { size: ChartSize }) {
+    return (
+        <div
+            className="w-full flex flex-col items-center justify-center gap-1.5 text-center"
+            style={{ height: size === "mini" ? 150 : 240 }}
+        >
+            <div className="w-9 h-9 rounded-full bg-[var(--colors-bg-secondary)] flex items-center justify-center">
+                <InfoCircle className="w-4 h-4 text-[var(--colors-fg-quaternary)]" />
+            </div>
+            <p className="text-[13px] font-medium text-[var(--colors-text-tertiary)]">No data for this period</p>
+            <p className="text-[12px] text-[var(--colors-text-quaternary)]">Try a wider date range or another location.</p>
+        </div>
+    );
+}
+
 function Legend({ items }: { items: { color: string; label: string }[] }) {
     return (
         <div className="flex items-center gap-4 justify-end flex-wrap">
@@ -1100,6 +1126,15 @@ function renderChart(
         // (aedAxisTick) override this; short date/number labels are unaffected.
         tickFormatter: truncateTick,
     };
+
+    // Empty state — when the widget has no data for the current filter, show a
+    // message instead of a blank chart. `leads-to-follow-up` renders its own
+    // body (with its own empty state) and `attendance-heatmap` degrades to a
+    // dashed grid, so both opt out here.
+    const rendersOwnBody = id === "leads-to-follow-up" || id === "attendance-heatmap";
+    if (!rendersOwnBody && isEmptyRows(data as object[])) {
+        return <WidgetEmptyState size={size} />;
+    }
 
     switch (id) {
         case "payments-collected": {
