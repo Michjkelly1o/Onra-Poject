@@ -62,7 +62,7 @@ export function GiftCardInfoContent({
         // to the product detail) on the left, X-close on the right.
         if (isSheet) {
             return (
-                <div className="relative flex shrink-0 items-center justify-center px-4 pb-3 pt-4">
+                <div className="relative flex shrink-0 items-center justify-center pb-3">
                     {onBack ? (
                         <button
                             type="button"
@@ -177,8 +177,8 @@ export function GiftCardInfoContent({
             <Header />
 
             <div
-                className={`flex flex-1 flex-col gap-5 px-4 pb-4 pt-2 ${
-                    isSheet ? "min-h-0 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""
+                className={`flex flex-1 flex-col gap-5 pb-4 pt-2 ${
+                    isSheet ? "min-h-0 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "px-4"
                 }`}
             >
                 {/* Gift-card illustration — shows the amount (fixed value, or the
@@ -187,6 +187,7 @@ export function GiftCardInfoContent({
                 <GiftCardArt
                     variant={cardValue != null ? "redeemed" : "sent"}
                     value={cardValue ?? undefined}
+                    className="shrink-0"
                 />
 
                 <div className="flex flex-col gap-1.5">
@@ -222,7 +223,7 @@ export function GiftCardInfoContent({
                 </div>
             </div>
 
-            <div className={`z-10 ${isSheet ? "sticky bottom-0 shrink-0 border-t border-[var(--colors-bg-tertiary)] bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3" : `sticky bottom-0 px-5 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${scrollable ? "bg-white" : ""}`}`}>
+            <div className={`z-10 ${isSheet ? "shrink-0 border-t border-[var(--colors-bg-tertiary)] bg-white -mx-4 px-4 pt-4" : `sticky bottom-0 px-5 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${scrollable ? "bg-white" : ""}`}`}>
                 <div className="flex gap-3">
                     <Button variant="secondary-gray" size="xl" disabled={!valid} className="flex-1 rounded-full" onClick={() => confirm(false)}>
                         Add to cart

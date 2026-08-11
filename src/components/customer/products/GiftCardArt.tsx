@@ -14,7 +14,7 @@
 /** Exact Figma card gradient (stops reordered ascending for CSS). Exported so the
  *  Wallet balance card reuses the same Forma card treatment. */
 export const FORMA_GRADIENT =
-    "linear-gradient(178.25deg, #eff6f3 4%, #dcebe4 22.7%, #a7ddcb 34.5%, #f0f8f5 69%, #c4e6d9 100%)";
+    "linear-gradient(178.25deg, #eff6f3 4%, #dcebe4 22.7%, #d5e7df 34.5%, #eff6f3 69%, #dcebe4 100%)";
 
 /** Small green gift-card tile (46×32) — the exact Forma payment tile used in the
  *  checkout Pay-with picker and the redeemed-gift-card list row. */
@@ -63,7 +63,7 @@ export function GiftCardArt({ variant, value, className }: GiftCardArtProps) {
                 <img
                     src="/images/pay/forma-logomark.svg"
                     alt="Forma"
-                    className="absolute left-[5.7%] top-1/2 aspect-[11.44/13.73] w-[24.9%] -translate-y-1/2"
+                    className="absolute left-[5.7%] top-1/2 aspect-[11.44/13.73] w-[24.9%] -translate-y-1/2 opacity-30"
                 />
             ) : (
                 <>

@@ -370,16 +370,14 @@ export default function ProductsPage() {
             {/* Gift cards open the Gift card information sheet DIRECTLY (illustration
                 + amount + recipient), skipping the product-detail step. Every other
                 product opens the product detail. Client 2026-08-11. */}
-            <CustomerSheet open={detailId != null} onClose={closeProductSheet} tall bleed>
+            <CustomerSheet open={detailId != null} onClose={closeProductSheet} tall bleed={!(detailId != null && giftCards.some((g) => g.id === detailId))}>
                 {detailId && (giftCards.some((g) => g.id === detailId) ? (
-                    <div className="h-full w-full">
-                        <GiftCardInfoContent
+                    <GiftCardInfoContent
                             designId={detailId}
                             variant="sheet"
                             onDone={closeProductSheet}
                             onCheckout={() => { closeProductSheet(); setCheckoutOpen(true); }}
                         />
-                    </div>
                 ) : (
                     <div className="h-full w-full">
                         <ProductDetailScreen
