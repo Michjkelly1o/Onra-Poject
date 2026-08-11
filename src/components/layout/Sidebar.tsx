@@ -235,6 +235,73 @@ function SlimNavItem({ label, enabled, children }: {
     );
 }
 
+// Collapsed sidebar: a parent WITH children can't expand inline, so hovering
+// its icon opens a floating flyout to the RIGHT of the rail listing the child
+// links (client 2026-08-11 — mirrors the HubSpot collapsed-nav pattern). The
+// panel is portalled to `document.body` so it escapes the nav's `overflow`
+// clipping, and a short close delay lets the pointer travel from icon to panel.
+// Leaf items (no children) keep the simple `SlimNavItem` label tooltip instead.
+function SlimFlyout({ label, items, activeHref, children }: {
+    label: string;
+    items: NavChild[];
+    activeHref: string | null;
+    children: React.ReactNode;
+}) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+    const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const open = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        const r = ref.current?.getBoundingClientRect();
+        if (r) setPos({ top: r.top, left: r.right + 8 });
+    };
+    const scheduleClose = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        closeTimer.current = setTimeout(() => setPos(null), 120);
+    };
+    useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
+
+    return (
+        <div ref={ref} onMouseEnter={open} onMouseLeave={scheduleClose}>
+            {children}
+            {pos && createPortal(
+                <div
+                    style={{ position: "fixed", top: pos.top, left: pos.left }}
+                    onMouseEnter={open}
+                    onMouseLeave={scheduleClose}
+                    className="z-[9999] min-w-[208px] rounded-[12px] bg-white border border-[#e4e7ec] p-2 flex flex-col gap-0.5 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]"
+                >
+                    <p className="px-2.5 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#98a2b3]">
+                        {label}
+                    </p>
+                    {items.map((child) => {
+                        const active = child.href === activeHref;
+                        const ChildIcon = child.icon;
+                        return (
+                            <Link
+                                key={child.href}
+                                href={child.href}
+                                onClick={() => setPos(null)}
+                                className={cn(
+                                    "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors",
+                                    active
+                                        ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
+                                        : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
+                                )}
+                            >
+                                {ChildIcon && <ChildIcon className="w-4 h-4 shrink-0" />}
+                                <span className="truncate">{child.label}</span>
+                            </Link>
+                        );
+                    })}
+                </div>,
+                document.body,
+            )}
+        </div>
+    );
+}
+
 interface SidebarProps {
     /** Override the nav items. Defaults to the admin nav array. The
      *  instructor layout passes its own list (Dashboard / Schedule /
@@ -488,47 +555,62 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                             {item.sectionLabel && !slim && (
                                 <div className="mx-3 my-2 h-px bg-[#d0d5dd]" />
                             )}
-                            {/* Parent row — wrapped so a collapsed icon shows
-                                the menu name in a tooltip on hover. */}
-                            <SlimNavItem label={item.label} enabled={slim}>
-                            {hasChildren ? (
-                                <button
-                                    type="button"
-                                    className={rowCls}
-                                    onClick={() => !slim && toggleGroup(item.label)}
-                                >
-                                    {parentActive && (
-                                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
-                                    )}
-                                    <item.icon className={iconCls} />
-                                    {!slim && (
-                                        <>
-                                            <span className="flex-1 text-left text-sm font-medium truncate">
+                            {/* Parent / leaf row. When collapsed: a parent WITH
+                                children opens a click-through flyout of its
+                                child links on hover (SlimFlyout); everything
+                                else shows just a label tooltip (SlimNavItem). */}
+                            {(() => {
+                                const rowNode = hasChildren ? (
+                                    <button
+                                        type="button"
+                                        className={rowCls}
+                                        onClick={() => !slim && toggleGroup(item.label)}
+                                    >
+                                        {parentActive && (
+                                            <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
+                                        )}
+                                        <item.icon className={iconCls} />
+                                        {!slim && (
+                                            <>
+                                                <span className="flex-1 text-left text-sm font-medium truncate">
+                                                    {item.label}
+                                                </span>
+                                                <ChevronDown
+                                                    className={cn(
+                                                        "w-4 h-4 shrink-0 text-[#98a2b3] transition-transform duration-200",
+                                                        open && "rotate-180"
+                                                    )}
+                                                />
+                                            </>
+                                        )}
+                                    </button>
+                                ) : (
+                                    <Link href={item.href!} className={rowCls}>
+                                        {isSelfActive && (
+                                            <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
+                                        )}
+                                        <item.icon className={iconCls} />
+                                        {!slim && (
+                                            <span className="flex-1 text-sm font-medium truncate">
                                                 {item.label}
                                             </span>
-                                            <ChevronDown
-                                                className={cn(
-                                                    "w-4 h-4 shrink-0 text-[#98a2b3] transition-transform duration-200",
-                                                    open && "rotate-180"
-                                                )}
-                                            />
-                                        </>
-                                    )}
-                                </button>
-                            ) : (
-                                <Link href={item.href!} className={rowCls}>
-                                    {isSelfActive && (
-                                        <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
-                                    )}
-                                    <item.icon className={iconCls} />
-                                    {!slim && (
-                                        <span className="flex-1 text-sm font-medium truncate">
-                                            {item.label}
-                                        </span>
-                                    )}
-                                </Link>
-                            )}
-                            </SlimNavItem>
+                                        )}
+                                    </Link>
+                                );
+                                return slim && hasChildren ? (
+                                    <SlimFlyout
+                                        label={item.label}
+                                        items={item.children!}
+                                        activeHref={activeChildHrefFor(item.children, navWinner)}
+                                    >
+                                        {rowNode}
+                                    </SlimFlyout>
+                                ) : (
+                                    <SlimNavItem label={item.label} enabled={slim}>
+                                        {rowNode}
+                                    </SlimNavItem>
+                                );
+                            })()}
 
                             {/* Children — indented rows (no rail line).
                              *  Client asked to keep the hierarchy read
