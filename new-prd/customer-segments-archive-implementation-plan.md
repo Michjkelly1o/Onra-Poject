@@ -1,7 +1,17 @@
 # Customer Segments & Archive — Implementation Plan
 
-**Status:** PLAN ONLY (2026-08-10). Nothing implemented. Do phase-by-phase, each phase
-committed locally, verified real (logic/data/connected/sync/wired) — **no cosmetic edits.**
+**Status:** IMPLEMENTED (2026-08-11). All 5 phases done + committed locally (not pushed).
+Each phase verified real (logic/data/connected/sync/wired), `tsc` + `next build` clean.
+- **P1** — removed the Status column (list + CSV).
+- **P2** — `src/lib/customer/segment.ts` (`customerSegment`), wallet-based Lead/Member/Inactive
+  tabs with live counts; 11-case logic check green.
+- **P3** — narrowed `Customer.status` → `active|archived` (+`archiveNote`/`archivedAtISO`);
+  migrated seeds; removed deactivate/reactivate + Status filter; "View archived (n)" place with
+  Recover/Delete; auto-revive on `bookingSource==="customer_portal"` booking (D3).
+- **P4** — dashboard (`scopedCustomerPlans` excludes archived), Customer Data report (archived
+  excluded + Status column = wallet segment), Insights membership counts exclude archived, detail
+  header shows Archived chip only, POS keeps archived findable (D2). Past periods never restated.
+- **P5** — verified membership-instance status column is plan-derived (no change).
 
 ---
 
