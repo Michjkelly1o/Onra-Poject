@@ -59,8 +59,6 @@ function orderNumberOf(txnId: string): string {
     return `#R-${txnId.replace(/^txn_/, "").toUpperCase().replace(/_/g, "-")}`;
 }
 
-const MEMBERSHIP_TERM_MONTHS = 1; // recurring monthly — one-month straight-line
-
 export default function RevenueRecognitionReportPage() {
     const transactions = useAppStore(s => s.customerTransactions);
     const customers    = useAppStore(s => s.customers);
@@ -68,6 +66,8 @@ export default function RevenueRecognitionReportPage() {
     const staff        = useAppStore(s => s.staff);
     const customerPlans = useAppStore(s => s.customerPlans);
     const packages      = useAppStore(s => s.packages);
+    const memberships   = useAppStore(s => s.memberships);
+    const classBookings = useAppStore(s => s.classBookings);
 
     const report = getReportById("revenue-recognition");
 
@@ -97,8 +97,8 @@ export default function RevenueRecognitionReportPage() {
     const rawLedger = useMemo<LedgerRow[]>(() => {
         if (!report) return [];
         const fn = resolveSelector(report) as unknown as (state: unknown) => LedgerRow[];
-        return fn({ customerTransactions: transactions, customers, branches, staff, classBookings: [] });
-    }, [report, transactions, customers, branches, staff]);
+        return fn({ customerTransactions: transactions, customers, branches, staff, classBookings });
+    }, [report, transactions, customers, branches, staff, classBookings]);
 
     const rows = useMemo<RevRecDisplayRow[]>(() => {
         const sales = rawLedger.filter(r => r.transactionType === "sale");
@@ -121,36 +121,45 @@ export default function RevenueRecognitionReportPage() {
             let remaining            = "";
             let recognitionBasis     = "";
 
-            if (isMembership) {
+            const mem = isMembership ? memberships.find(m => m.id === r.productId) : undefined;
+            const memCredits = mem && typeof mem.credits === "number" ? mem.credits : undefined;
+            const isUnlimitedMembership = isMembership && !(memCredits && memCredits > 0);
+
+            if (isUnlimitedMembership) {
+                // Unlimited membership → straight-line over its REAL term.
+                const termMonths = Math.max(1, mem?.duration_months ?? 1);
                 recognitionBasis = "Straight-line monthly";
-                termOrCredits    = `${MEMBERSHIP_TERM_MONTHS} month${MEMBERSHIP_TERM_MONTHS === 1 ? "" : "s"}`;
-                // Monthly membership → recognized 100% at end of month 1.
-                const monthsRec = Math.min(MEMBERSHIP_TERM_MONTHS, monthsElapsed);
-                recognizedToDate     = (amount / MEMBERSHIP_TERM_MONTHS) * monthsRec;
-                recognizedThisPeriod = amount / MEMBERSHIP_TERM_MONTHS;    // per-period slice
+                termOrCredits    = `${termMonths} month${termMonths === 1 ? "" : "s"}`;
+                const monthsRec = Math.min(termMonths, monthsElapsed);
+                recognizedToDate     = (amount / termMonths) * monthsRec;
+                recognizedThisPeriod = amount / termMonths;    // per-period slice
                 deferredBalance      = amount - recognizedToDate;
-                usedThisPeriod       = `${Math.min(monthsElapsed, MEMBERSHIP_TERM_MONTHS)} of ${MEMBERSHIP_TERM_MONTHS}`;
-                const monthsLeft     = Math.max(0, MEMBERSHIP_TERM_MONTHS - monthsElapsed);
+                usedThisPeriod       = `${Math.min(monthsElapsed, termMonths)} of ${termMonths}`;
+                const monthsLeft     = Math.max(0, termMonths - monthsElapsed);
                 remaining            = `${monthsLeft} month${monthsLeft === 1 ? "" : "s"}`;
             } else {
+                // Package OR credit-based membership → per credit used. Revenue
+                // recognized = per-credit value × credits used to date; the rest
+                // stays deferred. Credit balances via derivePlanBalances (same
+                // math the customer profile + Memberships report use).
                 recognitionBasis = "Per credit used";
-                // Resolve this package sale's live credit balance so "Remaining"
-                // reflects the credits still on the plan (e.g. a fresh 20-credit
-                // sale with none used shows 20, not 0). Matches the customer
-                // profile + Memberships report via derivePlanBalances.
                 const plan = customerPlans.find(
-                    (p) => p.customerId === r.customerId && p.kind === "package"
+                    (p) => p.customerId === r.customerId
                         && (p.productId === r.productId || p.name === r.name),
                 );
                 const bal = plan ? planBalById.get(plan.id) : undefined;
-                const totalCredits = bal?.total ?? packageCreditsById.get(r.productId ?? "") ?? 0;
+                const totalCredits = bal?.total
+                    ?? (isMembership ? (memCredits ?? 0) : (packageCreditsById.get(r.productId ?? "") ?? 0));
                 const usedCredits   = bal?.used ?? 0;
                 const leftCredits   = bal?.left ?? totalCredits;
+                const perCredit     = totalCredits > 0 ? amount / totalCredits : 0;
                 const creditWord = (n: number) => `${n} credit${n === 1 ? "" : "s"}`;
                 termOrCredits    = totalCredits > 0 ? creditWord(totalCredits) : "—";
                 usedThisPeriod   = totalCredits > 0 ? `${usedCredits} of ${totalCredits}` : "";
                 remaining        = totalCredits > 0 ? creditWord(leftCredits) : "";
-                deferredBalance  = amount;
+                recognizedToDate     = perCredit * usedCredits;
+                recognizedThisPeriod = recognizedToDate;   // no period window → to-date
+                deferredBalance      = amount - recognizedToDate;
             }
 
             return {
@@ -173,7 +182,7 @@ export default function RevenueRecognitionReportPage() {
                 location:             r.location,
             } satisfies RevRecDisplayRow;
         });
-    }, [rawLedger]);
+    }, [rawLedger, memberships, customerPlans, planBalById, packageCreditsById]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
