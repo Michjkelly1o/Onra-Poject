@@ -6,8 +6,10 @@ with values aggregated **live from the store** (seeded from the centralized mock
 data in `src/data/mock/`), correctly **branch-filtered** and **period-bucketed**,
 so every chart is real, connected, and reacts to the location + date filters.
 
-**Status:** Phase 1 (Financial) **DONE** — commit `22b52788`. Phases 2–5 below.
-Charts + copies stay unchanged; **calculation + data only**.
+**Status:** Phase 1 (Financial) **DONE** — commit `22b52788`. Phase 2 (Customer)
+**DONE** — commit `667ad499` (the recommended refactor is done:
+`financialWidgetSeries` → `computeWidgetSeries` + single `WIDGET_SERIES_IDS`).
+Phases 3–5 below. Charts + copies stay unchanged; **calculation + data only**.
 
 ---
 
