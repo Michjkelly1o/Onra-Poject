@@ -749,7 +749,7 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                         {onStaffUnassignShift && (
                             <button type="button" onClick={() => { const id = menuStaffId; closeStaffMenu(); onStaffUnassignShift(id); }}
                                 className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
-                                <SlashCircle01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
+                                <Trash01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
                             </button>
                         )}
                     </div>

@@ -25,7 +25,7 @@ export function AssignShiftPickerCard({ staffName, pickList, onAddShift, onPick 
     onPick: (shiftId: string) => void;
 }) {
     return (
-        <div className="w-[380px] max-h-[68vh] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.10),0px_8px_8px_-4px_rgba(16,24,40,0.04)] flex flex-col overflow-hidden">
+        <div className="w-[380px] max-h-[min(70vh,440px)] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[16px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.10),0px_8px_8px_-4px_rgba(16,24,40,0.04)] flex flex-col overflow-hidden">
             {/* Header */}
             <div className="shrink-0 px-5 pt-5 pb-3">
                 <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Add shift</p>

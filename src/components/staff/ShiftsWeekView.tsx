@@ -27,7 +27,7 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { DotsVertical, ClockPlus, Trash01, SearchLg, Eye, Plus, SlashCircle01 } from "@untitledui/icons";
+import { DotsVertical, ClockPlus, Trash01, SearchLg, Eye, Plus } from "@untitledui/icons";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Button } from "@/components/ui/button";
 import { AssignShiftPickerCard } from "@/components/schedule/AssignShiftPickerCard";
@@ -39,7 +39,7 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { getCategoryColor } from "@/components/schedule/ScheduleGridViews";
 import { useAppStore, type Staff, type Shift, type ShiftAssignment, type SessionType } from "@/lib/store";
 import { findShiftConflict, timeRangesOverlap } from "@/lib/staff/shift-conflict";
-import { timeOffTitle, timeOffDuration } from "@/lib/staff/time-off";
+import { timeOffDuration } from "@/lib/staff/time-off";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────
 //
@@ -130,7 +130,7 @@ function shiftPalette(shift: Shift, index: number) {
 // evenly-spaced dividers mark each hour. Shift name + time sit below. A staff
 // member with nothing booked (or any non-instructor role) shows an empty bar
 // with just the hour dividers.
-const SLICE_FILL  = "var(--colors-secondary-200)"; // soft light brand green (#dcebe4) — client 2026-08-11
+const SLICE_FILL  = "var(--colors-secondary-100)"; // soft light brand green (#e7f1ed) — client 2026-08-11
 const SLICE_HATCH = "repeating-linear-gradient(115deg, #e4e7ec 0px, #e4e7ec 3px, #f9fafb 3px, #f9fafb 4px)";
 
 /** "07:30" → 7.5 */
@@ -297,7 +297,8 @@ function ShiftHoverPopover({ shift, items, anchor, onEnter, onLeave }: {
  *  2026-07-24: e.g. add Afternoon on Thursday even though they already have
  *  Afternoon Mon–Wed). Shifts that would clash on time with one they already
  *  work this day are excluded. Picking assigns the shift for THIS day only. */
-function DayAddShiftMenu({ staffBranchId, dayIdx, shifts, staffDayShiftIds, staffDayShifts, onPick }: {
+function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShiftIds, staffDayShifts, onPick }: {
+    staffName: string;
     staffBranchId: string | null;
     dayIdx: number;
     shifts: Shift[];
@@ -350,9 +351,10 @@ function DayAddShiftMenu({ staffBranchId, dayIdx, shifts, staffDayShiftIds, staf
             </button>
             {open && pos && createPortal(
                 <div ref={popRef} className="fixed z-[80]" style={{ top: pos.top, left: pos.left }}>
-                    <ShiftPickerPanel
-                        available={available}
-                        emptyLabel={branchDayShifts.length === 0 ? "No shifts run on this day." : "All shifts already assigned for this day."}
+                    <AssignShiftPickerCard
+                        staffName={staffName}
+                        pickList={available}
+                        onAddShift={() => { setOpen(false); openStaffFormPanel({ kind: "shift", mode: "create" }); }}
                         onPick={(id) => { setOpen(false); onPick(id); }}
                     />
                 </div>,
@@ -445,7 +447,7 @@ function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShi
     useEffect(() => {
         if (!open) { setPicker(false); return; }
         const r = btnRef.current?.getBoundingClientRect();
-        if (r) setMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 184) });
+        if (r) setMenuPos({ top: r.bottom + 4, left: Math.min(r.left, window.innerWidth - 184 - 8) });
         const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
         document.addEventListener("keydown", onKey);
         return () => document.removeEventListener("keydown", onKey);
@@ -486,7 +488,7 @@ function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShi
                         </button>
                         {hasShift && (
                             <button type="button" onClick={() => { close(); onUnassign(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
-                                <SlashCircle01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
+                                <Trash01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
                             </button>
                         )}
                     </div>
@@ -728,7 +730,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
             if (b.all_day || !b.staff_ids.includes(staffId)) continue;
             if (!((b.date_from_iso ?? b.date) <= iso && iso <= (b.date_to_iso ?? b.date))) continue;
             if (!b.start_time || !b.end_time || !intersects(b.start_time, b.end_time)) continue;
-            out.push({ kind: "off", id: b.id, label: timeOffTitle(b), sub: timeOffDuration(b) });
+            out.push({ kind: "off", id: b.id, label: "Time off", sub: timeOffDuration(b) });
         }
         return out;
     }
@@ -974,29 +976,30 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                             .filter(({ shift }) => shiftIds.length === 0 || shiftIds.includes(shift.id));
                                         const dayIdx = jsDayIndex(day);
                                         const dayLabel = day.toLocaleDateString("en-US", { weekday: "long" });
-                                        // Time off blocks the whole day — no shift may be assigned
-                                        // (client 2026-07-28). The cell shows a hatched "Time off"
-                                        // block and the "+" add-shift menu is suppressed.
+                                        // ONLY all-day time off blocks the whole day. Partial (timed)
+                                        // time off no longer takes over the cell — it renders as a
+                                        // hatch inside the shift slice, so other shifts can still be
+                                        // assigned that day (client 2026-08-11).
                                         const timeOff = timeOffForStaffOnDay(s.id, day);
+                                        const allDayOff = timeOff && timeOff.all_day ? timeOff : null;
                                         return (
                                             <div
                                                 key={isoDayLocal(day)}
-                                                onDragOver={timeOff ? undefined : (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-                                                onDrop={timeOff ? undefined : (e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/shift-id"); if (id) assignShiftToStaff(s, id); }}
+                                                onDragOver={allDayOff ? undefined : (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                                                onDrop={allDayOff ? undefined : (e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/shift-id"); if (id) assignShiftToStaff(s, id); }}
                                                 className="group/cell relative px-2 py-3 border-l border-[var(--colors-border-secondary)] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
-                                                {timeOff ? (
-                                                    // Time off takes precedence — no shift is shown or
-                                                    // assignable on this day.
+                                                {allDayOff ? (
+                                                    // All-day time off takes over the cell — no shift is
+                                                    // shown or assignable this day. Reason copy is always
+                                                    // the generic "Time off" (client 2026-08-11).
                                                     <div
                                                         className="flex-1 min-h-[52px] rounded-[8px] border border-[var(--colors-border-secondary)] px-3 py-2 flex flex-col justify-center overflow-hidden"
                                                         style={{ backgroundImage: "repeating-linear-gradient(45deg, #fafafb, #fafafb 5px, #f2f4f7 5px, #f2f4f7 10px)" }}
                                                         title="Staff on time off — shifts can't be assigned this day"
                                                     >
-                                                        {/* Title = reason (Vacation / Sick / …), subtext =
-                                                            duration (All day / time range) — client 2026-08. */}
-                                                        <p className="text-[13px] font-semibold text-[var(--colors-text-tertiary)] leading-[18px] truncate">{timeOffTitle(timeOff)}</p>
-                                                        <p className="text-[12px] text-[var(--colors-fg-quaternary)] leading-[16px] truncate">{timeOffDuration(timeOff)}</p>
+                                                        <p className="text-[13px] font-semibold text-[var(--colors-text-tertiary)] leading-[18px] truncate">Time off</p>
+                                                        <p className="text-[12px] text-[var(--colors-fg-quaternary)] leading-[16px] truncate">{timeOffDuration(allDayOff)}</p>
                                                     </div>
                                                 ) : (
                                                     <>
@@ -1015,6 +1018,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                                 })} />
                                                         ))}
                                                         <DayAddShiftMenu
+                                                            staffName={s.fullName}
                                                             staffBranchId={s.branchId}
                                                             dayIdx={dayIdx}
                                                             shifts={shifts}

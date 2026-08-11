@@ -166,7 +166,7 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
                         <p className="text-[13px] text-[var(--colors-text-quaternary)] text-center py-8">
                             {assignMode ? "No more shifts to assign." : "No shifts yet — create one above."}
                         </p>
-                    ) : list.map(s => (
+                    ) : list.map((s, index) => (
                         <div key={s.id}
                             draggable={!assignMode}
                             onDragStart={assignMode ? undefined : (e) => { e.dataTransfer.setData("text/shift-id", s.id); e.dataTransfer.effectAllowed = "copy"; setMenuFor(null); }}
@@ -197,7 +197,7 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
                             {!assignMode && menuFor === s.id && (
                                 <>
                                     <div className="fixed inset-0 z-[35]" onClick={() => setMenuFor(null)} />
-                                    <div className="absolute right-2 top-10 z-40 w-[180px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1.5">
+                                    <div className={`absolute right-2 ${index >= list.length - 2 ? "bottom-full mb-1" : "top-10"} z-40 w-[180px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08)] py-1.5`}>
                                         <button type="button" onClick={() => { setMenuFor(null); setAssignFor(s); }}
                                             className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
                                             <UserPlus01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Assign staff
