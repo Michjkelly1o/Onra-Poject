@@ -35,7 +35,8 @@
 //       on `refunded_at`). Applies the same-day/unsettled void rule:
 //       when `refunded_at.slice(0,10) === created_at.slice(0,10)`, both
 //       virtual rows are erased (treated as an implicit void).
-//     • `status: "pending" | "failed"` → passes through as-is.
+//     • `status: "pending" | "failed"` → DROPPED (unsettled money is never
+//       counted as a sale — matches the recognized-revenue engine).
 //
 // The helper is a PURE function — no store reads, no side effects. Callers
 // pass in the raw transaction array (from `useAppStore(s => s.customerTransactions)`)
@@ -142,9 +143,15 @@ export function resolveLedger(
                 });
                 continue;
             }
-            // Everything else (complete / pending / failed with no refund):
-            // pass through as a sale-kind row.
-            out.push({ ...t, transactionType: "sale" });
+            // Only SETTLED sales are money-in. `pending` / `failed` are
+            // unsettled and must NOT inflate sales / revenue / tax / ARPM
+            // aggregates — this matches the recognized-revenue engine's
+            // `isRecognizableSale` and the dashboard's Sales/Revenue cards.
+            // (Unsettled dues surface separately via the raw store, e.g. the
+            // dashboard's failed-payment needs-attention row.)
+            if (t.status === "complete") {
+                out.push({ ...t, transactionType: "sale" });
+            }
             continue;
         }
     }
