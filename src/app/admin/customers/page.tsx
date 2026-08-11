@@ -453,7 +453,7 @@ function exportCustomersCsv(rows: CustomerRow[], staffLookup: Map<string, string
     const header = [
         "Name", "Email", "Phone", "Plan", "Lifecycle", "VIP",
         ...(LEAD_ASSIGNMENT_ENABLED ? ["Assigned to"] : []),
-        "Status", "Joined", "Last visit",
+        "Joined", "Last visit",
     ];
     const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
     const body = rows.map(r => [
@@ -464,7 +464,6 @@ function exportCustomersCsv(rows: CustomerRow[], staffLookup: Map<string, string
         ...(LEAD_ASSIGNMENT_ENABLED
             ? [r.assignedTo ? (staffLookup.get(r.assignedTo) ?? "—") : "Unassigned"]
             : []),
-        STATUS_LABEL[r.status],
         fmtDate(r.joinedISO), r.lastVisitISO ? fmtDate(r.lastVisitISO) : "Never visited",
     ]);
     const csv = [header, ...body].map(line => line.map(esc).join(",")).join("\r\n");
@@ -924,9 +923,6 @@ export default function CustomersPage() {
                                         <th className={cn(TH, "w-[160px]")}>
                                             <SortableHeader sortKey="lifecycle" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Lifecycle</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[120px]")}>
-                                            <SortableHeader sortKey="status"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                        </th>
                                         <th className={cn(TH, "w-[140px]")}>
                                             <SortableHeader sortKey="lastVisit" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Last visit</SortableHeader>
                                         </th>
@@ -972,7 +968,6 @@ export default function CustomersPage() {
                                                         {r.isVip && <StatusBadge type="vip" status="vip" />}
                                                     </div>
                                                 </td>
-                                                <td className={TD}><StatusBadge type="customer" status={r.status} /></td>
                                                 <td className={cn(TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>
                                                     {r.lastVisitISO ? fmtDate(r.lastVisitISO) : "—"}
                                                 </td>
