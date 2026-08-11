@@ -262,8 +262,21 @@ function SlimFlyout({ label, items, activeHref, children }: {
     };
     useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
+    const isOpen = pos !== null;
+
     return (
-        <div ref={ref} onMouseEnter={open} onMouseLeave={scheduleClose}>
+        <div
+            ref={ref}
+            onMouseEnter={open}
+            onMouseLeave={scheduleClose}
+            // While the flyout is open the pointer is over the panel (not the
+            // icon), so force the parent icon row to keep its active look — the
+            // rail row and the flyout read as one connected unit.
+            className={cn(
+                isOpen &&
+                    "[&>button]:!bg-[#eef1f4] [&>button]:!border-[#e4e7ec] [&>button]:!text-[#101828] [&>button_svg]:!text-[#101828]",
+            )}
+        >
             {children}
             {pos && createPortal(
                 <div
@@ -286,11 +299,11 @@ function SlimFlyout({ label, items, activeHref, children }: {
                                 className={cn(
                                     "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm font-medium transition-colors",
                                     active
-                                        ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
-                                        : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
+                                        ? "bg-[#eef1f4] border border-[#e4e7ec] text-[#101828]"
+                                        : "border border-transparent text-[#667085] hover:bg-[#f2f4f7] hover:text-[#101828]",
                                 )}
                             >
-                                {ChildIcon && <ChildIcon className="w-4 h-4 shrink-0" />}
+                                {ChildIcon && <ChildIcon className={cn("w-4 h-4 shrink-0", active ? "text-[#101828]" : "text-[#667085]")} />}
                                 <span className="truncate">{child.label}</span>
                             </Link>
                         );
