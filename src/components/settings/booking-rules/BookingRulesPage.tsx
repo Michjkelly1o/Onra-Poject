@@ -275,19 +275,25 @@ export default function BookingRulesPage() {
                     editLabel="Customize"
                     onEdit={() => setFpOpen(true)}
                 />
-                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                {/* One 3-column grid. The two toggle summaries sit in row 1
+                    (cancel · freeze · —); a spacer fills column 3 so the freeze
+                    detail fields start on row 2 and "Freezes per membership"
+                    lands directly under "Members can freeze their own
+                    membership" (both column 2). Client 2026-08-11. */}
+                <div className="grid grid-cols-3 gap-x-6 gap-y-5">
                     <SummaryField label="Members can cancel their own membership" value={freezePolicy.members_can_cancel ? "Yes" : "No"} />
                     <SummaryField label="Members can freeze their own membership" value={freezePolicy.enabled ? "Yes" : "No"} />
+                    {freezePolicy.enabled && (
+                        <>
+                            <div aria-hidden />
+                            <SummaryField label="Maximum freeze duration" value={freezeDurationValue} />
+                            <SummaryField label="Freezes per membership"  value={freezeFreezesValue} />
+                            <SummaryField label="Freeze fee"              value={freezeFeeValue} />
+                            <SummaryField label="Allowed reasons"         value={freezeReasonsValue} />
+                            <SummaryField label="Apply to"                value={freezeApplyToValue} />
+                        </>
+                    )}
                 </div>
-                {freezePolicy.enabled && (
-                    <div className="grid grid-cols-3 gap-x-6 gap-y-5">
-                        <SummaryField label="Maximum freeze duration" value={freezeDurationValue} />
-                        <SummaryField label="Freezes per membership"  value={freezeFreezesValue} />
-                        <SummaryField label="Freeze fee"              value={freezeFeeValue} />
-                        <SummaryField label="Allowed reasons"         value={freezeReasonsValue} />
-                        <SummaryField label="Apply to"                value={freezeApplyToValue} />
-                    </div>
-                )}
             </SettingsCard>
 
             {/* Side panels */}
