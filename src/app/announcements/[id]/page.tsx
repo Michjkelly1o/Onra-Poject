@@ -474,7 +474,9 @@ function AnnouncementDetailPageInner() {
 
     const [confirmAction, setConfirmAction] = useState<ModalAction | null>(null);
 
-    const item = marketingItems.find(m => m.id === id) ?? null;
+    // Scope to announcements — a mis-namespaced id resolves to not-found here
+    // rather than rendering under the wrong chrome.
+    const item = marketingItems.find(m => m.id === id && m.type === "announcement") ?? null;
 
     if (!item) {
         return (

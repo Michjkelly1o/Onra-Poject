@@ -23,14 +23,17 @@
 //
 // ── Current state ──
 //   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
-//   Membership & Package, Gift Cards, Promo codes, Campaigns, Customer,
-//   Services (incl. appointments), Insights, Pay rate, Payroll, Staff
-//   & Permissions (full), Agreements, Booking rules, Tax, Branding,
-//   Reports, Notifications, Customer notifications, Account settings,
-//   Business & Locations, Integrations (Payments + Apps).
+//   Membership & Package, Gift Cards, Promo codes, Campaigns,
+//   Announcements, Events, Customer, Services (incl. appointments),
+//   Insights, Pay rate, Payroll, Staff & Permissions (full), Agreements,
+//   Booking rules, Tax, Branding, Reports, Notifications, Customer
+//   notifications, Account settings, Business & Locations, Integrations
+//   (Payments + Apps), Referral (Overview + Setup).
 //
-//   DISABLED (admin): Referral (Overview + Setup) — hidden until the
-//   client signs off. Re-enable by re-commenting its prefixes below.
+//   DISABLED (admin): none — the array below is currently empty, so every
+//   admin module is reachable. Re-add a prefix to 404 a module. (Referral
+//   is LIVE; an earlier note here claimed it was hidden pending client
+//   sign-off — that was stale, its prefixes are commented out.)
 //
 //   ENABLED (instructor): Dashboard, Schedule, the upcoming/ongoing
 //   class takeover detail page (`/class/[id]`), the completed/cancelled

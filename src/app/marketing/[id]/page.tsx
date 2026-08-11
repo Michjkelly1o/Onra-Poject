@@ -507,7 +507,10 @@ function MarketingDetailPageInner() {
 
     const [confirmAction, setConfirmAction] = useState<ModalAction | null>(null);
 
-    const item = marketingItems.find(m => m.id === id) ?? null;
+    // Scope to campaigns (new_class) — a mis-namespaced id (an announcement or
+    // event) resolves to not-found here rather than rendering under the wrong
+    // "Campaign details" chrome. Each list only links ids of its own type.
+    const item = marketingItems.find(m => m.id === id && m.type === "new_class") ?? null;
 
     if (!item) {
         return (

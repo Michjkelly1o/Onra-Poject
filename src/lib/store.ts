@@ -3347,19 +3347,31 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
     };
 }
 
-// Reports v33 — deterministic promo assignment. 25% of sale rows get a
-// promo, distributed across 4 codes matching `promo_codes.ts` seed.
-const PROMO_CODES = ["WELCOME20", "FRIEND10", "SUMMER15", "LOYAL5"] as const;
-const PROMO_PCT: Record<string, number> = { WELCOME20: 0.20, FRIEND10: 0.10, SUMMER15: 0.15, LOYAL5: 0.05 };
+// Reports v33 — deterministic promo assignment over the REAL promo catalog.
+// ~25% of seed sale rows carry a promo, distributed across the live promo
+// codes (not fabricated ones), so the Discounts + Promo Redemptions reports
+// AND each promo's usage count (reconciled at boot — see INITIAL_PROMO_CODES)
+// reference actual promos with correct per-type discount math. Live POS /
+// customer redemptions stamp the real applied promo the same way.
+const DERIVABLE_PROMOS = SEED_PROMO_CODES.filter(p => p.status !== "archived");
 function deriveDiscountCode(id: string, txnType?: string): string | undefined {
     if (txnType && txnType !== "sale") return undefined;
+    if (DERIVABLE_PROMOS.length === 0) return undefined;
     if (hashString(id + "promo") % 4 !== 0) return undefined; // ~25%
-    return PROMO_CODES[hashString(id) % PROMO_CODES.length];
+    return DERIVABLE_PROMOS[hashString(id) % DERIVABLE_PROMOS.length].code;
 }
 function deriveDiscountValue(id: string, txnType: string | undefined, amount: number): number | undefined {
     const code = deriveDiscountCode(id, txnType);
     if (!code) return undefined;
-    return Math.round(amount * (PROMO_PCT[code] ?? 0));
+    const promo = DERIVABLE_PROMOS.find(p => p.code === code);
+    if (!promo) return undefined;
+    // Percentage promos take a share of the line; fixed promos take a flat AED
+    // amount, capped at the line total. Honour the promo's max-discount cap.
+    let v = promo.discount_type === "percentage"
+        ? amount * (promo.discount_value / 100)
+        : Math.min(promo.discount_value, amount);
+    if (promo.max_discount_aed != null) v = Math.min(v, promo.max_discount_aed);
+    return Math.round(v);
 }
 
 // Reports v33 — one StaffAttendanceLog row per scheduled class. Deterministic
@@ -5376,6 +5388,13 @@ export interface AppState {
          *  sale transaction so `refundTransaction` can put each amount back
          *  on the exact card it came from. Omit when no gift card was used. */
         giftCardDebits?: { cardId: string; amountAed: number }[],
+        /** Applied promotion (client 2026-08) — the code + resolved AED
+         *  discount from the checkout's `validatePromoCode`. When present, the
+         *  store stamps `discountCode` / `discountValue` on the sale
+         *  transaction (feeding the Discounts + Promo Redemptions reports) and
+         *  increments that promo's `usage_count` — the single write-path that
+         *  makes a redemption real. Omit when no promo was applied. */
+        promo?: { code: string; discountAed: number },
     ) => void;
 
     showToast: (title: string, message: string, type?: ToastData["type"], icon?: ToastData["icon"]) => void;
@@ -6230,6 +6249,28 @@ export function generateSeedFollowUpTasks(state: FollowUpTaskState): FollowUpTas
 
 const PERSIST_KEY = "onra-demo-state";
 
+// ─── Promo usage reconciliation (boot) ───────────────────────────────────────
+// The Promo Redemptions report counts sale transactions carrying a
+// `discountCode`; each promo's stored `usage_count` (admin list + detail +
+// delete guard + usage-limit gate) must agree with that. Seed sale rows get
+// their promo derived at boot (deriveDiscountCode, real catalog), so we count
+// those here and stamp the matching total onto each promo — keeping the admin
+// numbers, the guards, and the report in lock-step. Live POS / customer
+// redemptions increment both sides together in `applyPurchase`.
+const INITIAL_ALL_TRANSACTIONS: CustomerTransaction[] = [
+    ...INITIAL_CUSTOMER_TRANSACTIONS, ...INITIAL_GIFT_CARD_SALE_TXNS,
+    ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions,
+];
+const PROMO_USAGE_FROM_SEED: Record<string, number> = {};
+for (const t of INITIAL_ALL_TRANSACTIONS) {
+    if ((t.transactionType ?? "sale") === "sale" && t.discountCode) {
+        PROMO_USAGE_FROM_SEED[t.discountCode] = (PROMO_USAGE_FROM_SEED[t.discountCode] ?? 0) + 1;
+    }
+}
+const INITIAL_PROMO_CODES: PromoCode[] = SEED_PROMO_CODES.map(p => ({
+    ...p, usage_count: PROMO_USAGE_FROM_SEED[p.code] ?? 0,
+}));
+
 export const useAppStore = create<AppState>()(persist(
     (set, get) => ({
     currentRole: "admin",
@@ -6281,7 +6322,7 @@ export const useAppStore = create<AppState>()(persist(
     classRatings: INITIAL_RATINGS,
     customers: [...SHOWCASE_CUSTOMERS, ...FOLLOWUP_SHOWCASE.customers, ...BULK_SHOWCASE.customers, ...INITIAL_CUSTOMERS],
     customerPlans: [...INITIAL_CUSTOMER_PLANS, ...SHOWCASE_PLANS, ...FOLLOWUP_SHOWCASE.plans, ...BULK_SHOWCASE.plans],
-    customerTransactions: [...INITIAL_CUSTOMER_TRANSACTIONS, ...INITIAL_GIFT_CARD_SALE_TXNS, ...SHOWCASE_TRANSACTIONS, ...BULK_SHOWCASE.transactions],
+    customerTransactions: [...INITIAL_ALL_TRANSACTIONS],
     customerAgreements: INITIAL_CUSTOMER_AGREEMENTS,
     customerReferrals: INITIAL_CUSTOMER_REFERRALS,
     walletTransactions: INITIAL_WALLET_TRANSACTIONS,
@@ -6289,7 +6330,7 @@ export const useAppStore = create<AppState>()(persist(
     packages: [...SEED_PACKAGES],
     giftCardDesigns: [...SEED_GIFT_CARD_DESIGNS],
     issuedGiftCards: [...SEED_ISSUED_GIFT_CARDS],
-    promoCodes: [...SEED_PROMO_CODES],
+    promoCodes: [...INITIAL_PROMO_CODES],
     marketingItems: [...SEED_MARKETING_ITEMS],
     // Reports v33 slices
     leads: [...SEED_LEADS],
@@ -11818,7 +11859,7 @@ export const useAppStore = create<AppState>()(persist(
 
     setPendingPurchase: (purchase) => set({ pendingPurchase: purchase }),
     setAiScratchCoverImage: (url) => set({ aiScratchCoverImage: url }),
-    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride, giftCardDebits) => {
+    applyPurchase: (customerId, items, paymentSource, sellerStaffId, accountCreditAppliedAed, saleBranchIdOverride, giftCardDebits, promo) => {
         // Snapshot the buyer + a description of what they bought BEFORE the
         // `set` so the notification body reads natural ("X purchased the Y
         // Package for AED Z") even if subsequent sets re-enter.
@@ -12378,6 +12419,24 @@ export const useAppStore = create<AppState>()(persist(
                 });
             });
 
+            // ─── Promo redemption ─────────────────────────────────────────
+            // Stamp the applied promo on the FIRST real sale line (gift-card
+            // rows are excluded from promos) so the Discounts + Promo
+            // Redemptions reports and each promo's usage count reflect this
+            // real redemption. `usage_count` is bumped in the state patch
+            // below so the admin list, delete guard, and usage-limit gate all
+            // stay in lock-step with the transaction ledger.
+            const promoCode = promo?.code?.trim().toUpperCase();
+            const promoStamped = !!promoCode && (() => {
+                const firstSale = newTransactions.find(
+                    t => (t.transactionType ?? "sale") === "sale" && t.kind !== "gift_card",
+                );
+                if (!firstSale) return false;
+                firstSale.discountCode = promo!.code;
+                firstSale.discountValue = promo!.discountAed;
+                return true;
+            })();
+
             return {
                 customers,
                 ...(newIssued.length > 0
@@ -12390,6 +12449,11 @@ export const useAppStore = create<AppState>()(persist(
                         : {}),
                 ...(newTransactions.length > 0
                     ? { customerTransactions: [...newTransactions, ...state.customerTransactions] }
+                    : {}),
+                ...(promoStamped
+                    ? { promoCodes: state.promoCodes.map(p =>
+                        p.code.toUpperCase() === promoCode
+                            ? { ...p, usage_count: p.usage_count + 1 } : p) }
                     : {}),
                 ...(retailItems.length > 0
                     ? {
@@ -12455,7 +12519,10 @@ export const useAppStore = create<AppState>()(persist(
         try {
             const stateNow = get();
             const buyer = stateNow.customers.find(c => c.id === customerId);
-            if (buyer) {
+            // Referral rewards only pay out while the program is active — an
+            // admin toggling it off halts issuance of even already-pending
+            // referrals (the toggle isn't cosmetic).
+            if (buyer && stateNow.referralSettings.programActive) {
                 // "First purchase" = this buyer had no COMPLETED sale rows
                 // before the ones we just wrote. Filter to sales (not
                 // refunds/voids) and exclude this run's rows — every id

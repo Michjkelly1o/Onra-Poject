@@ -148,6 +148,9 @@ function PosCheckoutBody({ onCancel, onComplete }: {
             accountCreditApplied > 0 ? accountCreditApplied : undefined,
             pendingPurchase.saleBranchId,
             giftDebits,
+            pendingPurchase.promoCode
+                ? { code: pendingPurchase.promoCode, discountAed: pendingPurchase.promoDiscountAed ?? 0 }
+                : undefined,
         );
         setPendingPurchase(null);
         showToast(

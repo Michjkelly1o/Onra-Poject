@@ -199,6 +199,9 @@ function ScheduleCheckoutInner() {
             accountCreditApplied > 0 ? accountCreditApplied : undefined,
             undefined,
             giftDebits,
+            pendingPurchase.promoCode
+                ? { code: pendingPurchase.promoCode, discountAed: pendingPurchase.promoDiscountAed ?? 0 }
+                : undefined,
         );
         router.replace(`/schedule/${classId}?paymentSuccess=1&customerId=${customer.id}`);
     }

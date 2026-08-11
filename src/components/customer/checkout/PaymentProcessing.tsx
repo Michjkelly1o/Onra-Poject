@@ -93,6 +93,12 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
                 "customer_portal",
                 undefined,
                 totals.accountCredit > 0 ? totals.accountCredit : undefined,
+                undefined,
+                undefined,
+                // Applied promo → records the redemption (stamps the txn +
+                // bumps usage_count) so the customer-side sale reflects in the
+                // Promo Redemptions report exactly like a POS redemption.
+                promo ? { code: promo.code, discountAed: totals.discount } : undefined,
             );
 
             const now = new Date();
