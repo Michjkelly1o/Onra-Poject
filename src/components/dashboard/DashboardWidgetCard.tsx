@@ -182,6 +182,13 @@ const WIDGET_SERIES_IDS = new Set([
     "new-customers-source",
     "top-memberships",
     "intro-member-funnel",
+    // Class
+    "class-bookings",
+    "bookings-by-source",
+    "bookings-vs-visits",
+    "attendance-overview",
+    "no-show-rate",
+    "underfilled-trend",
 ]);
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -2199,8 +2206,9 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
     const seMemberships = useAppStore(s => isSeriesWidget ? s.memberships : null);
     const seCustomers   = useAppStore(s => isSeriesWidget ? s.customers : null);
     const sePlans       = useAppStore(s => isSeriesWidget ? s.customerPlans : null);
+    const seSchedules   = useAppStore(s => isSeriesWidget ? s.classSchedules : null);
     const financialSeries = useMemo(() => {
-        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans) return null;
+        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans || !seSchedules) return null;
         return computeWidgetSeries(widgetId, period ?? DEFAULT_PERIOD, {
             transactions: seTxns,
             bookings: seBookings,
@@ -2208,9 +2216,10 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
             memberships: seMemberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
             customers: seCustomers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId })),
             customerPlans: sePlans.map(p => ({ id: p.id, customerId: p.customerId, kind: p.kind, productId: p.productId, status: p.status, purchasedAtISO: p.purchasedAtISO, expiryISO: p.expiryISO, cancelledAtISO: p.cancelledAtISO, priceAed: p.priceAed })),
+            schedules: seSchedules.map(s => ({ id: s.id, dateISO: s.dateISO, branchId: s.branchId, booked: s.booked, capacity: s.capacity, type: s.type })),
             branchIds,
         });
-    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, branchIds]);
+    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, seSchedules, branchIds]);
 
     if (!meta) return null;
 

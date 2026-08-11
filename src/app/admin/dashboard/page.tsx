@@ -1746,6 +1746,7 @@ export default function AdminDashboard() {
                                                 memberships: memberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
                                                 customers: customers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId })),
                                                 customerPlans: customerPlans.map(p => ({ id: p.id, customerId: p.customerId, kind: p.kind, productId: p.productId, status: p.status, purchasedAtISO: p.purchasedAtISO, expiryISO: p.expiryISO, cancelledAtISO: p.cancelledAtISO, priceAed: p.priceAed })),
+                                                schedules: classSchedules.map(s => ({ id: s.id, dateISO: s.dateISO, branchId: s.branchId, booked: s.booked, capacity: s.capacity, type: s.type })),
                                                 branchIds: branchScopeIds ?? undefined,
                                             })]),
                                         );

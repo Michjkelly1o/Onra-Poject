@@ -156,6 +156,9 @@ export interface WidgetInput {
      *  from member/count surfaces. */
     customers: { id: string; createdAt: string; status: "active" | "archived"; marketingSource?: string; branchId: string }[];
     customerPlans: { id: string; customerId: string; kind: "membership" | "package" | "complimentary"; productId?: string; status: string; purchasedAtISO: string; expiryISO: string; cancelledAtISO?: string; priceAed?: number }[];
+    /** Class schedule instances — Class widgets bucket bookings by the class's
+     *  `dateISO` (not booking time) and read booked/capacity for occupancy. */
+    schedules: { id: string; dateISO: string; branchId: string; booked: number; capacity: number; type: string }[];
     /** Selected branch scope. Empty/undefined = all branches (aggregate). */
     branchIds?: string[];
 }
@@ -206,6 +209,16 @@ export function computeWidgetSeries(
     const planStartMs = (p: WidgetInput["customerPlans"][number]) => Date.parse(p.purchasedAtISO);
     const planEndMs = (p: WidgetInput["customerPlans"][number]) => Date.parse((p.status === "cancelled" || p.status === "removed") && p.cancelledAtISO ? p.cancelledAtISO : p.expiryISO);
     const activeDuring = (p: WidgetInput["customerPlans"][number], b: WidgetBucket) => planStartMs(p) <= b.toMs && planEndMs(p) >= b.fromMs;
+
+    // ── Class-widget scoping ─────────────────────────────────────────────
+    // Class bookings bucket by their schedule's dateISO (the class date), not
+    // the booking time. `bookings` is already branch-scoped (booking.branchId).
+    const schedById = new Map(input.schedules.map(s => [s.id, s]));
+    const classDateMs = (bk: ClassBooking): number | null => {
+        const s = schedById.get(bk.classScheduleId);
+        return s ? Date.parse(s.dateISO) : null;
+    };
+    const scopedClassSchedules = input.schedules.filter(s => s.type === "class" && branchOk(s.branchId, branchIds));
 
     const isSettledSale = (t: CustomerTransaction) =>
         t.status === "complete" && (t.transactionType === undefined || t.transactionType === "sale");
@@ -384,6 +397,82 @@ export function computeWidgetSeries(
                 { stage: "Returned",       sublabel: "booked a 2nd+ visit", count: returned.size },
                 { stage: "Bought a plan",  sublabel: "membership or pack",  count: bought.size },
             ];
+        }
+
+        // ── Class widgets ───────────────────────────────────────────────
+        case "class-bookings": {
+            const booked = bookings.filter(bk => bk.status === "booked");
+            return buckets.map(b => ({
+                date: b.label,
+                v: booked.filter(bk => { const ms = classDateMs(bk); return ms !== null && inBucket(ms, b); }).length,
+            }));
+        }
+        case "bookings-by-source": {
+            // Booking counts by origin, mapped to the widget's 3 buckets:
+            // crm ← admin, app ← customer_portal, web ← front_desk / pos / other.
+            return buckets.map(b => {
+                let crm = 0, app = 0, web = 0;
+                for (const bk of bookings) {
+                    if (bk.status !== "booked") continue;
+                    const ms = classDateMs(bk);
+                    if (ms === null || !inBucket(ms, b)) continue;
+                    const src = bk.bookingSource ?? "pos";
+                    if (src === "admin") crm += 1;
+                    else if (src === "customer_portal") app += 1;
+                    else web += 1;
+                }
+                return { date: b.label, crm, app, web };
+            });
+        }
+        case "bookings-vs-visits": {
+            return buckets.map(b => {
+                let bk = 0, vis = 0;
+                for (const x of bookings) {
+                    const ms = classDateMs(x);
+                    if (ms === null || !inBucket(ms, b)) continue;
+                    if (x.status === "booked") bk += 1;
+                    if (x.attendanceStatus === "present") vis += 1;
+                }
+                return { date: b.label, bookings: bk, visits: vis };
+            });
+        }
+        case "attendance-overview": {
+            return buckets.map(b => {
+                let visits = 0, cancellations = 0, noShow = 0;
+                for (const x of bookings) {
+                    const ms = classDateMs(x);
+                    if (ms === null || !inBucket(ms, b)) continue;
+                    if (x.attendanceStatus === "present") visits += 1;
+                    else if (x.status === "cancelled" || x.attendanceStatus === "late_cancel") cancellations += 1;
+                    else if (x.attendanceStatus === "no_show") noShow += 1;
+                }
+                return { date: b.label, visits, cancellations, noShow };
+            });
+        }
+        case "no-show-rate": {
+            return buckets.map(b => {
+                let present = 0, noShow = 0;
+                for (const x of bookings) {
+                    const ms = classDateMs(x);
+                    if (ms === null || !inBucket(ms, b)) continue;
+                    if (x.attendanceStatus === "present") present += 1;
+                    else if (x.attendanceStatus === "no_show") noShow += 1;
+                }
+                const denom = present + noShow;
+                return { date: b.label, rate: denom > 0 ? Math.round((noShow / denom) * 100) : 0 };
+            });
+        }
+        case "underfilled-trend": {
+            // Class instances in the bucket filled under 30% of capacity.
+            return buckets.map(b => ({
+                date: b.label,
+                count: scopedClassSchedules.filter(s => {
+                    const ms = Date.parse(s.dateISO);
+                    if (!inBucket(ms, b)) return false;
+                    const occ = s.capacity > 0 ? (s.booked ?? 0) / s.capacity : 0;
+                    return occ < 0.3;
+                }).length,
+            }));
         }
 
         default:
