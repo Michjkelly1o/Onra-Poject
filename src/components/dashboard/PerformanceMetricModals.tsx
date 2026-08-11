@@ -245,7 +245,7 @@ export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModal
                 <>
                     <span className="font-semibold text-[var(--colors-text-primary)]">{aed(Math.round(totalAccrued))}</span>{" "}
                     earned · across{" "}
-                    <span className="font-semibold text-[var(--colors-text-primary)]">{totalRows} plan{totalRows === 1 ? "" : "s"}</span>{" "}
+                    <span className="font-semibold text-[var(--colors-text-primary)]">{totalRows} product{totalRows === 1 ? "" : "s"}</span>{" "}
                     · {period.label}
                 </>
             }
@@ -261,7 +261,7 @@ export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModal
                     <thead>
                         <tr>
                             <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
-                            <th className={TH}><SortableHeader sortKey="product" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Plan</SortableHeader></th>
+                            <th className={TH}><SortableHeader sortKey="product" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Products</SortableHeader></th>
                             <th className={TH}>Basis</th>
                             <th className={TH}><SortableHeader sortKey="accrued" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Accrued</SortableHeader></th>
                         </tr>
