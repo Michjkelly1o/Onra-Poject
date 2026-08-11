@@ -541,6 +541,14 @@ const ChartTooltip = ({ active, payload, label, valueFormatter }: {
     );
 };
 
+/** Truncate a long axis label so category names (e.g. campaign titles) don't
+ *  overlap on the x-axis. Short labels (dates, numbers, month names) pass
+ *  through untouched. Applied to every chart via `axisProps`. */
+function truncateTick(value: unknown): string {
+    const s = String(value ?? "");
+    return s.length > 12 ? `${s.slice(0, 11)}…` : s;
+}
+
 /** Y-axis tick formatter for AED bar charts — compacts to "8k / 12k" so the
  *  axis doesn't blow out to "12,500". Used with Sales by product. */
 function aedAxisTick(value: number): string {
@@ -1087,6 +1095,10 @@ function renderChart(
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
+        // Truncate long category labels (campaign names, membership names, …) so
+        // ticks never overlap. Numeric Y axes with their own tickFormatter
+        // (aedAxisTick) override this; short date/number labels are unaffected.
+        tickFormatter: truncateTick,
     };
 
     switch (id) {
