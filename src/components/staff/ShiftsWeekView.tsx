@@ -116,21 +116,84 @@ function shiftPalette(shift: Shift, index: number) {
     return SHIFT_PALETTE[index % SHIFT_PALETTE.length];
 }
 
-/** Shift card — reuses the schedule class-card visual language: a coloured
- *  left stripe, tinted body, shift name + time range. A hover trash button
- *  (top-right) unassigns THIS shift on THIS day only (client 2026-07-24). */
-function ShiftCard({ shift, index, onUnassign }: { shift: Shift; index: number; onUnassign?: () => void }) {
-    const c = shiftPalette(shift, index);
-    const time = `${to12h(shift.start_time)} - ${to12h(shift.end_time)}`;
+// ─── Slice-style shift card (Figma 8175:507703 — matches TodayScheduleCell) ──
+//
+// A proportional timeline of the shift window: the instructor's classes /
+// appointments that day paint a light branch-green block positioned by their
+// real start/end; a partial time-off range paints a gray diagonal hatch;
+// evenly-spaced dividers mark each hour. Shift name + time sit below. A staff
+// member with nothing booked (or any non-instructor role) shows an empty bar
+// with just the hour dividers.
+const SLICE_FILL  = "#d7ffe9"; // utility-brand-100
+const SLICE_HATCH = "repeating-linear-gradient(115deg, #e4e7ec 0px, #e4e7ec 3px, #f9fafb 3px, #f9fafb 4px)";
+
+/** "07:30" → 7.5 */
+function hoursOf(t: string): number {
+    const [h, m] = (t || "0").split(":").map(Number);
+    return (h || 0) + (m || 0) / 60;
+}
+
+/** "07:00 – 12:00 AM" — 12-hour HH:MM range with a single trailing meridiem
+ *  taken from the start (Figma 8175:507703 / Today's-schedule convention). */
+function sliceTimeLabel(start: string, end: string): string {
+    const to12 = (t: string) => {
+        const [h, m] = (t || "0").split(":").map(Number);
+        const hh = (h || 0) % 12 === 0 ? 12 : (h || 0) % 12;
+        return `${String(hh).padStart(2, "0")}:${String(m || 0).padStart(2, "0")}`;
+    };
+    const mer = parseInt(start.split(":")[0] || "0", 10) < 12 ? "AM" : "PM";
+    return `${to12(start)} – ${to12(end)} ${mer}`;
+}
+
+/** Slice-style shift card. `sessions` are the instructor's active class/appt
+ *  time ranges that day; `partialOffs` are non-all-day time-off ranges. A hover
+ *  trash (top-right) unassigns THIS shift on THIS day only. */
+function ShiftSliceCard({ shift, sessions, partialOffs, onUnassign }: {
+    shift: Shift;
+    sessions: { startTime: string; endTime: string }[];
+    partialOffs: { start_time: string; end_time: string }[];
+    onUnassign?: () => void;
+}) {
+    const s0 = hoursOf(shift.start_time);
+    const s1 = hoursOf(shift.end_time);
+    const dur = Math.max(0.001, s1 - s0);
+    const pct = (t: number) => Math.max(0, Math.min(100, ((t - s0) / dur) * 100));
+    const seg = (a: string, b: string) => {
+        const l = pct(hoursOf(a));
+        const r = pct(hoursOf(b || a));
+        return { left: l, width: Math.max(0, r - l) };
+    };
+    // Only paint what actually intersects THIS shift window (zero-width belongs
+    // to a different shift) so multi-shift days partition cleanly.
+    const greens  = sessions.map(x => seg(x.startTime, x.endTime)).filter(g => g.width > 0);
+    const hatches = partialOffs.map(b => seg(b.start_time, b.end_time)).filter(g => g.width > 0);
+    const dividers: number[] = [];
+    for (let h = Math.floor(s0) + 1; h < s1; h++) dividers.push(pct(h));
+    const time = sliceTimeLabel(shift.start_time, shift.end_time);
     return (
         <div
-            className="group/card relative w-full overflow-hidden rounded-[8px] border pl-[10px] pr-2 py-1.5"
-            style={{ backgroundColor: c.bg, borderColor: c.border }}
+            className="group/card relative w-full overflow-hidden rounded-[8px] border border-[#e4e7ec] bg-[#f9fafb]"
             title={`${shift.name} · ${time}`}
         >
-            <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-[8px]" style={{ backgroundColor: c.stripe }} aria-hidden />
-            <p className="truncate text-[12px] font-semibold leading-4 pr-4" style={{ color: c.name }}>{shift.name}</p>
-            <p className="truncate text-[11px] leading-4" style={{ color: c.time }}>{time}</p>
+            {/* Slice = the card background: session greens + time-off hatch + hour
+                dividers painted FULL-HEIGHT behind the text (Figma 8175:507703).
+                The card keeps its original size; only the fill changes. */}
+            <div className="pointer-events-none absolute inset-0" aria-hidden>
+                {hatches.map((g, i) => (
+                    <div key={`h${i}`} className="absolute inset-y-0" style={{ left: `${g.left}%`, width: `${g.width}%`, backgroundColor: "#e4e7ec", backgroundImage: SLICE_HATCH }} />
+                ))}
+                {greens.map((g, i) => (
+                    <div key={`g${i}`} className="absolute inset-y-0" style={{ left: `${g.left}%`, width: `${g.width}%`, backgroundColor: SLICE_FILL }} />
+                ))}
+                {dividers.map((d, i) => (
+                    <div key={`d${i}`} className="absolute inset-y-0 w-px bg-[#e4e7ec]" style={{ left: `${d}%` }} />
+                ))}
+            </div>
+            {/* Text overlay — same padding + type sizes as the previous card. */}
+            <div className="relative pl-[10px] pr-2 py-1.5">
+                <p className="truncate text-[12px] font-semibold leading-4 pr-4 text-[#101828]">{shift.name}</p>
+                <p className="truncate text-[11px] leading-4 text-[#667085]">{time}</p>
+            </div>
             {onUnassign && (
                 <button type="button" aria-label="Unassign shift"
                     onClick={(e) => { e.stopPropagation(); onUnassign(); }}
@@ -488,6 +551,10 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     const roles            = useAppStore(s => s.roles);
     const shifts           = useAppStore(s => s.shifts);
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
+    // The instructor's sessions paint the slice green (client 2026-08-11) —
+    // classes + appointments they run, per day, within each shift window.
+    const classSchedules   = useAppStore(s => s.classSchedules);
+    const appointments     = useAppStore(s => s.appointments);
     // Time off blocks shift assignment — a staff member on time off for a day
     // can't be given a shift that day (client 2026-07-28).
     const blockedTimes     = useAppStore(s => s.blockedTimes);
@@ -602,6 +669,31 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
         // Sort ascending by start time so Morning appears above Afternoon.
         out.sort((a, b) => a.shift.start_time.localeCompare(b.shift.start_time));
         return out;
+    }
+
+    /** The instructor's ACTIVE class + appointment time ranges on `day` — these
+     *  paint the slice green. Cancelled sessions are skipped. Non-instructor
+     *  roles simply have none, so their slice stays empty. */
+    function sessionsForStaffOnDay(staffId: string, day: Date): { startTime: string; endTime: string }[] {
+        const iso = isoDayLocal(day);
+        const cls = classSchedules
+            .filter(c => c.instructorId === staffId && c.dateISO === iso && c.status !== "Cancelled")
+            .map(c => ({ startTime: c.startTime, endTime: c.endTime }));
+        const app = appointments
+            .filter(a => a.instructorId === staffId && a.dateISO === iso && a.status !== "Cancelled")
+            .map(a => ({ startTime: a.startTime, endTime: a.endTime }));
+        return [...cls, ...app];
+    }
+
+    /** Partial (non-all-day) time-off ranges covering `day` for this staff —
+     *  painted as a gray hatch inside the slice. */
+    function partialOffsForStaffOnDay(staffId: string, day: Date): { start_time: string; end_time: string }[] {
+        const iso = isoDayLocal(day);
+        return blockedTimes
+            .filter(b => !b.all_day && b.staff_ids.includes(staffId)
+                && (b.date_from_iso ?? b.date) <= iso && iso <= (b.date_to_iso ?? b.date)
+                && b.start_time && b.end_time)
+            .map(b => ({ start_time: b.start_time as string, end_time: b.end_time as string }));
     }
 
     /** Assign `shiftId` to `staff` — but first guard against a same-day time
@@ -846,8 +938,10 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                     </div>
                                                 ) : (
                                                     <>
-                                                        {dayShifts.map(({ shift, assignment }, si) => (
-                                                            <ShiftCard key={assignment.id} shift={shift} index={si}
+                                                        {dayShifts.map(({ shift, assignment }) => (
+                                                            <ShiftSliceCard key={assignment.id} shift={shift}
+                                                                sessions={sessionsForStaffOnDay(s.id, day)}
+                                                                partialOffs={partialOffsForStaffOnDay(s.id, day)}
                                                                 onUnassign={() => setUnassignDay({
                                                                     assignmentId: assignment.id,
                                                                     shiftName: shift.name,
