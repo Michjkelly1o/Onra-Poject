@@ -194,6 +194,14 @@ const WIDGET_SERIES_IDS = new Set([
     "private-rebooking",
     "recovery-bookings",
     "recovery-attach-rate",
+    // Marketing
+    "kpi-leads-by-source",
+    "kpi-campaign-perf",
+    "kpi-marketing-efficiency",
+    "kpi-lead-funnel",
+    "campaign-performance",
+    "referral-program",
+    "promo-redemptions",
 ]);
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -2214,21 +2222,29 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
     const seSchedules   = useAppStore(s => isSeriesWidget ? s.classSchedules : null);
     const seAppts       = useAppStore(s => isSeriesWidget ? s.appointments : null);
     const seApptBookings = useAppStore(s => isSeriesWidget ? s.appointmentBookings : null);
+    const seLeads       = useAppStore(s => isSeriesWidget ? s.leads : null);
+    const seCampaigns   = useAppStore(s => isSeriesWidget ? s.marketingCampaignStats : null);
+    const seSpend       = useAppStore(s => isSeriesWidget ? s.marketingSpend : null);
+    const seReferrals   = useAppStore(s => isSeriesWidget ? s.customerReferrals : null);
     const financialSeries = useMemo(() => {
-        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans || !seSchedules || !seAppts || !seApptBookings) return null;
+        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans || !seSchedules || !seAppts || !seApptBookings || !seLeads || !seCampaigns || !seSpend || !seReferrals) return null;
         return computeWidgetSeries(widgetId, period ?? DEFAULT_PERIOD, {
             transactions: seTxns,
             bookings: seBookings,
             packages: sePackages.map(p => ({ id: p.id, credits: typeof p.credits === "number" ? p.credits : 0, name: p.name, isIntro: p.is_intro_offer })),
             memberships: seMemberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
-            customers: seCustomers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId })),
+            customers: seCustomers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId, name: `${c.firstName} ${c.lastName}`.trim() })),
             customerPlans: sePlans.map(p => ({ id: p.id, customerId: p.customerId, kind: p.kind, productId: p.productId, status: p.status, purchasedAtISO: p.purchasedAtISO, expiryISO: p.expiryISO, cancelledAtISO: p.cancelledAtISO, priceAed: p.priceAed })),
             schedules: seSchedules.map(s => ({ id: s.id, dateISO: s.dateISO, branchId: s.branchId, booked: s.booked, capacity: s.capacity, type: s.type })),
             appointments: seAppts.map(a => ({ id: a.id, type: a.type, dateISO: a.dateISO, branchId: a.branchId, capacity: a.capacity, booked: a.booked, status: a.status })),
             appointmentBookings: seApptBookings.map(bk => ({ appointmentId: bk.appointmentId, customerId: bk.customerId, status: bk.status })),
+            leads: seLeads.map(l => ({ source: l.source, stage: l.stage, added_at: l.added_at, branch_id: l.branch_id })),
+            campaignStats: seCampaigns.map(c => ({ campaign_id: c.campaign_id, campaign_name: c.campaign_name, sent_at: c.sent_at, sends: c.sends, opens_reads: c.opens_reads, clicks_taps: c.clicks_taps, attributed_bookings: c.attributed_bookings, attributed_revenue_aed: c.attributed_revenue_aed, branch_id: c.branch_id })),
+            marketingSpend: seSpend.map(s => ({ month: s.month, spend_aed: s.spend_aed, branch_id: s.branch_id })),
+            referrals: seReferrals.map(r => ({ referrer_customer_id: r.referrerCustomerId, referred_at: r.referredAtISO })),
             branchIds,
         });
-    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, seSchedules, seAppts, seApptBookings, branchIds]);
+    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, seSchedules, seAppts, seApptBookings, seLeads, seCampaigns, seSpend, seReferrals, branchIds]);
 
     if (!meta) return null;
 

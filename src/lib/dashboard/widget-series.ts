@@ -153,8 +153,8 @@ export interface WidgetInput {
     packages: { id: string; credits: number; name?: string; isIntro?: boolean }[];
     memberships: { id: string; credits: number | string; duration_months?: number; name?: string; isIntro?: boolean }[];
     /** Non-archived flag comes via `status`; archived customers are excluded
-     *  from member/count surfaces. */
-    customers: { id: string; createdAt: string; status: "active" | "archived"; marketingSource?: string; branchId: string }[];
+     *  from member/count surfaces. `name` feeds the referral leaderboard. */
+    customers: { id: string; createdAt: string; status: "active" | "archived"; marketingSource?: string; branchId: string; name?: string }[];
     customerPlans: { id: string; customerId: string; kind: "membership" | "package" | "complimentary"; productId?: string; status: string; purchasedAtISO: string; expiryISO: string; cancelledAtISO?: string; priceAed?: number }[];
     /** Class schedule instances — Class widgets bucket bookings by the class's
      *  `dateISO` (not booking time) and read booked/capacity for occupancy. */
@@ -162,6 +162,11 @@ export interface WidgetInput {
     /** Private/Recovery appointment instances + their seat bookings. */
     appointments: { id: string; type: string; dateISO: string; branchId: string; capacity?: number; booked?: number; status: string }[];
     appointmentBookings: { appointmentId: string; customerId: string; status: string }[];
+    /** Marketing slices — leads, campaign stats, monthly spend, referrals. */
+    leads: { source: string; stage: string; added_at: string; branch_id: string }[];
+    campaignStats: { campaign_id: string; campaign_name: string; sent_at: string; sends: number; opens_reads: number; clicks_taps: number; attributed_bookings: number; attributed_revenue_aed: number; branch_id: string }[];
+    marketingSpend: { month: string; spend_aed: number; branch_id: string }[];
+    referrals: { referrer_customer_id: string; referred_at: string }[];
     /** Selected branch scope. Empty/undefined = all branches (aggregate). */
     branchIds?: string[];
 }
@@ -222,6 +227,11 @@ export function computeWidgetSeries(
         return s ? Date.parse(s.dateISO) : null;
     };
     const scopedClassSchedules = input.schedules.filter(s => s.type === "class" && branchOk(s.branchId, branchIds));
+
+    // ── Marketing-widget scoping ─────────────────────────────────────────
+    const leadsScoped = input.leads.filter(l => branchOk(l.branch_id, branchIds));
+    const campScoped = input.campaignStats.filter(c => branchOk(c.branch_id, branchIds));
+    const spendScoped = input.marketingSpend.filter(s => branchOk(s.branch_id, branchIds));
 
     const isSettledSale = (t: CustomerTransaction) =>
         t.status === "complete" && (t.transactionType === undefined || t.transactionType === "sale");
@@ -556,6 +566,103 @@ export function computeWidgetSeries(
                 }
                 return { date: b.label, pct: visits > 0 ? Math.round((attached / visits) * 100) : 0 };
             });
+        }
+
+        // ── Marketing widgets ───────────────────────────────────────────
+        case "kpi-leads-by-source": {
+            const bucketOf = (src: string) => {
+                const s = (src || "").toLowerCase();
+                if (s.includes("instagram") || s.includes("meta") || s.includes("facebook")) return "instagram";
+                if (s.includes("google") || s.includes("search")) return "google";
+                if (s.includes("referral") || s.includes("refer")) return "referral";
+                return "website";
+            };
+            return buckets.map(b => {
+                const c = { instagram: 0, google: 0, referral: 0, website: 0 };
+                for (const l of leadsScoped) {
+                    if (!inBucket(Date.parse(l.added_at), b)) continue;
+                    c[bucketOf(l.source)] += 1;
+                }
+                return { date: b.label, ...c };
+            });
+        }
+        case "kpi-campaign-perf": {
+            return buckets.map(b => {
+                let sends = 0, opens = 0, clicks = 0;
+                for (const cs of campScoped) {
+                    if (!inBucket(Date.parse(cs.sent_at), b)) continue;
+                    sends += cs.sends; opens += cs.opens_reads; clicks += cs.clicks_taps;
+                }
+                return { date: b.label, sends, opens, clicks };
+            });
+        }
+        case "kpi-marketing-efficiency": {
+            const monthMs = (m: string) => Date.parse(`${m}-01T00:00:00Z`);
+            return buckets.map(b => {
+                const leadsN = leadsScoped.filter(l => inBucket(Date.parse(l.added_at), b)).length;
+                const newMembers = scopedCustomers.filter(c => inBucket(Date.parse(c.createdAt), b)).length;
+                const spend = spendScoped.filter(s => inBucket(monthMs(s.month), b)).reduce((sum, s) => sum + s.spend_aed, 0);
+                const revenue = computeRecognizedRevenue(revInput, b.fromMs, b.toMs);
+                return {
+                    date: b.label,
+                    cpl: leadsN > 0 ? Math.round(spend / leadsN) : 0,
+                    cac: newMembers > 0 ? Math.round(spend / newMembers) : 0,
+                    roas: spend > 0 ? Math.round((revenue / spend) * 10) / 10 : 0,
+                };
+            });
+        }
+        case "kpi-lead-funnel": {
+            const stages: { key: string; stage: string; color: string }[] = [
+                { key: "new",            stage: "New leads",      color: "#92d1de" },
+                { key: "contacted",      stage: "Contacted",      color: "#94aeaf" },
+                { key: "trial-booked",   stage: "Trial booked",   color: "#b892ba" },
+                { key: "trial-attended", stage: "Trial attended", color: "#f7b955" },
+                { key: "paid",           stage: "Paid",           color: "#90a099" },
+            ];
+            const byStage = new Map<string, number>();
+            for (const l of leadsScoped) byStage.set(l.stage, (byStage.get(l.stage) ?? 0) + 1);
+            return stages.map(s => ({ stage: s.stage, v: byStage.get(s.key) ?? 0, color: s.color }));
+        }
+        case "campaign-performance": {
+            const from = buckets[0]?.fromMs ?? 0;
+            const to = buckets[buckets.length - 1]?.toMs ?? 0;
+            const byCampaign = new Map<string, { name: string; sent: number; opened: number; booked: number; revenueAed: number }>();
+            for (const cs of campScoped) {
+                const ms = Date.parse(cs.sent_at);
+                if (ms < from || ms > to) continue;
+                const cur = byCampaign.get(cs.campaign_id) ?? { name: cs.campaign_name, sent: 0, opened: 0, booked: 0, revenueAed: 0 };
+                cur.sent += cs.sends; cur.opened += cs.opens_reads; cur.booked += cs.attributed_bookings; cur.revenueAed += cs.attributed_revenue_aed;
+                byCampaign.set(cs.campaign_id, cur);
+            }
+            return Array.from(byCampaign.values())
+                .sort((a, b) => b.revenueAed - a.revenueAed).slice(0, 4)
+                .map(c => ({ name: c.name, sent: c.sent, opened: c.opened, booked: c.booked, revenueAed: c.revenueAed }));
+        }
+        case "referral-program": {
+            const from = buckets[0]?.fromMs ?? 0;
+            const to = buckets[buckets.length - 1]?.toMs ?? 0;
+            const nameById = new Map(input.customers.map(c => [c.id, c.name ?? "Customer"]));
+            const counts = new Map<string, number>();
+            for (const r of input.referrals) {
+                const ms = Date.parse(r.referred_at);
+                if (ms < from || ms > to) continue;
+                counts.set(r.referrer_customer_id, (counts.get(r.referrer_customer_id) ?? 0) + 1);
+            }
+            return Array.from(counts.entries())
+                .sort((a, b) => b[1] - a[1]).slice(0, 5)
+                .map(([cid, v]) => ({ name: nameById.get(cid) ?? "Customer", v }));
+        }
+        case "promo-redemptions": {
+            const counts = new Map<string, { v: number; revenueAed: number }>();
+            for (const t of txns) {
+                if (!t.discountCode || !isSettledSale(t)) continue;
+                const cur = counts.get(t.discountCode) ?? { v: 0, revenueAed: 0 };
+                cur.v += 1; cur.revenueAed += t.amountAed;
+                counts.set(t.discountCode, cur);
+            }
+            return Array.from(counts.entries())
+                .sort((a, b) => b[1].v - a[1].v).slice(0, 5)
+                .map(([name, s]) => ({ name, v: s.v, revenueAed: Math.round(s.revenueAed) }));
         }
 
         default:

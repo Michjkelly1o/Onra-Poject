@@ -638,6 +638,12 @@ export default function AdminDashboard() {
     //   • appointmentBookings — occupancy count for private + recovery
     //   • packages — is_intro_offer flag for the Trials-ending card
     const appointmentBookings = useAppStore(s => s.appointmentBookings);
+    // Marketing slices — only used by the CSV export for Marketing-category
+    // widgets (leads-by-source / campaign perf / efficiency / funnel / etc.).
+    const leads                = useAppStore(s => s.leads);
+    const marketingCampaignStats = useAppStore(s => s.marketingCampaignStats);
+    const marketingSpend       = useAppStore(s => s.marketingSpend);
+    const customerReferrals    = useAppStore(s => s.customerReferrals);
     const packages            = useAppStore(s => s.packages);
     // memberships slice — needed alongside `packages` for the accrual-based
     // Revenue KPI (client 2026-07-23). Membership revenue is spread across
@@ -1744,11 +1750,15 @@ export default function AdminDashboard() {
                                                 bookings: classBookings,
                                                 packages: packages.map(p => ({ id: p.id, credits: typeof p.credits === "number" ? p.credits : 0, name: p.name, isIntro: p.is_intro_offer })),
                                                 memberships: memberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
-                                                customers: customers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId })),
+                                                customers: customers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId, name: `${c.firstName} ${c.lastName}`.trim() })),
                                                 customerPlans: customerPlans.map(p => ({ id: p.id, customerId: p.customerId, kind: p.kind, productId: p.productId, status: p.status, purchasedAtISO: p.purchasedAtISO, expiryISO: p.expiryISO, cancelledAtISO: p.cancelledAtISO, priceAed: p.priceAed })),
                                                 schedules: classSchedules.map(s => ({ id: s.id, dateISO: s.dateISO, branchId: s.branchId, booked: s.booked, capacity: s.capacity, type: s.type })),
                                                 appointments: appointments.map(a => ({ id: a.id, type: a.type, dateISO: a.dateISO, branchId: a.branchId, capacity: a.capacity, booked: a.booked, status: a.status })),
                                                 appointmentBookings: appointmentBookings.map(bk => ({ appointmentId: bk.appointmentId, customerId: bk.customerId, status: bk.status })),
+                                                leads: leads.map(l => ({ source: l.source, stage: l.stage, added_at: l.added_at, branch_id: l.branch_id })),
+                                                campaignStats: marketingCampaignStats.map(c => ({ campaign_id: c.campaign_id, campaign_name: c.campaign_name, sent_at: c.sent_at, sends: c.sends, opens_reads: c.opens_reads, clicks_taps: c.clicks_taps, attributed_bookings: c.attributed_bookings, attributed_revenue_aed: c.attributed_revenue_aed, branch_id: c.branch_id })),
+                                                marketingSpend: marketingSpend.map(s => ({ month: s.month, spend_aed: s.spend_aed, branch_id: s.branch_id })),
+                                                referrals: customerReferrals.map(r => ({ referrer_customer_id: r.referrerCustomerId, referred_at: r.referredAtISO })),
                                                 branchIds: branchScopeIds ?? undefined,
                                             })]),
                                         );
