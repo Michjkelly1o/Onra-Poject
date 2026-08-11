@@ -127,17 +127,33 @@ data model.
 
 ---
 
-## 7. Sub-decisions to confirm (defaults in **bold**)
-- **D-A** — Today "Sales" card: change COUNT → **gross AED value** (recommended, matches "full
-  packages" + Performance). Or keep it a count?
-- **D-B** — Unlimited memberships in Revenue: **straight-line over duration** (recommended; no credits
-  to use). Or exclude unlimited memberships from Revenue?
-- **D-C** — Private/Recovery in Revenue: **recognize at sale** (simple) or at the appointment's
-  delivered date?
-- **D-D** — Coming-Up "Revenue/Recurring": **keep as a forward projection, relabel for clarity**
-  (recommended) — don't fold it into recognized Revenue.
-- **D-E** — Insights revenue tiles: **wire to the shared engine** (recommended) or leave as mock?
-- **D-F** — Gift cards: **leave excluded** from Revenue for now (recognize at redemption later).
+## 7. Sub-decisions — LOCKED (2026-08-11; fits client feedback + correct accounting)
+
+- **D-A — Today "Sales" = gross AED value** (was a count). *Why:* client says "Sales is the full
+  packages" — that's the full VALUE, and Performance/Reports already show Sales as gross AED. Consistent.
+  The transaction count is still available inside the Sales drill-down modal.
+- **D-B — Unlimited memberships: recognize straight-line over their duration (per-day).** *Why:* they
+  have no credits to "use," but the studio genuinely earns that money as the month/term elapses.
+  **Excluding them would be a wrong calculation** — it would make unlimited-membership revenue vanish
+  entirely. Straight-line is the standard, correct companion to per-credit. So Revenue = per-credit-used
+  (package + credit-based membership) **plus** per-day (unlimited membership) — every plan recognized
+  as it's delivered.
+- **D-C — Private/Recovery: recognize on the session's delivered date** (the appointment date), not at
+  sale. *Why:* it's a service earned when the session actually happens — that's the accurate "earned"
+  moment. Build note: match the `private`/`recovery` transaction to its appointment via
+  customer + product + date; if the link isn't cleanly derivable, fall back to the sale date (never
+  double-count).
+- **D-D — Coming-Up "Revenue/Recurring": keep the projection math, relabel as "Projected / Expected."**
+  *Why:* it's a FORECAST of future income (upcoming auto-renewals) — you cannot compute "credits used"
+  for bookings that haven't happened, so folding it into recognized Revenue would be wrong. It stays a
+  separate, clearly-labelled forward metric; recognized Revenue lives on Today + Performance.
+- **D-E — Insights revenue tiles: wire to the shared recognition engine (real data).** *Why:* they're
+  hardcoded mock numbers today; per "everything real/wired," they must read the same engine so they
+  never drift from the dashboard.
+- **D-F — Gift cards: excluded from Revenue (deferred); recognized only when redeemed.** *Why:* a gift
+  card sale is a liability, not earned revenue, until it's spent — counting it at sale would overstate
+  Revenue. When the gift card is later used to buy a package/membership, THAT purchase's recognition
+  applies normally. (Gift cards are already excluded from the billable-sale predicates.)
 
 ---
 
