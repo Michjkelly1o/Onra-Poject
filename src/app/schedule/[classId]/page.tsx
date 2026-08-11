@@ -17,6 +17,7 @@ import { Toast } from "@/components/ui/Toast";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { Pagination } from "@/components/ui/Pagination";
 import { useAppStore, type ClassInstance, type ClassBooking, type Customer, type Membership as MembershipType, type Package as PackageType, type GenderAccess } from "@/lib/store";
+import { shortCustomerName, cancelNotifyLine, cancelTitle, CANCEL_KEEP_LABEL, CANCEL_CONFIRM_LABEL } from "@/lib/cancel-copy";
 import { getFrozenActiveMembership } from "@/lib/customer/freeze-eligibility";
 import { shortDate } from "@/lib/customer/profile-format";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
@@ -362,10 +363,10 @@ function CancelBookingModal({ open, count, sampleName, defaultRefund = true, onC
 
 // ─── Cancel class modal ───────────────────────────────────────────────────────
 
-function CancelClassModal({ open, classInstance, bookedCount, onClose, onConfirm }: {
+function CancelClassModal({ open, classInstance, bookedNames, onClose, onConfirm }: {
     open: boolean;
     classInstance: ClassInstance | null;
-    bookedCount: number;
+    bookedNames: string[];
     onClose: () => void;
     onConfirm: (refund: boolean) => void;
 }) {
@@ -383,33 +384,19 @@ function CancelClassModal({ open, classInstance, bookedCount, onClose, onConfirm
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this class?</h3>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{cancelTitle(false)}</h3>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
-                            <span className="font-medium text-[var(--colors-text-secondary)]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{classInstance.name}</span> — {classInstance.date}, {classInstance.displayTime}.
                         </p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{cancelNotifyLine(bookedNames)}</p>
                     </div>
                 </div>
-                {bookedCount > 0 && (
-                    <>
-                        <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
-                        <div className="flex items-center justify-between gap-4 px-6 py-5">
-                            <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Refund class credit</p>
-                                <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">When the studio cancels a class, each customer is always refunded.</p>
-                            </div>
-                            {/* Locked ON — class cancellation by admin always grants a no-charge refund. */}
-                            <Toggle on={true} onChange={() => { /* locked */ }} disabled />
-                        </div>
-                    </>
-                )}
-                <div className={cn("flex gap-3 px-6 pb-6", bookedCount > 0 ? "pt-6" : "pt-5")}>
+                <div className="flex gap-3 px-6 pt-5 pb-6">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
-                        Cancel
+                        {CANCEL_KEEP_LABEL}
                     </Button>
                     <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(true)}>
-                        Yes, cancel class
+                        {CANCEL_CONFIRM_LABEL}
                     </Button>
                 </div>
             </div>
@@ -2797,7 +2784,10 @@ export default function ClassDetailPage() {
 
             {/* Modals */}
             <CancelClassModal
-                open={cancelClassOpen} classInstance={ci} bookedCount={bookedCount}
+                open={cancelClassOpen} classInstance={ci}
+                bookedNames={bookedBookings.map(b => b.guestName?.trim()
+                    ? b.guestName.trim()
+                    : (() => { const c = customerById.get(b.customerId); return c ? shortCustomerName(c.firstName, c.lastName) : "Customer"; })())}
                 onClose={() => setCancelClassOpen(false)}
                 onConfirm={handleCancelClass}
             />

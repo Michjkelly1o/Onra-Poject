@@ -1912,21 +1912,11 @@ export default function AdminDashboard() {
                                         !isLast && "border-b border-[var(--colors-border-secondary)]"
                                     )}
                                 >
-                                    {/* Time cell */}
-                                    <div className="w-[70px] flex items-center justify-end px-4 py-3 flex-shrink-0">
-                                        <div className="flex flex-col items-end">
-                                            <p className="font-medium text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap">
-                                                {slot.time}
-                                            </p>
-                                            <p className="font-medium text-sm text-[var(--colors-text-quaternary)] whitespace-nowrap">
-                                                {slot.meridiem}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Class cards cell */}
+                                    {/* Class cards cell — each card already shows its own time,
+                                        so the redundant left time column was removed (client
+                                        2026-08-11). */}
                                     <div className={cn(
-                                        "flex flex-1 min-w-0 py-3",
+                                        "flex flex-1 min-w-0 py-3 px-4",
                                         multi ? "flex-col gap-4" : "items-center"
                                     )}>
                                         {slot.classes.map(c => (

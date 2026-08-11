@@ -55,6 +55,7 @@ import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableH
 import { FilterPill } from "@/components/ui/FilterPill";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { useAppStore, type Service, type ServiceStatus, type Appointment, type AppointmentStatus } from "@/lib/store";
+import { shortCustomerName, cancelNotifyLine, cancelTitle, CANCEL_KEEP_LABEL, CANCEL_CONFIRM_LABEL } from "@/lib/cancel-copy";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { branchTzLabel } from "@/lib/branch-time";
@@ -628,12 +629,12 @@ function AppointmentsTable({ rows, sortKey, sortDir, onSort, onView, onCancel }:
 // "Refund class credit" toggle row + destructive confirm. No reason field
 // (per the user feedback — class schedule's flow doesn't ask for one).
 
-function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
+function CancelAppointmentModal({ appointment, bookedNames, onConfirm, onCancel }: {
     appointment: Appointment;
+    bookedNames: string[];
     onConfirm: (refund: boolean) => void;
     onCancel: () => void;
 }) {
-    const bookedCount = appointment.booked;
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
@@ -647,17 +648,17 @@ function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this appointment?</h3>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{cancelTitle(true)}</h3>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
-                            <span className="font-medium text-[var(--colors-text-secondary)]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and automatically refunded.</>}
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{appointment.serviceName}</span> — {appointment.date}, {appointment.displayTime}.
                         </p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{cancelNotifyLine(bookedNames)}</p>
                     </div>
                 </div>
                 <div className="flex gap-3 px-6 pt-5 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>{CANCEL_KEEP_LABEL}</Button>
                     <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(true)}>
-                        Yes, cancel appointment
+                        {CANCEL_CONFIRM_LABEL}
                     </Button>
                 </div>
             </div>
@@ -690,6 +691,8 @@ function RightPanel({ service }: { service: Service }) {
     // Live store reads — appointments update in-place when admin cancels
     // here / customer books on portal / staff marks attendance.
     const appointments      = useAppStore(s => s.appointments);
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
+    const customers         = useAppStore(s => s.customers);
     const cancelAppointment = useAppStore(s => s.cancelAppointment);
     const showToast         = useAppStore(s => s.showToast);
 
@@ -857,6 +860,9 @@ function RightPanel({ service }: { service: Service }) {
             {cancelTarget && (
                 <CancelAppointmentModal
                     appointment={cancelTarget}
+                    bookedNames={appointmentBookings
+                        .filter(b => b.appointmentId === cancelTarget.id && b.status === "Booked")
+                        .map(b => { const c = customers.find(x => x.id === b.customerId); return c ? shortCustomerName(c.firstName, c.lastName) : b.customerName; })}
                     onCancel={() => setCancelTarget(null)}
                     onConfirm={(refund: boolean) => {
                         cancelAppointment(cancelTarget.id, refund);

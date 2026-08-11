@@ -50,6 +50,7 @@ import { TableAvatar } from "@/components/ui/avatar";
 import { PresentBadge, NoShowBadge } from "@/components/ui/badge";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type Appointment, type AppointmentStatus, type AppointmentBooking, type AppointmentRating } from "@/lib/store";
+import { shortCustomerName, cancelNotifyLine, cancelTitle, CANCEL_KEEP_LABEL, CANCEL_CONFIRM_LABEL } from "@/lib/cancel-copy";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -106,12 +107,12 @@ function Toggle({ on, onChange, disabled = false }: { on: boolean; onChange: (ne
 // header copy + booked-count line + "Refund class credit" locked toggle +
 // destructive "Yes, cancel appointment" confirm.
 
-function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
+function CancelAppointmentModal({ appointment, bookedNames, onConfirm, onCancel }: {
     appointment: Appointment;
+    bookedNames: string[];
     onConfirm: (refund: boolean) => void;
     onCancel: () => void;
 }) {
-    const bookedCount = appointment.booked;
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onCancel} />
@@ -125,17 +126,17 @@ function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this appointment?</h3>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">{cancelTitle(true)}</h3>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
-                            <span className="font-medium text-[#344054]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and automatically refunded.</>}
+                            <span className="font-medium text-[#344054]">{appointment.serviceName}</span> — {appointment.date}, {appointment.displayTime}.
                         </p>
+                        <p className="text-[14px] text-[#475467] leading-[20px]">{cancelNotifyLine(bookedNames)}</p>
                     </div>
                 </div>
                 <div className="flex gap-3 px-6 pt-5 pb-6">
-                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
+                    <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>{CANCEL_KEEP_LABEL}</Button>
                     <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(true)}>
-                        Yes, cancel appointment
+                        {CANCEL_CONFIRM_LABEL}
                     </Button>
                 </div>
             </div>
@@ -1339,6 +1340,7 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
     const appointments         = useAppStore(s => s.appointments);
     const allBookings          = useAppStore(s => s.appointmentBookings);
     const allRatings           = useAppStore(s => s.appointmentRatings);
+    const customers            = useAppStore(s => s.customers);
     const cancelAppointment    = useAppStore(s => s.cancelAppointment);
     const cancelBooking        = useAppStore(s => s.cancelAppointmentBooking);
     const removeCustomer       = useAppStore(s => s.removeAppointmentCustomer);
@@ -1450,6 +1452,9 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
             {modalTarget?.kind === "appointment" && (
                 <CancelAppointmentModal
                     appointment={appointment}
+                    bookedNames={bookings
+                        .filter(b => b.status === "Booked")
+                        .map(b => { const c = customers.find(x => x.id === b.customerId); return c ? shortCustomerName(c.firstName, c.lastName) : b.customerName; })}
                     onCancel={() => setModalTarget(null)}
                     onConfirm={(refund: boolean) => {
                         cancelAppointment(appointment.id, refund);

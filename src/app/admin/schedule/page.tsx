@@ -28,6 +28,7 @@ import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { RowActions } from "@/components/patterns/RowActions";
 import { Toast } from "@/components/ui/Toast";
 import { useAppStore, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type SessionType } from "@/lib/store";
+import { shortCustomerName, cancelNotifyLine, cancelTitle, CANCEL_KEEP_LABEL, CANCEL_CONFIRM_LABEL } from "@/lib/cancel-copy";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { branchTzLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill, SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
@@ -151,12 +152,11 @@ function ScheduleRowActions({ id, status, flexible, onCancel, onDuplicate, onAdd
 
 // ─── Cancel class modal — lightweight version for admin/schedule list & popup ──
 
-function AdminCancelClassModal({ open, classInstance, isAppointment = false, bookedCount, onClose, onConfirm }: {
-    open: boolean; classInstance: ClassInstance | null; isAppointment?: boolean; bookedCount: number;
+function AdminCancelClassModal({ open, classInstance, isAppointment = false, bookedNames, onClose, onConfirm }: {
+    open: boolean; classInstance: ClassInstance | null; isAppointment?: boolean; bookedNames: string[];
     onClose: () => void; onConfirm: () => void;
 }) {
     if (!open || !classInstance) return null;
-    const noun = isAppointment ? "appointment" : "class";
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center">
             <div className="absolute inset-0 bg-[#0c111d]/60" onClick={onClose} />
@@ -170,19 +170,19 @@ function AdminCancelClassModal({ open, classInstance, isAppointment = false, boo
                         <SlashCircle01 className="w-6 h-6 text-[#d92d20]" />
                     </div>
                     <div className="flex flex-col gap-1 text-center w-full">
-                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Cancel this {noun}?</h3>
+                        <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">{cancelTitle(isAppointment)}</h3>
                         <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
-                            <span className="font-medium text-[var(--colors-text-secondary)]">{classInstance.name}</span> on {classInstance.date} • {classInstance.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[var(--colors-text-secondary)]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and automatically refunded.</>}
+                            <span className="font-medium text-[var(--colors-text-secondary)]">{classInstance.name}</span> — {classInstance.date}, {classInstance.displayTime}.
                         </p>
+                        <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">{cancelNotifyLine(bookedNames)}</p>
                     </div>
                 </div>
                 <div className="flex gap-3 px-6 pt-6 pb-6">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onClose}>
-                        Cancel
+                        {CANCEL_KEEP_LABEL}
                     </Button>
                     <Button variant="destructive" size="lg" className="flex-1" onClick={onConfirm}>
-                        Yes, cancel {noun}
+                        {CANCEL_CONFIRM_LABEL}
                     </Button>
                 </div>
             </div>
@@ -1101,6 +1101,7 @@ export default function SchedulePageRoute() {
 function SchedulePage() {
     const router = useRouter();
     const { classSchedules, classTemplates, classBookings, classCategories, cancelClassSchedule, showToast, appointmentBookings, cancelAppointment } = useAppStore();
+    const customers = useAppStore(s => s.customers);
     // Categories pill list for the FilterPanel — names only, matching the
     // `c.category` denormalised field on ClassInstance.
     const categoryNames = useMemo(
@@ -1222,11 +1223,17 @@ function SchedulePage() {
             ? (() => { const a = appointments.find(x => x.id === cancelTargetId); return a ? appointmentToClassInstance(a) : null; })()
             : classSchedules.find(c => c.id === cancelTargetId) ?? null)
         : null;
-    const cancelTargetBookedCount = cancelTargetId
-        ? (cancelIsAppt
-            ? appointmentBookings.filter(b => b.appointmentId === cancelTargetId && b.status === "Booked").length
-            : classBookings.filter(b => b.classScheduleId === cancelTargetId && b.status === "booked").length)
-        : 0;
+    // Booked customers' short names ("Sara M.") for the cancel modal's notify
+    // line — guests show their own name; members resolve from the customers slice.
+    const cancelBookedNames: string[] = !cancelTargetId
+        ? []
+        : cancelIsAppt
+            ? appointmentBookings
+                .filter(b => b.appointmentId === cancelTargetId && b.status === "Booked")
+                .map(b => { const c = customers.find(x => x.id === b.customerId); return c ? shortCustomerName(c.firstName, c.lastName) : "Customer"; })
+            : classBookings
+                .filter(b => b.classScheduleId === cancelTargetId && b.status === "booked")
+                .map(b => b.guestName?.trim() ? b.guestName.trim() : (() => { const c = customers.find(x => x.id === b.customerId); return c ? shortCustomerName(c.firstName, c.lastName) : "Customer"; })());
 
     function handleConfirmCancelClass() {
         if (!cancelTarget || !cancelTargetId) return;
@@ -1598,7 +1605,7 @@ function SchedulePage() {
                 open={!!cancelTarget}
                 classInstance={cancelTarget}
                 isAppointment={cancelIsAppt}
-                bookedCount={cancelTargetBookedCount}
+                bookedNames={cancelBookedNames}
                 onClose={() => setCancelTargetId(null)}
                 onConfirm={handleConfirmCancelClass}
             />
