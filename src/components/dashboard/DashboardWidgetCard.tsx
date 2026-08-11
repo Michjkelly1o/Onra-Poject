@@ -8,7 +8,7 @@ import { WIDGET_CATALOG } from "./widget-catalog";
 import { useAppStore } from "@/lib/store";
 import type { DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange } from "@/lib/period-filter";
-import { financialWidgetSeries } from "@/lib/dashboard/widget-series";
+import { computeWidgetSeries } from "@/lib/dashboard/widget-series";
 import {
     LineChart, Line, BarChart, Bar, ComposedChart, Area, AreaChart,
     XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
@@ -164,14 +164,24 @@ const STATIC: Record<string, object[]> = {
 
 const DEFAULT_PERIOD: DateFilter = { type: "week", label: "This week" };
 
-// Financial-category widgets wired to real store data (batch 1). See
-// src/lib/dashboard/widget-series.ts → financialWidgetSeries.
-const FINANCIAL_WIDGET_IDS = new Set([
+// Widgets wired to real store data via computeWidgetSeries. See
+// src/lib/dashboard/widget-series.ts. Batch 1 = Financial, batch 2 = Customer.
+const WIDGET_SERIES_IDS = new Set([
+    // Financial
     "revenue-overview",
     "sales-by-product",
     "revenue-by-type",
     "payments-collected",
     "payments-by-source",
+    // Customer
+    "revenue-vs-new-customers",
+    "active-memberships",
+    "active-credits",
+    "memberships-sold",
+    "returning-vs-new",
+    "new-customers-source",
+    "top-memberships",
+    "intro-member-funnel",
 ]);
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -2179,24 +2189,28 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
             ? computeTopPrivateTrainers(trainerAppts, branchIds)
             : null;
 
-    // ── Financial widgets — REAL per-period series from the store ──────────
-    // (batch 1). Bucketed to the same points as the x-axis, branch-filtered,
-    // money via the shared recognized-revenue engine + honest ledger.
-    const isFinancialWidget = FINANCIAL_WIDGET_IDS.has(widgetId);
-    const finTxns        = useAppStore(s => isFinancialWidget ? s.customerTransactions : null);
-    const finBookings    = useAppStore(s => isFinancialWidget ? s.classBookings : null);
-    const finPackages    = useAppStore(s => isFinancialWidget ? s.packages : null);
-    const finMemberships = useAppStore(s => isFinancialWidget ? s.memberships : null);
+    // ── REAL per-period series from the store (Financial + Customer widgets) ──
+    // Bucketed to the same points as the x-axis, branch-filtered, money via the
+    // shared recognized-revenue engine + honest ledger.
+    const isSeriesWidget = WIDGET_SERIES_IDS.has(widgetId);
+    const seTxns        = useAppStore(s => isSeriesWidget ? s.customerTransactions : null);
+    const seBookings    = useAppStore(s => isSeriesWidget ? s.classBookings : null);
+    const sePackages    = useAppStore(s => isSeriesWidget ? s.packages : null);
+    const seMemberships = useAppStore(s => isSeriesWidget ? s.memberships : null);
+    const seCustomers   = useAppStore(s => isSeriesWidget ? s.customers : null);
+    const sePlans       = useAppStore(s => isSeriesWidget ? s.customerPlans : null);
     const financialSeries = useMemo(() => {
-        if (!finTxns || !finBookings || !finPackages || !finMemberships) return null;
-        return financialWidgetSeries(widgetId, period ?? DEFAULT_PERIOD, {
-            transactions: finTxns,
-            bookings: finBookings,
-            packages: finPackages.map(p => ({ id: p.id, credits: typeof p.credits === "number" ? p.credits : 0, name: p.name })),
-            memberships: finMemberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
+        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans) return null;
+        return computeWidgetSeries(widgetId, period ?? DEFAULT_PERIOD, {
+            transactions: seTxns,
+            bookings: seBookings,
+            packages: sePackages.map(p => ({ id: p.id, credits: typeof p.credits === "number" ? p.credits : 0, name: p.name, isIntro: p.is_intro_offer })),
+            memberships: seMemberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
+            customers: seCustomers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId })),
+            customerPlans: sePlans.map(p => ({ id: p.id, customerId: p.customerId, kind: p.kind, productId: p.productId, status: p.status, purchasedAtISO: p.purchasedAtISO, expiryISO: p.expiryISO, cancelledAtISO: p.cancelledAtISO, priceAed: p.priceAed })),
             branchIds,
         });
-    }, [widgetId, period, finTxns, finBookings, finPackages, finMemberships, branchIds]);
+    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, branchIds]);
 
     if (!meta) return null;
 

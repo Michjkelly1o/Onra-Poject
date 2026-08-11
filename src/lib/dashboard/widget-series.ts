@@ -147,14 +147,21 @@ export function bucketsForPeriod(period: DateFilter): WidgetBucket[] {
 
 // ─── Financial widget aggregators ───────────────────────────────────────────
 
-export interface FinancialWidgetInput {
+export interface WidgetInput {
     transactions: CustomerTransaction[];
     bookings: ClassBooking[];
-    packages: { id: string; credits: number; name?: string }[];
-    memberships: { id: string; credits: number | string; duration_months?: number; name?: string }[];
+    packages: { id: string; credits: number; name?: string; isIntro?: boolean }[];
+    memberships: { id: string; credits: number | string; duration_months?: number; name?: string; isIntro?: boolean }[];
+    /** Non-archived flag comes via `status`; archived customers are excluded
+     *  from member/count surfaces. */
+    customers: { id: string; createdAt: string; status: "active" | "archived"; marketingSource?: string; branchId: string }[];
+    customerPlans: { id: string; customerId: string; kind: "membership" | "package" | "complimentary"; productId?: string; status: string; purchasedAtISO: string; expiryISO: string; cancelledAtISO?: string; priceAed?: number }[];
     /** Selected branch scope. Empty/undefined = all branches (aggregate). */
     branchIds?: string[];
 }
+
+/** Transaction kinds that count as a real product purchase. */
+const PURCHASE_KIND = new Set(["membership", "package", "retail", "gift_card", "private", "recovery"]);
 
 function branchOk(branchId: string, branchIds: string[] | undefined): boolean {
     if (!branchIds || branchIds.length === 0) return true;
@@ -163,13 +170,13 @@ function branchOk(branchId: string, branchIds: string[] | undefined): boolean {
 function txnMs(t: { createdAtISO: string }): number { return new Date(t.createdAtISO).getTime(); }
 function inBucket(ms: number, b: WidgetBucket): boolean { return ms >= b.fromMs && ms <= b.toMs; }
 
-/** Real per-period series for a Financial-category widget, or null if `id`
- *  isn't a Financial widget this module handles. Row shape matches
- *  `buildSeries`: `{ date: label, ...keys }`. */
-export function financialWidgetSeries(
+/** Real per-period series for a widget (Financial or Customer category), or
+ *  null if `id` isn't one this module handles. Row shape matches `buildSeries`:
+ *  `{ date: label, ...keys }` for time-series; a ranked/funnel array otherwise. */
+export function computeWidgetSeries(
     id: string,
     period: DateFilter,
-    input: FinancialWidgetInput,
+    input: WidgetInput,
 ): Record<string, string | number>[] | null {
     const buckets = bucketsForPeriod(period);
     const { branchIds } = input;
@@ -183,6 +190,22 @@ export function financialWidgetSeries(
     // Honest ledger (settled sales only, refunds netted on their own date),
     // branch-scoped — used by revenue-by-type's private/recovery columns.
     const ledger = resolveLedger(input.transactions).filter(r => branchOk(r.branchId, branchIds));
+
+    // ── Customer-widget scoping ──────────────────────────────────────────
+    // Non-archived customers in branch scope; plans joined to their customer's
+    // branch (plans carry no branchId) and excluded when the customer is
+    // archived — matches the customers list + KPI.
+    const custById = new Map(input.customers.map(c => [c.id, c]));
+    const custInScope = (cid: string) => { const c = custById.get(cid); return !!c && c.status !== "archived" && branchOk(c.branchId, branchIds); };
+    const scopedCustomers = input.customers.filter(c => c.status !== "archived" && branchOk(c.branchId, branchIds));
+    const scopedPlans = input.customerPlans.filter(p => custInScope(p.customerId));
+    const introIds = new Set<string>([
+        ...input.packages.filter(p => p.isIntro).map(p => p.id),
+        ...input.memberships.filter(m => m.isIntro).map(m => m.id),
+    ]);
+    const planStartMs = (p: WidgetInput["customerPlans"][number]) => Date.parse(p.purchasedAtISO);
+    const planEndMs = (p: WidgetInput["customerPlans"][number]) => Date.parse((p.status === "cancelled" || p.status === "removed") && p.cancelledAtISO ? p.cancelledAtISO : p.expiryISO);
+    const activeDuring = (p: WidgetInput["customerPlans"][number], b: WidgetBucket) => planStartMs(p) <= b.toMs && planEndMs(p) >= b.fromMs;
 
     const isSettledSale = (t: CustomerTransaction) =>
         t.status === "complete" && (t.transactionType === undefined || t.transactionType === "sale");
@@ -198,10 +221,13 @@ export function financialWidgetSeries(
             }));
         }
         case "revenue-vs-new-customers": {
-            // revenue reuses recognized revenue; newCustomers can't be derived
-            // here (no customers slice) — handled by the Customer batch. Return
-            // null so this widget keeps its current source until then.
-            return null;
+            // Recognized revenue + count of non-archived customers who joined
+            // in the bucket, branch-scoped.
+            return buckets.map(b => ({
+                date: b.label,
+                revenue: Math.round(computeRecognizedRevenue(revInput, b.fromMs, b.toMs)),
+                newCustomers: scopedCustomers.filter(c => inBucket(Date.parse(c.createdAt), b)).length,
+            }));
         }
         case "sales-by-product": {
             // Gross SALES (settled) AED by product kind per bucket.
@@ -258,6 +284,108 @@ export function financialWidgetSeries(
                 return { date: b.label, crm, app, web };
             });
         }
+
+        // ── Customer widgets ────────────────────────────────────────────
+        case "active-memberships": {
+            const mem = scopedPlans.filter(p => p.kind === "membership");
+            return buckets.map(b => ({ date: b.label, v: mem.filter(p => activeDuring(p, b)).length }));
+        }
+        case "active-credits": {
+            const pkg = scopedPlans.filter(p => p.kind === "package");
+            return buckets.map(b => ({ date: b.label, v: pkg.filter(p => activeDuring(p, b)).length }));
+        }
+        case "memberships-sold": {
+            // Count of settled membership sales per bucket, grouped into the 3
+            // tiers by the membership product (unlimited credits / "advanced" in
+            // the name / else beginner).
+            const tierOf = new Map(input.memberships.map(m => {
+                const name = (m.name ?? "").toLowerCase();
+                const tier = m.credits === "unlimited" || name.includes("unlimited") ? "unlimited"
+                    : name.includes("advanced") ? "advanced" : "beginner";
+                return [m.id, tier as "beginner" | "advanced" | "unlimited"];
+            }));
+            return buckets.map(b => {
+                const c = { beginner: 0, advanced: 0, unlimited: 0 };
+                for (const t of txns) {
+                    if (t.kind !== "membership" || !isSettledSale(t) || !inBucket(txnMs(t), b)) continue;
+                    c[tierOf.get(t.productId) ?? "beginner"] += (t.quantity ?? 1);
+                }
+                return { date: b.label, ...c };
+            });
+        }
+        case "returning-vs-new": {
+            // Per bucket: distinct customers with a purchase in the bucket, split
+            // into NEW (their first-ever purchase is in this bucket) vs RETURNING.
+            const firstPurchaseMs = new Map<string, number>();
+            for (const t of txns) {
+                if (!isSettledSale(t) || !PURCHASE_KIND.has(t.kind) || !custInScope(t.customerId)) continue;
+                const ms = txnMs(t);
+                const cur = firstPurchaseMs.get(t.customerId);
+                if (cur === undefined || ms < cur) firstPurchaseMs.set(t.customerId, ms);
+            }
+            return buckets.map(b => {
+                const active = new Set<string>();
+                for (const t of txns) {
+                    if (!isSettledSale(t) || !PURCHASE_KIND.has(t.kind) || !custInScope(t.customerId)) continue;
+                    if (inBucket(txnMs(t), b)) active.add(t.customerId);
+                }
+                let nw = 0, ret = 0;
+                Array.from(active).forEach(cid => {
+                    const first = firstPurchaseMs.get(cid);
+                    if (first !== undefined && inBucket(first, b)) nw++; else ret++;
+                });
+                return { date: b.label, returning: ret, new: nw };
+            });
+        }
+        case "new-customers-source": {
+            // Ranked: non-archived customers who joined in the PERIOD, grouped
+            // by marketing source (top 5).
+            const from = buckets[0]?.fromMs ?? 0;
+            const to = buckets[buckets.length - 1]?.toMs ?? 0;
+            const counts = new Map<string, number>();
+            for (const c of scopedCustomers) {
+                const ms = Date.parse(c.createdAt);
+                if (ms < from || ms > to) continue;
+                const src = c.marketingSource || "Other";
+                counts.set(src, (counts.get(src) ?? 0) + 1);
+            }
+            const palette = ["#b892ba", "#90a099", "#92d1de", "#f7b955", "#94aeaf"];
+            return Array.from(counts.entries())
+                .sort((a, b) => b[1] - a[1]).slice(0, 5)
+                .map(([name, v], i) => ({ name, v, color: palette[i % palette.length] }));
+        }
+        case "top-memberships": {
+            // Ranked: membership products by CURRENT live-holder count (top 5).
+            const counts = new Map<string, number>();
+            for (const p of scopedPlans) {
+                if (p.kind !== "membership" || !p.productId) continue;
+                if (!(p.status === "active" || p.status === "frozen" || p.status === "freeze_requested")) continue;
+                counts.set(p.productId, (counts.get(p.productId) ?? 0) + 1);
+            }
+            const nameOf = new Map(input.memberships.map(m => [m.id, m.name ?? "Membership"]));
+            return Array.from(counts.entries())
+                .sort((a, b) => b[1] - a[1]).slice(0, 5)
+                .map(([pid, v]) => ({ name: nameOf.get(pid) ?? "Membership", v }));
+        }
+        case "intro-member-funnel": {
+            // Funnel (strict subsets): tried an intro → returned (a present
+            // visit) → bought a non-intro plan.
+            const tried = new Set<string>();
+            for (const p of scopedPlans) if (p.productId && introIds.has(p.productId)) tried.add(p.customerId);
+            const presentCustomers = new Set(bookings.filter(bk => bk.attendanceStatus === "present").map(bk => bk.customerId));
+            const returned = new Set(Array.from(tried).filter(c => presentCustomers.has(c)));
+            const boughtNonIntro = new Set<string>();
+            for (const p of scopedPlans) {
+                if ((p.kind === "membership" || p.kind === "package") && p.productId && !introIds.has(p.productId)) boughtNonIntro.add(p.customerId);
+            }
+            const bought = new Set(Array.from(returned).filter(c => boughtNonIntro.has(c)));
+            return [
+                { stage: "Tried an intro", sublabel: "trial / drop-in",     count: tried.size },
+                { stage: "Returned",       sublabel: "booked a 2nd+ visit", count: returned.size },
+                { stage: "Bought a plan",  sublabel: "membership or pack",  count: bought.size },
+            ];
+        }
+
         default:
             return null;
     }

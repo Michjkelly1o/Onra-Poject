@@ -30,7 +30,7 @@ import { cn, to12hParts } from "@/lib/utils";
 import { computeRecognizedRevenue } from "@/lib/reports/recognized-revenue";
 import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
 import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
-import { financialWidgetSeries } from "@/lib/dashboard/widget-series";
+import { computeWidgetSeries } from "@/lib/dashboard/widget-series";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useAppStore, SCHEDULE_INSTRUCTORS, appointmentToClassInstance, isAppointmentId, type SessionType } from "@/lib/store";
@@ -1739,11 +1739,13 @@ export default function AdminDashboard() {
                                         // Real per-widget series (branch-scoped exactly as the
                                         // on-screen widgets) so the CSV matches the charts.
                                         const realSeriesById = Object.fromEntries(
-                                            activeWidgets.map(id => [id, financialWidgetSeries(id, period, {
+                                            activeWidgets.map(id => [id, computeWidgetSeries(id, period, {
                                                 transactions: customerTransactions,
                                                 bookings: classBookings,
-                                                packages: packages.map(p => ({ id: p.id, credits: typeof p.credits === "number" ? p.credits : 0, name: p.name })),
+                                                packages: packages.map(p => ({ id: p.id, credits: typeof p.credits === "number" ? p.credits : 0, name: p.name, isIntro: p.is_intro_offer })),
                                                 memberships: memberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
+                                                customers: customers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId })),
+                                                customerPlans: customerPlans.map(p => ({ id: p.id, customerId: p.customerId, kind: p.kind, productId: p.productId, status: p.status, purchasedAtISO: p.purchasedAtISO, expiryISO: p.expiryISO, cancelledAtISO: p.cancelledAtISO, priceAed: p.priceAed })),
                                                 branchIds: branchScopeIds ?? undefined,
                                             })]),
                                         );
