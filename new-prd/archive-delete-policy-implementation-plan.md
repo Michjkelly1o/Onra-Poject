@@ -123,10 +123,15 @@ so all modules (incl. the customer retrofit) share one implementation.
   that have no pagination today (e.g. Marketing/Campaigns, Promo codes, Class
   templates) render the archived cards **without** pagination — fit each module's
   existing layout.
-- **Bulk select:** the Archived section has its **own bulk-select** (Recover +
-  Delete-when-history-free), plus per-row kebab actions. Active and archived
-  selections are independent.
-- Rows show the **"Archived" status chip** + the module's real columns/data.
+- **Bulk select:** archived rows participate in bulk-select too. Reference impl
+  uses a **single shared selection** spanning both sections with one floating
+  bulk bar that derives the right actions from the selected rows' statuses
+  (Archive for active, Recover for archived, Delete when history-free) — simpler
+  than two independent selections and functionally equivalent since users select
+  within one section. Per-row kebab actions on both.
+- Rows show the module's real columns/data. (For customers there is no status
+  column, so the section label conveys "archived"; modules that keep a status
+  column show the "Archived" chip.)
 
 **Reusable pieces to build (phase 1):**
 - `useArchiveView(rows)` → `{ active, archived }` split (excludes `archived` from
@@ -136,6 +141,32 @@ so all modules (incl. the customer retrofit) share one implementation.
   pagination/bulk when applicable. Card modules pass a card renderer instead.
 - Each list also **drops "archived" from its Status filter pills** (archived is
   now a section, not a filter value).
+
+**✅ Reference implementation — Customers (DONE 2026-08-11, `src/app/admin/customers/page.tsx`).**
+This is the pattern to copy for every table module. Concrete recipe:
+- **Extract a shared table** (header + rows) rendered for BOTH the active list
+  and the Archived section — see `CustomerTable` + module-level `CUSTOMER_SORT`
+  comparators. Each section passes its own `rows` + its own `useSort` +
+  pagination; **selection is shared** and the floating bulk bar spans both.
+- **Split rows AFTER the shared scoped filter**: `scopedRows` (branch + search +
+  filters + "assigned to me") → `archivedRows = scoped.filter(archived)` +
+  `activeRows = scoped.filter(!archived)` (then the active-only segment/tab).
+- **Row menu** via a shared `renderRowActions(r)` (active → Archive; archived →
+  Recover; Delete when history-free) so router/confirm wiring stays on the page.
+- **Layout (the important bit — fills the viewport, doesn't page-scroll the
+  active table):** wrap both cards in a scroll region
+  `flex-1 min-h-0 overflow-y-auto flex flex-col gap-6`. The **active card is
+  `shrink-0 h-full`** (fills one viewport; header `shrink-0` + table body
+  `flex-auto min-h-0 overflow-y-auto` + `shrink-0` pinned pagination). The
+  **Archived section is `h-full` only when EXPANDED** (its card `flex-1 min-h-0`
+  with the same internal-scroll + pinned pagination), so 30/page scrolls
+  internally instead of growing long; **collapsed → hug** (just the header row).
+  Result: active table pinned pagination is always visible; scroll the region to
+  reach the archived card, which matches the active height.
+- **Section header:** a button row = "Archived <entity>" + "(n)" + an `h-px`
+  separator line + a `ChevronDown` (rotates `-90` when collapsed).
+- Generalize `CustomerTable` + this layout into `<ArchivedSection>` +
+  `useArchiveView` when doing the 2nd module, so the rest are near-mechanical.
 
 **Also fix the copy/behavior mismatch:** Staff, Retail, Shifts, Branches confirm
 dialogs already CLAIM "hidden from default lists" — align the copy to the new

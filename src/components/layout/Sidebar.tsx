@@ -79,9 +79,11 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Campaigns",     href: "/admin/marketing"               },
             { label: "Promotions",    href: "/admin/products/promo-codes"    },
-            // Announcements — placeholder ahead of splitting announcements out
-            // of Campaigns. Route 404s for now (feature-flags), menu visible.
+            // Announcements + Events — placeholders ahead of splitting them out
+            // of Campaigns/Marketing into their own single menu. Routes 404 for
+            // now (feature-flags); the menu items stay visible.
             { label: "Announcements", href: "/admin/marketing/announcements" },
+            { label: "Events",        href: "/admin/marketing/events"        },
             { label: "Referrals",     href: "/admin/settings/referral"       },
         ],
     },
