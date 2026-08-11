@@ -1028,11 +1028,14 @@ export default function CustomersPage() {
                    collapsible (default expanded); its own table + pagination;
                    selection + search/filters are shared with the active list. */}
             {archivedRows.length > 0 && (
-                <div className="shrink-0 flex flex-col gap-3">
+                // Expanded → h-full so the archived card fills a viewport exactly
+                // like the active one (its table scrolls internally, pagination
+                // pinned) instead of growing long at 30/page. Collapsed → hug.
+                <div className={cn("shrink-0 flex flex-col gap-3", !archivedCollapsed && "h-full")}>
                     <button
                         type="button"
                         onClick={() => setArchivedCollapsed(v => !v)}
-                        className="flex items-center gap-2 text-left group"
+                        className="shrink-0 flex items-center gap-2 text-left group"
                         aria-expanded={!archivedCollapsed}
                     >
                         <span className="text-[14px] font-medium text-[var(--colors-text-tertiary)] group-hover:text-[var(--colors-text-secondary)] transition-colors whitespace-nowrap">
@@ -1047,8 +1050,8 @@ export default function CustomersPage() {
                     </button>
 
                     {!archivedCollapsed && (
-                        <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
-                            <div className="overflow-x-auto py-2">
+                        <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+                            <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide">
                                 <CustomerTable
                                     rows={pagedArchivedRows}
                                     selectedIds={selectedIds}
