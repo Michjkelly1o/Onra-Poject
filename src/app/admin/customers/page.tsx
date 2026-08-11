@@ -845,13 +845,16 @@ export default function CustomersPage() {
                         // Archived view header — a "place", not a tab. Access is
                         // unchanged; this is purely the tidied-away list.
                         <>
-                            <Button
-                                variant="secondary-gray"
-                                leftIcon={<ArrowLeft className="w-4 h-4" />}
-                                onClick={() => { setViewArchived(false); clearSelection(); }}
-                            >
-                                Back to customers
-                            </Button>
+                            <IconTooltip label="Back to customer view">
+                                <Button
+                                    variant="secondary-gray"
+                                    size="icon"
+                                    aria-label="Back to customer view"
+                                    onClick={() => { setViewArchived(false); clearSelection(); }}
+                                >
+                                    <ArrowLeft className="w-5 h-5" />
+                                </Button>
+                            </IconTooltip>
                             <div className="flex-1" />
                         </>
                     ) : (
