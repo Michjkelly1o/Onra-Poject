@@ -62,7 +62,7 @@ export function GiftCardInfoContent({
         // to the product detail) on the left, X-close on the right.
         if (isSheet) {
             return (
-                <div className="relative flex shrink-0 items-center justify-center pb-3">
+                <div className="relative flex shrink-0 items-center justify-center px-4 pb-3 pt-4">
                     {onBack ? (
                         <button
                             type="button"
@@ -177,8 +177,8 @@ export function GiftCardInfoContent({
             <Header />
 
             <div
-                className={`flex flex-1 flex-col gap-5 pb-4 pt-2 ${
-                    isSheet ? "min-h-0 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "px-4"
+                className={`flex flex-1 flex-col gap-5 px-4 pb-4 pt-2 ${
+                    isSheet ? "min-h-0 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""
                 }`}
             >
                 {/* Gift-card illustration — shows the amount (fixed value, or the
@@ -222,7 +222,7 @@ export function GiftCardInfoContent({
                 </div>
             </div>
 
-            <div className={`z-10 pt-4 ${isSheet ? "shrink-0 bg-white" : `sticky bottom-0 px-5 pb-[max(16px,env(safe-area-inset-bottom))] ${scrollable ? "bg-white" : ""}`}`}>
+            <div className={`z-10 ${isSheet ? "sticky bottom-0 shrink-0 border-t border-[var(--colors-bg-tertiary)] bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3" : `sticky bottom-0 px-5 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${scrollable ? "bg-white" : ""}`}`}>
                 <div className="flex gap-3">
                     <Button variant="secondary-gray" size="xl" disabled={!valid} className="flex-1 rounded-full" onClick={() => confirm(false)}>
                         Add to cart

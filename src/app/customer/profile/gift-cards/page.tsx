@@ -82,13 +82,13 @@ export default function GiftCardPage() {
                 <div
                     aria-hidden
                     className="pointer-events-none absolute inset-x-0 top-0 h-[380px]"
-                    style={{ background: "radial-gradient(125% 78% at 50% -18%, #dff6ed 0%, rgba(255,255,255,0) 72%)" }}
+                    style={{ background: "radial-gradient(125% 78% at 50% -18%, #e7f1ed 0%, rgba(255,255,255,0) 72%)" }}
                 />
 
                 {/* Hero — featured icon over the decorative pattern (shared w/ Invite friends). */}
                 <FeaturedIconHero
                     icon={Gift01}
-                    tileClassName="bg-[#dcfae5] shadow-[0px_4px_18px_0px_rgba(220,250,229,0.7),0px_2px_4px_0px_rgba(16,24,40,0.04)]"
+                    tileClassName="bg-[#eff6f3] shadow-[0px_4px_18px_0px_rgba(213,231,223,0.7),0px_2px_4px_0px_rgba(16,24,40,0.04)]"
                     iconClassName="size-[42px] text-[var(--brand-primary)]"
                     title="Redeem gift code"
                     subtitle="Enter the digit code to redeem your gift card"

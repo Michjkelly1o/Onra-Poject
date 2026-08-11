@@ -10,12 +10,11 @@
 //   • GiftCardArt  — the full 335×210 card used in the Redeem modal, in two
 //     states: "sent" (large logomark) and "redeemed" (Forma + check + balance).
 
-import { Check } from "@untitledui/icons";
 
 /** Exact Figma card gradient (stops reordered ascending for CSS). Exported so the
  *  Wallet balance card reuses the same Forma card treatment. */
 export const FORMA_GRADIENT =
-    "linear-gradient(178.25deg, rgb(234,239,243) 4%, rgb(216,243,228) 22.7%, rgb(177,231,201) 34.5%, rgb(239,250,244) 69%, rgb(196,237,214) 100%)";
+    "linear-gradient(178.25deg, #eff6f3 4%, #dcebe4 22.7%, #a7ddcb 34.5%, #f0f8f5 69%, #c4e6d9 100%)";
 
 /** Small green gift-card tile (46×32) — the exact Forma payment tile used in the
  *  checkout Pay-with picker and the redeemed-gift-card list row. */
@@ -75,12 +74,6 @@ export function GiftCardArt({ variant, value, className }: GiftCardArtProps) {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/images/pay/forma-logomark.svg" alt="" className="h-8 w-[26.67px] shrink-0" />
                         <span className="text-lg font-semibold leading-7 text-[var(--brand-primary)]">Forma</span>
-                    </div>
-                    {/* Top-right — check */}
-                    <div className="absolute right-0 top-0 p-5">
-                        <span className="flex size-7 items-center justify-center rounded-full bg-[var(--brand-primary)]">
-                            <Check className="size-[18px] text-white" strokeWidth={3} aria-hidden />
-                        </span>
                     </div>
                     {/* Bottom-left — balance (padding on the wrapper so the 112px text box
                         wraps to "AED 250" / "Gift Card", not one word per line). */}

@@ -372,7 +372,7 @@ export default function ProductsPage() {
                 product opens the product detail. Client 2026-08-11. */}
             <CustomerSheet open={detailId != null} onClose={closeProductSheet} tall bleed>
                 {detailId && (giftCards.some((g) => g.id === detailId) ? (
-                    <div className="h-full w-full px-4 pt-3">
+                    <div className="h-full w-full">
                         <GiftCardInfoContent
                             designId={detailId}
                             variant="sheet"
