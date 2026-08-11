@@ -46,7 +46,7 @@ export function AiAgentHeaderButton() {
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#457175]"
             }
         >
-            <span className="w-6 h-6 rounded-full bg-white border border-[#e4e7ec] flex items-center justify-center shrink-0 overflow-hidden">
+            <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 overflow-hidden">
                 {/* Logo shimmers in sync with the label — the brand mark is a
                     single-colour SVG masked with the same moving gradient. It
                     rests at its natural blue-green (#164e52) and glints brighter. */}

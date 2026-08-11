@@ -96,8 +96,8 @@ export function FloatingAiButton() {
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#457175]",
                 )}
             >
-                {/* Logomark tile — 36px white circle, 1.125px border. */}
-                <span className="w-9 h-9 rounded-full bg-white border-[1.125px] border-[var(--colors-border-secondary)] overflow-hidden flex items-center justify-center shrink-0">
+                {/* Logomark tile — 36px, transparent (no white circle). */}
+                <span className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src="/brand-logo/icon/Icon%20-%20Blue%20Green.svg"

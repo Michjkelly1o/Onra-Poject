@@ -77,9 +77,12 @@ const NAV_ITEMS: NavItemDef[] = [
     {
         label: "Marketing", icon: Announcement01, permission: "manage_marketing",
         children: [
-            { label: "Campaigns",        href: "/admin/marketing"            },
-            { label: "Promotions",       href: "/admin/products/promo-codes" },
-            { label: "Referral program", href: "/admin/settings/referral"    },
+            { label: "Campaigns",     href: "/admin/marketing"               },
+            { label: "Promotions",    href: "/admin/products/promo-codes"    },
+            // Announcements — placeholder ahead of splitting announcements out
+            // of Campaigns. Route 404s for now (feature-flags), menu visible.
+            { label: "Announcements", href: "/admin/marketing/announcements" },
+            { label: "Referrals",     href: "/admin/settings/referral"       },
         ],
     },
     {

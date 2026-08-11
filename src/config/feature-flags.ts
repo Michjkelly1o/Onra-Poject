@@ -72,6 +72,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/marketing",              // list view
     //"/marketing",                    // create / detail / edit
 
+    // ── Announcements ── (DISABLED — placeholder ahead of splitting
+    // announcements out of Campaigns. Sidebar menu item stays VISIBLE; the
+    // route 404s until the module ships. Re-enable by commenting the line.)
+    "/admin/marketing/announcements",
+
     // ── Gift Cards module ── (ENABLED — pushed)
     //"/admin/products/gift-cards",    // list view
     //"/products/gift-cards",          // create / detail / edit

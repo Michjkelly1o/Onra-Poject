@@ -74,7 +74,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/settings/tax":             "Tax",
     "/admin/settings/agreements":      "Agreements",
     "/admin/settings/migrations-imports": "Migration & imports",
-    "/admin/settings/referral":        "Referral program",
+    "/admin/settings/referral":        "Referrals",
     "/admin/settings/account":         "Account settings",
     "/instructor/dashboard":           "Dashboard",
     "/instructor/schedule":            "Schedule",
@@ -162,7 +162,7 @@ const MODULE_ROOT: ModuleRoot[] = [
       parent: { label: "Settings", href: "/admin/settings" } },
     // Referral program lives under the Marketing sidebar group, not Settings
     // — no Settings parent crumb (matches Campaigns / Promotions siblings).
-    { prefix: "/settings/referral",   listPath: "/admin/settings/referral",    label: "Referral program" },
+    { prefix: "/settings/referral",   listPath: "/admin/settings/referral",    label: "Referrals" },
     { prefix: "/staff/members",       listPath: "/admin/staff",             label: "Staff & permissions",  detailNoun: "Staff details" },
     { prefix: "/staff/roles",         listPath: "/admin/staff/roles",       label: "Roles & permissions",  detailNoun: "Role details" },
     { prefix: "/staff/pay-rate",      listPath: "/admin/staff/pay-rate",    label: "Pay rates",            detailNoun: "Pay rate details" },
