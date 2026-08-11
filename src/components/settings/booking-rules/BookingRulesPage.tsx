@@ -275,7 +275,7 @@ export default function BookingRulesPage() {
                     editLabel="Customize"
                     onEdit={() => setFpOpen(true)}
                 />
-                <div className="flex flex-col gap-5">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                     <SummaryField label="Members can cancel their own membership" value={freezePolicy.members_can_cancel ? "Yes" : "No"} />
                     <SummaryField label="Members can freeze their own membership" value={freezePolicy.enabled ? "Yes" : "No"} />
                 </div>

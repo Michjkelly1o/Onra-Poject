@@ -307,7 +307,7 @@ export default function ProductsPage() {
                 )}
 
                 {isEmpty ? (
-                    <div className="flex flex-1 items-center justify-center">
+                    <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh]">
                         <SearchEmptyState
                             icon={ShoppingBag03}
                             title="No products available yet"
