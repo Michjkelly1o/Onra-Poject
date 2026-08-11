@@ -33,10 +33,9 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/staff/roles": "Roles & permissions",
     "/admin/staff/pay-rate": "Pay rates",
     "/admin/compensation": "Payroll",
-    // Client Jul 2026: legacy /admin/insights archived (404'd); KPI page
-    // now carries the "Insights" title so the header reads consistently
-    // with the sidebar label.
-    "/admin/kpi": "Insights",
+    // The live Insights page (formerly KPI) lives at /admin/insights (renamed
+    // 2026-08-11); the old mock Insights page was deleted.
+    "/admin/insights": "Insights",
     "/admin/reports": "Reports",
     "/admin/notifications": "Notifications",
     "/admin/settings": "Settings",

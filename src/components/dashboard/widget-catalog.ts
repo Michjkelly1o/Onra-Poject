@@ -22,7 +22,7 @@
 
 export type WidgetCategory =
     // Live 6-category set — client 2026-07-23: "Class" pluralised to
-    // "Classes" so the Add-widget library heading and the /admin/kpi
+    // "Classes" so the Add-widget library heading and the /admin/insights
     // "Insights" tab of the same name read identically.
     | "Financial" | "Customer" | "Classes" | "Private sessions" | "Recovery" | "Marketing"
     // Legacy KPI-page categories kept for backwards compatibility with the

@@ -2,7 +2,7 @@
 // Onra Studio — Financial KPIs
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Computes the KPI cards for the Financial tab of /admin/kpi. All values
+// Computes the KPI cards for the Financial tab of /admin/insights. All values
 // derived from the same selectors that feed the Financial reports, so
 // numbers stay consistent across surfaces.
 //

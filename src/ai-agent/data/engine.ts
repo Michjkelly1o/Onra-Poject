@@ -22,13 +22,11 @@ import type { Row } from "@/ai-agent/data/store-readers";
 // Deep-link routing table (Phase 10)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The insight deep-link lands the tester on the KPI page. The legacy
-// `/admin/insights` route was RETIRED (client Jul 2026 — Insights renamed to
-// KPI); it's disabled in feature-flags.ts and 404s. The live surface is
-// `/admin/kpi`, which the sidebar's "Insights" label now points at too. The
-// KPI page opens on its first tab and doesn't read a query param, so a plain
-// `/admin/kpi` href always lands somewhere meaningful.
-const INSIGHTS_HREF = "/admin/kpi";
+// The insight deep-link lands the tester on the live Insights page at
+// `/admin/insights` (formerly the KPI module, renamed 2026-08-11; the old mock
+// Insights page was deleted). The page opens on its first tab and doesn't read
+// a query param, so a plain `/admin/insights` href always lands meaningfully.
+const INSIGHTS_HREF = "/admin/insights";
 
 /** Build the deep-link chip a chart/list card carries. `href` is a live
  *  Next.js route (the KPI page). `dataset` is accepted for call-site

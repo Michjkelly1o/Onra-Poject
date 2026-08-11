@@ -2,7 +2,7 @@
 // Onra Studio — Client KPIs
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// KPI cards for the Client tab of /admin/kpi. All values derived from
+// KPI cards for the Client tab of /admin/insights. All values derived from
 // the same selectors that feed the Client + Membership reports, so
 // numbers stay consistent across surfaces.
 //

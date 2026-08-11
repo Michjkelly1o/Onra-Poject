@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // The single-value KPI tile used by BOTH the Insights module
-// (/admin/insights) and the KPI module (/admin/kpi). Extracted verbatim
+// (/admin/insights) and the KPI module (/admin/insights). Extracted verbatim
 // from Insights so both surfaces render identical cards.
 //
 // Card structure:

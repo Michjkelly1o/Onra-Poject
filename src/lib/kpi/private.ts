@@ -2,7 +2,7 @@
 // Onra Studio — Private-session KPIs
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Computes the KPI cards for the Private sessions tab of /admin/kpi.
+// Computes the KPI cards for the Private sessions tab of /admin/insights.
 // Client 2026-07-24 requested 3 tiles: Bookings, Utilization, Rebooking rate.
 // Live-derived from state.appointments + state.appointmentBookings,
 // scoped to Appointments whose `type === "private"`.

@@ -79,7 +79,7 @@ const STATIC_ROUTES: readonly string[] = [
     "/settings/tax",
     // Admin surfaces
     "/admin/dashboard",
-    "/admin/kpi",
+    "/admin/insights",
     "/admin/customers",
     "/admin/schedule",
     "/admin/pos",

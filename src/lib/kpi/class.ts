@@ -2,7 +2,7 @@
 // Onra Studio — Class KPIs
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// KPI cards for the Class tab of /admin/kpi. Aggregates classSchedules +
+// KPI cards for the Class tab of /admin/insights. Aggregates classSchedules +
 // classBookings within the selected window.
 //
 // KPIs implemented (per new-prd/Onra_KPI_Catalogue.pdf §Class):

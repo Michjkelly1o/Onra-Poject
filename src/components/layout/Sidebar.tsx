@@ -66,10 +66,10 @@ const NAV_ITEMS: NavItemDef[] = [
     {
         label: "Analytics", icon: BarChartSquare01, permission: "view_reports",
         children: [
-            // Client Jul 2026: legacy Insights module archived. The KPI page
-            // now carries the "Insights" label — same route (/admin/kpi),
-            // just relabeled. Legacy /admin/insights is 404'd via feature-flags.
-            { label: "Insights", href: "/admin/kpi"      },
+            // The live Insights page (formerly the KPI module) lives at
+            // /admin/insights as of 2026-08-11; the old mock Insights page was
+            // deleted and the KPI route renamed to /admin/insights.
+            { label: "Insights", href: "/admin/insights" },
             { label: "Reports",  href: "/admin/reports"  },
         ],
     },

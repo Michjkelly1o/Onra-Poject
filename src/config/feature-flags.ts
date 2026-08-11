@@ -94,18 +94,11 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     // the location changed.
     //"/admin/categories",             // list view + create/edit/delete
 
-    // ── Insights module ── (DISABLED — client Jul 2026 renamed KPI → Insights,
-    // legacy insights module archived at code level. Old /admin/insights
-    // route 404s; the "Insights" label in the sidebar now points at /admin/kpi.
-    // Unarchive by re-commenting the line below AND rolling back the Sidebar +
-    // Header + global-search relabels.)
-    "/admin/insights",               // tabs: Finance / Memberships / Classes
-
-    // ── KPI module ── (ENABLED — for client demo)
-    // 4 category tabs (Financial · Client · Class · Marketing) with
-    // 55 KPI cards + 16 chart widgets. Reuses the Insights shell
-    // (metric card + date filter + widget grid).
-    //"/admin/kpi",                    // tabs: Financial / Client / Class / Marketing
+    // ── Insights module ── (ENABLED — 2026-08-11 the live "KPI" page was
+    // renamed to Insights and now lives at /admin/insights; the old mock
+    // Insights page + the /admin/kpi route were deleted. Tiles-only:
+    // Financial · Client · Class · Private · Recovery · Marketing.)
+    //"/admin/insights",               // enabled — leave commented to keep it live
 
     // ── Pay rate module ── (ENABLED — pushed)
     //"/admin/staff/pay-rate",         // list view

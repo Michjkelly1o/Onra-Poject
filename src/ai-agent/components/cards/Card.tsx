@@ -27,12 +27,8 @@ import { isRouteDisabled } from "@/config/feature-flags";
  *  the dashboard instead of 404-ing. */
 function normalizeAdminHref(href: string): string {
     const [path, query] = href.split("?");
-    // Insights module was renamed to KPI (client Jul 2026) — /admin/insights
-    // is 404'd; the live surface is /admin/kpi (it ignores the stale ?tab).
-    if (path === "/admin/insights" || path.startsWith("/admin/insights/")) {
-        return "/admin/kpi";
-    }
-    // Safety net — any other disabled route lands on the dashboard, never a 404.
+    // Safety net — any disabled route lands on the dashboard, never a 404.
+    // (The live Insights page now IS /admin/insights, so no redirect needed.)
     if (isRouteDisabled(path)) return "/admin/dashboard";
     return query ? `${path}?${query}` : path;
 }

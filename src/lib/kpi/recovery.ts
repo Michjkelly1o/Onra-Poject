@@ -2,7 +2,7 @@
 // Onra Studio — Recovery-session KPIs
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Computes the KPI cards for the Recovery tab of /admin/kpi.
+// Computes the KPI cards for the Recovery tab of /admin/insights.
 // Client 2026-07-24 requested 3 tiles: Revenue per appointment, Attachment
 // rate, Bookings. Live-derived from state.appointments +
 // state.appointmentBookings + state.services (for the per-appointment

@@ -2,7 +2,7 @@
 // Onra Studio — Marketing KPIs
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// KPI cards for the Marketing tab of /admin/kpi. Reads through the same
+// KPI cards for the Marketing tab of /admin/insights. Reads through the same
 // slices Marketing reports use (leads · marketingCampaignStats ·
 // marketingSpend · customerReferrals · customerTransactions).
 //

@@ -60,7 +60,6 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/staff/roles":              "Roles & permissions",
     "/admin/staff/pay-rate":           "Pay rates",
     "/admin/compensation":             "Payroll",
-    "/admin/kpi":                      "Insights",
     "/admin/insights":                 "Insights",
     "/admin/reports":                  "Reports",
     "/admin/notifications":            "Notifications",
