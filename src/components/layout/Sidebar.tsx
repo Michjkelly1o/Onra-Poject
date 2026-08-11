@@ -270,23 +270,21 @@ function SlimFlyout({ label, items, activeHref, children }: {
             onMouseEnter={open}
             onMouseLeave={scheduleClose}
             // While the flyout is open the pointer is over the panel (not the
-            // icon), so force the parent icon row to keep the SAME active look
-            // the sidebar rows use on hover/active (#fbfffd + #e4e7ec) — the
-            // rail row and the flyout read as one connected unit.
+            // icon), so force the parent icon row to keep the selected look —
+            // the brand tint the AI Agent uses for a selected chat
+            // (--colors-secondary-50) — so the rail row + flyout read as one.
             className={cn(
                 isOpen &&
-                    "[&>button]:!bg-[#fbfffd] [&>button]:!border-[#e4e7ec] [&>button]:!text-[#101828] [&>button_svg]:!text-[#101828]",
+                    "[&>button]:!bg-[var(--colors-secondary-50)] [&>button]:!text-[#101828] [&>button_svg]:!text-[#101828]",
             )}
         >
             {children}
             {pos && createPortal(
-                // Panel bg matches the sidebar canvas so the #fbfffd hover reads
-                // exactly the same here as on the rail (on white it'd vanish).
                 <div
                     style={{ position: "fixed", top: pos.top, left: pos.left }}
                     onMouseEnter={open}
                     onMouseLeave={scheduleClose}
-                    className="z-[9999] min-w-[208px] rounded-[12px] bg-[var(--colors-bg-canvas)] border border-[#e4e7ec] p-2 flex flex-col gap-0.5 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]"
+                    className="z-[9999] min-w-[208px] rounded-[12px] bg-white border border-[#e4e7ec] p-2 flex flex-col gap-0.5 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]"
                 >
                     <p className="px-2.5 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-[#98a2b3]">
                         {label}
@@ -294,23 +292,20 @@ function SlimFlyout({ label, items, activeHref, children }: {
                     {items.map((child) => {
                         const active = child.href === activeHref;
                         const ChildIcon = child.icon;
-                        // Identical classes to the sidebar's own nav rows so the
-                        // hover / active state is pixel-for-pixel consistent.
+                        // Hover / selected use --colors-secondary-50 — the same
+                        // brand tint the AI Agent gives a selected chat.
                         return (
                             <Link
                                 key={child.href}
                                 href={child.href}
                                 onClick={() => setPos(null)}
                                 className={cn(
-                                    "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium relative transition-colors",
+                                    "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                                     active
-                                        ? "bg-[#fbfffd] border border-[#e4e7ec] text-[#101828]"
-                                        : "border border-transparent text-[#667085] hover:bg-[#fbfffd] hover:text-[#101828]",
+                                        ? "bg-[var(--colors-secondary-50)] text-[#101828]"
+                                        : "text-[#667085] hover:bg-[var(--colors-secondary-50)] hover:text-[#101828]",
                                 )}
                             >
-                                {active && (
-                                    <span className="absolute left-0 top-[6px] w-1 h-5 bg-[var(--brand-tertiary)] rounded-r" />
-                                )}
                                 {ChildIcon && <ChildIcon className={cn("w-4 h-4 shrink-0", active ? "text-[#101828]" : "text-[#667085]")} />}
                                 <span className="truncate">{child.label}</span>
                             </Link>
