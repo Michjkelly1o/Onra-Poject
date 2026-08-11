@@ -360,6 +360,9 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
     // route also prefix-matches a different parent's leaf (e.g. on
     // /admin/products/promo-codes only Marketing opens, not Services &
     // pricing). Without this, raw startsWith() would open both groups.
+    // Bumped whenever the pointer enters the nav list — lets the footer Settings
+    // dropdown auto-close so a nav flyout (Staff / Marketing / …) never overlaps it.
+    const [navHoverTick, setNavHoverTick] = useState(0);
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
         const init: Record<string, boolean> = {};
         const winner = activeHrefFor(effectiveNavItems, pathname, search);
@@ -532,7 +535,10 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                 prefix of the other's (e.g. /admin/products vs
                 /admin/products/promo-codes). Longest match wins; ties
                 impossible since hrefs are unique across the nav. */}
-            <nav className="flex-1 overflow-y-auto pt-3 pb-3 px-4 flex flex-col gap-1 min-h-0">
+            <nav
+                className="flex-1 overflow-y-auto pt-3 pb-3 px-4 flex flex-col gap-1 min-h-0"
+                onMouseEnter={() => setNavHoverTick(t => t + 1)}
+            >
                 {visibleItems.map((item) => {
                     const hasChildren = !!item.children?.length;
                     const isSelfActive = !!item.href && navWinner === item.href;
@@ -704,7 +710,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                             bubble (`FloatingAiButton`) is now the single
                             entry point, so a sidebar chip AND a floating
                             button was redundant. */}
-                        <SidebarSettingsChip slim={slim} />
+                        <SidebarSettingsChip slim={slim} closeSignal={navHoverTick} />
                         {/* Inset horizontal margin so the divider matches
                          *  the section-break rule in the middle of the
                          *  nav — both now stop short of the sidebar's
@@ -791,7 +797,7 @@ function SidebarAiAgentChip({ slim }: { slim: boolean }) {
 // whenever the current path lives in ANY settings group. Inside the
 // popover, the group whose subtree matches the current path is
 // highlighted so the user sees where they are.
-function SidebarSettingsChip({ slim }: { slim: boolean }) {
+function SidebarSettingsChip({ slim, closeSignal = 0 }: { slim: boolean; closeSignal?: number }) {
     const pathname = usePathname() ?? "";
     const [open, setOpen] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -808,6 +814,13 @@ function SidebarSettingsChip({ slim }: { slim: boolean }) {
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, [open]);
+
+    // Auto-close when the parent signals a nav-item hover — so opening a nav
+    // flyout (Staff / Marketing / …) never overlaps this dropdown. The signal
+    // only ever increments, so guarding on > 0 skips the initial mount.
+    useEffect(() => {
+        if (closeSignal > 0) setOpen(false);
+    }, [closeSignal]);
 
     return (
         <div ref={wrapperRef} className="relative">
