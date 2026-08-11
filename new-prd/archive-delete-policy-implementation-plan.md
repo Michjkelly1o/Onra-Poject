@@ -56,7 +56,7 @@ Today, ONLY customers are AAP; every other archive-only module keeps archived
 | **Customers** ✅ | `active\|archived` | Archive/Recover/Delete, AAP | Done — reference model. |
 | **Pay rates** | `active\|archive` | Archive/Recover/Delete (guard: active+0 usage), **inline** | Make **AAP**; **add archive guard** "can't archive while staff assigned → reassign first". Keep delete only when 0 usage. |
 | **Staff** | `pending\|active\|inactive\|archive` | Full 5-action matrix, **inline** | Make **AAP**. Keep Deactivate (temporary leave) — see D-1. Delete stays guarded (`canDeleteStaff`). |
-| **Plans & packages** | `active\|inactive\|archived` | Deactivate↔Delete swap, Archive/Reactivate/Recover, **inline** | Make **AAP**. **Guarantee contract-safe archive** (D-2): archived plan gone from POS/store/customer app, existing `customerPlans` keep billing/booking/freezing. Delete only when 0 holders/plans (guard already fixed). Collapse Deactivate into Archive (see D-1). |
+| **Plans & packages** | `active\|inactive\|archived` | Deactivate↔Delete swap, Archive/Reactivate/Recover, **inline** | Make **AAP**. **Keep Deactivate** (D-1). **Guarantee contract-safe archive** (D-2): archived plan gone from POS/store/customer app, existing `customerPlans` keep billing/booking/freezing. Delete only when 0 holders/plans (guard already fixed). |
 | **Class templates** | `Active\|Inactive\|Archived` | Deactivate↔Delete swap, Archive/Reactivate/Recover, **inline**, **card grid** | Make **AAP** (archived cards leave the grid → "View archived"). ⚠ **Add store-side delete guard** — `deleteClassTemplate` (store 6677) is currently UNGUARDED (UI-only gate). |
 | **Retail items** | `active\|inactive\|archived` | Deactivate↔Delete swap + matrix, **inline** | Make **AAP**. Delete stays guarded (`canDeleteRetailProduct`). |
 | **Locations/Branches** | `active\|inactive\|archive` | Full matrix (branch+room), **inline** | Make **AAP**. ⚠ **Add store-side delete guards** — `deleteBranch` (6486) + `deleteRoom` (6515) are UNGUARDED (cascade unconditionally). Normalize value `"archive"`→`"archived"` (D-3). |
@@ -97,23 +97,31 @@ Today, ONLY customers are AAP; every other archive-only module keeps archived
 
 ---
 
-## 4. Open decisions (confirm before building)
+## 4. Decisions (LOCKED 2026-08-11)
 
-- **D-1 — Deactivate across archive-only modules.** The client model has only
-  Archive + Delete; "Deactivate/Inactive" (visible-but-paused) is a third state
-  not in their spec. Options: (a) **keep** Deactivate where it means a real
-  temporary pause (Staff leave, seasonal plan pause) — 3 states; or (b) **remove**
-  it everywhere (like customers) — archive is the only hide. *Recommend: keep for
-  Staff; for Plans/Retail/Class-templates/Promo, collapse Deactivate into Archive
-  since the client's "archive" already = "stop new sales, existing keep running."*
+- **D-1 — KEEP Inactive/Deactivate everywhere it exists.** The client feedback
+  never mentions inactive; it is NOT being removed. Every module that has a
+  Deactivate/Inactive state keeps it exactly as-is (Staff, Memberships &
+  Packages, Class templates, Retail, Branches/Rooms, Roles, Shifts, Promo codes).
+  Do NOT collapse Deactivate into Archive. Note: **Pay rates** (`active|archive`)
+  and **Customers** (derived) intentionally have no inactive — leave them.
+  Result: archive-only modules have three states — active · inactive (paused,
+  still visible) · archived (hidden place).
 - **D-2 — Plan archive contract-safety.** Verify POS catalog, customer app, and
   store checkout already exclude archived products, AND that existing
   `customerPlans` are untouched by archive (billing/booking/freeze). Add tests.
-- **D-3 — Branch/Room status value** is `"archive"` while everything else uses
-  `"archived"` — normalize to `"archived"` (touches seeds + guards).
-- **D-4 — Roles/Shifts deactivate.** Delete-only bucket implies no Deactivate
-  either. Confirm whether to strip Deactivate/Reactivate from Roles + Shifts, or
-  keep a pause state.
+- **D-3 — Normalize the archived value to `"archived"` APP-WIDE.** The codebase
+  is split today:
+  - `"archive"` → Pay rates, Staff, Branches, Rooms, Roles, Shifts
+  - `"archived"` → Memberships, Packages, Retail, Promo codes, Customers
+  - `"Archived"` (capitalized) → Class templates (also `Active`/`Inactive` → lower)
+  Normalize ALL to lowercase `"active" | "inactive" | "archived"`. Touches each
+  module's status enum (store + `_types.ts` seed), every seed row's value, the
+  delete/archive guards, StatusBadge maps, and filter-pill configs. Do it as one
+  early normalization pass (own phase) so later module work builds on one value.
+- **D-4 — Roles + Shifts KEEP Inactive** (per D-1); they only lose **Archive**
+  (delete-only refers to archive, not to the pause state). So Roles/Shifts end
+  up: active · inactive · Delete (no archive, no "archived" value).
 
 ---
 
@@ -146,20 +154,25 @@ Today, ONLY customers are AAP; every other archive-only module keeps archived
 
 ## 6. Suggested phasing (one module per commit)
 
-0. **Shared pattern** — extract `useArchiveView` + View-archived shell from the
+0. **Normalize `"archived"` app-wide** (D-3) — one pass: status enums + seeds +
+   guards + StatusBadge maps + filter pills → lowercase `active|inactive|archived`
+   everywhere. Do this FIRST so every later phase builds on one value.
+1. **Shared pattern** — extract `useArchiveView` + View-archived shell from the
    customer implementation. (foundation)
-1. **Store guards** — add the 4 missing delete guards (class templates, branch,
+2. **Store guards** — add the 4 missing delete guards (class templates, branch,
    room, shifts). (data-integrity, no UI)
-2. **Shifts** — remove Archive (3 sites + store branch); confirm delete-only. (D-4)
-3. **Roles** — remove Archive/Recover (+Deactivate per D-4) → delete-only.
-4. **Pay rates** — AAP + the reassign-first archive guard.
-5. **Staff** — AAP (keep Deactivate per D-1).
-6. **Plans & packages** — AAP + verify contract-safe archive (D-2).
-7. **Class templates** — AAP.
-8. **Retail items** — AAP.
-9. **Promo codes** — AAP.
-10. **Locations/Branches** — AAP + normalize `"archive"`→`"archived"` (D-3).
-11. **Verify** — Scheduled classes unchanged (cancel-only, visible).
+3. **Shifts** — remove Archive (3 sites + store `"archive"` branch); KEEP Inactive;
+   delete-only for the destructive slot. (D-4)
+4. **Roles** — remove Archive/Recover; KEEP Inactive/Deactivate; Delete when
+   unlocked + 0 staff. (D-4)
+5. **Pay rates** — AAP + the reassign-first archive guard.
+6. **Staff** — AAP (keep Deactivate per D-1).
+7. **Plans & packages** — AAP + verify contract-safe archive (D-2).
+8. **Class templates** — AAP.
+9. **Retail items** — AAP.
+10. **Promo codes** — AAP.
+11. **Locations/Branches** — AAP.
+12. **Verify** — Scheduled classes unchanged (cancel-only, visible).
 
 Each module: exclude archived from list + counts + search + its filter pills,
 add View-archived + Recover (+Delete when history-free), keep the status column,
