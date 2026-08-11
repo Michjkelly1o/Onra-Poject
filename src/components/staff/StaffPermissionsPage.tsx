@@ -53,7 +53,6 @@ import { AssignShiftModal } from "@/components/staff/AssignShiftModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
 import { AddShiftPanel } from "@/components/schedule/AddShiftPanel";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
-import { TodayScheduleCell } from "@/components/staff/TodayScheduleCell";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
@@ -1577,7 +1576,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         <th className={cn(TH, "w-[180px]")}>
                                             <SortableHeader sortKey="branch" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Branch location</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[210px]")}>Today&apos;s schedule</th>
+                                        <th className={cn(TH, "w-[210px]")}>Assigned shift</th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Status</SortableHeader>
                                         </th>
@@ -1636,17 +1635,25 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
                                                 <td className={TD}>
-                                                    <TodayScheduleCell
-                                                        staff={s}
-                                                        isInstructor={role?.type === "instructor"}
-                                                        shifts={shifts}
-                                                        shiftAssignments={shiftAssignments}
-                                                        blockedTimes={blockedTimes}
-                                                        classSchedules={classSchedules}
-                                                        appointments={appointmentsAll}
-                                                        todayISO={todayISO}
-                                                        todayDow={todayDow}
-                                                    />
+                                                    {/* Assigned shift — the distinct active shift names this staff
+                                                        member holds, comma-joined text (client 2026-08-11). */}
+                                                    {(() => {
+                                                        const seenId = new Set<string>();
+                                                        const ids: string[] = [];
+                                                        for (const a of shiftAssignments) {
+                                                            if (a.staff_id === s.id && !seenId.has(a.shift_id)) { seenId.add(a.shift_id); ids.push(a.shift_id); }
+                                                        }
+                                                        if (s.shiftId && !seenId.has(s.shiftId)) { seenId.add(s.shiftId); ids.push(s.shiftId); }
+                                                        const seenName = new Set<string>();
+                                                        const names: string[] = [];
+                                                        for (const id of ids) {
+                                                            const sh = shifts.find(x => x.id === id);
+                                                            if (sh && sh.status === "active" && !seenName.has(sh.name)) { seenName.add(sh.name); names.push(sh.name); }
+                                                        }
+                                                        return names.length > 0
+                                                            ? <span className="text-[14px] leading-5 text-[#101828]">{names.join(", ")}</span>
+                                                            : <span className="text-[14px] leading-5 text-[#98a2b3]">—</span>;
+                                                    })()}
                                                 </td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
