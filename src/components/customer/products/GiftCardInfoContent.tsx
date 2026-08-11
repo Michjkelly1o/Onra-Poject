@@ -185,7 +185,7 @@ export function GiftCardInfoContent({
                     custom amount once entered). Replaces the separate product-
                     detail step (client 2026-08-11). */}
                 <GiftCardArt
-                    variant={cardValue != null ? "redeemed" : "sent"}
+                    variant="redeemed"
                     value={cardValue ?? undefined}
                     className="shrink-0"
                 />

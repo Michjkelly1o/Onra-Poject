@@ -37,7 +37,8 @@ export function GiftCardMark({ className }: { className?: string }) {
 export interface GiftCardArtProps {
     /** "sent" = pre-redeem (large logomark); "redeemed" = Forma + check + balance. */
     variant: "sent" | "redeemed";
-    /** Face value shown on the redeemed card (e.g. 250 → "AED 250 Gift Card"). */
+    /** Face value shown on the redeemed card (e.g. 250 → "AED 250 Gift Card").
+     *  Omit for a custom-amount card before entry → "Custom Amount Gift Card". */
     value?: number;
     className?: string;
 }
@@ -78,7 +79,11 @@ export function GiftCardArt({ variant, value, className }: GiftCardArtProps) {
                     {/* Bottom-left — balance (padding on the wrapper so the 112px text box
                         wraps to "AED 250" / "Gift Card", not one word per line). */}
                     <div className="absolute bottom-0 left-0 p-6">
-                        <p className="w-28 text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">AED {value} Gift Card</p>
+                        <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">
+                            {value != null ? `AED ${value}` : "Custom Amount"}
+                            <br />
+                            Gift Card
+                        </p>
                     </div>
                 </>
             )}
