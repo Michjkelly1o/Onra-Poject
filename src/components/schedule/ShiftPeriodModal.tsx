@@ -4,30 +4,23 @@
 // Onra Studio — "Assign staff shift" period modal
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Shown every time a shift is assigned to a staff member (via drag or the
-// shift-card / staff 3-dot menu). Picks how long the assignment runs — 1 week,
-// 1 month, or 1 year — then confirms with the chosen span in weeks.
+// Shown every time a RECURRING shift is assigned to a staff member (drag, the
+// per-day picker, or the row 3-dot). Picks a custom span — an amount + a
+// Weeks/Months unit — and confirms with that span converted to WEEKS. Single
+// shifts skip this modal (they're assigned per day). Client 2026-08-11.
 //
 // Two variants:
 //   • default  — plain "Assign staff shift" header.
 //   • warning  — a time-conflict "Change {name}'s shift?" swap. Centered amber
-//     icon + the replace warning copy, and STILL lets the admin pick the period
-//     (client 2026-08-11: choosing a period is required on every assign, swaps
-//     included).
+//     icon + the replace warning copy, above the same period field.
 
 import { useState, type ReactNode } from "react";
-import { SlashCircle01, XClose } from "@untitledui/icons";
+import { SlashCircle01, XClose, ChevronDown } from "@untitledui/icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type ShiftPeriod = "1w" | "1m" | "1y";
-
-const PERIOD_WEEKS: Record<ShiftPeriod, number> = { "1w": 1, "1m": 4, "1y": 52 };
-const OPTIONS: { id: ShiftPeriod; label: string }[] = [
-    { id: "1w", label: "1 week" },
-    { id: "1m", label: "1 month" },
-    { id: "1y", label: "1 year" },
-];
+/** A month is treated as 4 weeks (matches the retired 1-month = 4-weeks preset). */
+const WEEKS_PER_MONTH = 4;
 
 export function ShiftPeriodModal({
     open, staffName, title, description, confirmLabel = "Assign shift", warning = false,
@@ -42,14 +35,19 @@ export function ShiftPeriodModal({
     /** Primary button label (default "Assign shift"). */
     confirmLabel?: string;
     /** Conflict/replace variant — centered amber warning icon + copy above the
-     *  period picker. */
+     *  period field. */
     warning?: boolean;
     onCancel: () => void;
-    /** Fires with the chosen span in WEEKS (1 / 4 / 52). */
+    /** Fires with the chosen span in WEEKS. */
     onConfirm: (weeks: number) => void;
 }) {
-    const [period, setPeriod] = useState<ShiftPeriod>("1m");
+    const [count, setCount] = useState(1);
+    const [unit, setUnit] = useState<"weeks" | "months">("months");
     if (!open) return null;
+
+    const weeks = Math.max(1, unit === "months" ? count * WEEKS_PER_MONTH : count);
+
+    const fieldCls = "h-11 rounded-[8px] border-1 border-[var(--colors-border-primary)] text-[14px] text-[var(--colors-text-primary)] outline-none focus:border-[var(--colors-secondary-500)] focus:ring-2 focus:ring-[var(--colors-secondary-300)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white transition-all";
 
     return (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
@@ -74,7 +72,7 @@ export function ShiftPeriodModal({
                         <div className="min-w-0">
                             <h3 className="text-[18px] font-semibold leading-[28px] text-[var(--colors-text-primary)]">{title ?? "Assign staff shift"}</h3>
                             <p className="text-[14px] text-[var(--colors-text-tertiary)] mt-1">
-                                {description ?? <>Select how long this shift should be assigned to {staffName}.</>}
+                                {description ?? <>Choose how long this shift should be assigned to {staffName}.</>}
                             </p>
                         </div>
                         <button type="button" onClick={onCancel} aria-label="Close"
@@ -84,37 +82,39 @@ export function ShiftPeriodModal({
                     </div>
                 )}
 
-                <div className="px-6 pt-4 pb-4 flex flex-col gap-2.5">
-                    {warning && (
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
-                            Select how long this shift should be assigned
-                        </p>
-                    )}
-                    {OPTIONS.map(o => {
-                        const sel = period === o.id;
-                        return (
-                            <button key={o.id} type="button" onClick={() => setPeriod(o.id)}
-                                className={cn(
-                                    "flex items-center justify-between px-4 h-12 rounded-[10px] border-1 text-left transition-colors",
-                                    sel
-                                        ? "border-[var(--colors-secondary-500)] bg-[#f5fffa]"
-                                        : "border-[var(--colors-border-secondary)] hover:bg-[var(--colors-bg-secondary)]",
-                                )}>
-                                <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{o.label}</span>
-                                <span className={cn(
-                                    "w-5 h-5 rounded-full border flex items-center justify-center shrink-0",
-                                    sel ? "border-[var(--colors-secondary-600)]" : "border-[var(--colors-border-primary)]",
-                                )}>
-                                    {sel && <span className="w-2.5 h-2.5 rounded-full bg-[var(--colors-secondary-600)]" />}
-                                </span>
-                            </button>
-                        );
-                    })}
+                {/* Custom period — amount + unit (Weeks / Months). */}
+                <div className="px-6 pt-4 pb-4 flex flex-col gap-2">
+                    <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Assign for</p>
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="number"
+                            min={1}
+                            value={count}
+                            onChange={(e) => setCount(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
+                            className={cn(fieldCls, "w-24 px-3.5 text-center")}
+                            aria-label="Amount"
+                        />
+                        <div className="relative flex-1">
+                            <select
+                                value={unit}
+                                onChange={(e) => setUnit(e.target.value as "weeks" | "months")}
+                                className={cn(fieldCls, "w-full pl-3.5 pr-10 appearance-none cursor-pointer")}
+                                aria-label="Unit"
+                            >
+                                <option value="weeks">{count === 1 ? "Week" : "Weeks"}</option>
+                                <option value="months">{count === 1 ? "Month" : "Months"}</option>
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                        </div>
+                    </div>
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">
+                        Runs for {weeks} week{weeks === 1 ? "" : "s"} from this week.
+                    </p>
                 </div>
 
                 <div className="px-6 pb-6 pt-2 flex items-center gap-3">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
-                    <Button variant="primary" size="lg" className="flex-1" onClick={() => onConfirm(PERIOD_WEEKS[period])}>{confirmLabel}</Button>
+                    <Button variant="primary" size="lg" className="flex-1" onClick={() => onConfirm(weeks)}>{confirmLabel}</Button>
                 </div>
             </div>
         </div>

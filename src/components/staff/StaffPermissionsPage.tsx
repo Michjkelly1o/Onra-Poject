@@ -1422,6 +1422,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         onFilterStateChange={setShiftFilterActive}
                         viewMode={shiftsViewMode}
                         weekStart={shiftsWeekStart}
+                        onFlyoutOpen={() => setStaffSchedPanel({ open: false })}
                     />
                 )}
                 {/* Blocked time sub-tab — fully wired (Figma 7413:239407). Same

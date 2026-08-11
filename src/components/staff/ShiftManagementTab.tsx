@@ -608,11 +608,13 @@ export interface ShiftManagementTabProps {
      *  parent (StaffPermissionsPage) owns the date navigator on the
      *  sub-tab row so this is a read-only prop. Client 2026-07-22. */
     weekStart?: Date;
+    /** Staff-schedule — a quick-action flyout opened, so close the main panel. */
+    onFlyoutOpen?: () => void;
 }
 
 export function ShiftManagementTab({
     returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange,
-    viewMode = "list", weekStart,
+    viewMode = "list", weekStart, onFlyoutOpen,
 }: ShiftManagementTabProps) {
     const router = useRouter();
     const shifts            = useAppStore(s => s.shifts);
@@ -865,7 +867,8 @@ export function ShiftManagementTab({
             {viewMode === "week" ? (
                 <div className="relative flex flex-col flex-1 min-h-0">
                     <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart}
-                        roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds} />
+                        roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds}
+                        onFlyoutOpen={onFlyoutOpen} />
                 </div>
             ) : (
             /* Table card — wrapped in px-6 so the table edges line up with

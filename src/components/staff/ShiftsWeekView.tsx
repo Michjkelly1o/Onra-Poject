@@ -297,7 +297,7 @@ function ShiftHoverPopover({ shift, items, anchor, onEnter, onLeave }: {
  *  2026-07-24: e.g. add Afternoon on Thursday even though they already have
  *  Afternoon Mon–Wed). Shifts that would clash on time with one they already
  *  work this day are excluded. Picking assigns the shift for THIS day only. */
-function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShiftIds, staffDayShifts, onPick }: {
+function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShiftIds, staffDayShifts, onPick, onOpen }: {
     staffName: string;
     staffBranchId: string | null;
     dayIdx: number;
@@ -307,6 +307,8 @@ function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShi
     /** Shift objects the staff works THIS day (for the time-overlap check). */
     staffDayShifts: Shift[];
     onPick: (shiftId: string) => void;
+    /** Fired when the picker opens (closes the main Add-shift panel). */
+    onOpen?: () => void;
 }) {
     const [open, setOpen] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
@@ -328,10 +330,13 @@ function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShi
     }, [open]);
 
     // Branch-scoped active shifts that run on THIS weekday.
+    // Branch-agnostic (shifts are branch-agnostic since client 2026-08) so the
+    // per-day list matches the 3-dot list. Recurring shifts must run on THIS
+    // weekday; single/one-off shifts have no weekday pattern so they always show
+    // (they're assigned to this specific day). Client 2026-08-11.
     const branchDayShifts = shifts.filter(sh =>
         sh.status === "active"
-        && (staffBranchId == null || sh.branch_id === staffBranchId)
-        && sh.working_days[dayIdx],
+        && ((sh.type ?? "recurring") === "single" || sh.working_days[dayIdx]),
     );
     // Exclude only shifts already worked THIS day + any that would clash on time.
     const available = branchDayShifts.filter(sh =>
@@ -342,7 +347,7 @@ function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShi
     return (
         <>
             <button ref={btnRef} type="button" aria-label="Assign shift"
-                onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+                onClick={(e) => { e.stopPropagation(); if (!open) onOpen?.(); setOpen(o => !o); }}
                 className={cn(
                     "mt-0.5 flex w-full items-center justify-center gap-1 rounded-[6px] border border-dashed border-[var(--colors-border-primary)] py-1 text-[12px] font-medium text-[var(--colors-text-quaternary)] transition-colors hover:border-[var(--colors-secondary-500)] hover:text-[#10373a]",
                     "opacity-0 group-hover/cell:opacity-100", open && "opacity-100",
@@ -425,7 +430,7 @@ export function ShiftPickerPanel({ available, emptyLabel, onPick }: {
 /** 3-dot menu anchored to a staff row. Portalled + fixed-positioned so it
  *  escapes the grid's overflow. "Assign shift" opens the day-view-style Add-shift
  *  panel (owned by the parent) instead of an inline picker (client 2026-08-11). */
-function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShiftIds, onPick, onAddShift, onUnassign, onViewSchedule }: {
+function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShiftIds, onPick, onAddShift, onUnassign, onViewSchedule, onOpen }: {
     staffName: string;
     isInstructor: boolean;
     hasShift: boolean;
@@ -436,6 +441,8 @@ function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShi
     onAddShift: () => void;
     onUnassign: () => void;
     onViewSchedule: () => void;
+    /** Fired when the menu opens (closes the main Add-shift panel). */
+    onOpen?: () => void;
 }) {
     const [open, setOpen] = useState(false);
     const [picker, setPicker] = useState(false);
@@ -453,7 +460,7 @@ function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShi
         return () => document.removeEventListener("keydown", onKey);
     }, [open]);
 
-    const pickList = shifts.filter(sh => sh.status === "active" && !assignedShiftIds.has(sh.id));
+    const pickList = shifts.filter(sh => sh.status === "active" && (sh.type ?? "recurring") === "recurring" && !assignedShiftIds.has(sh.id));
     const MENU_W = 184, CARD_W = 380, GAP = 8;
     const vw = typeof window !== "undefined" ? window.innerWidth : 1440;
     const pickerLeft = menuPos
@@ -463,7 +470,7 @@ function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShi
     return (
         <>
             <button ref={btnRef} type="button" aria-label="Staff shift actions"
-                onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+                onClick={(e) => { e.stopPropagation(); if (!open) onOpen?.(); setOpen(o => !o); }}
                 className={cn(
                     "shrink-0 flex size-6 items-center justify-center rounded-md text-[var(--colors-text-quaternary)] transition-colors",
                     "opacity-0 group-hover:opacity-100 hover:bg-[var(--colors-bg-tertiary)]",
@@ -534,9 +541,13 @@ interface ShiftsWeekViewProps {
     /** Week-view Shift-name filter. Empty = all shifts. When set, only these
      *  shifts' cards render and staff holding none of them are hidden. */
     shiftIds?: string[];
+    /** Called when a quick-action flyout (row 3-dot or per-day "+") opens, so the
+     *  parent can close the main drag Add-shift panel — only one assign surface
+     *  is open at a time (client 2026-08-11). */
+    onFlyoutOpen?: () => void;
 }
 
-export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [] }: ShiftsWeekViewProps) {
+export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [], onFlyoutOpen }: ShiftsWeekViewProps) {
     const staff            = useAppStore(s => s.staff);
     const router = useRouter();
     const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
@@ -633,7 +644,12 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
             // week_start — the existing seeded assignments) is scoped to THIS
             // week only, so it disappears when you navigate to another week.
             if (a.week_start) {
-                if (a.week_start !== weekStartISO) continue;
+                // Multi-week span: the row shows on every week within
+                // [week_start, week_start + weeks) — so "2 weeks" appears on this
+                // week AND the next (client 2026-08-11).
+                const span = a.weeks ?? 1;
+                const off = Math.round((new Date(`${weekStartISO}T00:00:00`).getTime() - new Date(`${a.week_start}T00:00:00`).getTime()) / (7 * 86400000));
+                if (off < 0 || off >= span) continue;
             } else if (weekStartISO !== currentWeekISO) {
                 continue;
             }
@@ -668,7 +684,9 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
             const sh = shiftsById.get(a.shift_id);
             if (!sh) continue;
             if (!a.days_of_week[idx]) continue;
-            if (!sh.working_days[idx]) continue;
+            // Recurring shifts gate on the shift's own working_days; single shifts
+            // have no weekday pattern, so the assignment's day is authoritative.
+            if ((sh.type ?? "recurring") === "recurring" && !sh.working_days[idx]) continue;
             const prev = byShift.get(a.shift_id);
             if (!prev || (a.week_start && !prev.assignment.week_start)) byShift.set(a.shift_id, { assignment: a, shift: sh });
         }
@@ -776,12 +794,21 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
         );
     }
 
-    // Single/one-off shifts assign immediately; recurring shifts confirm the span
-    // (1w/1m/1y) first — mirrors the day-view flow (client 2026-08-11).
+    // 3-dot "Assign shift" — recurring only (single shifts are day-specific and
+    // live in the per-day picker). Always confirms the period first.
     function requestAssign(staffMember: Staff, shiftId: string) {
         const sh = shiftsById.get(shiftId);
         if (!sh) return;
-        if ((sh.type ?? "recurring") === "single") { assignShiftToStaff(staffMember, shiftId); return; }
+        setPeriodTarget({ staff: staffMember, shift: sh });
+    }
+
+    // Per-day picker / drag-onto-cell. Single/one-off → assign THIS day only, no
+    // period modal. Recurring → confirm the period, then apply its exact days for
+    // the chosen span (client 2026-08-11).
+    function assignForDay(staffMember: Staff, shiftId: string, dayIdx: number, dayLabel: string) {
+        const sh = shiftsById.get(shiftId);
+        if (!sh) return;
+        if ((sh.type ?? "recurring") === "single") { assignShiftDay(staffMember, shiftId, dayIdx, dayLabel); return; }
         setPeriodTarget({ staff: staffMember, shift: sh });
     }
 
@@ -962,6 +989,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                     onAddShift={() => openStaffFormPanel({ kind: "shift", mode: "create" })}
                                                     onUnassign={() => setUnassignStaff(s)}
                                                     onViewSchedule={() => router.push(`/admin/schedule?instructorId=${s.id}`)}
+                                                    onOpen={onFlyoutOpen}
                                                 />
                                             );
                                         })()}
@@ -986,7 +1014,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                             <div
                                                 key={isoDayLocal(day)}
                                                 onDragOver={allDayOff ? undefined : (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
-                                                onDrop={allDayOff ? undefined : (e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/shift-id"); if (id) assignShiftToStaff(s, id); }}
+                                                onDrop={allDayOff ? undefined : (e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/shift-id"); if (id) assignForDay(s, id, dayIdx, dayLabel); }}
                                                 className="group/cell relative px-2 py-3 border-l border-[var(--colors-border-secondary)] flex flex-col gap-1.5 min-h-[64px] min-w-0 overflow-hidden"
                                             >
                                                 {allDayOff ? (
@@ -1024,7 +1052,8 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                             shifts={shifts}
                                                             staffDayShiftIds={new Set(allDayShifts.map(d => d.shift.id))}
                                                             staffDayShifts={allDayShifts.map(d => d.shift)}
-                                                            onPick={(shiftId) => assignShiftDay(s, shiftId, dayIdx, dayLabel)}
+                                                            onPick={(shiftId) => assignForDay(s, shiftId, dayIdx, dayLabel)}
+                                                            onOpen={onFlyoutOpen}
                                                         />
                                                     </>
                                                 )}
