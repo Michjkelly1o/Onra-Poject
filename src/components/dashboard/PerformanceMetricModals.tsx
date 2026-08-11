@@ -28,13 +28,13 @@ import {
     ModalShell, branchInScope, CustomerCell, fmtDateTime,
 } from "./NeedsAttentionModals";
 import { PersonCell, deriveInitials, aed, isBillableSaleTxn } from "./TodayMetricModals";
+import { recognizedRevenueLineItems } from "@/lib/reports/recognized-revenue";
 import { useAppStore } from "@/lib/store";
 import { dateFilterToRange } from "@/lib/period-filter";
 import type { DateFilter } from "@/components/ui/date-range-filter";
 
 const TH = TABLE_TH;
 const TD = cn(TABLE_TD, "align-middle");
-const DAY_MS = 86_400_000;
 
 function isoDay(d: Date): string {
     const y = d.getFullYear();
@@ -198,68 +198,29 @@ export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModal
 
     const rows = useMemo(() => {
         const { from, to } = dateFilterToRange(period);
-        const fromMs = from.getTime();
-        const toMs = to.getTime();
-        const inRangeMs = (iso: string) => {
-            const t = new Date(iso).getTime();
-            return !Number.isNaN(t) && t >= fromMs && t <= toMs;
-        };
-        interface Row {
-            key: string;
-            person: { name: string; email?: string; initials: string; imageUrl?: string };
-            customerId?: string;
-            product: string;
-            basis: string;
-            accruedAed: number;
-        }
-        const out: Row[] = [];
-        for (const t of customerTransactions) {
-            if (!isBillableSaleTxn(t)) continue;
-            if (!branchInScope(t.branchId, branchIds)) continue;
-            const purchaseMs = new Date(t.createdAtISO).getTime();
-            if (Number.isNaN(purchaseMs)) continue;
-            const c = customers.find(cx => cx.id === t.customerId);
+        // Shared engine — one row per recognized line item so the Accrued column
+        // sums to the Revenue card (packages + credit-based memberships per-credit;
+        // unlimited memberships straight-line; retail/private/recovery at sale).
+        const txns = customerTransactions.filter(t => branchInScope(t.branchId, branchIds));
+        const bookings = classBookings.filter(b => branchInScope(b.branchId, branchIds));
+        const items = recognizedRevenueLineItems({ transactions: txns, bookings, packages, memberships }, from.getTime(), to.getTime());
+        return items.map((it, i) => {
+            const c = customers.find(cx => cx.id === it.customerId);
             const name = c ? `${c.firstName} ${c.lastName}`.trim() : "Walk-in";
-            const person = {
-                name,
-                email: c?.email,
-                initials: c ? (c.initials || deriveInitials(name)) : "WI",
-                imageUrl: c?.imageUrl,
+            return {
+                key: `${it.customerId}-${i}`,
+                person: {
+                    name,
+                    email: c?.email,
+                    initials: c ? (c.initials || deriveInitials(name)) : "WI",
+                    imageUrl: c?.imageUrl,
+                },
+                customerId: c?.id,
+                product: it.label,
+                basis: it.kind === "credit" ? "Credit used" : it.kind === "membership" ? "Membership · earned" : "At sale",
+                accruedAed: it.amountAed,
             };
-
-            if (t.kind === "membership") {
-                const mem = memberships.find(m => m.id === t.productId);
-                const durationDays = Math.max(1, (mem?.duration_months ?? 1) * 30);
-                const expiryMs = purchaseMs + durationDays * DAY_MS;
-                const overlap = Math.max(0, Math.min(expiryMs, toMs) - Math.max(purchaseMs, fromMs));
-                if (overlap > 0) {
-                    out.push({
-                        key: t.id, person, customerId: c?.id, product: t.name,
-                        basis: "Membership · pro-rated",
-                        accruedAed: t.amountAed * (overlap / (durationDays * DAY_MS)),
-                    });
-                }
-            } else if (t.kind === "package") {
-                const pkg = packages.find(p => p.id === t.productId);
-                const totalCredits = Math.max(1, pkg?.credits ?? 1);
-                const revPerCredit = t.amountAed / totalCredits;
-                const creditsUsed = classBookings.filter(b =>
-                    b.customerId === t.customerId
-                    && b.planKindUsed === "package"
-                    && b.planId === t.productId
-                    && b.status !== "cancelled"
-                    && inRangeMs(b.bookingTime),
-                ).length;
-                if (creditsUsed > 0) {
-                    out.push({
-                        key: t.id, person, customerId: c?.id, product: t.name,
-                        basis: `Package · ${creditsUsed} credit${creditsUsed === 1 ? "" : "s"} used`,
-                        accruedAed: creditsUsed * revPerCredit,
-                    });
-                }
-            }
-        }
-        return out;
+        });
     }, [customerTransactions, customers, classBookings, memberships, packages, branchIds, period]);
 
     const { sorted, sortKey, sortDir, toggle: toggleSort } =

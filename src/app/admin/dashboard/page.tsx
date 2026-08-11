@@ -994,66 +994,14 @@ export default function AdminDashboard() {
         const salesPeriod = salesInPeriod.reduce((sum, t) => sum + t.amountAed, 0);
         const salesPrior  = salesInPrior.reduce((sum, t) => sum + t.amountAed, 0);
 
-        // Revenue accrual — walks EVERY billable transaction (not just those
-        // that landed in the window) because a package sold last month whose
-        // credits are used this month accrues into THIS month's revenue.
-        const DAY_MS = 86_400_000;
-        const accrueRevenue = (rangeFromMs: number, rangeToMs: number): number => {
-            let revenue = 0;
-            for (const t of scopedTransactions) {
-                if (!isBillableSale(t)) continue;
-                const purchaseMs = new Date(t.createdAtISO).getTime();
-                if (Number.isNaN(purchaseMs)) continue;
-
-                if (t.kind === "membership") {
-                    // Time-based allocation across the membership's duration.
-                    // Falls back to 30 days when duration or product missing.
-                    const mem = memberships.find(m => m.id === t.productId);
-                    const durationDays = Math.max(1, (mem?.duration_months ?? 1) * 30);
-                    const expiryMs = purchaseMs + durationDays * DAY_MS;
-                    const overlap = Math.max(
-                        0,
-                        Math.min(expiryMs, rangeToMs) - Math.max(purchaseMs, rangeFromMs),
-                    );
-                    if (overlap > 0) {
-                        revenue += t.amountAed * (overlap / (durationDays * DAY_MS));
-                    }
-                    continue;
-                }
-
-                if (t.kind === "package") {
-                    // Per-credit allocation. Revenue accrues each time the
-                    // customer books a class against this package (a credit
-                    // is spent). Booking is the recognition event — matches
-                    // the client's "uses one class" phrasing.
-                    const pkg = packages.find(p => p.id === t.productId);
-                    const totalCredits = Math.max(1, pkg?.credits ?? 1);
-                    const revPerCredit = t.amountAed / totalCredits;
-                    // Credits used in [rangeFrom, rangeTo] against THIS
-                    // customer's THIS package. planId on a booking is the
-                    // product id used (memberships.id / packages.id), so we
-                    // match on t.productId. Cancelled bookings return the
-                    // credit, so they don't count as revenue.
-                    const creditsUsedInRange = scopedBookings.filter(b =>
-                        b.customerId === t.customerId
-                        && b.planKindUsed === "package"
-                        && b.planId === t.productId
-                        && b.status !== "cancelled"
-                        && inRangeMsGeneric(b.bookingTime, rangeFromMs, rangeToMs),
-                    ).length;
-                    revenue += creditsUsedInRange * revPerCredit;
-                }
-            }
-            return revenue;
-        };
-        // Local range helper — same shape as the outer `inRangeMs` but takes
-        // the bounds explicitly so we can reuse it for prior windows too.
-        function inRangeMsGeneric(iso: string, fromMs: number, toMs: number): boolean {
-            const t = new Date(iso).getTime();
-            return !Number.isNaN(t) && t >= fromMs && t <= toMs;
-        }
-        const revenuePeriod = accrueRevenue(fromMs, toMs);
-        const revenuePrior  = accrueRevenue(prevFromMs, prevToMs);
+        // Revenue = recognized value of credits used (+ straight-line unlimited
+        // memberships, retail/private/recovery at sale) via the SHARED engine, so
+        // Performance agrees with the Today tab and the Reports — and credit-based
+        // memberships now recognize per-credit, not by time. Walks every billable
+        // sale because credits used this period may belong to an earlier sale.
+        const revEngineInput = { transactions: scopedTransactions, bookings: scopedBookings, packages, memberships };
+        const revenuePeriod = computeRecognizedRevenue(revEngineInput, fromMs, toMs);
+        const revenuePrior  = computeRecognizedRevenue(revEngineInput, prevFromMs, prevToMs);
 
         // New customers — active customers that JOINED in the period. Client
         // 2026-07-20 clarified label to "New customers" (was ambiguous
