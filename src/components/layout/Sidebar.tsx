@@ -270,12 +270,11 @@ function SlimFlyout({ label, items, activeHref, children }: {
             onMouseEnter={open}
             onMouseLeave={scheduleClose}
             // While the flyout is open the pointer is over the panel (not the
-            // icon), so force the parent icon row to keep the selected look —
-            // the brand tint the AI Agent uses for a selected chat
-            // (--colors-secondary-50) — so the rail row + flyout read as one.
+            // icon), so force the parent icon row to keep the SAME hover the
+            // sidebar shows on any collapsed icon (#fbfffd) — never a different
+            // colour. The flyout ITEMS use the brand tint; the rail icon does not.
             className={cn(
-                isOpen &&
-                    "[&>button]:!bg-[var(--colors-secondary-50)] [&>button]:!text-[#101828] [&>button_svg]:!text-[#101828]",
+                isOpen && "[&>button]:!bg-[#fbfffd]",
             )}
         >
             {children}
