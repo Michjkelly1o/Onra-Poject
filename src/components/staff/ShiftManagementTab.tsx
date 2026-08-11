@@ -704,8 +704,8 @@ export function ShiftManagementTab({
     // ── Filter + search (LIST view — Working days + Status) ─────────────────
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
+        // Shifts are branch-agnostic (client 2026-08) — no branch scoping here.
         return shifts.filter(s => {
-            if (branchId && s.branch_id !== branchId)                 return false;
             if (appliedList.statuses.length && !appliedList.statuses.includes(s.status)) return false;
             // Working-days filter — shift qualifies if it runs on ANY selected day.
             if (appliedList.days.length && !appliedList.days.some(d => s.working_days[d])) return false;
@@ -721,9 +721,9 @@ export function ShiftManagementTab({
     );
     const weekShiftNameOptions = useMemo(
         () => shifts
-            .filter(sh => sh.status === "active" && (!branchId || sh.branch_id === branchId))
+            .filter(sh => sh.status === "active")
             .map(sh => ({ id: sh.id, name: sh.name })),
-        [shifts, branchId],
+        [shifts],
     );
 
     // ── Pagination slice ──────────────────────────────────────────────────
@@ -871,7 +871,7 @@ export function ShiftManagementTab({
             /* Table card — wrapped in px-6 so the table edges line up with
                the surrounding tab nav row + the pagination row below,
                matching the staff table's padding model exactly. */
-            <div className="relative flex flex-col min-h-0">
+            <div className="relative flex flex-col flex-1 min-h-0">
                 {filtered.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
                         <EmptyState
@@ -899,9 +899,7 @@ export function ShiftManagementTab({
                                         <th className={cn(TH, "w-[220px]")}>
                                             <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Shift name</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[180px]")}>
-                                            <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
-                                        </th>
+                                        <th className={cn(TH, "w-[140px]")}>Shift type</th>
                                         <th className={cn(TH, "w-[140px]")}>
                                             <SortableHeader sortKey="days"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Shift days</SortableHeader>
                                         </th>
@@ -920,9 +918,6 @@ export function ShiftManagementTab({
                                             <SortableHeader sortKey="staff"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Staffing</SortableHeader>
                                         </th>
                                         )}
-                                        <th className={cn(TH, "w-[120px]")}>
-                                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                        </th>
                                         <th className={cn(TH, "w-[52px]")}></th>
                                     </tr>
                                 </thead>
@@ -975,7 +970,11 @@ export function ShiftManagementTab({
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className={cn(TD, "whitespace-nowrap")}>{branch?.name ?? "—"}</td>
+                                            <td className={cn(TD, "whitespace-nowrap")}>
+                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 border-[#e4e7ec] bg-[#f9fafb] text-[#344054]">
+                                                    {(s.type ?? "recurring") === "single" ? "Single" : "Recurring"}
+                                                </span>
+                                            </td>
                                             <td className={cn(TD, "whitespace-nowrap")}>{daysSummary(s.working_days)}</td>
                                             <td className={cn(TD, "whitespace-nowrap")}>
                                                 {fmtTime12(s.start_time)} – {fmtTime12(s.end_time)}
@@ -999,17 +998,12 @@ export function ShiftManagementTab({
                                                 </div>
                                             </td>
                                             )}
-                                            <td className={TD}><StatusBadge type="shift" status={s.status} /></td>
                                             <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <RowActions items={[
                                                     { label: "View details", icon: Eye, onClick: () => handleRowAction(s, "view") },
-                                                    { label: "Edit details", icon: Edit02, onClick: () => handleRowAction(s, "edit"), hidden: s.status !== "active" },
-                                                    { label: "Assign staff", icon: UserPlus01, onClick: () => handleRowAction(s, "assign_staff"), hidden: s.status !== "active" },
-                                                    { label: "Archive", icon: Archive, onClick: () => handleRowAction(s, "archive"), hidden: s.status === "archive" },
-                                                    { label: "Reactivate", icon: Check, onClick: () => handleRowAction(s, "reactivate"), hidden: s.status !== "inactive" },
-                                                    { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(s, "recover"), hidden: s.status !== "archive" },
-                                                    { label: "Deactivate", icon: SlashCircle01, onClick: () => handleRowAction(s, "deactivate"), danger: true, hidden: !(s.status === "active" && assignedCount > 0) },
-                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true, hidden: s.status !== "active" },
+                                                    { label: "Edit details", icon: Edit02, onClick: () => handleRowAction(s, "edit") },
+                                                    { label: "Assign staff", icon: UserPlus01, onClick: () => handleRowAction(s, "assign_staff") },
+                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true },
                                                 ]} />
                                             </td>
                                         </tr>

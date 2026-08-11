@@ -983,7 +983,7 @@ export default function ProductsPage() {
             </div>
 
             {/* ── View card ── */}
-            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     <SegmentedTabs

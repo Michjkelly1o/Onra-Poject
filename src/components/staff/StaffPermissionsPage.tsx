@@ -52,7 +52,6 @@ import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { AssignShiftModal } from "@/components/staff/AssignShiftModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
-import { TodayScheduleCell } from "@/components/staff/TodayScheduleCell";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
@@ -1290,15 +1289,19 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     so the tab strip pins and only the inner body scrolls while
                     the outer <main> canvas scrolls the page. */}
             <div className={cn(
-                forceTab === "roles"
-                    ? "min-h-0 flex flex-col overflow-hidden"
-                    : "min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                // Flush, borderless surface (like the Pay rates + Roles modules)
+                // for the Roles route and the Staff sub-tab. The Shift + Time off
+                // sub-tabs keep the bordered card because they host the segmented
+                // tab strip. Client 2026-08.
+                (forceTab === "roles" || (forceTab === "staff" && staffSubTab === "staff"))
+                    ? "flex-1 min-h-0 flex flex-col overflow-hidden"
+                    : "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on
                     the Role & permissions route since Filter moved to
                     the main toolbar and there are no tabs left. */}
-                {forceTab !== "roles" && (
+                {forceTab !== "roles" && !(forceTab === "staff" && staffSubTab === "staff") && (
                     <div className="shrink-0 px-6 py-4 flex items-center gap-3 relative">
                         {/* Tab pill strip:
                               • combined view (legacy) → Roles | Staff side-by-side
@@ -1324,40 +1327,23 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                 onChange={(k) => setTab(k as typeof tab)}
                             />
                         )}
-                        {forceTab === "staff" && (() => {
-                            // Two sidebar menus, two in-page sections:
-                            //   • Staff  → Staff · Staff Schedule (shift-management WEEK)
-                            //   • Shift  → Shift (shift-management LIST) · Time off
-                            const inStaffSection =
-                                staffSubTab === "staff" ||
-                                (staffSubTab === "shift-management" && shiftsViewMode === "week");
-                            const activeKey =
-                                staffSubTab === "staff"
-                                    ? "staff"
-                                    : staffSubTab === "blocked-time"
-                                      ? "blocked-time"
-                                      : shiftsViewMode === "week"
-                                        ? "schedule"
-                                        : "shifts";
-                            const tabs = inStaffSection
-                                ? [
-                                      { key: "staff", label: "Staff" },
-                                      { key: "schedule", label: "Staff schedule" },
-                                  ]
-                                : [
-                                      { key: "shifts", label: "Shift" },
-                                      { key: "blocked-time", label: "Time off" },
-                                  ];
+                        {/* The Staff section is now a single table (the "Staff
+                            schedule" week calendar was retired in favour of the
+                            /admin/schedule Day-view shift system) — so it shows
+                            NO segmented tabs. Only the Shift section keeps its
+                            Shift · Time off pair. */}
+                        {forceTab === "staff" && staffSubTab !== "staff" && (() => {
+                            const activeKey = staffSubTab === "blocked-time" ? "blocked-time" : "shifts";
+                            const tabs = [
+                                { key: "shifts", label: "Shift" },
+                                { key: "blocked-time", label: "Time off" },
+                            ];
                             return (
                                 <SegmentedTabs
                                     tabs={tabs}
                                     activeKey={activeKey}
                                     onChange={(k) => {
-                                        if (k === "staff") setStaffSubTab("staff");
-                                        else if (k === "schedule") {
-                                            setStaffSubTab("shift-management");
-                                            setShiftsViewMode("week");
-                                        } else if (k === "shifts") {
+                                        if (k === "shifts") {
                                             setStaffSubTab("shift-management");
                                             setShiftsViewMode("list");
                                         } else if (k === "blocked-time") setStaffSubTab("blocked-time");
@@ -1537,10 +1523,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                 : "Try adjusting your search or filters."}
                         />
                     ) : (
-                    // Table wrapper padding — flush on the Role &
-                    // permissions route, 24px L/R inside the card chrome
-                    // elsewhere.
-                    <div className={cn(forceTab !== "roles" && "px-6")}>
+                    // Table wrapper padding — full-bleed on the Role &
+                    // permissions route AND the Staff sub-tab (both borderless,
+                    // matching Pay rates); 24px L/R inside the card chrome for
+                    // the Shift + Time off sub-tabs.
+                    <div className={cn(!(forceTab === "roles" || (forceTab === "staff" && staffSubTab === "staff")) && "px-6")}>
                         <div>
                             <table className="w-full border-collapse">
                                 <thead>
@@ -1562,7 +1549,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         <th className={cn(TH, "w-[180px]")}>
                                             <SortableHeader sortKey="branch" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Branch location</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[210px]")}>Today&apos;s schedule</th>
+                                        <th className={cn(TH, "w-[210px]")}>Assigned shift</th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Status</SortableHeader>
                                         </th>
@@ -1620,18 +1607,32 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                     )}
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
-                                                <td className={TD}>
-                                                    <TodayScheduleCell
-                                                        staff={s}
-                                                        isInstructor={role?.type === "instructor"}
-                                                        shifts={shifts}
-                                                        shiftAssignments={shiftAssignments}
-                                                        blockedTimes={blockedTimes}
-                                                        classSchedules={classSchedules}
-                                                        appointments={appointmentsAll}
-                                                        todayISO={todayISO}
-                                                        todayDow={todayDow}
-                                                    />
+                                                <td className={cn(TD, "text-[#475467]")}>
+                                                    {(() => {
+                                                        // Assigned shift(s) — M2M assignments blended
+                                                        // with the legacy primary, matching the detail
+                                                        // page's `assignedShifts`.
+                                                        const seen = new Set<string>();
+                                                        const names: string[] = [];
+                                                        for (const a of shiftAssignments) {
+                                                            if (a.staff_id !== s.id) continue;
+                                                            const sh = shifts.find(x => x.id === a.shift_id);
+                                                            if (sh && !seen.has(sh.id)) { seen.add(sh.id); names.push(sh.name); }
+                                                        }
+                                                        if (names.length === 0 && s.shiftId) {
+                                                            const sh = shifts.find(x => x.id === s.shiftId);
+                                                            if (sh) names.push(sh.name);
+                                                        }
+                                                        if (names.length === 0) return <span className="text-[#98a2b3]">—</span>;
+                                                        return (
+                                                            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                                                                <span className="truncate max-w-[150px] text-[14px] text-[#344054]">{names[0]}</span>
+                                                                {names.length > 1 && (
+                                                                    <span className="text-[13px] text-[#667085]">+{names.length - 1}</span>
+                                                                )}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
@@ -1661,8 +1662,13 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     // Pagination padding:
                     //   • Role & permissions route → no inner padding so it
                     //     aligns with the flush table above.
+                    //   • Staff sub-tab → full-bleed (like Pay rates).
                     //   • Other routes → 24px L/R to match the card chrome.
-                    <div className={cn(forceTab !== "roles" && "px-6 shrink-0")}>
+                    <div className={cn(
+                        forceTab === "staff" && staffSubTab === "staff"
+                            ? "shrink-0"
+                            : forceTab !== "roles" && "px-6 shrink-0",
+                    )}>
                         <Pagination
                             page={clampedPage}
                             total={tab === "roles" ? filteredRoles.length : filteredStaff.length}

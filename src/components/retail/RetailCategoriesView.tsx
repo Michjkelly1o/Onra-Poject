@@ -370,7 +370,7 @@ export function RetailCategoriesView() {
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">
             <RetailCategoriesToolbar ctrl={ctrl} />
-            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative py-4">
                     <RetailCategoriesPanel ctrl={ctrl} />
                 </div>

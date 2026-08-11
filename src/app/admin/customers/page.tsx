@@ -862,7 +862,7 @@ export default function CustomersPage() {
             {/* ── View card — rounded container hosting the SegmentedTabs
                    strip + the table. Fills the remaining viewport so only
                    the table body scrolls (matches /admin/staff's chrome). */}
-            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 px-6 py-4 flex items-center gap-3">
                     <SegmentedTabs
                         tabs={segmentTabDefs}

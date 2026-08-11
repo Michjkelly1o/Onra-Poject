@@ -319,6 +319,38 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
         [filtered, selectedIds],
     );
 
+    // ── Time-off metrics — how many DISTINCT staff have time off today /
+    //    this week / this month, plus the period's date label (Figma
+    //    8132:406438 style). Branch-scoped, ignores the search box. ─────────
+    const metrics = useMemo(() => {
+        const base = blockedTimes.filter(b => !branchId || b.branch_id === branchId);
+        const today = todayISO();
+        const now = new Date(`${today}T00:00:00`);
+        const dow = now.getDay(); // 0=Sun … 6=Sat
+        const monday = new Date(now); monday.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
+        const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+        const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const weekFrom = iso(monday), weekTo = iso(sunday);
+        const monthFrom = `${today.slice(0, 7)}-01`, monthTo = `${today.slice(0, 7)}-31`;
+        const overlaps = (b: BlockedTime, from: string, to: string) => {
+            const bFrom = b.date_from_iso ?? b.date;
+            const bTo   = b.date_to_iso   ?? b.date;
+            return bFrom <= to && bTo >= from;
+        };
+        // Distinct staff across every entry overlapping the period.
+        const staffCount = (from: string, to: string) => {
+            const ids = new Set<string>();
+            for (const b of base) if (overlaps(b, from, to)) b.staff_ids.forEach(id => ids.add(id));
+            return ids.size;
+        };
+        const dm = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+        return {
+            today: { count: staffCount(today, today), label: now.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) },
+            week:  { count: staffCount(weekFrom, weekTo), label: `${dm(monday)} - ${dm(sunday)} ${sunday.getFullYear()}` },
+            month: { count: staffCount(monthFrom, monthTo), label: now.toLocaleDateString("en-US", { month: "short", year: "numeric" }) },
+        };
+    }, [blockedTimes, branchId]);
+
     // The monthly calendar view is hidden for now — the calendar lives under Staff
     // Schedule (client 2026-08). Time Off always renders as the LIST.
     const SHOW_MONTH_VIEW = false;
@@ -327,7 +359,25 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
             {SHOW_MONTH_VIEW && viewMode === "month" ? (
                 <TimeOffMonthView branchId={branchId ?? ""} search={search} monthCursor={monthCursor} />
             ) : (
-            <div className="flex flex-col min-h-0">
+            <div className="flex flex-col flex-1 min-h-0">
+                {/* Metrics — distinct staff off today / this week / this month.
+                    Reuses the dashboard KPI card (bordered rounded-2xl, label →
+                    value → sub-line) but WITHOUT the featured icon (Figma). */}
+                <div className="px-6 pt-1 pb-5 shrink-0">
+                    <div className="grid grid-cols-3 gap-4">
+                        {[
+                            { label: "Today",      value: metrics.today.count, sub: metrics.today.label },
+                            { label: "This week",  value: metrics.week.count,  sub: metrics.week.label },
+                            { label: "This month", value: metrics.month.count, sub: metrics.month.label },
+                        ].map(({ label, value, sub }) => (
+                            <div key={label} className="flex flex-col gap-1.5 rounded-2xl border border-[var(--colors-border-secondary)] bg-white p-4">
+                                <p className="text-sm font-normal text-[var(--colors-text-quaternary)]">{label}</p>
+                                <p className="text-xl font-semibold leading-[28px] text-[var(--colors-text-primary)]">{value} staff</p>
+                                <p className="text-xs font-normal text-[var(--colors-text-quaternary)]">{sub}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
                 {filtered.length === 0 ? (
                     <div className="relative" style={{ minHeight: 400 }}>
                         <EmptyState
@@ -353,17 +403,14 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                                 ariaLabel="Select all time off entries"
                                             />
                                         </th>
-                                        <th className={cn(TH, "w-[240px]")}>
-                                            <SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; time</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="reason" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Reason</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[200px]")}>
+                                        <th className={cn(TH, "w-[220px]")}>
                                             <SortableHeader sortKey="staff"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Staff</SortableHeader>
                                         </th>
+                                        <th className={cn(TH, "w-[260px]")}>
+                                            <SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; time</SortableHeader>
+                                        </th>
                                         <th className={TH}>
-                                            <SortableHeader sortKey="note"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Note / Impact</SortableHeader>
+                                            <SortableHeader sortKey="note"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Note</SortableHeader>
                                         </th>
                                         <th className={cn(TH, "w-[52px]")} />
                                     </tr>
@@ -394,33 +441,23 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                                         ariaLabel={`Select ${title}`} />
                                                 </td>
                                                 <td className={TD}>
+                                                    {staffList.length === 0
+                                                        ? <span className="text-[#667085]">—</span>
+                                                        : <StackedAvatars staffList={staffList} />}
+                                                </td>
+                                                <td className={TD}>
                                                     <div className="flex flex-col gap-1">
-                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                            <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">
-                                                                {isRange
-                                                                    ? `${fmtDate(fromISO)} – ${fmtDate(toISO)}`
-                                                                    : fmtDate(fromISO)}
-                                                            </span>
-                                                            {isRange && (
-                                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#fef4e1] border-[#fecc85] text-[#b54708] whitespace-nowrap">
-                                                                    Range
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                        <span className="text-[14px] font-medium text-[#101828] whitespace-nowrap">
+                                                            {isRange
+                                                                ? `${fmtDate(fromISO)} – ${fmtDate(toISO)}`
+                                                                : fmtDate(fromISO)}
+                                                        </span>
                                                         <span className="text-[13px] text-[#667085] whitespace-nowrap">
                                                             {isAllDay
                                                                 ? `All day${isRange ? ` · ${days} days` : ""}`
                                                                 : `${fmtTime12(b.start_time)} – ${fmtTime12(b.end_time)}`}
                                                         </span>
                                                     </div>
-                                                </td>
-                                                <td className={TD}>
-                                                    <ReasonChip reason={b.reason} />
-                                                </td>
-                                                <td className={TD}>
-                                                    {staffList.length === 0
-                                                        ? <span className="text-[#667085]">—</span>
-                                                        : <StackedAvatars staffList={staffList} />}
                                                 </td>
                                                 <td className={cn(TD, "text-[#667085] max-w-[400px] truncate")}>
                                                     {note}
