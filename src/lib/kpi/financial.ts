@@ -111,6 +111,17 @@ export function computeFinancialKpis(
     const payments = selectPayments(state);
     const plans = selectMemberships(state);
 
+    // Archived customers are a "place" outside the CRM — their plans never
+    // count toward member / MRR surfaces (matches the customers list).
+    const archivedCustomerIds = new Set(
+        state.customers.filter(c => c.status === "archived").map(c => c.id),
+    );
+    // Membership term (months) per product — MRR is a MONTHLY figure, so an
+    // annual plan contributes price ÷ 12, not the whole annual price.
+    const monthsByMembership = new Map(
+        state.memberships.map(m => [m.id, Math.max(1, m.duration_months || 1)]),
+    );
+
     const { current, prior, priorLabel } = range;
     const period = priorLabel;
 
@@ -151,16 +162,24 @@ export function computeFinancialKpis(
     // Compute blocks kept intact for report drill-downs are elsewhere.
 
     // ── 6. Recurring revenue (MRR) — Snapshot ────────────────────────────
-    // Sum of active membership monthly prices, as of TODAY, ignores date filter.
+    // Sum of active membership MONTHLY prices, as of TODAY (ignores date
+    // filter). Annual plans are normalized to price ÷ term; archived
+    // customers' plans excluded.
     const mrrNow = plans
-        .filter(p => p.kind === "membership" && p.status === "active" && p.priceAed > 0 && branchOk(p.branchId, branchFilter))
-        .reduce((sum, p) => sum + p.priceAed, 0);
+        .filter(p => p.kind === "membership" && p.status === "active" && p.priceAed > 0
+            && branchOk(p.branchId, branchFilter) && !archivedCustomerIds.has(p.customerId))
+        .reduce((sum, p) => sum + p.priceAed / (p.productId ? (monthsByMembership.get(p.productId) ?? 1) : 1), 0);
 
     // ── 7. ARPM = net revenue ÷ active members ────────────────────────────
-    // Active members are counted per plan record. Approximation for the
-    // demo: use plans with status === "active" as the current-period
-    // denominator; prior uses the same set (no time-travel).
-    const activeMembersCur   = plans.filter(p => p.status === "active" && branchOk(p.branchId, branchFilter)).length;
+    // "Active members" = DISTINCT non-archived customers holding a live
+    // (active/frozen) plan — matches the customers list's Member count, not a
+    // raw plan-record tally. Prior uses the same snapshot (no time-travel).
+    const activeMembersCur = new Set(
+        plans
+            .filter(p => (p.status === "active" || p.status === "frozen")
+                && branchOk(p.branchId, branchFilter) && !archivedCustomerIds.has(p.customerId))
+            .map(p => p.customerId),
+    ).size;
     const activeMembersPrior = activeMembersCur;  // demo approximation
     const arpmCur   = activeMembersCur   > 0 ? netCur   / activeMembersCur   : 0;
     const arpmPrior = activeMembersPrior > 0 ? netPrior / activeMembersPrior : 0;

@@ -75,13 +75,10 @@ export function computeClassKpis(
             } else if (b.attendanceStatus === "late_cancel") {
                 lateCancels += 1;
             }
-            // Waitlist-converted heuristic: a "booked" row with a
-            // non-zero waitlistPosition never gets set to booked without
-            // a promotion event today, so this stays 0 for the demo
-            // unless the store starts writing waitlist→booked promotion
-            // events. Kept in the tally so the KPI card is real when the
-            // data lands.
-            if (b.status === "booked" && (b.waitlistPosition ?? 0) > 0) waitlistConverted += 1;
+            // A real waitlist→booked conversion: promotion clears
+            // `waitlistPosition` and stamps `promotedFromWaitlistAt`, so that
+            // flag is the durable, truthful signal.
+            if (b.promotedFromWaitlistAt) waitlistConverted += 1;
         }
         return { booked, attended, noShows, lateCancels, waitlisted, waitlistConverted, uniqueAttendees: attendedCustomers.size };
     }

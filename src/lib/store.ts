@@ -1231,6 +1231,11 @@ export interface ClassBooking {
     /** Set when the member declined, or the claim window lapsed — the seat is
      *  skipped when the spot is re-offered so it can't be offered twice. */
     waitlistClaimDeclinedAt?: string;
+    /** ISO timestamp stamped when this booking was promoted from the waitlist
+     *  to a confirmed seat. `waitlistPosition` is cleared on promotion, so this
+     *  is the ONLY durable signal of a waitlist→booked conversion — the
+     *  Insights "Waitlist conversions" KPI counts rows carrying it. */
+    promotedFromWaitlistAt?: string;
     /** Origin surface where the booking was created (camel-case mirror
      *  of `ClassBookingSeed.booking_source`). */
     bookingSource?: "customer_portal" | "admin" | "front_desk" | "pos";
@@ -7677,6 +7682,8 @@ export const useAppStore = create<AppState>()(persist(
                         waitlistClaimOfferedAt: undefined,
                         waitlistClaimExpiresAt: undefined,
                         waitlistClaimDeclinedAt: undefined,
+                        // Durable signal for the "Waitlist conversions" KPI.
+                        promotedFromWaitlistAt: new Date().toISOString(),
                     };
                 }
                 // Close the gap left in the queue.

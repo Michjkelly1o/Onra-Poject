@@ -71,8 +71,15 @@ export function computeClientKpis(
     const { current, prior, priorLabel } = range;
     const period = priorLabel;
 
-    // Filter plans by branch scope early — every KPI uses this.
-    const scopedPlans = plans.filter(p => branchOk(p.branchId, branchFilter));
+    // Filter plans by branch scope early — every KPI uses this. Archived
+    // customers are a "place" outside the CRM (matches the customers list +
+    // selectCustomers), so their plans never count toward active/churn/etc.
+    const archivedCustomerIds = new Set(
+        state.customers.filter(c => c.status === "archived").map(c => c.id),
+    );
+    const scopedPlans = plans.filter(p =>
+        branchOk(p.branchId, branchFilter) && !archivedCustomerIds.has(p.customerId),
+    );
 
     // Helpers for a given window.
     function planEndDate(p: typeof scopedPlans[number]): string {

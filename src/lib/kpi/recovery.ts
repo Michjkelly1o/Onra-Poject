@@ -11,6 +11,7 @@
 import type { AppState } from "@/lib/store";
 import type { Metric } from "@/components/insights/InsightMetricCard";
 import type { Window, RangePair } from "./date-range";
+import { resolveLedger, signedAmount } from "@/lib/reports/refunds";
 
 const CURRENCY = new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 });
 const NUMBER = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -42,8 +43,6 @@ export function computeRecoveryKpis(
     const { current, prior, priorLabel } = range;
     const period = priorLabel;
 
-    const priceByServiceId = new Map(state.services.map(s => [s.id, s.price ?? 0]));
-
     const recoveryInWin = (w: Window) => state.appointments.filter(a =>
         a.type === "recovery"
         && inWindow(a.dateISO, w)
@@ -53,15 +52,19 @@ export function computeRecoveryKpis(
     const recCur   = recoveryInWin(current);
     const recPrior = recoveryInWin(prior);
 
-    // ── 1. Revenue per appointment ───────────────────────────────────────
-    // For every recovery appointment in the window, use its parent service's
-    // list price as revenue. Divide by appointment count. In a proper
-    // accrual model this would be per-booking revenue; the demo aggregates
-    // at the appointment level.
-    const revenueSum = (list: typeof recCur) =>
-        list.reduce((s, a) => s + (priceByServiceId.get(a.serviceId) ?? 0), 0);
-    const revCur   = revenueSum(recCur);
-    const revPrior = revenueSum(recPrior);
+    // ── 1. Sales / Revenue / Revenue per appointment ─────────────────────
+    // From the REAL recovery-session transactions (kind "recovery") via the
+    // honest ledger — settled sales only, refunds netted on their own date.
+    // Sales = gross sale-side; Revenue = net (sales − refunds). Recovery is
+    // recognized at sale, so Revenue is the recognized figure.
+    const recLedger = resolveLedger(state.customerTransactions).filter(r => r.kind === "recovery");
+    const ledgerInWin = (w: Window) => recLedger.filter(r => inWindow(r.createdAtISO, w) && branchOk(r.branchId, branchFilter));
+    const salesOf = (rows: typeof recLedger) => rows.filter(r => r.transactionType === "sale").reduce((s, r) => s + Math.abs(r.amountAed), 0);
+    const netOf   = (rows: typeof recLedger) => rows.reduce((s, r) => s + signedAmount(r), 0);
+    const salesCur   = salesOf(ledgerInWin(current));
+    const salesPrior = salesOf(ledgerInWin(prior));
+    const revCur     = netOf(ledgerInWin(current));
+    const revPrior   = netOf(ledgerInWin(prior));
     const revPerAptCur   = recCur.length   > 0 ? revCur   / recCur.length   : 0;
     const revPerAptPrior = recPrior.length > 0 ? revPrior / recPrior.length : 0;
 
@@ -112,9 +115,10 @@ export function computeRecoveryKpis(
     ).length;
 
     return [
-        // Client Aug 2026 — Sales + Revenue lead the tab. Recovery has no
-        // per-booking refund tracking, so gross == net (service-price proxy).
-        { label: "Sales",                   value: aed(revCur),       change: delta(revCur, revPrior),             period,
+        // Client Aug 2026 — Sales + Revenue lead the tab. Both derive from the
+        // real recovery transactions via the honest ledger (settled sales,
+        // refunds netted): Sales = gross, Revenue = net.
+        { label: "Sales",                   value: aed(salesCur),     change: delta(salesCur, salesPrior),         period,
           description: "Value of recovery sessions sold in period.",
           drillTo: "/reports/total-sales" },
         { label: "Revenue",                 value: aed(revCur),       change: delta(revCur, revPrior),             period,

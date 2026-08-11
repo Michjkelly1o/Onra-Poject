@@ -10,6 +10,7 @@
 import type { AppState } from "@/lib/store";
 import type { Metric } from "@/components/insights/InsightMetricCard";
 import type { Window, RangePair } from "./date-range";
+import { resolveLedger, signedAmount } from "@/lib/reports/refunds";
 
 const NUMBER = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 function num(n: number): string { return NUMBER.format(Math.round(n)); }
@@ -51,13 +52,18 @@ export function computePrivateKpis(
     const privCur   = privateInWin(current);
     const privPrior = privateInWin(prior);
 
-    // Client Aug 2026 — Sales + Revenue lead the tab. Private revenue is the
-    // parent service's list price per appointment (same proxy Recovery uses);
-    // no per-booking refund tracking, so gross == net.
-    const priceByServiceId = new Map(state.services.map(s => [s.id, s.price ?? 0]));
-    const revenueSum = (list: typeof privCur) => list.reduce((s, a) => s + (priceByServiceId.get(a.serviceId) ?? 0), 0);
-    const revCur   = revenueSum(privCur);
-    const revPrior = revenueSum(privPrior);
+    // Sales + Revenue from the REAL private-session transactions (kind
+    // "private") via the honest ledger — settled sales only, refunds netted on
+    // their own date. Sales = gross sale-side; Revenue = net (sales − refunds).
+    // Private/recovery are recognized at sale, so this is the recognized figure.
+    const privLedger = resolveLedger(state.customerTransactions).filter(r => r.kind === "private");
+    const ledgerInWin = (w: Window) => privLedger.filter(r => inWindow(r.createdAtISO, w) && branchOk(r.branchId, branchFilter));
+    const salesOf = (rows: typeof privLedger) => rows.filter(r => r.transactionType === "sale").reduce((s, r) => s + Math.abs(r.amountAed), 0);
+    const netOf   = (rows: typeof privLedger) => rows.reduce((s, r) => s + signedAmount(r), 0);
+    const salesCur   = salesOf(ledgerInWin(current));
+    const salesPrior = salesOf(ledgerInWin(prior));
+    const revCur     = netOf(ledgerInWin(current));
+    const revPrior   = netOf(ledgerInWin(prior));
 
     // ── 1. Bookings ─────────────────────────────────────────────────────
     // Count of AppointmentBooking rows for those private appointments,
@@ -139,7 +145,7 @@ export function computePrivateKpis(
     const rebookPrior = rebookingRateFor(prior);
 
     return [
-        { label: "Sales",          value: aed(revCur),      change: delta(revCur, revPrior),           period,
+        { label: "Sales",          value: aed(salesCur),    change: delta(salesCur, salesPrior),       period,
           description: "Value of private sessions sold in period.",
           drillTo: "/reports/total-sales" },
         { label: "Revenue",        value: aed(revCur),      change: delta(revCur, revPrior),           period,
