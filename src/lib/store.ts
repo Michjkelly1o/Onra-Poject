@@ -13336,6 +13336,9 @@ export const useAppStore = create<AppState>()(persist(
                     fp.max_freezes_period = "rolling_12m";
                 }
                 if (fp.require_reason === undefined)     fp.require_reason = true;
+                // Cancel toggle (client 2026-08-11) — default OFF on any
+                // pre-existing snapshot so cancellation stays opt-in.
+                if (fp.members_can_cancel === undefined) fp.members_can_cancel = false;
                 // Reasons array — every reason gets the exceptions
                 // field defaulted to undefined (no bypass), so per-
                 // reason overrides opt-in rather than opt-out.

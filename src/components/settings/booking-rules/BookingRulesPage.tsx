@@ -270,12 +270,15 @@ export default function BookingRulesPage() {
                 behaviour or data change. */}
             <SettingsCard>
                 <CardHeader
-                    title="Freeze policy"
-                    subtitle="Rules for how customers pause their memberships from their account."
+                    title="Cancel & freeze plan policy"
+                    subtitle="Rules for how customers cancel or pause their memberships from their account."
                     editLabel="Customize"
                     onEdit={() => setFpOpen(true)}
                 />
-                <SummaryField label="Enable freeze policy" value={freezePolicy.enabled ? "Yes" : "No"} />
+                <div className="flex flex-col gap-5">
+                    <SummaryField label="Members can cancel their own membership" value={freezePolicy.members_can_cancel ? "Yes" : "No"} />
+                    <SummaryField label="Members can freeze their own membership" value={freezePolicy.enabled ? "Yes" : "No"} />
+                </div>
                 {freezePolicy.enabled && (
                     <div className="grid grid-cols-3 gap-x-6 gap-y-5">
                         <SummaryField label="Maximum freeze duration" value={freezeDurationValue} />

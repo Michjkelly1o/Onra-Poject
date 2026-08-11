@@ -387,6 +387,14 @@ export interface FreezePolicy {
     require_reason: boolean;
     reasons: FreezeReason[];
 
+    // ── Cancellation (client 2026-08-11) — the panel now governs BOTH
+    //    cancel + freeze ("Cancel & freeze plan policy"). ──
+    /** When ON, members can cancel their own membership from their account
+     *  (the customer plan page shows the Cancel CTA). Cancelling stops
+     *  renewal; access stays until the end of the paid period — no proration,
+     *  no partial refund. Default OFF. */
+    members_can_cancel: boolean;
+
     /** Which memberships the policy covers. "specific" → only membership_ids
      *  can be frozen; the rest are treated as freeze-disabled. */
     apply_to: "all" | "specific";

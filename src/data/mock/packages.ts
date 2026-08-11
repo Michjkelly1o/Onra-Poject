@@ -69,9 +69,9 @@ const DEFAULT_WELCOME = "Welcome to the community! Your package is now active an
 export const packages: Package[] = [
     {
         id: "pkg_1_class_intro",
-        name: "Intro Package for 7 Days",
-        description: "Single drop-in class — great for first-time visitors. Valid for 7 days from purchase.",
-        credits: 1,
+        name: "Single class for 7 days",
+        description: "3 classes to get you started — valid for 7 days from purchase.",
+        credits: 3,
         validity_days: 7,
         price_aed: 170,
         branch_ids: ["branch_forma_south", "branch_forma_east"],

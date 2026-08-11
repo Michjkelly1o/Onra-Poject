@@ -34,6 +34,7 @@ export function PlanCard({
     onReactivate,
     canReactivate = false,
     canFreeze = true,
+    canCancel = true,
     freezeMode = "direct",
 }: {
     plan: CustomerPlan;
@@ -50,6 +51,10 @@ export function PlanCard({
     /** Reactivate is offered only for a cancelled MEMBERSHIP while the customer
      *  holds no other active plan (packages never reactivate). */
     canReactivate?: boolean;
+    /** Gated by the admin "Members can cancel their own membership" toggle
+     *  (Booking rules → Cancel & freeze plan policy). When false the Cancel
+     *  CTA is hidden and Freeze fills the row. */
+    canCancel?: boolean;
     /** Whether self-service Freeze is offered — driven by the branch's freeze
      *  policy (enabled + apply-to + under the max-freezes limit). When false the
      *  Freeze button is hidden (Cancel fills the row). Unfreeze is unaffected. */
@@ -193,15 +198,18 @@ export function PlanCard({
                         </Button>
                     ) : null
                 ) : isLive ? (
+                    (canCancel || plan.status === "frozen" || canFreeze) ? (
                     <div className="flex gap-3">
-                        <Button
-                            variant="secondary-gray"
-                            size="md"
-                            className="flex-1 rounded-full font-semibold text-[#b42318]"
-                            onClick={onCancel}
-                        >
-                            Cancel
-                        </Button>
+                        {canCancel && (
+                            <Button
+                                variant="secondary-gray"
+                                size="md"
+                                className="flex-1 rounded-full font-semibold text-[#b42318]"
+                                onClick={onCancel}
+                            >
+                                Cancel
+                            </Button>
+                        )}
                         {plan.status === "frozen" ? (
                             <Button variant="secondary-gray" size="md" className="flex-1 rounded-full" onClick={onUnfreeze}>
                                 Unfreeze
@@ -212,6 +220,7 @@ export function PlanCard({
                             </Button>
                         ) : null}
                     </div>
+                    ) : null
                 ) : null)}
         </div>
     );
