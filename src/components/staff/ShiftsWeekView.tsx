@@ -31,7 +31,10 @@ import { DotsVertical, ClockPlus, Trash01, SearchLg, Eye, Plus } from "@untitled
 import { Modal } from "@/components/modals/Modal";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Button } from "@/components/ui/button";
-import { useAppStore, type Staff, type Shift, type ShiftAssignment } from "@/lib/store";
+import { SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
+import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { getCategoryColor } from "@/components/schedule/ScheduleGridViews";
+import { useAppStore, type Staff, type Shift, type ShiftAssignment, type SessionType } from "@/lib/store";
 import { findShiftConflict, timeRangesOverlap } from "@/lib/staff/shift-conflict";
 import { timeOffTitle, timeOffDuration } from "@/lib/staff/time-off";
 
@@ -148,11 +151,13 @@ function sliceTimeLabel(start: string, end: string): string {
 /** Slice-style shift card. `sessions` are the instructor's active class/appt
  *  time ranges that day; `partialOffs` are non-all-day time-off ranges. A hover
  *  trash (top-right) unassigns THIS shift on THIS day only. */
-function ShiftSliceCard({ shift, sessions, partialOffs, onUnassign }: {
+function ShiftSliceCard({ shift, sessions, partialOffs, onUnassign, onHoverStart, onHoverEnd }: {
     shift: Shift;
     sessions: { startTime: string; endTime: string }[];
     partialOffs: { start_time: string; end_time: string }[];
     onUnassign?: () => void;
+    onHoverStart?: (rect: DOMRect) => void;
+    onHoverEnd?: () => void;
 }) {
     const s0 = hoursOf(shift.start_time);
     const s1 = hoursOf(shift.end_time);
@@ -174,6 +179,8 @@ function ShiftSliceCard({ shift, sessions, partialOffs, onUnassign }: {
         <div
             className="group/card relative w-full overflow-hidden rounded-[8px] border border-[#e4e7ec] bg-[#f9fafb]"
             title={`${shift.name} · ${time}`}
+            onMouseEnter={(e) => onHoverStart?.(e.currentTarget.getBoundingClientRect())}
+            onMouseLeave={() => onHoverEnd?.()}
         >
             {/* Slice = the card background: session greens + time-off hatch + hour
                 dividers painted FULL-HEIGHT behind the text (Figma 8175:507703).
@@ -202,6 +209,77 @@ function ShiftSliceCard({ shift, sessions, partialOffs, onUnassign }: {
                 </button>
             )}
         </div>
+    );
+}
+
+// ─── Shift-card hover popover — the instructor's schedule during this shift ──
+//
+// Reuses the month-view "+N more" day-list chrome, but the header is the SHIFT
+// name + time (not the day) and the body lists the instructor's ACTIVE sessions
+// (class / private / recovery) plus any partial time-off that intersects the
+// shift window. Cancelled sessions are excluded; a shift with nothing (e.g. any
+// non-instructor role) shows an empty state. Client 2026-08-11.
+
+type ShiftPopoverItem =
+    | { kind: "session"; id: string; startTime: string; displayTime: string; name: string; type: SessionType; category: string; booked: number; capacity: number; status: string }
+    | { kind: "off"; id: string; label: string; sub: string };
+
+function ShiftHoverPopover({ shift, items, anchor, onEnter, onLeave }: {
+    shift: Shift;
+    items: ShiftPopoverItem[];
+    anchor: { left: number; right: number; top: number };
+    onEnter: () => void;
+    onLeave: () => void;
+}) {
+    const WIDTH = 320, MAX_H = 420;
+    // Prefer opening to the RIGHT of the card; flip left when it would overflow.
+    const openRight = anchor.right + 8 + WIDTH <= window.innerWidth - 12;
+    const left = openRight ? anchor.right + 8 : Math.max(8, anchor.left - WIDTH - 8);
+    const top = Math.max(12, Math.min(anchor.top, window.innerHeight - MAX_H - 12));
+    return createPortal(
+        <div
+            onMouseEnter={onEnter}
+            onMouseLeave={onLeave}
+            style={{ position: "fixed", top, left, width: WIDTH, maxHeight: MAX_H, zIndex: 9999 }}
+            className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)] flex flex-col overflow-hidden"
+        >
+            {/* Header — shift name + time (replaces the day header). */}
+            <div className="px-4 py-3 border-b border-[var(--colors-border-secondary)]">
+                <p className="text-[15px] font-semibold text-[var(--colors-text-primary)] truncate">{shift.name}</p>
+                <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[16px]">{sliceTimeLabel(shift.start_time, shift.end_time)}</p>
+            </div>
+            {/* Scrollable list — one row per active session / time-off. */}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-2 py-2 flex flex-col gap-1">
+                {items.length === 0 ? (
+                    <p className="px-2 py-6 text-center text-[13px] text-[var(--colors-fg-quaternary)]">No schedule for this shift.</p>
+                ) : items.map(it => it.kind === "off" ? (
+                    <div key={it.id} className="flex items-start gap-3 px-2 py-2 rounded-[8px]">
+                        <span className="mt-1.5 w-2 h-2 rounded-full shrink-0 bg-[#f79009]" aria-hidden />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">{it.label}</p>
+                            <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate">{it.sub}</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div key={it.id} className="flex items-start gap-3 px-2 py-2 rounded-[8px]">
+                        <span className="mt-1.5 w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getCategoryColor(it.category).border }} aria-hidden />
+                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[13px] font-medium text-[var(--colors-text-secondary)] shrink-0">{it.displayTime}</span>
+                                <span className="text-[13px] font-semibold text-[var(--colors-text-primary)] truncate">{it.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <SessionTypeTag type={it.type} />
+                                <span className="text-[12px] text-[var(--colors-fg-quaternary)] shrink-0">·</span>
+                                <span className="text-[12px] text-[var(--colors-text-quaternary)] shrink-0">{it.booked}/{it.capacity}</span>
+                            </div>
+                        </div>
+                        <StatusBadge type="class" status={it.status} />
+                    </div>
+                ))}
+            </div>
+        </div>,
+        document.body,
     );
 }
 
@@ -548,6 +626,11 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     const [unassignTarget, setUnassignTarget] = useState<{ staffId: string; staffName: string } | null>(null);
     // Per-day unassign confirmation (single shift card → this day only).
     const [unassignDay, setUnassignDay] = useState<{ assignmentId: string; shiftName: string; staffName: string; dayIdx: number; dayLabel: string } | null>(null);
+    // Shift-card hover popover state (client 2026-08-11) — open/close on a short
+    // delay so a quick pass-through doesn't flash the popover.
+    const [hover, setHover] = useState<{ shift: Shift; items: ShiftPopoverItem[]; anchor: { left: number; right: number; top: number } } | null>(null);
+    const hoverOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hoverCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const roles            = useAppStore(s => s.roles);
     const shifts           = useAppStore(s => s.shifts);
     const shiftAssignments = useAppStore(s => s.shiftAssignments);
@@ -695,6 +778,51 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                 && b.start_time && b.end_time)
             .map(b => ({ start_time: b.start_time as string, end_time: b.end_time as string }));
     }
+
+    /** The instructor's active sessions (class + private + recovery) plus partial
+     *  time-off that intersect THIS shift's window on `day` — feeds the hover
+     *  popover. Cancelled sessions are skipped; non-instructor roles yield none. */
+    function scheduleItemsForShift(staffId: string, day: Date, shift: Shift): ShiftPopoverItem[] {
+        const iso = isoDayLocal(day);
+        const s0 = hoursOf(shift.start_time), s1 = hoursOf(shift.end_time);
+        const intersects = (st: string, en: string) => hoursOf(en || st) > s0 && hoursOf(st) < s1;
+        const out: ShiftPopoverItem[] = [];
+        for (const c of classSchedules) {
+            if (c.instructorId !== staffId || c.dateISO !== iso || c.status === "Cancelled") continue;
+            if (!intersects(c.startTime, c.endTime)) continue;
+            out.push({ kind: "session", id: c.id, startTime: c.startTime, displayTime: c.displayTime, name: c.name, type: c.type, category: c.category, booked: c.booked, capacity: c.capacity, status: c.status });
+        }
+        for (const a of appointments) {
+            if (a.instructorId !== staffId || a.dateISO !== iso || a.status === "Cancelled") continue;
+            if (!intersects(a.startTime, a.endTime)) continue;
+            out.push({ kind: "session", id: a.id, startTime: a.startTime, displayTime: a.displayTime, name: a.serviceName, type: a.type, category: a.serviceCategory, booked: a.booked, capacity: a.capacity, status: a.status });
+        }
+        out.sort((x, y) => {
+            const sx = x.kind === "session" ? x.startTime : "99:99";
+            const sy = y.kind === "session" ? y.startTime : "99:99";
+            return sx.localeCompare(sy);
+        });
+        for (const b of blockedTimes) {
+            if (b.all_day || !b.staff_ids.includes(staffId)) continue;
+            if (!((b.date_from_iso ?? b.date) <= iso && iso <= (b.date_to_iso ?? b.date))) continue;
+            if (!b.start_time || !b.end_time || !intersects(b.start_time, b.end_time)) continue;
+            out.push({ kind: "off", id: b.id, label: timeOffTitle(b), sub: timeOffDuration(b) });
+        }
+        return out;
+    }
+
+    function openHover(shift: Shift, items: ShiftPopoverItem[], rect: DOMRect) {
+        if (hoverCloseTimer.current) { clearTimeout(hoverCloseTimer.current); hoverCloseTimer.current = null; }
+        if (hoverOpenTimer.current) clearTimeout(hoverOpenTimer.current);
+        const anchor = { left: rect.left, right: rect.right, top: rect.top };
+        hoverOpenTimer.current = setTimeout(() => setHover({ shift, items, anchor }), 120);
+    }
+    function closeHover() {
+        if (hoverOpenTimer.current) { clearTimeout(hoverOpenTimer.current); hoverOpenTimer.current = null; }
+        if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+        hoverCloseTimer.current = setTimeout(() => setHover(null), 150);
+    }
+    function cancelHoverClose() { if (hoverCloseTimer.current) { clearTimeout(hoverCloseTimer.current); hoverCloseTimer.current = null; } }
 
     /** Assign `shiftId` to `staff` — but first guard against a same-day time
      *  overlap with any shift they already hold. A staff member can hold
@@ -942,6 +1070,8 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                             <ShiftSliceCard key={assignment.id} shift={shift}
                                                                 sessions={sessionsForStaffOnDay(s.id, day)}
                                                                 partialOffs={partialOffsForStaffOnDay(s.id, day)}
+                                                                onHoverStart={(rect) => openHover(shift, scheduleItemsForShift(s.id, day, shift), rect)}
+                                                                onHoverEnd={closeHover}
                                                                 onUnassign={() => setUnassignDay({
                                                                     assignmentId: assignment.id,
                                                                     shiftName: shift.name,
@@ -969,6 +1099,17 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                     </div>
                 ))}
             </div>
+
+            {/* Shift-card hover popover — instructor's schedule during this shift. */}
+            {hover && (
+                <ShiftHoverPopover
+                    shift={hover.shift}
+                    items={hover.items}
+                    anchor={hover.anchor}
+                    onEnter={cancelHoverClose}
+                    onLeave={closeHover}
+                />
+            )}
 
             {/* Unassign — lists the staff's shifts to remove one, or all. */}
             <UnassignShiftsModal
