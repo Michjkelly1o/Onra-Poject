@@ -189,6 +189,11 @@ const WIDGET_SERIES_IDS = new Set([
     "attendance-overview",
     "no-show-rate",
     "underfilled-trend",
+    // Private / Recovery
+    "private-utilization",
+    "private-rebooking",
+    "recovery-bookings",
+    "recovery-attach-rate",
 ]);
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -2207,8 +2212,10 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
     const seCustomers   = useAppStore(s => isSeriesWidget ? s.customers : null);
     const sePlans       = useAppStore(s => isSeriesWidget ? s.customerPlans : null);
     const seSchedules   = useAppStore(s => isSeriesWidget ? s.classSchedules : null);
+    const seAppts       = useAppStore(s => isSeriesWidget ? s.appointments : null);
+    const seApptBookings = useAppStore(s => isSeriesWidget ? s.appointmentBookings : null);
     const financialSeries = useMemo(() => {
-        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans || !seSchedules) return null;
+        if (!seTxns || !seBookings || !sePackages || !seMemberships || !seCustomers || !sePlans || !seSchedules || !seAppts || !seApptBookings) return null;
         return computeWidgetSeries(widgetId, period ?? DEFAULT_PERIOD, {
             transactions: seTxns,
             bookings: seBookings,
@@ -2217,9 +2224,11 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
             customers: seCustomers.map(c => ({ id: c.id, createdAt: c.createdAt, status: c.status, marketingSource: c.marketingSource, branchId: c.branchId })),
             customerPlans: sePlans.map(p => ({ id: p.id, customerId: p.customerId, kind: p.kind, productId: p.productId, status: p.status, purchasedAtISO: p.purchasedAtISO, expiryISO: p.expiryISO, cancelledAtISO: p.cancelledAtISO, priceAed: p.priceAed })),
             schedules: seSchedules.map(s => ({ id: s.id, dateISO: s.dateISO, branchId: s.branchId, booked: s.booked, capacity: s.capacity, type: s.type })),
+            appointments: seAppts.map(a => ({ id: a.id, type: a.type, dateISO: a.dateISO, branchId: a.branchId, capacity: a.capacity, booked: a.booked, status: a.status })),
+            appointmentBookings: seApptBookings.map(bk => ({ appointmentId: bk.appointmentId, customerId: bk.customerId, status: bk.status })),
             branchIds,
         });
-    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, seSchedules, branchIds]);
+    }, [widgetId, period, seTxns, seBookings, sePackages, seMemberships, seCustomers, sePlans, seSchedules, seAppts, seApptBookings, branchIds]);
 
     if (!meta) return null;
 

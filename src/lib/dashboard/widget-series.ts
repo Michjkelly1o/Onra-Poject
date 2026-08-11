@@ -159,6 +159,9 @@ export interface WidgetInput {
     /** Class schedule instances — Class widgets bucket bookings by the class's
      *  `dateISO` (not booking time) and read booked/capacity for occupancy. */
     schedules: { id: string; dateISO: string; branchId: string; booked: number; capacity: number; type: string }[];
+    /** Private/Recovery appointment instances + their seat bookings. */
+    appointments: { id: string; type: string; dateISO: string; branchId: string; capacity?: number; booked?: number; status: string }[];
+    appointmentBookings: { appointmentId: string; customerId: string; status: string }[];
     /** Selected branch scope. Empty/undefined = all branches (aggregate). */
     branchIds?: string[];
 }
@@ -473,6 +476,86 @@ export function computeWidgetSeries(
                     return occ < 0.3;
                 }).length,
             }));
+        }
+
+        // ── Private / Recovery widgets ──────────────────────────────────
+        case "private-utilization": {
+            return buckets.map(b => {
+                let cap = 0, booked = 0;
+                for (const a of input.appointments) {
+                    if (a.type !== "private" || a.status === "Cancelled" || !branchOk(a.branchId, branchIds)) continue;
+                    if (!inBucket(Date.parse(a.dateISO), b)) continue;
+                    cap += a.capacity ?? 0; booked += a.booked ?? 0;
+                }
+                return { date: b.label, pct: cap > 0 ? Math.round((booked / cap) * 100) : 0 };
+            });
+        }
+        case "private-rebooking": {
+            const apptById = new Map(input.appointments.map(a => [a.id, a]));
+            const privBookings = input.appointmentBookings.filter(bk => {
+                const a = apptById.get(bk.appointmentId);
+                return !!a && a.type === "private" && a.status !== "Cancelled" && branchOk(a.branchId, branchIds);
+            });
+            const datesByCustomer = new Map<string, number[]>();
+            for (const bk of privBookings) {
+                const a = apptById.get(bk.appointmentId)!;
+                const arr = datesByCustomer.get(bk.customerId) ?? [];
+                arr.push(Date.parse(a.dateISO));
+                datesByCustomer.set(bk.customerId, arr);
+            }
+            return buckets.map(b => {
+                const firstMs = new Map<string, number>();
+                for (const bk of privBookings) {
+                    const a = apptById.get(bk.appointmentId)!;
+                    const ms = Date.parse(a.dateISO);
+                    if (!inBucket(ms, b)) continue;
+                    if (!firstMs.has(bk.customerId) || ms < (firstMs.get(bk.customerId) ?? Infinity)) firstMs.set(bk.customerId, ms);
+                }
+                if (firstMs.size === 0) return { date: b.label, pct: 0 };
+                let rebooked = 0;
+                Array.from(firstMs).forEach(([cid, first]) => {
+                    const times = datesByCustomer.get(cid) ?? [];
+                    if (times.some(t => t > first && t <= first + 30 * DAY_MS)) rebooked += 1;
+                });
+                return { date: b.label, pct: Math.round((rebooked / firstMs.size) * 100) };
+            });
+        }
+        case "recovery-bookings": {
+            const apptById = new Map(input.appointments.map(a => [a.id, a]));
+            return buckets.map(b => {
+                let count = 0;
+                for (const bk of input.appointmentBookings) {
+                    if (bk.status === "Cancelled") continue;
+                    const a = apptById.get(bk.appointmentId);
+                    if (!a || a.type !== "recovery" || a.status === "Cancelled" || !branchOk(a.branchId, branchIds)) continue;
+                    if (inBucket(Date.parse(a.dateISO), b)) count += 1;
+                }
+                return { date: b.label, count };
+            });
+        }
+        case "recovery-attach-rate": {
+            const apptById = new Map(input.appointments.map(a => [a.id, a]));
+            // Same-day recovery bookings, keyed customerId::YYYY-MM-DD.
+            const recoveryDays = new Set<string>();
+            for (const bk of input.appointmentBookings) {
+                if (bk.status === "Cancelled") continue;
+                const a = apptById.get(bk.appointmentId);
+                if (!a || a.type !== "recovery" || a.status === "Cancelled" || !branchOk(a.branchId, branchIds)) continue;
+                recoveryDays.add(`${bk.customerId}::${a.dateISO.slice(0, 10)}`);
+            }
+            return buckets.map(b => {
+                let visits = 0, attached = 0;
+                for (const x of bookings) {
+                    if (x.attendanceStatus !== "present") continue;
+                    const ms = classDateMs(x);
+                    if (ms === null || !inBucket(ms, b)) continue;
+                    const s = schedById.get(x.classScheduleId);
+                    const day = s ? s.dateISO.slice(0, 10) : null;
+                    visits += 1;
+                    if (day && recoveryDays.has(`${x.customerId}::${day}`)) attached += 1;
+                }
+                return { date: b.label, pct: visits > 0 ? Math.round((attached / visits) * 100) : 0 };
+            });
         }
 
         default:
