@@ -923,7 +923,7 @@ export default function CustomersPage() {
         // min-h-0) so only the table body scrolls — sticky header pinned at top,
         // pagination pinned at the bottom. Consistent across every admin list
         // (the AI trigger now lives in the header, so no bottom clearance needed).
-        <div className="flex-1 min-h-0 flex flex-col gap-6 overflow-y-auto scrollbar-hide">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── matches /admin/staff (Total · Location · Search
                 · Export · Filter · Assigned-to-me chip). */}
             <div className="flex items-center gap-3">
@@ -956,10 +956,14 @@ export default function CustomersPage() {
                 <ToolbarImportButton visible={customers.length === 0 && !search.trim() && !hasActiveFilter} />
             </div>
 
-            {/* ── Active view card — segment tabs + active customer table. Has a
-                   min-height so a sparse list never hugs (CLAUDE.md); shrink-0 so
-                   it keeps its size and the Archived section stacks below it. */}
-            <div className="shrink-0 min-h-[600px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            {/* Scroll region — the active card fills the viewport (its pagination
+                stays pinned + visible, no page scroll needed); the Archived
+                section sits below and is reached by scrolling THIS region. */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+            {/* ── Active view card — segment tabs + active customer table. `h-full`
+                   fills the scroll region so a short list never hugs (CLAUDE.md)
+                   and the pagination pins to the bottom of the viewport. */}
+            <div className="shrink-0 h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 px-6 py-4 flex items-center gap-3">
                     <SegmentedTabs
                         tabs={segmentTabDefs}
@@ -1067,6 +1071,7 @@ export default function CustomersPage() {
                     )}
                 </div>
             )}
+            </div>
 
             <FilterPanel
                 open={filterOpen}
