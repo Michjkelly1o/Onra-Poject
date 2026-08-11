@@ -188,10 +188,9 @@ interface FormValue {
     allDay: boolean;
     startTime: string;
     endTime: string;
-    /** Fixed reason category — Sick / Vacation / Training / Other.
-     *  Client 2026-07-22 replaced the free-text-only title. */
-    reason: "sick" | "vacation" | "training" | "other";
-    /** Free-text context. Required only when `reason === "other"`. */
+    /** Reason category — REQUIRED (client 2026-08). "" = not yet picked. */
+    reason: "annual_leave" | "sick" | "personal" | "training" | "religious_leave" | "other" | "";
+    /** Free-text context — optional. */
     note: string;
     staffIds: string[];
 }
@@ -205,15 +204,17 @@ function todayISO(): string {
 
 const EMPTY_FORM = (): FormValue => ({
     title: "", dateFrom: "", dateTo: "", allDay: false,
-    startTime: "", endTime: "", reason: "vacation", note: "", staffIds: [],
+    startTime: "", endTime: "", reason: "", note: "", staffIds: [],
 });
 
 /** Reason category options — matches the seed's `TimeOffReason` type. */
-const REASON_OPTIONS: { value: FormValue["reason"]; label: string }[] = [
-    { value: "sick",     label: "Sick"     },
-    { value: "vacation", label: "Vacation" },
-    { value: "training", label: "Training" },
-    { value: "other",    label: "Other"    },
+const REASON_OPTIONS: { value: Exclude<FormValue["reason"], "">; label: string }[] = [
+    { value: "annual_leave",    label: "Annual Leave"    },
+    { value: "sick",            label: "Sick"            },
+    { value: "personal",        label: "Personal"        },
+    { value: "training",        label: "Training"        },
+    { value: "religious_leave", label: "Religious Leave" },
+    { value: "other",           label: "Other"           },
 ];
 
 // ─── Page ────────────────────────────────────────────────────────────────
@@ -361,22 +362,18 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
     // ── Validation ───────────────────────────────────────────────────────
     const todayDate = todayISO();
     const isPastDate = !!form.dateFrom && form.dateFrom < todayDate;
-    const isRangeInverted = !!form.dateFrom && !!form.dateTo && form.dateTo < form.dateFrom;
-    // "Other" reason requires a note; the fixed categories accept an
-    // optional note but never REQUIRE one (matches client 2026-07-22
-    // spec: "when selecting other you can add a note").
-    const missingOtherNote = form.reason === "other" && !form.note.trim();
 
     const isValid = (() => {
-        if (!form.dateFrom || !form.dateTo) return false;
-        if (isPastDate || isRangeInverted) return false;
+        if (!form.dateFrom) return false;
+        if (isPastDate) return false;
         // Time bounds only enforced when NOT all-day.
         if (!form.allDay) {
             if (!form.startTime || !form.endTime) return false;
             if (form.startTime >= form.endTime) return false;
         }
         if (form.staffIds.length === 0) return false;
-        if (missingOtherNote) return false;
+        // Reason is REQUIRED; the note is optional (client 2026-08).
+        if (!form.reason) return false;
         return true;
     })();
 
@@ -401,7 +398,8 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
             all_day:       form.allDay,
             start_time:    effStart,
             end_time:      effEnd,
-            reason:        form.reason,
+            // isValid guarantees a non-empty reason before we reach here.
+            reason:        (form.reason || "other") as Exclude<FormValue["reason"], "">,
             note:          form.note.trim(),
             staff_ids:     form.staffIds,
             branch_id:     finalBranchId,
@@ -444,161 +442,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
         <>
             <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Time off details</h2>
 
-            {/* Reason category (Sick / Vacation / Training /
-                                Other). Client 2026-07-22 replaced the
-                                free-text-only title — reason drives
-                                payroll classification + the list chip. */}
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Reason</label>
-                                <SelectInput
-                                    placeholder="Select a reason"
-                                    value={form.reason}
-                                    onChange={v => set({ reason: v as FormValue["reason"] })}
-                                    options={REASON_OPTIONS}
-                                    width="w-full"
-                                />
-                            </div>
-
-                            {/* Title (optional) — carries the fixed
-                                categories' short descriptor for the list.
-                                Kept optional; the reason chip is the
-                                primary signal on the row. */}
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Title (optional)</label>
-                                <input
-                                    type="text" value={form.title}
-                                    onChange={e => set({ title: e.target.value })}
-                                    placeholder="Enter title"
-                                    className="h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
-                                />
-                            </div>
-
-                            {/* Date range — two DatePickers. Same
-                                DatePicker every other date input across
-                                the app uses. `dateTo` is bounded by
-                                `dateFrom` so an inverted range never
-                                submits (belt + suspenders alongside the
-                                `isRangeInverted` validation flag). */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="flex flex-col gap-[6px]">
-                                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">From</label>
-                                    <DatePicker
-                                        value={form.dateFrom}
-                                        onChange={iso => {
-                                            // Keep dateTo ≥ dateFrom whenever the
-                                            // start moves forward past the current end.
-                                            const nextTo = form.dateTo && form.dateTo < iso ? iso : form.dateTo || iso;
-                                            set({ dateFrom: iso, dateTo: nextTo });
-                                        }}
-                                        placeholder="Select date"
-                                        minDate={todayDate}
-                                    />
-                                    {isPastDate && (
-                                        <p className="text-[13px] text-[#b42318]">Date can't be in the past.</p>
-                                    )}
-                                </div>
-                                <div className="flex flex-col gap-[6px]">
-                                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">To</label>
-                                    <DatePicker
-                                        value={form.dateTo}
-                                        onChange={iso => set({ dateTo: iso })}
-                                        placeholder="Select date"
-                                        minDate={form.dateFrom || todayDate}
-                                    />
-                                    {isRangeInverted && (
-                                        <p className="text-[13px] text-[#b42318]">End date must be on or after the start date.</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* All-day toggle — when on, the entry covers
-                                the full range from 00:00 → 23:59 across
-                                every included day (`start_time`/`end_time`
-                                still write 00:00/23:59 for downstream
-                                consumers). Client 2026-07-22 vacation
-                                example: Maya Aug 3 → 9 all-day. */}
-                            <div className="flex items-center gap-3 rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-white p-3">
-                                <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={form.allDay}
-                                    aria-label="All day"
-                                    onClick={() => set({ allDay: !form.allDay })}
-                                    className={cn(
-                                        "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                                        form.allDay ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
-                                    )}
-                                >
-                                    <span className={cn(
-                                        "w-5 h-5 rounded-full bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.15)] transition-transform",
-                                        form.allDay ? "translate-x-5" : "translate-x-0",
-                                    )} />
-                                </button>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">All day</p>
-                                    <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px] mt-0.5">Runs full days across the picked range. Turn off to set specific times.</p>
-                                </div>
-                            </div>
-
-                            {/* Start / End time — hidden when All-day is on. */}
-                            {!form.allDay && (
-                                <>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="flex flex-col gap-[6px]">
-                                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Start time</label>
-                                            <SelectInput
-                                                triggerIcon={<Clock className="w-4 h-4" />}
-                                                placeholder="Select time"
-                                                value={form.startTime}
-                                                onChange={v => set({ startTime: v })}
-                                                options={startOptions}
-                                                width="w-full"
-                                            />
-                                        </div>
-                                        <div className="flex flex-col gap-[6px]">
-                                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">End time</label>
-                                            <SelectInput
-                                                triggerIcon={<Clock className="w-4 h-4" />}
-                                                placeholder="Select time"
-                                                value={form.endTime}
-                                                onChange={v => set({ endTime: v })}
-                                                options={endOptions}
-                                                width="w-full"
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="-mt-3 text-[13px] text-[var(--colors-text-quaternary)]">
-                                        {timeWindow.source === "shift"
-                                            ? "Limited to the staff's shift hours."
-                                            : timeWindow.source === "branch"
-                                                ? "Limited to the branch's working hours."
-                                                : "Pick at least one staff member to set the time range."}
-                                    </p>
-                                </>
-                            )}
-
-                            {/* Note — becomes REQUIRED when reason=Other
-                                per client 2026-07-22 spec. */}
-                            <div className="flex flex-col gap-[6px]">
-                                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
-                                    {form.reason === "other" ? "Note" : "Note (optional)"}
-                                </label>
-                                <textarea
-                                    value={form.note}
-                                    onChange={e => set({ note: e.target.value })}
-                                    placeholder={form.reason === "other"
-                                        ? "Describe the reason..."
-                                        : "Enter note..."
-                                    }
-                                    rows={3}
-                                    className="w-full px-[14px] py-[10px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
-                                />
-                                {missingOtherNote && (
-                                    <p className="text-[13px] text-[#b42318]">A note is required when the reason is Other.</p>
-                                )}
-                            </div>
-
-            {/* Staffs */}
+            {/* Staff — picked first; drives the available time window below. */}
             <div className="flex flex-col gap-[6px]">
                 <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Staff</label>
                 <MultiStaffDropdown
@@ -608,6 +452,105 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                     placeholder="Search and select staff members"
                 />
                 <p className="text-[13px] text-[var(--colors-text-quaternary)]">Search and select staff members</p>
+            </div>
+
+            {/* Date — a single day. `dateFrom` and `dateTo` write the same day. */}
+            <div className="flex flex-col gap-[6px]">
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Date</label>
+                <DatePicker
+                    value={form.dateFrom}
+                    onChange={iso => set({ dateFrom: iso, dateTo: iso })}
+                    placeholder="Select date"
+                    minDate={todayDate}
+                />
+                {isPastDate && (
+                    <p className="text-[13px] text-[#b42318]">Date can&apos;t be in the past.</p>
+                )}
+            </div>
+
+            {/* All-day toggle. */}
+            <div className="flex items-center gap-3 rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-white p-3">
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={form.allDay}
+                    aria-label="All day"
+                    onClick={() => set({ allDay: !form.allDay })}
+                    className={cn(
+                        "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
+                        form.allDay ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
+                    )}
+                >
+                    <span className={cn(
+                        "w-5 h-5 rounded-full bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.15)] transition-transform",
+                        form.allDay ? "translate-x-5" : "translate-x-0",
+                    )} />
+                </button>
+                <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">All day</p>
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px] mt-0.5">Runs full days across the picked range. Turn off to set specific times.</p>
+                </div>
+            </div>
+
+            {/* Start / End time — hidden when All-day is on. */}
+            {!form.allDay && (
+                <>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-[6px]">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Start time</label>
+                            <SelectInput
+                                triggerIcon={<Clock className="w-4 h-4" />}
+                                placeholder="Select time"
+                                value={form.startTime}
+                                onChange={v => set({ startTime: v })}
+                                options={startOptions}
+                                width="w-full"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">End time</label>
+                            <SelectInput
+                                triggerIcon={<Clock className="w-4 h-4" />}
+                                placeholder="Select time"
+                                value={form.endTime}
+                                onChange={v => set({ endTime: v })}
+                                options={endOptions}
+                                width="w-full"
+                            />
+                        </div>
+                    </div>
+                    <p className="-mt-3 text-[13px] text-[var(--colors-text-quaternary)]">
+                        {timeWindow.source === "shift"
+                            ? "Limited to the staff's shift hours."
+                            : timeWindow.source === "branch"
+                                ? "Limited to the branch's working hours."
+                                : "Pick at least one staff member to set the time range."}
+                    </p>
+                </>
+            )}
+
+            {/* Reason — REQUIRED (Annual Leave / Sick / Personal / Training / …). */}
+            <div className="flex flex-col gap-[6px]">
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Reason</label>
+                <SelectInput
+                    placeholder="Select a reason"
+                    value={form.reason}
+                    onChange={v => set({ reason: v as FormValue["reason"] })}
+                    options={REASON_OPTIONS}
+                    width="w-full"
+                />
+            </div>
+
+            {/* Note — optional free-text context. */}
+            <div className="flex flex-col gap-[6px]">
+                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Note <span className="font-normal text-[var(--colors-text-quaternary)]">(optional)</span></label>
+                <textarea
+                    value={form.note}
+                    onChange={e => set({ note: e.target.value })}
+                    placeholder="Add a note for this time off..."
+                    rows={3}
+                    className="w-full px-[14px] py-[10px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
+                />
             </div>
         </>
     );

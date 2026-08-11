@@ -130,7 +130,7 @@ function shiftPalette(shift: Shift, index: number) {
 // evenly-spaced dividers mark each hour. Shift name + time sit below. A staff
 // member with nothing booked (or any non-instructor role) shows an empty bar
 // with just the hour dividers.
-const SLICE_FILL  = "#d7ffe9"; // utility-brand-100
+const SLICE_FILL  = "var(--colors-secondary-200)"; // soft light brand green (#dcebe4) — client 2026-08-11
 const SLICE_HATCH = "repeating-linear-gradient(115deg, #e4e7ec 0px, #e4e7ec 3px, #f9fafb 3px, #f9fafb 4px)";
 
 /** "07:30" → 7.5 */

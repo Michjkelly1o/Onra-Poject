@@ -1650,7 +1650,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                             if (sh && sh.status === "active" && !seenName.has(sh.name)) { seenName.add(sh.name); names.push(sh.name); }
                                                         }
                                                         return names.length > 0
-                                                            ? <span className="text-[14px] leading-5 text-[#101828]">{names.join(", ")}</span>
+                                                            ? <span className="text-[14px] leading-5 text-[#475467]">{names.join(", ")}</span>
                                                             : <span className="text-[14px] leading-5 text-[#98a2b3]">—</span>;
                                                     })()}
                                                 </td>
