@@ -31,7 +31,8 @@ import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
-import { useAppStore, type Customer } from "@/lib/store";
+import { useAppStore, type Customer, type CustomerPlan, type CustomerTransaction } from "@/lib/store";
+import { customerSegment, type CustomerSegment } from "@/lib/customer/segment";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 // CustomerImportModal import removed (Jul 2026) — the Import Data entry is
 // hidden pending a proper migration flow build. The modal file stays on disk
@@ -590,7 +591,32 @@ export default function CustomersPage() {
 
     // ─── Apply branch + search + filter ─────────────────────────────────────
     const today = todayISO();
-    const filteredRows = useMemo(() => {
+
+    // Wallet segment per customer — Lead / Member / Inactive, computed ONCE from
+    // the wallet (plans + purchases), never attendance. Single source of truth
+    // shared by the tab filter AND the per-tab counts. Archived customers keep a
+    // segment but are excluded upstream (Phase 3) — a "place", not a segment.
+    const segmentById = useMemo(() => {
+        const plansByCust = new Map<string, CustomerPlan[]>();
+        for (const p of customerPlans) {
+            const a = plansByCust.get(p.customerId);
+            if (a) a.push(p); else plansByCust.set(p.customerId, [p]);
+        }
+        const txnsByCust = new Map<string, CustomerTransaction[]>();
+        for (const t of customerTransactions) {
+            const a = txnsByCust.get(t.customerId);
+            if (a) a.push(t); else txnsByCust.set(t.customerId, [t]);
+        }
+        const out = new Map<string, CustomerSegment>();
+        for (const c of customers) {
+            out.set(c.id, customerSegment(c, plansByCust.get(c.id) ?? [], txnsByCust.get(c.id) ?? [], today));
+        }
+        return out;
+    }, [customers, customerPlans, customerTransactions, today]);
+
+    // Rows after EVERY filter except the segment tab — the base set the segment
+    // tab counts + partition operate on.
+    const scopedRows = useMemo(() => {
         const q = search.trim().toLowerCase();
 
         function matchesLastVisit(r: CustomerRow): boolean {
@@ -626,14 +652,6 @@ export default function CustomersPage() {
                 if (applied.planExpiryStart && r.planExpiryISO < applied.planExpiryStart) return false;
                 if (applied.planExpiryEnd && r.planExpiryISO > applied.planExpiryEnd) return false;
             }
-            // v83 lifecycle segment filter — applied last so it stacks on
-            // top of every existing filter cleanly.
-            if (segment !== "all") {
-                const tag = r.lifecycleTag ?? "Lead";
-                if (segment === "leads"    && tag !== "Lead") return false;
-                if (segment === "members"  && !["Trialist", "New Active", "Loyal Active", "Won-back"].includes(tag)) return false;
-                if (segment === "inactive" && !(["At Risk", "Churned"].includes(tag) || r.status !== "active")) return false;
-            }
             // v83 Phase 3 — "Assigned to me" chip. When on, keep only rows
             // whose customer.assignedTo matches the current signed-in staff.
             // v83 audit-1 (2026-07-29) — match against `currentUser.staff_id`
@@ -645,7 +663,28 @@ export default function CustomersPage() {
             if (mineOnly && meStaffId && r.assignedTo !== meStaffId) return false;
             return true;
         });
-    }, [allRows, branchId, search, applied, today, segment, mineOnly, currentUser?.staff_id]);
+    }, [allRows, branchId, search, applied, today, mineOnly, currentUser?.staff_id]);
+
+    // Per-tab counts — tally the wallet segment over the scoped base set.
+    const segmentCounts = useMemo(() => {
+        const counts = { leads: 0, members: 0, inactive: 0 };
+        for (const r of scopedRows) {
+            const seg = segmentById.get(r.id) ?? "lead";
+            if (seg === "lead") counts.leads++;
+            else if (seg === "member") counts.members++;
+            else counts.inactive++;
+        }
+        return counts;
+    }, [scopedRows, segmentById]);
+
+    // Final rows = scoped base narrowed to the selected wallet tab. The
+    // Lead/Member/Inactive partition is WALLET-based (client 2026-08-10) — a
+    // member with an "At Risk" lifecycle tag still sits in Members.
+    const filteredRows = useMemo(() => {
+        if (segment === "all") return scopedRows;
+        const want: CustomerSegment = segment === "leads" ? "lead" : segment === "members" ? "member" : "inactive";
+        return scopedRows.filter(r => (segmentById.get(r.id) ?? "lead") === want);
+    }, [scopedRows, segment, segmentById]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
     // ── Sortable columns — Name / Contact / Plan / Lifecycle / Status / Last visit. ──
@@ -815,10 +854,10 @@ export default function CustomersPage() {
     // (all / leads / members / inactive) so downstream filter code
     // doesn't need to change.
     const segmentTabDefs = [
-        { key: "all",      label: "All"      },
-        { key: "leads",    label: "Leads"    },
-        { key: "members",  label: "Members"  },
-        { key: "inactive", label: "Inactive" },
+        { key: "all",      label: "All",      count: scopedRows.length },
+        { key: "leads",    label: "Leads",    count: segmentCounts.leads },
+        { key: "members",  label: "Members",  count: segmentCounts.members },
+        { key: "inactive", label: "Inactive", count: segmentCounts.inactive },
     ];
 
     return (
