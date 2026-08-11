@@ -30,6 +30,7 @@ import { cn, to12hParts } from "@/lib/utils";
 import { computeRecognizedRevenue } from "@/lib/reports/recognized-revenue";
 import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
 import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
+import { financialWidgetSeries } from "@/lib/dashboard/widget-series";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useAppStore, SCHEDULE_INSTRUCTORS, appointmentToClassInstance, isAppointmentId, type SessionType } from "@/lib/store";
@@ -163,6 +164,9 @@ function exportPerformanceCsv(
     metrics: DashboardMetric[],
     activeWidgets: string[],
     period: DateFilter,
+    /** Real store-driven series per widget id (branch-filtered) for widgets
+     *  wired to live data — so the CSV matches what's on screen. */
+    realSeriesById: Record<string, Record<string, string | number>[] | null> = {},
 ) {
     const sections: { title: string; header: string[]; body: string[][] }[] = [];
 
@@ -180,7 +184,7 @@ function exportPerformanceCsv(
 
     // ── Per-active-widget section ──
     for (const id of activeWidgets) {
-        const section = getWidgetCsvSection(id, period);
+        const section = getWidgetCsvSection(id, period, realSeriesById[id] ?? null);
         if (section) sections.push(section);
     }
 
@@ -1732,7 +1736,18 @@ export default function AdminDashboard() {
                                     button lives on the far right below. */}
                                 <ToolbarExport
                                     onExportCsv={() => {
-                                        exportPerformanceCsv(metrics, activeWidgets, period);
+                                        // Real per-widget series (branch-scoped exactly as the
+                                        // on-screen widgets) so the CSV matches the charts.
+                                        const realSeriesById = Object.fromEntries(
+                                            activeWidgets.map(id => [id, financialWidgetSeries(id, period, {
+                                                transactions: customerTransactions,
+                                                bookings: classBookings,
+                                                packages: packages.map(p => ({ id: p.id, credits: typeof p.credits === "number" ? p.credits : 0, name: p.name })),
+                                                memberships: memberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
+                                                branchIds: branchScopeIds ?? undefined,
+                                            })]),
+                                        );
+                                        exportPerformanceCsv(metrics, activeWidgets, period, realSeriesById);
                                         showToast(
                                             "Performance report exported",
                                             `${metrics.length} metric${metrics.length === 1 ? "" : "s"} + ${activeWidgets.length} widget${activeWidgets.length === 1 ? "" : "s"} exported to CSV.`,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { DotsVertical, Trash01, Plus, DotsGrid, InfoCircle } from "@untitledui/icons";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { WIDGET_CATALOG } from "./widget-catalog";
 import { useAppStore } from "@/lib/store";
 import type { DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange } from "@/lib/period-filter";
+import { financialWidgetSeries } from "@/lib/dashboard/widget-series";
 import {
     LineChart, Line, BarChart, Bar, ComposedChart, Area, AreaChart,
     XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
@@ -162,6 +163,16 @@ const STATIC: Record<string, object[]> = {
 };
 
 const DEFAULT_PERIOD: DateFilter = { type: "week", label: "This week" };
+
+// Financial-category widgets wired to real store data (batch 1). See
+// src/lib/dashboard/widget-series.ts → financialWidgetSeries.
+const FINANCIAL_WIDGET_IDS = new Set([
+    "revenue-overview",
+    "sales-by-product",
+    "revenue-by-type",
+    "payments-collected",
+    "payments-by-source",
+]);
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -353,9 +364,13 @@ function pointsForPeriod(period: DateFilter): { labels: string[]; scale: number;
 export function getWidgetCsvSection(
     id: string,
     period: DateFilter,
+    /** Real store-driven series (branch-filtered) for widgets wired to live
+     *  data — when provided the CSV exports the SAME numbers the chart shows,
+     *  instead of the seed. Null/omitted → seed (legacy widgets). */
+    realSeries?: Record<string, string | number>[] | null,
 ): { title: string; header: string[]; body: string[][] } | null {
     const title = WIDGET_CATALOG.find(w => w.id === id)?.title ?? id;
-    const series = STATIC[id] ?? buildSeries(id, period);
+    const series = realSeries ?? STATIC[id] ?? buildSeries(id, period);
     const cols = WIDGET_CSV_COLS[id];
     if (!cols) return null;
     const body = series.map(row => cols.fields.map(k => {
@@ -1006,6 +1021,11 @@ function renderChart(
     /** Private-top-trainers widget only — live-derived ranked trainers by
      *  private-session count. Null on every other widget. */
     topTrainersRows: Array<{ name: string; v: number }> | null = null,
+    /** Time-series widgets wired to REAL store data (per-period buckets, branch
+     *  filtered) — see src/lib/dashboard/widget-series.ts. When provided, this
+     *  replaces the hard-coded seed series AND bypasses branchScale (the rows
+     *  are already branch-filtered). Null → widget still on its seed. */
+    realSeries: Record<string, string | number>[] | null = null,
 ): React.ReactNode {
     const h = size === "mini" ? 150 : 240;
     const { interval } = pointsForPeriod(period);
@@ -1029,7 +1049,11 @@ function renderChart(
                     ? (classPopularityRows as unknown as object[])
                     : id === "private-top-trainers" && topTrainersRows
                         ? (topTrainersRows as unknown as object[])
-                        : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
+                        // REAL store-driven series (already branch-filtered, so
+                        // no branchScale) when available; else fall back to seed.
+                        : realSeries
+                            ? (realSeries as unknown as object[])
+                            : scaleRows(STATIC[id] ?? buildSeries(id, period), effBranchScale);
     const axisProps = {
         axisLine: false, tickLine: false,
         tick: { fill: "#667085", fontSize: 10, dy: 6 },
@@ -2154,6 +2178,26 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
         widgetId === "private-top-trainers" && trainerAppts
             ? computeTopPrivateTrainers(trainerAppts, branchIds)
             : null;
+
+    // ── Financial widgets — REAL per-period series from the store ──────────
+    // (batch 1). Bucketed to the same points as the x-axis, branch-filtered,
+    // money via the shared recognized-revenue engine + honest ledger.
+    const isFinancialWidget = FINANCIAL_WIDGET_IDS.has(widgetId);
+    const finTxns        = useAppStore(s => isFinancialWidget ? s.customerTransactions : null);
+    const finBookings    = useAppStore(s => isFinancialWidget ? s.classBookings : null);
+    const finPackages    = useAppStore(s => isFinancialWidget ? s.packages : null);
+    const finMemberships = useAppStore(s => isFinancialWidget ? s.memberships : null);
+    const financialSeries = useMemo(() => {
+        if (!finTxns || !finBookings || !finPackages || !finMemberships) return null;
+        return financialWidgetSeries(widgetId, period ?? DEFAULT_PERIOD, {
+            transactions: finTxns,
+            bookings: finBookings,
+            packages: finPackages.map(p => ({ id: p.id, credits: typeof p.credits === "number" ? p.credits : 0, name: p.name })),
+            memberships: finMemberships.map(m => ({ id: m.id, credits: m.credits, duration_months: m.duration_months, name: m.name })),
+            branchIds,
+        });
+    }, [widgetId, period, finTxns, finBookings, finPackages, finMemberships, branchIds]);
+
     if (!meta) return null;
 
     return (
@@ -2230,7 +2274,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                 fill (e.g. the intro funnel's `h-full flex justify-center`)
                 will stretch to close the gap and prevent visible white space. */}
             <div className="min-w-0 flex-1 flex flex-col">
-                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows, referralShareResult, classPopularityRows, topTrainersRows)}
+                {renderChart(widgetId, "full", period, branchScale, failedStats, onOpenFailedPayments, heatmapResult, topServicesRows, referralShareResult, classPopularityRows, topTrainersRows, financialSeries)}
             </div>
         </div>
     );
