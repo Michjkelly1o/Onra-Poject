@@ -1270,10 +1270,19 @@ export interface Customer {
     /** Class credits left on the current plan. Omitted for unlimited
      *  memberships + no-plan customers; `0` means the plan is exhausted. */
     creditsRemaining?: number;
-    /** Account lifecycle status — `active` / `inactive` (suspended) /
-     *  `archived` (hidden from default list). Drives the customer-list status
-     *  badge, the Status filter, and which row/bulk actions are available. */
-    status: "active" | "inactive" | "archived";
+    /** Archive flag, NOT a lifecycle status (client 2026-08-10). `active` =
+     *  a normal, visible customer; `archived` = tidied out of the list (a
+     *  "place", not a status): excluded from every tab/count/search/campaign,
+     *  reachable only via "View archived (n)", access UNCHANGED, and auto-
+     *  revived when the customer's own account books/purchases. Inactivity is
+     *  no longer stored — it's derived from the wallet (see `customerSegment`). */
+    status: "active" | "archived";
+    /** Optional internal note captured when a customer is archived (why they
+     *  were tidied away). Display-only; never shown to the customer. */
+    archiveNote?: string;
+    /** ISO timestamp the customer was archived — set on archive, cleared on
+     *  recover / auto-revive. Feeds the "Archived (n)" view ordering. */
+    archivedAtISO?: string;
     /** Most recent attended-class date (ISO `YYYY-MM-DD`). Omitted when the
      *  customer has never visited. */
     lastVisitISO?: string;
@@ -4755,7 +4764,7 @@ export interface AppState {
     /** Change lifecycle status for one or many customers. Deactivate, archive,
      *  recover and reactivate all route through here so every call-site lands
      *  on the same propagation + toast pattern. */
-    setCustomerStatus: (ids: string[], status: Customer["status"]) => void;
+    setCustomerStatus: (ids: string[], status: Customer["status"], note?: string) => void;
     /** Hard-delete customers. Blocked for any customer that has booking
      *  history (archive instead). Returns the split so the UI can report
      *  exactly what was removed and what was kept. */
@@ -7455,6 +7464,13 @@ export const useAppStore = create<AppState>()(persist(
             waitlistPosition,
         };
 
+        // Auto-revive (client 2026-08-10, D3): a booking made from the
+        // customer's OWN surface (portal / embed → bookingSource
+        // "customer_portal") un-archives them — archiving never blocks access,
+        // and their own action returns them to the list. Admin-made bookings
+        // (a different source) never auto-revive.
+        const shouldRevive = booking.bookingSource === "customer_portal" && customer?.status === "archived";
+
         set((state) => ({
             classBookings: [...state.classBookings, booking],
             // Booked seats bump the schedule count; waitlist entries don't.
@@ -7462,17 +7478,27 @@ export const useAppStore = create<AppState>()(persist(
                 status === "booked"
                     ? state.classSchedules.map(x => (x.id === classScheduleId ? { ...x, booked: x.booked + 1 } : x))
                     : state.classSchedules,
-            // Spend one class credit on a confirmed booking (package plans only —
-            // unlimited memberships carry no creditsRemaining).
-            customers:
-                status === "booked" && usesBookerPlan
-                    ? state.customers.map(c =>
-                          c.id === customerId && typeof c.creditsRemaining === "number"
-                              ? { ...c, creditsRemaining: Math.max(0, c.creditsRemaining - 1) }
-                              : c,
-                      )
-                    : state.customers,
+            customers: state.customers.map(c => {
+                if (c.id !== customerId) return c;
+                let next = c;
+                // Un-archive on the customer's own booking.
+                if (shouldRevive) next = { ...next, status: "active", archivedAtISO: undefined, archiveNote: undefined };
+                // Spend one class credit on a confirmed booking (package plans
+                // only — unlimited memberships carry no creditsRemaining).
+                if (status === "booked" && usesBookerPlan && typeof next.creditsRemaining === "number") {
+                    next = { ...next, creditsRemaining: Math.max(0, next.creditsRemaining - 1) };
+                }
+                return next;
+            }),
         }));
+
+        if (shouldRevive && customer) {
+            get().recordAudit(
+                "Recovered customer", "customer", customer.id,
+                `${customer.firstName} ${customer.lastName}`.trim(),
+                { reason: "customer_portal_booking" },
+            );
+        }
 
         // Confirmed bookings notify Front Desk / Branch Admin (booking tab) and
         // the class's instructor — mirrors the cancellation feed contract.
@@ -8429,15 +8455,22 @@ export const useAppStore = create<AppState>()(persist(
             get().recordAudit(label, "customer", id, `${target.firstName} ${target.lastName}`.trim());
         }
     },
-    setCustomerStatus: (ids, status) => {
+    setCustomerStatus: (ids, status, note) => {
         const targets = get().customers.filter(c => ids.includes(c.id));
+        const nowISO = new Date().toISOString();
         set((state) => {
             const idSet = new Set(ids);
-            return { customers: state.customers.map(c => idSet.has(c.id) ? { ...c, status } : c) };
+            return {
+                customers: state.customers.map(c => {
+                    if (!idSet.has(c.id)) return c;
+                    // Archiving stamps the note + timestamp; recovering clears both.
+                    return status === "archived"
+                        ? { ...c, status, archivedAtISO: nowISO, ...(note !== undefined ? { archiveNote: note } : {}) }
+                        : { ...c, status, archivedAtISO: undefined, archiveNote: undefined };
+                }),
+            };
         });
-        const actionLabel = status === "active" ? "Reactivated customer"
-            : status === "inactive" ? "Deactivated customer"
-            : "Archived customer";
+        const actionLabel = status === "archived" ? "Archived customer" : "Recovered customer";
         targets.forEach(t => {
             get().recordAudit(actionLabel, "customer", t.id, `${t.firstName} ${t.lastName}`.trim(), { status });
         });

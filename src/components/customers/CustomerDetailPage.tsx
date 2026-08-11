@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     XClose, SearchMd, FilterLines, DotsVertical, ChevronLeft, Lightbulb02,
-    Edit02, HeartHand, Archive, SlashCircle01, RefreshCcw01, Check, AlignLeft,
+    Edit02, HeartHand, Archive, RefreshCcw01, AlignLeft,
     CreditCard02, Package, Gift01, PauseCircle, PlayCircle, XCircle,
     Trash02, InfoCircle,
 } from "@untitledui/icons";
@@ -137,7 +137,6 @@ function parseCredits(label: string): number {
 function CustomerStatusBadge({ status }: { status: Customer["status"] }) {
     const styles: Record<Customer["status"], string> = {
         active: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
-        inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         archived: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     };
     const label = status.charAt(0).toUpperCase() + status.slice(1);
@@ -672,7 +671,7 @@ function ViewComplimentaryModal({ plan, customer, onClose }: {
 
 // ─── Customer status modal (archive / deactivate / recover / reactivate) ─────
 
-type CustomerAction = "archive" | "deactivate" | "recover" | "reactivate";
+type CustomerAction = "archive" | "recover";
 
 const CUSTOMER_ACTION_CFG: Record<CustomerAction, {
     title: string; description: (n: string) => string; confirmLabel: string;
@@ -680,27 +679,15 @@ const CUSTOMER_ACTION_CFG: Record<CustomerAction, {
 }> = {
     archive: {
         title: "Archive this customer?",
-        description: n => `${n} will be hidden from the default customer list. All history is preserved — you can recover them anytime.`,
+        description: n => `${n} will be hidden from the customer list, counts, search, and campaigns — reachable only via “View archived”. Access is unchanged and all history is preserved; they return automatically if they book from their own account, or you can recover them anytime.`,
         confirmLabel: "Archive", destructive: false,
         IconComp: Archive, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
-    deactivate: {
-        title: "Deactivate this customer?",
-        description: n => `${n} will be suspended — login is disabled and they cannot make new bookings. Existing bookings are not cancelled.`,
-        confirmLabel: "Deactivate", destructive: true,
-        IconComp: SlashCircle01, iconBg: "bg-[#fee4e2]", iconColor: "text-[#d92d20]",
-    },
     recover: {
         title: "Recover this customer?",
-        description: n => `${n} will be restored to Active status and shown in the customer list again.`,
+        description: n => `${n} will be restored to the customer list and included again in counts, search, and campaigns.`,
         confirmLabel: "Recover", destructive: false,
         IconComp: RefreshCcw01, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
-    },
-    reactivate: {
-        title: "Reactivate this customer?",
-        description: n => `${n} will be reactivated — login is re-enabled and they can book classes again.`,
-        confirmLabel: "Reactivate", destructive: false,
-        IconComp: Check, iconBg: "bg-[var(--colors-secondary-50)]", iconColor: "text-[var(--colors-secondary-600)]",
     },
 };
 
@@ -1216,20 +1203,15 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
         );
     }
     function handleCustomerStatus(action: CustomerAction) {
-        const nextStatus: Customer["status"] =
-            action === "deactivate" ? "inactive"
-            : action === "archive" ? "archived"
-            : "active"; // recover + reactivate
+        const nextStatus: Customer["status"] = action === "archive" ? "archived" : "active";
         setCustomerStatus([customerId], nextStatus);
         setCustomerModal(null);
-        const verb = action === "archive" ? "archived"
-            : action === "deactivate" ? "deactivated"
-            : action === "recover" ? "recovered" : "reactivated";
+        const verb = action === "archive" ? "archived" : "recovered";
         showToast(
             `Customer ${verb}`,
             `${customerName} has been ${verb}.`,
-            action === "deactivate" ? "error" : "success",
-            action === "deactivate" ? "slash" : action === "archive" ? "archive" : action === "recover" ? "refresh" : "check",
+            "success",
+            action === "archive" ? "archive" : "refresh",
         );
     }
 
@@ -1371,28 +1353,19 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                 <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
                                 <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Customer actions</p>
                                 <div className="flex flex-col gap-4">
-                                    {/* Edit + Add credit are Active-only.
-                                        Inactive customers must be Reactivated,
-                                        Archived must be Recovered first. */}
+                                    {/* Edit + Add credit are for visible (active)
+                                        customers. Archived customers must be
+                                        Recovered first — archiving never blocks
+                                        access, it only tidies the list. */}
                                     {customer.status === "active" && (
                                         <>
                                             <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit customer"
                                                 onClick={() => router.push(`/customers/${customer.id}/edit?returnTo=${encodeURIComponent(pathname)}`)} />
                                             <ActionBtn icon={<HeartHand className="w-5 h-5" />} label="Add complimentary credit"
                                                 onClick={() => router.push(`/customers/${customer.id}/add-credit?returnTo=${encodeURIComponent(pathname)}`)} />
+                                            <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive customer"
+                                                onClick={() => setCustomerModal("archive")} />
                                         </>
-                                    )}
-                                    {customer.status !== "archived" && (
-                                        <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive customer"
-                                            onClick={() => setCustomerModal("archive")} />
-                                    )}
-                                    {customer.status === "active" && (
-                                        <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate customer" danger
-                                            onClick={() => setCustomerModal("deactivate")} />
-                                    )}
-                                    {customer.status === "inactive" && (
-                                        <ActionBtn icon={<Check className="w-5 h-5" />} label="Reactivate customer"
-                                            onClick={() => setCustomerModal("reactivate")} />
                                     )}
                                     {customer.status === "archived" && (
                                         <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover customer"

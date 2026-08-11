@@ -19,9 +19,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, ChevronLeft,
+    SearchMd, FilterLines, ChevronLeft, ArrowLeft,
     Eye, Edit02, Trash01, Trash02, Archive, Check, Download01,
-    MarkerPin01, AlignLeft, XClose, RefreshCcw01, SlashCircle01, HeartHand,
+    MarkerPin01, AlignLeft, XClose, RefreshCcw01, HeartHand,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,16 +55,12 @@ import { LEAD_ASSIGNMENT_ENABLED } from "@/lib/lead-assignment";
 
 // ─── Types & constants ───────────────────────────────────────────────────────
 
-type CustomerStatus = Customer["status"];     // "active" | "inactive" | "archived"
+type CustomerStatus = Customer["status"];     // "active" | "archived"
 type PlanType = "membership" | "package" | "none";
 type LastVisitBucket = "7d" | "30d" | "60d" | "90d" | "over90" | "never";
-type RowActionKind = "deactivate" | "reactivate" | "archive" | "recover" | "delete";
-
-const ALL_STATUSES: CustomerStatus[] = ["active", "inactive", "archived"];
-const STATUS_LABEL: Record<CustomerStatus, string> = {
-    active: "Active", inactive: "Inactive", archived: "Archived",
-};
-const STATUS_ORDER: Record<CustomerStatus, number> = { active: 0, inactive: 1, archived: 2 };
+// Archive is a "place", not a lifecycle status (client 2026-08-10) — the only
+// two customer actions that change visibility are Archive and Recover.
+type RowActionKind = "archive" | "recover" | "delete";
 
 const ALL_PLAN_TYPES: PlanType[] = ["membership", "package", "none"];
 const PLAN_LABEL: Record<PlanType, string> = {
@@ -81,7 +77,6 @@ const LAST_VISIT_OPTIONS: { value: LastVisitBucket; label: string }[] = [
 ];
 
 interface FilterState {
-    statuses: CustomerStatus[];
     planTypes: PlanType[];
     lastVisit: LastVisitBucket[];
     planExpiryStart: string;   // "" = no lower bound
@@ -102,7 +97,7 @@ const ALL_LIFECYCLE_TAGS: import("@/lib/store").LifecycleTag[] = [
     "Lead", "Trialist", "New Active", "Loyal Active", "At Risk", "Churned", "Won-back",
 ];
 const EMPTY_FILTER: FilterState = {
-    statuses: [], planTypes: [], lastVisit: [], planExpiryStart: "", planExpiryEnd: "",
+    planTypes: [], lastVisit: [], planExpiryStart: "", planExpiryEnd: "",
     lifecycleTags: [],
 };
 
@@ -129,7 +124,7 @@ function planTypeOf(planKind: Customer["planKind"]): PlanType {
 
 // ─── Action modal config (tone matrix mirrors /admin/products) ───────────────
 
-const DESTRUCTIVE_ACTIONS = new Set<RowActionKind>(["deactivate", "delete"]);
+const DESTRUCTIVE_ACTIONS = new Set<RowActionKind>(["delete"]);
 
 const MODAL_CONFIG: Record<RowActionKind, {
     IconComp: React.ComponentType<{ className?: string }>;
@@ -141,29 +136,15 @@ const MODAL_CONFIG: Record<RowActionKind, {
         IconComp: Archive,
         titleSingle: "Archive this customer?",
         titleBulk: n => `Archive ${n} customers?`,
-        description: subject => <>{subject} will be hidden from the default customer list. All history is preserved — you can recover archived customers at any time.</>,
+        description: subject => <>{subject} will be hidden from the customer list, counts, search, and campaigns — reachable only via “View archived”. Access is unchanged and all history is preserved; they return automatically if they book from their own account, or you can recover them anytime.</>,
         confirmLabel: "Archive",
-    },
-    deactivate: {
-        IconComp: SlashCircle01,
-        titleSingle: "Deactivate this customer?",
-        titleBulk: n => `Deactivate ${n} customers?`,
-        description: (subject, n) => <>{subject} will be suspended — login is disabled and {n === 1 ? "they cannot" : "they cannot"} make new bookings. Existing bookings are not cancelled.</>,
-        confirmLabel: "Deactivate",
     },
     recover: {
         IconComp: RefreshCcw01,
         titleSingle: "Recover this customer?",
         titleBulk: n => `Recover ${n} customers?`,
-        description: subject => <>{subject} will be restored to Active status and shown in the customer list again.</>,
+        description: subject => <>{subject} will be restored to the customer list and included again in counts, search, and campaigns.</>,
         confirmLabel: "Recover",
-    },
-    reactivate: {
-        IconComp: Check,
-        titleSingle: "Reactivate this customer?",
-        titleBulk: n => `Reactivate ${n} customers?`,
-        description: subject => <>{subject} will be reactivated — login is re-enabled and they can book classes again.</>,
-        confirmLabel: "Reactivate",
     },
     delete: {
         IconComp: Trash02,
@@ -222,7 +203,6 @@ function FilterPanel({ open, onClose, applied, onApply }: {
     }
 
     const hasAny =
-        pending.statuses.length > 0 ||
         pending.planTypes.length > 0 ||
         pending.lastVisit.length > 0 ||
         pending.planExpiryStart !== "" ||
@@ -248,19 +228,6 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                             {ALL_LIFECYCLE_TAGS.map(t => (
                                 <FilterPill key={t} label={t} selected={pending.lifecycleTags.includes(t)}
                                     onClick={() => setPending(p => ({ ...p, lifecycleTags: toggle(p.lifecycleTags, t) }))} />
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
-
-                    {/* Status */}
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
-                        <div className="flex flex-wrap gap-2">
-                            {ALL_STATUSES.map(s => (
-                                <FilterPill key={s} label={STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
-                                    onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
                             ))}
                         </div>
                     </div>
@@ -364,7 +331,7 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
 
 function BulkActionBar({ count, flags, onClear, onAction }: {
     count: number;
-    flags: { archive: boolean; deactivate: boolean; reactivate: boolean; recover: boolean; delete: boolean };
+    flags: { archive: boolean; recover: boolean; delete: boolean };
     onClear: () => void;
     onAction: (kind: RowActionKind) => void;
 }) {
@@ -383,22 +350,9 @@ function BulkActionBar({ count, flags, onClear, onAction }: {
                             Archive
                         </Button>
                     )}
-                    {flags.reactivate && (
-                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("reactivate")}>
-                            Reactivate
-                        </Button>
-                    )}
                     {flags.recover && (
                         <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("recover")}>
                             Recover
-                        </Button>
-                    )}
-                    {flags.deactivate && (
-                        <Button variant="secondary-gray"
-                            className="text-[#b42318] hover:text-[#b42318] hover:bg-[#fef3f2]"
-                            leftIcon={<SlashCircle01 className="w-5 h-5 text-[#b42318]" />}
-                            onClick={() => onAction("deactivate")}>
-                            Deactivate
                         </Button>
                     )}
                     {flags.delete && (
@@ -482,8 +436,8 @@ function exportCustomersCsv(rows: CustomerRow[], staffLookup: Map<string, string
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 type PendingConfirm =
-    | { mode: "row"; row: CustomerRow; kind: RowActionKind }
-    | { mode: "bulk"; rows: CustomerRow[]; kind: RowActionKind };
+    | { mode: "row"; row: CustomerRow; kind: RowActionKind; note?: string }
+    | { mode: "bulk"; rows: CustomerRow[]; kind: RowActionKind; note?: string };
 
 export default function CustomersPage() {
     const router = useRouter();
@@ -525,15 +479,17 @@ export default function CustomersPage() {
     // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
     useBulkSelectionSignal(selectedIds.size > 0);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
-    // v83 lifecycle — segment tabs. Buckets match PDF §5.1 "leads inside
-    // Customers list + segment tabs":
-    //   All        → no filter
-    //   Leads      → lifecycleTag === "Lead" (pre-plan prospects)
-    //   Members    → tag ∈ { Trialist, New Active, Loyal Active, Won-back }
-    //   Inactive   → tag ∈ { At Risk, Churned } OR customer.status !== "active"
-    // The tab strip reuses the exact same chrome as /admin/insights so
-    // customers list feels like a sibling surface without any new component.
+    // Wallet segment tabs (client 2026-08-10) — the partition is WALLET-based,
+    // computed by `customerSegment`, never attendance:
+    //   All      → no segment filter
+    //   Leads    → never bought anything
+    //   Members  → something live now (active/frozen plan or unexpired credits)
+    //   Inactive → bought before, nothing live today
+    // The tab strip reuses the same chrome as /admin/insights.
     const [segment, setSegment] = useState<"all" | "leads" | "members" | "inactive">("all");
+    // Archived is a "place", not a tab — the list excludes archived customers by
+    // default; this toggle opens the archived-only view via "View archived (n)".
+    const [viewArchived, setViewArchived] = useState(false);
     // v83 Phase 3 — "Assigned to me" chip. Off by default; when on, filters
     // to rows whose customer.assignedTo matches the current staff id.
     const [mineOnly, setMineOnly] = useState(false);
@@ -546,7 +502,7 @@ export default function CustomersPage() {
     useEffect(() => {
         if (!didMountRef.current) { didMountRef.current = true; return; }
         setPage(1);
-    }, [search, applied, branchId, pageSize, segment, mineOnly]);
+    }, [search, applied, branchId, pageSize, segment, mineOnly, viewArchived]);
 
     // Branch dropdown — active branches from the live `branches` slice so
     // adds/archives in Business & Locations propagate immediately.
@@ -636,13 +592,15 @@ export default function CustomersPage() {
         }
 
         return allRows.filter(r => {
+            // Archived is a "place": the default list excludes archived rows
+            // entirely; the archived-only view shows exclusively archived.
+            if (viewArchived ? r.status !== "archived" : r.status === "archived") return false;
             if (branchId && r.branchId !== branchId) return false;
             if (q && !(
                 r.name.toLowerCase().includes(q) ||
                 r.email.toLowerCase().includes(q) ||
                 r.phone.toLowerCase().includes(q)
             )) return false;
-            if (applied.statuses.length > 0 && !applied.statuses.includes(r.status)) return false;
             if (applied.planTypes.length > 0 && !applied.planTypes.includes(r.planType)) return false;
             if (applied.lifecycleTags.length > 0 && !applied.lifecycleTags.includes(r.lifecycleTag ?? "Lead")) return false;
             if (!matchesLastVisit(r)) return false;
@@ -663,7 +621,15 @@ export default function CustomersPage() {
             if (mineOnly && meStaffId && r.assignedTo !== meStaffId) return false;
             return true;
         });
-    }, [allRows, branchId, search, applied, today, mineOnly, currentUser?.staff_id]);
+    }, [allRows, branchId, search, applied, today, mineOnly, currentUser?.staff_id, viewArchived]);
+
+    // Archived customers within the current branch scope — drives the
+    // "View archived (n)" link. Independent of search / segment / filters so the
+    // count always reflects the true archived population you can jump to.
+    const archivedCount = useMemo(
+        () => allRows.filter(r => r.status === "archived" && (!branchId || r.branchId === branchId)).length,
+        [allRows, branchId],
+    );
 
     // Per-tab counts — tally the wallet segment over the scoped base set.
     const segmentCounts = useMemo(() => {
@@ -679,16 +645,16 @@ export default function CustomersPage() {
 
     // Final rows = scoped base narrowed to the selected wallet tab. The
     // Lead/Member/Inactive partition is WALLET-based (client 2026-08-10) — a
-    // member with an "At Risk" lifecycle tag still sits in Members.
+    // member with an "At Risk" lifecycle tag still sits in Members. The archived
+    // view ignores the segment tabs (it's a flat archived list).
     const filteredRows = useMemo(() => {
-        if (segment === "all") return scopedRows;
+        if (viewArchived || segment === "all") return scopedRows;
         const want: CustomerSegment = segment === "leads" ? "lead" : segment === "members" ? "member" : "inactive";
         return scopedRows.filter(r => (segmentById.get(r.id) ?? "lead") === want);
-    }, [scopedRows, segment, segmentById]);
+    }, [scopedRows, segment, segmentById, viewArchived]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
-    // ── Sortable columns — Name / Contact / Plan / Lifecycle / Status / Last visit. ──
-    const STATUS_ORDER: Record<CustomerStatus, number> = { active: 0, inactive: 1, archived: 2 };
+    // ── Sortable columns — Name / Contact / Plan / Lifecycle / Last visit. ──
     // Order lifecycle tags by "funnel depth" so ascending puts leads at the top
     // and loyal members at the bottom — mirrors the mental model in PDF §2.1.
     const LIFECYCLE_ORDER: Record<string, number> = {
@@ -700,7 +666,6 @@ export default function CustomersPage() {
         contact:   (a, b) => a.email.localeCompare(b.email),
         plan:      (a, b) => a.planType.localeCompare(b.planType),
         lifecycle: (a, b) => (LIFECYCLE_ORDER[a.lifecycleTag ?? "Lead"] ?? 99) - (LIFECYCLE_ORDER[b.lifecycleTag ?? "Lead"] ?? 99),
-        status:    (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
         lastVisit: (a, b) => {
             // No-visit rows sort to the end regardless of direction by
             // pegging them to a sentinel that's larger than any real ISO.
@@ -737,23 +702,19 @@ export default function CustomersPage() {
         () => filteredRows.filter(r => selectedIds.has(r.id)),
         [filteredRows, selectedIds],
     );
-    // Deactivate ↔ Delete is one slot, never both — Delete only when every
-    // selected row is Active AND history-free; inactive/archived rows must
-    // be reactivated/recovered first.
-    const allActiveHistoryFree = selectedRows.length > 0
-        && selectedRows.every(r => r.status === "active" && !r.hasHistory);
-    const anyActiveSelected = selectedRows.some(r => r.status === "active");
+    // Archive / Recover / Delete. Delete is offered only for history-free rows
+    // (CLAUDE.md archive rule — anything with booking history can only be
+    // archived, never hard-deleted). Archive + Delete can co-exist in the bar.
+    const allHistoryFree = selectedRows.length > 0 && selectedRows.every(r => !r.hasHistory);
     const bulkFlags = {
         archive: selectedRows.some(r => r.status !== "archived"),
-        reactivate: selectedRows.some(r => r.status === "inactive"),
         recover: selectedRows.some(r => r.status === "archived"),
-        deactivate: !allActiveHistoryFree && anyActiveSelected,
-        delete: allActiveHistoryFree,
+        delete: allHistoryFree,
     };
 
     // ─── Active-filter dot ──────────────────────────────────────────────────
     const hasActiveFilter =
-        applied.statuses.length > 0 || applied.planTypes.length > 0 ||
+        applied.planTypes.length > 0 ||
         applied.lastVisit.length > 0 ||
         applied.planExpiryStart !== "" || applied.planExpiryEnd !== "" ||
         applied.lifecycleTags.length > 0;
@@ -765,11 +726,9 @@ export default function CustomersPage() {
     function openBulkConfirm(kind: RowActionKind) {
         const rowsForKind = (() => {
             switch (kind) {
-                case "deactivate": return selectedRows.filter(r => r.status === "active");
-                case "reactivate": return selectedRows.filter(r => r.status === "inactive");
                 case "archive": return selectedRows.filter(r => r.status !== "archived");
                 case "recover": return selectedRows.filter(r => r.status === "archived");
-                case "delete": return selectedRows.filter(r => r.status === "active" && !r.hasHistory);
+                case "delete": return selectedRows.filter(r => !r.hasHistory);
             }
         })();
         if (rowsForKind.length === 0) return;
@@ -798,25 +757,14 @@ export default function CustomersPage() {
             return;
         }
 
-        // ─── Status mutations (deactivate / reactivate / archive / recover) ──
-        const nextStatus: CustomerStatus =
-            kind === "deactivate" ? "inactive" :
-            kind === "reactivate" ? "active" :
-            kind === "archive" ? "archived" :
-            /* recover */ "active";
-        setCustomerStatus(ids, nextStatus);
+        // ─── Archive / Recover ──────────────────────────────────────────────
+        // Archiving never touches access — it only hides the row from the list.
+        const nextStatus: CustomerStatus = kind === "archive" ? "archived" : "active";
+        setCustomerStatus(ids, nextStatus, kind === "archive" ? pending.note : undefined);
 
-        const verbPast =
-            kind === "deactivate" ? "deactivated" :
-            kind === "reactivate" ? "reactivated" :
-            kind === "archive" ? "archived" :
-            "recovered";
-        const icon: "slash" | "check" | "archive" | "refresh" =
-            kind === "deactivate" ? "slash" :
-            kind === "reactivate" ? "check" :
-            kind === "archive" ? "archive" :
-            "refresh";
-        const tone: "success" | "error" = kind === "deactivate" ? "error" : "success";
+        const verbPast = kind === "archive" ? "archived" : "recovered";
+        const icon: "archive" | "refresh" = kind === "archive" ? "archive" : "refresh";
+        const tone: "success" | "error" = "success";
 
         if (single) {
             showToast(
@@ -902,28 +850,48 @@ export default function CustomersPage() {
                    the table body scrolls (matches /admin/staff's chrome). */}
             <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 px-6 py-4 flex items-center gap-3">
-                    <SegmentedTabs
-                        tabs={segmentTabDefs}
-                        activeKey={segment}
-                        onChange={(k) => setSegment(k as typeof segment)}
-                    />
-                    {/* Client 2026-07-27 — "Assigned to me" moved from
-                        the toolbar to the tab row and restyled as a DS
-                        secondary-gray Button so it reads as a scope
-                        toggle for the visible tab, not a general filter. */}
-                    <div className="flex-1" />
-                    {/* "Assigned to me" scope toggle — hidden while lead
-                        assignment is off (boutique doesn't assign leads to a
-                        person). See @/lib/lead-assignment. */}
-                    {LEAD_ASSIGNMENT_ENABLED && currentUser?.id && (
-                        <Button
-                            variant="secondary-gray"
-
-                            onClick={() => setMineOnly(v => !v)}
-                            className={mineOnly ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-primary)]" : undefined}
-                        >
-                            {mineOnly ? "Showing yours only" : "Assigned to me"}
-                        </Button>
+                    {viewArchived ? (
+                        // Archived view header — a "place", not a tab. Access is
+                        // unchanged; this is purely the tidied-away list.
+                        <>
+                            <Button
+                                variant="secondary-gray"
+                                leftIcon={<ArrowLeft className="w-4 h-4" />}
+                                onClick={() => { setViewArchived(false); clearSelection(); }}
+                            >
+                                Back to customers
+                            </Button>
+                            <div className="flex flex-col">
+                                <span className="text-[14px] font-semibold text-[var(--colors-text-primary)]">Archived customers</span>
+                                <span className="text-[12px] text-[var(--colors-text-quaternary)]">Hidden from every list, count, and campaign · access unchanged</span>
+                            </div>
+                            <div className="flex-1" />
+                        </>
+                    ) : (
+                        <>
+                            <SegmentedTabs
+                                tabs={segmentTabDefs}
+                                activeKey={segment}
+                                onChange={(k) => setSegment(k as typeof segment)}
+                            />
+                            {/* Client 2026-07-27 — "Assigned to me" moved from
+                                the toolbar to the tab row and restyled as a DS
+                                secondary-gray Button so it reads as a scope
+                                toggle for the visible tab, not a general filter. */}
+                            <div className="flex-1" />
+                            {/* "Assigned to me" scope toggle — hidden while lead
+                                assignment is off (boutique doesn't assign leads to a
+                                person). See @/lib/lead-assignment. */}
+                            {LEAD_ASSIGNMENT_ENABLED && currentUser?.id && (
+                                <Button
+                                    variant="secondary-gray"
+                                    onClick={() => setMineOnly(v => !v)}
+                                    className={mineOnly ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-primary)]" : undefined}
+                                >
+                                    {mineOnly ? "Showing yours only" : "Assigned to me"}
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
                 <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
@@ -1037,30 +1005,17 @@ export default function CustomersPage() {
                                                                 hidden: r.status === "archived",
                                                             },
                                                             {
-                                                                label: "Reactivate",
-                                                                icon: Check,
-                                                                onClick: () => openRowConfirm(r, "reactivate"),
-                                                                hidden: r.status !== "inactive",
-                                                            },
-                                                            {
                                                                 label: "Recover",
                                                                 icon: RefreshCcw01,
                                                                 onClick: () => openRowConfirm(r, "recover"),
                                                                 hidden: r.status !== "archived",
                                                             },
                                                             {
-                                                                label: "Deactivate",
-                                                                icon: SlashCircle01,
-                                                                onClick: () => openRowConfirm(r, "deactivate"),
-                                                                danger: true,
-                                                                hidden: !(r.status === "active" && r.hasHistory),
-                                                            },
-                                                            {
                                                                 label: "Delete",
                                                                 icon: Trash01,
                                                                 onClick: () => openRowConfirm(r, "delete"),
                                                                 danger: true,
-                                                                hidden: !(r.status === "active" && !r.hasHistory),
+                                                                hidden: r.hasHistory,
                                                             },
                                                         ]}
                                                     />
@@ -1082,11 +1037,26 @@ export default function CustomersPage() {
                     />
                 </div>
 
-                <div className="shrink-0 px-6">
-                    <Pagination
-                        page={clampedPage} total={sortedRows.length} pageSize={pageSize}
-                        onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
-                    />
+                <div className="shrink-0 px-6 flex items-center gap-4">
+                    {/* "View archived (n)" — the ONLY entry point to archived
+                        customers (a place, not a tab). Hidden in the archived
+                        view itself (the header's Back button returns). */}
+                    {!viewArchived && archivedCount > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => { setViewArchived(true); clearSelection(); }}
+                            className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] transition-colors whitespace-nowrap"
+                        >
+                            <Archive className="w-4 h-4" />
+                            View archived ({archivedCount})
+                        </button>
+                    )}
+                    <div className="flex-1">
+                        <Pagination
+                            page={clampedPage} total={sortedRows.length} pageSize={pageSize}
+                            onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -1102,6 +1072,22 @@ export default function CustomersPage() {
                 const cfg = MODAL_CONFIG[pendingConfirm.kind];
                 const title = count > 1 ? cfg.titleBulk(count) : cfg.titleSingle;
                 const tone = DESTRUCTIVE_ACTIONS.has(pendingConfirm.kind) ? "danger" : "success";
+                // Optional internal note captured on archive (display-only,
+                // never shown to the customer). Stored on the customer record.
+                const noteField = pendingConfirm.kind === "archive" ? (
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[13px] font-medium text-[var(--colors-text-secondary)]">
+                            Internal note <span className="text-[var(--colors-text-quaternary)]">(optional)</span>
+                        </label>
+                        <textarea
+                            rows={2}
+                            value={pendingConfirm.note ?? ""}
+                            onChange={e => setPendingConfirm(p => (p ? { ...p, note: e.target.value } : p))}
+                            placeholder="Why is this customer being archived? (duplicate, test, long-gone…)"
+                            className="w-full resize-none rounded-[8px] border-1 border-[var(--colors-border-primary)] bg-white px-3 py-2 text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:border-[var(--colors-border-brand)]"
+                        />
+                    </div>
+                ) : undefined;
                 return (
                     <ConfirmModal
                         open
@@ -1111,6 +1097,7 @@ export default function CustomersPage() {
                         title={title}
                         description={cfg.description(subject, count)}
                         confirmLabel={cfg.confirmLabel}
+                        extraContent={noteField}
                         onConfirm={() => performAction(pendingConfirm)}
                     />
                 );

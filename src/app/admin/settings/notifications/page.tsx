@@ -1500,8 +1500,8 @@ export default function CustomerNotificationsPage() {
     const removeMarketingBranchOverride = useAppStore(s => s.removeMarketingBranchOverride);
 
     /** Marketing-opt-in count for the info banner under the Marketing
-     *  group. Deliverable = non-archived customers (active + inactive);
-     *  archived rows are gone from the CRM and can't receive anything.
+     *  group. Deliverable = non-archived customers; archived rows are a
+     *  "place" outside the CRM list and can't receive anything.
      *  A deliverable customer is "opted in" when at least one marketing
      *  TOPIC is enabled AND at least one DELIVERABLE CHANNEL is enabled.
      *

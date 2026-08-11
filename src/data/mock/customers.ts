@@ -232,7 +232,7 @@ const handAuthoredCustomers: Customer[] = [
         plan_name: "Unlimited Monthly Membership",
         created_at: "2026-05-08T09:00:00Z",
         gender: "Female",
-        status: "inactive",
+        status: "active",
         last_visit_iso: "2026-03-10",
         plan_expiry_iso: "2026-06-20",
         date_of_birth: "1990-09-08",
@@ -395,7 +395,7 @@ const handAuthoredCustomers: Customer[] = [
         created_at: "2026-01-16T09:00:00Z",
         gender: "Male",
         credits_remaining: 10,
-        status: "inactive",
+        status: "active",
         last_visit_iso: "2026-02-10",
         plan_expiry_iso: "2026-05-30",
         date_of_birth: "1991-05-19",
@@ -536,9 +536,11 @@ const SYNTH_MARKETING_PATTERNS: Array<{
     { email: false, wa: false, sms: false, push: false, sa: true,  ncl: true,  so: false, pco: false }, // topics only
 ];
 
-const SYNTH_STATUSES: Array<"active" | "inactive" | "archived"> = [
+// Inactivity is derived from the wallet now (never stored) — synthetic rows are
+// `active`, with a 1-in-10 `archived` so the "View archived (n)" place has data.
+const SYNTH_STATUSES: Array<"active" | "archived"> = [
     "active", "active", "active", "active", "active", "active", "active",
-    "active", "inactive", "archived",
+    "active", "active", "archived",
 ];
 
 const SYNTH_GENDERS: Array<"Male" | "Female"> = ["Female", "Male"];

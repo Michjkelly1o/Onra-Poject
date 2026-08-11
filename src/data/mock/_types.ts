@@ -451,11 +451,12 @@ export interface Customer {
      *  unlimited memberships (no credit cap) and no-plan customers. `0` means
      *  the plan is exhausted — a new plan purchase is required to book. */
     credits_remaining?: number;
-    /** Account lifecycle status. `active` = normal, `inactive` = suspended
-     *  (login disabled, no new bookings), `archived` = hidden from the default
-     *  list. Drives the customer-list status badge, the Status filter, and
-     *  which row actions are offered. */
-    status: "active" | "inactive" | "archived";
+    /** Archive flag, NOT a lifecycle status (client 2026-08-10). `active` = a
+     *  normal, visible customer; `archived` = tidied out of the list (a
+     *  "place"): excluded from every tab/count/search/campaign, reachable only
+     *  via "View archived (n)", access unchanged, auto-revived on the customer's
+     *  own booking. Inactivity is derived from the wallet, never stored. */
+    status: "active" | "archived";
     /** Date of the customer's most recent attended class (ISO `YYYY-MM-DD`).
      *  Omitted when the customer has never visited — surfaces the "Never
      *  visited" filter bucket and a dash in the Last visit column. */
