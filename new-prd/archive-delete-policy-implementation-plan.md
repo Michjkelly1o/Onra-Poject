@@ -77,7 +77,9 @@ every archiveable module).
 | **Marketing campaigns** | `active\|inactive\|archive` | Archive / Deactivate / Delete / Reactivate, **inline**, **card list** | Make **AAS** (cards, no pagination). Keep Deactivate (D-1). Delete only when **never sent** (module 08 rule). Normalize `"archive"`→`"archived"` (D-3). |
 | **Gift card designs** | `active\|inactive\|archived` | View/Edit/Archive/Deactivate/Delete(0 holders)/Reactivate, **inline** | Make **AAS**. Keep Deactivate. Delete only when **0 issued cards**. ⚠ **Issued gift cards** stay **never-deletable** (financial records) — unchanged. |
 | **Agreements** | `active\|archived` | Archive / Recover ONLY — **no delete, no deactivate** (legal records) | Make **AAS**. Stays **archive-only, never delete, no deactivate**. Note: publishing a new version **auto-archives** the prior one (keep that). |
-| **Class categories** | `active\|inactive` — **NO archive today** | Active / Inactive (+ delete?) | ⚠ **Archive must be ADDED** (categories carry usage history via templates/classes) — see **D-5**. Add `archived` state + AAS + delete-guard (0 templates/classes). |
+
+> **Class categories — OUT of the archive policy** (client 2026-08-11): categories
+> are **edit + delete only, no archive**. Not converted to AAS; left as-is.
 
 ### Bucket B — Delete-only (remove archive entirely)
 
@@ -173,24 +175,20 @@ ensure archived rows move out of the active table into the Archived section.
 - **D-4 — Roles + Shifts KEEP Inactive** (per D-1); they only lose **Archive**
   (delete-only refers to archive, not to the pause state). So Roles/Shifts end
   up: active · inactive · Delete (no archive, no "archived" value).
-- **D-5 — Class categories: ADD archive.** Categories currently have only
-  `active | inactive` (no archived). Since a category carries usage history once
-  templates/classes run under it, it belongs in Bucket A (archive-only). Plan:
-  add the `archived` state + AAS + a delete-guard (deletable only when 0
-  templates/classes reference it). *Confirm before building — this is an ADD, not
-  a convert.* If declined, categories stay active/inactive + delete-guarded only.
+- **D-5 — Class categories: NO archive (RESOLVED 2026-08-11).** Categories are
+  **edit + delete only** — do NOT add archive, do NOT convert to AAS. Out of this
+  policy's scope.
 
 ---
 
 ## 5. Implications (what this changes)
 
-- **Scale:** **11 modules** gain the Archived accordion section (§3) — the 7
-  named archive-only modules + the 4 the client didn't name (Campaigns, Gift card
-  designs, Agreements, Class categories) — plus **customers gets retrofitted**
-  off its old toggle onto the same section. Sizeable but mechanical once the
-  shared `<ArchivedSection>` piece exists. Roles + Shifts are *reductions* (remove
-  Archive), which are smaller. Class categories is the one **ADD** (new archived
-  state, D-5).
+- **Scale:** **10 modules** gain the Archived accordion section (§3) — the 7
+  named archive-only modules + 3 the client didn't name (Campaigns, Gift card
+  designs, Agreements) — plus **customers gets retrofitted** off its old toggle
+  onto the same section. Sizeable but mechanical once the shared
+  `<ArchivedSection>` piece exists. Roles + Shifts are *reductions* (remove
+  Archive), which are smaller. (Class categories = edit + delete only, no archive.)
 - **Behavior users will notice:** archived rows **leave the active table** and
   appear in an **expandable "Archived <entity>" section below** it (with its own
   search-scoped list, pagination on table modules, and bulk actions). No more
@@ -240,8 +238,8 @@ ensure archived rows move out of the active table into the Archived section.
 13. **Marketing campaigns** — AAS (card list, no pagination).
 14. **Gift card designs** — AAS (issued gift cards stay never-deletable).
 15. **Agreements** — AAS (archive-only, no delete/deactivate; keep version auto-archive).
-16. **Class categories** — ADD archive state + AAS + delete-guard (D-5, confirm first).
-17. **Verify** — Scheduled classes unchanged (cancel-only, visible).
+16. **Verify** — Scheduled classes unchanged (cancel-only, visible); Class
+    categories unchanged (edit + delete only, no archive).
 
 Each archive-only module: split rows into active + archived; render the Archived
 section below only when archived count > 0 (expanded); search/filters/bulk apply
