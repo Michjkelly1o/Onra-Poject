@@ -631,18 +631,6 @@ export default function CustomersPage() {
         [allRows, branchId],
     );
 
-    // Per-tab counts — tally the wallet segment over the scoped base set.
-    const segmentCounts = useMemo(() => {
-        const counts = { leads: 0, members: 0, inactive: 0 };
-        for (const r of scopedRows) {
-            const seg = segmentById.get(r.id) ?? "lead";
-            if (seg === "lead") counts.leads++;
-            else if (seg === "member") counts.members++;
-            else counts.inactive++;
-        }
-        return counts;
-    }, [scopedRows, segmentById]);
-
     // Final rows = scoped base narrowed to the selected wallet tab. The
     // Lead/Member/Inactive partition is WALLET-based (client 2026-08-10) — a
     // member with an "At Risk" lifecycle tag still sits in Members. The archived
@@ -801,11 +789,13 @@ export default function CustomersPage() {
     // container box wrapping the pill-tab strip + table. Same tab keys
     // (all / leads / members / inactive) so downstream filter code
     // doesn't need to change.
+    // No count badges on the tabs — client feedback only calls for a count on
+    // the "View archived (n)" link, not the segment tabs.
     const segmentTabDefs = [
-        { key: "all",      label: "All",      count: scopedRows.length },
-        { key: "leads",    label: "Leads",    count: segmentCounts.leads },
-        { key: "members",  label: "Members",  count: segmentCounts.members },
-        { key: "inactive", label: "Inactive", count: segmentCounts.inactive },
+        { key: "all",      label: "All"      },
+        { key: "leads",    label: "Leads"    },
+        { key: "members",  label: "Members"  },
+        { key: "inactive", label: "Inactive" },
     ];
 
     return (
@@ -889,6 +879,18 @@ export default function CustomersPage() {
                                     className={mineOnly ? "bg-[var(--colors-bg-tertiary)] text-[var(--colors-text-primary)]" : undefined}
                                 >
                                     {mineOnly ? "Showing yours only" : "Assigned to me"}
+                                </Button>
+                            )}
+                            {/* "View archived (n)" — the ONLY entry point to
+                                archived customers (a place, not a tab). Same row
+                                as the tabs, right-aligned. */}
+                            {archivedCount > 0 && (
+                                <Button
+                                    variant="secondary-gray"
+                                    leftIcon={<Archive className="w-4 h-4" />}
+                                    onClick={() => { setViewArchived(true); clearSelection(); }}
+                                >
+                                    View archived ({archivedCount})
                                 </Button>
                             )}
                         </>
@@ -1037,26 +1039,11 @@ export default function CustomersPage() {
                     />
                 </div>
 
-                <div className="shrink-0 px-6 flex items-center gap-4">
-                    {/* "View archived (n)" — the ONLY entry point to archived
-                        customers (a place, not a tab). Hidden in the archived
-                        view itself (the header's Back button returns). */}
-                    {!viewArchived && archivedCount > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => { setViewArchived(true); clearSelection(); }}
-                            className="flex items-center gap-1.5 text-[13px] font-medium text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-primary)] transition-colors whitespace-nowrap"
-                        >
-                            <Archive className="w-4 h-4" />
-                            View archived ({archivedCount})
-                        </button>
-                    )}
-                    <div className="flex-1">
-                        <Pagination
-                            page={clampedPage} total={sortedRows.length} pageSize={pageSize}
-                            onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
-                        />
-                    </div>
+                <div className="shrink-0 px-6">
+                    <Pagination
+                        page={clampedPage} total={sortedRows.length} pageSize={pageSize}
+                        onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+                    />
                 </div>
             </div>
 
