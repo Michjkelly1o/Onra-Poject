@@ -881,16 +881,16 @@ export default function CustomersPage() {
                                     {mineOnly ? "Showing yours only" : "Assigned to me"}
                                 </Button>
                             )}
-                            {/* "View archived (n)" — the ONLY entry point to
-                                archived customers (a place, not a tab). Same row
-                                as the tabs, right-aligned. */}
+                            {/* "Archived" — the ONLY entry point to archived
+                                customers (a place, not a tab). Same row as the
+                                tabs, right-aligned. */}
                             {archivedCount > 0 && (
                                 <Button
                                     variant="secondary-gray"
                                     leftIcon={<Archive className="w-4 h-4" />}
                                     onClick={() => { setViewArchived(true); clearSelection(); }}
                                 >
-                                    View archived ({archivedCount})
+                                    Archived
                                 </Button>
                             )}
                         </>
