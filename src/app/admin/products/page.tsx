@@ -51,7 +51,7 @@ import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
     useAppStore,
-    type Membership, type Package, type Customer, type Branch,
+    type Membership, type Package, type Customer, type CustomerPlan, type Branch,
 } from "@/lib/store";
 import { findActiveTaxRuleFor, categoryForProductType } from "@/lib/tax-calc";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
@@ -536,7 +536,7 @@ type ProductRow = {
     hasHolders: boolean;
 };
 
-function rowsFromMemberships(items: Membership[], customers: Customer[], branches: Branch[]): ProductRow[] {
+function rowsFromMemberships(items: Membership[], customers: Customer[], plans: CustomerPlan[], branches: Branch[]): ProductRow[] {
     return items.map(m => ({
         id: m.id,
         kind: "membership" as const,
@@ -549,11 +549,14 @@ function rowsFromMemberships(items: Membership[], customers: Customer[], branche
         durationLabel: formatDuration(m.duration_months),
         durationDays: m.duration_months * 30,
         status: m.status,
-        hasHolders: customers.some(c => c.planKind === "membership" && c.membershipId === m.id),
+        // Any current holder OR any plan row EVER (any status) = purchase
+        // history → Archive only, never Delete (CLAUDE.md archive rule).
+        hasHolders: customers.some(c => c.planKind === "membership" && c.membershipId === m.id)
+            || plans.some(pl => pl.productId === m.id && pl.kind === "membership"),
     }));
 }
 
-function rowsFromPackages(items: Package[], customers: Customer[], branches: Branch[]): ProductRow[] {
+function rowsFromPackages(items: Package[], customers: Customer[], plans: CustomerPlan[], branches: Branch[]): ProductRow[] {
     return items.map(p => ({
         id: p.id,
         kind: "package" as const,
@@ -566,7 +569,10 @@ function rowsFromPackages(items: Package[], customers: Customer[], branches: Bra
         durationLabel: formatValidity(p.validity_days),
         durationDays: p.validity_days,
         status: p.status,
-        hasHolders: customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(p.id)),
+        // Any current holder OR any plan row EVER (any status) = purchase
+        // history → Archive only, never Delete (CLAUDE.md archive rule).
+        hasHolders: customers.some(c => c.planKind === "package" && (c.packageIds ?? []).includes(p.id))
+            || plans.some(pl => pl.productId === p.id && pl.kind === "package"),
     }));
 }
 
@@ -696,6 +702,7 @@ export default function ProductsPage() {
     const memberships = useAppStore(s => s.memberships);
     const packages = useAppStore(s => s.packages);
     const customers = useAppStore(s => s.customers);
+    const customerPlans = useAppStore(s => s.customerPlans);
     const branches = useAppStore(s => s.branches);
     const setMembershipStatus = useAppStore(s => s.setMembershipStatus);
     const setPackageStatus = useAppStore(s => s.setPackageStatus);
@@ -747,9 +754,9 @@ export default function ProductsPage() {
     // ─── Build rows for the current tab (holder flag derived live) ──────────
     const allRows = useMemo<ProductRow[]>(
         () => tab === "memberships"
-            ? rowsFromMemberships(memberships, customers, branches)
-            : rowsFromPackages(packages, customers, branches),
-        [tab, memberships, packages, customers, branches],
+            ? rowsFromMemberships(memberships, customers, customerPlans, branches)
+            : rowsFromPackages(packages, customers, customerPlans, branches),
+        [tab, memberships, packages, customers, customerPlans, branches],
     );
 
     // ─── Apply branch + search + filter ─────────────────────────────────────

@@ -2268,8 +2268,11 @@ export interface CustomerTransaction {
     productSnapshotSku?: string;
     productSnapshotPriceAed?: number;
     productSnapshotUnitCostAed?: number;
-    /** Sale quantity. Retail lines can have qty > 1; existing kinds are
-     *  always qty 1. */
+    /** Sale quantity (units on this line). Retail AND package lines can be
+     *  qty > 1; `amountAed` is the LINE total (`unitPrice × quantity`) and a
+     *  package credits `pkg.credits × quantity`, so revenue recognition divides
+     *  by `credits × quantity`. Memberships are always qty 1. Undefined on
+     *  legacy / seed rows → treat as 1. */
     quantity?: number;
     /** Branch the sale rang up at — needed for Retail Sales report's
      *  branch filter + Stock on Hand's per-branch drilldown. */
@@ -9391,7 +9394,7 @@ export const useAppStore = create<AppState>()(persist(
         const heldInPlans    = state.customerPlans.some(p =>
             p.productId === id
             && p.kind === "membership"
-            && (p.status === "active" || p.status === "frozen"));
+            );  // ANY plan row (any status) = purchase history → archive, never delete
         if (heldByCustomer || heldInPlans) return false;
         set(s => ({ memberships: s.memberships.filter(m => m.id !== id) }));
         return true;
@@ -9405,7 +9408,7 @@ export const useAppStore = create<AppState>()(persist(
             const heldInPlans    = state.customerPlans.some(p =>
                 p.productId === id
                 && p.kind === "membership"
-                && (p.status === "active" || p.status === "frozen"));
+                );  // ANY plan row (any status) = purchase history → archive, never delete
             if (heldByCustomer || heldInPlans) blocked.push(id);
             else deleted.push(id);
         }
@@ -9772,7 +9775,7 @@ export const useAppStore = create<AppState>()(persist(
         const heldInPlans    = state.customerPlans.some(p =>
             p.productId === id
             && p.kind === "package"
-            && (p.status === "active" || p.status === "frozen"));
+            );  // ANY plan row (any status) = purchase history → archive, never delete
         if (heldByCustomer || heldInPlans) return false;
         set(s => ({ packages: s.packages.filter(p => p.id !== id) }));
         return true;
@@ -9786,7 +9789,7 @@ export const useAppStore = create<AppState>()(persist(
             const heldInPlans    = state.customerPlans.some(p =>
                 p.productId === id
                 && p.kind === "package"
-                && (p.status === "active" || p.status === "frozen"));
+                );  // ANY plan row (any status) = purchase history → archive, never delete
             if (heldByCustomer || heldInPlans) blocked.push(id);
             else deleted.push(id);
         }
@@ -12120,6 +12123,7 @@ export const useAppStore = create<AppState>()(persist(
                     kind: isMembership ? "membership" : "package",
                     productId: it.productId,
                     name: it.name,
+                    quantity: it.quantity,
                     amountAed: lineGross,
                     ...txnExtra,
                     status: "complete",

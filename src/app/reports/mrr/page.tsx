@@ -30,6 +30,15 @@ export default function MRRReportPage() {
     const customerPlans = useAppStore(s => s.customerPlans);
     const customers     = useAppStore(s => s.customers);
     const branches      = useAppStore(s => s.branches);
+    const memberships   = useAppStore(s => s.memberships);
+
+    // MRR = MONTHLY recurring revenue, so an annual plan contributes its
+    // price ÷ its term in months, not the whole annual price. Look the term up
+    // per membership product (duration_months); default 1 month.
+    const monthsByProduct = useMemo(
+        () => new Map(memberships.map(m => [m.id, Math.max(1, m.duration_months || 1)])),
+        [memberships],
+    );
 
     const report = getReportById("mrr");
 
@@ -76,8 +85,10 @@ export default function MRRReportPage() {
                 mrrCurr: 0, mrrPrior: 0,
                 branchId: p.branchId, location: p.location,
             };
-            if (purchased <= currEnd  && endDate >= currStart)  { bucket.activeCurr  += 1; bucket.mrrCurr  += p.priceAed; }
-            if (purchased <= priorEnd && endDate >= priorStart) { bucket.activePrior += 1; bucket.mrrPrior += p.priceAed; }
+            // Normalize to a monthly figure (annual plan → price ÷ 12).
+            const monthly = p.priceAed / (p.productId ? (monthsByProduct.get(p.productId) ?? 1) : 1);
+            if (purchased <= currEnd  && endDate >= currStart)  { bucket.activeCurr  += 1; bucket.mrrCurr  += monthly; }
+            if (purchased <= priorEnd && endDate >= priorStart) { bucket.activePrior += 1; bucket.mrrPrior += monthly; }
             buckets.set(key, bucket);
         }
 
@@ -94,7 +105,7 @@ export default function MRRReportPage() {
                 dateAnchorISO,
             } satisfies MRRDisplayRow;
         });
-    }, [raw]);
+    }, [raw, monthsByProduct]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),

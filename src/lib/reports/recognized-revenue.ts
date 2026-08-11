@@ -112,7 +112,11 @@ export function recognizedRevenueLineItems(input: RevenueInput, fromMs: number, 
 
         if (t.kind === "package") {
             const pkg = packages.find(p => p.id === t.productId);
-            const totalCredits = Math.max(1, pkg?.credits ?? 1);
+            // amountAed is the LINE total (unitPrice × quantity) and the plan
+            // credited `pkg.credits × quantity`, so per-credit = amount ÷
+            // (credits × quantity). Dividing by per-unit credits alone would
+            // over-recognize a qty>1 buy and break Sales ≥ Revenue.
+            const totalCredits = Math.max(1, (pkg?.credits ?? 1) * (t.quantity ?? 1));
             const perCredit = t.amountAed / totalCredits;
             for (const _b of creditUseBookings(bookings, t.customerId, "package", t.productId, fromMs, toMs)) {
                 void _b;
@@ -125,8 +129,9 @@ export function recognizedRevenueLineItems(input: RevenueInput, fromMs: number, 
             const mem = memberships.find(m => m.id === t.productId);
             const credits = mem?.credits;
             if (typeof credits === "number" && credits > 0) {
-                // Credit-based membership → per-credit-used, same basis as a package.
-                const perCredit = t.amountAed / credits;
+                // Credit-based membership → per-credit-used, same basis as a
+                // package (memberships are qty 1, but guard for symmetry).
+                const perCredit = t.amountAed / (credits * (t.quantity ?? 1));
                 for (const _b of creditUseBookings(bookings, t.customerId, "membership", t.productId, fromMs, toMs)) {
                     void _b;
                     items.push({ customerId: t.customerId, kind: "credit", label: `${mem?.name ?? "Membership"} · 1 credit used`, amountAed: perCredit });
