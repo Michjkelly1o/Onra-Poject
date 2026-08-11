@@ -14,7 +14,7 @@ import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { PlanCard } from "@/components/customer/profile/PlanCard";
 import { FreezePlanSheet, type FreezeReasonOption } from "@/components/customer/profile/FreezePlanSheet";
 import { OptionSheet } from "@/components/customer/profile/OptionSheet";
-import { CancelMembershipConfirmSheet } from "@/components/customer/profile/CancelMembershipConfirmSheet";
+import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirmSheet";
 import { Button } from "@/components/ui/button";
 import { decideFreezeCta } from "@/lib/customer/freeze-eligibility";
 import { distributePackageCredits } from "@/lib/customer/credit-balance";
@@ -343,10 +343,14 @@ export default function MyPlanPage() {
                 destructive
                 onConfirm={(reason) => { if (cancelPlan) setCancelConfirm({ plan: cancelPlan, reason }); }}
             />
-            <CancelMembershipConfirmSheet
+            <CancelConfirmSheet
                 open={!!cancelConfirm}
                 onClose={() => setCancelConfirm(null)}
-                endDateLabel={cancelConfirm ? fmtEndDate(cancelConfirm.plan.expiryISO) : ""}
+                title="Cancel membership"
+                description={cancelConfirm
+                    ? `Your membership ends ${fmtEndDate(cancelConfirm.plan.expiryISO)}. You keep full access until then — no further payments and no partial refund.`
+                    : ""}
+                confirmLabel="Yes, cancel membership"
                 onConfirm={() => { if (cancelConfirm) doCancel(cancelConfirm.plan, cancelConfirm.reason); }}
             />
         </div>
