@@ -593,6 +593,12 @@ export default function AdminDashboard() {
     // tab's Payments-collected chip.
     type NeedsAttentionModal = "renewal" | "failed" | "failedWidget" | "atrisk" | "underfilled" | "refund" | "waitlist" | "signups" | "trials" | null;
     const [attentionModal, setAttentionModal] = useState<NeedsAttentionModal>(null);
+    // Scope the shared RenewalDueModal to match whichever card opened it, so the
+    // count on the card always equals the list inside (client 2026-08-11):
+    //   • renew today  → today + auto-renew only
+    //   • expire today → today + non-auto-renew only
+    //   • Coming-up    → forward window, all
+    const [renewalModalScope, setRenewalModalScope] = useState<{ sameDay: boolean; auto: "only" | "exclude" | "all" }>({ sameDay: false, auto: "all" });
     // Metric-card drill-down modals (client 2026-08-07). Every KPI card opens
     // a modal listing the records behind its number, styled like the Needs-
     // attention modals. Phase 1 = the Today tab's 4 cards.
@@ -1367,7 +1373,7 @@ export default function AdminDashboard() {
             value: `${expiringMembershipsCount} ${expiringMembershipsCount === 1 ? "customer" : "customers"}`,
             comparison: `AED ${expiringMembershipsAed.toLocaleString("en-US")} recurring`,
             icon: RefreshCw01,
-            onClick: () => setAttentionModal("renewal"),
+            onClick: () => { setRenewalModalScope({ sameDay: false, auto: "all" }); setAttentionModal("renewal"); },
         };
         // At-risk clients + Trials-ending cards were removed from Coming-up
         // (client 2026-07-20) and rehomed on the Today tab's Needs Attention
@@ -2028,7 +2034,7 @@ export default function AdminDashboard() {
                         icon: RefreshCw01, iconBg: "bg-[#eff8ff]", iconFg: "text-[#175cd3]",
                         title: `${needsAttention.renewTodayCount} ${needsAttention.renewTodayCount === 1 ? "membership renews" : "memberships renew"} today`,
                         subtitle: `AED ${needsAttention.renewTotalAed.toLocaleString("en-US")} recurring`,
-                        onView: () => setAttentionModal("renewal"),
+                        onView: () => { setRenewalModalScope({ sameDay: true, auto: "only" }); setAttentionModal("renewal"); },
                     },
                     {
                         key: "expire",
@@ -2036,7 +2042,7 @@ export default function AdminDashboard() {
                         icon: Bell01, iconBg: "bg-[#fff6ed]", iconFg: "text-[#c4320a]",
                         title: `${needsAttention.expireTodayCount} ${needsAttention.expireTodayCount === 1 ? "membership expires" : "memberships expire"} today`,
                         subtitle: "Send a reminder before the membership lapses",
-                        onView: () => setAttentionModal("renewal"),
+                        onView: () => { setRenewalModalScope({ sameDay: true, auto: "exclude" }); setAttentionModal("renewal"); },
                     },
                     {
                         key: "signups",
@@ -2109,9 +2115,13 @@ export default function AdminDashboard() {
                 open={attentionModal === "renewal"}
                 onClose={() => setAttentionModal(null)}
                 branchIds={branchScopeIds}
-                /* Forward-N-day window — matches the Coming-up "Renewals
-                   due" metric so count + list agree at both pill settings. */
+                /* Forward-N-day window — matches the Coming-up "Renewals due"
+                   metric so count + list agree at both pill settings. The
+                   Needs-Attention "today" cards override this to same-day +
+                   auto-renew scope so their count matches too. */
                 forwardRangeDays={comingRange}
+                sameDayOnly={renewalModalScope.sameDay}
+                autoRenew={renewalModalScope.auto}
             />
             <FailedPaymentsModal
                 open={attentionModal === "failed"}

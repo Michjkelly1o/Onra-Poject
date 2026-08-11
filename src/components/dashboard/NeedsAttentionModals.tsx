@@ -325,9 +325,16 @@ export interface RenewalDueModalProps {
     /** Forward-N-day window (matches the dashboard Coming-up pill).
      *  Omit / undefined = defaults to 30 days (legacy behaviour). */
     forwardRangeDays?: number;
+    /** When true, list only memberships expiring EXACTLY today (Needs-Attention
+     *  "renew/expire today" cards) instead of the forward window — so the modal
+     *  list matches the card count. */
+    sameDayOnly?: boolean;
+    /** Auto-renew scope: "only" (renew-today), "exclude" (expire-today), or
+     *  "all" (Coming-up forward window). Defaults to "all". */
+    autoRenew?: "only" | "exclude" | "all";
 }
 
-export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: RenewalDueModalProps) {
+export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays, sameDayOnly = false, autoRenew = "all" }: RenewalDueModalProps) {
     const router         = useRouter();
     const customers      = useAppStore(s => s.customers);
     const customerPlans  = useAppStore(s => s.customerPlans);
@@ -361,7 +368,15 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
             .filter(p => p.status === "active" || p.status === "frozen")
             .filter(p => {
                 const day = (p.expiryISO ?? "").slice(0, 10);
-                return day >= todayISO && day <= horizonISO;
+                // Needs-Attention "today" cards: exactly today. Coming-up: window.
+                return sameDayOnly ? day === todayISO : (day >= todayISO && day <= horizonISO);
+            })
+            .filter(p => {
+                // Match the card that opened the modal: renew-today = auto-renew
+                // only; expire-today = non-auto-renew only; Coming-up = all.
+                if (autoRenew === "only") return (p.autoRenew ?? false) === true;
+                if (autoRenew === "exclude") return (p.autoRenew ?? false) === false;
+                return true;
             })
             .map(p => {
                 const c = customers.find(cx => cx.id === p.customerId);
@@ -371,7 +386,7 @@ export function RenewalDueModal({ open, onClose, branchIds, forwardRangeDays }: 
                 return { plan: p, customer: c, expiryDate, isExpired: false };
             })
             .filter((r): r is NonNullable<typeof r> => !!r);
-    }, [customerPlans, customers, branchIds, forwardRangeDays]);
+    }, [customerPlans, customers, branchIds, forwardRangeDays, sameDayOnly, autoRenew]);
 
     // Sortable columns — Customer / Membership / Status / Renews.
     // Sorting cycles desc → asc → off just like every other admin table.
