@@ -97,9 +97,7 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
     );
     const weekStart = mondayISOof(dateISO);
 
-    function confirmAssign(weeks: number) {
-        if (!periodFor) return;
-        const { shift, staffId, staffName } = periodFor;
+    function doAssign(shift: Shift, staffId: string, staffName: string, weeks?: number) {
         // Overlap guard — mirror the picker's rule.
         const mine = shiftAssignments.filter(a => a.staff_id === staffId);
         const clash = findShiftConflict(shift, mine, id => allShifts.find(s => s.id === id));
@@ -108,12 +106,22 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
             setPeriodFor(null);
             return;
         }
-        addShiftAssignment({ shift_id: shift.id, staff_id: staffId, week_start: weekStart, weeks });
+        addShiftAssignment({ shift_id: shift.id, staff_id: staffId, week_start: weekStart, ...(weeks !== undefined ? { weeks } : {}) });
         showToast("Staff assigned", `${staffName} was assigned to ${shift.name}.`, "success", "check");
         setPeriodFor(null);
         setAssignFor(null);
         // A targeted assign is a one-shot — close the panel once done.
         if (assignMode) onClose();
+    }
+    // Single/one-off shifts assign immediately; recurring shifts confirm the span
+    // (1w/1m/1y) first (client 2026-08-11).
+    function requestAssign(shift: Shift, staffId: string, staffName: string) {
+        if ((shift.type ?? "recurring") === "single") doAssign(shift, staffId, staffName);
+        else setPeriodFor({ shift, staffId, staffName });
+    }
+    function confirmAssign(weeks: number) {
+        if (!periodFor) return;
+        doAssign(periodFor.shift, periodFor.staffId, periodFor.staffName, weeks);
     }
 
     return (
@@ -162,7 +170,7 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
                         <div key={s.id}
                             draggable={!assignMode}
                             onDragStart={assignMode ? undefined : (e) => { e.dataTransfer.setData("text/shift-id", s.id); e.dataTransfer.effectAllowed = "copy"; setMenuFor(null); }}
-                            onClick={assignMode ? () => setPeriodFor({ shift: s, staffId: assignToStaff!.id, staffName: assignToStaff!.name }) : undefined}
+                            onClick={assignMode ? () => requestAssign(s, assignToStaff!.id, assignToStaff!.name) : undefined}
                             className={cn(
                                 "group relative flex items-stretch gap-3 rounded-[10px] border-1 border-[var(--colors-bg-quaternary)] bg-[var(--colors-bg-secondary)] pl-2.5 pr-2 py-3",
                                 assignMode
@@ -215,7 +223,7 @@ export function AddShiftPanel({ open, onClose, shifts, branchId, dateISO, assign
                 <AssignStaffModal
                     shift={assignFor}
                     onClose={() => setAssignFor(null)}
-                    onPick={(staffId, staffName) => setPeriodFor({ shift: assignFor, staffId, staffName })}
+                    onPick={(staffId, staffName) => requestAssign(assignFor, staffId, staffName)}
                 />
             )}
 

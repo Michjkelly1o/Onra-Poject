@@ -608,14 +608,11 @@ export interface ShiftManagementTabProps {
      *  parent (StaffPermissionsPage) owns the date navigator on the
      *  sub-tab row so this is a read-only prop. Client 2026-07-22. */
     weekStart?: Date;
-    /** Staff-schedule (week view) — open the day-view-style Add-shift panel in
-     *  "assign to this staff" mode from a row's 3-dot. */
-    onRequestAssignShift?: (staff: { id: string; name: string }) => void;
 }
 
 export function ShiftManagementTab({
     returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange,
-    viewMode = "list", weekStart, onRequestAssignShift,
+    viewMode = "list", weekStart,
 }: ShiftManagementTabProps) {
     const router = useRouter();
     const shifts            = useAppStore(s => s.shifts);
@@ -868,8 +865,7 @@ export function ShiftManagementTab({
             {viewMode === "week" ? (
                 <div className="relative flex flex-col flex-1 min-h-0">
                     <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart}
-                        roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds}
-                        onRequestAssign={onRequestAssignShift} />
+                        roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds} />
                 </div>
             ) : (
             /* Table card — wrapped in px-6 so the table edges line up with

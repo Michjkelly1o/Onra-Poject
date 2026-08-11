@@ -27,10 +27,13 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { DotsVertical, ClockPlus, Trash01, SearchLg, Eye, Plus } from "@untitledui/icons";
-import { Modal } from "@/components/modals/Modal";
+import { DotsVertical, ClockPlus, Trash01, SearchLg, Eye, Plus, SlashCircle01 } from "@untitledui/icons";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Button } from "@/components/ui/button";
+import { AssignShiftPickerCard } from "@/components/schedule/AssignShiftPickerCard";
+import { UnassignShiftModal } from "@/components/schedule/UnassignShiftModal";
+import { ShiftPeriodModal } from "@/components/schedule/ShiftPeriodModal";
+import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import { SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { getCategoryColor } from "@/components/schedule/ScheduleGridViews";
@@ -420,130 +423,92 @@ export function ShiftPickerPanel({ available, emptyLabel, onPick }: {
 /** 3-dot menu anchored to a staff row. Portalled + fixed-positioned so it
  *  escapes the grid's overflow. "Assign shift" opens the day-view-style Add-shift
  *  panel (owned by the parent) instead of an inline picker (client 2026-08-11). */
-function StaffShiftMenu({ isInstructor, hasShift, onAssign, onUnassign, onViewSchedule }: {
+function StaffShiftMenu({ staffName, isInstructor, hasShift, shifts, assignedShiftIds, onPick, onAddShift, onUnassign, onViewSchedule }: {
+    staffName: string;
     isInstructor: boolean;
     hasShift: boolean;
-    onAssign: () => void;
+    shifts: Shift[];
+    /** Shift ids the staff already holds — excluded from the picker. */
+    assignedShiftIds: Set<string>;
+    onPick: (shiftId: string) => void;
+    onAddShift: () => void;
     onUnassign: () => void;
     onViewSchedule: () => void;
 }) {
     const [open, setOpen] = useState(false);
+    const [picker, setPicker] = useState(false);
     const btnRef = useRef<HTMLButtonElement>(null);
-    const popRef = useRef<HTMLDivElement>(null);
-    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+    function close() { setOpen(false); setPicker(false); }
 
     useEffect(() => {
-        if (!open) return;
+        if (!open) { setPicker(false); return; }
         const r = btnRef.current?.getBoundingClientRect();
-        if (r) setPos({ top: r.bottom + 4, left: r.left });
+        if (r) setMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 184) });
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+        document.addEventListener("keydown", onKey);
+        return () => document.removeEventListener("keydown", onKey);
     }, [open]);
 
-    useEffect(() => {
-        if (!open) return;
-        const onDoc = (e: MouseEvent) => {
-            if (popRef.current?.contains(e.target as Node) || btnRef.current?.contains(e.target as Node)) return;
-            setOpen(false);
-        };
-        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-        document.addEventListener("mousedown", onDoc);
-        document.addEventListener("keydown", onKey);
-        return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
-    }, [open]);
+    const pickList = shifts.filter(sh => sh.status === "active" && !assignedShiftIds.has(sh.id));
+    const MENU_W = 184, CARD_W = 380, GAP = 8;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1440;
+    const pickerLeft = menuPos
+        ? (menuPos.left + MENU_W + GAP + CARD_W + 8 > vw ? Math.max(8, menuPos.left - CARD_W - GAP) : menuPos.left + MENU_W + GAP)
+        : 0;
 
     return (
         <>
-            <button
-                ref={btnRef}
-                type="button"
-                aria-label="Staff shift actions"
+            <button ref={btnRef} type="button" aria-label="Staff shift actions"
                 onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
                 className={cn(
                     "shrink-0 flex size-6 items-center justify-center rounded-md text-[var(--colors-text-quaternary)] transition-colors",
                     "opacity-0 group-hover:opacity-100 hover:bg-[var(--colors-bg-tertiary)]",
                     open && "opacity-100 bg-[var(--colors-bg-tertiary)]",
-                )}
-            >
+                )}>
                 <DotsVertical className="size-4" />
             </button>
 
-            {open && pos && createPortal(
-                <div ref={popRef} className="fixed z-[80]" style={{ top: pos.top, left: pos.left }}>
-                    <div className="w-[220px] rounded-[12px] border border-[var(--colors-border-secondary)] bg-white p-1.5 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]">
+            {open && menuPos && createPortal(
+                <>
+                    {/* The picker owns the outside-click when open (so it can cover the menu). */}
+                    {!picker && <div className="fixed inset-0 z-[200]" onClick={close} />}
+                    <div className="fixed z-[201] w-[184px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5"
+                        style={{ top: menuPos.top, left: menuPos.left }}>
                         {isInstructor && (
-                            <button type="button" onClick={() => { setOpen(false); onViewSchedule(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
-                                <Eye className="size-4 text-[var(--colors-text-quaternary)]" /> View schedule
+                            <button type="button" onClick={() => { close(); onViewSchedule(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
+                                <Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> View schedule
                             </button>
                         )}
-                        <button type="button" onClick={() => { setOpen(false); onAssign(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
-                            <ClockPlus className="size-4 text-[var(--colors-text-quaternary)]" /> Assign shift
+                        <button type="button" onClick={() => setPicker(true)} className={cn("w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]", picker && "bg-[var(--colors-bg-secondary)]")}>
+                            <ClockPlus className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Assign shift
                         </button>
                         {hasShift && (
-                            <button type="button" onClick={() => { setOpen(false); onUnassign(); }} className="flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-2.5 text-left text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
-                                <Trash01 className="size-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
+                            <button type="button" onClick={() => { close(); onUnassign(); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
+                                <SlashCircle01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
                             </button>
                         )}
                     </div>
-                </div>,
+                    {/* Nested Assign-shift picker — flies out beside the menu (shared
+                        AssignShiftPickerCard, same as the Day view). */}
+                    {picker && (
+                        <>
+                            <div className="fixed inset-0 z-[210]" onClick={close} />
+                            <div className="fixed z-[211]" style={{ top: menuPos.top, left: pickerLeft }}>
+                                <AssignShiftPickerCard
+                                    staffName={staffName}
+                                    pickList={pickList}
+                                    onAddShift={() => { close(); onAddShift(); }}
+                                    onPick={(id) => { close(); onPick(id); }}
+                                />
+                            </div>
+                        </>
+                    )}
+                </>,
                 document.body,
             )}
         </>
-    );
-}
-
-/** Unassign modal — lists the staff member's assigned shifts so the admin can
- *  remove one at a time, plus an "Unassign all shifts" action. */
-function UnassignShiftsModal({
-    open,
-    onClose,
-    staffName,
-    rows,
-    onUnassignOne,
-    onUnassignAll,
-}: {
-    open: boolean;
-    onClose: () => void;
-    staffName: string;
-    rows: { assignmentId: string; shift: Shift; index: number }[];
-    onUnassignOne: (assignmentId: string) => void;
-    onUnassignAll: () => void;
-}) {
-    return (
-        <Modal open={open} onClose={onClose} maxWidth={480}>
-            <Modal.Header title="Unassign shift" subtitle={`Select a shift to remove from ${staffName}.`} onClose={onClose} />
-            <div className="flex flex-col gap-2.5 px-6 py-2 max-h-[360px] overflow-y-auto">
-                {rows.length === 0 ? (
-                    <p className="py-6 text-center text-[13px] text-[var(--colors-fg-quaternary)]">No shifts assigned.</p>
-                ) : rows.map(({ assignmentId, shift, index }) => {
-                    const c = shiftPalette(shift, index);
-                    const time = `${to12h(shift.start_time)} - ${to12h(shift.end_time)}`;
-                    return (
-                        <div
-                            key={assignmentId}
-                            className="relative flex items-center gap-3 overflow-hidden rounded-[10px] border px-3 py-2.5"
-                            style={{ backgroundColor: c.bg, borderColor: c.border }}
-                        >
-                            <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[10px]" style={{ backgroundColor: c.stripe }} aria-hidden />
-                            <div className="min-w-0 flex-1 pl-1">
-                                <p className="truncate text-[14px] font-semibold leading-5 text-[var(--colors-text-primary)]">{shift.name}</p>
-                                <p className="truncate text-[12px] leading-4 text-[var(--colors-text-quaternary)]">{workingDaysLabel(shift.working_days)} • {time}</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => onUnassignOne(assignmentId)}
-                                aria-label={`Unassign ${shift.name}`}
-                                className="shrink-0 flex size-8 items-center justify-center rounded-[8px] text-[var(--colors-fg-quaternary)] transition-colors hover:bg-white/70 hover:text-[#b42318]"
-                            >
-                                <Trash01 className="size-4" />
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
-            <Modal.Footer layout="full" className="pt-4">
-                <Button variant="secondary" size="md" onClick={onClose}>Cancel</Button>
-                <Button variant="destructive" size="md" onClick={onUnassignAll} disabled={rows.length === 0}>Unassign all shifts</Button>
-            </Modal.Footer>
-        </Modal>
     );
 }
 
@@ -567,12 +532,9 @@ interface ShiftsWeekViewProps {
     /** Week-view Shift-name filter. Empty = all shifts. When set, only these
      *  shifts' cards render and staff holding none of them are hidden. */
     shiftIds?: string[];
-    /** Open the day-view-style Add-shift panel in "assign to this staff" mode
-     *  (owned by StaffPermissionsPage so it floats in the non-scrolling card). */
-    onRequestAssign?: (staff: { id: string; name: string }) => void;
 }
 
-export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [], onRequestAssign }: ShiftsWeekViewProps) {
+export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [] }: ShiftsWeekViewProps) {
     const staff            = useAppStore(s => s.staff);
     const router = useRouter();
     const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
@@ -580,7 +542,10 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     const updateShiftAssignmentDays = useAppStore(s => s.updateShiftAssignmentDays);
     const showToast             = useAppStore(s => s.showToast);
     // Unassign confirmation target — { assignmentId, staffName }.
-    const [unassignTarget, setUnassignTarget] = useState<{ staffId: string; staffName: string } | null>(null);
+    // Unassign modal target — the shared day-view UnassignShiftModal takes the staff.
+    const [unassignStaff, setUnassignStaff] = useState<Staff | null>(null);
+    // Recurring-shift period confirmation (single shifts skip it — client 2026-08-11).
+    const [periodTarget, setPeriodTarget] = useState<{ staff: Staff; shift: Shift } | null>(null);
     // Per-day unassign confirmation (single shift card → this day only).
     const [unassignDay, setUnassignDay] = useState<{ assignmentId: string; shiftName: string; staffName: string; dayIdx: number; dayLabel: string } | null>(null);
     // Shift-card hover popover state (client 2026-08-11) — open/close on a short
@@ -788,7 +753,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
      *  error toast naming the clash and skip the assignment; otherwise we add
      *  it and confirm with a success toast (Build Convention 4 — every action
      *  emits a toast). */
-    function assignShiftToStaff(staffMember: Staff, shiftId: string) {
+    function assignShiftToStaff(staffMember: Staff, shiftId: string, weeks?: number) {
         const newShift = shiftsById.get(shiftId);
         if (!newShift) return;
         const mine = assignmentsByStaff.get(staffMember.id) ?? [];
@@ -801,12 +766,21 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
             );
             return;
         }
-        addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, week_start: weekStartISO });
+        addShiftAssignment({ shift_id: shiftId, staff_id: staffMember.id, week_start: weekStartISO, ...(weeks !== undefined ? { weeks } : {}) });
         showToast(
             "Shift assigned",
             `${newShift.name} assigned to ${staffMember.fullName}.`,
             "success", "check",
         );
+    }
+
+    // Single/one-off shifts assign immediately; recurring shifts confirm the span
+    // (1w/1m/1y) first — mirrors the day-view flow (client 2026-08-11).
+    function requestAssign(staffMember: Staff, shiftId: string) {
+        const sh = shiftsById.get(shiftId);
+        if (!sh) return;
+        if ((sh.type ?? "recurring") === "single") { assignShiftToStaff(staffMember, shiftId); return; }
+        setPeriodTarget({ staff: staffMember, shift: sh });
     }
 
     /** Assign `shiftId` to `staffMember` for ONE specific weekday only (the
@@ -973,13 +947,18 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                         </div>
                                         {(() => {
                                             const myAssignments = shiftAssignments.filter(a => a.staff_id === s.id);
+                                            const assignedShiftIds = new Set(myAssignments.map(a => a.shift_id));
                                             const isInstructor = roleTypeById.get(s.roleId) === "instructor";
                                             return (
                                                 <StaffShiftMenu
+                                                    staffName={s.fullName}
                                                     isInstructor={isInstructor}
                                                     hasShift={myAssignments.length > 0}
-                                                    onAssign={() => onRequestAssign?.({ id: s.id, name: s.fullName })}
-                                                    onUnassign={() => setUnassignTarget({ staffId: s.id, staffName: s.fullName })}
+                                                    shifts={shifts}
+                                                    assignedShiftIds={assignedShiftIds}
+                                                    onPick={(shiftId) => requestAssign(s, shiftId)}
+                                                    onAddShift={() => openStaffFormPanel({ kind: "shift", mode: "create" })}
+                                                    onUnassign={() => setUnassignStaff(s)}
                                                     onViewSchedule={() => router.push(`/admin/schedule?instructorId=${s.id}`)}
                                                 />
                                             );
@@ -1066,29 +1045,17 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                 />
             )}
 
-            {/* Unassign — lists the staff's shifts to remove one, or all. */}
-            <UnassignShiftsModal
-                open={!!unassignTarget}
-                onClose={() => setUnassignTarget(null)}
-                staffName={unassignTarget?.staffName ?? ""}
-                rows={
-                    unassignTarget
-                        ? shiftAssignments
-                              .filter(a => a.staff_id === unassignTarget.staffId)
-                              .map((a, i) => ({ assignmentId: a.id, shift: shifts.find(sh => sh.id === a.shift_id)!, index: i }))
-                              .filter(r => r.shift)
-                        : []
-                }
-                onUnassignOne={(assignmentId) => {
-                    removeShiftAssignment(assignmentId);
-                    // Close if that was the last one.
-                    const left = shiftAssignments.filter(a => a.staff_id === unassignTarget?.staffId && a.id !== assignmentId);
-                    if (left.length === 0) setUnassignTarget(null);
-                }}
-                onUnassignAll={() => {
-                    if (unassignTarget) shiftAssignments.filter(a => a.staff_id === unassignTarget.staffId).forEach(a => removeShiftAssignment(a.id));
-                    setUnassignTarget(null);
-                }}
+            {/* Unassign — the shared day-view modal (client 2026-08-11). */}
+            {unassignStaff && (
+                <UnassignShiftModal staff={unassignStaff} onClose={() => setUnassignStaff(null)} />
+            )}
+
+            {/* Recurring-shift period confirmation (single shifts skip it). */}
+            <ShiftPeriodModal
+                open={!!periodTarget}
+                staffName={periodTarget?.staff.fullName ?? ""}
+                onCancel={() => setPeriodTarget(null)}
+                onConfirm={(weeks) => { if (periodTarget) assignShiftToStaff(periodTarget.staff, periodTarget.shift.id, weeks); setPeriodTarget(null); }}
             />
 
             {/* Per-day unassign confirm — removes ONE shift on ONE day. */}

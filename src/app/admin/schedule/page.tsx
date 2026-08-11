@@ -1422,6 +1422,13 @@ function SchedulePage() {
             });
             return;
         }
+        // Single/one-off shifts skip the period modal — assign for the viewed day
+        // directly (client 2026-08-11). Recurring shifts still confirm the span.
+        if ((sh.type ?? "recurring") === "single") {
+            addShiftAssignment({ shift_id: shiftId, staff_id: staffId, days_of_week: assignDaysFor(sh), week_start: scheduleMondayISO(dayDateISO) });
+            showToast("Staff assigned", `${st.fullName} was assigned to ${sh.name}.`, "success", "check");
+            return;
+        }
         setAssignPeriod({ staffId, staffName: st.fullName, shiftId, shiftName: sh.name });
     }
     // Replace-confirm → drop the conflicting shift and assign the new one.
