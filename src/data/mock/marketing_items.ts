@@ -10,13 +10,16 @@
 // (`mem_*` / `pkg_*`) and class templates (`tpl_*`) — so the detail page
 // resolves real names.
 //
-// The six rows cover every status badge + every action type:
-//   • mkt_aerial_yoga       — Active   · New class   · Book an event
-//   • mkt_appreciation_night — Inactive · Event       · External link
-//   • mkt_studio_closure    — Archived · Announcement · No action
-//   • mkt_yoga_pack         — Active   · Event       · Buy a ticket
-//   • mkt_summer_hiit       — Active   · New class   · Book an event
-//   • mkt_new_year          — Active but past expiry_date → "Expired" · Event · Buy a ticket
+// The rows cover every status badge + every action type across the three
+// marketing modules (Campaigns = new_class / event, Announcements, Events):
+//   • mkt_aerial_yoga        — Active   · New class    · Book an event
+//   • mkt_appreciation_night — Inactive · Event        · External link
+//   • mkt_studio_closure     — Archived · Announcement · No action
+//   • mkt_yoga_pack          — Active   · Event        · Buy a ticket
+//   • mkt_summer_hiit        — Active   · New class    · Book an event
+//   • mkt_new_year           — Active but past expiry_date → "Expired" · Event · Buy a ticket
+//   • mkt_holiday_hours      — Active   · Announcement · External link
+//   • mkt_app_maintenance    — Inactive · Announcement · No action
 
 import type { MarketingItem } from "./_types";
 
@@ -156,5 +159,50 @@ export const marketing_items: MarketingItem[] = [
         click_count: 145,
         conversion_count: 67,
         created_at: "2025-12-20T10:00:00Z",
+    },
+    {
+        // ── Active — Announcement, External link ──
+        id: "mkt_holiday_hours",
+        title: "Extended Holiday Hours",
+        type: "announcement",
+        short_description: "We're open longer through the holidays — check the full updated timetable for every branch.",
+        cover_image_url: "/images/marketing/studio-closure-notice.webp",
+        action_type: "external_link",
+        external_url: "https://onrastudio.com/holiday-hours",
+        publish_date: "2026-08-01T00:00:00Z",
+        expiry_date: "2026-09-30T00:00:00Z",
+        countdown: false,
+        branch_ids: ALL_BRANCHES,
+        multi_location: true,
+        target_package_ids: [],
+        target_class_ids: [],
+        customer_targeting: "all",
+        status: "active",
+        view_count: 54,
+        click_count: 12,
+        conversion_count: 0,
+        created_at: "2026-07-28T09:00:00Z",
+    },
+    {
+        // ── Inactive — Announcement, No action ──
+        id: "mkt_app_maintenance",
+        title: "App Maintenance This Sunday",
+        type: "announcement",
+        short_description: "Our booking app will be briefly offline Sunday 2–4 AM for scheduled maintenance.",
+        cover_image_url: "/images/marketing/studio-closure-notice.webp",
+        action_type: "no_action",
+        publish_date: "2026-07-15T00:00:00Z",
+        expiry_date: "2026-10-15T00:00:00Z",
+        countdown: false,
+        branch_ids: ALL_BRANCHES,
+        multi_location: true,
+        target_package_ids: [],
+        target_class_ids: [],
+        customer_targeting: "all",
+        status: "inactive",
+        view_count: 0,
+        click_count: 0,
+        conversion_count: 0,
+        created_at: "2026-07-12T10:00:00Z",
     },
 ];

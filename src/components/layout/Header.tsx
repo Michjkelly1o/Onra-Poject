@@ -26,6 +26,7 @@ const PAGE_TITLES: Record<string, string> = {
     "/admin/products/retail-categories": "Retail categories",
     "/admin/products/promo-codes": "Promotions",
     "/admin/marketing": "Campaigns",
+    "/admin/marketing/announcements": "Announcements",
     // /admin/instructors redirects to /admin/staff — kept for header fallback
     // during the redirect frame.
     "/admin/instructors": "Staff & Permissions",

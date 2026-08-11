@@ -72,11 +72,14 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/marketing",              // list view
     //"/marketing",                    // create / detail / edit
 
-    // ── Announcements + Events ── (DISABLED — placeholders ahead of splitting
-    // them out of Campaigns/Marketing into their own single menu. Sidebar menu
-    // items stay VISIBLE; the routes 404 until they ship. Re-enable by
-    // commenting the lines.)
-    "/admin/marketing/announcements",
+    // ── Announcements ── (ENABLED — shipped as its own single menu, split out
+    // of Campaigns/Marketing. List at /admin/marketing/announcements; create/
+    // detail/edit at the top-level /announcements namespace.)
+    //"/admin/marketing/announcements",
+
+    // ── Events ── (DISABLED — placeholder ahead of Phase 2 splitting it out of
+    // Campaigns/Marketing into its own single menu. Sidebar menu item stays
+    // VISIBLE; the route 404s until it ships. Re-enable by commenting the line.)
     "/admin/marketing/events",
 
     // ── Gift Cards module ── (ENABLED — pushed)

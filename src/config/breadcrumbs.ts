@@ -56,6 +56,7 @@ const MODULE_LABELS: Record<string, string> = {
     "/admin/products/retail-categories": "Retail categories",
     "/admin/products/promo-codes":     "Promotions",
     "/admin/marketing":                "Campaigns",
+    "/admin/marketing/announcements":  "Announcements",
     "/admin/staff":                    "Staff & permissions",
     "/admin/staff/roles":              "Roles & permissions",
     "/admin/staff/pay-rate":           "Pay rates",
@@ -148,6 +149,7 @@ const MODULE_ROOT: ModuleRoot[] = [
     { prefix: "/products/promo-codes",listPath: "/admin/products/promo-codes", label: "Promotions",         detailNoun: "Promo details" },
     { prefix: "/products",            listPath: "/admin/products",          label: "Memberships & packages", detailNoun: "Product details" },
     { prefix: "/marketing",           listPath: "/admin/marketing",         label: "Campaigns",             detailNoun: "Campaign details" },
+    { prefix: "/announcements",       listPath: "/admin/marketing/announcements", label: "Announcements",   detailNoun: "Announcement details" },
     { prefix: "/settings/branches",   listPath: "/admin/settings/business-locations", label: "Business & locations", detailNoun: "Branch details",
       parent: { label: "Settings", href: "/admin/settings" } },
     { prefix: "/settings/rooms",      listPath: "/admin/settings/business-locations", label: "Business & locations", detailNoun: "Room details",
@@ -229,6 +231,10 @@ const DYNAMIC_LABELS: Record<string, (id: string, s: AppState) => string> = {
     "/marketing": (id, s) => {
         const c = s.marketingItems.find(x => x.id === id);
         return c?.title ?? "Campaign";
+    },
+    "/announcements": (id, s) => {
+        const c = s.marketingItems.find(x => x.id === id);
+        return c?.title ?? "Announcement";
     },
     "/settings/branches": (id, s) => {
         const b = s.branches.find(x => x.id === id);
