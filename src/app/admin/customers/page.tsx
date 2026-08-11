@@ -47,6 +47,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
@@ -851,10 +852,6 @@ export default function CustomersPage() {
                             >
                                 Back to customers
                             </Button>
-                            <div className="flex flex-col">
-                                <span className="text-[14px] font-semibold text-[var(--colors-text-primary)]">Archived customers</span>
-                                <span className="text-[12px] text-[var(--colors-text-quaternary)]">Hidden from every list, count, and campaign · access unchanged</span>
-                            </div>
                             <div className="flex-1" />
                         </>
                     ) : (
@@ -881,17 +878,20 @@ export default function CustomersPage() {
                                     {mineOnly ? "Showing yours only" : "Assigned to me"}
                                 </Button>
                             )}
-                            {/* "Archived" — the ONLY entry point to archived
-                                customers (a place, not a tab). Same row as the
-                                tabs, right-aligned. */}
+                            {/* Icon-only entry point to archived customers (a
+                                place, not a tab). Same row as the tabs,
+                                right-aligned, with an "Archived" hover tooltip. */}
                             {archivedCount > 0 && (
-                                <Button
-                                    variant="secondary-gray"
-                                    leftIcon={<Archive className="w-4 h-4" />}
-                                    onClick={() => { setViewArchived(true); clearSelection(); }}
-                                >
-                                    Archived
-                                </Button>
+                                <IconTooltip label="Archived">
+                                    <Button
+                                        variant="secondary-gray"
+                                        size="icon"
+                                        aria-label="Archived"
+                                        onClick={() => { setViewArchived(true); clearSelection(); }}
+                                    >
+                                        <Archive className="w-5 h-5" />
+                                    </Button>
+                                </IconTooltip>
                             )}
                         </>
                     )}
