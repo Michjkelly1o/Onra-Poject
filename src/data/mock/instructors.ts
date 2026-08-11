@@ -82,7 +82,7 @@ export const instructors: InstructorSeed[] = [
     },
     {
         id: "staff_lana_steiner",
-        full_name: "Lana Steiner", initials: "LS", color_hex: "#658774",
+        full_name: "Lana Steiner", initials: "LS", color_hex: "#164e52",
         email: "lana@email.com", phone: "+971 55 200 2007",
         joined_date: "Apr 22, 2024",
         branch_id: "branch_forma_south",

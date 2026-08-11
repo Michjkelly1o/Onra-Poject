@@ -148,7 +148,7 @@ export function CustomizeDesignPanel({ open, onClose }: {
                             className={cn(
                                 "text-[14px] font-semibold py-1 px-1 transition-colors",
                                 step === s.n
-                                    ? "text-[#4f6e5d]"
+                                    ? "text-[#164e52]"
                                     : "text-[var(--colors-text-tertiary)] hover:text-[var(--colors-text-secondary)]",
                             )}
                         >
@@ -196,7 +196,7 @@ export function CustomizeDesignPanel({ open, onClose }: {
                     <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden flex flex-col">
                         <div className="px-5 pt-5 pb-3 shrink-0 border-b border-[var(--colors-border-secondary)]">
                             <p className="font-semibold text-[16px] leading-[24px] text-[var(--colors-text-primary)]">Template preview</p>
-                            <p className="text-[13px] text-[#6e776f] mt-1">This is how your class template will look like.</p>
+                            <p className="text-[13px] text-[#667085] mt-1">This is how your class template will look like.</p>
                         </div>
                         <div className="px-5 pt-3 pb-3 shrink-0">
                             <PreviewTabs current={previewTab} onChange={setPreviewTab} />

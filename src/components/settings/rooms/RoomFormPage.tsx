@@ -160,7 +160,7 @@ export function RoomFormPage({ mode, roomId, defaultBranchId, returnTo }: {
 
                                 <div className="flex flex-col gap-1">
                                     <SectionHeader title="Spot layout" small />
-                                    <p className="text-[14px] text-[#6e776f] leading-5">
+                                    <p className="text-[14px] text-[#667085] leading-5">
                                         Define the rows and columns to generate the room&apos;s spot layout.
                                         {capacityNum > 0
                                             ? ` Rows × columns can’t exceed the room capacity (${capacityNum} spots).`
@@ -183,7 +183,7 @@ export function RoomFormPage({ mode, roomId, defaultBranchId, returnTo }: {
                                         "rounded-[8px] px-3 py-2 text-[13px] font-medium leading-5",
                                         layoutTooLarge
                                             ? "bg-[#fef3f2] border-1 border-[#fda29b] text-[#b42318]"
-                                            : "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+                                            : "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
                                     )}>
                                         {layoutTooLarge
                                             ? `${layoutSpots} of ${capacityNum} spots — exceeds capacity. Reduce rows or columns, or increase capacity.`
@@ -209,7 +209,7 @@ export function RoomFormPage({ mode, roomId, defaultBranchId, returnTo }: {
                         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex-1 flex flex-col overflow-hidden min-h-0">
                             <div className="flex flex-col gap-1 px-6 pt-6 pb-5 shrink-0">
                                 <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Room preview</p>
-                                <p className="text-[14px] text-[#6e776f] leading-5">This is how room overview will look like.</p>
+                                <p className="text-[14px] text-[#667085] leading-5">This is how room overview will look like.</p>
                             </div>
                             <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
                             <div className="bg-[#f6f6f3] p-6 flex-1 min-h-0 flex flex-col items-stretch justify-start">

@@ -116,7 +116,7 @@ interface TimeSlot {
 // Resolved hex triple per category — kept in sync with the schedule page's
 // CATEGORY_COLORS (Pilates / Barre / Yoga).
 const CATEGORY_PALETTE: Record<string, { bg: string; border: string; text: string }> = {
-    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Pilates: { bg: "#eff6f3", border: "#164e52", text: "#10373a" },
     Barre: { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
     Yoga: { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
 };
@@ -487,16 +487,16 @@ function MetricCard({ metric }: { metric: DashboardMetric }) {
                     {typeof metric.change === "number" && (
                         <div className={cn(
                             "flex gap-1 items-center py-0.5 rounded-full",
-                            metric.positive ? "text-[#067647]" : "text-[#b42318]"
+                            metric.positive ? "text-[#164e52]" : "text-[#b42318]"
                         )}>
                             {metric.positive ? (
-                                <ArrowUp size={12} className="text-[#067647]" />
+                                <ArrowUp size={12} className="text-[#164e52]" />
                             ) : (
                                 <ArrowDown size={12} className="text-[#b42318]" />
                             )}
                             <span className={cn(
                                 "font-medium text-xs",
-                                metric.positive ? "text-[#067647]" : "text-[#b42318]"
+                                metric.positive ? "text-[#164e52]" : "text-[#b42318]"
                             )}>
                                 {metric.change}%
                             </span>
@@ -2027,7 +2027,7 @@ export default function AdminDashboard() {
                     {
                         key: "waitlist",
                         show: needsAttention.waitlistConfirmCount > 0,
-                        icon: CalendarCheck01, iconBg: "bg-[#ecfdf3]", iconFg: "text-[#079455]",
+                        icon: CalendarCheck01, iconBg: "bg-[#eff6f3]", iconFg: "text-[#164e52]",
                         title: `${needsAttention.waitlistConfirmCount} waitlist ${needsAttention.waitlistConfirmCount === 1 ? "spot" : "spots"} need confirmation`,
                         subtitle: "Spots opened on today's classes — confirm the next in line",
                         onView: () => setAttentionModal("waitlist"),

@@ -584,7 +584,7 @@ function IntroductionCard({ text }: { text: string }) {
                 <button
                     type="button"
                     onClick={() => setExpanded(e => !e)}
-                    className="self-start text-[14px] font-semibold text-[var(--colors-secondary-500)] hover:text-[#5b8270] transition-colors"
+                    className="self-start text-[14px] font-semibold text-[var(--colors-secondary-500)] hover:text-[#164e52] transition-colors"
                 >
                     {expanded ? "See less" : "See more"}
                 </button>
@@ -715,7 +715,7 @@ function ActiveSessionsBlock() {
                         </p>
                     </div>
                     {s.isCurrent ? (
-                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 whitespace-nowrap bg-[#ecfdf3] border-[#abefc6] text-[#067647]">
+                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 whitespace-nowrap bg-[#eff6f3] border-[#94aeaf] text-[#164e52]">
                             Current
                         </span>
                     ) : (

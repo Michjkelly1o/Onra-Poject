@@ -33,7 +33,7 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#667085] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 const STATUS_BADGE: Record<RetailCategory["status"], string> = {
-    active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
 };
 const STATUS_LABEL: Record<RetailCategory["status"], string> = {
@@ -393,8 +393,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}

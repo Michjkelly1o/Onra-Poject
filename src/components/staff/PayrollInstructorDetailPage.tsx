@@ -106,7 +106,7 @@ function ActionBtn({ icon, label, onClick }: { icon: React.ReactNode; label: str
 
 function InstructorStatusBadge({ status }: { status: Instructor["status"] }) {
     const styles: Record<Instructor["status"], string> = {
-        active:   "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         inactive: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
     };
@@ -123,7 +123,7 @@ function InstructorStatusBadge({ status }: { status: Instructor["status"] }) {
 type ClassStatus = ClassSchedule["status"];
 
 const CLASS_STATUS_STYLES: Record<ClassStatus, string> = {
-    Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    Completed: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     Upcoming:  "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     Ongoing:   "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
@@ -162,7 +162,7 @@ function ClassStatusFilterDropdown({ value, onChange }: {
                     <span className="relative inline-flex">
                         <Sliders className="w-5 h-5" />
                         {value !== null && (
-                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#47b881] border-1 border-white" aria-hidden />
+                            <span className="absolute -top-[4px] -right-[4px] w-[8px] h-[8px] rounded-full bg-[#164e52] border-1 border-white" aria-hidden />
                         )}
                     </span>
                 </Button>
@@ -177,7 +177,7 @@ function ClassStatusFilterDropdown({ value, onChange }: {
                                 value === opt ? "bg-[var(--colors-bg-secondary)] text-[#101828]" : "text-[#344054] hover:bg-[var(--colors-bg-secondary)]",
                             )}>
                             {opt}
-                            {value === opt && <Check className="w-4 h-4 text-[#658774]" />}
+                            {value === opt && <Check className="w-4 h-4 text-[#164e52]" />}
                         </button>
                     ))}
                 </div>
@@ -235,7 +235,7 @@ function MetricCard({ label, value, hint, Icon }: {
                 </div>
             </div>
             <p className="font-semibold text-[24px] leading-[32px] text-[#101828]">{value}</p>
-            {hint && <p className="text-[14px] text-[#067647] leading-[20px]">{hint}</p>}
+            {hint && <p className="text-[14px] text-[#164e52] leading-[20px]">{hint}</p>}
         </div>
     );
 }
@@ -254,7 +254,7 @@ function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n
             title={disabled ? "At least one pay rate must stay enabled" : undefined}
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
-                value ? "bg-[#658774] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
+                value ? "bg-[#164e52] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -296,7 +296,7 @@ function PayRateSection({ title, value, options, onChange }: {
 /** AED-prefixed amount input (matches StaffFormPage's PayAedInput). */
 function PayAedInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
     return (
-        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all overflow-hidden">
+        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all overflow-hidden">
             <span className="flex items-center px-[14px] text-[16px] text-[#475467] leading-[24px] border-r border-[#d0d5dd] shrink-0 select-none">AED</span>
             <input type="text" inputMode="numeric" value={value}
                 onChange={e => onChange(e.target.value.replace(/[^\d.]/g, ""))}
@@ -647,7 +647,7 @@ function SidebarEarningsCard({ totalThisMonth, classesCount, classCap, defaultRa
             {showClasses ? (
                 <>
                     <div className="w-full h-1.5 rounded-full bg-[#e4e7ec] overflow-hidden">
-                        <div className="h-full bg-[#658774]" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-[#164e52]" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex flex-col gap-1">

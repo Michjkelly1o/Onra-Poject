@@ -37,8 +37,8 @@ type Props = {
 // XLSX goes the same green — Excel's brand green is close enough to
 // the DS's success-600 that we don't need a bespoke token.
 const BADGE_STYLE: Record<ExportFormat, { bg: string; label: string }> = {
-    csv:  { bg: "#079455", label: "CSV"  },
-    xlsx: { bg: "#079455", label: "XLSX" },
+    csv:  { bg: "#164e52", label: "CSV"  },
+    xlsx: { bg: "#164e52", label: "XLSX" },
     pdf:  { bg: "#d92d20", label: "PDF"  },
 };
 

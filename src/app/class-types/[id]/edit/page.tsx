@@ -71,7 +71,7 @@ function MembershipFilterDropdown({ active, onChange }: {
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== "all" && (
-                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#47b881] border-1 border-white" />
+                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#164e52] border-1 border-white" />
                     )}
                 </div>
                 Filter
@@ -111,7 +111,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
-                    active  ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    active  ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                             : complete ? "bg-[var(--colors-secondary-600)] text-white"
                             : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
@@ -119,7 +119,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 </div>
                 {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {step.label}
             </span>
         </div>
@@ -156,7 +156,7 @@ function TemplatePreviewCard({ data }: { data: PreviewData }) {
             <div className="relative h-[156px] w-full overflow-hidden shrink-0 bg-gradient-to-br from-[#dbdbdb] to-[#dbdbdb]/20">
                 {data.coverPreview && <img src={data.coverPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />}
                 <div className="absolute top-3 right-3">
-                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#ecfdf3] border border-[#abefc6] text-[#067647]">Active</span>
+                    <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#eff6f3] border border-[#94aeaf] text-[#164e52]">Active</span>
                 </div>
             </div>
             <div className="flex flex-col gap-4 px-5 pb-5 pt-4">
@@ -478,7 +478,7 @@ function EditClassTemplatePageInner() {
                     <div className="w-[340px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] overflow-hidden self-start">
                         <div className="p-6 pb-4">
                             <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
-                            <p className="text-[14px] text-[#6e776f] mt-1">This is how your class template will look like.</p>
+                            <p className="text-[14px] text-[#667085] mt-1">This is how your class template will look like.</p>
                         </div>
                         <div className="bg-[#f6f6f3] px-6 py-10">
                             <TemplatePreviewCard data={previewData} />

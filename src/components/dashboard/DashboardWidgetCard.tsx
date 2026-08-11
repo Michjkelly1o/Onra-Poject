@@ -87,10 +87,10 @@ const STATIC: Record<string, object[]> = {
     // demo seed's 20-lead scale.
     "kpi-lead-funnel": [
         { stage: "New leads",       v: 20, color: "#92d1de" },
-        { stage: "Contacted",       v: 14, color: "#aad4bd" },
+        { stage: "Contacted",       v: 14, color: "#94aeaf" },
         { stage: "Trial booked",    v: 8,  color: "#b892ba" },
         { stage: "Trial attended",  v: 5,  color: "#f7b955" },
-        { stage: "Paid",            v: 2,  color: "#92baa4" },
+        { stage: "Paid",            v: 2,  color: "#90a099" },
     ],
     // Attendance heatmap (Jul 2026, Figma 19073:13455 series) —
     // 4 time buckets × 7 weekdays with attendance percentages. Values
@@ -134,10 +134,10 @@ const STATIC: Record<string, object[]> = {
     // by booked-seat count in the picked period + branch scope.
     "new-customers-source": [
         { name: "Instagram",  v: 38, color: "#b892ba" },
-        { name: "Google",     v: 24, color: "#92baa4" },
+        { name: "Google",     v: 24, color: "#90a099" },
         { name: "Referral",   v: 18, color: "#92d1de" },
         { name: "Walk-in",    v: 11, color: "#f7b955" },
-        { name: "Intro offer", v: 9,  color: "#aad4bd" },
+        { name: "Intro offer", v: 9,  color: "#94aeaf" },
     ],
     "campaign-performance": [
         { name: "Summer Reload",    sent: 1200, opened: 620, booked: 84, revenueAed: 12400 },
@@ -1095,7 +1095,7 @@ function renderChart(
                                 return aedMoney(p.value);
                             }} />} />
                             <Area type="monotone" dataKey="v" name="Collected"
-                                stroke="#658774" fill="#dcefe4" strokeWidth={2} dot={false} />
+                                stroke="#164e52" fill="#dcebe4" strokeWidth={2} dot={false} />
                             <Bar dataKey="failed" name="Failed"
                                 fill="#d47862" radius={[2,2,0,0]} maxBarSize={6} />
                         </ComposedChart>
@@ -1108,7 +1108,7 @@ function renderChart(
         case "bookings-by-source":
             return (
                 <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#b892ba", label: "CRM" }, { color: "#92d1de", label: "Customer App" }, { color: "#92baa4", label: "Website" }]} />
+                    <Legend items={[{ color: "#b892ba", label: "CRM" }, { color: "#92d1de", label: "Customer App" }, { color: "#90a099", label: "Website" }]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
@@ -1117,7 +1117,7 @@ function renderChart(
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="crm" name="CRM"          fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
                             <Bar dataKey="app" name="Customer App" fill="#92d1de" radius={[3,3,0,0]} maxBarSize={8} />
-                            <Bar dataKey="web" name="Website"      fill="#92baa4" radius={[3,3,0,0]} maxBarSize={8} />
+                            <Bar dataKey="web" name="Website"      fill="#90a099" radius={[3,3,0,0]} maxBarSize={8} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -1126,7 +1126,7 @@ function renderChart(
         case "revenue-overview":
             return (
                 <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#92d1de", label: "Net revenue" }, { color: "#aad4bd", label: "Net revenue last week" }]} />
+                    <Legend items={[{ color: "#92d1de", label: "Net revenue" }, { color: "#94aeaf", label: "Net revenue last week" }]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <LineChart data={data}>
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
@@ -1134,7 +1134,7 @@ function renderChart(
                             <YAxis {...axisProps} width={36} />
                             <Tooltip content={<ChartTooltip valueFormatter={(p) => aedMoney(p.value)} />} />
                             <Line type="monotone" dataKey="revenue"  name="Net revenue"      stroke="#92d1de" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="lastWeek" name="Last week"         stroke="#aad4bd" strokeWidth={2} dot={false} strokeDasharray="4 2" />
+                            <Line type="monotone" dataKey="lastWeek" name="Last week"         stroke="#94aeaf" strokeWidth={2} dot={false} strokeDasharray="4 2" />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -1146,7 +1146,7 @@ function renderChart(
         case "revenue-vs-new-customers":
             return (
                 <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#92baa4", label: "Net revenue" }, { color: "#b892ba", label: "New customers" }]} />
+                    <Legend items={[{ color: "#90a099", label: "Net revenue" }, { color: "#b892ba", label: "New customers" }]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <ComposedChart data={data}>
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
@@ -1154,7 +1154,7 @@ function renderChart(
                             <YAxis yAxisId="rev" {...axisProps} width={36} tickFormatter={aedAxisTick} />
                             <YAxis yAxisId="cust" orientation="right" {...axisProps} width={24} allowDecimals={false} />
                             <Tooltip content={<ChartTooltip valueFormatter={(p) => p.dataKey === "newCustomers" ? `${p.value ?? 0}` : aedMoney(p.value)} />} cursor={{ fill: "#f9fafb" }} />
-                            <Bar  yAxisId="rev"  dataKey="revenue"      name="Net revenue"   fill="#92baa4" radius={[3,3,0,0]} maxBarSize={14} />
+                            <Bar  yAxisId="rev"  dataKey="revenue"      name="Net revenue"   fill="#90a099" radius={[3,3,0,0]} maxBarSize={14} />
                             <Line yAxisId="cust" dataKey="newCustomers" name="New customers"  type="monotone" stroke="#b892ba" strokeWidth={2} dot={false} />
                         </ComposedChart>
                     </ResponsiveContainer>
@@ -1223,7 +1223,7 @@ function renderChart(
         case "memberships-sold":
             return (
                 <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#b892ba", label: "Beginner" }, { color: "#92d1de", label: "Advanced" }, { color: "#92baa4", label: "Unlimited" }]} />
+                    <Legend items={[{ color: "#b892ba", label: "Beginner" }, { color: "#92d1de", label: "Advanced" }, { color: "#90a099", label: "Unlimited" }]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="25%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
@@ -1232,7 +1232,7 @@ function renderChart(
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="beginner"  name="Beginner"  fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
                             <Bar dataKey="advanced"  name="Advanced"  fill="#92d1de" radius={[3,3,0,0]} maxBarSize={8} />
-                            <Bar dataKey="unlimited" name="Unlimited" fill="#92baa4" radius={[3,3,0,0]} maxBarSize={8} />
+                            <Bar dataKey="unlimited" name="Unlimited" fill="#90a099" radius={[3,3,0,0]} maxBarSize={8} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -1254,14 +1254,14 @@ function renderChart(
         case "bookings-vs-visits":
             return (
                 <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#92baa4", label: "Total bookings" }, { color: "#92d1de", label: "Total visits" }]} />
+                    <Legend items={[{ color: "#90a099", label: "Total bookings" }, { color: "#92d1de", label: "Total visits" }]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
-                            <Bar dataKey="bookings" name="Total bookings" fill="#92baa4" radius={[3,3,0,0]} maxBarSize={10} />
+                            <Bar dataKey="bookings" name="Total bookings" fill="#90a099" radius={[3,3,0,0]} maxBarSize={10} />
                             <Bar dataKey="visits"   name="Total visits"   fill="#92d1de" radius={[3,3,0,0]} maxBarSize={10} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -1271,14 +1271,14 @@ function renderChart(
         case "attendance-overview":
             return (
                 <div className="flex flex-col gap-2">
-                    <Legend items={[{ color: "#92baa4", label: "Total visits" }, { color: "var(--brand-tertiary)", label: "Total cancellations" }, { color: "#b892ba", label: "Total no show" }]} />
+                    <Legend items={[{ color: "#90a099", label: "Total visits" }, { color: "var(--brand-tertiary)", label: "Total cancellations" }, { color: "#b892ba", label: "Total no show" }]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <BarChart data={data} barCategoryGap="30%">
                             <CartesianGrid vertical={false} stroke="#f2f4f7" />
                             <XAxis dataKey="date" {...axisProps} interval={interval} />
                             <YAxis {...axisProps} width={28} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
-                            <Bar dataKey="visits"        name="Total visits"        fill="#92baa4" radius={[3,3,0,0]} maxBarSize={8} />
+                            <Bar dataKey="visits"        name="Total visits"        fill="#90a099" radius={[3,3,0,0]} maxBarSize={8} />
                             <Bar dataKey="cancellations" name="Total cancellations" fill="var(--brand-tertiary)" radius={[3,3,0,0]} maxBarSize={8} />
                             <Bar dataKey="noShow"        name="No show"             fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
                         </BarChart>
@@ -1319,7 +1319,7 @@ function renderChart(
                     <Legend items={[
                         { color: "#b892ba", label: "Instagram" },
                         { color: "#92d1de", label: "Google" },
-                        { color: "#aad4bd", label: "Referral" },
+                        { color: "#94aeaf", label: "Referral" },
                         { color: "#f7b955", label: "Website" },
                     ]} />
                     <ResponsiveContainer width="100%" height={h}>
@@ -1330,7 +1330,7 @@ function renderChart(
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="instagram" name="Instagram" fill="#b892ba" radius={[3,3,0,0]} maxBarSize={8} />
                             <Bar dataKey="google"    name="Google"    fill="#92d1de" radius={[3,3,0,0]} maxBarSize={8} />
-                            <Bar dataKey="referral"  name="Referral"  fill="#aad4bd" radius={[3,3,0,0]} maxBarSize={8} />
+                            <Bar dataKey="referral"  name="Referral"  fill="#94aeaf" radius={[3,3,0,0]} maxBarSize={8} />
                             <Bar dataKey="website"   name="Website"   fill="#f7b955" radius={[3,3,0,0]} maxBarSize={8} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -1362,7 +1362,7 @@ function renderChart(
                 <div className="flex flex-col gap-2">
                     <Legend items={[
                         { color: "#92d1de", label: "Sends" },
-                        { color: "#aad4bd", label: "Opens" },
+                        { color: "#94aeaf", label: "Opens" },
                         { color: "#b892ba", label: "Clicks" },
                     ]} />
                     <ResponsiveContainer width="100%" height={h}>
@@ -1372,7 +1372,7 @@ function renderChart(
                             <YAxis {...axisProps} width={40} />
                             <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9fafb" }} />
                             <Bar dataKey="sends"  name="Sends"  fill="#92d1de" radius={[3,3,0,0]} maxBarSize={10} />
-                            <Bar dataKey="opens"  name="Opens"  fill="#aad4bd" radius={[3,3,0,0]} maxBarSize={10} />
+                            <Bar dataKey="opens"  name="Opens"  fill="#94aeaf" radius={[3,3,0,0]} maxBarSize={10} />
                             <Bar dataKey="clicks" name="Clicks" fill="#b892ba" radius={[3,3,0,0]} maxBarSize={10} />
                         </BarChart>
                     </ResponsiveContainer>
@@ -1385,7 +1385,7 @@ function renderChart(
                     <Legend items={[
                         { color: "#92d1de", label: "CPL (AED)" },
                         { color: "#f7b955", label: "CAC (AED)" },
-                        { color: "#92baa4", label: "ROAS (×)" },
+                        { color: "#90a099", label: "ROAS (×)" },
                     ]} />
                     <ResponsiveContainer width="100%" height={h}>
                         <LineChart data={data}>
@@ -1407,7 +1407,7 @@ function renderChart(
                             }} />} />
                             <Line type="monotone" dataKey="cpl"  name="CPL"  stroke="#92d1de" strokeWidth={2} dot={false} />
                             <Line type="monotone" dataKey="cac"  name="CAC"  stroke="#f7b955" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="roas" name="ROAS" stroke="#92baa4" strokeWidth={2} dot={false} />
+                            <Line type="monotone" dataKey="roas" name="ROAS" stroke="#90a099" strokeWidth={2} dot={false} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
@@ -1440,7 +1440,7 @@ function renderChart(
             // 5-stop palette from lightest → darkest. Same sage-green
             // family every widget uses so the widget palette stays
             // coherent across the dashboard.
-            const PALETTE = ["#e9fff3", "var(--brand-tertiary)", "#aad4bd", "#79ab8a", "#3f7a58"];
+            const PALETTE = ["#eff6f3", "var(--brand-tertiary)", "#94aeaf", "#457175", "#164e52"];
             const tintFor = (v: number, hasData: boolean): string => {
                 if (!hasData) return "#f9fafb";
                 if (v >= 75) return PALETTE[4];
@@ -1572,10 +1572,10 @@ function renderChart(
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div
-                                            className="h-9 rounded-[8px] bg-[#dcefe4] flex items-center px-3 gap-2"
+                                            className="h-9 rounded-[8px] bg-[#dcebe4] flex items-center px-3 gap-2"
                                             style={{ width: `${barWidth}%` }}
                                         >
-                                            <span className="text-[14px] font-semibold text-[#194b30]">{row.count}</span>
+                                            <span className="text-[14px] font-semibold text-[#10373a]">{row.count}</span>
                                             <span className="text-[12px] text-[var(--colors-secondary-600)]">{pctOfTop}%</span>
                                         </div>
                                     </div>
@@ -1610,7 +1610,7 @@ function renderChart(
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={40} tickFormatter={aedAxisTick} />
                         <Tooltip content={<ChartTooltip valueFormatter={(p) => aedMoney(p.value)} />} />
-                        <Area type="monotone" dataKey="classes"  name="Classes"  stackId="rev" stroke="#92baa4" fill="#92baa4" fillOpacity={0.85} />
+                        <Area type="monotone" dataKey="classes"  name="Classes"  stackId="rev" stroke="#90a099" fill="#90a099" fillOpacity={0.85} />
                         <Area type="monotone" dataKey="private"  name="Private"  stackId="rev" stroke="#b892ba" fill="#b892ba" fillOpacity={0.85} />
                         <Area type="monotone" dataKey="recovery" name="Recovery" stackId="rev" stroke="#f7b955" fill="#f7b955" fillOpacity={0.85} />
                     </AreaChart>
@@ -1636,7 +1636,7 @@ function renderChart(
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={28} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Line type="monotone" dataKey="returning" name="Returning" stroke="#92baa4" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="returning" name="Returning" stroke="#90a099" strokeWidth={2} dot={false} />
                         <Line type="monotone" dataKey="new"       name="New"       stroke="#b892ba" strokeWidth={2} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
@@ -1765,7 +1765,7 @@ function renderChart(
                         <XAxis dataKey="date" {...axisProps} interval={interval} />
                         <YAxis {...axisProps} width={28} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                         <Tooltip content={<ChartTooltip valueFormatter={(p) => `${p.value}%`} />} />
-                        <Line type="monotone" dataKey="pct" name="Attach rate" stroke="#92baa4" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="pct" name="Attach rate" stroke="#90a099" strokeWidth={2} dot={false} />
                     </LineChart>
                 </ResponsiveContainer>
             );
@@ -1809,7 +1809,7 @@ function renderChart(
                                 p.dataKey === "revenueAed" ? aedMoney(p.value) : String(p.value ?? "")
                             } />}
                         />
-                        <Bar dataKey="sent"   name="Sent"   fill="#aad4bd" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="sent"   name="Sent"   fill="#94aeaf" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="opened" name="Opened" fill="#92d1de" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="booked" name="Booked" fill="#b892ba" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -1928,7 +1928,7 @@ function renderChart(
                             <span className="text-[13px] text-[var(--colors-fg-quaternary)]">—</span>
                         )}
                         <Legend items={[
-                            { color: "#92baa4", label: "Via referral" },
+                            { color: "#90a099", label: "Via referral" },
                             { color: "#e4e7ec", label: "All new customers" },
                         ]} />
                     </div>
@@ -1943,7 +1943,7 @@ function renderChart(
                                 = total new customers. `radius` on the TOP
                                 bar rounds only the top corners of the stack
                                 (matches Recharts convention). */}
-                            <Bar dataKey="referral"  name="Via referral"       stackId="rc" fill="#92baa4" />
+                            <Bar dataKey="referral"  name="Via referral"       stackId="rc" fill="#90a099" />
                             <Bar dataKey="remaining" name="All new customers"  stackId="rc" fill="#e4e7ec" radius={[6, 6, 0, 0]}>
                                 {/* "9/38"-style absolute label on the LAST
                                     non-empty bar — mirrors the mockup. */}
@@ -2205,7 +2205,7 @@ export function DashboardWidgetCard({ widgetId, period, branchIds, action, onAdd
                             the redundant sub-caption on the time-series widgets
                             ("Revenue over time" / "Class popularity" / etc). */}
                         {meta.description && (
-                            <p className="text-[14px] text-[#6e776f] truncate mt-0.5">{meta.description}</p>
+                            <p className="text-[14px] text-[#667085] truncate mt-0.5">{meta.description}</p>
                         )}
                     </div>
                 </div>

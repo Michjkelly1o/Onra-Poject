@@ -519,7 +519,7 @@ function ActiveSessionRow({
             {session.isCurrent ? (
                 <span className={cn(
                     "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 whitespace-nowrap",
-                    "bg-[#ecfdf3] border-[#abefc6] text-[#067647]",
+                    "bg-[#eff6f3] border-[#94aeaf] text-[#164e52]",
                 )}>
                     Current
                 </span>

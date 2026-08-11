@@ -15,7 +15,7 @@ import type { PlanKind } from "@/lib/customer/purchase";
 import { Rings } from "@/components/customer/products/ProductArt";
 
 // Unified brand-green tile for every product type (client Jul 2026).
-const GREEN = { from: "var(--brand-tertiary)", to: "var(--brand-tertiary)", text: "var(--brand-primary)", ring: "#aad4bd" };
+const GREEN = { from: "var(--brand-tertiary)", to: "var(--brand-tertiary)", text: "var(--brand-primary)", ring: "#94aeaf" };
 const THEME: Record<PlanKind, { from: string; to: string; text: string; ring: string }> = {
     membership: GREEN,
     package: GREEN,

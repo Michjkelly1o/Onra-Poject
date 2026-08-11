@@ -63,7 +63,7 @@ function PaymentRow({ r, onClick }: { r: PaymentRecord; onClick: () => void }) {
                     </p>
                     <span className="flex items-center gap-1">
                         {ok ? (
-                            <CheckCircle className="size-3.5 shrink-0 text-[#17b26a]" aria-hidden />
+                            <CheckCircle className="size-3.5 shrink-0 text-[#164e52]" aria-hidden />
                         ) : (
                             <XCircle className="size-3.5 shrink-0 text-[#d92d20]" aria-hidden />
                         )}

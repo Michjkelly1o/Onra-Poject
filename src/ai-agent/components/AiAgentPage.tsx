@@ -30,7 +30,6 @@
 
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -323,13 +322,11 @@ export function AiAgentPage() {
                     {/* Logomark + title */}
                     <div className="flex items-center gap-2">
                         <div className="size-6 rounded-[6px] border border-[var(--colors-border-primary)] bg-white flex items-center justify-center shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden">
-                            <Image
-                                src="/Logomark.webp"
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src="/brand-logo/icon/Icon%20-%20Blue%20Green.svg"
                                 alt="Onra"
-                                width={18}
-                                height={18}
-                                className="block object-contain"
-                                priority
+                                className="w-[18px] h-[18px] object-contain"
                             />
                         </div>
                         <span className="text-[18px] font-semibold text-[var(--colors-text-secondary)] leading-7">
@@ -496,7 +493,7 @@ function AgentSidebar({
                                 onClick={() => t.enabled && onSelectThread(t.key)}
                                 className={cn(
                                     "flex items-center gap-3 px-2 py-3 rounded-md text-left transition-colors",
-                                    isActive && "bg-[var(--colors-bg-secondary)]",
+                                    isActive && "bg-[var(--colors-secondary-50)]",
                                     !isActive && t.enabled && "hover:bg-[var(--colors-bg-secondary)]",
                                     !t.enabled && "cursor-not-allowed",
                                 )}
@@ -657,7 +654,7 @@ function RecentRow({
         <div
             className={cn(
                 "group relative flex items-center gap-2 pl-2 pr-1 py-2.5 rounded-md transition-colors",
-                isActive || menuOpen ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
+                isActive ? "bg-[var(--colors-secondary-50)]" : menuOpen ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
             )}
         >
             <button
@@ -895,7 +892,7 @@ function AgentChatSurface({
                     into the surface toward the foot. */}
                 <ConcentricSquaresDecoration />
                 {/* Mint gradient — full-width, rising softly from the foot
-                    (Figma 783:53147). Uses the brand mint (#c4edd6 =
+                    (Figma 783:53147). Uses the brand mint (#dcebe4 =
                     rgb(196,237,214)) so it reads clearly against the white
                     canvas while staying a gentle wash — transparent at the
                     top, easing to ~70% mint at the foot. */}
@@ -992,7 +989,7 @@ function ConcentricSquaresDecoration() {
                                 height: size,
                                 borderWidth: 2.381,
                                 borderStyle: "solid",
-                                borderColor: "#7ba08c",
+                                borderColor: "#457175",
                                 // Chunky corner radius so the rounded peaks
                                 // read clearly on the visible chevron arcs.
                                 // Scales with the square so smaller rings

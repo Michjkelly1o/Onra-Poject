@@ -203,7 +203,7 @@ function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry; onChan
                             <SearchMd className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085] pointer-events-none" />
                             <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
                                 placeholder="Search country or code"
-                                className="w-full h-9 pl-9 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd]" />
+                                className="w-full h-9 pl-9 pr-3 border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#94aeaf]" />
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto py-1">
@@ -214,7 +214,7 @@ function PhoneCountryDropdown({ value, onChange }: { value: PhoneCountry; onChan
                                 <span className="text-[16px]">{c.flag}</span>
                                 <span className="flex-1 text-[14px] text-[#344054] truncate">{c.name}</span>
                                 <span className="text-[13px] text-[#667085]">{c.dial}</span>
-                                {c.code === value.code && <Check className="w-4 h-4 text-[#658774]" />}
+                                {c.code === value.code && <Check className="w-4 h-4 text-[#164e52]" />}
                             </button>
                         ))}
                     </div>
@@ -322,7 +322,7 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
             <button type="button" onClick={() => setOpen(p => !p)}
                 className={cn(
                     "flex items-center gap-2 w-full min-h-[40px] px-[14px] py-[6px] border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-all",
-                    open ? "ring-2 ring-[#aad4bd] border-[#7ba08c]" : "hover:border-[#aad4bd]",
+                    open ? "ring-2 ring-[#94aeaf] border-[#457175]" : "hover:border-[#94aeaf]",
                 )}>
                 <div className="flex-1 flex flex-wrap items-center gap-1.5">
                     {selectedOptions.length === 0 ? (
@@ -355,7 +355,7 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
                         <button
                             type="button"
                             onClick={() => { setOpen(false); onCreateCategory(); }}
-                            className="shrink-0 flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#658774] hover:bg-[#f9fafb] transition-colors text-left"
+                            className="shrink-0 flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#164e52] hover:bg-[#f9fafb] transition-colors text-left"
                         >
                             <Plus className="w-4 h-4" />
                             Create class category
@@ -372,7 +372,7 @@ function MultiCategoryDropdown({ options, selectedIds, onChange, onCreateCategor
                                         className="flex items-center gap-3 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[#f9fafb] transition-colors text-left">
                                         <span className={cn(
                                             "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors",
-                                            selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                            selected ? "bg-[#164e52] border-[#164e52]" : "bg-white border-[#d0d5dd]",
                                         )}>
                                             {selected && <Check className="w-3 h-3 text-white" />}
                                         </span>
@@ -476,8 +476,8 @@ function MultiShiftDropdown({ options, selectedIds, onChange, disabled, emptyLab
                     disabled
                         ? "bg-[#f9fafb] border-[#e4e7ec] cursor-not-allowed"
                         : open
-                            ? "bg-white border-[#7ba08c] ring-2 ring-[#aad4bd]"
-                            : "bg-white border-[#d0d5dd] hover:border-[#aad4bd]",
+                            ? "bg-white border-[#457175] ring-2 ring-[#94aeaf]"
+                            : "bg-white border-[#d0d5dd] hover:border-[#94aeaf]",
                 )}>
                 <div className="flex-1 flex flex-wrap items-center gap-1.5">
                     {selectedOptions.length === 0 ? (
@@ -517,7 +517,7 @@ function MultiShiftDropdown({ options, selectedIds, onChange, disabled, emptyLab
                                     )}>
                                     <span className={cn(
                                         "w-4 h-4 rounded-[4px] border-1 flex items-center justify-center shrink-0 transition-colors mt-[2px]",
-                                        selected ? "bg-[#658774] border-[#658774]" : "bg-white border-[#d0d5dd]",
+                                        selected ? "bg-[#164e52] border-[#164e52]" : "bg-white border-[#d0d5dd]",
                                     )}>
                                         {selected && <Check className="w-3 h-3 text-white" />}
                                     </span>
@@ -550,7 +550,7 @@ function TextInput({ value, onChange, placeholder, type = "text" }: {
 }) {
     return (
         <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-            className="h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+            className="h-10 w-full px-[14px] bg-white border-1 border-[#d0d5dd] rounded-[8px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#94aeaf] focus:border-[#457175] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
         />
     );
 }
@@ -655,7 +655,8 @@ function isFormValid(form: FormValue, requireTempPassword = true): boolean {
         && isValidEmail(form.email)
         // Temp password is set at creation and never re-entered on edit (the
         // edit save doesn't overwrite it), so it's only required in create mode.
-        && (!requireTempPassword || !!form.tempPassword.trim())
+        // Must be at least 8 characters.
+        && (!requireTempPassword || form.tempPassword.trim().length >= 8)
         && !!form.phone.trim()
         && !!form.roleId;
     // payRateId is required only when role.type === "instructor" — handled
@@ -671,7 +672,7 @@ function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n
             onClick={() => !disabled && onChange(!value)}
             className={cn(
                 "w-9 h-5 rounded-full p-[2px] flex items-center transition-colors shrink-0",
-                value ? "bg-[#658774] justify-end" : "bg-[#f2f4f7] justify-start",
+                value ? "bg-[#164e52] justify-end" : "bg-[#f2f4f7] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="block w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -704,7 +705,7 @@ function PaySectionHeader({ title }: { title: string }) {
 /** AED-prefixed amount input (matches PayRateFormPage's AedInput chrome). */
 function PayAedInput({ value, onChange, placeholder = "Enter amount" }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
     return (
-        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all overflow-hidden">
+        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[#94aeaf] focus-within:border-[#457175] transition-all overflow-hidden">
             <span className="flex items-center px-[14px] text-[16px] text-[#475467] leading-[24px] border-r border-[#d0d5dd] shrink-0 select-none">AED</span>
             <input type="text" inputMode="numeric" value={value}
                 onChange={e => onChange(e.target.value.replace(/[^\d.]/g, ""))}
@@ -813,10 +814,11 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
         });
     }
 
-    // Options: only active roles for assignment.
+    // Options: only active roles for assignment. Owner is excluded — it's the
+    // studio-owner role and isn't assignable when adding staff.
     const roleOptions = useMemo(
         () => allRoles
-            .filter(r => r.status === "active")
+            .filter(r => r.status === "active" && r.type !== "owner")
             .map(r => ({ value: r.id, label: r.name })),
         [allRoles],
     );
@@ -1088,6 +1090,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 <div className="flex flex-col gap-[6px]">
                                     <FieldLabel label="Temporary password" />
                                     <TextInput value={form.tempPassword} onChange={v => set({ tempPassword: v })} placeholder="Enter temporary password" />
+                                    <p className={`text-[14px] leading-5 ${form.tempPassword.trim().length > 0 && form.tempPassword.trim().length < 8 ? "text-[#b42318]" : "text-[var(--colors-text-tertiary)]"}`}>At least 8 characters.</p>
                                 </div>
                             </div>
 
@@ -1185,7 +1188,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                             onChange={e => set({ shortIntro: e.target.value })}
                                             placeholder="Briefly introduce this instructor — surfaces on the customer-facing profile."
                                             rows={4}
-                                            className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none"
+                                            className="w-full px-[14px] py-[10px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#94aeaf] focus:border-[#457175] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] resize-none"
                                         />
                                     </div>
 
@@ -1197,7 +1200,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                             onChange={e => set({ workingExperienceYears: e.target.value.replace(/[^\d]/g, "") })}
                                             placeholder="0"
                                             min={0}
-                                            className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
+                                            className="h-10 w-full px-[14px] border-1 border-[#d0d5dd] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#94aeaf] focus:border-[#457175] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
                                         />
                                         <p className="text-[14px] text-[#475467]">in year</p>
                                     </div>

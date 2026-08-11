@@ -168,26 +168,40 @@
   /* lightest muted text / inactive icon */
 
   /* Semantic border colors */
-  --colors-border-primary: #d9d5ce;   /* B2 warm · pastel grey-400 (was #d0d5dd) */
-  --colors-border-secondary: #e9e7e3;   /* B2 warm · pastel grey-200 (was #e4e7ec) */
-  --colors-border-tertiary: #f0efec;   /* B2 warm · pastel grey-100 (was #eaecf0) */
+  --colors-border-primary: #d9d5ce;
+  /* B2 warm · pastel grey-400 (was #d0d5dd) */
+  --colors-border-secondary: #e9e7e3;
+  /* B2 warm · pastel grey-200 (was #e4e7ec) */
+  --colors-border-tertiary: #f0efec;
+  /* B2 warm · pastel grey-100 (was #eaecf0) */
   /* faint dividers */
 
   /* Semantic background colors */
   --colors-bg-primary: #ffffff;
-  --colors-bg-secondary: #fbfbfa;   /* B2 warm · pampas-100 (was #f9fafb) */
-  --colors-bg-tertiary: #f6f6f4;   /* B2 warm · pampas-300 (was #f2f4f7) */
-  --colors-bg-quaternary: #e9e7e3;   /* B2 warm · pastel grey-200 (was #e4e7ec) */
+  /* App CANVAS — the tint BEHIND the white content cards, on every side
+     (admin / instructor / attendee / customer / embed). This is the ONE knob
+     for the page background: change this single value and every side updates,
+     with no effect on the shared surface/hover tokens below. */
+  --colors-bg-canvas: #F2F1EE;
+  --colors-bg-secondary: #fbfbfa;
+  /* B2 warm · pampas-100 (was #f9fafb) */
+  --colors-bg-tertiary: #f6f6f4;
+  /* B2 warm · pampas-300 (was #f2f4f7) */
+  --colors-bg-quaternary: #e9e7e3;
+  /* B2 warm · pastel grey-200 (was #e4e7ec) */
 
   /* Component colors — avatar */
-  --component-avatars-bg-neutral: #dfdbd6;   /* B2 warm · pastel grey-300 (was #e0e0e0) */
+  --component-avatars-bg-neutral: #dfdbd6;
+  /* B2 warm · pastel grey-300 (was #e0e0e0) */
   --component-avatars-contrast-border: rgba(0, 0, 0, 0.08);
 
   /* Component colors — utility */
   --component-utility-success-700: #067647;
   --component-utility-error-700: #b42318;
-  --component-utility-gray-50: #fbfbfa;   /* B2 warm · pampas-100 */
-  --component-utility-gray-200: #e9e7e3;   /* B2 warm · pastel grey-200 */
+  --component-utility-gray-50: #fbfbfa;
+  /* B2 warm · pampas-100 */
+  --component-utility-gray-200: #e9e7e3;
+  /* B2 warm · pastel grey-200 */
   --component-utility-gray-700: #344054;
 
   /* Effects */
@@ -206,7 +220,8 @@ html {
 
 body {
   font-family: 'DM Sans', system-ui, sans-serif;
-  background-color: #fbfbfa;   /* B2 warm · pampas-100 (was #f8f9fb) */
+  background-color: var(--colors-bg-canvas);
+  /* app canvas (was #fbfbfa) */
   color: #1a1a2e;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

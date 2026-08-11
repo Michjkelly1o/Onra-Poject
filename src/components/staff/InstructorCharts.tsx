@@ -94,7 +94,7 @@ export interface LinePoint { date: string; value: number }
 export function PerformanceLineChart({ title, data, color, valueLabel, valueSuffix = "" }: {
     title: string;
     data: LinePoint[];
-    /** Stroke color — `#92d1de` (cyan) for Overall performance, `#92baa4`
+    /** Stroke color — `#92d1de` (cyan) for Overall performance, `#90a099`
      *  (sage) for Class bookings. */
     color: string;
     /** Display name for the value in the tooltip — "Retention rate",
@@ -135,7 +135,7 @@ export interface AttendancePoint {
 
 const ATTENDANCE_COLORS = {
     visits:        "#b892ba", // Mauve  — "Total visits"
-    cancellations: "#92baa4", // Sage   — "Total cancellations"
+    cancellations: "#90a099", // Mint-grey — "Total cancellations"
     noShow:        "#92d1de", // Cyan   — "Total no show"
 } as const;
 

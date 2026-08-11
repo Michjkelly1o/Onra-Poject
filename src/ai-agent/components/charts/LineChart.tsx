@@ -107,8 +107,8 @@ export function LineChart({ series, unit, valueLabel }: Props) {
             >
                 <defs>
                     <linearGradient id="onra-area-fill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#658774" stopOpacity="0.20" />
-                        <stop offset="100%" stopColor="#658774" stopOpacity="0" />
+                        <stop offset="0%" stopColor="#164e52" stopOpacity="0.20" />
+                        <stop offset="100%" stopColor="#164e52" stopOpacity="0" />
                     </linearGradient>
                 </defs>
 
@@ -158,7 +158,7 @@ export function LineChart({ series, unit, valueLabel }: Props) {
                     ref={lineRef}
                     d={linePath}
                     fill="none"
-                    stroke="#658774"
+                    stroke="#164e52"
                     strokeWidth={2.5}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -171,7 +171,7 @@ export function LineChart({ series, unit, valueLabel }: Props) {
                         x2={hp.px}
                         y1={PAD.t}
                         y2={PAD.t + plotH}
-                        stroke="#aad4bd"
+                        stroke="#94aeaf"
                         strokeWidth={1}
                         strokeDasharray="3 3"
                     />
@@ -186,7 +186,7 @@ export function LineChart({ series, unit, valueLabel }: Props) {
                             cy={p.py}
                             r={hover === i ? 5 : 3.5}
                             fill="#fff"
-                            stroke="#658774"
+                            stroke="#164e52"
                             strokeWidth={2}
                         />
                     ))}

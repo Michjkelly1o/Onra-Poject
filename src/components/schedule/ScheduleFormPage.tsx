@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore, SCHEDULE_INSTRUCTORS, deriveScheduleInstructors, getBusinessHours, buildTimeSlots, resolveTemplateCoverImage, type ClassInstance, type GenderAccess, type ClassCategory } from "@/lib/store";
 import { CategoryModal } from "@/components/settings/booking-rules/CategoryModal";
 import { resolveCategoryId, staffTeachesCategoryById, gateSlotsByShift as gateSlotsByShiftHelper, instructorBlockedSlots as instructorBlockedSlotsHelper } from "@/lib/instructor-availability";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { Toast } from "@/components/ui/Toast";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { TimeDropdown, fmtTime, fmtSlotRange, DAY_FULL, DEFAULT_TIME_SLOTS } from "@/components/ui/TimeDropdown";
@@ -151,7 +152,7 @@ function isoDayOfWeek(iso: string): string {
 // ─── Category colors (same as schedule page) ─────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
-    Pilates: "#e9fff3", Yoga: "#fff8e9", Barre: "#e0f9f4",
+    Pilates: "#eff6f3", Yoga: "#fff8e9", Barre: "#e0f9f4",
     HIIT: "#fff3f2", Recovery: "#f0f4f8",
 };
 function coverColor(cat: string) { return CATEGORY_COLORS[cat] ?? "#f0ecff"; }
@@ -166,14 +167,14 @@ function StepItem({ step, current, total }: { step: { n: number; label: string }
         <div className={cn("flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full", active && "bg-[#f5fffa]")}>
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active   ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    active   ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                     : complete ? "bg-[var(--colors-secondary-600)] text-white"
                     : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]")}>
                     {complete ? <Check className="w-3 h-3" /> : step.n}
                 </div>
                 {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {step.label}
             </span>
         </div>
@@ -503,10 +504,8 @@ function InstructorCard({ instructor, selected, disabled = false, disabledReason
             )}>
             {/* Avatar area */}
             <div className="relative w-full flex justify-center pt-5 px-4">
-                <div className="w-[80px] h-[80px] rounded-full flex items-center justify-center text-white text-[28px] font-semibold"
-                    style={{ backgroundColor: instructor.color }}>
-                    {instructor.initials}
-                </div>
+                <InstructorAvatar imageUrl={instructor.imageUrl} initials={instructor.initials} color={instructor.color} size={80} />
+
                 {/* Radio — hidden when disabled. */}
                 {!disabled && (
                     <div className={cn("absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center",
@@ -686,7 +685,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
             {/* Header */}
             <div className="px-6 pt-6 pb-4">
                 <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Class preview</p>
-                <p className="text-[14px] text-[#6e776f] mt-1">This is how your class schedule will look like.</p>
+                <p className="text-[14px] text-[#667085] mt-1">This is how your class schedule will look like.</p>
             </div>
             {/* Preview content */}
             <div className="bg-[#f6f6f3] flex-1 p-6">
@@ -721,7 +720,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 <MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                 <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.location}</span>
                                 <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
-                                <span className="text-[14px] font-semibold text-[#3b5446]">{location.name}</span>
+                                <span className="text-[14px] font-semibold text-[#10373a]">{location.name}</span>
                             </div>
                         ) : (
                             <PreviewRow icon={<MarkerPin01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label={location?.name ?? "Location"} empty={!location} />
@@ -760,7 +759,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 // the room fits but the admin's spot customization
                                 // restricted further.
                                 const arrowClass = roomBelowTemplate ? "text-[#dc6803]" : "text-[var(--colors-secondary-600)]";
-                                const numClass   = roomBelowTemplate ? "text-[#dc6803]" : "text-[#3b5446]";
+                                const numClass   = roomBelowTemplate ? "text-[#dc6803]" : "text-[#10373a]";
                                 return (
                                     <div className="flex items-center gap-2">
                                         <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
@@ -778,7 +777,7 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                         <Users01 className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
                                         <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.capacity}</span>
                                         <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
-                                        <span className="text-[14px] font-semibold text-[#3b5446]">{form.capacity}</span>
+                                        <span className="text-[14px] font-semibold text-[#10373a]">{form.capacity}</span>
                                     </div>
                                 );
                             }
@@ -797,14 +796,14 @@ function PreviewCard({ form, instructor, location, templateCapacity, roomCapacit
                                 <div className="w-4 h-4 rounded-full bg-[#e0e0e0] shrink-0" />
                                 <span className="text-[14px] text-[var(--colors-text-quaternary)] line-through">{original!.instructorName}</span>
                                 <ArrowRight className="w-3.5 h-3.5 text-[var(--colors-secondary-600)] shrink-0" />
-                                <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: instructor.color }} />
-                                <span className="text-[14px] font-semibold text-[#3b5446]">{instructor.name}</span>
+                                <InstructorAvatar imageUrl={instructor.imageUrl} initials={instructor.initials} color={instructor.color} size={16} />
+                                <span className="text-[14px] font-semibold text-[#10373a]">{instructor.name}</span>
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
                                 {instructor ? (
                                     <>
-                                        <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: instructor.color }} />
+                                        <InstructorAvatar imageUrl={instructor.imageUrl} initials={instructor.initials} color={instructor.color} size={16} />
                                         <span className="text-[14px] text-[var(--colors-text-quaternary)]">{instructor.name}</span>
                                     </>
                                 ) : (
@@ -921,7 +920,7 @@ function CsBlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
                     className="text-[14px] font-semibold text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)] transition-colors">Dismiss</button>
                 {blocked ? (
                     <button type="button" onClick={onUnblock}
-                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#3b5446] transition-colors">Unblock</button>
+                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#10373a] transition-colors">Unblock</button>
                 ) : (
                     <button type="button" onClick={onBlock}
                         className="px-4 py-2 rounded-[8px] bg-[#d92d20] text-white text-[14px] font-semibold hover:bg-[#b42318] transition-colors">Block</button>
@@ -2501,7 +2500,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     <div className="flex items-start justify-between gap-6">
                                         <div className="flex flex-col gap-1">
                                             <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot selection</p>
-                                            <p className="text-[14px] text-[#6e776f]">Turn on spot selection to let your customers choose a spot in the room when booking this class.</p>
+                                            <p className="text-[14px] text-[#667085]">Turn on spot selection to let your customers choose a spot in the room when booking this class.</p>
                                         </div>
                                         {/* Toggle — disabled until room selected */}
                                         <button type="button"
@@ -3053,7 +3052,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                     <div className="flex items-end justify-between">
                                         <div className="flex flex-col gap-1">
                                             <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Customize area</p>
-                                            <p className="text-[14px] text-[#6e776f]">Select spot to block or unblock.</p>
+                                            <p className="text-[14px] text-[#667085]">Select spot to block or unblock.</p>
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className="flex items-center gap-2">
@@ -3094,7 +3093,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                 <div className="flex flex-col gap-4">
                                     <div className="flex flex-col gap-1">
                                         <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot layout</p>
-                                        <p className="text-[14px] text-[#6e776f]">
+                                        <p className="text-[14px] text-[#667085]">
                                             Define the number of rows and columns to arrange the {roomCap} spots in this room.
                                         </p>
                                     </div>

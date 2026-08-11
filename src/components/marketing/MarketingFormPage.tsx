@@ -57,7 +57,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                         : complete ? "bg-[var(--colors-secondary-600)] text-white"
                             : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
@@ -67,7 +67,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
             </div>
             <span className={cn(
                 "text-[14px]",
-                active ? "font-semibold text-[#3b5446]"
+                active ? "font-semibold text-[#10373a]"
                     : complete ? "font-medium text-[var(--colors-text-secondary)]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {step.label}
@@ -444,7 +444,7 @@ function RowFilterDropdown({ active, onChange }: {
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== "all" && (
-                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#47b881] border-1 border-white" />
+                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#164e52] border-1 border-white" />
                     )}
                 </div>
                 Filter
@@ -503,7 +503,7 @@ function MultiSelectCard({ title, subtitle, options, selected, onChange }: {
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">{title}</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5 truncate">{subtitle}</p>
+                    <p className="text-[14px] text-[#667085] leading-5 truncate">{subtitle}</p>
                 </div>
                 <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {selected.length} selected
@@ -1092,7 +1092,7 @@ function MarketingPreviewPanel({ form, branches }: { form: MarketingFormData; br
             {/* Header */}
             <div className="pt-6 px-6 pb-6 flex flex-col gap-1">
                 <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Marketing preview</p>
-                <p className="text-[14px] text-[#6e776f] leading-5">This is how your marketing card will look like.</p>
+                <p className="text-[14px] text-[#667085] leading-5">This is how your marketing card will look like.</p>
             </div>
             {/* Stage */}
             <div className="bg-[#f6f6f3] px-6 py-10">
@@ -1104,7 +1104,7 @@ function MarketingPreviewPanel({ form, branches }: { form: MarketingFormData; br
                         )}
                         {/* Status badge — top right (system status, not campaign copy) */}
                         <div className="absolute top-3 right-3 z-10">
-                            <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]">
+                            <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[14px] font-medium bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]">
                                 Active
                             </span>
                         </div>

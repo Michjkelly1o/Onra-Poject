@@ -8,7 +8,7 @@
 // on the design-token system at runtime.
 //
 // Color mapping (per MOCK_DATA_PLAN.md §3.9):
-//   Pilates → secondary-50 (#e9fff3) — Brand / Primary (the app's sage)
+//   Pilates → secondary-50 (#eff6f3) — Brand / Primary (the app's sage)
 //   Barre   → brand-50     (#e9fbff) — Brand / Secondary (cyan)
 //   Yoga    → warning-50   (#fff8e9) — Brand / Tertiary (warm amber)
 
@@ -18,7 +18,7 @@ export const class_categories: ClassCategory[] = [
     {
         id: "cat_pilates",
         name: "Pilates",
-        color_hex: "#e9fff3",
+        color_hex: "#eff6f3",
         status: "active",
     },
     {

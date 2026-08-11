@@ -103,14 +103,14 @@ export function StepItem({ n, label, current, total }: { n: number; label: strin
         <div className={cn("flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full", active && "bg-[#f5fffa]")}>
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    active ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                         : complete ? "bg-[var(--colors-secondary-600)] text-white"
                             : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]")}>
                     {complete ? <Check className="w-3 h-3" /> : n}
                 </div>
                 {!isLast && <div className="absolute top-[24px] left-[11px] w-[2px] h-[40px] bg-[var(--colors-bg-quaternary)] rounded-[2px]" />}
             </div>
-            <span className={cn("text-[14px]", active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]")}>
+            <span className={cn("text-[14px]", active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]")}>
                 {label}
             </span>
         </div>
@@ -561,7 +561,7 @@ function GiftCardSection({ balance, applied, enabled, onToggle }: {
                     <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Gift card balance</p>
                     <p className="text-[14px] text-[var(--colors-text-tertiary)]">
                         {enabled && applied > 0
-                            ? <>Applying <span className="text-[#067647] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
+                            ? <>Applying <span className="text-[#164e52] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
                             : <>AED {balance.toLocaleString()} available to redeem</>
                         }
                     </p>
@@ -618,7 +618,7 @@ function AccountCreditSection({ balance, applied, enabled, onToggle }: {
                     <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Available balance</p>
                     <p className="text-[14px] text-[var(--colors-text-tertiary)]">
                         {enabled && applied > 0
-                            ? <>Applying <span className="text-[#067647] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
+                            ? <>Applying <span className="text-[#164e52] font-medium">AED {applied.toLocaleString()}</span> to this sale</>
                             : <>AED {balance.toLocaleString()} available to apply</>
                         }
                     </p>
@@ -970,7 +970,7 @@ export function ReceiptStep(p: ReceiptStepProps) {
                             <ReceiptRow label="Method" value={p.paymentMethodLabel} />
                             <ReceiptRow label="Charged to" value={p.chargedTo} />
                             <ReceiptRow label="Transaction ID" value={p.transactionId} />
-                            <ReceiptRow label="Status" value="Approved" valueClass="text-[#079455]" />
+                            <ReceiptRow label="Status" value="Approved" valueClass="text-[#164e52]" />
                         </div>
                     </div>
                 </div>

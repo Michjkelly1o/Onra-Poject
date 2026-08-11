@@ -877,7 +877,7 @@ function AcceptanceKpiCard({ icon, tint, label, value, subtitle }: {
     // already handle the drill-down. Reverted from the brief
     // clickable-button experiment.
     const iconTint =
-        tint === "green" ? "bg-[#ecfdf3] border-[#abefc6]"
+        tint === "green" ? "bg-[#eff6f3] border-[#94aeaf]"
       : tint === "amber" ? "bg-[#fffaeb] border-[#fedf89]"
       :                    "bg-[#fef3f2] border-[#fecdca]";
     return (
@@ -924,7 +924,7 @@ function AcceptanceSubTabButton({ active, label, count, onClick }: {
 function AcceptanceStatusPill({ status }: { status: AcceptanceRow["status"] }) {
     const tone =
         status === "signed"
-            ? { bg: "bg-[#ecfdf3]", border: "border-[#abefc6]", text: "text-[#067647]", label: "Signed" }
+            ? { bg: "bg-[#eff6f3]", border: "border-[#94aeaf]", text: "text-[#164e52]", label: "Signed" }
         : status === "re_accept_due"
             ? { bg: "bg-[#fffaeb]", border: "border-[#fedf89]", text: "text-[#b54708]", label: "Re-accept due" }
         :   { bg: "bg-[#fef3f2]", border: "border-[#fecdca]", text: "text-[#b42318]", label: "Never signed" };

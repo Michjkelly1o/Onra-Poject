@@ -23,7 +23,7 @@ import { Rings } from "@/components/customer/products/ProductArt";
 import { Button } from "@/components/ui/button";
 
 // Unified brand-green hero for every product type (client Jul 2026).
-const HERO = { from: "var(--brand-tertiary)", to: "var(--brand-tertiary)", text: "var(--brand-primary)", ring: "#aad4bd" };
+const HERO = { from: "var(--brand-tertiary)", to: "var(--brand-tertiary)", text: "var(--brand-primary)", ring: "#94aeaf" };
 
 const STEP_BTN =
     "flex size-9 items-center justify-center rounded-full border border-[var(--colors-border-primary)] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] transition-colors active:bg-gray-50 disabled:opacity-40";
@@ -429,8 +429,8 @@ export function ProductDetailScreen({
                             {/* Sold out here, but in stock elsewhere → nudge to switch. */}
                             {!needsBranchPick && retailOutOfStock && branchesWithStock.length > 0 && (
                                 <div className="flex items-start gap-2 rounded-xl border border-[#a6f4c5] bg-[#f6fef9] p-3">
-                                    <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#067647]" aria-hidden />
-                                    <p className="text-sm leading-5 text-[#067647]">
+                                    <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#164e52]" aria-hidden />
+                                    <p className="text-sm leading-5 text-[#164e52]">
                                         Available at {branchesWithStock.map((b) => b.name).join(", ")}. Switch
                                         branch at the top of the screen to buy it there.
                                     </p>

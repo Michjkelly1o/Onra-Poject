@@ -13,6 +13,11 @@
 // Completed/Cancelled), preserving the dashboard returnTo so the X-close
 // bounces back here.
 //
+// Uses the SAME drill-down chrome as the admin dashboard modals: shared
+// `ModalShell` (title + aggregate subtitle + paginated footer) and the
+// shared `<table>` + `TABLE_TH/TD` + `Pagination` primitives, so the
+// instructor modals look identical to admin's.
+//
 // Pure view: the dashboard owns the period-filter + instructor-scope
 // math and hands the pre-filtered class list in via props. Same pattern
 // as `CancellationsModal`.
@@ -22,7 +27,9 @@ import { useRouter } from "next/navigation";
 import { isAppointmentId, type ClassSchedule } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { SortableHeader, type SortDir } from "@/components/ui/SortableHeader";
-import { KpiModal } from "@/components/modals/KpiModal";
+import { Pagination } from "@/components/ui/Pagination";
+import { TABLE_TH, TABLE_TD } from "@/lib/table-styles";
+import { ModalShell } from "@/components/dashboard/NeedsAttentionModals";
 
 interface ClassesModalProps {
     open: boolean;
@@ -43,7 +50,7 @@ const STATUS_ORDER: Record<ClassSchedule["status"], number> = {
 const STATUS_STYLES: Record<ClassSchedule["status"], string> = {
     Upcoming: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     Ongoing:  "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-    Completed:"bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    Completed:"bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     Cancelled:"bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
 };
 
@@ -51,6 +58,8 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
     const router = useRouter();
     const [sortKey, setSortKey] = useState<SortKey>("date");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const sortedClasses = useMemo(() => {
         const copy = [...classes];
@@ -75,6 +84,7 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
             setSortKey(key);
             setSortDir(key === "date" ? "desc" : "asc");
         }
+        setPage(1);
     }
 
     function handleRowClick(c: ClassSchedule) {
@@ -92,69 +102,78 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
         router.push(`${base}?${qs}`);
     }
 
+    const totalRows = sortedClasses.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sortedClasses.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    const strong = "font-semibold text-[var(--colors-text-primary)]";
+
     return (
-        <KpiModal
+        <ModalShell
             open={open}
             onClose={onClose}
+            width={720}
             title="Classes"
-            subtitle="Every class you taught or have scheduled in the active period."
-            titleId="classes-modal-title"
+            subtitle={
+                <>
+                    <span className={strong}>{totalRows}</span> class{totalRows === 1 ? "" : "es"} taught or scheduled in the active period.
+                </>
+            }
+            footer={
+                <Pagination
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
+                    onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
+            }
         >
-            <div className="px-6 pb-6">
-                    {/* Header row */}
-                    <div className="grid grid-cols-[1.6fr_1fr_120px_100px] gap-4 items-center pb-3 border-b-1 border-[var(--colors-border-secondary)] sticky top-0 bg-white z-10">
-                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Class</div>
-                        <SortableHeader sortKey="date" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Date</SortableHeader>
-                        <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Status</SortableHeader>
-                        <SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Booked</SortableHeader>
-                    </div>
-
-                    {/* Body */}
-                    {sortedClasses.length === 0 ? (
-                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[var(--colors-text-quaternary)]">
-                            No classes in this period.
-                        </div>
-                    ) : (
-                        sortedClasses.map(c => (
-                            <button
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TABLE_TH}>Class</th>
+                            <th className={TABLE_TH}><SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Date</SortableHeader></th>
+                            <th className={TABLE_TH}><SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Status</SortableHeader></th>
+                            <th className={TABLE_TH}><SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Booked</SortableHeader></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(c => (
+                            <tr
                                 key={c.id}
-                                type="button"
                                 onClick={() => handleRowClick(c)}
-                                className="w-full grid grid-cols-[1.6fr_1fr_120px_100px] gap-4 items-center py-3 border-b-1 border-[var(--colors-bg-tertiary)] last:border-b-0 hover:bg-[var(--colors-bg-secondary)] transition-colors text-left cursor-pointer"
+                                className="transition-colors hover:bg-[var(--colors-bg-secondary)]/50 cursor-pointer"
                             >
-                                {/* Class name + time */}
-                                <div className="min-w-0">
-                                    <p className="text-sm font-medium text-[var(--colors-text-primary)] leading-5 truncate">{c.name}</p>
-                                    <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{c.displayTime}</p>
-                                </div>
-                                {/* Date */}
-                                <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">
-                                    {formatDate(c.dateISO)}
-                                </div>
-                                {/* Status */}
-                                <div>
+                                <td className={TABLE_TD}>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 truncate">{c.name}</p>
+                                    <p className="text-[14px] font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{c.displayTime}</p>
+                                </td>
+                                <td className={cn(TABLE_TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{formatDate(c.dateISO)}</td>
+                                <td className={TABLE_TD}>
                                     <span className={cn(
                                         "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
                                         STATUS_STYLES[c.status],
                                     )}>
                                         {c.status}
                                     </span>
-                                </div>
-                                {/* Booked */}
-                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">
-                                    {c.booked} / {c.capacity}
-                                </div>
-                            </button>
-                        ))
-                    )}
+                                </td>
+                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)]")}>{c.booked} / {c.capacity}</td>
+                            </tr>
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={4} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
+                                    No classes in this period.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
-        </KpiModal>
+        </ModalShell>
     );
 }
 
 // ─── Atoms ──────────────────────────────────────────────────────────────────
-// (Local SortableHeader removed — now uses the canonical `<SortableHeader>`
-// from `@/components/ui/SortableHeader`.)
 
 function formatDate(iso: string): string {
     if (!iso) return "—";

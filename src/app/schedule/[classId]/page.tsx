@@ -27,6 +27,7 @@ import { PlanBadge, BookingStatusBadge, PresentBadge, NoShowBadge, NoPlanBadge, 
 import { ClassCustomerBadges } from "@/components/customers/CustomerBadges";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { TableAvatar } from "@/components/ui/avatar";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import type { ClassRating } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
@@ -592,6 +593,7 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
     onSelectMembership: () => void;
     onSwitchCustomer: () => void;
 }) {
+    const instructorImageUrl = useAppStore(s => s.staff.find(x => x.id === classInstance?.instructorId)?.imageUrl);
     // Track which package the admin picked (multi-package customers only).
     // Defaults to the first package; re-syncs whenever the customer changes.
     const initialPackageId = customer?.planKind === "package" ? customer.packageIds?.[0] : undefined;
@@ -694,11 +696,12 @@ function PaymentConfirmationModal({ open, customer, classInstance, onClose, onCo
                                 <p className="text-[14px] font-medium text-[var(--colors-text-primary)]">{classInstance.name}</p>
                                 <p className="text-[14px] text-[var(--colors-text-tertiary)]">{classInstance.date} • {classInstance.displayTime}</p>
                                 <div className="flex items-center gap-1 mt-0.5">
-                                    <div className="w-4 h-4 rounded-full overflow-hidden bg-[#e0e0e0] shrink-0 flex items-center justify-center">
-                                        <span className="text-[8px] font-semibold text-white" style={{ backgroundColor: classInstance.instructorColor }}>
-                                            {classInstance.instructorInitials}
-                                        </span>
-                                    </div>
+                                    <InstructorAvatar
+                                        imageUrl={instructorImageUrl}
+                                        initials={classInstance.instructorInitials}
+                                        color={classInstance.instructorColor}
+                                        size={16}
+                                    />
                                     <p className="text-[12px] text-[var(--colors-text-quaternary)]">{classInstance.instructorName.split(" ")[0]} {classInstance.instructorName.split(" ").slice(-1)[0][0]}.</p>
                                 </div>
                             </div>
@@ -1457,8 +1460,8 @@ function RemoveBookingModal({ open, count, sampleName, defaultRefund = true, onC
 //     [/class/[classId]/page.tsx](src/app/class/[classId]/page.tsx#L344).
 //
 // Renders in the Status column for Ongoing rows that haven't been marked
-// yet. Same DS `secondary-gray` chrome + `#067647` green text/icon +
-// `#ecfdf3` hover tint as the bulk "Mark present" button, so the two
+// yet. Same DS `secondary-gray` chrome + `#164e52` green text/icon +
+// `#eff6f3` hover tint as the bulk "Mark present" button, so the two
 // affordances read as one language. Clicking flips the cell to a
 // `PresentBadge` (see the Status column render). A no-show is auto-
 // flagged by the system — no explicit button.
@@ -1469,8 +1472,8 @@ function PresentButton({ onClick }: { onClick: () => void }) {
             variant="secondary-gray"
             size="sm"
             onClick={onClick}
-            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
-            leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+            className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]"
+            leftIcon={<CheckCircle className="w-4 h-4 text-[#164e52]" />}
         >
             Present
         </Button>
@@ -1513,7 +1516,7 @@ function BulkActionBar({ variant, count, onClear, onCancel, onRemove, onPresent,
                         </>
                     )}
                     {variant === "ongoing" && (
-                        <Button variant="secondary-gray" size="sm" className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]" leftIcon={<CheckCircle className="w-5 h-5 text-[#067647]" />} onClick={onPresent}>
+                        <Button variant="secondary-gray" size="sm" className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]" leftIcon={<CheckCircle className="w-5 h-5 text-[#164e52]" />} onClick={onPresent}>
                             Mark present
                         </Button>
                     )}
@@ -1640,6 +1643,8 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
     const canEdit = isUpcoming || isOngoing;
     const showRatingSummary = isCancelled || isCompleted;
     const noActions = !canAddCustomer && !canEdit && !canCancelClass;
+    // Real instructor photo (colored-initials fallback inside InstructorAvatar).
+    const instructorImageUrl = useAppStore(s => s.staff.find(x => x.id === ci.instructorId)?.imageUrl);
     return (
         <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             {/* Banner */}
@@ -1649,7 +1654,7 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                 ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[36px] font-bold" style={{ color: "#3b5446" }}>
+                        <span className="text-[36px] font-bold" style={{ color: "#10373a" }}>
                             {ci.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
                         </span>
                     </div>
@@ -1704,10 +1709,7 @@ function LeftPanel({ ci, branchTzShort, isUpcoming, isOngoing, isCancelled, isCo
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[var(--colors-text-quaternary)]">Instructor</p>
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
-                                    style={{ backgroundColor: ci.instructorColor }}>
-                                    {ci.instructorInitials}
-                                </div>
+                                <InstructorAvatar imageUrl={instructorImageUrl} initials={ci.instructorInitials} color={ci.instructorColor} size={24} />
                                 <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">
                                     {(() => {
                                         const parts = ci.instructorName.split(" ");
@@ -2892,8 +2894,8 @@ export default function ClassDetailPage() {
                             <XClose className="w-6 h-6 text-[var(--colors-text-quaternary)]" />
                         </button>
                         <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                            <div className="w-12 h-12 rounded-full bg-[#ecfdf3] flex items-center justify-center shrink-0">
-                                <CheckCircle className="w-6 h-6 text-[#067647]" />
+                            <div className="w-12 h-12 rounded-full bg-[#eff6f3] flex items-center justify-center shrink-0">
+                                <CheckCircle className="w-6 h-6 text-[#164e52]" />
                             </div>
                             <div className="flex flex-col gap-1 text-center w-full">
                                 <h3 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Mark {selectedIds.size} customer{selectedIds.size === 1 ? "" : "s"} as present?</h3>

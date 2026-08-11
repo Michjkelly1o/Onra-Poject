@@ -72,7 +72,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                         : complete
                             ? "bg-[var(--colors-secondary-600)] text-white"
                             : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
@@ -87,7 +87,7 @@ function StepItem({ step, current }: { step: typeof STEPS[0]; current: number })
             <span className={cn(
                 "text-[14px]",
                 active
-                    ? "font-semibold text-[#3b5446]"
+                    ? "font-semibold text-[#10373a]"
                     : complete
                         ? "font-medium text-[var(--colors-text-secondary)]"
                         : "font-medium text-[var(--colors-text-quaternary)]",
@@ -374,7 +374,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
 }
 
 /** Bordered card wrapping a toggle. Border switches to a 2px green
- *  `#7ba08c` when the toggle is ON (matches Figma 5573:262653). */
+ *  `#457175` when the toggle is ON (matches Figma 5573:262653). */
 function ToggleCard({ title, subtitle, on, onChange }: {
     title: string; subtitle: string;
     on: boolean; onChange: (v: boolean) => void;
@@ -463,7 +463,7 @@ function BranchMultiSelect({ kind, selected, onChange, branches }: {
             <div className="flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Branches</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5 truncate">{subtitle}</p>
+                    <p className="text-[14px] text-[#667085] leading-5 truncate">{subtitle}</p>
                 </div>
                 <span className="inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] shrink-0">
                     {selected.length} selected
@@ -532,7 +532,7 @@ function BranchFilterDropdown({ active, onChange }: {
                 <div className="relative">
                     <FilterLines className="w-4 h-4" />
                     {active !== "all" && (
-                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#47b881] border-1 border-white" />
+                        <span className="absolute -top-[3px] -right-[3px] w-[7px] h-[7px] rounded-full bg-[#164e52] border-1 border-white" />
                     )}
                 </div>
                 Filter
@@ -1535,7 +1535,7 @@ function TemplatePreviewCard({ data }: { data: PreviewState }) {
             <div className="flex flex-col">
                 <div className="pt-6 px-6 flex flex-col gap-1">
                     <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Template preview</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5">This is how your product will look like.</p>
+                    <p className="text-[14px] text-[#667085] leading-5">This is how your product will look like.</p>
                 </div>
                 <div className="h-5" />
                 <div className="h-px bg-[var(--colors-bg-quaternary)]" />

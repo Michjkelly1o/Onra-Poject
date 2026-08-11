@@ -4,7 +4,7 @@
 // Onra Studio — Instructor layout (replaces the legacy Lucide variant)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Same shell as the admin layout — outer `bg-[var(--colors-tertiary-50)]` with the centered
+// Same shell as the admin layout — outer `bg-[var(--colors-bg-canvas)]` with the centered
 // white "page card", `<Sidebar>` + `<Header>` reused 1-for-1. The only
 // changes:
 //   1. Sidebar receives the instructor nav config + the instructor account
@@ -73,7 +73,7 @@ export default function InstructorLayout({
 
     return (
         <>
-            <div className="flex h-screen bg-[var(--colors-tertiary-50)]">
+            <div className="flex h-screen bg-[var(--colors-bg-canvas)]">
                 {/* Sidebar wrapper — drives width so content area reflows naturally */}
                 <div
                     className={cn(

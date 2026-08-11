@@ -165,7 +165,7 @@ export function ModalShell({
 // ─── Bulk-select checkbox ──────────────────────────────────────────────────
 //
 // Same primitive `/admin/products` (memberships + packages page) uses at
-// products/page.tsx:465 — sage-green (#658774) fill + white check when
+// products/page.tsx:465 — brand teal (#164e52) fill + white check when
 // checked, sage-green border hover when idle. Client feedback Jul 2026:
 // modal checkboxes must match the other admin list tables' style
 // (the previous native `<input type="checkbox">` was orange-tinted from
@@ -1326,7 +1326,7 @@ function WinBackModal({
                                             ch.disabled
                                                 ? "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)] cursor-not-allowed"
                                                 : active
-                                                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)] text-[#3b5446]"
+                                                    ? "bg-[#f5fffa] border-[var(--colors-secondary-500)] text-[#10373a]"
                                                     : "bg-white border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                         )}>
                                         {ch.icon}

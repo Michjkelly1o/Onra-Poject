@@ -260,7 +260,7 @@ export function StudioProfileFormPage() {
                         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                             <div className="flex flex-col gap-1 px-6 pt-6 pb-5">
                                 <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Studio preview</p>
-                                <p className="text-[14px] text-[#6e776f] leading-5">This is how studio overview will look like.</p>
+                                <p className="text-[14px] text-[#667085] leading-5">This is how studio overview will look like.</p>
                             </div>
                             <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <div className="bg-[#f8f8f6] p-6 flex items-start justify-center">
@@ -335,7 +335,7 @@ function StepRow({ step, current, isLast }: {
             <div className="relative flex flex-col items-center shrink-0">
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium z-10",
-                    active   ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]"
+                    active   ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                     : complete ? "bg-[var(--colors-secondary-600)] text-white"
                     : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                 )}>
@@ -345,7 +345,7 @@ function StepRow({ step, current, isLast }: {
             </div>
             <span className={cn(
                 "text-[14px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]"
+                active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]"
             )}>
                 {step.label}
             </span>

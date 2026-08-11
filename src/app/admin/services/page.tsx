@@ -132,7 +132,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
     tone: "destructive" | "primary";
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Archive, iconColor: "text-[#164e52]",
         titleSingle: "Archive this service?",
         titleBulk:   n => `Archive ${n} services?`,
         description: subject => <>{subject} will be hidden from the default service list. You can recover archived services at any time.</>,
@@ -148,7 +148,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         tone: "destructive",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: RefreshCcw01, iconColor: "text-[#164e52]",
         titleSingle: "Recover this service?",
         titleBulk:   n => `Recover ${n} services?`,
         description: subject => <>{subject} will be restored to Active status and become bookable again.</>,
@@ -156,7 +156,7 @@ const MODAL_CONFIG: Record<RowActionKind, {
         tone: "primary",
     },
     reactivate: {
-        iconBg: "bg-[#e9fff3]", IconComp: Check, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Check, iconColor: "text-[#164e52]",
         titleSingle: "Reactivate this service?",
         titleBulk:   n => `Reactivate ${n} services?`,
         description: subject => <>{subject} will become available for new appointments again.</>,
@@ -205,12 +205,12 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                         </Button>
                     )}
                     {hasReactivatable && (
-                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("reactivate")}>
+                        <Button variant="secondary-gray" leftIcon={<Check className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
                         </Button>
                     )}
                     {hasRecoverable && (
-                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
@@ -251,8 +251,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]"
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]"
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -305,7 +305,7 @@ function Pill({ label, selected, onClick }: { label: string; selected: boolean; 
             className={cn(
                 "px-4 py-2 rounded-[8px] text-[14px] font-medium transition-all whitespace-nowrap",
                 selected
-                    ? "bg-[#e9fff3] border-2 border-[#7ba08c] text-[#344054]"
+                    ? "bg-[#eff6f3] border-2 border-[#457175] text-[#344054]"
                     : "bg-white border-1 border-[var(--colors-border-secondary)] text-[#344054] hover:bg-[var(--colors-bg-secondary)]",
             )}>
             {label}

@@ -97,7 +97,7 @@ function BonusRow({ bonus }: { bonus: BonusLine }) {
                 {label} — {reward} after {bonus.threshold} ({bonus.count}/{bonus.threshold})
             </p>
             {bonus.fired
-                ? <span className="text-[13px] font-medium text-[#067647]">{aed(bonus.bonusAed)}</span>
+                ? <span className="text-[13px] font-medium text-[#164e52]">{aed(bonus.bonusAed)}</span>
                 : <span className="text-[12px] font-medium text-[var(--colors-fg-quaternary)]">Not yet</span>}
         </div>
     );

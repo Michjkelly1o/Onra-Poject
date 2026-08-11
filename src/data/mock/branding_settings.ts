@@ -77,11 +77,16 @@ export const branding_settings: BrandingSettings = {
         { id: "products", label: "Products", enabled: false, url: "https://www.formastudio.com/schedule#/products" },
         { id: "profile",  label: "Profile",  enabled: true,  url: "https://www.formastudio.com/schedule#/profile" },
     ],
-    embedCode: `<div id="studioyou-embed"></div>
-<script>
-  const date = Date.now();
-  const xscript = document.createElement("script");
-  xscript.setAttribute("src","https://formastudio.onbookee.com/embed/index.js?t="+date);
-  document.head.appendChild(xscript);
-</script>`,
+    // Derived-format iframe snippet — the Customize embed website panel always
+    // rebuilds this live from `portalUrl` + `embedWindow`; kept in sync here so
+    // the seed matches what the panel generates (no stale third-party code).
+    embedCode: `<iframe
+  src="https://formastudio.book.com/embed/schedule?window=2w"
+  title="Class schedule"
+  width="100%" height="720" style="border:0" loading="lazy">
+</iframe>`,
+    // Embed schedule configuration (client 2026-08-08) — how far ahead the
+    // embedded class schedule shows + which branch it defaults to ("" = all).
+    embedWindow:     "2w",
+    embedLocationId: "",
 };

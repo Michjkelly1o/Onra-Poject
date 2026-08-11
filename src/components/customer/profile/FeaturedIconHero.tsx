@@ -29,7 +29,7 @@ export function FeaturedIconHero({
     icon: Icon,
     tileClassName,
     iconClassName,
-    patternColor = "#aad4bd",
+    patternColor = "#94aeaf",
     upright = false,
     title,
     subtitle,

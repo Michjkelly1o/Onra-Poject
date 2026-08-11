@@ -145,7 +145,7 @@ export function SingleDateTimeEditor({ durationMinutes, instructorId, roomId, on
     if (confirmed) {
         return (
             <div className="w-full flex items-start gap-2.5 rounded-[12px] border border-[var(--colors-secondary-300)] bg-[#f1f7f4] px-4 py-3">
-                <CheckCircle className="size-4 text-[#3f8f68] shrink-0 mt-0.5" />
+                <CheckCircle className="size-4 text-[#164e52] shrink-0 mt-0.5" />
                 <div className="min-w-0">
                     <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5">Session scheduled</p>
                     <p className="text-[13px] text-[var(--colors-text-tertiary)] leading-5 mt-0.5">

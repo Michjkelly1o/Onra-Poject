@@ -125,7 +125,7 @@ function BookingStatusBadge({ status, waitlistPosition }: { status: BookingDispl
         Upcoming: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         Waitlisted: "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
         Ongoing: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
-        Completed: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        Completed: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         "No show": "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         Cancelled: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
         "Cancelled (late)": "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",

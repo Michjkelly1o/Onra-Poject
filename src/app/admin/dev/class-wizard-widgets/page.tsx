@@ -361,7 +361,7 @@ function TraceBlock({ title, script }: { title: string; script: Partial<WizardAn
         <div>
             <div className="mb-2 flex items-baseline justify-between gap-3">
                 <h3 className="text-[13px] font-medium text-[var(--colors-text-tertiary)]">{title}</h3>
-                <span className={cn("text-[12px] font-medium shrink-0", done ? "text-[#067647]" : "text-[#b42318]")}>
+                <span className={cn("text-[12px] font-medium shrink-0", done ? "text-[#164e52]" : "text-[#b42318]")}>
                     {done ? "✓ complete" : "✗ incomplete"}
                 </span>
             </div>
@@ -396,7 +396,7 @@ export default function ClassWizardWidgetsDevPage() {
                     <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--colors-text-quaternary)]">Dev preview</p>
                     <h1 className="text-[24px] font-semibold text-[var(--colors-text-primary)] leading-8">Class-creation wizard widgets</h1>
                     <p className="mt-1 text-[14px] text-[var(--colors-text-tertiary)]">
-                        Phase 1 · every <code className="text-[#3f8f68]">AiQuestionPrompt</code> kind + rich-option state,
+                        Phase 1 · every <code className="text-[#164e52]">AiQuestionPrompt</code> kind + rich-option state,
                         mock data only. No agent, no store writes.
                     </p>
                 </header>

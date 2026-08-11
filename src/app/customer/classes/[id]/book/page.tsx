@@ -293,7 +293,7 @@ function BookingConfirmation() {
                     ) : (
                         <div className="flex w-full items-center gap-2 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] p-4">
                             <Lightbulb02 className="size-4 shrink-0 text-[var(--brand-primary)]" aria-hidden />
-                            <p className="text-sm font-normal leading-5 text-[#3f5b4c]">
+                            <p className="text-sm font-normal leading-5 text-[#10373a]">
                                 {mode === "waitlist"
                                     ? "A spot will be assigned automatically when you're moved off the waitlist."
                                     : "A spot will be auto assigned to you."}

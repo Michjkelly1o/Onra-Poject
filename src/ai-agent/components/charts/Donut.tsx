@@ -18,7 +18,10 @@ import gsap from "gsap";
 type Unit = "AED" | "count";
 type Seg = { label: string; value: number };
 
-const PALETTE = ["#658774", "#aad4bd", "#e4e7ec", "#f0a875", "#7ba08c", "#c4edd6"];
+// Teal-family ramp (rich blue green 500/200/400) + neutral grey + a warm orange
+// accent + pale mint — harmonised around the new brand, kept mutually distinct
+// for readable slices.
+const PALETTE = ["#164e52", "#94aeaf", "#e4e7ec", "#f0a875", "#457175", "#dcebe4"];
 const fmt = (v: number, unit?: Unit) =>
     unit === "AED"
         ? `AED ${Math.round(v).toLocaleString("en-US")}`

@@ -30,7 +30,6 @@
 
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -89,23 +88,21 @@ export function FloatingAiButton() {
                     // at ~114° (default) / ~126° (hover). Kept a single
                     // linear-gradient here because the shift between angles
                     // is imperceptible next to the pill's shadow bloom.
-                    "bg-[linear-gradient(114deg,#c4edd6_3%,#e9fff3_63%)]",
-                    // Multi-layer shadow with brand-green (#7ba08c) tint —
+                    "bg-[linear-gradient(114deg,#dcebe4_3%,#eff6f3_63%)]",
+                    // Multi-layer shadow with brand-teal (#457175) tint —
                     // stack matches the Figma drop-shadow spec.
-                    "shadow-[0px_7px_7.5px_rgba(123,160,140,0.10),0px_28px_14px_rgba(123,160,140,0.09),0px_63px_19px_rgba(123,160,140,0.05)]",
+                    "shadow-[0px_7px_7.5px_rgba(69,113,117,0.10),0px_28px_14px_rgba(69,113,117,0.09),0px_63px_19px_rgba(69,113,117,0.05)]",
                     "transition-all duration-200 ease-out",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#84c393]",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#457175]",
                 )}
             >
                 {/* Logomark tile — 36px white circle, 1.125px border. */}
                 <span className="w-9 h-9 rounded-full bg-white border-[1.125px] border-[var(--colors-border-secondary)] overflow-hidden flex items-center justify-center shrink-0">
-                    <Image
-                        src="/Logomark.webp"
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="/brand-logo/icon/Icon%20-%20Blue%20Green.svg"
                         alt=""
-                        width={27}
-                        height={27}
                         className="w-[27px] h-[27px] object-contain"
-                        unoptimized
                     />
                 </span>
 

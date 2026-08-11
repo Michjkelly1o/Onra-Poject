@@ -44,11 +44,11 @@ import { brandTypefaceFontFamily } from "@/app/branding-fonts";
 
 // Pre-Branding customer sage — every hardcoded hex we replaced maps here so
 // a fresh workspace looks identical to what customers had before Branding.
-const DEFAULT_PRIMARY  = "#658774";
+const DEFAULT_PRIMARY  = "#164e52";
 const DEFAULT_BG       = "#ffffff";
 // Matches the shared DS Button "primary" variant background so anything
 // styled tertiary looks identical to what customers had before Branding.
-const DEFAULT_TERTIARY = "#c4edd6";
+const DEFAULT_TERTIARY = "#d5e7df";
 const DEFAULT_TEXT     = "#101828";
 
 /** Contract shared with the admin panel's IframePreview. Any field the

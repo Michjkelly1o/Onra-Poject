@@ -47,7 +47,7 @@ export function InstructorMetricCard({
     const absDelta = Math.abs(deltaPercent ?? 0);
 
     const ArrowIcon = isPositive ? ArrowUp : ArrowDown;
-    const deltaColor = isPositive ? "text-[#067647]" : "text-[#b42318]";
+    const deltaColor = isPositive ? "text-[#164e52]" : "text-[#b42318]";
 
     return (
         <div

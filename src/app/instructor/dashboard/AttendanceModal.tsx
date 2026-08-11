@@ -9,9 +9,10 @@
 // taught in the active period plus its booked / present / no-show counts
 // and the row-level attendance percentage.
 //
-// Read-only: rows do NOT navigate (per the brief, only the Classes
-// modal carries click-through). Sortable on Date / Booked / Attended /
-// No-show / Attendance %.
+// Uses the SAME drill-down chrome as the admin dashboard modals: shared
+// `ModalShell` (title + aggregate subtitle + paginated footer) and the
+// shared `<table>` + `TABLE_TH/TD` + `Pagination` primitives, so the
+// instructor modals look identical to admin's.
 //
 // Attendance % per row matches the dashboard KPI formula:
 //     present / (present + no_show)
@@ -23,7 +24,9 @@ import { useMemo, useState } from "react";
 import { type ClassBooking, type ClassSchedule } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { SortableHeader, type SortDir } from "@/components/ui/SortableHeader";
-import { Modal } from "@/components/modals/Modal";
+import { Pagination } from "@/components/ui/Pagination";
+import { TABLE_TH, TABLE_TD } from "@/lib/table-styles";
+import { ModalShell } from "@/components/dashboard/NeedsAttentionModals";
 
 interface AttendanceModalProps {
     open: boolean;
@@ -52,7 +55,7 @@ interface AttendanceRow {
 }
 
 const STATUS_BADGE_STYLES: Record<"On track" | "At risk" | "Pending", string> = {
-    "On track": "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    "On track": "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     "At risk":  "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
     "Pending":  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
 };
@@ -60,6 +63,8 @@ const STATUS_BADGE_STYLES: Record<"On track" | "At risk" | "Pending", string> = 
 export function AttendanceModal({ open, onClose, classes, bookings }: AttendanceModalProps) {
     const [sortKey, setSortKey] = useState<SortKey>("date");
     const [sortDir, setSortDir] = useState<SortDir>("desc");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const rows = useMemo<AttendanceRow[]>(() => {
         const bookingsByClass = new Map<string, ClassBooking[]>();
@@ -102,9 +107,8 @@ export function AttendanceModal({ open, onClose, classes, bookings }: Attendance
         return copy;
     }, [rows, sortKey, sortDir]);
 
-    // Summary band — overall numbers for the period. Same formula the
-    // KPI tile uses so the modal header agrees with the card it opened
-    // from.
+    // Summary — overall numbers for the period. Same formula the KPI tile
+    // uses, surfaced in the modal subtitle (as the admin modals do).
     const summary = useMemo(() => {
         const totalAttended = rows.reduce((acc, r) => acc + r.attended, 0);
         const totalNoShow   = rows.reduce((acc, r) => acc + r.noShow, 0);
@@ -121,93 +125,77 @@ export function AttendanceModal({ open, onClose, classes, bookings }: Attendance
             setSortKey(key);
             setSortDir(key === "date" ? "desc" : "asc");
         }
+        setPage(1);
     }
 
+    const totalRows = sortedRows.length;
+    const clampedPage = Math.min(page, Math.max(1, Math.ceil(totalRows / pageSize)));
+    const paged = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    const strong = "font-semibold text-[var(--colors-text-primary)]";
+
     return (
-        <Modal
+        <ModalShell
             open={open}
             onClose={onClose}
-            maxWidth={860}
-            height={620}
-            zIndex={50}
-            ariaLabelledBy="attendance-modal-title"
-            className="rounded-[16px]"
+            width={860}
+            title="Attendance rate"
+            subtitle={
+                <>
+                    <span className={strong}>{summary.overallRate != null ? `${summary.overallRate}%` : "—"}</span> overall
+                    {" · "}<span className={strong}>{summary.totalBooked}</span> booked
+                    {" · "}<span className={strong}>{summary.totalAttended}</span> attended
+                    {" · "}<span className={strong}>{summary.totalNoShow}</span> no-show
+                </>
+            }
+            footer={
+                <Pagination
+                    variant="compact" page={clampedPage} total={totalRows} pageSize={pageSize}
+                    onPage={setPage} onPageSize={size => { setPageSize(size); setPage(1); }}
+                />
+            }
         >
-            <Modal.Header
-                id="attendance-modal-title"
-                title="Attendance rate"
-                subtitle="Per-class breakdown of who attended vs no-showed in the active period."
-                onClose={onClose}
-            />
-
-            {/* Summary band — 4 inline stats (sits between header + scrollable table) */}
-            <div className="shrink-0 px-6 pb-5">
-                    <div className="grid grid-cols-4 gap-3">
-                        <SummaryCell label="Overall rate" value={summary.overallRate != null ? `${summary.overallRate}%` : "—"} accent />
-                        <SummaryCell label="Booked"   value={String(summary.totalBooked)} />
-                        <SummaryCell label="Attended" value={String(summary.totalAttended)} />
-                        <SummaryCell label="No-show"  value={String(summary.totalNoShow)} />
-                    </div>
-                </div>
-
-                {/* Table */}
-                <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
-                    {/* Header row */}
-                    <div className="grid grid-cols-[1.6fr_110px_80px_80px_80px_120px] gap-3 items-center pb-3 border-b-1 border-[var(--colors-border-secondary)] sticky top-0 bg-white z-10">
-                        <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Class</div>
-                        <SortableHeader sortKey="date"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Date</SortableHeader>
-                        <SortableHeader sortKey="booked"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Booked</SortableHeader>
-                        <SortableHeader sortKey="attended" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Attended</SortableHeader>
-                        <SortableHeader sortKey="noShow"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">No-show</SortableHeader>
-                        <SortableHeader sortKey="rate"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5">Attendance</SortableHeader>
-                    </div>
-
-                    {/* Body */}
-                    {sortedRows.length === 0 ? (
-                        <div className="h-full min-h-[280px] flex items-center justify-center text-sm text-[var(--colors-text-quaternary)]">
-                            No classes in this period.
-                        </div>
-                    ) : (
-                        sortedRows.map(r => (
-                            <div key={r.classId} className="grid grid-cols-[1.6fr_110px_80px_80px_80px_120px] gap-3 items-center py-3 border-b-1 border-[var(--colors-bg-tertiary)] last:border-b-0">
-                                {/* Class name + time */}
-                                <div className="min-w-0">
-                                    <p className="text-sm font-medium text-[var(--colors-text-primary)] leading-5 truncate">{r.name}</p>
-                                    <p className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{r.displayTime}</p>
-                                </div>
-                                {/* Date */}
-                                <div className="text-sm font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">
-                                    {formatDate(r.dateISO)}
-                                </div>
-                                {/* Counts */}
-                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">{r.booked}</div>
-                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">{r.attended}</div>
-                                <div className="text-sm font-medium text-[var(--colors-text-primary)] leading-5">{r.noShow}</div>
-                                {/* Rate badge */}
-                                <div>
-                                    <RateBadge rate={r.rate} />
-                                </div>
-                            </div>
-                        ))
-                    )}
+            <div className="px-6">
+                <table className="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th className={TABLE_TH}>Class</th>
+                            <th className={TABLE_TH}><SortableHeader sortKey="date"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Date</SortableHeader></th>
+                            <th className={TABLE_TH}><SortableHeader sortKey="booked"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Booked</SortableHeader></th>
+                            <th className={TABLE_TH}><SortableHeader sortKey="attended" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Attended</SortableHeader></th>
+                            <th className={TABLE_TH}><SortableHeader sortKey="noShow"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>No-show</SortableHeader></th>
+                            <th className={TABLE_TH}><SortableHeader sortKey="rate"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Attendance</SortableHeader></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paged.map(r => (
+                            <tr key={r.classId} className="transition-colors">
+                                <td className={TABLE_TD}>
+                                    <p className="text-[14px] font-medium text-[var(--colors-text-primary)] leading-5 truncate">{r.name}</p>
+                                    <p className="text-[14px] font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{r.displayTime}</p>
+                                </td>
+                                <td className={cn(TABLE_TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{formatDate(r.dateISO)}</td>
+                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)]")}>{r.booked}</td>
+                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)]")}>{r.attended}</td>
+                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)]")}>{r.noShow}</td>
+                                <td className={TABLE_TD}><RateBadge rate={r.rate} /></td>
+                            </tr>
+                        ))}
+                        {paged.length === 0 && (
+                            <tr>
+                                <td colSpan={6} className="py-16 text-center text-[14px] text-[var(--colors-text-quaternary)]">
+                                    No classes in this period.
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
-        </Modal>
+        </ModalShell>
     );
 }
 
 // ─── Atoms ──────────────────────────────────────────────────────────────────
-
-function SummaryCell({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-    return (
-        <div className={cn(
-            "rounded-[10px] border-1 px-4 py-3 flex flex-col gap-0.5",
-            accent ? "bg-[#f5fffa] border-[#abefc6]" : "bg-white border-[var(--colors-border-secondary)]",
-        )}>
-            <p className="text-xs font-normal text-[var(--colors-text-quaternary)] leading-4 uppercase tracking-wider">{label}</p>
-            <p className="text-lg font-semibold text-[var(--colors-text-primary)] leading-7">{value}</p>
-        </div>
-    );
-}
 
 function RateBadge({ rate }: { rate: number | null }) {
     let tone: "On track" | "At risk" | "Pending";
@@ -231,9 +219,6 @@ function RateBadge({ rate }: { rate: number | null }) {
         </span>
     );
 }
-
-// Local SortableHeader removed — uses canonical `<SortableHeader>` from
-// `@/components/ui/SortableHeader`.
 
 function formatDate(iso: string): string {
     if (!iso) return "—";

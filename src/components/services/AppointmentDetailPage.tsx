@@ -37,7 +37,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter } from "next/navigation";
 import {
-    XClose, SlashCircle01, Trash01, Trash02, Trash04, Check, CheckCircle,
+    XClose, SlashCircle01, Trash01, Trash02, Check, CheckCircle,
     SearchMd, Eye, AlignLeft, ChevronLeft, RefreshCcw01, Star01,
     FilterLines, Shuffle01,
 } from "@untitledui/icons";
@@ -75,8 +75,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}>
             {indeterminate ? <span className="block w-2 h-[1.5px] bg-white" />
                 : checked ? <Check className="w-3 h-3" /> : null}
@@ -92,7 +92,7 @@ function Toggle({ on, onChange, disabled = false }: { on: boolean; onChange: (ne
             onClick={() => !disabled && onChange(!on)}
             className={cn(
                 "relative w-9 h-5 rounded-full p-0.5 flex items-center transition-colors shrink-0",
-                on ? "bg-[#658774] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
+                on ? "bg-[#164e52] justify-end" : "bg-[var(--colors-bg-tertiary)] justify-start",
                 disabled && "opacity-60 cursor-not-allowed",
             )}>
             <span className="w-4 h-4 rounded-full bg-white shadow-[0px_1px_3px_0px_rgba(16,24,40,0.1),0px_1px_2px_0px_rgba(16,24,40,0.06)]" />
@@ -128,25 +128,11 @@ function CancelAppointmentModal({ appointment, onConfirm, onCancel }: {
                         <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">Cancel this appointment?</h3>
                         <p className="text-[14px] text-[#475467] leading-[20px]">
                             <span className="font-medium text-[#344054]">{appointment.serviceName}</span> on {appointment.date} • {appointment.displayTime} will be cancelled.
-                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified.</>}
+                            {bookedCount > 0 && <> All <span className="font-medium text-[#344054]">{bookedCount} booked customer{bookedCount === 1 ? "" : "s"}</span> will be notified and automatically refunded.</>}
                         </p>
                     </div>
                 </div>
-                {bookedCount > 0 && (
-                    <>
-                        <div className="h-5 shrink-0" />
-                        <div className="h-px w-full bg-[#e4e7ec]" />
-                        <div className="flex items-center justify-between gap-4 px-6 py-5">
-                            <div className="flex flex-col gap-1 min-w-0">
-                                <p className="text-[16px] font-medium text-[#101828]">Refund class credit</p>
-                                <p className="text-[14px] text-[#475467] leading-[20px]">When the studio cancels an appointment, each customer is always refunded.</p>
-                            </div>
-                            {/* Locked ON — admin cancellation always grants a no-charge refund. */}
-                            <Toggle on={true} onChange={() => { /* locked */ }} disabled />
-                        </div>
-                    </>
-                )}
-                <div className={cn("flex gap-3 px-6 pb-6", bookedCount > 0 ? "pt-6" : "pt-5")}>
+                <div className="flex gap-3 px-6 pt-5 pb-6">
                     <Button variant="secondary-gray" size="lg" className="flex-1" onClick={onCancel}>Cancel</Button>
                     <Button variant="destructive" size="lg" className="flex-1" onClick={() => onConfirm(true)}>
                         Yes, cancel appointment
@@ -333,8 +319,8 @@ type RowActionKind = "cancel" | "remove" | "present";
 //     instructor variant ([/class/[classId]/page.tsx](src/app/class/[classId]/page.tsx#L344)).
 //
 // Renders in the Status column for Ongoing roster rows that haven't been
-// marked yet. Same DS `secondary-gray` chrome + `#067647` green
-// text/icon + `#ecfdf3` hover tint as the bulk "Mark present" button —
+// marked yet. Same DS `secondary-gray` chrome + `#164e52` green
+// text/icon + `#eff6f3` hover tint as the bulk "Mark present" button —
 // one attendance language across every detail page. Clicking flips the
 // cell to a `PresentBadge`. A no-show is auto-flagged by the system —
 // no explicit button.
@@ -345,8 +331,8 @@ function PresentButton({ onClick }: { onClick: () => void }) {
             variant="secondary-gray"
             size="sm"
             onClick={onClick}
-            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
-            leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+            className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]"
+            leftIcon={<CheckCircle className="w-4 h-4 text-[#164e52]" />}
         >
             Present
         </Button>
@@ -375,8 +361,8 @@ function BulkActionBar({ count, kind, onClear, onAction }: {
                         // bulk No-show — the class schedule has the same single-
                         // action bulk bar on Ongoing).
                         <Button variant="secondary-gray" size="sm"
-                            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
-                            leftIcon={<Check className="w-5 h-5 text-[#067647]" />}
+                            className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]"
+                            leftIcon={<Check className="w-5 h-5 text-[#164e52]" />}
                             onClick={() => onAction("present")}>
                             Mark present
                         </Button>
@@ -384,7 +370,7 @@ function BulkActionBar({ count, kind, onClear, onAction }: {
                     {kind === "upcoming" && (
                         <>
                             <Button variant="secondary-gray" size="sm"
-                                leftIcon={<SlashCircle01 className="w-5 h-5 text-[#667085]" />}
+                                leftIcon={<Trash01 className="w-5 h-5 text-[#667085]" />}
                                 onClick={() => onAction("cancel")}>
                                 Cancel
                             </Button>
@@ -481,7 +467,7 @@ function ReassignInstructorModal({ open, instructors, currentInstructorId, servi
                         <input
                             type="text" value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Search instructor"
-                            className="w-full h-10 pl-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            className="w-full h-10 pl-10 pr-3 border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#94aeaf] focus:border-[#457175] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </div>
                 </div>
@@ -501,7 +487,7 @@ function ReassignInstructorModal({ open, instructors, currentInstructorId, servi
                                         </div>
                                         <div className="flex justify-end">
                                             {current ? (
-                                                <span className="inline-flex items-center gap-1 text-[14px] font-medium text-[#658774]">
+                                                <span className="inline-flex items-center gap-1 text-[14px] font-medium text-[#164e52]">
                                                     <Check className="w-4 h-4" /> Current
                                                 </span>
                                             ) : (
@@ -691,7 +677,7 @@ function LeftPanel({ appointment, onCancelAppointment }: {
                                 Cancel pattern. */}
                             <button type="button" onClick={onCancelAppointment}
                                 className="flex items-center gap-2 w-full text-[16px] font-semibold leading-[24px] text-[#b42318] hover:text-[#912018] transition-colors">
-                                <span className="w-5 h-5 shrink-0"><Trash04 className="w-5 h-5" /></span>
+                                <span className="w-5 h-5 shrink-0"><Trash01 className="w-5 h-5" /></span>
                                 Cancel appointment
                             </button>
                         </div>
@@ -765,8 +751,8 @@ function ReviewFilterPill({ label, selected, onClick }: { label: string; selecte
             className={cn(
                 "h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors",
                 selected
-                    ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                    : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#aad4bd]",
+                    ? "bg-[#eff6f3] border-[#457175] text-[#344054]"
+                    : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#94aeaf]",
             )}>
             {label}
         </button>
@@ -853,8 +839,8 @@ function ReviewFilterPanel({ open, onClose, applied, onApply }: {
                                         className={cn(
                                             "h-9 px-3 rounded-[8px] border text-[14px] font-medium transition-colors inline-flex items-center gap-1.5",
                                             sel
-                                                ? "bg-[#e9fff3] border-[#7ba08c] text-[#344054]"
-                                                : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#aad4bd]",
+                                                ? "bg-[#eff6f3] border-[#457175] text-[#344054]"
+                                                : "bg-white border-[var(--colors-border-primary)] text-[#344054] hover:border-[#94aeaf]",
                                         )}>
                                         <Star01 className="w-4 h-4 text-[#fdb022]" fill="#fdb022" />
                                         {n} star
@@ -1399,7 +1385,7 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                 <div className="text-center">
                     <p className="text-[18px] font-semibold text-[#101828]">Appointment not found</p>
                     <button type="button" onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] text-[#658774] hover:underline">
+                        className="mt-4 text-[14px] text-[#164e52] hover:underline">
                         Go back
                     </button>
                 </div>
@@ -1489,8 +1475,8 @@ export function AppointmentDetailPage({ appointmentId, returnTo = "/admin/schedu
                             <XClose className="w-6 h-6 text-[#667085]" />
                         </button>
                         <div className="flex flex-col items-center gap-4 pt-6 px-6">
-                            <div className="w-12 h-12 rounded-full bg-[#ecfdf3] flex items-center justify-center shrink-0">
-                                <CheckCircle className="w-6 h-6 text-[#067647]" />
+                            <div className="w-12 h-12 rounded-full bg-[#eff6f3] flex items-center justify-center shrink-0">
+                                <CheckCircle className="w-6 h-6 text-[#164e52]" />
                             </div>
                             <div className="flex flex-col gap-1 text-center w-full">
                                 <h3 className="font-semibold text-[18px] leading-[28px] text-[#101828]">

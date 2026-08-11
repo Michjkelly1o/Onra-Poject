@@ -129,7 +129,7 @@ function CoverageCell({ coverage }: { coverage: AgreementCoverage | undefined })
     return (
         <div className="flex items-center gap-2">
             <div className="w-[64px] h-[6px] rounded-full bg-[#eaecf0] overflow-hidden shrink-0">
-                <div className="h-full bg-[#658774] transition-[width]" style={{ width: `${pct}%` }} />
+                <div className="h-full bg-[#457175] transition-[width]" style={{ width: `${pct}%` }} />
             </div>
             <span className="text-[14px] text-[#101828] shrink-0">{pct}%</span>
             {coverage.pendingReAccept > 0 && (
@@ -181,14 +181,14 @@ const MODAL_CONFIG: Record<RowActionKind, {
     confirmLabel: string;
 }> = {
     archive: {
-        iconBg: "bg-[#e9fff3]", IconComp: Archive, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: Archive, iconColor: "text-[#164e52]",
         titleSingle: "Archive this agreement?",
         titleBulk: n => `Archive ${n} agreements?`,
         description: subject => <>{subject} will be hidden from the default list. All signed records and version history are preserved — you can recover archived agreements at any time.</>,
         confirmLabel: "Archive",
     },
     recover: {
-        iconBg: "bg-[#e9fff3]", IconComp: RefreshCcw01, iconColor: "text-[#658774]",
+        iconBg: "bg-[#eff6f3]", IconComp: RefreshCcw01, iconColor: "text-[#164e52]",
         titleSingle: "Recover this agreement?",
         titleBulk: n => `Recover ${n} agreements?`,
         description: subject => <>{subject} will be restored to Active status and shown in the agreements list again.</>,
@@ -324,7 +324,7 @@ function BulkActionBar({ count, hasArchivable, hasRecoverable, onClear, onAction
                         </Button>
                     )}
                     {hasRecoverable && (
-                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#067647]" />} onClick={() => onAction("recover")}>
+                        <Button variant="secondary-gray" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("recover")}>
                             Recover
                         </Button>
                     )}
@@ -345,8 +345,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}>
             {indeterminate ? (
                 <span className="block w-2 h-[1.5px] bg-white" />
@@ -668,7 +668,7 @@ export default function AgreementsPage() {
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             placeholder="Search agreement..."
-                            className="h-10 w-full pl-[40px] pr-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                            className="h-10 w-full pl-[40px] pr-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#94aeaf] focus:border-[#457175] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                         />
                     </div>
 

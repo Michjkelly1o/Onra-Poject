@@ -166,7 +166,7 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
                     </div>
                     <div className="flex items-center gap-3 shrink-0 pt-0.5">
                         <span className="flex items-center gap-2 text-[14px] text-[var(--colors-text-quaternary)] whitespace-nowrap">
-                            <span className="size-2 rounded-full bg-[#17b26a]" /> Available spot
+                            <span className="size-2 rounded-full bg-[#164e52]" /> Available spot
                         </span>
                         <span className="flex items-center gap-2 text-[14px] text-[var(--colors-text-tertiary)] whitespace-nowrap">
                             <span className="size-2 rounded-full bg-[#f04438]" /> Blocked spot
@@ -222,7 +222,7 @@ export function SpotLayoutEditor({ capacity, onConfirm, confirmed }: SpotLayoutE
             <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                     <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-7">Spot layout</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5">
+                    <p className="text-[14px] text-[#475467] leading-5">
                         Define the number of rows and columns to generate the room&rsquo;s spot layout.
                     </p>
                 </div>

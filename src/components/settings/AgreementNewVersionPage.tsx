@@ -104,11 +104,11 @@ export function AgreementNewVersionPage({ agreementId }: { agreementId: string }
                     <div className="w-[300px] shrink-0 flex flex-col">
                         <div className="flex gap-4 h-[52px] items-center p-4 rounded-[12px] w-full bg-[#f5fffa]">
                             <div className="relative flex flex-col items-center shrink-0">
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#7ba08c]">
+                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]">
                                     1
                                 </div>
                             </div>
-                            <span className="text-[14px] font-semibold text-[#3b5446]">Agreement</span>
+                            <span className="text-[14px] font-semibold text-[#10373a]">Agreement</span>
                         </div>
                     </div>
 

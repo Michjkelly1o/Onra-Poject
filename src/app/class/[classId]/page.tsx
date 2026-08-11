@@ -70,6 +70,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type ClassBooking, type ClassSchedule, type ClassStatus } from "@/lib/store";
+import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
@@ -156,8 +157,8 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
             className={cn(
                 "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0",
                 (checked || indeterminate)
-                    ? "bg-[#658774] border-[#658774] text-white"
-                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#7ba08c]",
+                    ? "bg-[#164e52] border-[#164e52] text-white"
+                    : "bg-white border-[var(--colors-border-primary)] hover:border-[#457175]",
             )}
         >
             {indeterminate ? (
@@ -201,8 +202,8 @@ function BulkActionBar({ count, onClear, onPresent }: {
                         variant="secondary-gray"
                         size="sm"
                         onClick={onPresent}
-                        className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
-                        leftIcon={<CheckCircle className="w-5 h-5 text-[#067647]" />}
+                        className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]"
+                        leftIcon={<CheckCircle className="w-5 h-5 text-[#164e52]" />}
                     >
                         Mark present
                     </Button>
@@ -241,6 +242,7 @@ function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
 // ─── Left panel — admin chrome verbatim, Figma content ──────────────────────
 
 function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
+    const instructorImageUrl = useAppStore(s => s.staff.find(x => x.id === schedule.instructorId)?.imageUrl);
     const genderLabel = schedule.genderAccess === "female" ? "Female only"
         : schedule.genderAccess === "male" ? "Male only" : "All genders";
     const instructorShort = (() => {
@@ -263,7 +265,7 @@ function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
                     />
                 ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[36px] font-bold" style={{ color: "#3b5446" }}>
+                        <span className="text-[36px] font-bold" style={{ color: "#10373a" }}>
                             {schedule.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
                         </span>
                     </div>
@@ -313,10 +315,7 @@ function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
                         <div className="flex flex-col gap-1">
                             <p className="text-[14px] text-[#667085]">Instructor</p>
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
-                                    style={{ backgroundColor: schedule.instructorColor }}>
-                                    {schedule.instructorInitials}
-                                </div>
+                                <InstructorAvatar imageUrl={instructorImageUrl} initials={schedule.instructorInitials} color={schedule.instructorColor} size={24} />
                                 <p className="text-[16px] font-medium text-[#101828]">{instructorShort}</p>
                             </div>
                         </div>
@@ -338,8 +337,8 @@ function LeftPanel({ schedule }: { schedule: ClassSchedule }) {
  *  verbatim (white bg, `#d0d5dd` border, inset shadow, `#f9fafb` hover
  *  bg) so it matches every other secondary-gray button in the admin +
  *  instructor surfaces. Only the text + icon are overridden to the
- *  green palette (`#067647`), and the hover bg gets a mint tint
- *  (`#ecfdf3`) — same pattern admin's bulk "Mark present" button uses
+ *  green palette (`#164e52`), and the hover bg gets a mint tint
+ *  (`#eff6f3`) — same pattern admin's bulk "Mark present" button uses
  *  ([/schedule/[classId]/page.tsx:1596](src/app/schedule/[classId]/page.tsx#L1596)).
  *  Disabled state is handled by Button's built-in `opacity-50` so the
  *  green dims uniformly. */
@@ -350,8 +349,8 @@ function PresentButton({ disabled, onClick }: { disabled: boolean; onClick: () =
             size="sm"
             disabled={disabled}
             onClick={onClick}
-            className="text-[#067647] hover:text-[#067647] hover:bg-[#ecfdf3]"
-            leftIcon={<CheckCircle className="w-4 h-4 text-[#067647]" />}
+            className="text-[#164e52] hover:text-[#164e52] hover:bg-[#eff6f3]"
+            leftIcon={<CheckCircle className="w-4 h-4 text-[#164e52]" />}
         >
             Present
         </Button>
@@ -519,7 +518,7 @@ export default function InstructorClassDetailPage() {
                     <button
                         type="button"
                         onClick={() => router.push(returnTo)}
-                        className="mt-4 text-[14px] font-semibold text-[#658774] hover:text-[#3b5446]"
+                        className="mt-4 text-[14px] font-semibold text-[#164e52] hover:text-[#10373a]"
                     >
                         Back to my schedule
                     </button>

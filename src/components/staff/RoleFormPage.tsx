@@ -84,7 +84,7 @@ function StepRow({ index, label, active, done, isLast }: {
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#457175]"
                         : done
                             ? "bg-[var(--colors-secondary-600)] text-white"
                             : "bg-[var(--colors-bg-tertiary)] border-[1.5px] border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
@@ -97,7 +97,7 @@ function StepRow({ index, label, active, done, isLast }: {
             </div>
             <p className={cn(
                 "flex-1 text-[14px] leading-[20px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]",
+                active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {label}
             </p>
@@ -404,7 +404,7 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
                                     <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Grants per month</td>
                                     <td className="px-4 py-3">
                                         {gl.unlimited ? (
-                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Unlimited</span>
+                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52] text-[13px] font-medium">Unlimited</span>
                                         ) : (
                                             <NumberInput
                                                 value={gl.grants_per_month ?? 0}
@@ -432,7 +432,7 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
                                     <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Max grant value (AED)</td>
                                     <td className="px-4 py-3">
                                         {gl.unlimited ? (
-                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Unlimited</span>
+                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52] text-[13px] font-medium">Unlimited</span>
                                         ) : (
                                             <NumberInput
                                                 value={gl.max_grant_value_aed ?? 0}
@@ -460,7 +460,7 @@ function GrantLimitsSection({ form, set }: { form: FormValue; set: (patch: Parti
                                     <td className="px-4 py-3 text-[14px] text-[var(--colors-text-secondary)]">Remove unused grants</td>
                                     <td className="px-4 py-3">
                                         {gl.allow_remove_unused ? (
-                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647] text-[13px] font-medium">Enabled</span>
+                                            <span className="inline-flex items-center px-2 py-[2px] rounded-full bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52] text-[13px] font-medium">Enabled</span>
                                         ) : (
                                             <span className="text-[14px] text-[var(--colors-fg-quaternary)]">—</span>
                                         )}

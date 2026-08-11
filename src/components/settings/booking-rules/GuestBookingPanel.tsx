@@ -44,7 +44,7 @@ function Toggle({ on, onChange, ariaLabel, disabled = false }: {
             onClick={() => { if (!disabled) onChange(!on); }}
             className={cn(
                 "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                on ? "bg-[#658774]" : "bg-[#f2f4f7]",
+                on ? "bg-[#164e52]" : "bg-[#f2f4f7]",
                 disabled && "opacity-50 cursor-not-allowed",
             )}>
             <div className={cn(
@@ -59,7 +59,7 @@ function NumberField({ value, onChange, ariaLabel, suffixSlot }: {
     value: number; onChange: (next: number) => void; ariaLabel: string; suffixSlot?: React.ReactNode;
 }) {
     return (
-        <div className="flex items-stretch h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#aad4bd] focus-within:border-[#7ba08c] transition-all">
+        <div className="flex items-stretch h-10 w-full border-1 border-[#d0d5dd] rounded-[8px] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white overflow-hidden focus-within:ring-2 focus-within:ring-[#94aeaf] focus-within:border-[#457175] transition-all">
             <input
                 type="number"
                 min={0}
@@ -90,7 +90,7 @@ function ToggleCard({ title, subtitle, on, onChange, ariaLabel, children }: {
     return (
         <div className={cn(
             "rounded-[12px] border-1 px-4 py-3 flex flex-col gap-3 transition-colors",
-            on ? "border-[#7ba08c]" : "border-[#e4e7ec]",
+            on ? "border-[#457175]" : "border-[#e4e7ec]",
         )}>
             <div className="flex items-start gap-4">
                 <div className="flex-1 flex flex-col gap-1 min-w-0">

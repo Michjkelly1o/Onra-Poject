@@ -505,7 +505,7 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
             {/* Banner */}
             <div
                 className="relative h-[155px] shrink-0 overflow-hidden"
-                style={{ backgroundColor: cls.coverColor || "#aad4bd" }}
+                style={{ backgroundColor: cls.coverColor || "#94aeaf" }}
             >
                 {cls.coverImage ? (
                     <img
@@ -515,7 +515,7 @@ function ClassSidebar({ cls, avgRating, ratingCount }: {
                     />
                 ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[36px] font-bold" style={{ color: "#3b5446" }}>
+                        <span className="text-[36px] font-bold" style={{ color: "#10373a" }}>
                             {cls.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
                         </span>
                     </div>

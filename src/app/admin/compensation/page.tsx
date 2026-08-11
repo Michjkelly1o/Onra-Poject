@@ -454,7 +454,7 @@ export default function CompensationPage() {
                     <SearchMd className="absolute left-[12px] top-1/2 -translate-y-1/2 w-4 h-4 text-[#667085]" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                         placeholder="Search..."
-                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#aad4bd] focus:border-[#7ba08c] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
+                        className="h-10 w-full pl-[36px] pr-[14px] bg-white border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[#101828] placeholder:text-[#667085] focus:outline-none focus:ring-2 focus:ring-[#94aeaf] focus:border-[#457175] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                     />
                 </div>
                 {/* Toolbar order (client 2026-07-22 sweep): Locations →

@@ -104,7 +104,7 @@ function ChannelRow({ title, description, on, onToggle }: ChannelRowProps) {
 }
 
 /** Toggle switch — mirrors the existing booking-rules Toggle so the
- *  on-color (sage `#658774`) stays consistent with admin. */
+ *  on-color (brand teal `#164e52`) stays consistent with admin. */
 function Toggle({ on, onChange, ariaLabel }: {
     on: boolean;
     onChange: () => void;

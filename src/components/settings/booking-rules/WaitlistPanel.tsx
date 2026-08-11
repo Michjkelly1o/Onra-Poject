@@ -196,11 +196,11 @@ function NotifyViaPicker({ selected, onChange }: {
                     )}
                     {visibleChips.map(v => (
                         <span key={v}
-                            className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-[6px] border-1 border-[var(--colors-secondary-500)] bg-[#f5fffa] text-[13px] text-[#3b5446] leading-[18px] shrink-0">
+                            className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-[6px] border-1 border-[var(--colors-secondary-500)] bg-[#f5fffa] text-[13px] text-[#10373a] leading-[18px] shrink-0">
                             {NOTIFY_LABEL[v]}
                             <button type="button"
                                 onClick={e => { e.stopPropagation(); toggle(v); }}
-                                className="w-4 h-4 flex items-center justify-center text-[#3b5446] hover:text-[var(--colors-text-primary)]">
+                                className="w-4 h-4 flex items-center justify-center text-[#10373a] hover:text-[var(--colors-text-primary)]">
                                 <XClose className="w-3 h-3" />
                             </button>
                         </span>

@@ -84,7 +84,7 @@ function AgreementStatusBadge({ status }: { status: AgreementStatus }) {
     // Referral module uses for warnings (`#fedf89` / `#b54708`).
     const tone =
         status === "signed"
-            ? { bg: "bg-[#ecfdf3]", border: "border-[#abefc6]", text: "text-[#067647]" }
+            ? { bg: "bg-[#eff6f3]", border: "border-[#94aeaf]", text: "text-[#164e52]" }
         : status === "re_accept_due"
             ? { bg: "bg-[#fffaeb]", border: "border-[#fedf89]", text: "text-[#b54708]" }
         :   { bg: "bg-[#fef3f2]", border: "border-[#fecdca]", text: "text-[#b42318]" };

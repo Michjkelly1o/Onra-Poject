@@ -164,7 +164,7 @@ const MODAL_CONFIG: Record<ModalAction, {
 function PatternBanner({ kind }: { kind: ProductKind }) {
     const Icon = kind === "package" ? PackageIcon : CreditCard02;
     const tint = kind === "package"
-        ? { bg: "bg-[var(--brand-tertiary)]", fg: "text-[var(--colors-secondary-600)]", line: "#abefc6" }
+        ? { bg: "bg-[var(--brand-tertiary)]", fg: "text-[var(--colors-secondary-600)]", line: "#94aeaf" }
         : { bg: "bg-[#e0eaff]", fg: "text-[#3538cd]", line: "#c7d7fe" };
 
     return (
@@ -702,7 +702,7 @@ function DescriptionCard({ label, body }: { label: string; body: string }) {
             <p className="text-[16px] text-[var(--colors-text-primary)] leading-6 whitespace-pre-line">{shown}</p>
             {isTruncatable && (
                 <button type="button" onClick={() => setExpanded(p => !p)}
-                    className="self-start text-[14px] font-medium text-[var(--colors-secondary-600)] hover:text-[#4f6e5d] transition-colors">
+                    className="self-start text-[14px] font-medium text-[var(--colors-secondary-600)] hover:text-[#164e52] transition-colors">
                     {expanded ? "See less" : "See more"}
                 </button>
             )}
@@ -1054,7 +1054,7 @@ function CustomerAvatar({ customer }: { customer: Customer }) {
     }
     return (
         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[14px] font-semibold shrink-0"
-            style={{ backgroundColor: "#658774" }}>
+            style={{ backgroundColor: "#164e52" }}>
             {customer.initials}
         </div>
     );

@@ -36,8 +36,8 @@ import { cn } from "@/lib/utils";
 // (payroll), "Completed" (class / appointment), and "Signed" (agreement).
 
 const PALETTE = {
-    green:        "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
-    greenLight:   "bg-[var(--colors-secondary-50)] border-1 border-[#abefc6] text-[#067647]",       // Booked appointment variant
+    green:        "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
+    greenLight:   "bg-[var(--colors-secondary-50)] border-1 border-[#94aeaf] text-[#164e52]",       // Booked appointment variant
     gray:         "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     grayLight:    "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",       // Upcoming class detail variant
     grayDashed:   "bg-white border border-dashed border-[var(--colors-border-primary)] text-[var(--colors-text-quaternary)]", // "No plan" only
@@ -47,7 +47,7 @@ const PALETTE = {
     orange:       "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     purple:       "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
     indigo:       "bg-[#eef4ff] border-1 border-[#c7d7fe] text-[#3538cd]",
-    teal:         "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#3b5446]",       // Monthly pay-rate
+    teal:         "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#10373a]",       // Monthly pay-rate
 } as const;
 export type PaletteKey = keyof typeof PALETTE;
 

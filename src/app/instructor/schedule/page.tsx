@@ -123,7 +123,7 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 // ─── Category colors — same palette admin uses (verbatim) ───────────────────
 
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-    Pilates: { bg: "#e9fff3", border: "#658774", text: "#3b5446" },
+    Pilates: { bg: "#eff6f3", border: "#164e52", text: "#10373a" },
     Barre:   { bg: "#e9fbff", border: "#4b8c9a", text: "#1b4c56" },
     Yoga:    { bg: "#fff8e9", border: "#dc6803", text: "#7a2e0e" },
     default: { bg: "#f0ecff", border: "#7c5cbf", text: "#4a1fb8" },
@@ -811,6 +811,17 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, blockedTimes, 
     const currentTop = (currentMinutes * HOUR_HEIGHT) / 60;
     const showCurrentTime = currentMinutes > 0 && currentMinutes < (gridEndHour - gridStartHour) * 60;
 
+    // On load / day-change, scroll the grid so the orange "now" line sits ~⅓
+    // down the viewport (matches the admin schedule day view). Keyed on dateISO
+    // only so it never fights the user's scroll on minute re-renders.
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollTop = showCurrentTime ? Math.max(0, currentTop - el.clientHeight / 3) : 0;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dateISO]);
+
     if (dayClasses.length === 0) {
         return (
             <div className="relative flex-1" style={{ minHeight: 400 }}>
@@ -823,7 +834,7 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, blockedTimes, 
     }
 
     return (
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-6">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-hide px-6">
             <div className="flex" style={{ minHeight: gridHeight }}>
                 {/* Hour labels — admin's exact 64px-wide column + right-aligned text */}
                 <div className="w-16 shrink-0 flex flex-col">
@@ -960,6 +971,16 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
 
     const totalForWeek = cols.reduce((acc, col) => acc + classes.filter(c => c.dateISO === col.iso).length, 0);
 
+    // Scroll the week grid so the orange "now" line sits ~⅓ down the viewport on
+    // load / week-change (matches the admin schedule week view).
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollTop = showCurrentTime ? Math.max(0, currentTop - el.clientHeight / 3) : 0;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [weekStart]);
+
     return (
         <div className="flex flex-col overflow-hidden flex-1">
             {/* Day column headers — admin's exact: day name + 32px circle date (today filled green) */}
@@ -985,7 +1006,7 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
                 <div className="w-6 shrink-0" />
             </div>
 
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-6">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-hide px-6">
                 {totalForWeek === 0 ? (
                     <div className="relative" style={{ minHeight: 400 }}>
                         <ScheduleEmptyState

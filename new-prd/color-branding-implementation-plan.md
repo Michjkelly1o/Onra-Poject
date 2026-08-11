@@ -106,7 +106,25 @@ Surfaces + borders → warm JSON families; **text + white cards untouched**:
 
 Effect is intentionally subtle (warm borders + faint cream page behind crisp white cards).
 
-### ⬜ Phase B3 — Accents, charts, badges, QA (PENDING)
+### ✅ Phase B3 — Leftover hex sweep, charts, badges (DONE 2026-08-10, committed locally)
+Flipped every remaining hardcoded OLD-brand sage/mint hex → the new Rich blue
+green / Tranquil mint families (JSON exact), in 5 reviewable cluster commits
+(`c6df2afb` AI Agent · `f48e7816` admin/instructor/customer brand-green ·
+`c3036813` dark-sage `#3b5446`→`#10373a` · `c70f8ce3` Recharts · `a8b829a0`
+final accents + warm-grey helper text). Mapping used: `#658774`→`#164e52`,
+`#7ba08c`/`#79ab8a`/`#4f6e5d`/`#5b8270`→`#457175`/`#164e52`, `#aad4bd`→`#94aeaf`,
+`#c4edd6`/`#dcefe4`/`#e9fff3`→`#dcebe4`/`#eff6f3`, `#3b5446`/`#4c6a5a`/`#3f5b4c`→
+`#10373a`, chart `#92baa4`→`#90a099`, helper `#6e776f`→`#667085`. **Kept:** system
+success/warning/error greens (`#067647`/`#17b26a`/`#47b881`…), the `#a9c3b4`
+success border, and the distinct categorical chart series (cyan `#92d1de`, mauve
+`#b892ba`, amber `#f7b955`). `git grep` confirms **zero old sage/teal brand hex
+left in `src`** (the only two `#658774` matches are truthful history comments).
+Category palette: Pilates rebranded to teal; Barre (blue) + Yoga (amber) kept
+distinct. Embed wrapped in `<BrandTokens>` so it follows the live brand too.
+
+**Still open (optional polish, not blocking):**
+
+### ⬜ Phase B3-extra — Accents, info-surface, QA (OPTIONAL / PENDING)
 1. **Badge decisions.** Decide per badge type which become **brand teal** (e.g. Active /
    Completed brand-styled badges) vs stay **system** (true success green / warning /
    error). Currently brand-colored badges follow the secondary ramp; system badges use

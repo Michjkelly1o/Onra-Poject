@@ -1922,6 +1922,11 @@ export interface BrandingSettings {
     /** The HTML/JS snippet the admin pastes into their site to embed the
      *  Forma portal. Held as a single multi-line string. */
     embedCode:       string;
+    /** How far ahead the embedded schedule shows (client 2026-08-08).
+     *  Optional so pre-existing branding literals don't need it. */
+    embedWindow?:    "1w" | "2w" | "3w" | "1m";
+    /** Which branch the embed defaults to. "" / undefined = all locations. */
+    embedLocationId?: string;
 }
 
 // ─── Payments module (PRD 11 §7) ───────────────────────────────────────────
@@ -7281,6 +7286,20 @@ export const useAppStore = create<AppState>()(persist(
             const userFullName = u ? `${u.first_name} ${u.last_name}`.trim() : "";
             const attribution = cancelledBy
                 ?? (userFullName.length > 0 ? userFullName : "Alex Owen");
+            // Symmetric credit refund (studio cancellation always refunds).
+            // Every BOOKED seat that spent a plan credit (`planKindUsed` set)
+            // returns 1 credit to that customer's balance. Waitlisted seats
+            // never spent a credit, and unlimited members carry no counter, so
+            // both are naturally excluded (the numeric-guard below matches the
+            // deduction guard in `addClassBooking`).
+            const refundByCustomer = new Map<string, number>();
+            if (refundCredits) {
+                for (const b of stateBefore.classBookings) {
+                    if (b.classScheduleId === id && b.status === "booked" && b.planKindUsed) {
+                        refundByCustomer.set(b.customerId, (refundByCustomer.get(b.customerId) ?? 0) + 1);
+                    }
+                }
+            }
             set((state) => {
                 const now = new Date().toISOString();
                 return {
@@ -7317,6 +7336,14 @@ export const useAppStore = create<AppState>()(persist(
                             ? { ...b, refundCreditIssued: refundCredits }
                             : b
                     ),
+                    // Return the spent credit to each affected customer's usable
+                    // balance so `derivePlanBalances` shows it as available again.
+                    customers: refundByCustomer.size === 0
+                        ? state.customers
+                        : state.customers.map(c =>
+                            refundByCustomer.has(c.id) && typeof c.creditsRemaining === "number"
+                                ? { ...c, creditsRemaining: c.creditsRemaining + (refundByCustomer.get(c.id) ?? 0) }
+                                : c),
                 };
             });
             // Feed: surface in the notification center (PRD 12). Click-
@@ -12834,7 +12861,7 @@ export const useAppStore = create<AppState>()(persist(
         // v54 (2026-07-13): tertiaryColor re-anchored `#E9FFF3` → `#C4EDD6` so
         //   the seed matches the actual DS Button "primary" variant background
         //   (`bg-[var(--colors-secondary-200)]`). Before this bump, the admin form showed
-        //   `#E9FFF3` but the customer's Book class button rendered `#c4edd6`,
+        //   `#E9FFF3` but the customer's Book class button rendered `#dcebe4`,
         //   which read as "tertiary not connected" when scrubbed. Bump forces
         //   testers to reseed with the aligned value.
         // v55 (2026-07-13): customers seed re-anchored — 6 date_of_birth values

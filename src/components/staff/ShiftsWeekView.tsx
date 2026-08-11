@@ -104,7 +104,7 @@ function jsDayIndex(d: Date): number {
  *  matching the shift-picker chips. Falls back to green by name, else by
  *  index so any custom shift still reads as a distinct colour. */
 const SHIFT_PALETTE = [
-    { stripe: "#7ba08c", bg: "#f0faf3", border: "#dcefe3", name: "#101828", time: "#667085" }, // green
+    { stripe: "#457175", bg: "#f0faf3", border: "#dcefe3", name: "#101828", time: "#667085" }, // green
     { stripe: "#7cb9d6", bg: "#eef8fc", border: "#d8eef7", name: "#101828", time: "#667085" }, // blue
     { stripe: "#b89bd0", bg: "#f6f1fb", border: "#eaddf5", name: "#101828", time: "#667085" }, // purple
 ];
@@ -199,7 +199,7 @@ function DayAddShiftMenu({ staffBranchId, dayIdx, shifts, staffDayShiftIds, staf
             <button ref={btnRef} type="button" aria-label="Assign shift"
                 onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
                 className={cn(
-                    "mt-0.5 flex w-full items-center justify-center gap-1 rounded-[6px] border border-dashed border-[var(--colors-border-primary)] py-1 text-[12px] font-medium text-[var(--colors-text-quaternary)] transition-colors hover:border-[var(--colors-secondary-500)] hover:text-[#3b5446]",
+                    "mt-0.5 flex w-full items-center justify-center gap-1 rounded-[6px] border border-dashed border-[var(--colors-border-primary)] py-1 text-[12px] font-medium text-[var(--colors-text-quaternary)] transition-colors hover:border-[var(--colors-secondary-500)] hover:text-[#10373a]",
                     "opacity-0 group-hover/cell:opacity-100", open && "opacity-100",
                 )}>
                 <Plus className="size-3.5" /> Add

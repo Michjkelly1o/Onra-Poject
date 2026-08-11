@@ -253,7 +253,7 @@ export function IntegrationCard({ integration, onConnect, onView, onDisconnect }
                 <LogoTile integration={integration} size={36} />
                 <div className="flex flex-col gap-1 w-full pr-[88px]">
                     <p className="text-[16px] font-semibold text-[var(--colors-text-primary)] leading-6">{integration.name}</p>
-                    <p className="text-[14px] text-[#6e776f] leading-5">{integration.description}</p>
+                    <p className="text-[14px] text-[#667085] leading-5">{integration.description}</p>
                 </div>
                 <div className="absolute top-0 right-0">
                     <StatusBadge type="integration" status={connected ? "connected" : "disconnected"} size="sm" />
@@ -452,7 +452,7 @@ export function ViewModal({ integration, onDisconnect, onClose }: {
                 <ViewField
                     label="Status"
                     value="Connected"
-                    valueColor="text-[#079455]"
+                    valueColor="text-[#164e52]"
                 />
                 {cfg.accountFields.map(f => (
                     <ViewField key={f.label} label={f.label} value={f.value} />

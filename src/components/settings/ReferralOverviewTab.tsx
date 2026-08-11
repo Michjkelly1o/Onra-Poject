@@ -193,10 +193,10 @@ export function ReferralOverviewTab({ period }: { period: DateFilter }) {
                         <span className={cn(
                             "inline-flex items-center gap-1.5 px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1",
                             settings.programActive
-                                ? "bg-[#ecfdf3] border-[#abefc6] text-[#067647]"
+                                ? "bg-[#eff6f3] border-[#94aeaf] text-[#164e52]"
                                 : "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)]",
                         )}>
-                            <span className={cn("w-1.5 h-1.5 rounded-full", settings.programActive ? "bg-[#17b26a]" : "bg-[var(--colors-fg-quaternary)]")} />
+                            <span className={cn("w-1.5 h-1.5 rounded-full", settings.programActive ? "bg-[#164e52]" : "bg-[var(--colors-fg-quaternary)]")} />
                             {settings.programActive ? "Active" : "Paused"}
                         </span>
                     </div>

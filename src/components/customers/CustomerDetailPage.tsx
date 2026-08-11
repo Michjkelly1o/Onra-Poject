@@ -136,7 +136,7 @@ function parseCredits(label: string): number {
 
 function CustomerStatusBadge({ status }: { status: Customer["status"] }) {
     const styles: Record<Customer["status"], string> = {
-        active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        active: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         archived: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
     };
@@ -159,7 +159,7 @@ const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
 
 function PlanStatusBadge({ status }: { status: PlanStatus }) {
     const styles: Record<PlanStatus, string> = {
-        active: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+        active: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         expired: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
         frozen: "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
         // Amber for "waiting on us" — matches the pending-approval convention
@@ -1491,7 +1491,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                                                         <div className="flex items-center gap-2">
                                                                             <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{p.name}</span>
                                                                             {p.kind === "complimentary" && (
-                                                                                <span className="inline-flex items-center px-[8px] py-[1px] rounded-full text-[12px] font-medium bg-[#ecfdf3] border border-[#abefc6] text-[#067647]">
+                                                                                <span className="inline-flex items-center px-[8px] py-[1px] rounded-full text-[12px] font-medium bg-[#eff6f3] border border-[#94aeaf] text-[#164e52]">
                                                                                     Complimentary
                                                                                 </span>
                                                                             )}

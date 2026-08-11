@@ -117,8 +117,8 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                 {/* ── Left rail (single step) ────────────────────────── */}
                 <div className="w-[220px] shrink-0">
                     <div className="flex items-center gap-4 h-[52px] p-4 rounded-[12px] bg-[#f5fffa]">
-                        <div className="w-6 h-6 rounded-full bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c] flex items-center justify-center text-[14px] font-medium">1</div>
-                        <p className="flex-1 text-[14px] font-semibold text-[#3b5446] leading-[20px]">Referral information</p>
+                        <div className="w-6 h-6 rounded-full bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#457175] flex items-center justify-center text-[14px] font-medium">1</div>
+                        <p className="flex-1 text-[14px] font-semibold text-[#10373a] leading-[20px]">Referral information</p>
                     </div>
                 </div>
 
@@ -197,7 +197,7 @@ export default function EditReferralInformationPage({ returnTo = "/admin/setting
                     <div className="flex flex-col">
                         <div className="pt-6 px-6 flex flex-col gap-1">
                             <p className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Referral preview</p>
-                            <p className="text-[14px] text-[#6e776f] leading-5">This is how your referral will look like.</p>
+                            <p className="text-[14px] text-[#667085] leading-5">This is how your referral will look like.</p>
                         </div>
                         <div className="h-5" />
                         <div className="h-px bg-[var(--colors-bg-quaternary)]" />

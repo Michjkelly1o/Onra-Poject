@@ -10,7 +10,7 @@
 //   • Same Monday-first 42-cell grid via the shared `buildMonthGrid` util
 //     (the exact helper /admin/schedule's MonthView uses).
 //   • Same day-cell layout — MON…SUN header row, centered date circle
-//     (today gets the sage `#658774` fill), `min-h-[110px]` tiles, and the
+//     (today gets the brand teal `#164e52` fill), `min-h-[110px]` tiles, and the
 //     shared `ScheduleMorePill` "+N more" overflow affordance.
 //   • Same event card component — `ScheduleClassCard` size="xs" — so a
 //     time-off entry renders with the identical pill structure a class does.

@@ -271,9 +271,9 @@ const TYPE_CARDS: { value: PayRateType; label: string; subtitle: string; Icon: R
 const TYPE_BADGE_STYLE: Record<PayRateType, string> = {
     flat:    "bg-[#eff8ff] border-1 border-[#b2ddff] text-[#175cd3]",
     tiered:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
-    revenue: "bg-[#ecfdf3] border-1 border-[#abefc6] text-[#067647]",
+    revenue: "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     hybrid:  "bg-[#f4f3ff] border-1 border-[#d9d6fe] text-[#5925dc]",
-    monthly: "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#3b5446]",
+    monthly: "bg-[#f5fffa] border-1 border-[var(--colors-secondary-300)] text-[#10373a]",
 };
 const TYPE_PREVIEW_LABEL: Record<PayRateType, string> = {
     flat: "Flat", tiered: "Tiered", revenue: "% revenue", hybrid: "Hybrid", monthly: "Monthly",
@@ -504,7 +504,7 @@ function TieredRateSection({ form, set }: { form: FormValue; set: (patch: Partia
                     </div>
                     {/* Then instructor receives AED [Z] */}
                     <div className="flex items-center gap-2 w-full">
-                        <span className="px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[12px] font-medium text-[#067647] shrink-0">Then</span>
+                        <span className="px-2 py-[2px] rounded-full bg-[#eff6f3] border-1 border-[#94aeaf] text-[12px] font-medium text-[#164e52] shrink-0">Then</span>
                         <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">instructor receives</span>
                         <div className="flex-1 min-w-0">
                             <AedInput value={tier.aed === 0 ? "" : tier.aed} onChange={v => update(i, { aed: v === "" ? 0 : v })} placeholder="0" />
@@ -572,7 +572,7 @@ function HybridRateSection({ form, set }: { form: FormValue; set: (patch: Partia
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 w-full">
-                                <span className="px-2 py-[2px] rounded-full bg-[#ecfdf3] border-1 border-[#abefc6] text-[12px] font-medium text-[#067647] shrink-0">Then</span>
+                                <span className="px-2 py-[2px] rounded-full bg-[#eff6f3] border-1 border-[#94aeaf] text-[12px] font-medium text-[#164e52] shrink-0">Then</span>
                                 <span className="text-[14px] text-[var(--colors-text-tertiary)] shrink-0">instructor receives</span>
                                 <div className="flex-1 min-w-0">
                                     <AedInput value={form.hybridBonusPerCustomer} onChange={v => set({ hybridBonusPerCustomer: v })} placeholder="0" />
@@ -798,7 +798,7 @@ function StepRow({ index, label, active, done, isLast }: {
                 <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium",
                     active
-                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#7ba08c]"
+                        ? "bg-[var(--colors-secondary-600)] text-white shadow-[0_0_0_2px_white,0_0_0_4px_#457175]"
                         : done
                             ? "bg-[var(--colors-secondary-600)] text-white"
                             : "bg-[var(--colors-bg-tertiary)] border-[1.5px] border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
@@ -811,7 +811,7 @@ function StepRow({ index, label, active, done, isLast }: {
             </div>
             <p className={cn(
                 "flex-1 text-[14px] leading-[20px]",
-                active ? "font-semibold text-[#3b5446]" : "font-medium text-[var(--colors-text-quaternary)]",
+                active ? "font-semibold text-[#10373a]" : "font-medium text-[var(--colors-text-quaternary)]",
             )}>
                 {label}
             </p>

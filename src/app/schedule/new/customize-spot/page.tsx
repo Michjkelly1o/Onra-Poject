@@ -110,7 +110,7 @@ function BlockBar({ spotId, blocked, onBlock, onUnblock, onDismiss }: {
                 </button>
                 {blocked ? (
                     <button type="button" onClick={onUnblock}
-                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#3b5446] transition-colors">
+                        className="px-4 py-2 rounded-[8px] bg-[var(--colors-secondary-600)] text-white text-[14px] font-semibold hover:bg-[#10373a] transition-colors">
                         Unblock
                     </button>
                 ) : (
@@ -246,7 +246,7 @@ function CustomizeSpotInner() {
                         <div className="flex items-end justify-between">
                             <div className="flex flex-col gap-1">
                                 <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Customize area</p>
-                                <p className="text-[14px] text-[#6e776f]">Select spot to block or unblock.</p>
+                                <p className="text-[14px] text-[#667085]">Select spot to block or unblock.</p>
                             </div>
                             {/* Legend */}
                             <div className="flex items-center gap-4">
@@ -296,7 +296,7 @@ function CustomizeSpotInner() {
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-1">
                             <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Spot layout</p>
-                            <p className="text-[14px] text-[#6e776f]">
+                            <p className="text-[14px] text-[#667085]">
                                 Define the number of rows and columns to arrange the {roomCapacity} spots in this room.
                             </p>
                         </div>
