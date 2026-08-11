@@ -172,12 +172,13 @@ export function PerfSalesModal({ open, onClose, branchIds, period }: PerfModalPr
     );
 }
 
-// ─── 2. Revenue (period, accrual) ───────────────────────────────────────────
+// ─── 2. Revenue (period, recognized) ────────────────────────────────────────
 //
-// Rows = per-transaction ACCRUED revenue in the period. Membership revenue is
-// pro-rated across its duration; package revenue accrues per credit spent
-// (booking = recognition event). Replicates `accrueRevenue` in page.tsx so the
-// sum of the Accrued column equals the card.
+// Rows = the recognized-revenue line items from the SHARED engine
+// (recognizedRevenueLineItems), the same one the Revenue card sums — so the
+// Accrued column always equals the card. Packages + credit-based memberships
+// recognize per credit used; unlimited memberships straight-line over duration;
+// retail/private/recovery at sale.
 
 export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModalProps) {
     const router = useRouter();

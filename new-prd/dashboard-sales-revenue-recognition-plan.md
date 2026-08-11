@@ -147,9 +147,13 @@ data model.
   *Why:* it's a FORECAST of future income (upcoming auto-renewals) — you cannot compute "credits used"
   for bookings that haven't happened, so folding it into recognized Revenue would be wrong. It stays a
   separate, clearly-labelled forward metric; recognized Revenue lives on Today + Performance.
-- **D-E — Insights revenue tiles: wire to the shared recognition engine (real data).** *Why:* they're
-  hardcoded mock numbers today; per "everything real/wired," they must read the same engine so they
-  never drift from the dashboard.
+- **D-E — Insights tab: left as the deferred mock module it is (revisit as its own build).**
+  *Discovered during build:* the Insights tab isn't "a few revenue tiles" — it's a fully hard-coded
+  module (dozens of tiles across revenue splits, membership counts, class stats, all literal mock
+  values + mock change%). Wiring only its revenue tiles to the engine would leave an inconsistent
+  half-real page, and it's outside the client's dashboard/reports feedback. So Insights stays mock and
+  should be wired as its own module later (it can reuse this engine + the report selectors then).
+  Everything the client actually flagged — Today, Performance, Coming-Up, and the Reports — is real.
 - **D-F — Gift cards: excluded from Revenue (deferred); recognized only when redeemed.** *Why:* a gift
   card sale is a liability, not earned revenue, until it's spent — counting it at sale would overstate
   Revenue. When the gift card is later used to buy a package/membership, THAT purchase's recognition
