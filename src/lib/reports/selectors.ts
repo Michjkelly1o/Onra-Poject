@@ -36,9 +36,10 @@
 // The registry entries in Phase 2 reserve slots for those selector names
 // so nothing is forgotten.
 
-import type { AppState, Customer, CustomerTransaction } from "@/lib/store";
+import type { AppState, Customer, CustomerPlan, CustomerTransaction } from "@/lib/store";
 import { resolveLedger, signedAmount, type ResolvedLedgerRow } from "./refunds";
 import { derivePlanBalances } from "@/lib/plan-credits";
+import { customerSegment } from "@/lib/customer/segment";
 import type { IssuedGiftCard, GiftCardDesign } from "@/data/mock";
 
 // ─── Row shapes ────────────────────────────────────────────────────────────
@@ -332,17 +333,21 @@ export interface CustomerPlanRow {
 }
 
 /** Customer report row — full record joined with plan + visit + LTV.
- *  Field names mirror the underlying `Customer` store shape verbatim.
- *  The report registry translates `status` → "active/inactive/lapsed"
- *  labels + derives "new vs returning" at render time. */
+ *  Field names mirror the underlying `Customer` store shape verbatim, EXCEPT
+ *  `status`, which carries the derived wallet segment (Member/Inactive/Lead)
+ *  so the "Active vs Inactive" report means what it says. "New vs returning"
+ *  is derived at render time. Archived customers are excluded from the rows. */
 export interface CustomerRow {
     id: string;
     location: string;
     name: string;
     email: string;
     phone?: string;
-    /** active | inactive | archived — see Customer.status. */
-    status: Customer["status"];
+    /** Wallet segment label — "Member" | "Inactive" | "Lead" (client
+     *  2026-08-10). This report is literally "Active vs Inactive", so the
+     *  Status column now reflects the derived wallet segment, not the stored
+     *  archive flag. Archived customers are excluded from the row set entirely. */
+    status: "Member" | "Inactive" | "Lead";
     /** Membership / package name currently active (`Customer.planName`). */
     currentPlan?: string;
     /** membership | package | null. */
@@ -867,15 +872,32 @@ export function selectCustomers(state: AppState): CustomerRow[] {
     const nowMs = new Date().getTime();
     const dayMs = 24 * 60 * 60 * 1000;
 
-    return state.customers.map(c => {
+    // Wallet segment per customer — same selector the customers list uses, so
+    // the report's "Active vs Inactive" split agrees with the list tabs.
+    const plansByCustomer = new Map<string, CustomerPlan[]>();
+    for (const p of state.customerPlans) {
+        const arr = plansByCustomer.get(p.customerId);
+        if (arr) arr.push(p); else plansByCustomer.set(p.customerId, [p]);
+    }
+    const txnsByCustomer = new Map<string, CustomerTransaction[]>();
+    for (const t of state.customerTransactions) {
+        const arr = txnsByCustomer.get(t.customerId);
+        if (arr) arr.push(t); else txnsByCustomer.set(t.customerId, [t]);
+    }
+    const SEGMENT_LABEL = { member: "Member", inactive: "Inactive", lead: "Lead" } as const;
+
+    // Archived customers are a "place" outside the CRM — excluded from the
+    // report row set (history/past-period reports are unaffected).
+    return state.customers.filter(c => c.status !== "archived").map(c => {
         const total = visitCount.get(c.id) ?? 0;
+        const seg = customerSegment(c, plansByCustomer.get(c.id) ?? [], txnsByCustomer.get(c.id) ?? []);
         return {
             id: c.id,
             location: loc(c.branchId),
             name: `${c.firstName} ${c.lastName}`.trim(),
             email: c.email,
             phone: c.phone,
-            status: c.status,
+            status: SEGMENT_LABEL[seg],
             currentPlan: c.planName,
             planKind: c.planKind,
             joinedDateISO: c.createdAt,

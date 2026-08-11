@@ -740,10 +740,15 @@ export default function AdminDashboard() {
     // branch. `scopedCustomers` is already restricted so the id-set derived
     // from it naturally reflects the multi-branch pick.
     const scopedCustomerPlans = useMemo(() => {
-        if (!branchScopeIds) return customerPlans;
+        // Archived customers are a "place" outside the CRM (client 2026-08-10) —
+        // their plans never count toward membership / package KPIs, so the
+        // dashboard agrees with the customers list (which hides archived).
+        const archivedIds = new Set(customers.filter(c => c.status === "archived").map(c => c.id));
+        const base = customerPlans.filter(p => !archivedIds.has(p.customerId));
+        if (!branchScopeIds) return base;
         const inScope = new Set(scopedCustomers.map(c => c.id));
-        return customerPlans.filter(p => inScope.has(p.customerId));
-    }, [customerPlans, scopedCustomers, branchScopeIds]);
+        return base.filter(p => inScope.has(p.customerId));
+    }, [customerPlans, customers, scopedCustomers, branchScopeIds]);
     // Coming-up occupancy cards (private + recovery) read from these.
     const scopedAppointments = useMemo(() => {
         if (!branchScopeIds) return appointments;

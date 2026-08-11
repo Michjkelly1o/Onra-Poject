@@ -1236,10 +1236,14 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                     <div className="w-[320px] shrink-0 bg-white border border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                         <div className="flex flex-col flex-1">
                             <div className="flex flex-col gap-5 px-6 pt-6 pb-6 flex-1">
-                                {/* Avatar + status */}
+                                {/* Avatar + archive chip. There is no account-
+                                    status badge anymore (client 2026-08-10) —
+                                    "Active" is not information. Only archived
+                                    customers get a subtle chip; everyone else
+                                    shows nothing. */}
                                 <div className="flex items-start justify-between">
                                     <TableAvatar initials={customer.initials} imageUrl={customer.imageUrl} size={88} />
-                                    <CustomerStatusBadge status={customer.status} />
+                                    {customer.status === "archived" && <CustomerStatusBadge status="archived" />}
                                 </div>
 
                                 {/* Name + email */}

@@ -46,11 +46,18 @@ export function useInsightsMetrics(period: DateFilter): InsightsMetrics {
     const transactions = useAppStore(s => s.customerTransactions);
     const classBookings = useAppStore(s => s.classBookings);
     const classSchedules = useAppStore(s => s.classSchedules);
-    const customerPlans = useAppStore(s => s.customerPlans);
+    const customerPlansRaw = useAppStore(s => s.customerPlans);
+    const customers = useAppStore(s => s.customers);
     const packages = useAppStore(s => s.packages);
     const memberships = useAppStore(s => s.memberships);
 
     return useMemo(() => {
+        // Archived customers are a "place" outside the CRM (client 2026-08-10) —
+        // their plans never count toward active-membership / cancellation
+        // surfaces. Exclude them up front so every count below agrees with the
+        // customers list (which hides archived).
+        const archivedIds = new Set(customers.filter(c => c.status === "archived").map(c => c.id));
+        const customerPlans = customerPlansRaw.filter(p => !archivedIds.has(p.customerId));
         const { from, to } = dateFilterToRange(period);
         const fromMs = from.getTime();
         const toMs = to.getTime();
@@ -191,5 +198,5 @@ export function useInsightsMetrics(period: DateFilter): InsightsMetrics {
         ];
 
         return { finance, memberships: membershipsTab, classes: classesTab };
-    }, [transactions, classBookings, classSchedules, customerPlans, packages, memberships, period]);
+    }, [transactions, classBookings, classSchedules, customerPlansRaw, customers, packages, memberships, period]);
 }
