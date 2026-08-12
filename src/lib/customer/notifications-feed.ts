@@ -13,12 +13,12 @@
 // shared seed; version-guarded (bump to re-seed).
 
 import { useSyncExternalStore } from "react";
-import { customerNotificationSink, useAppStore } from "@/lib/store";
+import { customerNotificationSink, customerAnnouncementSink, useAppStore } from "@/lib/store";
 import { to12h } from "./dates";
 import { DEMO_MEMBER_ID } from "./context";
 import { getAuthSession } from "./auth";
 
-export type NotifTab = "bookings" | "payments";
+export type NotifTab = "bookings" | "payments" | "updates";
 export type NotifEvent =
     | "booking_confirmed"
     | "spot_available"
@@ -31,9 +31,11 @@ export type NotifEvent =
     // ── Freeze policy v2 Phase 4 (client 2026-07-20) ────────────────
     | "membership_frozen"
     | "membership_reactivated"
-    | "freeze_reminder";
+    | "freeze_reminder"
+    // ── Marketing rework (2026-08) — Studio announcements ───────────
+    | "announcement";
 
-export type NotifRelatedType = "booking" | "appointment" | "plan" | "product" | "payment_method";
+export type NotifRelatedType = "booking" | "appointment" | "plan" | "product" | "payment_method" | "marketing";
 
 export interface CustomerNotification {
     id: string;
@@ -52,7 +54,8 @@ export interface CustomerNotification {
 
 const KEY = "onra-customer-notifications";
 // Bump to re-seed the demo feed (clears live-appended + read state).
-const VERSION = 2;
+// v3 — adds the Studio-announcements "Updates" rows (marketing rework).
+const VERSION = 3;
 
 let feed: CustomerNotification[] = [];
 let hydrated = false;
@@ -163,6 +166,35 @@ function seedFeed(): CustomerNotification[] {
                 relatedId: pkg.id,
             });
         }
+
+        // Studio announcements → "Updates" tab. Pushed only to members opted
+        // into BOTH the Push channel AND the Studio-announcements topic
+        // (mirrors the store's dispatch gate), scoped to the member's branch,
+        // and only while within the show-until date.
+        const viewer = st.customers.find((c) => c.id === DEMO_MEMBER_ID);
+        if (viewer?.marketingChannelPush && viewer?.marketingTopicStudioAnnouncements) {
+            const nowMs = Date.now();
+            st.marketingItems
+                .filter((m) => m.type === "announcement" && m.status === "active")
+                .filter((m) => !m.expiry_date || new Date(m.expiry_date).getTime() >= nowMs)
+                .filter((m) => {
+                    const ids = m.branch_ids ?? [];
+                    return ids.length === 0 || (viewer.branchId ? ids.includes(viewer.branchId) : true);
+                })
+                .forEach((m, i) => {
+                    out.push({
+                        id: `cn_seed_ann_${m.id}`,
+                        tab: "updates",
+                        event: "announcement",
+                        title: m.title,
+                        message: m.short_description,
+                        createdAtISO: iso((3 + i) * hr),
+                        isRead: false,
+                        relatedType: "marketing",
+                        relatedId: m.id,
+                    });
+                });
+        }
     }
 
     // Simulated failed-payment reminder → Payment methods.
@@ -272,4 +304,23 @@ customerNotificationSink.emit = ({ customerId, event, title, message, relatedTyp
     // in their own module.
     const feedRelatedType: NotifRelatedType = relatedType === "customer_plan" ? "plan" : relatedType;
     addCustomerNotification({ tab: "bookings", event, title, message, relatedType: feedRelatedType, relatedId });
+};
+
+// Studio announcement broadcast → the "Updates" tab, gated per-viewer by the
+// same consent rule as the seed (Push channel + Studio-announcements topic) +
+// branch scope. Fires PushNotificationToasts automatically when push is on.
+customerAnnouncementSink.emit = ({ id, title, message, branchIds }) => {
+    const viewerId = getAuthSession().customerId ?? DEMO_MEMBER_ID;
+    let st: ReturnType<typeof useAppStore.getState> | null = null;
+    try {
+        st = useAppStore.getState();
+    } catch {
+        st = null;
+    }
+    const viewer = st?.customers.find((c) => c.id === viewerId);
+    if (!viewer?.marketingChannelPush || !viewer?.marketingTopicStudioAnnouncements) return;
+    const ids = branchIds ?? [];
+    const branchOk = ids.length === 0 || (viewer.branchId ? ids.includes(viewer.branchId) : true);
+    if (!branchOk) return;
+    addCustomerNotification({ tab: "updates", event: "announcement", title, message, relatedType: "marketing", relatedId: id });
 };

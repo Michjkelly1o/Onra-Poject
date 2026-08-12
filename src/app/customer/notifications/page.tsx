@@ -22,11 +22,12 @@ import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { SearchEmptyState } from "@/components/customer/home/SearchEmptyState";
 import { NotificationRow } from "@/components/customer/notifications/NotificationRow";
 
-type Tab = "all" | "bookings" | "payments";
+type Tab = "all" | "bookings" | "payments" | "updates";
 const TABS: { id: Tab; label: string }[] = [
     { id: "all", label: "All" },
     { id: "bookings", label: "Bookings" },
     { id: "payments", label: "Payments" },
+    { id: "updates", label: "Updates" },
 ];
 
 // Persist the active tab across detail round-trips (module cache).
@@ -66,6 +67,8 @@ function routeFor(n: CustomerNotification): string {
             return "/customer/products";
         case "payment_method":
             return "/customer/profile/payment-methods";
+        case "marketing":
+            return n.relatedId ? `/customer/marketing/${n.relatedId}` : "/customer";
         default:
             return "/customer/bookings";
     }

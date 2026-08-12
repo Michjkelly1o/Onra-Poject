@@ -7,7 +7,7 @@
 // A feed row: a 40px featured-icon tile (event-driven glyph) + title + relative
 // time + message, with a brand-green unread dot. Tapping marks read + deep-links.
 
-import { BankNote01, CalendarCheck02, CalendarMinus02, RefreshCcw02, Snowflake01 } from "@untitledui/icons";
+import { BankNote01, CalendarCheck02, CalendarMinus02, RefreshCcw02, Snowflake01, Announcement01 } from "@untitledui/icons";
 import type { ComponentType, SVGProps } from "react";
 import type { CustomerNotification, NotifEvent } from "@/lib/customer/notifications-feed";
 
@@ -25,6 +25,7 @@ const ICON_FOR: Record<NotifEvent, ComponentType<SVGProps<SVGSVGElement>>> = {
     membership_frozen: Snowflake01,
     membership_reactivated: RefreshCcw02,
     freeze_reminder: Snowflake01,
+    announcement: Announcement01,
 };
 
 export function NotificationRow({

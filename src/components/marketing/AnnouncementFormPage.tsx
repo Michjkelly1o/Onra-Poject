@@ -54,6 +54,7 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
     const updateMarketingItem = useAppStore(s => s.updateMarketingItem);
     const showToast           = useAppStore(s => s.showToast);
     const branches            = useAppStore(s => s.branches);
+    const customers           = useAppStore(s => s.customers);
 
     const [step, setStep] = useState(1);
     const [form, setForm] = useState<MarketingFormData>({
@@ -133,7 +134,14 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                 click_count: 0,
                 conversion_count: 0,
             });
-            showToast("Announcement published", `${fields.title} is now live.`, "success", "check");
+            // Delivered count — customers in scope opted into BOTH the Push
+            // channel AND the Studio-announcements topic (the dispatch gate).
+            const reached = customers.filter(c =>
+                c.status !== "archived"
+                && c.marketingChannelPush && c.marketingTopicStudioAnnouncements
+                && (branchIds.length === 0 || (c.branchId ? branchIds.includes(c.branchId) : true)),
+            ).length;
+            showToast("Announcement published", `Sent to ${reached} customer${reached === 1 ? "" : "s"}.`, "success", "check");
             router.push(`/announcements/${newId}`);
         }
     }

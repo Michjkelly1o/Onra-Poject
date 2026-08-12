@@ -1193,6 +1193,15 @@ export const customerNotificationSink: {
           }) => void);
 } = { emit: null };
 
+// Broadcast bridge for Studio announcements (marketing rework 2026-08). The
+// store owns publishing but can't import the customer notification feed (that
+// module imports the store), so a published announcement fires through this
+// sink. The feed-side handler applies the per-viewer consent gate (Push
+// channel + Studio-announcements topic) + branch scope before it surfaces.
+export const customerAnnouncementSink: {
+    emit: null | ((a: { id: string; title: string; message: string; branchIds: string[] }) => void);
+} = { emit: null };
+
 export interface ClassBooking {
     id: string;
     classScheduleId: string;
@@ -10301,7 +10310,20 @@ export const useAppStore = create<AppState>()(persist(
             created_at: input.created_at ?? new Date().toISOString(),
         };
         set(state => ({ marketingItems: [...state.marketingItems, next] }));
-        get().recordAudit("Created marketing campaign", "marketing", id, next.title);
+        get().recordAudit(
+            next.type === "announcement" ? "Published announcement" : "Created marketing campaign",
+            "marketing", id, next.title,
+        );
+        // Publishing an active announcement pushes it to opted-in customers
+        // (consent gate applied feed-side). Campaign send lands in Phase 3.
+        if (next.type === "announcement" && next.status === "active") {
+            customerAnnouncementSink.emit?.({
+                id: next.id,
+                title: next.title,
+                message: next.short_description,
+                branchIds: next.branch_ids ?? [],
+            });
+        }
         return id;
     },
     updateMarketingItem: (id, patch) => {
