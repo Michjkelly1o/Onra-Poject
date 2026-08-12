@@ -727,7 +727,9 @@ export function selectBookings(state: AppState): BookingRow[] {
             creditOutcome,
             charge,
             paymentStatus,
-            cancelledAtISO: b.cancelledAt ? b.cancelledAt.slice(0, 10) : "",
+            // No-show rows have no cancel timestamp — fall back to the class
+            // date so the date filter still scopes them (else they'd bypass it).
+            cancelledAtISO: b.cancelledAt ? b.cancelledAt.slice(0, 10) : (sched?.dateISO ?? ""),
             salesChannel:   SOURCE_LABEL[b.bookingSource ?? "customer_portal"] ?? "Online",
             branchId:       b.branchId,
             location:       loc(b.branchId),

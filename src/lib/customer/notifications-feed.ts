@@ -13,7 +13,7 @@
 // shared seed; version-guarded (bump to re-seed).
 
 import { useSyncExternalStore } from "react";
-import { customerNotificationSink, customerAnnouncementSink, customerCampaignSink, useAppStore } from "@/lib/store";
+import { customerNotificationSink, useAppStore, type MarketingItem, type Customer } from "@/lib/store";
 import { to12h } from "./dates";
 import { DEMO_MEMBER_ID } from "./context";
 import { getAuthSession } from "./auth";
@@ -55,8 +55,9 @@ export interface CustomerNotification {
 
 const KEY = "onra-customer-notifications";
 // Bump to re-seed the demo feed (clears live-appended + read state).
-// v4 — adds Studio-announcement + Campaign "Updates" rows (marketing rework).
-const VERSION = 4;
+// v5 — marketing notifications (announcements + campaigns) are now LIVE-derived
+// from `marketingItems` in the hook, so the seeded feed no longer carries them.
+const VERSION = 5;
 
 /** The viewer's opt-in flag for a campaign topic. */
 function optedIntoTopic(
@@ -69,6 +70,64 @@ function optedIntoTopic(
         case "promo_code_offers": return !!viewer.marketingTopicPromoCodeOffers;
         default:                  return true;
     }
+}
+
+// ── Live-derived marketing notifications ─────────────────────────────────────
+// Marketing rows aren't stored in the feed — they're derived from the LIVE
+// `marketingItems` slice every render, so a campaign/announcement created in
+// the admin appears in the customer bell immediately (real sync), and hides the
+// moment it's archived or past its show-until. Read state persists per-id.
+const READ_KEY = "onra-customer-notif-read";
+let readMarketingIds = new Set<string>();
+let readHydrated = false;
+function hydrateRead() {
+    if (readHydrated || typeof window === "undefined") return;
+    readHydrated = true;
+    try {
+        const raw = window.localStorage.getItem(READ_KEY);
+        readMarketingIds = new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch { readMarketingIds = new Set(); }
+}
+function persistRead() {
+    try { window.localStorage.setItem(READ_KEY, JSON.stringify(Array.from(readMarketingIds))); } catch { /* ignore */ }
+}
+
+/** Every marketing item the viewer should see in their bell right now, gated by
+ *  the SAME consent rule the store dispatches with (Push channel + the item's
+ *  topic) + branch scope. Announcements respect their show-until; sent campaigns
+ *  persist. Read state comes from the per-id read set. */
+function deriveMarketingNotifications(items: MarketingItem[], viewer: Customer | undefined): CustomerNotification[] {
+    if (!viewer?.marketingChannelPush) return [];
+    hydrateRead();
+    const nowMs = Date.now();
+    const branchOk = (m: MarketingItem) => {
+        const ids = m.branch_ids ?? [];
+        return ids.length === 0 || (viewer.branchId ? ids.includes(viewer.branchId) : true);
+    };
+    const out: CustomerNotification[] = [];
+    for (const m of items) {
+        if (m.status !== "active" || !branchOk(m)) continue;
+        if (m.type === "announcement") {
+            if (!viewer.marketingTopicStudioAnnouncements) continue;
+            if (m.expiry_date && new Date(m.expiry_date).getTime() < nowMs) continue;
+            const id = `cn_ann_${m.id}`;
+            out.push({ id, tab: "updates", event: "announcement", title: m.title, message: m.short_description,
+                createdAtISO: m.publish_date ?? m.created_at, isRead: readMarketingIds.has(id), relatedType: "marketing", relatedId: m.id });
+        } else if (m.type === "campaign" && m.delivery_status === "sent") {
+            if (!optedIntoTopic(viewer, m.topic)) continue;
+            const id = `cn_camp_${m.id}`;
+            out.push({ id, tab: "updates", event: "campaign", title: m.title, message: m.short_description,
+                createdAtISO: m.sent_at ?? m.publish_date ?? m.created_at, isRead: readMarketingIds.has(id), relatedType: "marketing", relatedId: m.id });
+        }
+    }
+    return out;
+}
+function markMarketingRead(id: string) {
+    hydrateRead();
+    if (readMarketingIds.has(id)) return;
+    readMarketingIds = new Set(readMarketingIds).add(id);
+    persistRead();
+    emit();
 }
 
 let feed: CustomerNotification[] = [];
@@ -181,60 +240,9 @@ function seedFeed(): CustomerNotification[] {
             });
         }
 
-        // Studio announcements → "Updates" tab. Pushed only to members opted
-        // into BOTH the Push channel AND the Studio-announcements topic
-        // (mirrors the store's dispatch gate), scoped to the member's branch,
-        // and only while within the show-until date.
-        const viewer = st.customers.find((c) => c.id === DEMO_MEMBER_ID);
-        if (viewer?.marketingChannelPush && viewer?.marketingTopicStudioAnnouncements) {
-            const nowMs = Date.now();
-            st.marketingItems
-                .filter((m) => m.type === "announcement" && m.status === "active")
-                .filter((m) => !m.expiry_date || new Date(m.expiry_date).getTime() >= nowMs)
-                .filter((m) => {
-                    const ids = m.branch_ids ?? [];
-                    return ids.length === 0 || (viewer.branchId ? ids.includes(viewer.branchId) : true);
-                })
-                .forEach((m, i) => {
-                    out.push({
-                        id: `cn_seed_ann_${m.id}`,
-                        tab: "updates",
-                        event: "announcement",
-                        title: m.title,
-                        message: m.short_description,
-                        createdAtISO: iso((3 + i) * hr),
-                        isRead: false,
-                        relatedType: "marketing",
-                        relatedId: m.id,
-                    });
-                });
-        }
-
-        // Sent campaigns → also "Updates". Gated by the Push channel + the
-        // campaign's TOPIC + branch scope. Campaigns are a one-time send (no
-        // show-until), so no expiry check.
-        if (viewer?.marketingChannelPush) {
-            st.marketingItems
-                .filter((m) => m.type === "campaign" && m.delivery_status === "sent")
-                .filter((m) => optedIntoTopic(viewer, m.topic))
-                .filter((m) => {
-                    const ids = m.branch_ids ?? [];
-                    return ids.length === 0 || (viewer.branchId ? ids.includes(viewer.branchId) : true);
-                })
-                .forEach((m, i) => {
-                    out.push({
-                        id: `cn_seed_camp_${m.id}`,
-                        tab: "updates",
-                        event: "campaign",
-                        title: m.title,
-                        message: m.short_description,
-                        createdAtISO: iso((6 + i) * hr),
-                        isRead: false,
-                        relatedType: "marketing",
-                        relatedId: m.id,
-                    });
-                });
-        }
+        // (Marketing notifications — announcements + sent campaigns — are
+        // LIVE-derived in `useCustomerNotifications` from `marketingItems`, not
+        // seeded here, so admin-created items appear in the bell immediately.)
     }
 
     // Simulated failed-payment reminder → Payment methods.
@@ -290,6 +298,8 @@ export function addCustomerNotification(input: Omit<CustomerNotification, "id" |
 }
 
 export function markNotifRead(id: string): void {
+    // Marketing rows are derived (not in `feed`) → route to the read set.
+    if (id.startsWith("cn_ann_") || id.startsWith("cn_camp_")) { markMarketingRead(id); return; }
     hydrate();
     feed = feed.map((n) => (n.id === id ? { ...n, isRead: true } : n));
     emit();
@@ -299,6 +309,20 @@ export function markNotifRead(id: string): void {
 export function markAllNotifRead(tab?: NotifTab): void {
     hydrate();
     feed = feed.map((n) => (!tab || n.tab === tab ? { ...n, isRead: true } : n));
+    // The Updates tab's marketing rows are derived → mark them via the read set.
+    if (!tab || tab === "updates") {
+        hydrateRead();
+        let st: ReturnType<typeof useAppStore.getState> | null = null;
+        try { st = useAppStore.getState(); } catch { st = null; }
+        if (st) {
+            const viewerId = getAuthSession().customerId ?? DEMO_MEMBER_ID;
+            const viewer = st.customers.find((c) => c.id === viewerId);
+            const next = new Set(readMarketingIds);
+            deriveMarketingNotifications(st.marketingItems, viewer).forEach((n) => next.add(n.id));
+            readMarketingIds = next;
+            persistRead();
+        }
+    }
     emit();
 }
 
@@ -314,7 +338,15 @@ function snapshot(): CustomerNotification[] {
 }
 
 export function useCustomerNotifications(): CustomerNotification[] {
-    return useSyncExternalStore(subscribe, snapshot, () => feed);
+    const stored = useSyncExternalStore(subscribe, snapshot, () => feed);
+    // Live-derive marketing rows from the store so admin-created campaigns /
+    // announcements appear instantly (reactive to `marketingItems`).
+    const marketingItems = useAppStore((s) => s.marketingItems);
+    const customers = useAppStore((s) => s.customers);
+    const viewerId = getAuthSession().customerId ?? DEMO_MEMBER_ID;
+    const viewer = customers.find((c) => c.id === viewerId);
+    const marketing = deriveMarketingNotifications(marketingItems, viewer);
+    return [...marketing, ...stored].sort((a, b) => b.createdAtISO.localeCompare(a.createdAtISO));
 }
 /** Unread count (for the header bell badge). */
 export function useUnreadNotifCount(): number {
@@ -346,39 +378,8 @@ customerNotificationSink.emit = ({ customerId, event, title, message, relatedTyp
     addCustomerNotification({ tab: "bookings", event, title, message, relatedType: feedRelatedType, relatedId });
 };
 
-// Studio announcement broadcast → the "Updates" tab, gated per-viewer by the
-// same consent rule as the seed (Push channel + Studio-announcements topic) +
-// branch scope. Fires PushNotificationToasts automatically when push is on.
-customerAnnouncementSink.emit = ({ id, title, message, branchIds }) => {
-    const viewerId = getAuthSession().customerId ?? DEMO_MEMBER_ID;
-    let st: ReturnType<typeof useAppStore.getState> | null = null;
-    try {
-        st = useAppStore.getState();
-    } catch {
-        st = null;
-    }
-    const viewer = st?.customers.find((c) => c.id === viewerId);
-    if (!viewer?.marketingChannelPush || !viewer?.marketingTopicStudioAnnouncements) return;
-    const ids = branchIds ?? [];
-    const branchOk = ids.length === 0 || (viewer.branchId ? ids.includes(viewer.branchId) : true);
-    if (!branchOk) return;
-    addCustomerNotification({ tab: "updates", event: "announcement", title, message, relatedType: "marketing", relatedId: id });
-};
-
-// Campaign send → the "Updates" tab, gated by the Push channel + the campaign's
-// TOPIC + branch scope.
-customerCampaignSink.emit = ({ id, title, message, branchIds, topic }) => {
-    const viewerId = getAuthSession().customerId ?? DEMO_MEMBER_ID;
-    let st: ReturnType<typeof useAppStore.getState> | null = null;
-    try {
-        st = useAppStore.getState();
-    } catch {
-        st = null;
-    }
-    const viewer = st?.customers.find((c) => c.id === viewerId);
-    if (!viewer?.marketingChannelPush || !optedIntoTopic(viewer, topic)) return;
-    const ids = branchIds ?? [];
-    const branchOk = ids.length === 0 || (viewer.branchId ? ids.includes(viewer.branchId) : true);
-    if (!branchOk) return;
-    addCustomerNotification({ tab: "updates", event: "campaign", title, message, relatedType: "marketing", relatedId: id });
-};
+// NB: marketing pushes (announcements + campaigns) are no longer appended via a
+// sink — they're LIVE-derived in `useCustomerNotifications` from `marketingItems`
+// (see `deriveMarketingNotifications`), which keeps the bell in real sync with
+// what the admin creates/archives. The store's announcement/campaign sinks stay
+// unregistered (their emit calls no-op).

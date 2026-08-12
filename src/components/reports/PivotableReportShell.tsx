@@ -124,7 +124,9 @@ function resolveDateFilter(f: DateFilter | undefined): DateRangeISO {
         return { fromISO: iso(first), toISO: iso(last), label: L };
     }
     if (L === "Last 12 months") {
-        const from = new Date(today.getFullYear() - 1, today.getMonth() + 1, 1);
+        // Exactly 12 months back from today (not first-of-next-month a year ago),
+        // so the label matches the range and early data isn't clipped.
+        const from = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
         return { fromISO: iso(from), toISO: iso(today), label: L };
     }
     const firstThisYear = new Date(today.getFullYear(), 0, 1);

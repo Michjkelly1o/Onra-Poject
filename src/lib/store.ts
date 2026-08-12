@@ -10301,20 +10301,13 @@ export const useAppStore = create<AppState>()(persist(
             next.type === "announcement" ? "Published announcement" : "Created marketing campaign",
             "marketing", id, next.title,
         );
-        // Publishing an active announcement pushes it to opted-in customers
-        // (consent gate applied feed-side).
-        if (next.type === "announcement" && next.status === "active") {
-            customerAnnouncementSink.emit?.({
-                id: next.id,
-                title: next.title,
-                message: next.short_description,
-                branchIds: next.branch_ids ?? [],
-            });
-        }
-        // Sending a campaign pushes it to its audience (consent-gated) AND
-        // records the send in `marketingCampaignStats` — the single write-path
-        // that makes Campaign Performance + Insights + Dashboard reflect real
-        // sends. `sends` = the exact reach the form previewed.
+        // Marketing pushes (announcements + campaigns) surface on the customer
+        // side by being LIVE-derived from `marketingItems` (customer feed's
+        // `deriveMarketingNotifications` + the "What's on" banner), so no push
+        // is emitted here. Sending a campaign additionally records the send in
+        // `marketingCampaignStats` — the write-path that makes Campaign
+        // Performance + Insights + Dashboard reflect real sends. `sends` = the
+        // exact reach the form previewed.
         if (next.type === "campaign" && next.delivery_status === "sent") {
             const st = get();
             const sends = campaignRecipients(
@@ -10345,10 +10338,6 @@ export const useAppStore = create<AppState>()(persist(
                 branch_id: next.branch_ids?.[0] ?? DEFAULT_BRANCH_ID,
             };
             set(state => ({ marketingCampaignStats: [...state.marketingCampaignStats, statRow] }));
-            customerCampaignSink.emit?.({
-                id, title: next.title, message: next.short_description,
-                branchIds: next.branch_ids ?? [], topic: next.topic,
-            });
         }
         return id;
     },
