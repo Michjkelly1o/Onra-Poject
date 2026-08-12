@@ -1220,15 +1220,13 @@ export interface MarketingItem {
     short_description: string;
     /** Card hero image. Missing → gradient banner fallback. */
     cover_image_url?: string;
-    /** The CTA a member can take from the card. Options depend on `type`:
-     *  new_class → book_event · announcement → external_link / no_action ·
-     *  event → book_event / buy_ticket / external_link. */
+    /** The CTA a member can take. Campaigns offer book_event / external_link /
+     *  no_action; Announcements are information-only (always no_action).
+     *  (`buy_ticket` is legacy — retained for schema compat, never selectable.) */
     action_type: "book_event" | "buy_ticket" | "external_link" | "no_action";
-    /** buy_ticket → ticket price in AED. */
+    /** Legacy — ticket price in AED (unused; Events moved to Schedule). */
     ticket_price?: number;
-    /** book_event → the specific class the CTA books (a `class_schedule.id`).
-     *  For `new_class` campaigns the picker is limited to classes in the next
-     *  7 days; for `event` campaigns it lists all upcoming classes. Single id. */
+    /** book_event → the specific class the CTA books (a `class_schedule.id`). */
     cta_class_id?: string;
     /** external_link → destination URL. */
     external_url?: string;

@@ -4,15 +4,11 @@
 // Onra Studio — Marketing form kit (shared primitives)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Single source of truth for the building blocks shared by every marketing
-// create/edit form — Campaigns, Announcements, and (Phase 2) Events. Each
-// module keeps its OWN thin form component (so the modules can diverge), but
-// they compose these primitives instead of re-inlining them (component
-// centralization rule).
-//
-// Extracted verbatim from the original MarketingFormPage so the campaign flow
-// behaves identically. Type-specific bits (the type dropdown, the per-type
-// action list gating, the step labels) live in each module's own form file.
+// Single source of truth for the building blocks shared by both marketing
+// create/edit forms — Campaigns and Announcements. Each module keeps its OWN
+// thin form component (so the modules can diverge), but they compose these
+// primitives instead of re-inlining them (component centralization rule).
+// (Bookable Events live in Schedule, not Marketing.)
 
 import { useState, useRef } from "react";
 import {
@@ -32,7 +28,8 @@ export type MarketingAction = "book_event" | "buy_ticket" | "external_link" | "n
 /** Which CTA options each marketing type offers (Figma 7046:* variants). */
 export const ACTIONS_BY_TYPE: Record<MarketingType, MarketingAction[]> = {
     campaign: ["book_event", "external_link", "no_action"],
-    announcement: ["external_link", "no_action"],
+    // Announcements are information-only — no CTA (see AnnouncementFormPage).
+    announcement: ["no_action"],
 };
 
 export const ACTION_META: Record<MarketingAction, { label: string; Icon: React.ElementType }> = {

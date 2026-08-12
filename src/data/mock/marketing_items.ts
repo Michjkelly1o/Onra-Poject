@@ -15,7 +15,7 @@
 //   • mkt_aerial_yoga     — Sent · Campaign     · Book a class · Everyone
 //   • mkt_summer_hiit     — Sent · Campaign     · Book a class · Everyone
 //   • mkt_studio_closure  — Archived · Announcement · No action
-//   • mkt_holiday_hours   — Active   · Announcement · External link
+//   • mkt_holiday_hours   — Active   · Announcement · No action
 //   • mkt_app_maintenance — Inactive · Announcement · No action
 
 import type { MarketingItem } from "./_types";
