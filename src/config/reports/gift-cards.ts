@@ -50,6 +50,7 @@ export const GIFT_CARDS_REPORT: ReportDefinition = {
         { key: K.balance,             label: "Balance",            kind: "currency", minWidth: 130, calc: "Face value − Redeemed amount" },
         { key: K.status,              label: "Status",             kind: "status",   minWidth: 130 },
         { key: K.lastRedeemedDateISO, label: "Last redeemed date", kind: "date",     minWidth: 160 },
+        { key: K.location,            label: "Location",           kind: "text",     minWidth: 180 },
     ],
 
     // Sheet 1 default: status.

@@ -21,6 +21,8 @@ const K = {
     stockTurnover:       "stockTurnover",
     lastReceivedDateISO: "lastReceivedDateISO",
     lastSoldDateISO:     "lastSoldDateISO",
+    location:            "location",
+    branchId:            "branchId",
 } as const;
 
 export const RETAIL_STOCK_ON_HAND_REPORT: ReportDefinition = {
@@ -47,14 +49,14 @@ export const RETAIL_STOCK_ON_HAND_REPORT: ReportDefinition = {
         { key: K.stockTurnover,       label: "Stock turnover",       kind: "number",   minWidth: 140, calc: "Units sold ÷ avg stock on hand" },
         { key: K.lastReceivedDateISO, label: "Last received date",   kind: "date",     minWidth: 160 },
         { key: K.lastSoldDateISO,     label: "Last sold date",       kind: "date",     minWidth: 140 },
+        { key: K.location,            label: "Location",             kind: "text",     minWidth: 180 },
     ],
 
-    // Plan default: by category. Location dimension intentionally
-    // omitted — the selector currently emits ONE row per product with
-    // `location: "All locations"`, so grouping by branch would yield a
-    // single bucket and mislead admins into thinking branch drilldown
-    // exists. Per-branch stock rows are a follow-up.
+    // Stock is tracked per (product × branch), so the selector emits one row
+    // per branch that holds the product — Location is a real drilldown and the
+    // branch filter narrows to a single studio.
     dimensions: [
+        { key: "location", label: "Location", extract: r => String(r[K.location]         ?? "—") },
         { key: "category", label: "Category", extract: r => String(r[K.productCategory] ?? "—") },
         { key: "product",  label: "Product",  extract: r => String(r[K.productName]     ?? "—") },
     ],

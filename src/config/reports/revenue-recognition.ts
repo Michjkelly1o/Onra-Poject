@@ -59,6 +59,7 @@ export const REVENUE_RECOGNITION_REPORT: ReportDefinition = {
         { key: K.recognizedToDate,     label: "Recognized to date",       kind: "currency", minWidth: 190, calc: "Σ recognized each period" },
         { key: K.remaining,            label: "Remaining",                kind: "text",     minWidth: 140, calc: "Term − used to date" },
         { key: K.deferredBalance,      label: "Deferred balance",         kind: "currency", minWidth: 170, calc: "Amount − Recognized to date" },
+        { key: K.location,             label: "Location",                 kind: "text",     minWidth: 180 },
     ],
 
     // Sheet 1 defaults: revenue category · recognition basis · location · month.

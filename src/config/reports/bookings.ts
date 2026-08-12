@@ -44,6 +44,7 @@ export const BOOKINGS_REPORT: ReportDefinition = {
         { key: K.outcomeLabel,     label: "Status",           kind: "status", minWidth: 140 },
         { key: K.cancellationType, label: "Cancellation type", kind: "text",  minWidth: 170 },
         { key: K.salesChannel,     label: "Sales channel",    kind: "text",   minWidth: 180 },
+        { key: K.location,         label: "Location",         kind: "text",   minWidth: 180 },
     ],
 
     // Sheet 1 defaults: status · event type · customer · instructor · sales channel.

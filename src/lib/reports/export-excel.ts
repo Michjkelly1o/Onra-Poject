@@ -26,7 +26,7 @@ import type { ColumnDef, PivotResult } from "./types";
 
 // ─── Excel format strings ─────────────────────────────────────────────────
 
-const FMT_CURRENCY = '"AED" #,##0';
+const FMT_CURRENCY = '"AED" #,##0;[Red]("AED" #,##0)';
 const FMT_NUMBER   = "#,##0";
 const FMT_PERCENT  = "0.00%";
 const FMT_DATE     = "yyyy-mm-dd";
@@ -198,7 +198,7 @@ export function exportPivotXlsx(opts: ExportPivotXlsxOpts): void {
     matrix.push(totalRow);
 
     // Delta row.
-    const deltaRow: XLSX.CellObject[] = [{ t: "s", v: "Period change (%)" }];
+    const deltaRow: XLSX.CellObject[] = [{ t: "s", v: "Change vs previous period (%)" }];
     for (const d of pivot.columnDeltasPct) {
         if (d === null) deltaRow.push({ t: "s", v: "" });
         else deltaRow.push({ t: "n", v: d / 100, z: FMT_PERCENT });

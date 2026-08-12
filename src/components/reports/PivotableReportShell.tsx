@@ -159,9 +159,20 @@ function saveColVisibility(reportId: string, visible: Set<string>): void {
 
 const CURRENCY_FMT = new Intl.NumberFormat("en-AE", { maximumFractionDigits: 0 });
 const NUMBER_FMT   = new Intl.NumberFormat("en-US");
+// Accounting-style money: a negative value renders in brackets, e.g. (AED 170)
+// instead of AED -170. The red colour is applied at the cell (see isNegMoney),
+// since a string can't carry a class — this returns the bracketed text only.
+function fmtCurrency(n: number): string {
+    const body = `AED ${CURRENCY_FMT.format(Math.round(Math.abs(n)))}`;
+    return n < 0 ? `(${body})` : body;
+}
+/** True when a cell should render red — a negative currency value. */
+function isNegMoney(value: unknown, kind: ColumnDef["kind"] | undefined): boolean {
+    return kind === "currency" && Number(value) < 0;
+}
 function formatCell(value: unknown, kind: ColumnDef["kind"]): string {
     if (value === null || value === undefined || value === "") return "—";
-    if (kind === "currency") { const n = Number(value); if (!Number.isFinite(n)) return String(value); return `AED ${CURRENCY_FMT.format(Math.round(n))}`; }
+    if (kind === "currency") { const n = Number(value); if (!Number.isFinite(n)) return String(value); return fmtCurrency(n); }
     if (kind === "number")   { const n = Number(value); if (!Number.isFinite(n)) return String(value); return NUMBER_FMT.format(Math.round(n)); }
     if (kind === "percent")  { const n = Number(value); if (!Number.isFinite(n)) return String(value); return `${n.toFixed(1)}%`; }
     if (kind === "date")     { const s = String(value).slice(0, 10); return s || "—"; }
@@ -698,7 +709,8 @@ function ListTable({
                                     <td key={c.key}
                                         style={{ minWidth: c.minWidth ?? 140 }}
                                         className={cn(
-                                            "px-6 py-4 text-[14px] text-[var(--colors-text-tertiary)] leading-[20px] whitespace-nowrap",
+                                            "px-6 py-4 text-[14px] leading-[20px] whitespace-nowrap",
+                                            isNegMoney(r[c.key], c.kind) ? "text-[#d92d20]" : "text-[var(--colors-text-tertiary)]",
                                             c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
                                         )}>
                                         {formatCell(r[c.key], c.kind)}
@@ -713,7 +725,8 @@ function ListTable({
                                 return (
                                     <td key={c.key}
                                         className={cn(
-                                            "px-6 py-4 text-[14px] font-semibold text-[var(--colors-text-primary)] whitespace-nowrap",
+                                            "px-6 py-4 text-[14px] font-semibold whitespace-nowrap",
+                                            isNegMoney(total, c.kind) ? "text-[#d92d20]" : "text-[var(--colors-text-primary)]",
                                             c.kind === "currency" || c.kind === "number" || c.kind === "percent" ? "text-right tabular-nums" : "text-left",
                                         )}>
                                         {i === 0 && total === null ? "Total" : total === null ? "" : formatCell(total, c.kind)}
@@ -772,12 +785,12 @@ function PivotTable({
 
     function fmt(n: number): string {
         if (n === 0) return "—";
-        if (measureKind === "currency") return `AED ${CURRENCY_FMT.format(Math.round(n))}`;
+        if (measureKind === "currency") return fmtCurrency(n);
         if (measureKind === "percent")  return `${n.toFixed(1)}%`;
         return NUMBER_FMT.format(Math.round(n));
     }
     function fmtTotal(n: number): string {
-        if (measureKind === "currency") return `AED ${CURRENCY_FMT.format(Math.round(n))}`;
+        if (measureKind === "currency") return fmtCurrency(n);
         if (measureKind === "percent")  return `${n.toFixed(1)}%`;
         return NUMBER_FMT.format(Math.round(n));
     }
@@ -818,13 +831,22 @@ function PivotTable({
                                 <td className="px-6 py-4 text-[14px] text-[var(--colors-text-secondary)] font-medium whitespace-nowrap">
                                     {rk}
                                 </td>
-                                {pivot.colKeys.map(ck => (
-                                    <td key={ck}
-                                        className="px-6 py-4 text-[14px] text-[var(--colors-text-tertiary)] text-right tabular-nums whitespace-nowrap">
-                                        {fmt(pivot.matrix[rk]?.[ck] ?? 0)}
-                                    </td>
-                                ))}
-                                <td className="px-6 py-4 text-[14px] text-[var(--colors-text-primary)] text-right tabular-nums font-semibold whitespace-nowrap">
+                                {pivot.colKeys.map(ck => {
+                                    const v = pivot.matrix[rk]?.[ck] ?? 0;
+                                    return (
+                                        <td key={ck}
+                                            className={cn(
+                                                "px-6 py-4 text-[14px] text-right tabular-nums whitespace-nowrap",
+                                                measureKind === "currency" && v < 0 ? "text-[#d92d20]" : "text-[var(--colors-text-tertiary)]",
+                                            )}>
+                                            {fmt(v)}
+                                        </td>
+                                    );
+                                })}
+                                <td className={cn(
+                                    "px-6 py-4 text-[14px] text-right tabular-nums font-semibold whitespace-nowrap",
+                                    measureKind === "currency" && (pivot.rowTotals[rk] ?? 0) < 0 ? "text-[#d92d20]" : "text-[var(--colors-text-primary)]",
+                                )}>
                                     {fmtTotal(pivot.rowTotals[rk] ?? 0)}
                                 </td>
                             </tr>
@@ -832,20 +854,29 @@ function PivotTable({
                         {/* Column totals row */}
                         <tr>
                             <td className="px-6 py-4 text-[14px] font-semibold text-[var(--colors-text-primary)]">Total</td>
-                            {pivot.colKeys.map(ck => (
-                                <td key={ck}
-                                    className="px-6 py-4 text-[14px] font-semibold text-[var(--colors-text-primary)] text-right tabular-nums whitespace-nowrap">
-                                    {fmtTotal(pivot.colTotals[ck] ?? 0)}
-                                </td>
-                            ))}
-                            <td className="px-6 py-4 text-[14px] font-bold text-[var(--colors-text-primary)] text-right tabular-nums whitespace-nowrap">
+                            {pivot.colKeys.map(ck => {
+                                const v = pivot.colTotals[ck] ?? 0;
+                                return (
+                                    <td key={ck}
+                                        className={cn(
+                                            "px-6 py-4 text-[14px] font-semibold text-right tabular-nums whitespace-nowrap",
+                                            measureKind === "currency" && v < 0 ? "text-[#d92d20]" : "text-[var(--colors-text-primary)]",
+                                        )}>
+                                        {fmtTotal(v)}
+                                    </td>
+                                );
+                            })}
+                            <td className={cn(
+                                "px-6 py-4 text-[14px] font-bold text-right tabular-nums whitespace-nowrap",
+                                measureKind === "currency" && pivot.grandTotal < 0 ? "text-[#d92d20]" : "text-[var(--colors-text-primary)]",
+                            )}>
                                 {fmtTotal(pivot.grandTotal)}
                             </td>
                         </tr>
                         {/* Period-change delta row */}
                         <tr>
                             <td className="px-6 py-3 text-[13px] text-[var(--colors-text-tertiary)]">
-                                {period === "month" ? "MoM change" : period === "week" ? "WoW change" : period === "quarter" ? "QoQ change" : period === "year" ? "YoY change" : "Period change"}
+                                {period === "none" ? "vs previous period" : `vs previous ${period}`}
                             </td>
                             {pivot.columnDeltasPct.map((d, i) => {
                                 const { text, cls } = fmtDelta(d);

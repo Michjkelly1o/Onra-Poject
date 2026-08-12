@@ -144,7 +144,7 @@ export function buildPivotCsv(opts: ExportPivotOpts): string {
     lines.push(totalCells.join(","));
 
     // Delta row (Period change vs previous).
-    const deltaCells = [csvEscape("Period change (%)")];
+    const deltaCells = [csvEscape("Change vs previous period (%)")];
     for (const d of pivot.columnDeltasPct) {
         if (d === null) deltaCells.push("");
         else deltaCells.push(csvEscape(d.toFixed(1)));

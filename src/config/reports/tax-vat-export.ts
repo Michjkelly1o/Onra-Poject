@@ -50,6 +50,7 @@ export const TAX_VAT_EXPORT_REPORT: ReportDefinition = {
         { key: K.netAmountBeforeTax,   label: "Net amount before tax", kind: "currency", minWidth: 190, calc: "Gross sales − Discount" },
         { key: K.vatCollected,         label: "VAT collected",         kind: "currency", minWidth: 140, calc: "Net (before tax) × tax rate" },
         { key: K.grossInclTax,         label: "Gross incl. tax",       kind: "currency", minWidth: 160, calc: "Net (before tax) + Tax" },
+        { key: K.location,             label: "Location",              kind: "text",     minWidth: 180 },
     ],
 
     // Sheet 1 defaults: tax rate · period.

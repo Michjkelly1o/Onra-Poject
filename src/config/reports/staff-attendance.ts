@@ -57,6 +57,7 @@ export const STAFF_ATTENDANCE_REPORT: ReportDefinition = {
         { key: K.scheduledHours,   label: "Scheduled hours",   kind: "number", minWidth: 160 },
         { key: K.actualHours,      label: "Actual hours",      kind: "number", minWidth: 140 },
         { key: K.hoursVariance,    label: "Hours variance",    kind: "number", minWidth: 150, calc: "Actual hours − Scheduled hours" },
+        { key: K.location,         label: "Location",          kind: "text",   minWidth: 180 },
     ],
 
     // Sheet 1 defaults: staff · role · location.

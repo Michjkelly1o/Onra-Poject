@@ -98,6 +98,7 @@ export const TOTAL_SALES_REPORT: ReportDefinition = {
         { key: K.paymentMethod,    label: "Payment method",               kind: "text",     minWidth: 140 },
         { key: K.paymentStatus,    label: "Payment status",               kind: "status",   minWidth: 140 },
         { key: K.ledgerStatus,     label: "Status",                       kind: "status",   minWidth: 130, hiddenByDefault: true },
+        { key: K.location,         label: "Location",                     kind: "text",     minWidth: 180 },
     ],
 
     // 5 break-down dimensions.

@@ -457,41 +457,84 @@ export function selectPayments(state: AppState): PaymentRow[] {
     const loc = makeLocationLookup(state);
     const cust = makeCustomerLookup(state);
 
-    // v83 audit-3 (2026-07-29) — retail sales use their dedicated report
-    // (`selectRetailSales`); excluded here to avoid double-counting.
-    return state.customerTransactions
-        .filter(t =>
-            t.kind !== "cancellation_penalty"
-            && t.kind !== "freeze_fee"
-            && t.kind !== "retail"
-            && t.kind !== "gift_card"
-        )
-        .map(t => {
+    // Void rule (mirrors resolveLedger): a void — explicit, or a legacy
+    // same-day refund treated as an implicit void — erases BOTH the sale and
+    // the reversal; the money never settled, so it never shows in Payments.
+    const voidedIds = new Set<string>();
+    for (const t of state.customerTransactions) {
+        if (t.transactionType === "void" && t.originalTransactionId) voidedIds.add(t.originalTransactionId);
+        if (t.transactionType === undefined && t.status === "refunded" && t.refundedAtISO
+            && t.createdAtISO.slice(0, 10) === t.refundedAtISO.slice(0, 10)) {
+            voidedIds.add(t.id);
+        }
+    }
+
+    const rows: PaymentRow[] = [];
+    for (const t of state.customerTransactions) {
+        // v83 audit-3 — retail/gift-card/penalty/freeze use their own reports.
+        if (t.kind === "cancellation_penalty" || t.kind === "freeze_fee"
+            || t.kind === "retail" || t.kind === "gift_card") continue;
+        if (t.transactionType === "void") continue;
+        if (voidedIds.has(t.id)) continue;
+
         const c = cust(t.customerId);
-        const netPayout = t.processorFee != null ? t.amountAed - t.processorFee : undefined;
-        return {
-            id: t.id,
-            paymentDateISO: t.createdAtISO,
+        const base = {
             location: loc(t.branchId),
             customerId: t.customerId,
             customerName: c ? `${c.firstName} ${c.lastName}`.trim() : "—",
             customerEmail: c?.email ?? "—",
             itemName: t.name,
             revenueCategory: t.kind as "membership" | "package",
-            paymentAmount: t.amountAed,
             paymentMethod: t.paymentMethod,
             cardType: t.cardType,
             paymentType: t.paymentType,
-            status: t.status,
-            failureReason: t.failureReason,
-            retryAttempt: t.retryAttempt,
-            recovered: t.recovered,
-            recoveredISO: t.recoveredISO,
-            payoutId: t.payoutId,
-            processorFee: t.processorFee,
-            netPayout,
+            failureReason: undefined as string | undefined,
+            retryAttempt: undefined as number | undefined,
+            recovered: undefined as boolean | undefined,
+            recoveredISO: undefined as string | undefined,
         };
-    });
+
+        // Explicit refund / write-off event → a NEGATIVE row on its own date.
+        if (t.transactionType === "refund" || t.transactionType === "write_off") {
+            rows.push({
+                ...base, id: t.id, paymentDateISO: t.createdAtISO,
+                paymentAmount: -Math.abs(t.amountAed), status: "refunded",
+                payoutId: t.payoutId, processorFee: undefined, netPayout: undefined,
+            });
+            continue;
+        }
+
+        // Legacy "refunded" (no explicit type, later refund) → split into the
+        // original sale (positive, sale date) + a refund entry (negative, on
+        // the refund date). Keeps the sale visible AND shows the refund
+        // negative, matching the Refunds report. Same-day ones were voided
+        // out above.
+        if (t.transactionType === undefined && t.status === "refunded" && t.refundedAtISO) {
+            const netPayout = t.processorFee != null ? t.amountAed - t.processorFee : undefined;
+            rows.push({
+                ...base, id: t.id, paymentDateISO: t.createdAtISO,
+                paymentAmount: Math.abs(t.amountAed), status: "complete",
+                payoutId: t.payoutId, processorFee: t.processorFee, netPayout,
+            });
+            rows.push({
+                ...base, id: `${t.id}:refund`, paymentDateISO: t.refundedAtISO,
+                paymentAmount: -Math.abs(t.amountAed), status: "refunded",
+                payoutId: t.payoutId, processorFee: undefined, netPayout: undefined,
+            });
+            continue;
+        }
+
+        // Normal sale / pending / failed attempt — pass through (positive).
+        const netPayout = t.processorFee != null ? t.amountAed - t.processorFee : undefined;
+        rows.push({
+            ...base, id: t.id, paymentDateISO: t.createdAtISO,
+            paymentAmount: t.amountAed, status: t.status,
+            failureReason: t.failureReason, retryAttempt: t.retryAttempt,
+            recovered: t.recovered, recoveredISO: t.recoveredISO,
+            payoutId: t.payoutId, processorFee: t.processorFee, netPayout,
+        });
+    }
+    return rows;
 }
 
 /** 3. selectMemberships — one row per customer plan (membership /
@@ -1289,6 +1332,7 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
  *  but the source metrics stay stable. */
 export function selectRetailStockOnHand(state: AppState): RetailStockOnHandRow[] {
     const categoryById = new Map(state.retailCategories.map(c => [c.id, c] as const));
+    const loc = makeLocationLookup(state);
 
     // Rolling 30-day window for the period metrics (Units received / sold /
     // Sell-through / Turnover). Anchored to today.
@@ -1302,63 +1346,73 @@ export function selectRetailStockOnHand(state: AppState): RetailStockOnHandRow[]
         // admins can see holdover stock on paused SKUs.
         if (p.status === "archived") continue;
 
+        // Stock is tracked per (product × branch), so emit ONE ROW PER BRANCH
+        // that holds this product — the Stock on Hand report shows a real
+        // Location and the branch filter narrows to a single studio.
         const stockRowsForProduct = state.retailStock.filter(s => s.productId === p.id);
-        const unitsOnHand = stockRowsForProduct.reduce((sum, s) => sum + s.unitsOnHand, 0);
-        const stockValue = unitsOnHand * p.unitCostAed;
+        const branchIds = Array.from(new Set(stockRowsForProduct.map(s => s.branchId)));
 
-        const adjsForProduct = state.retailStockAdjustments.filter(a => a.productId === p.id);
-        const adjsInWindow = adjsForProduct.filter(a => a.createdAt >= windowStartISO);
+        for (const branchId of branchIds) {
+            const branchStock = stockRowsForProduct.filter(s => s.branchId === branchId);
+            const unitsOnHand = branchStock.reduce((sum, s) => sum + s.unitsOnHand, 0);
+            const stockValue = unitsOnHand * p.unitCostAed;
 
-        let unitsReceived = 0;
-        let unitsSold = 0;
-        for (const a of adjsInWindow) {
-            if (a.kind === "receive") unitsReceived += a.delta;
-            else if (a.kind === "sale") unitsSold += Math.abs(a.delta);
-            else if (a.kind === "refund") unitsSold -= a.delta; // refund unwinds a sale
+            const adjsForBranch = state.retailStockAdjustments.filter(
+                a => a.productId === p.id && a.branchId === branchId,
+            );
+            const adjsInWindow = adjsForBranch.filter(a => a.createdAt >= windowStartISO);
+
+            let unitsReceived = 0;
+            let unitsSold = 0;
+            for (const a of adjsInWindow) {
+                if (a.kind === "receive") unitsReceived += a.delta;
+                else if (a.kind === "sale") unitsSold += Math.abs(a.delta);
+                else if (a.kind === "refund") unitsSold -= a.delta; // refund unwinds a sale
+            }
+            unitsSold = Math.max(0, unitsSold);
+            const sellThrough = unitsReceived > 0 ? unitsSold / unitsReceived : 0;
+
+            // Stock turnover approximation — units sold in period ÷ average on
+            // hand. Average on hand = (start + end) / 2 where
+            // start ≈ current + sold − received.
+            const stockAtStart = unitsOnHand + unitsSold - unitsReceived;
+            const avgOnHand = (Math.max(0, stockAtStart) + unitsOnHand) / 2;
+            const turnover = avgOnHand > 0 ? unitsSold / avgOnHand : 0;
+
+            // Most recent receive + sale events (across ALL time, not just
+            // the rolling window — matches the Excel spec's "most recent"
+            // phrasing).
+            const lastReceived = adjsForBranch
+                .filter(a => a.kind === "receive")
+                .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+            const lastSold = adjsForBranch
+                .filter(a => a.kind === "sale")
+                .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+
+            rows.push({
+                id: `${p.id}:${branchId}`,
+                productName: p.name,
+                productCategory: categoryById.get(p.categoryId)?.label ?? "—",
+                sku: p.sku,
+                unitsOnHand,
+                unitCost: p.unitCostAed,
+                stockValue,
+                reorderThreshold: p.reorderThreshold,
+                unitsReceivedPeriod: unitsReceived,
+                unitsSoldPeriod: unitsSold,
+                sellThroughPct: sellThrough,
+                stockTurnover: turnover,
+                lastReceivedDateISO: lastReceived?.createdAt.slice(0, 10) ?? "",
+                lastSoldDateISO: lastSold?.createdAt.slice(0, 10) ?? "",
+                location: loc(branchId),
+                branchId,
+            });
         }
-        unitsSold = Math.max(0, unitsSold);
-        const sellThrough = unitsReceived > 0 ? unitsSold / unitsReceived : 0;
-
-        // Stock turnover approximation — units sold in period ÷ average on
-        // hand. Average on hand = (start + end) / 2 where
-        // start ≈ current + sold − received.
-        const stockAtStart = unitsOnHand + unitsSold - unitsReceived;
-        const avgOnHand = (Math.max(0, stockAtStart) + unitsOnHand) / 2;
-        const turnover = avgOnHand > 0 ? unitsSold / avgOnHand : 0;
-
-        // Most recent receive + sale events (across ALL time, not just
-        // the rolling window — matches the Excel spec's "most recent"
-        // phrasing).
-        const lastReceived = adjsForProduct
-            .filter(a => a.kind === "receive")
-            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-        const lastSold = adjsForProduct
-            .filter(a => a.kind === "sale")
-            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-
-        rows.push({
-            id: p.id,
-            productName: p.name,
-            productCategory: categoryById.get(p.categoryId)?.label ?? "—",
-            sku: p.sku,
-            unitsOnHand,
-            unitCost: p.unitCostAed,
-            stockValue,
-            reorderThreshold: p.reorderThreshold,
-            unitsReceivedPeriod: unitsReceived,
-            unitsSoldPeriod: unitsSold,
-            sellThroughPct: sellThrough,
-            stockTurnover: turnover,
-            lastReceivedDateISO: lastReceived?.createdAt.slice(0, 10) ?? "",
-            lastSoldDateISO: lastSold?.createdAt.slice(0, 10) ?? "",
-            // Retail catalog is studio-global. The report's flat-list mode
-            // groups everything as one location; the pivot Category
-            // dimension is the more useful drilldown.
-            location: "All locations",
-            branchId: "",
-        });
     }
 
-    // Sort alphabetically by product name — matches the Excel default.
-    return rows.sort((a, b) => a.productName.localeCompare(b.productName));
+    // Sort by product, then location — matches the Excel default + keeps a
+    // product's per-branch rows together.
+    return rows.sort((a, b) =>
+        a.productName.localeCompare(b.productName) || a.location.localeCompare(b.location),
+    );
 }

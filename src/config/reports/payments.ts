@@ -70,6 +70,7 @@ export const PAYMENTS_REPORT: ReportDefinition = {
         { key: K.payoutId,       label: "Payout / settlement ID", kind: "id",     minWidth: 180, hiddenByDefault: true },
         { key: K.processorFee,   label: "Processor fee",        kind: "currency", minWidth: 140 },
         { key: K.netPayout,      label: "Net payout",           kind: "currency", minWidth: 140, calc: "Payment − Processor fee" },
+        { key: K.location,       label: "Location",             kind: "text",     minWidth: 180 },
     ],
 
     dimensions: [
