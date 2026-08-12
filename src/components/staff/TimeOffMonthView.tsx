@@ -47,17 +47,21 @@ function isoDayLocal(d: Date): string {
 // lead-chip text colour.
 
 const REASON_COLOR: Record<BlockedTime["reason"], { bg: string; border: string; text: string }> = {
-    sick:     { bg: "#fef3f2", border: "#f04438", text: "#b42318" },
-    vacation: { bg: "#eff8ff", border: "#2e90fa", text: "#175cd3" },
-    training: { bg: "#f4f3ff", border: "#7a5af8", text: "#5925dc" },
-    other:    { bg: "#f2f4f7", border: "#98a2b3", text: "#475467" },
+    annual_leave:    { bg: "#eff8ff", border: "#2e90fa", text: "#175cd3" },
+    sick:            { bg: "#fef3f2", border: "#f04438", text: "#b42318" },
+    personal:        { bg: "#f0f9f6", border: "#12b76a", text: "#107569" },
+    training:        { bg: "#f4f3ff", border: "#7a5af8", text: "#5925dc" },
+    religious_leave: { bg: "#fffaeb", border: "#f79009", text: "#b54708" },
+    other:           { bg: "#f2f4f7", border: "#98a2b3", text: "#475467" },
 };
 
 const REASON_LABEL: Record<BlockedTime["reason"], string> = {
-    sick:     "Sick",
-    vacation: "Vacation",
-    training: "Training",
-    other:    "Other",
+    annual_leave:    "Annual Leave",
+    sick:            "Sick",
+    personal:        "Personal",
+    training:        "Training",
+    religious_leave: "Religious Leave",
+    other:           "Other",
 };
 
 const WEEKDAY_HEAD = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -208,9 +212,9 @@ export function TimeOffMonthView({ branchId, search, monthCursor }: TimeOffMonth
                 (m.get(iso) ?? m.set(iso, []).get(iso)!).push(e);
             }
         }
-        // Stable order within a day — sick → vacation → training → other,
-        // then by staff name, so the two visible cards are deterministic.
-        const order: Record<BlockedTime["reason"], number> = { sick: 0, vacation: 1, training: 2, other: 3 };
+        // Stable order within a day, then by staff name, so the two visible
+        // cards are deterministic.
+        const order: Record<BlockedTime["reason"], number> = { annual_leave: 0, sick: 1, personal: 2, training: 3, religious_leave: 4, other: 5 };
         for (const list of Array.from(m.values())) {
             list.sort((a: BlockedTime, b: BlockedTime) =>
                 order[a.reason ?? "other"] - order[b.reason ?? "other"]

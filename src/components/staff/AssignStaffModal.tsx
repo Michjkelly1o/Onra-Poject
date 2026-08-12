@@ -33,9 +33,12 @@ import { Button } from "@/components/ui/button";
 import { useAppStore, type Shift } from "@/lib/store";
 import { findShiftConflict } from "@/lib/staff/shift-conflict";
 
-export function AssignStaffModal({ shift, onClose }: {
+export function AssignStaffModal({ shift, onClose, onPick }: {
     shift: Shift;
     onClose: () => void;
+    /** When provided, clicking "Assign" calls this (so the caller can chain the
+     *  period-confirmation modal) INSTEAD of assigning immediately. */
+    onPick?: (staffId: string, staffName: string) => void;
 }) {
     const staff              = useAppStore(s => s.staff);
     const shifts             = useAppStore(s => s.shifts);
@@ -46,10 +49,10 @@ export function AssignStaffModal({ shift, onClose }: {
     const [search, setSearch] = useState("");
     useEffect(() => { setSearch(""); }, [shift.id]);
 
-    // All ACTIVE staff at this branch — no role filter. Admin can assign
-    // anyone (instructor, operator, front desk, etc.) to a shift.
+    // All ACTIVE staff — no role or branch filter. Shifts are branch-agnostic
+    // (client 2026-08): any staff at any branch can be assigned any shift.
     const available = staff
-        .filter(s => s.branchId === shift.branch_id && s.status === "active")
+        .filter(s => s.status === "active")
         .filter(s => {
             if (!search) return true;
             const q = search.toLowerCase();
@@ -187,7 +190,7 @@ export function AssignStaffModal({ shift, onClose }: {
                                                 variant="secondary-gray"
                                                 size="sm"
                                                 leftIcon={<UserPlus01 className="w-4 h-4 text-[var(--colors-text-secondary)]" />}
-                                                onClick={() => handleAssign(s.id, s.fullName)}
+                                                onClick={() => onPick ? onPick(s.id, s.fullName) : handleAssign(s.id, s.fullName)}
                                             >
                                                 Assign
                                             </Button>

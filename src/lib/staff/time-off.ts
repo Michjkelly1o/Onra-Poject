@@ -9,10 +9,12 @@
 
 import type { BlockedTime } from "@/lib/store";
 
-export const TIME_OFF_REASON_LABEL: Record<"sick" | "vacation" | "training" | "other", string> = {
+export const TIME_OFF_REASON_LABEL: Record<BlockedTime["reason"], string> = {
+    annual_leave: "Annual Leave",
     sick: "Sick",
-    vacation: "Vacation",
+    personal: "Personal",
     training: "Training",
+    religious_leave: "Religious Leave",
     other: "Other",
 };
 

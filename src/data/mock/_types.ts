@@ -1958,9 +1958,19 @@ export interface Shift {
     name: string;             // "Morning shift"
     /** FK → branches.id. Shifts are per-branch. */
     branch_id: string;
+    /** "recurring" — repeats on `working_days` every week (the default; every
+     *  pre-existing shift). "single" — a one-off template with hours only and no
+     *  weekday pattern; the DATE comes from the assignment when it's dropped/
+     *  assigned onto a staff column. Defaults to "recurring" for legacy rows. */
+    type?: "single" | "recurring";
+    /** Recurrence interval for a recurring shift — "repeat every N weeks".
+     *  Defaults to 1 (every week). Display-only in the prototype; the Day-view
+     *  resolver still renders the weekly `working_days` pattern. */
+    repeat_every?: number;
     start_time: string;       // "07:00" — 24h
     end_time: string;         // "12:00" — 24h
-    /** 7-bit array [Sun..Sat] — true means the shift covers that day. */
+    /** 7-bit array [Sun..Sat] — true means the shift covers that day. Empty
+     *  (all-false) for a "single" shift. */
     working_days: boolean[];
     /** Number of staff the studio needs on this shift. Compared against
      *  the count of `ShiftAssignment` rows to flag understaffed shifts.
@@ -2000,6 +2010,11 @@ export interface ShiftAssignment {
      *  scoped to the CURRENT week only (so it doesn't repeat on other weeks).
      *  Client 2026-08. */
     week_start?: string;
+    /** How many weeks (from `week_start`) this assignment spans — the "assign
+     *  period" the admin picks when dropping/assigning a shift: 1 (1 week),
+     *  4 (1 month), 52 (1 year). Absent → 1 week (or the legacy baseline).
+     *  Client 2026-08. */
+    weeks?: number;
     created_at: string;       // ISO 8601
 }
 
@@ -2027,7 +2042,7 @@ export interface ShiftAssignment {
 //   • Rules unchanged: `staff_ids` is multi-select; `branch_id` is a
 //     denormed convenience for the branch filter.
 
-export type TimeOffReason = "sick" | "vacation" | "training" | "other";
+export type TimeOffReason = "annual_leave" | "sick" | "personal" | "training" | "religious_leave" | "other";
 
 export interface BlockedTime {
     /** e.g. "blocked_2025_03_18". Legacy id scheme kept so existing
