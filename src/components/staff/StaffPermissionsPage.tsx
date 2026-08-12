@@ -23,7 +23,7 @@
 //
 // State source of truth: useAppStore(s => s.roles) + useAppStore(s => s.staff).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -771,6 +771,13 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     // Per-sub-tab toolbar total, reported up by the Shift / Time-off child tabs
     // so the "Total" reads "N shifts" / "N staff" / "N time off" (client 2026-08-12).
     const [subCount, setSubCount] = useState<{ count: number; noun: string } | null>(null);
+    // STABLE + idempotent — the child effects depend on this reference, and it
+    // no-ops when the count/noun are unchanged. Without both, a fresh inline
+    // callback each render + a new-object setState would loop forever (Maximum
+    // update depth) and freeze the page. (client 2026-08-12 regression fix)
+    const handleSubCount = useCallback((count: number, noun: string) => {
+        setSubCount(prev => (prev && prev.count === count && prev.noun === noun) ? prev : { count, noun });
+    }, []);
     const [branchId, setBranchId] = useState<string>(staffUi.branchId);
     const [search, setSearch] = useState(staffUi.search);
     const [filterOpen, setFilterOpen] = useState(false);
@@ -1432,7 +1439,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         filterOpen={filterOpen}
                         onCloseFilter={() => setFilterOpen(false)}
                         onFilterStateChange={setShiftFilterActive}
-                        onCountChange={(count, noun) => setSubCount({ count, noun })}
+                        onCountChange={handleSubCount}
                         viewMode={shiftsViewMode}
                         weekStart={shiftsWeekStart}
                         onFlyoutOpen={() => setStaffSchedPanel({ open: false })}
@@ -1448,7 +1455,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         search={search}
                         viewMode={timeOffViewMode}
                         monthCursor={timeOffMonthCursor}
-                        onCountChange={(count, noun) => setSubCount({ count, noun })}
+                        onCountChange={handleSubCount}
                     />
                 )}
                 {/* Table — roles

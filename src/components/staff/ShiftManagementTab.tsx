@@ -20,7 +20,7 @@
 // + instructor detail Shift hours line read live from the same slice, so
 // edits here surface everywhere on the same render cycle.
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter } from "next/navigation";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
@@ -727,6 +727,9 @@ export function ShiftManagementTab({
     useEffect(() => {
         if (viewMode !== "week") onCountChange?.(filtered.length, filtered.length === 1 ? "shift" : "shifts");
     }, [viewMode, filtered.length, onCountChange]);
+    // Stable forwarder for the week view's staff-row count — a fresh inline
+    // callback here would re-run ShiftsWeekView's report effect every render.
+    const reportWeekCount = useCallback((n: number) => onCountChange?.(n, "staff"), [onCountChange]);
 
     // Options for the WEEK-view filter panel.
     const weekRoleOptions = useMemo(
@@ -879,7 +882,7 @@ export function ShiftManagementTab({
             {viewMode === "week" ? (
                 <div className="relative flex flex-col flex-1 min-h-0">
                     <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart} mainPanelOpen={mainPanelOpen}
-                        onCountChange={(n) => onCountChange?.(n, "staff")}
+                        onCountChange={reportWeekCount}
                         roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds}
                         onFlyoutOpen={onFlyoutOpen} />
                 </div>
