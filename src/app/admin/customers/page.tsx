@@ -19,7 +19,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-    SearchMd, FilterLines, ChevronLeft, ChevronDown,
+    SearchMd, FilterLines, ChevronLeft,
     Eye, Edit02, Trash01, Trash02, Archive, Check, Download01,
     MarkerPin01, AlignLeft, XClose, RefreshCcw01, HeartHand,
 } from "@untitledui/icons";
@@ -45,6 +45,8 @@ import { FilterPill } from "@/components/ui/FilterPill";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
@@ -595,9 +597,8 @@ export default function CustomersPage() {
     // The tab strip reuses the same chrome as /admin/insights.
     const [segment, setSegment] = useState<"all" | "leads" | "members" | "inactive">("all");
     // Archived is a "place", not a tab — archived customers leave the active
-    // table and render in a collapsible "Archived customer" SECTION below it
-    // (client 2026-08-11). Default expanded; its own page + selection is shared.
-    const [archivedCollapsed, setArchivedCollapsed] = useState(false);
+    // table and render in the shared <ArchivedSection> below it (policy §3).
+    // The section owns its own collapse state; the page owns archived paging.
     const [archivedPage, setArchivedPage] = useState(1);
     // v83 Phase 3 — "Assigned to me" chip. Off by default; when on, filters
     // to rows whose customer.assignedTo matches the current staff id.
@@ -733,22 +734,19 @@ export default function CustomersPage() {
         });
     }, [allRows, branchId, search, applied, today, mineOnly, currentUser?.staff_id]);
 
-    // Archived rows leave the active table → the Archived section below. Flat
-    // list (no wallet segment); search/filters/branch already applied above.
-    const archivedRows = useMemo(
-        () => scopedRows.filter(r => r.status === "archived"),
-        [scopedRows],
-    );
+    // Split off archived rows → the shared Archived section below (policy §3).
+    // `nonArchived` is the active-list base; `archivedRows` is a flat list (no
+    // wallet segment); search/filters/branch already applied to both above.
+    const { active: nonArchived, archived: archivedRows } = useArchiveView(scopedRows);
 
     // Active list = non-archived, narrowed to the selected wallet tab. The
     // Lead/Member/Inactive partition is WALLET-based (client 2026-08-10) — an
     // "At Risk" member with a live plan still sits in Members.
     const activeRows = useMemo(() => {
-        const nonArchived = scopedRows.filter(r => r.status !== "archived");
         if (segment === "all") return nonArchived;
         const want: CustomerSegment = segment === "leads" ? "lead" : segment === "members" ? "member" : "inactive";
         return nonArchived.filter(r => (segmentById.get(r.id) ?? "lead") === want);
-    }, [scopedRows, segment, segmentById]);
+    }, [nonArchived, segment, segmentById]);
 
     // ─── Pagination slice ───────────────────────────────────────────────────
     // ── Sortable columns (shared CUSTOMER_SORT) — active + archived tables ──
@@ -1023,57 +1021,32 @@ export default function CustomersPage() {
                 </div>
             </div>
 
-            {/* ── Archived section — a "place", not a tab (client 2026-08-11).
-                   Rendered ONLY when archived rows exist in the current scope;
-                   collapsible (default expanded); its own table + pagination;
-                   selection + search/filters are shared with the active list. */}
-            {archivedRows.length > 0 && (
-                // Expanded → h-full so the archived card fills a viewport exactly
-                // like the active one (its table scrolls internally, pagination
-                // pinned) instead of growing long at 30/page. Collapsed → hug.
-                <div className={cn("shrink-0 flex flex-col gap-3", !archivedCollapsed && "h-full")}>
-                    <button
-                        type="button"
-                        onClick={() => setArchivedCollapsed(v => !v)}
-                        className="shrink-0 flex items-center gap-2 text-left group"
-                        aria-expanded={!archivedCollapsed}
-                    >
-                        <span className="text-[14px] font-medium text-[var(--colors-text-tertiary)] group-hover:text-[var(--colors-text-secondary)] transition-colors whitespace-nowrap">
-                            Archived customer
-                        </span>
-                        <span className="text-[14px] text-[var(--colors-text-quaternary)]">({archivedRows.length})</span>
-                        <div className="flex-1 h-px bg-[var(--colors-border-secondary)]" />
-                        <ChevronDown className={cn(
-                            "w-5 h-5 text-[var(--colors-text-quaternary)] transition-transform shrink-0",
-                            archivedCollapsed && "-rotate-90",
-                        )} />
-                    </button>
-
-                    {!archivedCollapsed && (
-                        <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
-                            <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide">
-                                <CustomerTable
-                                    rows={pagedArchivedRows}
-                                    selectedIds={selectedIds}
-                                    onToggleOne={toggleOne}
-                                    onToggleAll={toggleAllRows}
-                                    sortKey={archSortKey}
-                                    sortDir={archSortDir}
-                                    onSort={toggleArchSort}
-                                    onRowClick={goToCustomer}
-                                    renderRowActions={renderRowActions}
-                                />
-                            </div>
-                            <div className="shrink-0 px-6">
-                                <Pagination
-                                    page={clampedArchivedPage} total={archivedSortedRows.length} pageSize={pageSize}
-                                    onPage={setArchivedPage} onPageSize={s => { setPageSize(s); setArchivedPage(1); }}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
+            {/* ── Archived section — shared <ArchivedSection> (policy §3). Renders
+                   only when archived rows exist; collapsible (default expanded);
+                   its own table + pagination; selection + search/filters shared
+                   with the active list. */}
+            <ArchivedSection
+                entitySingular="customer"
+                count={archivedRows.length}
+                pagination={
+                    <Pagination
+                        page={clampedArchivedPage} total={archivedSortedRows.length} pageSize={pageSize}
+                        onPage={setArchivedPage} onPageSize={s => { setPageSize(s); setArchivedPage(1); }}
+                    />
+                }
+            >
+                <CustomerTable
+                    rows={pagedArchivedRows}
+                    selectedIds={selectedIds}
+                    onToggleOne={toggleOne}
+                    onToggleAll={toggleAllRows}
+                    sortKey={archSortKey}
+                    sortDir={archSortDir}
+                    onSort={toggleArchSort}
+                    onRowClick={goToCustomer}
+                    renderRowActions={renderRowActions}
+                />
+            </ArchivedSection>
             </div>
 
             <FilterPanel
