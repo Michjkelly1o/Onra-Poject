@@ -30,7 +30,9 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { Toast } from "@/components/ui/Toast";
-import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { Pagination } from "@/components/ui/Pagination";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
@@ -40,7 +42,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import {
     useAppStore,
-    type PayRate, type PayRateStatus, type PayRateType,
+    type PayRate, type PayRateStatus, type PayRateType, type Branch,
     computePayRateDisplay,
 } from "@/lib/store";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
@@ -291,6 +293,118 @@ type PendingConfirm =
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-white shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7]";
 
+// ─── Pay-rate table — shared by the active list + Archived section ───────────
+
+function PayRateTable({
+    rows, sortKey, sortDir, onSort,
+    selectedIds, onToggleOne, onToggleAll,
+    onRowClick, onRowAction, branches,
+}: {
+    rows: PayRate[];
+    sortKey: string | null;
+    sortDir: SortDir;
+    onSort: (key: string) => void;
+    selectedIds: Set<string>;
+    onToggleOne: (id: string) => void;
+    onToggleAll: (checked: boolean) => void;
+    onRowClick: (id: string) => void;
+    onRowAction: (row: PayRate, kind: RowActionKind) => void;
+    branches: Branch[];
+}) {
+    const allChecked  = rows.length > 0 && rows.every(r => selectedIds.has(r.id));
+    const someChecked = !allChecked && rows.some(r => selectedIds.has(r.id));
+    return (
+        <div>
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th className={cn(TH, "w-[44px]")}>
+                            <CheckboxCell
+                                checked={allChecked}
+                                indeterminate={someChecked}
+                                onChange={onToggleAll}
+                                ariaLabel="Select all rows on this page"
+                            />
+                        </th>
+                        <th className={cn(TH, "w-[260px]")}>
+                            <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Pay rate name</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[160px]")}>
+                            <SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Pay rate type</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[260px]")}>
+                            <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Rate</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[220px]")}>
+                            <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={onSort}>Branch location</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[120px]")}>
+                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[52px]")} />
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(r => {
+                        const isSelected = selectedIds.has(r.id);
+                        return (
+                            <tr key={r.id}
+                                onClick={() => onRowClick(r.id)}
+                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <CheckboxCell
+                                        checked={isSelected}
+                                        onChange={() => onToggleOne(r.id)}
+                                        ariaLabel={`Select ${r.name}`}
+                                    />
+                                </td>
+                                <td className={TD}>
+                                    <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
+                                </td>
+                                <td className={TD}>
+                                    <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", TYPE_BADGE_STYLE[r.type])}>
+                                        {TYPE_LABEL[r.type]}
+                                    </span>
+                                </td>
+                                <td className={TD}>
+                                    {(() => {
+                                        const d = computePayRateDisplay(r);
+                                        return (
+                                            <div className="flex flex-col">
+                                                <span className="text-[14px] text-[#101828]">{d.main}</span>
+                                                <span className="text-[13px] text-[#667085]">{d.subtitle}</span>
+                                            </div>
+                                        );
+                                    })()}
+                                </td>
+                                <td className={cn(TD, "text-[#475467]")}>
+                                    {branches.find(b => b.id === r.branchId)?.name ?? "—"}
+                                </td>
+                                <td className={TD}>
+                                    <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STATUS_BADGE_STYLE[r.status])}>
+                                        {STATUS_LABEL[r.status]}
+                                    </span>
+                                </td>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <RowActions
+                                        items={[
+                                            { label: "View details", icon: Eye, onClick: () => onRowAction(r, "view") },
+                                            { label: "Edit", icon: Edit02, onClick: () => onRowAction(r, "edit"), hidden: r.status !== "active" },
+                                            { label: "Archive", icon: Archive, onClick: () => onRowAction(r, "archive"), hidden: r.status !== "active" },
+                                            { label: "Recover", icon: RefreshCcw01, onClick: () => onRowAction(r, "recover"), hidden: r.status === "active" },
+                                            { label: "Delete", icon: Trash01, onClick: () => onRowAction(r, "delete"), hidden: !(r.status === "active" && r.usageCount === 0), danger: true },
+                                        ]}
+                                    />
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 export default function PayRatePage() {
     const router = useRouter();
     const payRates           = useAppStore(s => s.payRates);
@@ -304,6 +418,7 @@ export default function PayRatePage() {
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<StatusFilter>(null);
     const [page, setPage] = useState(1);
+    const [archPage, setArchPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
@@ -319,7 +434,9 @@ export default function PayRatePage() {
             // `branchId === ""` means "All locations" — skip the branch
             // filter entirely. Otherwise exact-match.
             if (branchId && r.branchId !== branchId) return false;
-            if (filter !== null && r.status !== filter) return false;
+            // No status filter — active/archived is now the active-list vs
+            // Archived-section split (policy §6); archived rates flow to the
+            // section below.
             if (q) {
                 const display = computePayRateDisplay(r);
                 if (!r.name.toLowerCase().includes(q)
@@ -329,6 +446,11 @@ export default function PayRatePage() {
             return true;
         });
     }, [payRates, branchId, search, filter]);
+
+    // Archived pay rates leave the active table → the shared Archived section
+    // (policy §6). Pay rates keep archive; archiving is non-destructive (staff
+    // already on the rate keep it until reassigned).
+    const { active: activeRows, archived: archivedRows } = useArchiveView(filteredRows);
 
     // ── Sortable columns — Name / Type / Rate (numeric where possible) /
     //    Branch / Status. The Rate comparator falls back to the display
@@ -343,7 +465,7 @@ export default function PayRatePage() {
         if (r.type === "hybrid")  return r.baseRate ?? 0;
         return 0;
     }
-    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<PayRate>(filteredRows, {
+    const PAY_RATE_COMPARATORS: Record<string, (a: PayRate, b: PayRate) => number> = {
         name:   (a, b) => a.name.localeCompare(b.name),
         type:   (a, b) => TYPE_LABEL[a.type].localeCompare(TYPE_LABEL[b.type]),
         rate:   (a, b) => rateSortValue(a) - rateSortValue(b),
@@ -353,21 +475,24 @@ export default function PayRatePage() {
             return an.localeCompare(bn);
         },
         status: (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
-    });
+    };
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<PayRate>(activeRows, PAY_RATE_COMPARATORS);
+    const { sorted: archSortedRows, sortKey: archSortKey, sortDir: archSortDir, toggle: toggleArchSort } = useSort<PayRate>(archivedRows, PAY_RATE_COMPARATORS);
 
     const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
+    const archTotalPages = Math.max(1, Math.ceil(archSortedRows.length / pageSize));
+    const clampedArchPage = Math.min(Math.max(1, archPage), archTotalPages);
+    const pagedArchivedRows = archSortedRows.slice((clampedArchPage - 1) * pageSize, clampedArchPage * pageSize);
+
     // ─── Bulk select ───────────────────────────────────────────────────────
-    const pageIds = useMemo(() => pagedRows.map(r => r.id), [pagedRows]);
-    const allChecked = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
-    const someChecked = pageIds.some(id => selectedIds.has(id)) && !allChecked;
-    function toggleAllOnPage() {
+    function toggleAllRows(rows: PayRate[], checked: boolean) {
         setSelectedIds(prev => {
             const next = new Set(prev);
-            if (allChecked) pageIds.forEach(id => next.delete(id));
-            else pageIds.forEach(id => next.add(id));
+            if (checked) rows.forEach(r => next.add(r.id));
+            else rows.forEach(r => next.delete(r.id));
             return next;
         });
     }
@@ -464,7 +589,7 @@ export default function PayRatePage() {
         <div className="flex-1 min-h-0 flex flex-col gap-6 animate-fade-in">
             {/* Toolbar */}
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={totalForBranch} entitySingular="pay rate" />
+                <ToolbarTotal count={activeRows.length} entitySingular="pay rate" />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                     placeholder="Select location"
@@ -474,7 +599,8 @@ export default function PayRatePage() {
                     width="w-[220px]"
                 />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search pay rate..." />
-                <StatusFilterDropdown value={filter} onChange={setFilter} />
+                {/* Status filter removed — active/archived is now the active-list
+                    vs Archived-section split (policy §6). */}
                 {/* Import — empty-state only (client 2026-07-31). Hidden
                     once pay rates exist so admins default to "Add pay rate". */}
                 <ToolbarImportButton visible={payRates.length === 0 && !search.trim() && filter === null} />
@@ -485,8 +611,12 @@ export default function PayRatePage() {
                 </Button>
             </div>
 
-            {/* Table area — borderless full-bleed (matches the customers list) */}
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {/* Scroll region — active table fills the viewport (pagination
+                pinned); the Archived section sits below and is reached by
+                scrolling THIS region. */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+            {/* Active table — borderless full-bleed (matches the customers list) */}
+            <div className="shrink-0 h-full flex flex-col overflow-hidden">
                 <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
                     {pagedRows.length === 0 ? (
                         <EmptyState
@@ -496,94 +626,16 @@ export default function PayRatePage() {
                                 : "Try adjusting your search or filters."}
                         />
                     ) : (
-                        <div>
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr>
-                                        <th className={cn(TH, "w-[44px]")}>
-                                            <CheckboxCell
-                                                checked={allChecked}
-                                                indeterminate={someChecked}
-                                                onChange={() => toggleAllOnPage()}
-                                                ariaLabel="Select all rows on this page"
-                                            />
-                                        </th>
-                                        <th className={cn(TH, "w-[260px]")}>
-                                            <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pay rate name</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[160px]")}>
-                                            <SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pay rate type</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[260px]")}>
-                                            <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Rate</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[220px]")}>
-                                            <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[120px]")}>
-                                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[52px]")} />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pagedRows.map(r => {
-                                        const isSelected = selectedIds.has(r.id);
-                                        return (
-                                            <tr key={r.id}
-                                                onClick={() => router.push(`/staff/pay-rate/${r.id}?returnTo=${encodeURIComponent("/admin/staff/pay-rate")}`)}
-                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <CheckboxCell
-                                                        checked={isSelected}
-                                                        onChange={() => toggleOne(r.id)}
-                                                        ariaLabel={`Select ${r.name}`}
-                                                    />
-                                                </td>
-                                                <td className={TD}>
-                                                    <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                </td>
-                                                <td className={TD}>
-                                                    <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", TYPE_BADGE_STYLE[r.type])}>
-                                                        {TYPE_LABEL[r.type]}
-                                                    </span>
-                                                </td>
-                                                <td className={TD}>
-                                                    {(() => {
-                                                        const d = computePayRateDisplay(r);
-                                                        return (
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[14px] text-[#101828]">{d.main}</span>
-                                                                <span className="text-[13px] text-[#667085]">{d.subtitle}</span>
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                </td>
-                                                <td className={cn(TD, "text-[#475467]")}>
-                                                    {branches.find(b => b.id === r.branchId)?.name ?? "—"}
-                                                </td>
-                                                <td className={TD}>
-                                                    <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STATUS_BADGE_STYLE[r.status])}>
-                                                        {STATUS_LABEL[r.status]}
-                                                    </span>
-                                                </td>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <RowActions
-                                                        items={[
-                                                            { label: "View details", icon: Eye, onClick: () => handleRowAction(r, "view") },
-                                                            { label: "Edit", icon: Edit02, onClick: () => handleRowAction(r, "edit"), hidden: r.status !== "active" },
-                                                            { label: "Archive", icon: Archive, onClick: () => handleRowAction(r, "archive"), hidden: r.status !== "active" },
-                                                            { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(r, "recover"), hidden: r.status === "active" },
-                                                            { label: "Delete", icon: Trash01, onClick: () => handleRowAction(r, "delete"), hidden: !(r.status === "active" && r.usageCount === 0), danger: true },
-                                                        ]}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
+                        <PayRateTable
+                            rows={pagedRows}
+                            sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
+                            selectedIds={selectedIds}
+                            onToggleOne={toggleOne}
+                            onToggleAll={(c) => toggleAllRows(pagedRows, c)}
+                            onRowClick={(id) => router.push(`/staff/pay-rate/${id}?returnTo=${encodeURIComponent("/admin/staff/pay-rate")}`)}
+                            onRowAction={handleRowAction}
+                            branches={branches}
+                        />
                     )}
                 </div>
 
@@ -595,6 +647,30 @@ export default function PayRatePage() {
                 </div>
             </div>
 
+            {/* ── Archived section (policy §6) — its own table + pagination;
+                   selection shared with the active list. */}
+            <ArchivedSection
+                entitySingular="pay rate"
+                count={archivedRows.length}
+                pagination={
+                    <Pagination
+                        page={clampedArchPage} total={archSortedRows.length} pageSize={pageSize}
+                        onPage={setArchPage} onPageSize={s => { setPageSize(s); setArchPage(1); }}
+                    />
+                }
+            >
+                <PayRateTable
+                    rows={pagedArchivedRows}
+                    sortKey={archSortKey} sortDir={archSortDir} onSort={toggleArchSort}
+                    selectedIds={selectedIds}
+                    onToggleOne={toggleOne}
+                    onToggleAll={(c) => toggleAllRows(pagedArchivedRows, c)}
+                    onRowClick={(id) => router.push(`/staff/pay-rate/${id}?returnTo=${encodeURIComponent("/admin/staff/pay-rate")}`)}
+                    onRowAction={handleRowAction}
+                    branches={branches}
+                />
+            </ArchivedSection>
+            </div>
             {/* Bulk action bar — floats above the page (fixed bottom) */}
             <BulkActionBar
                 count={selectedIds.size}
