@@ -53,7 +53,12 @@ export default function ARPMReportPage() {
         const currEnd   = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         const priorStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         const priorEnd   = new Date(today.getFullYear(), today.getMonth(),     0);
-        const dateAnchorISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-15`;
+        const anchorMM = String(today.getMonth() + 1).padStart(2, "0");
+        const midMonthISO = `${today.getFullYear()}-${anchorMM}-15`;
+        const todayISO = `${today.getFullYear()}-${anchorMM}-${String(today.getDate()).padStart(2, "0")}`;
+        // Never anchor past today — the shell's date range ends at today, so a
+        // day-15 anchor would filter the whole report out before the 15th.
+        const dateAnchorISO = midMonthISO > todayISO ? todayISO : midMonthISO;
 
         interface Bucket {
             segment:            string;

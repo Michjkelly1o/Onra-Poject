@@ -59,7 +59,11 @@ export default function RetentionChurnReportPage() {
             const m = cursor.getMonth();
             const firstDay = new Date(y, m, 1);
             const lastDay  = new Date(y, m + 1, 0);
-            const periodKey = `${y}-${String(m + 1).padStart(2, "0")}-15`;
+            const midMonthKey = `${y}-${String(m + 1).padStart(2, "0")}-15`;
+            const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            // Clamp the current-month anchor to today, else the shell's date
+            // range (which ends today) drops the current month before the 15th.
+            const periodKey = midMonthKey > todayISO ? todayISO : midMonthKey;
             const period    = `${MONTH[m]} ${y}`;
 
             const perBranch = new Map<string, { activeAtStart: number; membersRetained: number; membersLost: number; branchId: string; location: string; }>();

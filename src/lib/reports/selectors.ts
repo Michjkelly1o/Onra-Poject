@@ -1334,10 +1334,12 @@ export function selectRetailStockOnHand(state: AppState): RetailStockOnHandRow[]
     const categoryById = new Map(state.retailCategories.map(c => [c.id, c] as const));
     const loc = makeLocationLookup(state);
 
-    // Rolling 30-day window for the period metrics (Units received / sold /
-    // Sell-through / Turnover). Anchored to today.
+    // Rolling 12-month window for the period metrics (Units received / sold /
+    // Sell-through / Turnover). Wide enough to include the historical demo
+    // stock adjustments (a 30-day window from "today" now misses them entirely,
+    // so those columns read 0 — misleading "no movement").
     const now = new Date();
-    const windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const windowStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
     const windowStartISO = windowStart.toISOString();
 
     const rows: RetailStockOnHandRow[] = [];

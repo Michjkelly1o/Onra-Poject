@@ -51,13 +51,19 @@ export default function LeadConversionReportPage() {
             convertDays: number[];
             contactDays: number[];
         }
+        const nowLC = new Date();
+        const todayISO = `${nowLC.getFullYear()}-${String(nowLC.getMonth() + 1).padStart(2, "0")}-${String(nowLC.getDate()).padStart(2, "0")}`;
         const buckets = new Map<string, Bucket>();
         for (const l of raw) {
+            const monthMid = `${l.addedAtISO.slice(0, 7)}-15`;
+            // Clamp the current-month anchor to today so the shell's date range
+            // (ending today) doesn't drop this month before the 15th.
+            const periodKeyClamped = monthMid > todayISO ? todayISO : monthMid;
             const key = `${l.branchId}|${l.addedAtISO.slice(0, 7)}-15`;
             const bucket = buckets.get(key) ?? {
                 branchId: l.branchId,
                 location: l.location,
-                periodKey: `${l.addedAtISO.slice(0, 7)}-15`,
+                periodKey: periodKeyClamped,
                 newLeads: 0,
                 leadsToTrial: 0,
                 leadsToPaid: 0,
