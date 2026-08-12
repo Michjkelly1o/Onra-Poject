@@ -346,7 +346,10 @@ function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShi
     // Exclude only shifts already worked THIS day + any that would clash on time.
     const available = branchDayShifts.filter(sh =>
         !staffDayShiftIds.has(sh.id)
-        && !staffDayShifts.some(held => timeRangesOverlap(sh.start_time, sh.end_time, held.start_time, held.end_time)),
+        // Single/one-off shifts are always offered (even when they overlap a shift
+        // already on this day) — picking one that clashes opens the replace modal.
+        && ((sh.type ?? "recurring") === "single"
+            || !staffDayShifts.some(held => timeRangesOverlap(sh.start_time, sh.end_time, held.start_time, held.end_time))),
     );
 
     return (
@@ -817,12 +820,21 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
     function confirmReplaceWeek() {
         if (!conflictTarget) return;
         const { staff: st, shift, replaceIds, dayIdx } = conflictTarget;
-        replaceIds.forEach(id => removeShiftAssignment(id));
-        if ((shift.type ?? "recurring") === "single" && dayIdx != null) {
-            const singleDay = [false, false, false, false, false, false, false];
-            singleDay[dayIdx] = true;
-            addShiftAssignment({ shift_id: shift.id, staff_id: st.id, days_of_week: singleDay, week_start: weekStartISO });
+        if (dayIdx != null) {
+            // Day-specific swap — free up ONLY this day on the clashing shift(s);
+            // keep the rest of a recurring week intact.
+            replaceIds.forEach(id => {
+                const a = shiftAssignments.find(x => x.id === id);
+                if (!a) return;
+                const nextDays = a.days_of_week.map((v, i) => (i === dayIdx ? false : v));
+                if (nextDays.some(Boolean)) updateShiftAssignmentDays(a.id, nextDays);
+                else removeShiftAssignment(a.id);
+            });
+            const onlyDay = [false, false, false, false, false, false, false];
+            onlyDay[dayIdx] = true;
+            addShiftAssignment({ shift_id: shift.id, staff_id: st.id, days_of_week: onlyDay, week_start: weekStartISO });
         } else {
+            replaceIds.forEach(id => removeShiftAssignment(id));
             addShiftAssignment({ shift_id: shift.id, staff_id: st.id, week_start: weekStartISO });
         }
         showToast("Shift changed", `${st.fullName}'s shift was changed to ${shift.name}.`, "success", "check");
