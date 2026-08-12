@@ -336,6 +336,9 @@ export function buildHomeViewModel(
     // Inactive / archived / expired campaigns never surface to the customer.
     const nowMs = Date.now();
     const whatsOn: HomeWhatsOnVM[] = marketingItems
+        // Campaigns are push-only (they go to the notification inbox, not the
+        // banner). The "What's on" banner shows Announcements only.
+        .filter((m) => m.type === "announcement")
         .filter((m) => m.status === "active")
         .filter((m) => isAllBranches || m.multi_location || m.branch_ids.includes(branchId))
         .filter((m) => !m.expiry_date || new Date(m.expiry_date).getTime() >= nowMs)

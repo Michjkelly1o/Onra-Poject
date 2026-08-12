@@ -76,6 +76,7 @@
 
 import { create } from "zustand";
 import { firstFreeSpot, balancedSpotGrid } from "@/lib/spot-layout";
+import { campaignRecipients, type CampaignTopic } from "@/lib/marketing/dispatch";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { account_profile as adminUser } from "@/data/mock/account_profile";
@@ -1200,6 +1201,13 @@ export const customerNotificationSink: {
 // channel + Studio-announcements topic) + branch scope before it surfaces.
 export const customerAnnouncementSink: {
     emit: null | ((a: { id: string; title: string; message: string; branchIds: string[] }) => void);
+} = { emit: null };
+
+// Campaign send bridge — a campaign is pushed to its chosen segment. Same
+// pattern as the announcement sink; the feed-side handler applies the
+// per-viewer consent gate (Push channel + the campaign's TOPIC) + branch scope.
+export const customerCampaignSink: {
+    emit: null | ((c: { id: string; title: string; message: string; branchIds: string[]; topic?: CampaignTopic }) => void);
 } = { emit: null };
 
 export interface ClassBooking {
@@ -10315,13 +10323,52 @@ export const useAppStore = create<AppState>()(persist(
             "marketing", id, next.title,
         );
         // Publishing an active announcement pushes it to opted-in customers
-        // (consent gate applied feed-side). Campaign send lands in Phase 3.
+        // (consent gate applied feed-side).
         if (next.type === "announcement" && next.status === "active") {
             customerAnnouncementSink.emit?.({
                 id: next.id,
                 title: next.title,
                 message: next.short_description,
                 branchIds: next.branch_ids ?? [],
+            });
+        }
+        // Sending a campaign pushes it to its audience (consent-gated) AND
+        // records the send in `marketingCampaignStats` — the single write-path
+        // that makes Campaign Performance + Insights + Dashboard reflect real
+        // sends. `sends` = the exact reach the form previewed.
+        if (next.type === "campaign" && next.delivery_status === "sent") {
+            const st = get();
+            const sends = campaignRecipients(
+                {
+                    kind: next.audience_kind ?? "everyone",
+                    membershipIds: next.audience_membership_ids,
+                    segments: next.audience_segments,
+                    customerIds: next.audience_customer_ids,
+                    branchIds: next.branch_ids ?? [],
+                },
+                next.topic,
+                st.customers, st.customerPlans, st.customerTransactions,
+            ).length;
+            const statRow = {
+                id: `cstat_${id}`,
+                campaign_id: id,
+                campaign_name: next.title,
+                channel: "push" as const,
+                sent_at: next.sent_at ?? new Date().toISOString(),
+                sends,
+                // Simulated engagement (deterministic) — a fresh send has no
+                // attribution yet, so bookings/revenue start at 0.
+                opens_reads: Math.round(sends * 0.45),
+                clicks_taps: Math.round(sends * 0.08),
+                attributed_bookings: 0,
+                attributed_revenue_aed: 0,
+                attribution_window: "7 days",
+                branch_id: next.branch_ids?.[0] ?? DEFAULT_BRANCH_ID,
+            };
+            set(state => ({ marketingCampaignStats: [...state.marketingCampaignStats, statRow] }));
+            customerCampaignSink.emit?.({
+                id, title: next.title, message: next.short_description,
+                branchIds: next.branch_ids ?? [], topic: next.topic,
             });
         }
         return id;
