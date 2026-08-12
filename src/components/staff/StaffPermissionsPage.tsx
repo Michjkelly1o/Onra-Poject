@@ -1335,6 +1335,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             ? roleFilter.statuses.length > 0
             : staffFilter.statuses.length > 0 || staffFilter.roleIds.length > 0;
 
+    // When the Staff sub-tab shows archived staff, wrap the active view card +
+    // Archived section in a scroll region and let each fill a viewport (like the
+    // Customers module), so the active table isn't squished by the section below.
+    const staffArchiveOn = tab === "staff" && (forceTab !== "staff" || staffSubTab === "staff") && archivedStaff.length > 0;
+
     return (
         // Match /admin/schedule: fill-to-viewport — the view card fills the
         // remaining height (flex-1 min-h-0) so the tab strip pins, the table
@@ -1432,11 +1437,17 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     FIXED h-[760px] surface (matches /admin/schedule's view card),
                     so the tab strip pins and only the inner body scrolls while
                     the outer <main> canvas scrolls the page. */}
+            {/* Scroll region — active card + Archived section each fill a viewport
+                and scroll between them (Customers pattern). Only wraps when the
+                Staff sub-tab has archived staff; otherwise it's a passthrough. */}
+            <div className={cn(staffArchiveOn ? "flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6" : "contents")}>
             <div className={cn(
                 "relative",
                 forceTab === "roles"
                     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
-                    : "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                    : staffArchiveOn
+                        ? "shrink-0 h-full bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden"
+                        : "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on
@@ -1752,7 +1763,6 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 <ArchivedSection
                     entitySingular="staff"
                     count={archivedStaff.length}
-                    fill={false}
                     pagination={
                         <Pagination
                             page={clampedArchStaffPg} total={archSortedStaff.length} pageSize={pageSize}
@@ -1770,6 +1780,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     </div>
                 </ArchivedSection>
             )}
+            </div>{/* /scroll region (or contents passthrough) */}
 
             <FilterPanel
                 open={filterOpen}
