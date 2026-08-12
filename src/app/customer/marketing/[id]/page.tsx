@@ -15,7 +15,7 @@
 
 import type { ComponentType } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Clock, CursorBox, MarkerPin01, Tag01, Ticket01 } from "@untitledui/icons";
+import { ChevronLeft, Clock, CursorBox, MarkerPin01, Ticket01 } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { useMarketingItem } from "@/lib/customer/marketing-data";
@@ -106,15 +106,7 @@ export default function MarketingDetailPage() {
                         />
 
                         <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between gap-2">
-                                <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{item.title}</p>
-                                <span className="flex shrink-0 items-center gap-0.5 rounded-full border border-[var(--brand-primary)] bg-[var(--brand-tertiary)] py-0.5 pl-1.5 pr-2">
-                                    <Tag01 className="size-3 text-[var(--brand-primary)]" aria-hidden />
-                                    <span className="text-xs font-medium leading-[18px] text-[var(--brand-primary)]">
-                                        {item.typeLabel}
-                                    </span>
-                                </span>
-                            </div>
+                            <p className="text-base font-semibold leading-6 text-[var(--brand-text)]">{item.title}</p>
                             <p className="text-sm font-normal leading-5 text-[var(--colors-text-tertiary)]">{item.description}</p>
                         </div>
 
