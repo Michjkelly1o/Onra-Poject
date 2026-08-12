@@ -15,7 +15,8 @@
 //     icon + the replace warning copy, above the same period field.
 
 import { useState, type ReactNode } from "react";
-import { SlashCircle01, XClose, ChevronDown } from "@untitledui/icons";
+import { SlashCircle01, XClose } from "@untitledui/icons";
+import { NumberWithUnitInput } from "@/components/ui/NumberWithUnitInput";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +47,6 @@ export function ShiftPeriodModal({
     if (!open) return null;
 
     const weeks = Math.max(1, unit === "months" ? count * WEEKS_PER_MONTH : count);
-
-    const fieldCls = "h-11 rounded-[8px] border-1 border-[var(--colors-border-primary)] text-[14px] text-[var(--colors-text-primary)] outline-none focus:border-[var(--colors-secondary-500)] focus:ring-2 focus:ring-[var(--colors-secondary-300)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white transition-all";
 
     return (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
@@ -85,28 +84,18 @@ export function ShiftPeriodModal({
                 {/* Custom period — amount + unit (Weeks / Months). */}
                 <div className="px-6 pt-4 pb-4 flex flex-col gap-2">
                     <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Assign for</p>
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="number"
-                            min={1}
-                            value={count}
-                            onChange={(e) => setCount(Math.max(1, Math.floor(Number(e.target.value)) || 1))}
-                            className={cn(fieldCls, "w-24 px-3.5 text-center")}
-                            aria-label="Amount"
-                        />
-                        <div className="relative flex-1">
-                            <select
-                                value={unit}
-                                onChange={(e) => setUnit(e.target.value as "weeks" | "months")}
-                                className={cn(fieldCls, "w-full pl-3.5 pr-10 appearance-none cursor-pointer")}
-                                aria-label="Unit"
-                            >
-                                <option value="weeks">{count === 1 ? "Week" : "Weeks"}</option>
-                                <option value="months">{count === 1 ? "Month" : "Months"}</option>
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--colors-text-quaternary)]" />
-                        </div>
-                    </div>
+                    <NumberWithUnitInput
+                        value={count}
+                        unit={unit}
+                        units={[
+                            { value: "weeks", label: count === 1 ? "Week" : "Weeks" },
+                            { value: "months", label: count === 1 ? "Month" : "Months" },
+                        ]}
+                        onValueChange={(n) => setCount(Math.max(1, Math.floor(n) || 1))}
+                        onUnitChange={(u) => setUnit(u as "weeks" | "months")}
+                        min={1}
+                        aria-label="Assign for"
+                    />
                     <p className="text-[13px] text-[var(--colors-text-quaternary)]">
                         Runs for {weeks} week{weeks === 1 ? "" : "s"} from this week.
                     </p>
