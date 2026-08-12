@@ -37,6 +37,7 @@ import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
+import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 
 // Card-embedded kebab menu actions — mirrors the detail-page action set so
 // the list can drive Archive / Deactivate / Delete / Recover / Reactivate
@@ -521,46 +522,44 @@ export default function MarketingListPage() {
                 </Button>
             </div>
 
-            {/* ── Delivery-status tabs ── */}
-            <div className="flex items-center gap-1 border-b border-[var(--colors-border-secondary)]">
-                {DELIVERY_TABS.map(t => {
-                    const count = t.id === "all"
-                        ? campaigns.length
-                        : campaigns.filter(c => (c.delivery_status ?? "sent") === t.id).length;
-                    const active = deliveryTab === t.id;
-                    return (
-                        <button key={t.id} type="button" onClick={() => setDeliveryTab(t.id)}
-                            className={cn(
-                                "px-4 py-2.5 text-[14px] font-medium border-b-2 -mb-px transition-colors",
-                                active
-                                    ? "border-[var(--colors-secondary-600)] text-[var(--colors-text-primary)]"
-                                    : "border-transparent text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
-                            )}>
-                            {t.label}
-                            <span className="ml-1.5 text-[13px] text-[var(--colors-text-quaternary)]">{count}</span>
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* ── Card grid ── */}
-            {visible.length === 0 ? (
-                <div className="relative flex-1" style={{ minHeight: 400 }}>
-                    <EmptyState
-                        title={campaigns.length === 0 ? "No campaigns yet" : "No campaigns found"}
-                        subtitle={campaigns.length === 0
-                            ? "Create your first campaign to engage your customers."
-                            : "Try adjusting your search or filters."}
+            {/* ── View card — segmented tabs + card grid inside a bordered
+                container (matches the Membership & Package view). ── */}
+            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden min-h-[760px]">
+                {/* Tab nav row */}
+                <div className="shrink-0 flex items-center px-6 py-4">
+                    <SegmentedTabs
+                        tabs={DELIVERY_TABS.map(t => ({
+                            key: t.id,
+                            label: `${t.label} (${t.id === "all"
+                                ? campaigns.length
+                                : campaigns.filter(c => (c.delivery_status ?? "sent") === t.id).length})`,
+                        }))}
+                        activeKey={deliveryTab}
+                        onChange={k => setDeliveryTab(k as DeliveryTab)}
                     />
                 </div>
-            ) : (
-                <div className="grid grid-cols-4 gap-4">
-                    {visible.map(m => (
-                        <MarketingCardView key={m.id} item={m} totalBranches={totalBranches}
-                            onOpen={() => router.push(`/marketing/${m.id}?returnTo=${encodeURIComponent("/admin/marketing")}`)} />
-                    ))}
+
+                {/* Content body */}
+                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-6">
+                    {visible.length === 0 ? (
+                        <div className="relative h-full" style={{ minHeight: 400 }}>
+                            <EmptyState
+                                title={campaigns.length === 0 ? "No campaigns yet" : "No campaigns found"}
+                                subtitle={campaigns.length === 0
+                                    ? "Create your first campaign to engage your customers."
+                                    : "Try adjusting your search or filters."}
+                            />
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-4 gap-4">
+                            {visible.map(m => (
+                                <MarketingCardView key={m.id} item={m} totalBranches={totalBranches}
+                                    onOpen={() => router.push(`/marketing/${m.id}?returnTo=${encodeURIComponent("/admin/marketing")}`)} />
+                            ))}
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
 
             <FilterPanel
                 open={filterOpen}
