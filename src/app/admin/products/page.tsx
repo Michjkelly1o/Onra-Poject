@@ -47,6 +47,8 @@ import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { Toast } from "@/components/ui/Toast";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
@@ -62,8 +64,6 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 type TabId = "memberships" | "packages";
 type ProductStatus = Membership["status"]; // "active" | "inactive" | "archived"
 
-const ALL_STATUSES: ProductStatus[] = ["active", "inactive", "archived"];
-
 const STATUS_LABEL: Record<ProductStatus, string> = {
     active: "Active",
     inactive: "Inactive",
@@ -73,6 +73,11 @@ const STATUS_LABEL: Record<ProductStatus, string> = {
 const STATUS_ORDER: Record<ProductStatus, number> = {
     active: 0, inactive: 1, archived: 2,
 };
+
+// Status filter pills — archived is NOT a filter value (it's the Archived
+// section below the active list now, policy §3). Only active/inactive filter
+// the active table; archived rows always live in their own section.
+const FILTER_STATUSES: ProductStatus[] = ["active", "inactive"];
 
 // FilterState mirrors POS shape: undefined min/max = "no filter set". The
 // RangeSection helper handles the "both thumbs at floor → undefined" mapping.
@@ -304,7 +309,7 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
-                            {ALL_STATUSES.map(s => (
+                            {FILTER_STATUSES.map(s => (
                                 <FilterPill key={s} label={STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
                                     onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
                             ))}
@@ -720,6 +725,7 @@ export default function ProductsPage() {
     const [filterOpen, setFilterOpen] = useState(false);
     const [applied, setApplied] = usePersistedListState<FilterState>("products:applied", EMPTY_FILTER);
     const [page, setPage] = usePersistedListState("products:page", 1);
+    const [archPage, setArchPage] = useState(1);
     const [pageSize, setPageSize] = usePersistedListState("products:pageSize", 10);
     const [selectedMemberships, setSelectedMemberships] = useState<Set<string>>(new Set());
     const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
@@ -739,6 +745,7 @@ export default function ProductsPage() {
     useEffect(() => {
         if (!didMountRef.current) { didMountRef.current = true; return; }
         setPage(1);
+        setArchPage(1);
     }, [tab, search, applied, branchId]);
 
     // Branch dropdown — single source: live `branches` slice
@@ -765,7 +772,10 @@ export default function ProductsPage() {
         return allRows.filter(r => {
             if (branchId && r.branchIds.length > 0 && !r.branchIds.includes(branchId)) return false;
             if (q && !r.name.toLowerCase().includes(q)) return false;
-            if (applied.statuses.length > 0 && !applied.statuses.includes(r.status)) return false;
+            // The status pill filters only the ACTIVE table (active/inactive);
+            // archived rows are exempt — they always render in the Archived
+            // section below, narrowed by search/branch/sliders but not status.
+            if (r.status !== "archived" && applied.statuses.length > 0 && !applied.statuses.includes(r.status)) return false;
             if (applied.priceMin != null && r.priceAed < applied.priceMin) return false;
             if (applied.priceMax != null && r.priceAed > applied.priceMax) return false;
             if (applied.creditsMin != null || applied.creditsMax != null) {
@@ -788,12 +798,22 @@ export default function ProductsPage() {
         duration: (a, b) => a.durationDays - b.durationDays,
         status: (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
     };
-    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, comparators);
+    // Split archived rows off to the shared Archived section (policy §3). Both
+    // buckets are already branch/search/slider-scoped; the active bucket also
+    // respects the status pill (archived was exempted above).
+    const { active: activeRows, archived: archivedRows } = useArchiveView(filteredRows);
 
-    // ─── Pagination slice ───────────────────────────────────────────────────
+    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(activeRows, comparators);
+    const { sorted: archSorted, sortKey: archSortKey, sortDir: archSortDir, toggle: toggleArchSort } = useSort(archivedRows, comparators);
+
+    // ─── Pagination slice (active + archived each paginate independently) ────
     const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const pagedRows = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    const archTotalPages = Math.max(1, Math.ceil(archSorted.length / pageSize));
+    const clampedArchPage = Math.min(Math.max(1, archPage), archTotalPages);
+    const pagedArchivedRows = archSorted.slice((clampedArchPage - 1) * pageSize, clampedArchPage * pageSize);
 
     // ─── Selection helpers ──────────────────────────────────────────────────
     function toggleOne(id: string) {
@@ -801,18 +821,18 @@ export default function ProductsPage() {
         next.has(id) ? next.delete(id) : next.add(id);
         setSelectedIds(next);
     }
-    function toggleAllOnPage(check: boolean) {
+    function toggleAllRows(rows: ProductRow[], check: boolean) {
         const next = new Set(selectedIds);
-        if (check) pagedRows.forEach(r => next.add(r.id));
-        else pagedRows.forEach(r => next.delete(r.id));
+        if (check) rows.forEach(r => next.add(r.id));
+        else rows.forEach(r => next.delete(r.id));
         setSelectedIds(next);
     }
     function clearSelection() { setSelectedIds(new Set()); }
 
     // ─── Bulk selection derived flags ───────────────────────────────────────
     const selectedRows = useMemo(
-        () => sorted.filter(r => selectedIds.has(r.id)),
-        [sorted, selectedIds],
+        () => [...activeRows, ...archivedRows].filter(r => selectedIds.has(r.id)),
+        [activeRows, archivedRows, selectedIds],
     );
     // The bar gates each action on whether the selection has at least one
     // candidate row — Archive needs ≥1 active/inactive, Recover needs ≥1
@@ -989,8 +1009,12 @@ export default function ProductsPage() {
                 </Button>
             </div>
 
-            {/* ── View card ── */}
-            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            {/* Scroll region — the active view card fills the viewport (its
+                pagination pinned + visible); the Archived section sits below and
+                is reached by scrolling THIS region (matches the Customers ref). */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+            {/* ── Active view card ── */}
+            <div className="shrink-0 h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 relative flex items-center px-6 py-4">
                     <SegmentedTabs
@@ -1018,7 +1042,7 @@ export default function ProductsPage() {
                                 sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
                                 selectedIds={selectedIds}
                                 onToggleOne={toggleOne}
-                                onToggleAll={toggleAllOnPage}
+                                onToggleAll={(c) => toggleAllRows(pagedRows, c)}
                                 onRowAction={openRowConfirm}
                                 onViewOrEdit={openViewOrEdit}
                             />
@@ -1046,6 +1070,33 @@ export default function ProductsPage() {
                         onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                     />
                 </div>
+            </div>
+
+            {/* ── Archived section (policy §3) — shared shell; own table +
+                   pagination; selection + search/filters shared with the active
+                   list. Renders only when the current tab has archived rows. */}
+            <ArchivedSection
+                entitySingular={tab === "memberships" ? "membership" : "package"}
+                count={archivedRows.length}
+                pagination={
+                    <Pagination
+                        page={clampedArchPage} total={archSorted.length} pageSize={pageSize}
+                        onPage={setArchPage} onPageSize={s => { setPageSize(s); setArchPage(1); }}
+                    />
+                }
+            >
+                <div className="px-6">
+                    <ListView
+                        rows={pagedArchivedRows}
+                        sortKey={archSortKey} sortDir={archSortDir} onSort={toggleArchSort}
+                        selectedIds={selectedIds}
+                        onToggleOne={toggleOne}
+                        onToggleAll={(c) => toggleAllRows(pagedArchivedRows, c)}
+                        onRowAction={openRowConfirm}
+                        onViewOrEdit={openViewOrEdit}
+                    />
+                </div>
+            </ArchivedSection>
             </div>
 
             {pendingConfirm && (() => {
