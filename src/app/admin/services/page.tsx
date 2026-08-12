@@ -42,6 +42,8 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
@@ -63,7 +65,8 @@ const STATUS_LABEL: Record<ServiceStatus, string> = {
 const STATUS_ORDER: Record<ServiceStatus, number> = {
     active: 0, inactive: 1, archived: 2,
 };
-const ALL_STATUSES: ServiceStatus[] = ["active", "archived", "inactive"];
+// Archived is a place (the Archived section), not a filter value (policy §3).
+const ALL_STATUSES: ServiceStatus[] = ["active", "inactive"];
 
 interface FilterState {
     statuses: ServiceStatus[];
@@ -554,6 +557,7 @@ function ServicesPageInner() {
     const [filterOpen, setFilterOpen]         = useState(false);
     const [applied, setApplied]               = usePersistedListState<FilterState>("services:applied", EMPTY_FILTER);
     const [page, setPage]                     = usePersistedListState("services:page", 1);
+    const [archPage, setArchPage]             = useState(1);
     const [pageSize, setPageSize]             = usePersistedListState("services:pageSize", 10);
     const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set());
     // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
@@ -587,13 +591,18 @@ function ServicesPageInner() {
             // (client 2026-08-03) — skip it there so a persisted filter from the
             // umbrella list can't silently narrow them. Search + location stay.
             if (filtersEnabled) {
-                if (applied.statuses.length   && !applied.statuses.includes(r.status))     return false;
+                // Status pill filters only the active table; archived services are
+                // exempt — they always render in the Archived section (policy §3).
+                if (r.status !== "archived" && applied.statuses.length && !applied.statuses.includes(r.status)) return false;
                 if (applied.categories.length && !applied.categories.includes(r.category)) return false;
             }
             if (q && !`${r.name} ${r.category}`.toLowerCase().includes(q))             return false;
             return true;
         });
     }, [allRows, search, applied, branchId, typeScope, filtersEnabled]);
+
+    // Archived services leave the active table → the shared Archived section.
+    const { active: activeRows, archived: archivedRows } = useArchiveView(filteredRows);
 
     // ─── Sort (gift-cards twin) ────────────────────────────────────────────
     const comparators: Record<string, (a: ServiceRow, b: ServiceRow) => number> = {
@@ -605,12 +614,17 @@ function ServicesPageInner() {
         price:    (a, b) => a.price - b.price,
         status:   (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
     };
-    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, comparators);
+    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(activeRows, comparators);
+    const { sorted: archSorted, sortKey: archSortKey, sortDir: archSortDir, toggle: toggleArchSort } = useSort(archivedRows, comparators);
 
-    // ─── Pagination slice ──────────────────────────────────────────────────
+    // ─── Pagination slice (active + archived paginate independently) ────────
     const totalPages   = Math.max(1, Math.ceil(sorted.length / pageSize));
     const clampedPage  = Math.min(Math.max(1, page), totalPages);
     const pagedRows    = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    const archTotalPages  = Math.max(1, Math.ceil(archSorted.length / pageSize));
+    const clampedArchPage = Math.min(Math.max(1, archPage), archTotalPages);
+    const pagedArchivedRows = archSorted.slice((clampedArchPage - 1) * pageSize, clampedArchPage * pageSize);
 
     // ─── Selection helpers ─────────────────────────────────────────────────
     function toggleOne(id: string) {
@@ -618,16 +632,16 @@ function ServicesPageInner() {
         next.has(id) ? next.delete(id) : next.add(id);
         setSelectedIds(next);
     }
-    function toggleAllOnPage(check: boolean) {
+    function toggleAllRows(rows: ServiceRow[], check: boolean) {
         const next = new Set(selectedIds);
-        if (check) pagedRows.forEach(r => next.add(r.id));
-        else       pagedRows.forEach(r => next.delete(r.id));
+        if (check) rows.forEach(r => next.add(r.id));
+        else       rows.forEach(r => next.delete(r.id));
         setSelectedIds(next);
     }
     function clearSelection() { setSelectedIds(new Set()); }
 
     // ─── Bulk derived flags ────────────────────────────────────────────────
-    const selectedRows = useMemo(() => sorted.filter(r => selectedIds.has(r.id)), [sorted, selectedIds]);
+    const selectedRows = useMemo(() => [...activeRows, ...archivedRows].filter(r => selectedIds.has(r.id)), [activeRows, archivedRows, selectedIds]);
     const hasArchivable    = selectedRows.some(r => r.status !== "archived");
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
     const hasRecoverable   = selectedRows.some(r => r.status === "archived");
@@ -757,7 +771,7 @@ function ServicesPageInner() {
                     "recovery". The generic "service(s)" label is kept
                     for the umbrella /admin/services route that lists both. */}
                 <ToolbarTotal
-                    count={filteredRows.length}
+                    count={activeRows.length}
                     entitySingular={
                         typeScope === "private"  ? "private session" :
                         typeScope === "recovery" ? "recovery session" :
@@ -802,10 +816,13 @@ function ServicesPageInner() {
                 </Button>
             </div>
 
-            {/* Body — flush on the admin chrome (no nested view card). The
-                relative wrapper anchors the floating bulk-action pill so it
-                can sit over the table area without escaping the page. */}
-            <div className="relative flex flex-col flex-1 min-h-0">
+            {/* Scroll region — active table fills the viewport (pagination
+                pinned); the Archived section sits below and is reached by
+                scrolling THIS region. Body sits flush on the admin chrome (no
+                nested view card). */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+            {/* Active table — relative wrapper anchors the floating bulk pill. */}
+            <div className="relative shrink-0 h-full flex flex-col">
                 <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide">
                 {sorted.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
@@ -822,7 +839,7 @@ function ServicesPageInner() {
                         sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
                         selectedIds={selectedIds}
                         onToggleOne={toggleOne}
-                        onToggleAll={toggleAllOnPage}
+                        onToggleAll={(c) => toggleAllRows(pagedRows, c)}
                         onRowAction={openRowConfirm}
                         onView={handleView}
                         onEdit={handleEdit}
@@ -844,6 +861,31 @@ function ServicesPageInner() {
                     onClear={clearSelection}
                     onAction={openBulkConfirm}
                 />
+            </div>
+
+            {/* ── Archived section (policy §3) — its own table + pagination;
+                   selection shared with the active list. */}
+            <ArchivedSection
+                entitySingular={typeScope === "private" ? "private session" : typeScope === "recovery" ? "recovery session" : "service"}
+                count={archivedRows.length}
+                pagination={
+                    <Pagination
+                        page={clampedArchPage} total={archSorted.length} pageSize={pageSize}
+                        onPage={setArchPage} onPageSize={s => { setPageSize(s); setArchPage(1); }}
+                    />
+                }
+            >
+                <ListView
+                    rows={pagedArchivedRows}
+                    sortKey={archSortKey} sortDir={archSortDir} onSort={toggleArchSort}
+                    selectedIds={selectedIds}
+                    onToggleOne={toggleOne}
+                    onToggleAll={(c) => toggleAllRows(pagedArchivedRows, c)}
+                    onRowAction={openRowConfirm}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                />
+            </ArchivedSection>
             </div>
 
             {/* ── Filter side panel (disabled on Private/Recovery scopes) ── */}
