@@ -6260,7 +6260,11 @@ for (const t of INITIAL_ALL_TRANSACTIONS) {
     }
 }
 const INITIAL_PROMO_CODES: PromoCode[] = SEED_PROMO_CODES.map(p => ({
-    ...p, usage_count: PROMO_USAGE_FROM_SEED[p.code] ?? 0,
+    // Product-sale promos are counted from real transactions; promos with no
+    // product-sale usage (e.g. class-booking codes like WEEKEND / RAMADAN, whose
+    // redemptions aren't modelled as transactions) keep their seeded count — so
+    // an active promo with documented usage never falls to 0 and become deletable.
+    ...p, usage_count: PROMO_USAGE_FROM_SEED[p.code] ?? p.usage_count ?? 0,
 }));
 
 export const useAppStore = create<AppState>()(persist(

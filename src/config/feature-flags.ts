@@ -373,7 +373,7 @@ export function isRouteDisabled(pathname: string): boolean {
 /** The 6 Excel-spec report categories → the slugs that live under each. */
 export const REPORT_CATEGORY_SLUGS: Record<string, string[]> = {
     financial: [
-        "total-sales", "sales-by-category", "sales-by-item", "payments",
+        "total-sales", "sales-breakdown", "payments",
         "refunds", "discounts", "tax-vat-export", "gift-cards",
         "revenue-recognition", "revenue-per-class", "arpm", "mrr",
     ],

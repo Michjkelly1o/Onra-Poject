@@ -169,8 +169,11 @@ const NUMBER_FMT   = new Intl.NumberFormat("en-US");
 // instead of AED -170. The red colour is applied at the cell (see isNegMoney),
 // since a string can't carry a class — this returns the bracketed text only.
 function fmtCurrency(n: number): string {
-    const body = `AED ${CURRENCY_FMT.format(Math.round(Math.abs(n)))}`;
-    return n < 0 ? `(${body})` : body;
+    // Decide the sign on the ROUNDED value so a tiny negative (e.g. −0.3 that
+    // rounds to 0) renders "AED 0", never "(AED 0)".
+    const rounded = Math.round(n);
+    const body = `AED ${CURRENCY_FMT.format(Math.abs(rounded))}`;
+    return rounded < 0 ? `(${body})` : body;
 }
 /** True when a cell should render red — a negative currency value. */
 function isNegMoney(value: unknown, kind: ColumnDef["kind"] | undefined): boolean {

@@ -110,8 +110,17 @@ export default function SalesBreakdownReportPage() {
                 writeOffInclTax: 0, writeOffPreTax: 0, writeOffTax: 0,
             };
 
-            const tax = Math.abs(Number(r.taxAed ?? 0));
             const inclTax = Math.abs(Number(r.amountAed));
+            // Refund / write-off rows carry only `amount_aed` (no subtotal/tax),
+            // so derive the tax split from the row's rate (VAT 5% default) — else
+            // Net-before-tax would over-subtract and Tax-collected would never
+            // reverse the refunded VAT. Zero-rated/exempt rows keep tax = 0.
+            const rate = Number(r.taxRatePercentage ?? 5) / 100;
+            const treatment = (r as { taxTreatment?: string }).taxTreatment;
+            const taxExempt = treatment === "zero_rated" || treatment === "exempt" || treatment === "out_of_scope";
+            const tax = r.taxAed != null
+                ? Math.abs(Number(r.taxAed))
+                : (taxExempt || rate <= 0 ? 0 : inclTax - inclTax / (1 + rate));
             const preTax = r.subtotalAed != null
                 ? Math.abs(Number(r.subtotalAed))
                 : Math.max(0, inclTax - tax);
