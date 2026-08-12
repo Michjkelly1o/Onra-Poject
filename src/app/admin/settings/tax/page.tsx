@@ -53,7 +53,9 @@ import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { useAppStore, type TaxRate, type TaxRateStatus, type TaxRateKind, type TaxRoundingMode } from "@/lib/store";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
-import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -214,10 +216,10 @@ function StatusFilterDropdown({ value, onChange }: {
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
+    // Archived is a place (the Archived section), not a filter value (policy §3).
     const OPTIONS: { value: TaxRateStatus; label: string }[] = [
         { value: "active",   label: "Active"   },
         { value: "inactive", label: "Inactive" },
-        { value: "archived", label: "Archive"  },
     ];
 
     return (
@@ -398,6 +400,107 @@ type PendingConfirm =
     | { mode: "row"; row: TaxRate; kind: RowActionKind }
     | { mode: "bulk"; rows: TaxRate[]; kind: RowActionKind };
 
+// ─── Tax-rate table — shared by the active list + Archived section ───────────
+
+function TaxTable({
+    rows, sortKey, sortDir, onSort,
+    selectedIds, onToggleOne, onToggleAll,
+    hasUsage, onEdit, onRowAction,
+}: {
+    rows: TaxRate[];
+    sortKey: string | null;
+    sortDir: SortDir;
+    onSort: (key: string) => void;
+    selectedIds: Set<string>;
+    onToggleOne: (id: string) => void;
+    onToggleAll: (checked: boolean) => void;
+    hasUsage: (id: string) => boolean;
+    onEdit: (r: TaxRate) => void;
+    onRowAction: (r: TaxRate, kind: RowActionKind) => void;
+}) {
+    const allChecked  = rows.length > 0 && rows.every(r => selectedIds.has(r.id));
+    const someChecked = !allChecked && rows.some(r => selectedIds.has(r.id));
+    return (
+        <div className="px-6">
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th className={cn(TH, "w-[44px]")}>
+                            <CheckboxCell
+                                checked={allChecked}
+                                indeterminate={someChecked}
+                                onChange={onToggleAll}
+                                ariaLabel="Select all rows on this page"
+                            />
+                        </th>
+                        <th className={TH}>
+                            <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Tax name</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[140px]")}>
+                            <SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Type</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[140px]")}>
+                            <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={onSort}>Tax rate</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[220px]")}>
+                            <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={onSort}>Effective date</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[140px]")}>
+                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[52px]")} />
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(r => {
+                        const isSelected = selectedIds.has(r.id);
+                        const used = hasUsage(r.id);
+                        return (
+                            <tr key={r.id}
+                                className={cn("transition-colors", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
+                                <td className={TD}>
+                                    <CheckboxCell
+                                        checked={isSelected}
+                                        onChange={() => onToggleOne(r.id)}
+                                        ariaLabel={`Select ${r.name}`}
+                                    />
+                                </td>
+                                <td className={TD}>
+                                    <div className="flex items-center gap-3">
+                                        <IconAvatar icon={Percent03} />
+                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
+                                    </div>
+                                </td>
+                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{TYPE_LABEL[r.type]}</td>
+                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>
+                                    {r.type === "exempt" ? "—" : formatPct(r.ratePercentage)}
+                                </td>
+                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>
+                                    {(() => {
+                                        const win = formatEffectiveWindow(r);
+                                        return win ? win : <span className="text-[var(--colors-fg-quaternary)]">—</span>;
+                                    })()}
+                                </td>
+                                <td className={TD}><StatusBadge type="tax-rate" status={r.status} /></td>
+                                <td className={TD}>
+                                    <RowActions items={[
+                                        { label: "Edit", icon: Edit02, onClick: () => onEdit(r), hidden: r.status !== "active" },
+                                        { label: "Archive", icon: Archive, onClick: () => onRowAction(r, "archive"), hidden: r.status === "archived" },
+                                        { label: "Reactivate", icon: Check, onClick: () => onRowAction(r, "reactivate"), hidden: r.status !== "inactive" },
+                                        { label: "Recover", icon: RefreshCcw01, onClick: () => onRowAction(r, "recover"), hidden: r.status !== "archived" },
+                                        { label: "Deactivate", icon: SlashCircle01, onClick: () => onRowAction(r, "deactivate"), danger: true, hidden: !(r.status === "active" && used) },
+                                        { label: "Delete", icon: Trash01, onClick: () => onRowAction(r, "delete"), danger: true, hidden: !(r.status === "active" && !used) },
+                                    ]} />
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 export default function TaxPage() {
     // ─── Store subscriptions ────────────────────────────────────────────────
     const taxRates           = useAppStore(s => s.taxRates);
@@ -437,6 +540,7 @@ export default function TaxPage() {
     // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
     useBulkSelectionSignal(selectedIds.size > 0);
     const [page, setPage] = useState(1);
+    const [archPage, setArchPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
     // Confirm-before-flip for the global "Prices include tax" toggle —
@@ -484,7 +588,9 @@ export default function TaxPage() {
             // list when the studio's country has no payroll tax (UAE) — same
             // gate as the Income-tax tab. They re-appear for an income-tax market.
             .filter(r => showIncomeTax || r.kind !== "income")
-            .filter(r => statusFilter === null ? true : r.status === statusFilter)
+            // Status filter applies only to the active table; archived rates are
+            // exempt — they always render in the Archived section below (policy §3).
+            .filter(r => statusFilter === null || r.status === "archived" || r.status === statusFilter)
             .sort((a, b) => {
                 const s = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
                 if (s !== 0) return s;
@@ -492,34 +598,41 @@ export default function TaxPage() {
             });
     }, [taxRates, statusFilter, showIncomeTax]);
 
+    // Archived tax rates leave the active table → the shared Archived section.
+    const { active: activeRows, archived: archivedRows } = useArchiveView(filtered);
+
     // ── Tax rate sort — Name / Type / Rate (numeric) / Effective / Status. ──
     // Effective sorts by `validFromISO` ascending — earlier start dates
     // first, rates with no `validFromISO` (fully unbounded) sort as
     // empty-string so they land at the top on ascending order.
-    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<TaxRate>(filtered, {
+    const TAX_COMPARATORS: Record<string, (a: TaxRate, b: TaxRate) => number> = {
         name:      (a, b) => a.name.localeCompare(b.name),
         type:      (a, b) => TYPE_ORDER[a.type] - TYPE_ORDER[b.type],
         rate:      (a, b) => a.ratePercentage - b.ratePercentage,
         effective: (a, b) => (a.validFromISO ?? "").localeCompare(b.validFromISO ?? ""),
         status:    (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
-    });
+    };
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<TaxRate>(activeRows, TAX_COMPARATORS);
+    const { sorted: archSortedRows, sortKey: archSortKey, sortDir: archSortDir, toggle: toggleArchSort } = useSort<TaxRate>(archivedRows, TAX_COMPARATORS);
 
     const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
+    const archTotalPages  = Math.max(1, Math.ceil(archSortedRows.length / pageSize));
+    const clampedArchPage = Math.min(Math.max(1, archPage), archTotalPages);
+    const pagedArchivedRows = archSortedRows.slice((clampedArchPage - 1) * pageSize, clampedArchPage * pageSize);
+
     // ─── Selection helpers ──────────────────────────────────────────────────
-    const allChecked = pagedRows.length > 0 && pagedRows.every(r => selectedIds.has(r.id));
-    const someChecked = !allChecked && pagedRows.some(r => selectedIds.has(r.id));
     function toggleOne(id: string) {
         const next = new Set(selectedIds);
         if (next.has(id)) next.delete(id); else next.add(id);
         setSelectedIds(next);
     }
-    function toggleAllOnPage(check: boolean) {
+    function toggleAllRows(rows: TaxRate[], check: boolean) {
         const next = new Set(selectedIds);
-        if (check) pagedRows.forEach(r => next.add(r.id));
-        else pagedRows.forEach(r => next.delete(r.id));
+        if (check) rows.forEach(r => next.add(r.id));
+        else rows.forEach(r => next.delete(r.id));
         setSelectedIds(next);
     }
     function clearSelection() { setSelectedIds(new Set()); }
@@ -912,11 +1025,12 @@ export default function TaxPage() {
 
             {/* ── Tab content ───────────────────────────────────────────────── */}
             {tab === "list" ? (
-                // Tax rates list — h-[760px] view card, same as products module
+                <>
+                {/* Tax rates list — h-[760px] view card, same as products module */}
                 <div className="h-[760px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                     {/* Toolbar */}
                     <div className="shrink-0 flex items-center gap-3 px-6 py-5">
-                        <ToolbarTotal count={filtered.length} entitySingular="tax rate" />
+                        <ToolbarTotal count={activeRows.length} entitySingular="tax rate" />
                         <ToolbarExport disabled={filtered.length === 0} onExportCsv={handleExportCsv} />
                         <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
                         {/* Import — empty-state only (client 2026-07-31).
@@ -942,90 +1056,16 @@ export default function TaxPage() {
                                         : "Try adjusting your search or filter."}
                             />
                         ) : (
-                            <div className="px-6">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr>
-                                            <th className={cn(TH, "w-[44px]")}>
-                                                <CheckboxCell
-                                                    checked={allChecked}
-                                                    indeterminate={someChecked}
-                                                    onChange={toggleAllOnPage}
-                                                    ariaLabel="Select all rows on this page"
-                                                />
-                                            </th>
-                                            <th className={TH}>
-                                                <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Tax name</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "w-[140px]")}>
-                                                <SortableHeader sortKey="type"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Type</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "w-[140px]")}>
-                                                <SortableHeader sortKey="rate"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Tax rate</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "w-[220px]")}>
-                                                <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Effective date</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "w-[140px]")}>
-                                                <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                            </th>
-                                            <th className={cn(TH, "w-[52px]")} />
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pagedRows.map(r => {
-                                            const isSelected = selectedIds.has(r.id);
-                                            return (
-                                                <tr key={r.id}
-                                                    className={cn("transition-colors", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
-                                                    <td className={TD}>
-                                                        <CheckboxCell
-                                                            checked={isSelected}
-                                                            onChange={() => toggleOne(r.id)}
-                                                            ariaLabel={`Select ${r.name}`}
-                                                        />
-                                                    </td>
-                                                    <td className={TD}>
-                                                        <div className="flex items-center gap-3">
-                                                            <IconAvatar icon={Percent03} />
-                                                            <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{TYPE_LABEL[r.type]}</td>
-                                                    {/* Exempt rates carry no charge — render an em-dash
-                                                        instead of "0%" so the receipt-side semantic
-                                                        (no tax line at all) reads at a glance. */}
-                                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>
-                                                        {r.type === "exempt" ? "—" : formatPct(r.ratePercentage)}
-                                                    </td>
-                                                    <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>
-                                                        {(() => {
-                                                            const win = formatEffectiveWindow(r);
-                                                            return win ? win : <span className="text-[var(--colors-fg-quaternary)]">—</span>;
-                                                        })()}
-                                                    </td>
-                                                    <td className={TD}><StatusBadge type="tax-rate" status={r.status} /></td>
-                                                    <td className={TD}>
-                                                        {(() => {
-                                                            const used = hasUsage(r.id);
-                                                            return (
-                                                                <RowActions items={[
-                                                                    { label: "Edit", icon: Edit02, onClick: () => handleEdit(r), hidden: r.status !== "active" },
-                                                                    { label: "Archive", icon: Archive, onClick: () => openRowConfirm(r, "archive"), hidden: r.status === "archived" },
-                                                                    { label: "Reactivate", icon: Check, onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
-                                                                    { label: "Recover", icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"), hidden: r.status !== "archived" },
-                                                                    { label: "Deactivate", icon: SlashCircle01, onClick: () => openRowConfirm(r, "deactivate"), danger: true, hidden: !(r.status === "active" && used) },
-                                                                    { label: "Delete", icon: Trash01, onClick: () => openRowConfirm(r, "delete"), danger: true, hidden: !(r.status === "active" && !used) },
-                                                                ]} />
-                                                            );
-                                                        })()}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <TaxTable
+                                rows={pagedRows}
+                                sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
+                                selectedIds={selectedIds}
+                                onToggleOne={toggleOne}
+                                onToggleAll={(c) => toggleAllRows(pagedRows, c)}
+                                hasUsage={hasUsage}
+                                onEdit={handleEdit}
+                                onRowAction={openRowConfirm}
+                            />
                         )}
 
                         <BulkActionBar
@@ -1046,6 +1086,32 @@ export default function TaxPage() {
                         />
                     </div>
                 </div>
+
+                {/* ── Archived section (policy §3) — hugging card below the fixed
+                       list card; its own table + pagination; selection shared. */}
+                <ArchivedSection
+                    entitySingular="tax rate"
+                    count={archivedRows.length}
+                    fill={false}
+                    pagination={
+                        <Pagination
+                            page={clampedArchPage} total={archSortedRows.length} pageSize={pageSize}
+                            onPage={setArchPage} onPageSize={s => { setPageSize(s); setArchPage(1); }}
+                        />
+                    }
+                >
+                    <TaxTable
+                        rows={pagedArchivedRows}
+                        sortKey={archSortKey} sortDir={archSortDir} onSort={toggleArchSort}
+                        selectedIds={selectedIds}
+                        onToggleOne={toggleOne}
+                        onToggleAll={(c) => toggleAllRows(pagedArchivedRows, c)}
+                        hasUsage={hasUsage}
+                        onEdit={handleEdit}
+                        onRowAction={openRowConfirm}
+                    />
+                </ArchivedSection>
+                </>
             ) : (
                 // Apply tax rates — scoped to the active top-level kind so
                 // the VAT tab shows the Services parent (membership / credit
