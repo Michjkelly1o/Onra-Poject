@@ -13497,7 +13497,11 @@ export const useAppStore = create<AppState>()(persist(
         //     and the freeze policy gains `members_can_cancel` (OFF).
         //   Bump above BOTH prior versions so every persisted demo re-seeds with
         //   the merged catalog + normalized status tokens.
-        version: 115,
+        // v116 — roles are delete-only (no archive) since the Archive/Delete
+        //   policy, so the "Operator (legacy)" seed role moves from the now-
+        //   unreachable "archived" status to "inactive". Bump so testers re-seed
+        //   and don't keep the orphaned archived role.
+        version: 116,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

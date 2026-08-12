@@ -15,8 +15,8 @@
 //   • Instructor        — Active
 //   • Front desk        — Active
 //   • Operator          — Active
-//   • Operator (legacy) — Archive — demo of archived-row gating
-//                         (Edit hidden, Recover only)
+//   • Operator (legacy) — Inactive — retired role kept for reference
+//                         (roles are delete-only; reactivate or delete it)
 //
 // Ids are the canonical branch-agnostic form (role_branch_admin, not
 // role_branch_admin_south) — these match what user_role_assignments already
@@ -146,7 +146,10 @@ export const roles: RoleSeed[] = [
         name: "Operator (legacy)",
         description: "Retired role kept for historical permission reference",
         type: "operator",
-        status: "archived",
+        // Roles are delete-only (no archive) since the Archive/Delete policy —
+        // a retired-but-kept role lives in `inactive` (paused), reactivatable or
+        // deletable when 0 staff hold it.
+        status: "inactive",
         grant_limits: OPERATOR_GRANT_LIMITS,
         permissions: PERM_OPERATOR,
         locked: false,
