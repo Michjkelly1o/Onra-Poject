@@ -3342,10 +3342,12 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         recoveredISO:          t.recovered_iso,
         payoutId:              t.payout_id,
         processorFee:          t.processor_fee,
-        // Reports v33 — Discounts + Promo Redemptions. Apply a promo
-        // code to ~25% of sale transactions deterministically.
-        discountCode:          t.discount_code  ?? deriveDiscountCode(t.id, t.transaction_type),
-        discountValue:         t.discount_value ?? deriveDiscountValue(t.id, t.transaction_type, t.amount_aed),
+        // Reports v33 — Discounts + Promo Redemptions. Real promo data is
+        // authored on the seed sale rows (discount_code / discount_value);
+        // no synthetic derivation, so the reports + each promo's usage count
+        // reflect actual redemptions only.
+        discountCode:          t.discount_code,
+        discountValue:         t.discount_value,
         // ── Cancellation-penalty flow (Jul 2026) ────────────────────
         isRefundable:          t.is_refundable,
         cancellationScenario:  t.cancellation_scenario,
@@ -3362,33 +3364,6 @@ function customerTransactionFromSeed(t: SeedCustomerTransaction): CustomerTransa
         branchIdAtSale:               t.branch_id_at_sale,
         retailSize:                   t.retail_size,
     };
-}
-
-// Reports v33 — deterministic promo assignment over the REAL promo catalog.
-// ~25% of seed sale rows carry a promo, distributed across the live promo
-// codes (not fabricated ones), so the Discounts + Promo Redemptions reports
-// AND each promo's usage count (reconciled at boot — see INITIAL_PROMO_CODES)
-// reference actual promos with correct per-type discount math. Live POS /
-// customer redemptions stamp the real applied promo the same way.
-const DERIVABLE_PROMOS = SEED_PROMO_CODES.filter(p => p.status !== "archived");
-function deriveDiscountCode(id: string, txnType?: string): string | undefined {
-    if (txnType && txnType !== "sale") return undefined;
-    if (DERIVABLE_PROMOS.length === 0) return undefined;
-    if (hashString(id + "promo") % 4 !== 0) return undefined; // ~25%
-    return DERIVABLE_PROMOS[hashString(id) % DERIVABLE_PROMOS.length].code;
-}
-function deriveDiscountValue(id: string, txnType: string | undefined, amount: number): number | undefined {
-    const code = deriveDiscountCode(id, txnType);
-    if (!code) return undefined;
-    const promo = DERIVABLE_PROMOS.find(p => p.code === code);
-    if (!promo) return undefined;
-    // Percentage promos take a share of the line; fixed promos take a flat AED
-    // amount, capped at the line total. Honour the promo's max-discount cap.
-    let v = promo.discount_type === "percentage"
-        ? amount * (promo.discount_value / 100)
-        : Math.min(promo.discount_value, amount);
-    if (promo.max_discount_aed != null) v = Math.min(v, promo.max_discount_aed);
-    return Math.round(v);
 }
 
 // Reports v33 — one StaffAttendanceLog row per scheduled class. Deterministic
@@ -6269,8 +6244,8 @@ const PERSIST_KEY = "onra-demo-state";
 // ─── Promo usage reconciliation (boot) ───────────────────────────────────────
 // The Promo Redemptions report counts sale transactions carrying a
 // `discountCode`; each promo's stored `usage_count` (admin list + detail +
-// delete guard + usage-limit gate) must agree with that. Seed sale rows get
-// their promo derived at boot (deriveDiscountCode, real catalog), so we count
+// delete guard + usage-limit gate) must agree with that. Seed sale rows carry
+// a real authored `discount_code` (see customer_transactions), so we count
 // those here and stamp the matching total onto each promo — keeping the admin
 // numbers, the guards, and the report in lock-step. Live POS / customer
 // redemptions increment both sides together in `applyPurchase`.

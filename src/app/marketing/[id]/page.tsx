@@ -25,7 +25,7 @@ import { useParams, useRouter, useSearchParams, usePathname } from "next/navigat
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     ChevronUp, ChevronDown, HelpCircle,
-    Grid01, CursorBox, Calendar, Ticket01, Link01, CheckVerified02,
+    Grid01, CursorBox, Calendar, Link01, CheckVerified02, Send01, Eye,
 } from "@untitledui/icons";
 import { cn, to12h } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
@@ -34,6 +34,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { useAppStore, type MarketingItem, type Branch } from "@/lib/store";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { audienceLabel } from "@/lib/marketing/dispatch";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -72,10 +73,19 @@ const TYPE_LABEL: Record<MarketingItem["type"], string> = {
 };
 
 const ACTION_LABEL: Record<MarketingItem["action_type"], string> = {
-    book_event: "Book an event",
+    book_event: "Book a class",
     buy_ticket: "Buy a ticket",
     external_link: "External link",
     no_action: "No action",
+};
+
+const TOPIC_LABEL: Record<NonNullable<MarketingItem["topic"]>, string> = {
+    new_class_launch: "New class launch",
+    special_offers: "Special offers",
+    promo_code_offers: "Promo code offers",
+};
+const DELIVERY_LABEL: Record<NonNullable<MarketingItem["delivery_status"]>, string> = {
+    draft: "Draft", scheduled: "Scheduled", sent: "Sent",
 };
 
 function branchName(id: string, branches: Branch[]): string {
@@ -241,15 +251,15 @@ function LeftSidebar({ vm, onAction, branches }: {
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        <SidebarField label="Campaign type" value={TYPE_LABEL[vm.type]} />
-                        <SidebarField label="Campaign action" value={ACTION_LABEL[vm.actionType]} />
+                        <SidebarField label="Delivery"
+                            value={vm.deliveryStatus === "draft" ? "Draft"
+                                : `${DELIVERY_LABEL[vm.deliveryStatus]} · ${formatDateTime(vm.deliveryDateISO)}`} />
+                        <SidebarField label="Audience" value={vm.audience} />
+                        {vm.topic && <SidebarField label="Topic" value={TOPIC_LABEL[vm.topic]} />}
+                        <SidebarField label="Call to action" value={ACTION_LABEL[vm.actionType]} />
                         {vm.actionType === "book_event" && vm.ctaClassLabel && (
-                            <SidebarField
-                                label="Booked class"
-                                value={vm.ctaClassLabel} />
+                            <SidebarField label="Booked class" value={vm.ctaClassLabel} />
                         )}
-                        <SidebarField label="Start date & time" value={formatDateTime(vm.publishDate)} />
-                        <SidebarField label="End date & time" value={formatDateTime(vm.expiryDate)} />
                         <SidebarField label="Applicable branch" value={branchSummary(vm.branchIds, branches)} />
                     </div>
                 </div>
@@ -377,16 +387,17 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
     return (
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[var(--colors-border-secondary)] rounded-[20px]">
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
-                {/* ── Marketing configuration ── */}
-                <SectionHeading>Marketing configuration</SectionHeading>
+                {/* ── Campaign configuration ── */}
+                <SectionHeading>Campaign configuration</SectionHeading>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-                    <InlineStat icon={<Grid01 className="w-4 h-4" />} label="Campaign type" value={TYPE_LABEL[vm.type]} />
-                    <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Link or action" value={ACTION_LABEL[vm.actionType]} />
-                    <InlineStat icon={<Calendar className="w-4 h-4" />} label="Start date & time" value={formatDateTime(vm.publishDate)} />
-                    <InlineStat icon={<Calendar className="w-4 h-4" />} label="End date & time" value={formatDateTime(vm.expiryDate)} />
-                    {vm.actionType === "buy_ticket" && (
-                        <InlineStat icon={<Ticket01 className="w-4 h-4" />} label="Ticket price"
-                            value={vm.ticketPrice != null ? `AED ${vm.ticketPrice.toLocaleString("en-US")}` : "—"} />
+                    <InlineStat icon={<Grid01 className="w-4 h-4" />} label="Delivery"
+                        value={vm.deliveryStatus === "draft" ? "Draft" : DELIVERY_LABEL[vm.deliveryStatus]} />
+                    <InlineStat icon={<Calendar className="w-4 h-4" />}
+                        label={vm.deliveryStatus === "scheduled" ? "Scheduled for" : "Sent on"}
+                        value={formatDateTime(vm.deliveryDateISO)} />
+                    <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Call to action" value={ACTION_LABEL[vm.actionType]} />
+                    {vm.topic && (
+                        <InlineStat icon={<Grid01 className="w-4 h-4" />} label="Topic" value={TOPIC_LABEL[vm.topic]} />
                     )}
                     {vm.actionType === "external_link" && (
                         <InlineStat icon={<Link01 className="w-4 h-4" />} label="External link" value={vm.externalUrl || "—"} />
@@ -395,19 +406,23 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                         icon={<CheckVerified02 className="w-4 h-4" />}
                         label="Multi-location access"
                         value={vm.multiLocation ? "Yes" : "No"}
-                        tooltip="Campaigns can be used on multiple branches"
+                        tooltip="Campaigns can be sent from multiple branches"
                     />
                 </div>
 
-                {/* ── Visibility settings ── */}
-                <SectionHeading>Visibility settings</SectionHeading>
+                {/* ── Engagement ── */}
+                <SectionHeading>Engagement</SectionHeading>
+                <div className="grid grid-cols-3 gap-x-4 gap-y-5">
+                    <InlineStat icon={<Send01 className="w-4 h-4" />} label="Sent" value={vm.sends.toLocaleString("en-US")} />
+                    <InlineStat icon={<Eye className="w-4 h-4" />} label="Open rate" value={`${vm.openRate}%`} />
+                    <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Click rate" value={`${vm.clickRate}%`} />
+                </div>
 
-                {/* Branches */}
+                {/* ── Audience ── */}
+                <SectionHeading>Audience</SectionHeading>
                 <VisibilityCard
                     title="Branches"
-                    subtitle={vm.multiLocation
-                        ? "The campaign can be used on multiple branches"
-                        : "The campaign can be used on a single branch"}
+                    subtitle={vm.multiLocation ? "Sent from multiple branches" : "Sent from a single branch"}
                     badge={vm.branchIds.length === 0 ? "All branches" : `${vm.branchIds.length} selected`}
                 >
                     {vm.branchIds.length === 0 ? (
@@ -415,45 +430,6 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                     ) : (
                         vm.branchIds.map(id => <CheckRow key={id} label={branchName(id, branches)} />)
                     )}
-                </VisibilityCard>
-
-                {/* Packages — grouped Membership / Class package */}
-                <VisibilityCard
-                    title="Packages"
-                    subtitle="The campaign can be used on multiple packages"
-                    badge={`${vm.products.length} selected`}
-                >
-                    {vm.products.length === 0 ? (
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">No packages selected.</p>
-                    ) : (
-                        (["Membership", "Class package"] as const).map(group => {
-                            const rows = vm.products.filter(p => p.group === group);
-                            if (rows.length === 0) return null;
-                            return (
-                                <div key={group} className="flex flex-col gap-3">
-                                    <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{group}</p>
-                                    {rows.map(p => <CheckRow key={p.id} label={p.name} />)}
-                                </div>
-                            );
-                        })
-                    )}
-                </VisibilityCard>
-
-                {/* Customer targeting */}
-                <VisibilityCard
-                    title="Customer"
-                    subtitle="The campaign can be configured to target specific eligible users."
-                    badge={vm.customerTargeting === "new_users" ? "New user only"
-                        : vm.customerTargeting === "all" ? "Everyone" : "—"}
-                >
-                    <div className="flex items-center gap-2">
-                        <DisabledRadio selected={vm.customerTargeting === "all"} />
-                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">Everyone</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <DisabledRadio selected={vm.customerTargeting === "new_users"} />
-                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">New user only</span>
-                    </div>
                 </VisibilityCard>
             </div>
         </div>
@@ -483,6 +459,14 @@ interface MarketingDetailVM {
     viewCount: number;
     customerTargeting: MarketingItem["customer_targeting"] | "";
     products: ProductRow[];
+    // ── Campaign send model ──
+    deliveryStatus: NonNullable<MarketingItem["delivery_status"]>;
+    deliveryDateISO?: string;
+    topic?: MarketingItem["topic"];
+    audience: string;
+    sends: number;
+    openRate: number;
+    clickRate: number;
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -500,6 +484,7 @@ function MarketingDetailPageInner() {
     const packages          = useAppStore(s => s.packages);
     const classSchedules    = useAppStore(s => s.classSchedules);
     const branches          = useAppStore(s => s.branches);
+    const marketingCampaignStats = useAppStore(s => s.marketingCampaignStats);
     const updateMarketingItem = useAppStore(s => s.updateMarketingItem);
     const deleteMarketingItem = useAppStore(s => s.deleteMarketingItem);
     const showToast         = useAppStore(s => s.showToast);
@@ -545,6 +530,16 @@ function MarketingDetailPageInner() {
         ? `${ctaClass.name} · ${ctaClass.date} · ${ctaClass.displayTime || to12h(ctaClass.startTime)}`
         : undefined;
 
+    // Engagement — summed across every send row for this campaign.
+    const stats = marketingCampaignStats.filter(s => s.campaign_id === id);
+    const sends = stats.reduce((a, s) => a + s.sends, 0);
+    const opens = stats.reduce((a, s) => a + s.opens_reads, 0);
+    const clicks = stats.reduce((a, s) => a + s.clicks_taps, 0);
+    const deliveryStatus = item.delivery_status ?? "sent";
+    const deliveryDateISO = deliveryStatus === "scheduled" ? item.scheduled_at
+        : deliveryStatus === "sent" ? (item.sent_at ?? item.publish_date)
+            : undefined;
+
     const vm: MarketingDetailVM = {
         status: item.status,
         effectiveStatus: effectiveStatus(item),
@@ -563,6 +558,18 @@ function MarketingDetailPageInner() {
         viewCount: item.view_count,
         customerTargeting: item.customer_targeting ?? "",
         products,
+        deliveryStatus,
+        deliveryDateISO,
+        topic: item.topic,
+        audience: audienceLabel({
+            kind: item.audience_kind ?? "everyone",
+            membershipIds: item.audience_membership_ids,
+            segments: item.audience_segments,
+            customerIds: item.audience_customer_ids,
+        }),
+        sends,
+        openRate: sends > 0 ? Math.round((opens / sends) * 100) : 0,
+        clickRate: sends > 0 ? Math.round((clicks / sends) * 100) : 0,
     };
 
     function handleAction(a: "edit" | ModalAction) {
