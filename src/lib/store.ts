@@ -4503,9 +4503,17 @@ export interface AppState {
     businessHours: BusinessHours[];
     addBranch:    (b: Branch) => void;
     updateBranch: (id: string, patch: Partial<Branch>) => void;
+    /** History guard — a branch is hard-deletable ONLY when nothing operational
+     *  points at it (no customers, staff, class schedules, appointments, or
+     *  transactions in that branch). Rooms/hours cascade so they don't block.
+     *  Archive instead when it has history. The store enforces this too. */
+    canDeleteBranch: (id: string) => boolean;
     deleteBranch: (id: string) => void;
     addRoom:    (r: Room) => void;
     updateRoom: (id: string, patch: Partial<Room>) => void;
+    /** History guard — a room is hard-deletable ONLY when no class schedule or
+     *  appointment (past or future) references it. */
+    canDeleteRoom: (id: string) => boolean;
     deleteRoom: (id: string) => void;
     /** Replace a branch's full weekly hours (7 rows, one per day). Adding,
      *  editing, or recovering a branch routes through here so the landing
@@ -4570,6 +4578,10 @@ export interface AppState {
 
     addClassTemplate: (template: Omit<ClassTemplate, "id">) => void;
     updateClassTemplate: (id: string, updates: Partial<Omit<ClassTemplate, "id">>) => void;
+    /** History guard — a template is hard-deletable ONLY when no class schedule
+     *  (past or future) references it. Mirrors the list page's `hasData` gate;
+     *  archive instead once it has scheduled classes. The store enforces this. */
+    canDeleteClassTemplate: (id: string) => boolean;
     deleteClassTemplate: (id: string) => void;
 
     /** Services (Phase 1) — create + edit are scaffolded so future Phase 2
@@ -6509,12 +6521,32 @@ export const useAppStore = create<AppState>()(persist(
             && !get().services.some(s => s.categoryId === id)
             && !get().staff.some(s => s.categoryIds?.includes(id));
     },
-    deleteBranch: (id)        => set(state => ({
-        branches: state.branches.filter(b => b.id !== id),
-        // Cascade — rooms + business hours under a deleted branch go with it.
-        rooms:         state.rooms.filter(r => r.branch_id !== id),
-        businessHours: state.businessHours.filter(h => h.branch_id !== id),
-    })),
+    canDeleteBranch: (id) => {
+        // Hard delete blocked when anything operational still lives in the
+        // branch — a customer, staff member, class schedule, appointment, or
+        // transaction. Those rows carry `branchId` snapshots that would dangle.
+        // Rooms + business hours cascade WITH the branch, so they don't block.
+        // Archive-only once a branch has history.
+        const s = get();
+        return !s.customers.some(c => c.branchId === id)
+            && !s.staff.some(st => st.branchId === id)
+            && !s.classSchedules.some(sc => sc.branchId === id)
+            && !s.appointments.some(a => a.branchId === id)
+            && !s.customerTransactions.some(t => t.branchId === id);
+    },
+    deleteBranch: (id)        => {
+        // Store-side backstop — the UI already hides Delete once a branch has
+        // history, but refuse here too so a stray call can never orphan rows.
+        if (!get().canDeleteBranch(id)) return;
+        const target = get().branches.find(b => b.id === id);
+        set(state => ({
+            branches: state.branches.filter(b => b.id !== id),
+            // Cascade — rooms + business hours under a deleted branch go with it.
+            rooms:         state.rooms.filter(r => r.branch_id !== id),
+            businessHours: state.businessHours.filter(h => h.branch_id !== id),
+        }));
+        if (target) get().recordAudit("Deleted branch", "branch", id, target.name);
+    },
     addRoom:    (r)         => {
         set(state => ({ rooms: [r, ...state.rooms] }));
         get().recordAudit("Created room", "room", r.id, r.name);
@@ -6538,7 +6570,18 @@ export const useAppStore = create<AppState>()(persist(
         });
         if (target) get().recordAudit("Edited room", "room", id, target.name);
     },
+    canDeleteRoom: (id) => {
+        // Hard delete blocked when any class schedule or appointment (past or
+        // future) references the room — those rows carry a `roomId` + a
+        // denormalized room-name snapshot that would dangle. Archive/deactivate
+        // instead once a room has been used.
+        const s = get();
+        return !s.classSchedules.some(sc => sc.roomId === id)
+            && !s.appointments.some(a => a.roomId === id);
+    },
     deleteRoom: (id)        => {
+        // Store-side backstop mirroring `canDeleteRoom` (UI already gates).
+        if (!get().canDeleteRoom(id)) return;
         const target = get().rooms.find(r => r.id === id);
         set(state => ({ rooms: state.rooms.filter(r => r.id !== id) }));
         if (target) get().recordAudit("Deleted room", "room", id, target.name);
@@ -6700,7 +6743,16 @@ export const useAppStore = create<AppState>()(persist(
         });
         if (target) get().recordAudit("Edited class template", "class_template", id, updates.name ?? target.name);
     },
+    canDeleteClassTemplate: (id) => {
+        // Hard delete blocked once ANY class schedule (past or future) was
+        // spun up from this template — mirrors the class-types list's `hasData`
+        // gate. Past schedules keep a denormalized template-name snapshot; the
+        // audit trail + rosters would dangle. Archive instead.
+        return !get().classSchedules.some(s => s.templateId === id);
+    },
     deleteClassTemplate: (id) => {
+        // Store-side backstop mirroring `canDeleteClassTemplate` (UI gates too).
+        if (!get().canDeleteClassTemplate(id)) return;
         const target = get().classTemplates.find(t => t.id === id);
         set((state) => ({ classTemplates: state.classTemplates.filter(t => t.id !== id) }));
         if (target) get().recordAudit("Deleted class template", "class_template", id, target.name);
@@ -11307,6 +11359,13 @@ export const useAppStore = create<AppState>()(persist(
         // instructors re-sync from the patched staff so no dangling reference
         // survives. Attendance / schedules key off `instructorId` (never a shift
         // id), so they stay consistent automatically.
+        //
+        // Archive/Delete policy Phase 3 decision (2026-08-12): shifts are
+        // delete-only scheduling config (Bucket B) and this cascade is the
+        // client's intended behaviour — assignments are a live wiring, not
+        // historical records, so deletion is NOT history-guarded (unlike
+        // branches / rooms / class templates). The `blocked` array stays for a
+        // uniform return shape; nothing is ever blocked here.
         const idSet = new Set(ids);
         const before = get().shifts.filter(s => idSet.has(s.id));
         if (before.length === 0) return { deleted: [], blocked: [] };

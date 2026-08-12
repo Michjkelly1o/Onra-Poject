@@ -481,14 +481,16 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
     const deleteBranchFn = useAppStore(s => s.deleteBranch);
     const updateRoom     = useAppStore(s => s.updateRoom);
     const deleteRoomFn   = useAppStore(s => s.deleteRoom);
+    const canDeleteBranchFn = useAppStore(s => s.canDeleteBranch);
     const showToast      = useAppStore(s => s.showToast);
 
     const branch = branches.find(b => b.id === branchId);
     const branchRooms = rooms.filter(r => r.branch_id === branchId);
     const hours = businessHours.filter(h => h.branch_id === branchId);
 
-    // Delete is only allowed when the branch has no rooms at all.
-    const canDeleteBranch = branchRooms.length === 0;
+    // Delete is offered only when the store will accept it — no operational
+    // history in the branch (Phase 3 history guard, in lock-step with the store).
+    const canDeleteBranch = canDeleteBranchFn(branchId);
 
     const [tab, setTab] = useState<"details">("details");
     const [pendingBranchConfirm, setPendingBranchConfirm] = useState<ConfirmKind | null>(null);

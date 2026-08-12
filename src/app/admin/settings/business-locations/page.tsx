@@ -94,6 +94,10 @@ export default function BusinessLocationsPage() {
     const updateRoom    = useAppStore(s => s.updateRoom);
     const deleteBranch  = useAppStore(s => s.deleteBranch);
     const deleteRoom    = useAppStore(s => s.deleteRoom);
+    // History guards (Phase 3) — keep the Delete menu item in lock-step with the
+    // store backstop, so Delete only shows when the store will actually delete.
+    const canDeleteBranch = useAppStore(s => s.canDeleteBranch);
+    const canDeleteRoom   = useAppStore(s => s.canDeleteRoom);
     const showToast     = useAppStore(s => s.showToast);
 
     // Studio info — single source of truth is the businessProfile slice.
@@ -349,6 +353,7 @@ export default function BusinessLocationsPage() {
                                         status={branchStatus}
                                         hours={branchHours}
                                         roomCount={branchRooms.length}
+                                        canDelete={canDeleteBranch(branch.id)}
                                         expanded={expanded}
                                         onToggleExpand={() => toggleExpand(branch.id)}
                                         onToggleEnable={() => requestToggle(branch.id, branchStatus === "active" ? "active" : "inactive", branch.name, "branch")}
@@ -369,6 +374,7 @@ export default function BusinessLocationsPage() {
                                                 key={room.id}
                                                 room={room}
                                                 status={roomStatus}
+                                                canDelete={canDeleteRoom(room.id)}
                                                 onToggleEnable={() => requestToggle(room.id, roomStatus === "active" ? "active" : "inactive", room.name, "room")}
                                                 actionMenuOpen={actionMenuId === `room:${room.id}`}
                                                 onOpenActionMenu={() => setActionMenuId(`room:${room.id}`)}
@@ -659,7 +665,7 @@ function TableHeaderCell({ children, className }: { children?: React.ReactNode; 
 // ─── Rows ──────────────────────────────────────────────────────────────────
 
 function BranchRow({
-    branch, status, hours, roomCount, expanded, onToggleExpand, onToggleEnable,
+    branch, status, hours, roomCount, canDelete, expanded, onToggleExpand, onToggleEnable,
     actionMenuOpen, onOpenActionMenu, onCloseActionMenu,
     onView, onEdit, onAddRoom, onArchive, onRecover, onDelete,
 }: {
@@ -667,6 +673,8 @@ function BranchRow({
     status: "active" | "inactive" | "archived";
     hours: BusinessHours[];
     roomCount: number;
+    /** History guard — Delete shows only when the store will accept it. */
+    canDelete: boolean;
     expanded: boolean;
     onToggleExpand: () => void;
     onToggleEnable: () => void;
@@ -752,7 +760,7 @@ function BranchRow({
                 {actionMenuOpen && (
                     <BranchActionMenu
                         status={status}
-                        canDelete={roomCount === 0}
+                        canDelete={canDelete}
                         onView={onView}
                         onEdit={onEdit}
                         onAddRoom={onAddRoom}
@@ -768,11 +776,13 @@ function BranchRow({
 }
 
 function RoomRow({
-    room, status, onToggleEnable, actionMenuOpen, onOpenActionMenu, onCloseActionMenu,
+    room, status, canDelete, onToggleEnable, actionMenuOpen, onOpenActionMenu, onCloseActionMenu,
     onView, onEdit, onArchive, onRecover, onDelete,
 }: {
     room: Room;
     status: "active" | "inactive" | "archived";
+    /** History guard — Delete shows only when the store will accept it. */
+    canDelete: boolean;
     onToggleEnable: () => void;
     actionMenuOpen: boolean;
     onOpenActionMenu: () => void;
@@ -823,6 +833,7 @@ function RoomRow({
                 {actionMenuOpen && (
                     <RoomActionMenu
                         status={status}
+                        canDelete={canDelete}
                         onView={onView}
                         onEdit={onEdit}
                         onToggleEnable={onToggleEnable}
@@ -886,9 +897,11 @@ function BranchActionMenu({
 }
 
 function RoomActionMenu({
-    status, onView, onEdit, onToggleEnable, onArchive, onRecover, onDelete,
+    status, canDelete, onView, onEdit, onToggleEnable, onArchive, onRecover, onDelete,
 }: {
     status: "active" | "inactive" | "archived";
+    /** History guard — hide Delete when the room has schedule/appointment history. */
+    canDelete: boolean;
     onView: () => void;
     onEdit: () => void;
     /** Enable toggle moved into this menu Jul 2026 (was a dedicated
@@ -918,7 +931,9 @@ function RoomActionMenu({
             {archived && (
                 <>
                     <MenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Recover" onClick={onRecover} />
-                    <MenuItem icon={<Trash04 className="w-4 h-4 text-[#d92d20]" />}      label="Delete"  onClick={onDelete} danger />
+                    {canDelete && (
+                        <MenuItem icon={<Trash04 className="w-4 h-4 text-[#d92d20]" />}      label="Delete"  onClick={onDelete} danger />
+                    )}
                 </>
             )}
         </div>
