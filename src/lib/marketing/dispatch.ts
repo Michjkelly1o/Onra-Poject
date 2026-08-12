@@ -1,20 +1,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Onra Studio — Campaign dispatch / recipient resolution
+// Onra Studio — Campaign audience / recipient resolution
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // A Campaign is "something to send: a message to a chosen segment". This module
 // is the single source of truth for WHO a campaign reaches — used both by the
 // create form (live "will reach N" count) and by the store's send dispatch, so
-// the previewed number is exactly the number delivered.
+// the previewed number is exactly the number recorded.
 //
-// Delivery gate (mirrors the customer marketing-preferences contract): a
-// customer receives a campaign only when BOTH the Push channel AND the
-// campaign's topic are opted in.
+// Reach = the chosen audience within the campaign's branch scope. (No opt-in /
+// topic gate — the client's model targets by segment, not by consent.)
 
 import type { Customer, CustomerPlan, CustomerTransaction } from "@/lib/store";
 import { customerSegment } from "@/lib/customer/segment";
 
-export type CampaignTopic = "new_class_launch" | "special_offers" | "promo_code_offers";
 export type AudienceKind = "everyone" | "membership" | "segment" | "specific";
 export type WalletSegment = "lead" | "member" | "inactive";
 
@@ -27,23 +25,7 @@ export interface AudienceSpec {
     branchIds: string[];
 }
 
-/** The customer's opt-in flag for a campaign topic. No topic → passes. */
-function topicOptIn(customer: Customer, topic: CampaignTopic | undefined): boolean {
-    switch (topic) {
-        case "new_class_launch":  return !!customer.marketingTopicNewClassLaunch;
-        case "special_offers":    return !!customer.marketingTopicSpecialOffers;
-        case "promo_code_offers": return !!customer.marketingTopicPromoCodeOffers;
-        default:                  return true;
-    }
-}
-
-/** A customer receives a campaign push only when BOTH the Push channel AND the
- *  campaign's topic are opted in. */
-export function receivesCampaign(customer: Customer, topic: CampaignTopic | undefined): boolean {
-    return !!customer.marketingChannelPush && topicOptIn(customer, topic);
-}
-
-/** Customers matching the audience + branch scope (BEFORE the consent gate). */
+/** Customers matching the audience + branch scope. */
 export function audienceMatch(
     a: AudienceSpec,
     customers: Customer[],
@@ -67,17 +49,6 @@ export function audienceMatch(
         default:
             return [];
     }
-}
-
-/** Final recipients — audience ∩ consent (Push channel + topic). */
-export function campaignRecipients(
-    a: AudienceSpec,
-    topic: CampaignTopic | undefined,
-    customers: Customer[],
-    plans: CustomerPlan[],
-    transactions: CustomerTransaction[],
-): Customer[] {
-    return audienceMatch(a, customers, plans, transactions).filter(c => receivesCampaign(c, topic));
 }
 
 /** Human label for an audience spec (list + detail summary). */

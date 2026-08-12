@@ -60,7 +60,6 @@ function EditMarketingRouteInner() {
                 audienceMembershipIds: item.audience_membership_ids ?? [],
                 audienceSegments: item.audience_segments ?? [],
                 audienceCustomerIds: item.audience_customer_ids ?? [],
-                topic: item.topic ?? "",
                 scheduleMode: scheduled ? "later" : "now",
             }}
         />

@@ -59,19 +59,6 @@ const KEY = "onra-customer-notifications";
 // from `marketingItems` in the hook, so the seeded feed no longer carries them.
 const VERSION = 5;
 
-/** The viewer's opt-in flag for a campaign topic. */
-function optedIntoTopic(
-    viewer: { marketingTopicNewClassLaunch?: boolean; marketingTopicSpecialOffers?: boolean; marketingTopicPromoCodeOffers?: boolean },
-    topic: string | undefined,
-): boolean {
-    switch (topic) {
-        case "new_class_launch":  return !!viewer.marketingTopicNewClassLaunch;
-        case "special_offers":    return !!viewer.marketingTopicSpecialOffers;
-        case "promo_code_offers": return !!viewer.marketingTopicPromoCodeOffers;
-        default:                  return true;
-    }
-}
-
 // ── Live-derived marketing notifications ─────────────────────────────────────
 // Marketing rows aren't stored in the feed — they're derived from the LIVE
 // `marketingItems` slice every render, so a campaign/announcement created in
@@ -92,12 +79,11 @@ function persistRead() {
     try { window.localStorage.setItem(READ_KEY, JSON.stringify(Array.from(readMarketingIds))); } catch { /* ignore */ }
 }
 
-/** Every marketing item the viewer should see in their bell right now, gated by
- *  the SAME consent rule the store dispatches with (Push channel + the item's
- *  topic) + branch scope. Announcements respect their show-until; sent campaigns
- *  persist. Read state comes from the per-id read set. */
+/** Every marketing item the viewer should see in their bell right now — active
+ *  announcements (within show-until) + sent campaigns, scoped to the viewer's
+ *  branch. No opt-in / topic gate. Read state comes from the per-id read set. */
 function deriveMarketingNotifications(items: MarketingItem[], viewer: Customer | undefined): CustomerNotification[] {
-    if (!viewer?.marketingChannelPush) return [];
+    if (!viewer) return [];
     hydrateRead();
     const nowMs = Date.now();
     const branchOk = (m: MarketingItem) => {
@@ -108,13 +94,11 @@ function deriveMarketingNotifications(items: MarketingItem[], viewer: Customer |
     for (const m of items) {
         if (m.status !== "active" || !branchOk(m)) continue;
         if (m.type === "announcement") {
-            if (!viewer.marketingTopicStudioAnnouncements) continue;
             if (m.expiry_date && new Date(m.expiry_date).getTime() < nowMs) continue;
             const id = `cn_ann_${m.id}`;
             out.push({ id, tab: "updates", event: "announcement", title: m.title, message: m.short_description,
                 createdAtISO: m.publish_date ?? m.created_at, isRead: readMarketingIds.has(id), relatedType: "marketing", relatedId: m.id });
         } else if (m.type === "campaign" && m.delivery_status === "sent") {
-            if (!optedIntoTopic(viewer, m.topic)) continue;
             const id = `cn_camp_${m.id}`;
             out.push({ id, tab: "updates", event: "campaign", title: m.title, message: m.short_description,
                 createdAtISO: m.sent_at ?? m.publish_date ?? m.created_at, isRead: readMarketingIds.has(id), relatedType: "marketing", relatedId: m.id });

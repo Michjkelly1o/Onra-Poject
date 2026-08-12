@@ -1275,9 +1275,6 @@ export interface MarketingItem {
     scheduled_at?: string;
     /** ISO — when the campaign was actually sent. */
     sent_at?: string;
-    /** Consent topic the send is gated by (channel + topic must both be opted
-     *  in for a customer to receive it). */
-    topic?: "new_class_launch" | "special_offers" | "promo_code_offers";
 }
 
 // ─── Payments ───────────────────────────────────────────────────────────────

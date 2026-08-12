@@ -44,11 +44,10 @@ export const marketing_items: MarketingItem[] = [
         click_count: 34,
         conversion_count: 18,
         created_at: "2026-05-15T09:00:00Z",
-        // Campaign send model — sent to everyone, New class launch topic.
+        // Campaign send model — sent to everyone.
         audience_kind: "everyone",
         delivery_status: "sent",
         sent_at: "2026-05-18T08:00:00Z",
-        topic: "new_class_launch",
     },
     {
         // ── Archived — Announcement, No action ──
@@ -92,11 +91,10 @@ export const marketing_items: MarketingItem[] = [
         click_count: 0,
         conversion_count: 0,
         created_at: "2026-05-19T09:00:00Z",
-        // Campaign send model — sent to everyone, New class launch topic.
+        // Campaign send model — sent to everyone.
         audience_kind: "everyone",
         delivery_status: "sent",
         sent_at: "2026-05-19T00:00:00Z",
-        topic: "new_class_launch",
     },
     {
         // ── Active — Announcement, No action (information only) ──

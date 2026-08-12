@@ -76,7 +76,7 @@
 
 import { create } from "zustand";
 import { firstFreeSpot, balancedSpotGrid } from "@/lib/spot-layout";
-import { campaignRecipients, type CampaignTopic } from "@/lib/marketing/dispatch";
+import { audienceMatch } from "@/lib/marketing/dispatch";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { account_profile as adminUser } from "@/data/mock/account_profile";
@@ -1194,21 +1194,10 @@ export const customerNotificationSink: {
           }) => void);
 } = { emit: null };
 
-// Broadcast bridge for Studio announcements (marketing rework 2026-08). The
-// store owns publishing but can't import the customer notification feed (that
-// module imports the store), so a published announcement fires through this
-// sink. The feed-side handler applies the per-viewer consent gate (Push
-// channel + Studio-announcements topic) + branch scope before it surfaces.
-export const customerAnnouncementSink: {
-    emit: null | ((a: { id: string; title: string; message: string; branchIds: string[] }) => void);
-} = { emit: null };
-
-// Campaign send bridge — a campaign is pushed to its chosen segment. Same
-// pattern as the announcement sink; the feed-side handler applies the
-// per-viewer consent gate (Push channel + the campaign's TOPIC) + branch scope.
-export const customerCampaignSink: {
-    emit: null | ((c: { id: string; title: string; message: string; branchIds: string[]; topic?: CampaignTopic }) => void);
-} = { emit: null };
+// NB: marketing pushes (announcements + campaigns) are NOT bridged via a sink —
+// the customer feed live-derives them from `marketingItems` (see
+// `deriveMarketingNotifications` in notifications-feed.ts), so publishing in the
+// admin surfaces on the customer side automatically.
 
 export interface ClassBooking {
     id: string;
@@ -10310,7 +10299,7 @@ export const useAppStore = create<AppState>()(persist(
         // exact reach the form previewed.
         if (next.type === "campaign" && next.delivery_status === "sent") {
             const st = get();
-            const sends = campaignRecipients(
+            const sends = audienceMatch(
                 {
                     kind: next.audience_kind ?? "everyone",
                     membershipIds: next.audience_membership_ids,
@@ -10318,7 +10307,6 @@ export const useAppStore = create<AppState>()(persist(
                     customerIds: next.audience_customer_ids,
                     branchIds: next.branch_ids ?? [],
                 },
-                next.topic,
                 st.customers, st.customerPlans, st.customerTransactions,
             ).length;
             const statRow = {

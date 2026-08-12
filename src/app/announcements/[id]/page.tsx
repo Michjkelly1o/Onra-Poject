@@ -23,7 +23,7 @@ import { useParams, useRouter, useSearchParams, usePathname } from "next/navigat
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     ChevronUp, ChevronDown, HelpCircle,
-    Calendar, CheckVerified02, Announcement01,
+    Calendar, CheckVerified02,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
@@ -227,7 +227,6 @@ function LeftSidebar({ vm, onAction, branches }: {
                     <div className="flex flex-col gap-3">
                         <SidebarField label="Show until" value={formatDateTime(vm.expiryDate)} />
                         <SidebarField label="Applicable branch" value={branchSummary(vm.branchIds, branches)} />
-                        <SidebarField label="Topic" value="Studio announcement" />
                     </div>
                 </div>
 
@@ -358,7 +357,6 @@ function RightPanel({ vm, branches }: { vm: AnnouncementDetailVM; branches: Bran
                 <SectionHeading>Announcement configuration</SectionHeading>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
                     <InlineStat icon={<Calendar className="w-4 h-4" />} label="Show until" value={formatDateTime(vm.expiryDate)} />
-                    <InlineStat icon={<Announcement01 className="w-4 h-4" />} label="Topic" value="Studio announcement" />
                     <InlineStat
                         icon={<CheckVerified02 className="w-4 h-4" />}
                         label="Multi-location access"

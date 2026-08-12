@@ -67,8 +67,6 @@ export interface MarketingFormData {
     audienceMembershipIds: string[];
     audienceSegments: ("lead" | "member" | "inactive")[];
     audienceCustomerIds: string[];
-    /** Consent topic the send is gated by. */
-    topic: "new_class_launch" | "special_offers" | "promo_code_offers" | "";
     /** Send now, or schedule for later (uses startDate/startTime as the send time). */
     scheduleMode: "now" | "later" | "";
 }

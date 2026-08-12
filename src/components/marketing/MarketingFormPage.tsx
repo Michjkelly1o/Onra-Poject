@@ -17,13 +17,12 @@
 // are delivered to the customer's notification inbox — NOT the "What's on"
 // banner (that's the Announcement's job).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { XClose, ChevronDown } from "@untitledui/icons";
-import { cn, to12h } from "@/lib/utils";
+import { XClose } from "@untitledui/icons";
+import { to12h } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
-import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore, type MarketingItem } from "@/lib/store";
@@ -34,7 +33,7 @@ import {
     FilledRadio, ActionCard, TimeSelect, ClassCtaSelect,
     ToggleCard, MultiSelectCard, BranchSingleSelect, MarketingPreviewPanel,
 } from "@/components/marketing/form-kit";
-import { campaignRecipients, type AudienceSpec } from "@/lib/marketing/dispatch";
+import { audienceMatch, type AudienceSpec } from "@/lib/marketing/dispatch";
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
@@ -45,12 +44,6 @@ const STEPS: FormStep[] = [
 
 // Campaign CTA options — Book a class / External link / No action.
 const CAMPAIGN_ACTIONS = ACTIONS_BY_TYPE.campaign;
-
-const TOPIC_OPTIONS: { value: MarketingFormData["topic"]; label: string }[] = [
-    { value: "new_class_launch",  label: "New class launch" },
-    { value: "special_offers",    label: "Special offers" },
-    { value: "promo_code_offers", label: "Promo code offers" },
-];
 
 const SEGMENT_OPTIONS: { value: "lead" | "member" | "inactive"; label: string; sub: string }[] = [
     { value: "lead",     label: "Leads",    sub: "Never bought anything" },
@@ -66,42 +59,6 @@ const AUDIENCE_OPTIONS: { value: NonNullable<MarketingFormData["audienceKind"]>;
     { value: "segment",    label: "By segment" },
     { value: "specific",   label: "Specific customers" },
 ];
-
-// ─── Topic dropdown ───────────────────────────────────────────────────────────
-
-function TopicSelect({ value, onChange }: { value: MarketingFormData["topic"]; onChange: (v: MarketingFormData["topic"]) => void }) {
-    const [open, setOpen] = useState(false);
-    const [width, setWidth] = useState(0);
-    const btnRef = useRef<HTMLButtonElement>(null);
-    const selected = TOPIC_OPTIONS.find(o => o.value === value);
-    function toggle() {
-        if (btnRef.current) setWidth(btnRef.current.offsetWidth);
-        setOpen(p => !p);
-    }
-    return (
-        <>
-            <button ref={btnRef} type="button" onClick={toggle}
-                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[16px] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                <span className={cn("flex-1 text-left truncate", selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
-                    {selected?.label ?? "Select topic"}
-                </span>
-                <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
-            </button>
-            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={width || 220}>
-                {TOPIC_OPTIONS.map(o => (
-                    <button key={o.value} type="button"
-                        onClick={() => { onChange(o.value); setOpen(false); }}
-                        className={cn(
-                            "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
-                            value === o.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
-                        )}>
-                        {o.label}
-                    </button>
-                ))}
-            </FixedDropdown>
-        </>
-    );
-}
 
 // ─── Shared page component ───────────────────────────────────────────────────
 
@@ -151,7 +108,6 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         audienceMembershipIds: initial?.audienceMembershipIds ?? [],
         audienceSegments: initial?.audienceSegments ?? [],
         audienceCustomerIds: initial?.audienceCustomerIds ?? [],
-        topic: initial?.topic ?? "",
         scheduleMode: initial?.scheduleMode ?? "now",
     });
     const patch = (p: Partial<MarketingFormData>) => setForm(prev => ({ ...prev, ...p }));
@@ -195,9 +151,9 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         branchIds,
     };
     const reach = useMemo(
-        () => form.topic ? campaignRecipients(audienceSpec, form.topic, customers, customerPlans, customerTransactions).length : null,
+        () => audienceMatch(audienceSpec, customers, customerPlans, customerTransactions).length,
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [form.topic, form.audienceKind, form.audienceMembershipIds, form.audienceSegments, form.audienceCustomerIds, form.multiLocation, form.branchIds, form.singleBranchId, customers, customerPlans, customerTransactions],
+        [form.audienceKind, form.audienceMembershipIds, form.audienceSegments, form.audienceCustomerIds, form.multiLocation, form.branchIds, form.singleBranchId, customers, customerPlans, customerTransactions],
     );
 
     // ─── Gates ─────────────────────────────────────────────────────────────
@@ -207,7 +163,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                 : true;
     const canContinue =
         form.name.trim().length > 0 && form.description.trim().length > 0 &&
-        form.topic !== "" && form.action !== "" && actionConfigOk;
+        form.action !== "" && actionConfigOk;
 
     const branchOk = form.multiLocation ? form.branchIds.length > 0 : !!form.singleBranchId;
     const audienceOk =
@@ -257,7 +213,6 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
             delivery_status: deliveryStatus,
             scheduled_at: scheduling ? scheduledIso : undefined,
             sent_at: sending ? nowIso : undefined,
-            topic: form.topic || undefined,
         };
 
         if (isEdit && marketingId) {
@@ -310,18 +265,9 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                     onChange={url => patch({ bannerPreview: url ?? "" })}
                                     sizeGuide="Recommended: 1029 × 420 px (ratio ~2.45:1). Off-ratio images are cropped — keep key content centered."
                                 />
-                                <div className="flex gap-4 items-start w-full">
-                                    <div className="flex-1 min-w-0">
-                                        <FormField label="Display name">
-                                            <TextInput value={form.name} onChange={v => patch({ name: v })} placeholder="e.g. New: Aerial Yoga" />
-                                        </FormField>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <FormField label="Topic" hint="Gates who can receive it (their opt-in).">
-                                            <TopicSelect value={form.topic} onChange={v => patch({ topic: v })} />
-                                        </FormField>
-                                    </div>
-                                </div>
+                                <FormField label="Display name">
+                                    <TextInput value={form.name} onChange={v => patch({ name: v })} placeholder="e.g. New: Aerial Yoga" />
+                                </FormField>
                                 <FormField label="Message">
                                     <Textarea value={form.description} onChange={v => patch({ description: v })}
                                         placeholder="Write the message customers receive..." />
@@ -420,9 +366,9 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                 <div className="bg-[#f1f2ed] rounded-[12px] px-4 py-3 flex items-center gap-2">
                                     <span className="text-[14px] text-[#475467]">This campaign will reach</span>
                                     <span className="text-[14px] font-semibold text-[#10373a]">
-                                        {reach == null ? "—" : `${reach} customer${reach === 1 ? "" : "s"}`}
+                                        {`${reach} customer${reach === 1 ? "" : "s"}`}
                                     </span>
-                                    <span className="text-[14px] text-[#475467]">opted into push + this topic.</span>
+                                    <span className="text-[14px] text-[#475467]">in the chosen audience.</span>
                                 </div>
                             </Section>
 

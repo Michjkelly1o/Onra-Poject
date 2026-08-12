@@ -79,11 +79,6 @@ const ACTION_LABEL: Record<MarketingItem["action_type"], string> = {
     no_action: "No action",
 };
 
-const TOPIC_LABEL: Record<NonNullable<MarketingItem["topic"]>, string> = {
-    new_class_launch: "New class launch",
-    special_offers: "Special offers",
-    promo_code_offers: "Promo code offers",
-};
 const DELIVERY_LABEL: Record<NonNullable<MarketingItem["delivery_status"]>, string> = {
     draft: "Draft", scheduled: "Scheduled", sent: "Sent",
 };
@@ -255,7 +250,6 @@ function LeftSidebar({ vm, onAction, branches }: {
                             value={vm.deliveryStatus === "draft" ? "Draft"
                                 : `${DELIVERY_LABEL[vm.deliveryStatus]} · ${formatDateTime(vm.deliveryDateISO)}`} />
                         <SidebarField label="Audience" value={vm.audience} />
-                        {vm.topic && <SidebarField label="Topic" value={TOPIC_LABEL[vm.topic]} />}
                         <SidebarField label="Call to action" value={ACTION_LABEL[vm.actionType]} />
                         {vm.actionType === "book_event" && vm.ctaClassLabel && (
                             <SidebarField label="Booked class" value={vm.ctaClassLabel} />
@@ -396,9 +390,6 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                         label={vm.deliveryStatus === "scheduled" ? "Scheduled for" : "Sent on"}
                         value={formatDateTime(vm.deliveryDateISO)} />
                     <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Call to action" value={ACTION_LABEL[vm.actionType]} />
-                    {vm.topic && (
-                        <InlineStat icon={<Grid01 className="w-4 h-4" />} label="Topic" value={TOPIC_LABEL[vm.topic]} />
-                    )}
                     {vm.actionType === "external_link" && (
                         <InlineStat icon={<Link01 className="w-4 h-4" />} label="External link" value={vm.externalUrl || "—"} />
                     )}
@@ -462,7 +453,6 @@ interface MarketingDetailVM {
     // ── Campaign send model ──
     deliveryStatus: NonNullable<MarketingItem["delivery_status"]>;
     deliveryDateISO?: string;
-    topic?: MarketingItem["topic"];
     audience: string;
     sends: number;
     openRate: number;
@@ -560,7 +550,6 @@ function MarketingDetailPageInner() {
         products,
         deliveryStatus,
         deliveryDateISO,
-        topic: item.topic,
         audience: audienceLabel({
             kind: item.audience_kind ?? "everyone",
             membershipIds: item.audience_membership_ids,

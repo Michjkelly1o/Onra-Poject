@@ -84,7 +84,6 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
         audienceMembershipIds: [],
         audienceSegments: [],
         audienceCustomerIds: [],
-        topic: "",
         scheduleMode: "",
     });
     const patch = (p: Partial<MarketingFormData>) => setForm(prev => ({ ...prev, ...p }));
@@ -141,11 +140,9 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                 click_count: 0,
                 conversion_count: 0,
             });
-            // Delivered count — customers in scope opted into BOTH the Push
-            // channel AND the Studio-announcements topic (the dispatch gate).
+            // Delivered count — non-archived customers in the selected branches.
             const reached = customers.filter(c =>
                 c.status !== "archived"
-                && c.marketingChannelPush && c.marketingTopicStudioAnnouncements
                 && (branchIds.length === 0 || (c.branchId ? branchIds.includes(c.branchId) : true)),
             ).length;
             showToast("Announcement published", `Sent to ${reached} customer${reached === 1 ? "" : "s"}.`, "success", "check");
@@ -252,8 +249,7 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                                 <div className="bg-[#f1f2ed] rounded-[12px] p-4 flex items-start gap-3">
                                     <span className="w-5 h-5 shrink-0 text-[#475467]"><Bell01 className="w-5 h-5" /></span>
                                     <p className="text-[14px] text-[#475467] leading-5">
-                                        Published as an in-app banner and a push notification to customers in the
-                                        selected branches who have opted into <span className="font-medium">Studio announcements</span>.
+                                        Published as an in-app banner and a push notification to customers in the selected branches.
                                     </p>
                                 </div>
                             </Section>
