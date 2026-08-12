@@ -37,6 +37,8 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
@@ -123,10 +125,10 @@ function StatusFilterDropdown({ value, onChange }: {
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
+    // Archived is a place (the Archived section), not a filter value (policy §3).
     const OPTIONS: { value: GiftCardStatus; label: string }[] = [
         { value: "active",   label: "Active"   },
         { value: "inactive", label: "Inactive" },
-        { value: "archived", label: "Archive"  },
     ];
 
     return (
@@ -507,6 +509,7 @@ export default function GiftCardsPage() {
     const [search, setSearch] = usePersistedListState("giftCards:search", "");
     const [filter, setFilter] = usePersistedListState<StatusFilter>("giftCards:filter", null);
     const [page, setPage] = usePersistedListState("giftCards:page", 1);
+    const [archPage, setArchPage] = useState(1);
     const [pageSize, setPageSize] = usePersistedListState("giftCards:pageSize", 10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
@@ -527,10 +530,14 @@ export default function GiftCardsPage() {
         const q = search.trim().toLowerCase();
         return allRows.filter(r => {
             if (q && !r.name.toLowerCase().includes(q)) return false;
-            if (filter && r.status !== filter) return false;
+            // Status filter applies only to the active table; archived designs are
+            // exempt — they always render in the Archived section below (policy §3).
+            if (filter && r.status !== "archived" && r.status !== filter) return false;
             return true;
         });
     }, [allRows, search, filter]);
+    // Archived designs leave the active table → the shared Archived section.
+    const { active: activeRows, archived: archivedRows } = useArchiveView(filteredRows);
 
     // ─── Sort ──────────────────────────────────────────────────────────────
     const comparators: Record<string, (a: GiftCardRow, b: GiftCardRow) => number> = {
@@ -540,12 +547,17 @@ export default function GiftCardsPage() {
         valid_until: (a, b) => a.validUntilSort - b.validUntilSort,
         status:      (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
     };
-    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, comparators);
+    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(activeRows, comparators);
+    const { sorted: archSorted, sortKey: archSortKey, sortDir: archSortDir, toggle: toggleArchSort } = useSort(archivedRows, comparators);
 
-    // ─── Pagination slice ──────────────────────────────────────────────────
+    // ─── Pagination slice (active + archived paginate independently) ────────
     const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const pagedRows = sorted.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    const archTotalPages = Math.max(1, Math.ceil(archSorted.length / pageSize));
+    const clampedArchPage = Math.min(Math.max(1, archPage), archTotalPages);
+    const pagedArchivedRows = archSorted.slice((clampedArchPage - 1) * pageSize, clampedArchPage * pageSize);
 
     // ─── Selection helpers ─────────────────────────────────────────────────
     function toggleOne(id: string) {
@@ -553,18 +565,18 @@ export default function GiftCardsPage() {
         next.has(id) ? next.delete(id) : next.add(id);
         setSelectedIds(next);
     }
-    function toggleAllOnPage(check: boolean) {
+    function toggleAllRows(rows: GiftCardRow[], check: boolean) {
         const next = new Set(selectedIds);
-        if (check) pagedRows.forEach(r => next.add(r.id));
-        else pagedRows.forEach(r => next.delete(r.id));
+        if (check) rows.forEach(r => next.add(r.id));
+        else rows.forEach(r => next.delete(r.id));
         setSelectedIds(next);
     }
     function clearSelection() { setSelectedIds(new Set()); }
 
     // ─── Bulk derived flags ────────────────────────────────────────────────
     const selectedRows = useMemo(
-        () => sorted.filter(r => selectedIds.has(r.id)),
-        [sorted, selectedIds],
+        () => [...activeRows, ...archivedRows].filter(r => selectedIds.has(r.id)),
+        [activeRows, archivedRows, selectedIds],
     );
     const hasArchivable    = selectedRows.some(r => r.status !== "archived");
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
@@ -676,7 +688,7 @@ export default function GiftCardsPage() {
         <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={filteredRows.length} entitySingular="gift card" />
+                <ToolbarTotal count={activeRows.length} entitySingular="gift card" />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search product..." />
                 <ToolbarExport
                     onExportCsv={() => {
@@ -699,11 +711,13 @@ export default function GiftCardsPage() {
                 </Button>
             </div>
 
-            {/* Body — sits flush on the admin chrome (no nested view card)
-                per Figma 3726:21787. The relative wrapper anchors the
-                floating bulk-action pill so it can absolutely-position over
-                the table area without escaping the page. */}
-            <div className="relative flex flex-col flex-1 min-h-0">
+            {/* Scroll region — the active table fills the viewport (pagination
+                pinned); the Archived section sits below and is reached by
+                scrolling THIS region. Body sits flush on the admin chrome (no
+                nested view card) per Figma 3726:21787. */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+            {/* Active table — relative wrapper anchors the floating bulk pill. */}
+            <div className="relative shrink-0 h-full flex flex-col">
                 <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide">
                 {sorted.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
@@ -718,7 +732,7 @@ export default function GiftCardsPage() {
                         sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
                         selectedIds={selectedIds}
                         onToggleOne={toggleOne}
-                        onToggleAll={toggleAllOnPage}
+                        onToggleAll={(c) => toggleAllRows(pagedRows, c)}
                         onRowAction={openRowConfirm}
                         onView={handleView}
                         onEdit={handleEdit}
@@ -740,6 +754,31 @@ export default function GiftCardsPage() {
                     onClear={clearSelection}
                     onAction={openBulkConfirm}
                 />
+            </div>
+
+            {/* ── Archived section (policy §3) — its own table + pagination;
+                   selection shared with the active list. */}
+            <ArchivedSection
+                entitySingular="gift card"
+                count={archivedRows.length}
+                pagination={
+                    <Pagination
+                        page={clampedArchPage} total={archSorted.length} pageSize={pageSize}
+                        onPage={setArchPage} onPageSize={s => { setPageSize(s); setArchPage(1); }}
+                    />
+                }
+            >
+                <ListView
+                    rows={pagedArchivedRows}
+                    sortKey={archSortKey} sortDir={archSortDir} onSort={toggleArchSort}
+                    selectedIds={selectedIds}
+                    onToggleOne={toggleOne}
+                    onToggleAll={(c) => toggleAllRows(pagedArchivedRows, c)}
+                    onRowAction={openRowConfirm}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                />
+            </ArchivedSection>
             </div>
 
             {pendingConfirm && (() => {
