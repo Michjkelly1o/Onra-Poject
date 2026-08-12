@@ -146,7 +146,7 @@ export default function NotificationsPage() {
             <CustomerHeader
                 overlap
                 subBar={
-                    <div className="flex w-full gap-3 pt-1">
+                    <div className="flex w-full gap-3 pt-1 overflow-x-auto scrollbar-hide">
                         {TABS.map((t) => {
                             const active = tab === t.id;
                             return (
@@ -154,7 +154,7 @@ export default function NotificationsPage() {
                                     key={t.id}
                                     type="button"
                                     onClick={() => setTab(t.id)}
-                                    className={`flex h-8 flex-1 items-center justify-center gap-2 px-2 pb-3 text-sm leading-5 transition-colors ${
+                                    className={`flex h-8 shrink-0 items-center justify-center gap-2 px-2 pb-3 text-sm leading-5 transition-colors ${
                                         active
                                             ? "border-b-2 border-[var(--brand-text)] font-semibold text-[var(--brand-text)]"
                                             : "font-medium text-[var(--colors-text-quaternary)]"

@@ -131,10 +131,15 @@ export default function MarketingDetailPage() {
                             )}
                             <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                             <TermRow icon={MarkerPin01}>Applicable for {item.locationsLabel}</TermRow>
-                            <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
-                            <TermRow icon={Clock}>
-                                Valid until <span className="font-medium text-[var(--brand-text)]">{item.validUntil}</span>
-                            </TermRow>
+                            {/* Campaigns have no expiry — only announcements carry a show-until date. */}
+                            {item.type !== "campaign" && (
+                                <>
+                                    <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
+                                    <TermRow icon={Clock}>
+                                        Valid until <span className="font-medium text-[var(--brand-text)]">{item.validUntil}</span>
+                                    </TermRow>
+                                </>
+                            )}
                         </div>
                     </div>
 

@@ -323,7 +323,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                     <FormField label="Display name">
                                         <TextInput value={form.name} onChange={v => patch({ name: v })} placeholder="e.g. New: Aerial Yoga" />
                                     </FormField>
-                                    <FormField label="Content type" hint="Routes channels + opt-in from Customer notifications.">
+                                    <FormField label="Content type" hint="Sets channels + opt-in.">
                                         <TopicSelect value={form.topic} onChange={v => patch({ topic: v })} />
                                     </FormField>
                                 </div>

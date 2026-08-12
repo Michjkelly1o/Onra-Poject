@@ -915,7 +915,7 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                             <Section title="Announce">
                                 <ToggleCard
                                     title="Announce to customers"
-                                    subtitle="Send this promo as a “Promo code offers” message. Channels + opt-in are set in Settings → Customer notifications."
+                                    subtitle="Send this promo as a “Promo code offers” message. Channels + opt-in set in Customer notifications."
                                     on={form.announceToCustomers}
                                     onChange={v => patch({ announceToCustomers: v })}
                                 />
