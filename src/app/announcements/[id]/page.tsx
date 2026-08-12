@@ -23,7 +23,7 @@ import { useParams, useRouter, useSearchParams, usePathname } from "next/navigat
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     ChevronUp, ChevronDown, HelpCircle,
-    Calendar, CheckVerified02, Announcement01, Bell01,
+    Calendar, CheckVerified02, Announcement01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
@@ -385,14 +385,6 @@ function RightPanel({ vm, branches }: { vm: AnnouncementDetailVM; branches: Bran
                     )}
                 </VisibilityCard>
 
-                {/* Delivery — information-only, consent-gated push. */}
-                <div className="bg-[#f1f2ed] rounded-[12px] p-4 flex items-start gap-3">
-                    <span className="w-5 h-5 shrink-0 text-[#475467]"><Bell01 className="w-5 h-5" /></span>
-                    <p className="text-[14px] text-[#475467] leading-5">
-                        Delivered as an in-app banner and a push to customers in the selected branches who
-                        opted into <span className="font-medium">Studio announcements</span>. No action or purchase — information only.
-                    </p>
-                </div>
             </div>
         </div>
     );

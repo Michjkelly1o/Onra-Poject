@@ -254,7 +254,6 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                                     <p className="text-[14px] text-[#475467] leading-5">
                                         Published as an in-app banner and a push notification to customers in the
                                         selected branches who have opted into <span className="font-medium">Studio announcements</span>.
-                                        No purchase or action is required — it's information only.
                                     </p>
                                 </div>
                             </Section>

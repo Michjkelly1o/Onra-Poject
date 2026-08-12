@@ -417,19 +417,25 @@ function RowFilterDropdown({ active, onChange }: {
     );
 }
 
-export function MultiSelectCard({ title, subtitle, options, selected, onChange }: {
+export function MultiSelectCard({ title, subtitle, options, selected, onChange, searchable = false }: {
     title: string; subtitle: string;
     options: MultiOption[];
     selected: string[];
     onChange: (ids: string[]) => void;
+    /** Adds a search box + caps the list height with a scroll region — use for
+     *  long lists (e.g. specific customers) so the card doesn't grow unbounded. */
+    searchable?: boolean;
 }) {
     const [expanded, setExpanded] = useState(true);
     const [filter, setFilter] = useState<RowFilter>("all");
+    const [query, setQuery] = useState("");
 
     // "enabled" = checked rows, "disabled" = unchecked rows.
+    const q = query.trim().toLowerCase();
     const visibleOptions = options.filter(o => {
-        if (filter === "enabled")  return selected.includes(o.id);
-        if (filter === "disabled") return !selected.includes(o.id);
+        if (filter === "enabled"  && !selected.includes(o.id)) return false;
+        if (filter === "disabled" &&  selected.includes(o.id)) return false;
+        if (searchable && q && !`${o.label} ${o.sublabel ?? ""}`.toLowerCase().includes(q)) return false;
         return true;
     });
     const visibleIds = visibleOptions.map(o => o.id);
@@ -468,31 +474,44 @@ export function MultiSelectCard({ title, subtitle, options, selected, onChange }
 
             {expanded && (
                 <div className="flex flex-col gap-3">
+                    {searchable && (
+                        <div className="flex items-center gap-2 h-10 px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)]">
+                            <SearchLg className="w-4 h-4 text-[var(--colors-text-quaternary)] shrink-0" />
+                            <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                                placeholder="Search customers..."
+                                className="flex-1 min-w-0 text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] bg-transparent focus:outline-none" />
+                        </div>
+                    )}
                     <div className="flex items-center gap-2">
                         <FilledCheckbox checked={allVisibleSelected} onChange={toggleAll} />
-                        <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-primary)]">Select all</span>
+                        <span className="flex-1 text-[14px] font-medium text-[var(--colors-text-primary)]">
+                            Select all{searchable && q ? " matching" : ""}
+                        </span>
                         <RowFilterDropdown active={filter} onChange={setFilter} />
                     </div>
                     <div className="h-px bg-[var(--colors-bg-quaternary)]" />
-                    {groups.map(g => (
-                        <div key={g || "_"} className="flex flex-col gap-3">
-                            {g && <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{g}</p>}
-                            {visibleOptions.filter(o => (o.group ?? "") === g).map(o => (
-                                <div key={o.id} className="flex items-center gap-2">
-                                    <FilledCheckbox checked={selected.includes(o.id)} onChange={() => toggleOne(o.id)} />
-                                    <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1 truncate">{o.label}</span>
-                                    {o.sublabel && <span className="text-[14px] text-[var(--colors-text-quaternary)] shrink-0">{o.sublabel}</span>}
-                                </div>
-                            ))}
-                        </div>
-                    ))}
-                    {visibleOptions.length === 0 && (
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">
-                            {options.length === 0 ? "Nothing available yet."
-                                : filter === "enabled" ? "No options selected yet."
-                                    : "All options are selected."}
-                        </p>
-                    )}
+                    <div className={cn("flex flex-col gap-3", searchable && "max-h-[300px] overflow-y-auto scrollbar-hide pr-1")}>
+                        {groups.map(g => (
+                            <div key={g || "_"} className="flex flex-col gap-3">
+                                {g && <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{g}</p>}
+                                {visibleOptions.filter(o => (o.group ?? "") === g).map(o => (
+                                    <div key={o.id} className="flex items-center gap-2">
+                                        <FilledCheckbox checked={selected.includes(o.id)} onChange={() => toggleOne(o.id)} />
+                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1 truncate">{o.label}</span>
+                                        {o.sublabel && <span className="text-[14px] text-[var(--colors-text-quaternary)] shrink-0 truncate max-w-[45%]">{o.sublabel}</span>}
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                        {visibleOptions.length === 0 && (
+                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">
+                                {options.length === 0 ? "Nothing available yet."
+                                    : searchable && q ? `No customers match "${query.trim()}".`
+                                        : filter === "enabled" ? "No options selected yet."
+                                            : "All options are selected."}
+                            </p>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

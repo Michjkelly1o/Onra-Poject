@@ -333,7 +333,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
 
                                 {/* Link or action */}
                                 <FormField label="Link or action">
-                                    <div className="grid grid-cols-3 gap-3 w-full">
+                                    <div className="grid grid-cols-2 gap-3 w-full">
                                         {CAMPAIGN_ACTIONS.map(a => (
                                             <ActionCard key={a} action={a}
                                                 selected={form.action === a}
@@ -423,7 +423,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                 {form.audienceKind === "specific" && (
                                     <MultiSelectCard title="Customers" subtitle="Hand-pick who receives this campaign"
                                         options={customerOptions} selected={form.audienceCustomerIds}
-                                        onChange={ids => patch({ audienceCustomerIds: ids })} />
+                                        onChange={ids => patch({ audienceCustomerIds: ids })} searchable />
                                 )}
 
                                 {/* Live reach */}
