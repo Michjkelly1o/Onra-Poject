@@ -228,7 +228,7 @@ export function useSearchIndex(
         // ── Classes (templates + schedules) ──────────────────────────────
         if (category === "All" || category === "Classes") {
             for (const t of classTemplates) {
-                if (t.status !== "Active") continue;
+                if (t.status !== "active") continue;
                 const s = score(t.name, q);
                 if (s === 0) continue;
                 const href = `/class-types/${t.id}`;
@@ -440,7 +440,7 @@ export function useDefaultSuggestions(
         // Classes — active templates first, then next upcoming schedules.
         if (category === "All" || category === "Classes") {
             const tpls = classTemplates
-                .filter(t => t.status === "Active")
+                .filter(t => t.status === "active")
                 .slice(0, 3);
             for (const t of tpls) {
                 const href = `/class-types/${t.id}`;

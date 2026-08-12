@@ -702,7 +702,7 @@ export function AgreementFormPage({ mode, agreementId }: AgreementFormPageProps)
     const serviceOptions = useMemo<MultiOption[]>(() => {
         const opts: MultiOption[] = [];
         for (const t of classTemplates) {
-            if (t.status !== "Active") continue;
+            if (t.status !== "active") continue;
             const tBranchIds = (t as { branch_ids?: string[] }).branch_ids;
             const branches = tBranchIds && tBranchIds.length > 0 ? tBranchIds : [""];
             for (const bid of branches) {

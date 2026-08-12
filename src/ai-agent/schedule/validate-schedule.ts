@@ -269,7 +269,7 @@ export function validateAppointment(args: {
         errors.push("That service no longer exists — pick one from the list.");
         return { errors, warnings };
     }
-    if (service.status !== "Active") errors.push(`${service.name} isn't active anymore.`);
+    if (service.status !== "active") errors.push(`${service.name} isn't active anymore.`);
     if (draft.customerId && !snapshot.customers.find((c) => c.id === draft.customerId)) {
         errors.push("That customer isn't in the system.");
     }

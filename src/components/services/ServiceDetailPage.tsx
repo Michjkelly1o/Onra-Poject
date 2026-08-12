@@ -135,12 +135,12 @@ function LeftPanel({ service, hasAppointments, onAction }: {
     const branchTz = branch ? branchTzLabel(branch) : "";
 
     const actions = (() => {
-        if (status === "Archived") {
+        if (status === "archived") {
             return (
                 <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover service" onClick={() => onAction("recover")} />
             );
         }
-        if (status === "Inactive") {
+        if (status === "inactive") {
             return (
                 <>
                     <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive service" onClick={() => onAction("archive")} />
@@ -173,7 +173,7 @@ function LeftPanel({ service, hasAppointments, onAction }: {
                     <img
                         src={service.coverImage}
                         alt={service.name}
-                        className={cn("absolute inset-0 w-full h-full object-cover", status === "Inactive" && "grayscale")}
+                        className={cn("absolute inset-0 w-full h-full object-cover", status === "inactive" && "grayscale")}
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
                 )}
@@ -944,9 +944,9 @@ export function ServiceDetailPage({ serviceId, returnTo = "/admin/services" }: S
         }
 
         const nextStatus: ServiceStatus =
-            confirmAction === "archive"    ? "Archived" :
-            confirmAction === "deactivate" ? "Inactive" :
-            /* reactivate | recover */       "Active";
+            confirmAction === "archive"    ? "archived" :
+            confirmAction === "deactivate" ? "inactive" :
+            /* reactivate | recover */       "active";
         setServiceStatus(service.id, nextStatus);
 
         const titles: Record<Exclude<ModalAction, "delete">, string> = {

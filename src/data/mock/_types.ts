@@ -1344,7 +1344,7 @@ export interface ClassTemplate {
     duration_min: number;
     capacity: number;
     cover_image_url?: string; // /images/class-template/*.webp
-    status: "Active" | "Inactive" | "Archived";
+    status: "active" | "inactive" | "archived";
     /** Memberships that grant access to classes from this template. */
     applicable_membership_ids: string[]; // → memberships.id[]
     /** Packages that grant access to classes from this template. */
@@ -1437,7 +1437,7 @@ export interface Service {
      *  or may not use a room. Empty / omitted = no room. → rooms.id */
     room_id?: string;
     cover_image_url?: string;
-    status: "Active" | "Inactive" | "Archived";
+    status: "active" | "inactive" | "archived";
 }
 
 // ─── Appointments (Module 13 — Phase 4) ────────────────────────────────────

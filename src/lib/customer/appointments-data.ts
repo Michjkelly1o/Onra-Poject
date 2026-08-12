@@ -78,7 +78,7 @@ export function useRecommendedServices(limit = 8): AppointmentVM[] {
     return useMemo(() => {
         // Bookable = active + (open sessions only exist for recovery).
         const bookable = services.filter(
-            (s) => s.status === "Active" && (s.type === "recovery" || !s.openSession),
+            (s) => s.status === "active" && (s.type === "recovery" || !s.openSession),
         );
         const isAll = selectedBranchId === ALL_BRANCHES;
         const scoped = bookable.filter((s) => isAll || s.branchId === selectedBranchId);
@@ -109,7 +109,7 @@ export function useAppointments(filters: SearchFilters, forceType?: "private" | 
     return useMemo(() => {
         const isAll = selectedBranchId === ALL_BRANCHES;
         return services
-            .filter((s) => s.status === "Active")
+            .filter((s) => s.status === "active")
             .filter((s) => isAll || s.branchId === selectedBranchId)
             // Open sessions only exist for recovery services; a private
             // service is always 1:1 (never open).

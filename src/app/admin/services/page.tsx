@@ -56,14 +56,14 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 // ─── Types & constants ───────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<ServiceStatus, string> = {
-    Active:   "Active",
-    Inactive: "Inactive",
-    Archived: "Archived",
+    active:   "Active",
+    inactive: "Inactive",
+    archived: "Archived",
 };
 const STATUS_ORDER: Record<ServiceStatus, number> = {
-    Active: 0, Inactive: 1, Archived: 2,
+    active: 0, inactive: 1, archived: 2,
 };
-const ALL_STATUSES: ServiceStatus[] = ["Active", "Archived", "Inactive"];
+const ALL_STATUSES: ServiceStatus[] = ["active", "archived", "inactive"];
 
 interface FilterState {
     statuses: ServiceStatus[];
@@ -97,7 +97,7 @@ function ServiceAvatar({ name, coverImage, coverColor, status }: {
                 <img
                     src={coverImage}
                     alt={name}
-                    className={cn("absolute inset-0 w-full h-full object-cover", status === "Inactive" && "grayscale")}
+                    className={cn("absolute inset-0 w-full h-full object-cover", status === "inactive" && "grayscale")}
                     onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
                 <div className="absolute inset-0 rounded-full border-[0.75px] border-black/[0.08] pointer-events-none" />
@@ -482,12 +482,12 @@ function ListView({
                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                     <RowActions items={[
                                         { label: "View details", icon: Eye, onClick: () => onView(r) },
-                                        { label: "Edit details", icon: Edit02, onClick: () => onEdit(r), hidden: r.status !== "Active" },
-                                        { label: "Archive", icon: Archive, onClick: () => onRowAction(r, "archive"), hidden: r.status !== "Active" && r.status !== "Inactive" },
-                                        { label: "Reactivate", icon: Check, onClick: () => onRowAction(r, "reactivate"), hidden: r.status !== "Inactive" },
-                                        { label: "Recover", icon: RefreshCcw01, onClick: () => onRowAction(r, "recover"), hidden: r.status !== "Archived" },
-                                        { label: "Deactivate", icon: SlashCircle01, onClick: () => onRowAction(r, "deactivate"), danger: true, hidden: !(r.status === "Active" && r.hasHistory) },
-                                        { label: "Delete", icon: Trash01, onClick: () => onRowAction(r, "delete"), danger: true, hidden: !(r.status === "Active" && !r.hasHistory) },
+                                        { label: "Edit details", icon: Edit02, onClick: () => onEdit(r), hidden: r.status !== "active" },
+                                        { label: "Archive", icon: Archive, onClick: () => onRowAction(r, "archive"), hidden: r.status !== "active" && r.status !== "inactive" },
+                                        { label: "Reactivate", icon: Check, onClick: () => onRowAction(r, "reactivate"), hidden: r.status !== "inactive" },
+                                        { label: "Recover", icon: RefreshCcw01, onClick: () => onRowAction(r, "recover"), hidden: r.status !== "archived" },
+                                        { label: "Deactivate", icon: SlashCircle01, onClick: () => onRowAction(r, "deactivate"), danger: true, hidden: !(r.status === "active" && r.hasHistory) },
+                                        { label: "Delete", icon: Trash01, onClick: () => onRowAction(r, "delete"), danger: true, hidden: !(r.status === "active" && !r.hasHistory) },
                                     ]} />
                                 </td>
                             </tr>
@@ -628,11 +628,11 @@ function ServicesPageInner() {
 
     // ─── Bulk derived flags ────────────────────────────────────────────────
     const selectedRows = useMemo(() => sorted.filter(r => selectedIds.has(r.id)), [sorted, selectedIds]);
-    const hasArchivable    = selectedRows.some(r => r.status !== "Archived");
-    const hasReactivatable = selectedRows.some(r => r.status === "Inactive");
-    const hasRecoverable   = selectedRows.some(r => r.status === "Archived");
+    const hasArchivable    = selectedRows.some(r => r.status !== "archived");
+    const hasReactivatable = selectedRows.some(r => r.status === "inactive");
+    const hasRecoverable   = selectedRows.some(r => r.status === "archived");
     const hasDeletable     = selectedRows.length > 0
-        && selectedRows.every(r => r.status === "Active" && !r.hasHistory);
+        && selectedRows.every(r => r.status === "active" && !r.hasHistory);
 
     // ─── Action plumbing ───────────────────────────────────────────────────
     function openRowConfirm(row: ServiceRow, kind: RowActionKind) {
@@ -641,11 +641,11 @@ function ServicesPageInner() {
     function openBulkConfirm(kind: RowActionKind) {
         const rowsForKind = (() => {
             switch (kind) {
-                case "deactivate": return selectedRows.filter(r => r.status === "Active");
-                case "reactivate": return selectedRows.filter(r => r.status === "Inactive");
-                case "archive":    return selectedRows.filter(r => r.status !== "Archived");
-                case "recover":    return selectedRows.filter(r => r.status === "Archived");
-                case "delete":     return selectedRows.filter(r => r.status === "Active" && !r.hasHistory);
+                case "deactivate": return selectedRows.filter(r => r.status === "active");
+                case "reactivate": return selectedRows.filter(r => r.status === "inactive");
+                case "archive":    return selectedRows.filter(r => r.status !== "archived");
+                case "recover":    return selectedRows.filter(r => r.status === "archived");
+                case "delete":     return selectedRows.filter(r => r.status === "active" && !r.hasHistory);
             }
         })();
         if (rowsForKind.length === 0) return;
@@ -658,10 +658,10 @@ function ServicesPageInner() {
 
         if (kind === "deactivate" || kind === "reactivate" || kind === "archive" || kind === "recover") {
             const nextStatus: ServiceStatus =
-                kind === "deactivate" ? "Inactive" :
-                kind === "reactivate" ? "Active"   :
-                kind === "archive"    ? "Archived" :
-                /* recover */           "Active";
+                kind === "deactivate" ? "inactive" :
+                kind === "reactivate" ? "active"   :
+                kind === "archive"    ? "archived" :
+                /* recover */           "active";
             rows.forEach(r => setServiceStatus(r.id, nextStatus));
 
             const verbPast =

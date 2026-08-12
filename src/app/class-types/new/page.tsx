@@ -545,7 +545,7 @@ function NewClassTemplatePageInner() {
             locationType: "Group",
             durationMin: Number(step1.durationMin),
             capacity: Number(step1.capacity),
-            status: "Active",
+            status: "active",
             coverImage: step1.coverPreview ?? undefined,
             coverColor: cat?.color_hex ?? "#eff6f3",
             applicableMembershipIds: membershipIds,

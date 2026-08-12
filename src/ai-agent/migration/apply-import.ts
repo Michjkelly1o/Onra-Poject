@@ -732,7 +732,7 @@ export function applyImportToStore(
                 locationType: "Group",
                 durationMin: toNumber(rec.duration_minutes, 60),
                 capacity: toNumber(rec.capacity, 10),
-                status: "Active",
+                status: "active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
                 applicableMembershipIds: [],
                 applicablePackageIds: [],
@@ -849,7 +849,7 @@ export function applyImportToStore(
                 branchId: deps.branchId,
                 branchName: branch?.name ?? "",
                 roomId: room?.id ?? "",
-                status: "Active",
+                status: "active",
                 coverColor: cat.color_hex ?? "#f1f2ed",
             });
             created++;

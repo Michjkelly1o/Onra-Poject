@@ -340,7 +340,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
         const ratings = instructorRatings(snapshot);
         return {
             templates: snapshot.classTemplates
-                .filter((t) => t.status === "Active" && t.type === "class")
+                .filter((t) => t.status === "active" && t.type === "class")
                 .map((t) => ({
                     id: t.id,
                     name: t.name,
@@ -793,7 +793,7 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 return {
                     card: "class_service_options",
                     services: snapshot.services
-                        .filter((s) => s.type === sessionType && s.status === "Active")
+                        .filter((s) => s.type === sessionType && s.status === "active")
                         .map((s) => ({
                             id: s.id,
                             name: s.name,

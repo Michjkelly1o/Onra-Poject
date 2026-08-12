@@ -111,14 +111,14 @@ const REGISTRY: StatusRegistry = {
         archived: { palette: "gray",  label: "Archived" },
     },
     template: {
-        Active:   { palette: "green", label: "Active" },
-        Inactive: { palette: "gray",  label: "Inactive" },
-        Archived: { palette: "gray",  label: "Archived" },
+        active:   { palette: "green", label: "Active" },
+        inactive: { palette: "gray",  label: "Inactive" },
+        archived: { palette: "gray",  label: "Archived" },
     },
     service: {
-        Active:   { palette: "green", label: "Active" },
-        Inactive: { palette: "gray",  label: "Inactive" },
-        Archived: { palette: "gray",  label: "Archived" },
+        active:   { palette: "green", label: "Active" },
+        inactive: { palette: "gray",  label: "Inactive" },
+        archived: { palette: "gray",  label: "Archived" },
     },
     branch: {
         active:   { palette: "green", label: "Active" },

@@ -567,7 +567,7 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
     ], [memberships, packages, retailProducts]);
 
     const classOptions: MultiOption[] = useMemo(() =>
-        classTemplates.filter(t => t.status === "Active")
+        classTemplates.filter(t => t.status === "active")
             .map(t => ({ id: t.id, label: t.name, sublabel: t.category })),
         [classTemplates]);
 

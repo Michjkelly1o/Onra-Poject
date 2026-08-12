@@ -45,7 +45,7 @@ export const services: Service[] = [
         price: 220,
         branch_id: "branch_forma_south",
         cover_image_url: "/images/service/private-reformer.webp",
-        status: "Active",
+        status: "active",
     },
     {
         id: "svc_private_mat_pilates",
@@ -59,7 +59,7 @@ export const services: Service[] = [
         price: 180,
         branch_id: "branch_forma_south",
         cover_image_url: "/images/service/private-mat-pilates.webp",
-        status: "Active",
+        status: "active",
     },
 
     // ── Recovery services (type="recovery"). Seeded under Forma
@@ -80,7 +80,7 @@ export const services: Service[] = [
         branch_id: "branch_forma_south",
         room_id: "room_south_recovery",
         cover_image_url: "/images/service/massage.webp",
-        status: "Active",
+        status: "active",
     },
     // Sauna — open session (drop-in, multi-customer).
     {
@@ -95,7 +95,7 @@ export const services: Service[] = [
         price: 95,
         branch_id: "branch_forma_south",
         cover_image_url: "/images/service/sauna.webp",
-        status: "Active",
+        status: "active",
     },
     // Breathwork — open session (group, larger capacity).
     {
@@ -110,7 +110,7 @@ export const services: Service[] = [
         price: 120,
         branch_id: "branch_forma_south",
         cover_image_url: "/images/service/breathwork.webp",
-        status: "Active",
+        status: "active",
     },
     // IV therapy — private recovery, seasonally paused (Inactive).
     {
@@ -126,6 +126,6 @@ export const services: Service[] = [
         branch_id: "branch_forma_south",
         room_id: "room_south_recovery",
         cover_image_url: "/images/service/iv-therapy.webp",
-        status: "Inactive",
+        status: "inactive",
     },
 ];

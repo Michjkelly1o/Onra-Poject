@@ -1042,7 +1042,7 @@ export function AgreementDetailPage({ agreementId, returnTo = "/admin/settings/a
     const serviceList = useMemo(() => {
         if (!agreement) return [];
         const branchNameById = new Map(branches.map(b => [b.id, b.name]));
-        const activeTemplates = classTemplates.filter(t => t.status === "Active");
+        const activeTemplates = classTemplates.filter(t => t.status === "active");
         const includeAll = agreement.applicableClassTemplateIds.length === 0;
         const chosenIds = new Set(agreement.applicableClassTemplateIds);
 

@@ -282,11 +282,11 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
         const includeAll = !parent || parent.applicableClassTemplateIds.length === 0;
         const applicableIds = new Set(
             includeAll
-                ? classTemplates.filter(t => t.status === "Active").map(t => t.id)
+                ? classTemplates.filter(t => t.status === "active").map(t => t.id)
                 : parent!.applicableClassTemplateIds,
         );
         const names = classTemplates
-            .filter(t => t.status === "Active")
+            .filter(t => t.status === "active")
             .filter(t => applicableIds.has(t.id))
             .filter(t => {
                 const tBranchIds = (t as { branch_ids?: string[] }).branch_ids;

@@ -233,12 +233,12 @@ function LeftPanel({
     const effectiveCover  = resolveTemplateCoverImage(template, classCategories);
 
     const actions = (() => {
-        if (status === "Archived") {
+        if (status === "archived") {
             return (
                 <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover class template" onClick={() => onAction("recover")} />
             );
         }
-        if (status === "Inactive") {
+        if (status === "inactive") {
             return (
                 <>
                     <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive class template" onClick={() => onAction("archive")} />
@@ -269,7 +269,7 @@ function LeftPanel({
                     <img
                         src={effectiveCover}
                         alt={template.name}
-                        className={cn("absolute inset-0 w-full h-full object-cover", status === "Inactive" && "grayscale")}
+                        className={cn("absolute inset-0 w-full h-full object-cover", status === "inactive" && "grayscale")}
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
                 )}
@@ -1010,19 +1010,19 @@ function ClassTemplateDetailPageInner() {
             setConfirmAction(null);
             router.push(returnTo);
         } else if (confirmAction === "archive") {
-            updateClassTemplate(id, { status: "Archived" });
+            updateClassTemplate(id, { status: "archived" });
             showToast("Class template is now archived", "The class template has been archived and is no longer in use.", "success", "archive");
             setConfirmAction(null);
         } else if (confirmAction === "deactivate") {
-            updateClassTemplate(id, { status: "Inactive" });
+            updateClassTemplate(id, { status: "inactive" });
             showToast("Class template is now inactive", "The class template has been deactivate and is no longer in use.", "error", "slash");
             setConfirmAction(null);
         } else if (confirmAction === "recover") {
-            updateClassTemplate(id, { status: "Active" });
+            updateClassTemplate(id, { status: "active" });
             showToast("Class template is now recover", "The class template has been recover and now it can be use.", "success", "check");
             setConfirmAction(null);
         } else if (confirmAction === "reactivate") {
-            updateClassTemplate(id, { status: "Active" });
+            updateClassTemplate(id, { status: "active" });
             showToast("Class template is now active", "The class template has been reactivate and now it can be use.", "success", "check");
             setConfirmAction(null);
         }

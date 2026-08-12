@@ -75,7 +75,7 @@ type LocationType = "Group" | "Private";
 // ─── Removed mock data (now in Zustand store) ─────────────────────────────────
 
 
-const ALL_STATUSES: TemplateStatus[] = ["Active", "Archived", "Inactive"];
+const ALL_STATUSES: TemplateStatus[] = ["active", "archived", "inactive"];
 // Filter categories come from the LIVE `classCategories` store slice
 // (Phase 4 wiring) so adding / editing / deleting categories in the
 // Booking Rules module reflects here on the same render.
@@ -105,11 +105,11 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
     // "list down all the actions" holds regardless of status.
     const items: RowActionItem[] = (() => {
         const base: RowActionItem[] = [{ label: "View details", icon: Eye, onClick: () => router.push(detailHref) }];
-        if (template.status === "Archived") {
+        if (template.status === "archived") {
             base.push({ label: "Recover class template", icon: RefreshCcw01, onClick: () => setConfirmAction("recover") });
             return base;
         }
-        if (template.status === "Inactive") {
+        if (template.status === "inactive") {
             base.push({ label: "Archive class template", icon: Archive, onClick: () => setConfirmAction("archive") });
             base.push({ label: "Reactivate class template", icon: RefreshCcw01, onClick: () => setConfirmAction("reactivate") });
             return base;
@@ -134,19 +134,19 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
                 showToast("Class template deleted successfully", `"${name}" class template is no longer available for new classes.`, "error", "trash");
                 break;
             case "archive":
-                updateClassTemplate(template.id, { status: "Archived" });
+                updateClassTemplate(template.id, { status: "archived" });
                 showToast("Class template is now archived", "The class template has been archived and is no longer in use.", "success", "archive");
                 break;
             case "deactivate":
-                updateClassTemplate(template.id, { status: "Inactive" });
+                updateClassTemplate(template.id, { status: "inactive" });
                 showToast("Class template is now inactive", "The class template has been deactivate and is no longer in use.", "error", "slash");
                 break;
             case "recover":
-                updateClassTemplate(template.id, { status: "Active" });
+                updateClassTemplate(template.id, { status: "active" });
                 showToast("Class template is now recover", "The class template has been recover and now it can be use.", "success", "check");
                 break;
             case "reactivate":
-                updateClassTemplate(template.id, { status: "Active" });
+                updateClassTemplate(template.id, { status: "active" });
                 showToast("Class template is now active", "The class template has been reactivate and now it can be use.", "success", "check");
                 break;
         }
@@ -168,7 +168,7 @@ function ClassTemplateCard({ template }: { template: ClassTemplate }) {
                     <img
                         src={effectiveCover}
                         alt={template.name}
-                        className={cn("absolute inset-0 w-full h-full object-cover", template.status === "Inactive" && "grayscale")}
+                        className={cn("absolute inset-0 w-full h-full object-cover", template.status === "inactive" && "grayscale")}
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                     />
                 )}

@@ -263,7 +263,7 @@ function buildCatalog(
     // the session picker (date + instructor) before it joins the cart. The card
     // leads with duration + capacity/1-on-1 so the cashier scans what it is.
     for (const s of services) {
-        if (s.status !== "Active") continue;
+        if (s.status !== "active") continue;
         out.push({
             id: s.id,
             kind: s.type, // "private" | "recovery"

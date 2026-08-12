@@ -1165,7 +1165,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     const [csHovered,     setCsHovered]     = useState<string | null>(null);
     const [csSelected,    setCsSelected]    = useState<string | null>(null);
 
-    const activeTemplates = classTemplates.filter(t => t.status === "Active");
+    const activeTemplates = classTemplates.filter(t => t.status === "active");
 
     // ─── Selected branch resolution (hoisted) ──────────────────────────────
     // Needed by the slot-availability useMemos below — the branch picks the

@@ -570,7 +570,7 @@ export function demoRoleToStaffType(role: UserRole | string): RoleTypeSeed | nul
 
 // ─── Legacy camelCase types (kept stable for existing consumers) ────────────
 
-export type TemplateStatus = "Active" | "Archived" | "Inactive";
+export type TemplateStatus = "active" | "archived" | "inactive";
 export type ClassStatus    = "Upcoming" | "Ongoing" | "Completed" | "Cancelled";
 
 /** Class template — camelCase shape used by all current consumers. */
@@ -600,7 +600,7 @@ export interface ClassTemplate {
 
 /** Service status mirrors `TemplateStatus` — separate alias kept so UI
  *  + future appointment surfaces can evolve independently. */
-export type ServiceStatus = "Active" | "Archived" | "Inactive";
+export type ServiceStatus = "active" | "archived" | "inactive";
 
 /**
  * Service — camelCase shape consumed by the Services list, detail page,
@@ -6746,8 +6746,8 @@ export const useAppStore = create<AppState>()(persist(
             services: state.services.map(s => s.id === id ? { ...s, status } : s),
         }));
         // Human-readable audit verb per transition target.
-        const verb = status === "Active"   ? (target.status === "Inactive" ? "Reactivated" : "Recovered")
-                   : status === "Inactive" ? "Deactivated"
+        const verb = status === "active"   ? (target.status === "inactive" ? "Reactivated" : "Recovered")
+                   : status === "inactive" ? "Deactivated"
                    : /* Archived */           "Archived";
         get().recordAudit(`${verb} service`, "service", id, target.name);
     },
@@ -13378,7 +13378,13 @@ export const useAppStore = create<AppState>()(persist(
         //   also adds the customer guest-booking fields (guest phone, guest
         //   booking limit). Fresh bump so every persisted demo re-seeds with the
         //   combined data + branding.
-        version: 113,
+        // v114 — Phase 0 status normalization: the archived status value is now
+        // lowercase "archived" app-wide (was "archive" for pay rates / staff /
+        // roles / shifts / branches / rooms) and class-template / service status
+        // is lowercase "active | inactive | archived" (was capitalized). Bump so
+        // persisted demo state re-seeds instead of carrying stale status tokens
+        // that no longer match the badges / filters / guards.
+        version: 114,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
