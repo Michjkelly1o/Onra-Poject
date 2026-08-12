@@ -23,7 +23,7 @@ import { useParams, useRouter, useSearchParams, usePathname } from "next/navigat
 import {
     XClose, Edit02, Archive, SlashCircle01, RefreshCcw01, Trash01, Check,
     ChevronUp, ChevronDown, HelpCircle,
-    CursorBox, Calendar, Link01, CheckVerified02,
+    Calendar, CheckVerified02, Announcement01, Bell01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Toast } from "@/components/ui/Toast";
@@ -225,10 +225,9 @@ function LeftSidebar({ vm, onAction, branches }: {
                     </div>
 
                     <div className="flex flex-col gap-3">
-                        <SidebarField label="Announcement action" value={ACTION_LABEL[vm.actionType]} />
-                        <SidebarField label="Start date & time" value={formatDateTime(vm.publishDate)} />
-                        <SidebarField label="End date & time" value={formatDateTime(vm.expiryDate)} />
+                        <SidebarField label="Show until" value={formatDateTime(vm.expiryDate)} />
                         <SidebarField label="Applicable branch" value={branchSummary(vm.branchIds, branches)} />
+                        <SidebarField label="Topic" value="Studio announcement" />
                     </div>
                 </div>
 
@@ -355,15 +354,11 @@ function RightPanel({ vm, branches }: { vm: AnnouncementDetailVM; branches: Bran
     return (
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden border border-[var(--colors-border-secondary)] rounded-[20px]">
             <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6 flex flex-col gap-6">
-                {/* ── Announcement configuration ── */}
+                {/* ── Announcement configuration ── (information-only — no CTA) */}
                 <SectionHeading>Announcement configuration</SectionHeading>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-5">
-                    <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Link or action" value={ACTION_LABEL[vm.actionType]} />
-                    <InlineStat icon={<Calendar className="w-4 h-4" />} label="Start date & time" value={formatDateTime(vm.publishDate)} />
-                    <InlineStat icon={<Calendar className="w-4 h-4" />} label="End date & time" value={formatDateTime(vm.expiryDate)} />
-                    {vm.actionType === "external_link" && (
-                        <InlineStat icon={<Link01 className="w-4 h-4" />} label="External link" value={vm.externalUrl || "—"} />
-                    )}
+                    <InlineStat icon={<Calendar className="w-4 h-4" />} label="Show until" value={formatDateTime(vm.expiryDate)} />
+                    <InlineStat icon={<Announcement01 className="w-4 h-4" />} label="Topic" value="Studio announcement" />
                     <InlineStat
                         icon={<CheckVerified02 className="w-4 h-4" />}
                         label="Multi-location access"
@@ -390,44 +385,14 @@ function RightPanel({ vm, branches }: { vm: AnnouncementDetailVM; branches: Bran
                     )}
                 </VisibilityCard>
 
-                {/* Packages — grouped Membership / Class package */}
-                <VisibilityCard
-                    title="Packages"
-                    subtitle="The announcement can be shown on multiple packages"
-                    badge={`${vm.products.length} selected`}
-                >
-                    {vm.products.length === 0 ? (
-                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">No packages selected.</p>
-                    ) : (
-                        (["Membership", "Class package"] as const).map(group => {
-                            const rows = vm.products.filter(p => p.group === group);
-                            if (rows.length === 0) return null;
-                            return (
-                                <div key={group} className="flex flex-col gap-3">
-                                    <p className="text-[12px] text-[var(--colors-text-quaternary)] leading-[18px]">{group}</p>
-                                    {rows.map(p => <CheckRow key={p.id} label={p.name} />)}
-                                </div>
-                            );
-                        })
-                    )}
-                </VisibilityCard>
-
-                {/* Customer targeting */}
-                <VisibilityCard
-                    title="Customer"
-                    subtitle="The announcement can be configured to target specific eligible users."
-                    badge={vm.customerTargeting === "new_users" ? "New user only"
-                        : vm.customerTargeting === "all" ? "Everyone" : "—"}
-                >
-                    <div className="flex items-center gap-2">
-                        <DisabledRadio selected={vm.customerTargeting === "all"} />
-                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">Everyone</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <DisabledRadio selected={vm.customerTargeting === "new_users"} />
-                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">New user only</span>
-                    </div>
-                </VisibilityCard>
+                {/* Delivery — information-only, consent-gated push. */}
+                <div className="bg-[#f1f2ed] rounded-[12px] p-4 flex items-start gap-3">
+                    <span className="w-5 h-5 shrink-0 text-[#475467]"><Bell01 className="w-5 h-5" /></span>
+                    <p className="text-[14px] text-[#475467] leading-5">
+                        Delivered as an in-app banner and a push to customers in the selected branches who
+                        opted into <span className="font-medium">Studio announcements</span>. No action or purchase — information only.
+                    </p>
+                </div>
             </div>
         </div>
     );

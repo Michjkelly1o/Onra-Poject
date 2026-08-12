@@ -89,14 +89,13 @@ export const marketing_items: MarketingItem[] = [
         created_at: "2026-05-19T09:00:00Z",
     },
     {
-        // ── Active — Announcement, External link ──
+        // ── Active — Announcement, No action (information only) ──
         id: "mkt_holiday_hours",
         title: "Extended Holiday Hours",
         type: "announcement",
         short_description: "We're open longer through the holidays — check the full updated timetable for every branch.",
         cover_image_url: "/images/marketing/studio-closure-notice.webp",
-        action_type: "external_link",
-        external_url: "https://onrastudio.com/holiday-hours",
+        action_type: "no_action",
         publish_date: "2026-08-01T00:00:00Z",
         expiry_date: "2026-09-30T00:00:00Z",
         countdown: false,
@@ -104,10 +103,9 @@ export const marketing_items: MarketingItem[] = [
         multi_location: true,
         target_package_ids: [],
         target_class_ids: [],
-        customer_targeting: "all",
         status: "active",
         view_count: 54,
-        click_count: 12,
+        click_count: 0,
         conversion_count: 0,
         created_at: "2026-07-28T09:00:00Z",
     },

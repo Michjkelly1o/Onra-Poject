@@ -569,9 +569,10 @@ function PreviewAttr({ icon, label, muted }: {
 }
 
 /** Right-hand live preview card. `noun` tailors the placeholder copy per module
- *  ("campaign" / "announcement"); everything else is identical. */
-export function MarketingPreviewPanel({ form, branches, noun = "campaign" }: {
-    form: MarketingFormData; branches: Branch[]; noun?: string;
+ *  ("campaign" / "announcement"). `hideAction` drops the action attribute for
+ *  announcements (information-only — no CTA), mirroring the customer banner. */
+export function MarketingPreviewPanel({ form, branches, noun = "campaign", hideAction = false }: {
+    form: MarketingFormData; branches: Branch[]; noun?: string; hideAction?: boolean;
 }) {
     const name = form.name.trim();
     const description = form.description.trim();
@@ -619,11 +620,14 @@ export function MarketingPreviewPanel({ form, branches, noun = "campaign" }: {
                                 {description || `Your ${noun} description will appear here.`}
                             </p>
                         </div>
-                        {/* Attribute row — action · branches */}
-                        <div className="grid grid-cols-2 gap-x-3">
-                            <PreviewAttr icon={<CursorBox className="w-4 h-4" />}
-                                label={form.action ? ACTION_META[form.action].label : "Link or action"}
-                                muted={!form.action} />
+                        {/* Attribute row — (action ·) branches. Announcements
+                            hide the action attribute (information-only). */}
+                        <div className={cn("grid gap-x-3", hideAction ? "grid-cols-1" : "grid-cols-2")}>
+                            {!hideAction && (
+                                <PreviewAttr icon={<CursorBox className="w-4 h-4" />}
+                                    label={form.action && form.action !== "no_action" ? ACTION_META[form.action].label : "Link or action"}
+                                    muted={!form.action || form.action === "no_action"} />
+                            )}
                             <PreviewAttr icon={<MarkerPin01 className="w-4 h-4" />}
                                 label={branchLabel ?? "Applicable branch"}
                                 muted={!branchLabel} />

@@ -4,44 +4,38 @@
 // Onra Studio — Create / Edit announcement
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Announcements are their OWN single-type marketing module (split out of
-// Campaigns). Same 2-step full-page flow, same shared building blocks
-// (`form-kit.tsx`), same live preview — only the type is fixed to
-// "announcement", so there's NO "Campaign type" dropdown.
+// An announcement is "something to SAY": information with a show-until date —
+// a banner in the app + a push. NO action, NO revenue, NO conversion (client
+// model 2026-08-12). So this form carries only: banner, name, message, a single
+// "show until" date, and branch scope. There is no CTA, no products, and no
+// customer-segment targeting (announcements are a broadcast — segment targeting
+// is the Campaign's job).
 //
-// An announcement's only CTA options are "External link" and "No action"
-// (per Figma 7046:* announcement variant), so this form drops the class /
-// event picker and the ticket-price field that Campaigns/Events carry.
-//
-// Writes/patches the SAME `marketing_items` slice as Campaigns (type =
-// "announcement"), so the customer "What's on" feed picks it up with no
-// migration — the modules are separate in the admin, unified in the data.
+// Delivery: an announcement is pushed to customers who opted into the "Studio
+// announcements" topic on the Push channel (the consent gate lives in the
+// store's dispatch). Writes the shared `marketing_items` slice (type =
+// "announcement"), so the customer "What's on" banner picks it up.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { XClose } from "@untitledui/icons";
+import { XClose, Bell01 } from "@untitledui/icons";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { Button } from "@/components/ui/button";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore, type MarketingItem } from "@/lib/store";
 import {
-    type MarketingFormData, type MultiOption,
-    ACTIONS_BY_TYPE, nowHHMM,
+    type MarketingFormData,
     StepItem, type FormStep, FormCard, Section, FormField, TextInput, Textarea,
-    ToggleCard, FilledRadio, ActionCard, TimeSelect,
-    MultiSelectCard, BranchSingleSelect, MarketingPreviewPanel,
+    ToggleCard, BranchSingleSelect, MultiSelectCard, MarketingPreviewPanel,
 } from "@/components/marketing/form-kit";
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
 const STEPS: FormStep[] = [
-    { n: 1, label: "Announcement configuration" },
-    { n: 2, label: "Visibility settings" },
+    { n: 1, label: "Announcement details" },
+    { n: 2, label: "Visibility & delivery" },
 ];
-
-// Announcements offer only External link / No action.
-const ANNOUNCEMENT_ACTIONS = ACTIONS_BY_TYPE.announcement;
 
 // ─── Shared page component ───────────────────────────────────────────────────
 
@@ -59,8 +53,6 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
     const addMarketingItem    = useAppStore(s => s.addMarketingItem);
     const updateMarketingItem = useAppStore(s => s.updateMarketingItem);
     const showToast           = useAppStore(s => s.showToast);
-    const memberships         = useAppStore(s => s.memberships);
-    const packages            = useAppStore(s => s.packages);
     const branches            = useAppStore(s => s.branches);
 
     const [step, setStep] = useState(1);
@@ -70,20 +62,22 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
         // Type is fixed — announcements are a single-type module.
         type: "announcement",
         description: initial?.description ?? "",
-        action: initial?.action ?? "",
+        // No action — an announcement never carries a CTA.
+        action: "no_action",
         ticketPrice: "",
         ctaClassId: "",
-        externalUrl: initial?.externalUrl ?? "",
-        startDate: initial?.startDate ?? "",
-        startTime: initial?.startTime ?? "",
+        externalUrl: "",
+        startDate: "",
+        startTime: "",
+        // `endDate` doubles as the single "show until" date.
         endDate: initial?.endDate ?? "",
-        endTime: initial?.endTime ?? "",
-        countdown: initial?.countdown ?? false,
+        endTime: "",
+        countdown: false,
         multiLocation: initial?.multiLocation ?? false,
         branchIds: initial?.branchIds ?? [],
         singleBranchId: initial?.singleBranchId ?? null,
-        productIds: initial?.productIds ?? [],
-        customerTargeting: initial?.customerTargeting ?? "",
+        productIds: [],
+        customerTargeting: "",
     });
     const patch = (p: Partial<MarketingFormData>) => setForm(prev => ({ ...prev, ...p }));
 
@@ -91,64 +85,39 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
         router.push(returnTo);
     }
 
-    // Step-1 gate — essentials + the action-specific config field. An external
-    // link needs a URL; "No action" needs nothing more.
-    const actionConfigOk =
-        form.action === "external_link" ? form.externalUrl.trim().length > 0 : true;
-    const canContinue =
-        form.name.trim().length > 0 &&
-        form.action !== "" &&
-        actionConfigOk &&
-        form.startDate.length > 0 && form.startTime.length > 0 &&
-        form.endDate.length > 0 && form.endTime.length > 0;
+    // Step-1 gate — a title + a message.
+    const canContinue = form.name.trim().length > 0 && form.description.trim().length > 0;
 
-    // Step-2 gate — a branch and a customer-targeting option must be chosen.
-    const branchOk = form.multiLocation
-        ? form.branchIds.length > 0
-        : !!form.singleBranchId;
-    const canCreate = branchOk && form.customerTargeting !== "";
-
-    // ─── Product option list ────────────────────────────────────────────────
-    const productOptions: MultiOption[] = [
-        ...memberships.filter(m => m.status === "active")
-            .map(m => ({ id: m.id, label: m.name, group: "Membership" })),
-        ...packages.filter(p => p.status === "active")
-            .map(p => ({ id: p.id, label: p.name, group: "Class package" })),
-    ];
+    // Step-2 gate — a branch + a show-until date.
+    const branchOk = form.multiLocation ? form.branchIds.length > 0 : !!form.singleBranchId;
+    const canCreate = branchOk && form.endDate.length > 0;
 
     function handleSubmit() {
-        // Collapse date + time into ISO strings for publish / expiry.
-        const toIso = (date: string, time: string) =>
-            date ? `${date}T${time || "00:00"}:00Z` : undefined;
         const branchIds = form.multiLocation
             ? form.branchIds
             : form.singleBranchId ? [form.singleBranchId] : [];
-        // Normalise the external URL — the field carries the part after the
-        // fixed `http://` prefix.
-        const externalUrl = form.action === "external_link" && form.externalUrl.trim()
-            ? (/^https?:\/\//i.test(form.externalUrl.trim())
-                ? form.externalUrl.trim()
-                : `http://${form.externalUrl.trim()}`)
-            : undefined;
 
         const fields: Omit<MarketingItem, "id" | "status" | "view_count" | "click_count" | "conversion_count"> = {
             title: form.name.trim(),
             type: "announcement",
             short_description: form.description.trim(),
             cover_image_url: form.bannerPreview || undefined,
-            action_type: form.action || "no_action",
-            // Announcements never carry a ticket price or booked class.
+            // Announcements never carry an action, a link, a ticket, or a class.
+            action_type: "no_action",
             ticket_price: undefined,
             cta_class_id: undefined,
-            external_url: externalUrl,
-            publish_date: toIso(form.startDate, form.startTime) ?? new Date().toISOString(),
-            expiry_date: toIso(form.endDate, form.endTime),
-            countdown: form.countdown,
+            external_url: undefined,
+            // Publish now; hide after the end of the show-until day.
+            publish_date: new Date().toISOString(),
+            expiry_date: `${form.endDate}T23:59:00Z`,
+            countdown: false,
             branch_ids: branchIds,
             multi_location: form.multiLocation,
-            target_package_ids: form.productIds,
+            // No product scope, no segment targeting — an announcement is a
+            // branch-wide broadcast.
+            target_package_ids: [],
             target_class_ids: [],
-            customer_targeting: form.customerTargeting || undefined,
+            customer_targeting: undefined,
             created_at: new Date().toISOString(),
         };
 
@@ -164,7 +133,7 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                 click_count: 0,
                 conversion_count: 0,
             });
-            showToast("New announcement was created", "Your announcement is ready to publish.", "success", "check");
+            showToast("Announcement published", `${fields.title} is now live.`, "success", "check");
             router.push(`/announcements/${newId}`);
         }
     }
@@ -212,97 +181,10 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                                     <TextInput value={form.name} onChange={v => patch({ name: v })}
                                         placeholder="e.g. Studio closure notice" />
                                 </FormField>
-                                <FormField label="Short description">
+                                <FormField label="Message">
                                     <Textarea value={form.description} onChange={v => patch({ description: v })}
-                                        placeholder="Describe this announcement..." />
+                                        placeholder="e.g. We'll be closed on April 20 for maintenance. All bookings are rescheduled." />
                                 </FormField>
-
-                                {/* Link or action — External link or No action. */}
-                                <FormField label="Link or action">
-                                    <div className="grid grid-cols-2 gap-3 w-full">
-                                        {ANNOUNCEMENT_ACTIONS.map(a => (
-                                            <ActionCard key={a} action={a}
-                                                selected={form.action === a}
-                                                onSelect={() => patch({
-                                                    action: a,
-                                                    externalUrl: a === "external_link" ? form.externalUrl : "",
-                                                })} />
-                                        ))}
-                                    </div>
-                                </FormField>
-
-                                {form.action === "external_link" && (
-                                    <FormField label="External link"
-                                        hint="The link opens in a new tab when a customer taps the CTA.">
-                                        <div className="flex items-stretch border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] overflow-hidden focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] h-10">
-                                            <div className="flex items-center px-[14px] text-[16px] text-[var(--colors-text-quaternary)] border-r-1 border-[var(--colors-border-primary)] bg-[var(--colors-bg-secondary)]">http://</div>
-                                            <input type="text" value={form.externalUrl}
-                                                onChange={e => patch({ externalUrl: e.target.value.replace(/^https?:\/\//i, "") })}
-                                                placeholder="www.example.com"
-                                                className="flex-1 min-w-0 px-[14px] text-[16px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none bg-white" />
-                                        </div>
-                                    </FormField>
-                                )}
-                            </Section>
-
-                            {/* ── Duration ── */}
-                            <Section title="Duration">
-                                <div className="flex gap-4 items-start w-full">
-                                    <div className="flex-1 min-w-0">
-                                        <FormField label="Start date">
-                                            <DatePicker value={form.startDate} placeholder="Select date" minDate={todayISO()}
-                                                onChange={iso => {
-                                                    const keepEnd = !(form.endDate && iso && form.endDate < iso);
-                                                    const startTimePast = iso === todayISO()
-                                                        && form.startTime !== "" && form.startTime < nowHHMM();
-                                                    patch({
-                                                        startDate: iso,
-                                                        startTime: startTimePast ? "" : form.startTime,
-                                                        endDate: keepEnd ? form.endDate : "",
-                                                        endTime: keepEnd ? form.endTime : "",
-                                                    });
-                                                }} />
-                                        </FormField>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <FormField label="Start time">
-                                            <TimeSelect value={form.startTime}
-                                                disabledOption={form.startDate === todayISO()
-                                                    ? (slot => slot < nowHHMM()) : undefined}
-                                                onChange={v => patch({
-                                                    startTime: v,
-                                                    endTime: form.startDate !== "" && form.startDate === form.endDate
-                                                        && form.endTime !== "" && form.endTime <= v ? "" : form.endTime,
-                                                })} />
-                                        </FormField>
-                                    </div>
-                                </div>
-                                <div className="flex gap-4 items-start w-full">
-                                    <div className="flex-1 min-w-0">
-                                        <FormField label="End date">
-                                            <DatePicker value={form.endDate} placeholder="Select date"
-                                                minDate={form.startDate || todayISO()}
-                                                onChange={iso => patch({
-                                                    endDate: iso,
-                                                    endTime: iso === form.startDate && form.startTime !== ""
-                                                        && form.endTime !== "" && form.endTime <= form.startTime ? "" : form.endTime,
-                                                })} />
-                                        </FormField>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <FormField label="End time">
-                                            <TimeSelect value={form.endTime} onChange={v => patch({ endTime: v })}
-                                                disabledOption={form.startDate !== "" && form.startDate === form.endDate && form.startTime !== ""
-                                                    ? (slot => slot <= form.startTime) : undefined} />
-                                        </FormField>
-                                    </div>
-                                </div>
-                                <ToggleCard
-                                    title="Countdown"
-                                    subtitle="Show the timer to highlight limited-time offers"
-                                    on={form.countdown}
-                                    onChange={v => patch({ countdown: v })}
-                                />
                             </Section>
                         </FormCard>
                     ) : (
@@ -310,10 +192,19 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                             <div className="flex items-center justify-between w-full">
                                 <Button variant="secondary-gray" size="md" onClick={() => setStep(1)}>Back</Button>
                                 <Button variant="primary" size="md" disabled={!canCreate} onClick={handleSubmit}>
-                                    {isEdit ? "Save changes" : "Create announcement"}
+                                    {isEdit ? "Save changes" : "Publish announcement"}
                                 </Button>
                             </div>
                         }>
+                            {/* ── Show until ── */}
+                            <Section title="Show until">
+                                <FormField label="Show until"
+                                    hint="The announcement shows in the app up to and including this day, then hides automatically.">
+                                    <DatePicker value={form.endDate} placeholder="Select date" minDate={todayISO()}
+                                        onChange={iso => patch({ endDate: iso })} />
+                                </FormField>
+                            </Section>
+
                             {/* ── Applicable branch ── */}
                             <Section title="Applicable branch">
                                 <ToggleCard
@@ -341,35 +232,22 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                                 )}
                             </Section>
 
-                            {/* ── Applies to ── */}
-                            <Section title="Applies to">
-                                <MultiSelectCard
-                                    title="Packages"
-                                    subtitle="The announcement can be shown on these products"
-                                    options={productOptions}
-                                    selected={form.productIds}
-                                    onChange={ids => patch({ productIds: ids })}
-                                />
-                            </Section>
-
-                            {/* ── Customer ── */}
-                            <Section title="Customer">
-                                <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                    <p className="text-[14px] text-[var(--colors-text-quaternary)]">The announcement can be configured to target specific eligible users.</p>
-                                    {([["all", "Everyone"], ["new_users", "New user only"]] as const).map(([v, label]) => (
-                                        <button key={v} type="button" onClick={() => patch({ customerTargeting: v })}
-                                            className="flex items-center gap-2 w-full text-left">
-                                            <FilledRadio selected={form.customerTargeting === v} />
-                                            <span className="text-[14px] font-medium text-[var(--colors-text-secondary)]">{label}</span>
-                                        </button>
-                                    ))}
+                            {/* ── Delivery ── read-only note explaining the push + consent gate. */}
+                            <Section title="Delivery">
+                                <div className="bg-[#f1f2ed] rounded-[12px] p-4 flex items-start gap-3">
+                                    <span className="w-5 h-5 shrink-0 text-[#475467]"><Bell01 className="w-5 h-5" /></span>
+                                    <p className="text-[14px] text-[#475467] leading-5">
+                                        Published as an in-app banner and a push notification to customers in the
+                                        selected branches who have opted into <span className="font-medium">Studio announcements</span>.
+                                        No purchase or action is required — it's information only.
+                                    </p>
                                 </div>
                             </Section>
                         </FormCard>
                     )}
 
-                    {/* Right: live announcement preview */}
-                    <MarketingPreviewPanel form={form} branches={branches} noun="announcement" />
+                    {/* Right: live announcement preview (no action row) */}
+                    <MarketingPreviewPanel form={form} branches={branches} noun="announcement" hideAction />
                 </div>
             </div>
         </div>
