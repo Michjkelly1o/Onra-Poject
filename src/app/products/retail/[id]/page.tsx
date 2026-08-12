@@ -460,7 +460,7 @@ function StockByBranchTab({ product, stockRows, adjRows, branches }: {
     branches: import("@/lib/store").Branch[];
 }) {
     const rowsForProduct = stockRows.filter(s => s.productId === product.id);
-    const activeBranches = branches.filter(b => b.status !== "archive");
+    const activeBranches = branches.filter(b => b.status !== "archived");
     const sizes = product.sizes ?? [];
     const isSized = sizes.length > 0;
 

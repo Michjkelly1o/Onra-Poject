@@ -123,12 +123,12 @@ const REGISTRY: StatusRegistry = {
     branch: {
         active:   { palette: "green", label: "Active" },
         inactive: { palette: "gray",  label: "Inactive" },
-        archive:  { palette: "gray",  label: "Archived" },
+        archived: { palette: "gray",  label: "Archived" },
     },
     shift: {
         active:   { palette: "green", label: "Active" },
         inactive: { palette: "gray",  label: "Inactive" },
-        archive:  { palette: "gray",  label: "Archived" },
+        archived: { palette: "gray",  label: "Archived" },
     },
 
     // ── Class lifecycle (Upcoming / Ongoing / Completed / Cancelled) ──────
@@ -204,22 +204,22 @@ const REGISTRY: StatusRegistry = {
     instructor: {
         active:   { palette: "green", label: "Active" },
         inactive: { palette: "red",   label: "Inactive" },
-        archive:  { palette: "gray",  label: "Archived" },
+        archived: { palette: "gray",  label: "Archived" },
     },
     staff: {
         pending:  { palette: "orange", label: "Pending" },
         active:   { palette: "green",  label: "Active" },
         inactive: { palette: "gray",   label: "Inactive" },
-        archive:  { palette: "gray",   label: "Archived" },
+        archived: { palette: "gray",   label: "Archived" },
     },
     role: {
         active:   { palette: "green", label: "Active" },
         inactive: { palette: "gray",  label: "Inactive" },
-        archive:  { palette: "gray",  label: "Archived" },
+        archived: { palette: "gray",  label: "Archived" },
     },
     "pay-rate": {
         active:  { palette: "green", label: "Active" },
-        archive: { palette: "gray",  label: "Archived" },
+        archived: { palette: "gray",  label: "Archived" },
     },
     "pay-rate-type": {
         flat:    { palette: "blue",   label: "Flat" },

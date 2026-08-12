@@ -470,7 +470,7 @@ export default function RetailPage() {
         // matches the Configure-stock panel + Stock by branch tab. When a
         // location filter is active, scope everything (stock total, low/out
         // flags, accordion breakdown) to that single branch.
-        const activeBranches = branches.filter(b => b.status !== "archive");
+        const activeBranches = branches.filter(b => b.status !== "archived");
         const scopedBranches = branchId ? activeBranches.filter(b => b.id === branchId) : activeBranches;
         return products.map(p => {
             const allProductRows = stockByProduct.get(p.id) ?? [];
@@ -675,7 +675,7 @@ export default function RetailPage() {
         // the column in the CSV doesn't confuse the mapper because
         // there's no `status` field on the entity to match.
         const activeBranchesForExport = branches
-            .filter(b => b.status !== "archive")
+            .filter(b => b.status !== "archived")
             .map(b => ({ id: b.id, name: b.name }));
         const stockHeaders = activeBranchesForExport.map(b => `stock_${b.name}`);
         const headers = [

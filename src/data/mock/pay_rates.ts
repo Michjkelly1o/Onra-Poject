@@ -108,20 +108,20 @@ export const pay_rates: PayRateSeed[] = [
     {
         id: "pr_trial_class", name: "Trial Class Compensation", type: "flat",
         flat_amount: 100,
-        branch_id: "branch_forma_east", status: "archive", usage_count: 12,
+        branch_id: "branch_forma_east", status: "archived", usage_count: 12,
         // Flat — toggles inert by design.
         only_checked_in: false, include_late_cancelled: false,
     },
     {
         id: "pr_community", name: "Community Class Rate", type: "flat",
         flat_amount: 120,
-        branch_id: "branch_forma_south", status: "archive", usage_count: 0,
+        branch_id: "branch_forma_south", status: "archived", usage_count: 0,
         only_checked_in: false, include_late_cancelled: false,
     },
     {
         id: "pr_elite_master", name: "Elite Master Trainer", type: "flat",
         flat_amount: 110,
-        branch_id: "branch_forma_south", status: "archive", usage_count: 0,
+        branch_id: "branch_forma_south", status: "archived", usage_count: 0,
         only_checked_in: false, include_late_cancelled: false,
     },
 ];

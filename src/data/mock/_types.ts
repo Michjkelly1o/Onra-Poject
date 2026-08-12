@@ -48,7 +48,7 @@ export interface Branch {
     /** e.g. "branch_forma_south" */
     id: string;
     name: string;          // "Forma Studio South"
-    status: "active" | "inactive" | "archive";
+    status: "active" | "inactive" | "archived";
     /** Display flag — the "main" branch shows first in selectors. */
     is_main: boolean;
     address?: string;
@@ -81,7 +81,7 @@ export interface Room {
     branch_id: string;     // → branches.id
     name: string;          // "Reformer Studio"
     capacity: number;
-    status: "active" | "inactive" | "archive";
+    status: "active" | "inactive" | "archived";
     /** Optional room metadata populated by the Room form. */
     equipment_notes?: string;
     columns?: number;
@@ -1674,7 +1674,7 @@ export interface ClassRating {
 //
 // FK: `branch_id` → branches.id (single branch per row to match the v1 UI).
 
-export type PayRateStatusSeed = "active" | "archive";
+export type PayRateStatusSeed = "active" | "archived";
 export type PayRateTypeSeed   = "flat" | "tiered" | "revenue" | "hybrid" | "monthly";
 
 export interface PayRateTierSeed {
@@ -1778,7 +1778,7 @@ export type PayRateSeed = FlatPayRateSeed | TieredPayRateSeed | RevenuePayRateSe
 //   • branch_id   → branches.id
 //   • pay_rate_id → pay_rates.id (nullable when the instructor has no rate)
 
-export type InstructorStatusSeed = "active" | "inactive" | "archive";
+export type InstructorStatusSeed = "active" | "inactive" | "archived";
 
 export interface InstructorSeed {
     id: string;                  // shared with staff_profiles.id when both exist
@@ -1880,7 +1880,7 @@ export interface PayrollEntrySeed {
 // FK: branch_id → branches.id (nullable — Owner has no branch scope).
 
 export type RoleTypeSeed = "owner" | "branch_admin" | "operator" | "front_desk" | "instructor" | "attendees";
-export type RoleStatusSeed = "active" | "inactive" | "archive";
+export type RoleStatusSeed = "active" | "inactive" | "archived";
 
 /** A single cell in the CRUD permission matrix.
  *  • true  — granted (checked checkbox)
@@ -1962,7 +1962,7 @@ export interface RoleSeed {
 //
 // FK: role_id → roles.id · branch_id → branches.id · pay_rate_id → pay_rates.id
 
-export type StaffStatusSeed = "pending" | "active" | "inactive" | "archive";
+export type StaffStatusSeed = "pending" | "active" | "inactive" | "archived";
 
 /**
  * Shift — the Shift management module's data shape. Drives the Shift
@@ -1972,9 +1972,9 @@ export type StaffStatusSeed = "pending" | "active" | "inactive" | "archive";
  * Status mirrors the standard archive/delete matrix used elsewhere:
  *   • "active"   — visible, enable-toggle on, assignable to staff
  *   • "inactive" — temporarily paused, NOT assignable but staff history kept
- *   • "archive"  — hidden from default list, surfaces only via Archive filter
+ *   • "archived" — hidden from default list, surfaces only via Archive filter
  */
-export type ShiftStatusSeed = "active" | "inactive" | "archive";
+export type ShiftStatusSeed = "active" | "inactive" | "archived";
 
 export interface Shift {
     /** e.g. "shift_morning" */

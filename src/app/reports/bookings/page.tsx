@@ -34,7 +34,7 @@ export default function BookingsReportPage() {
     }, [report, classBookings, classSchedules, customers, branches, scope]);
 
     const branchOptions = useMemo<BranchOption[]>(
-        () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
+        () => branches.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 

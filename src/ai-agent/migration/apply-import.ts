@@ -139,7 +139,7 @@ export interface ImportDeps {
         name: string;
         flatAmount: number;
         branchId: string;
-        status: "active" | "archive";
+        status: "active" | "archived";
         usageCount: number;
     }) => string;
     addMarketingItem: (input: Omit<MarketingItem, "id"> & { id?: string }) => string;
@@ -1783,7 +1783,7 @@ export function applyImportToStore(
             s.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
         const branchByNorm = new Map(
             deps.branches
-                .filter(b => b.status !== "archive")
+                .filter(b => b.status !== "archived")
                 .map(b => [normBranchName(b.name), b] as const),
         );
         const perBranchStockCols: { column: string; branchId: string; branchName: string }[] = [];

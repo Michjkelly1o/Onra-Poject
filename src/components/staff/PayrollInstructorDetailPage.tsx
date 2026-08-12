@@ -108,9 +108,9 @@ function InstructorStatusBadge({ status }: { status: Instructor["status"] }) {
     const styles: Record<Instructor["status"], string> = {
         active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         inactive: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-        archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
+        archived:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
     };
-    const labels = { active: "Active", inactive: "Inactive", archive: "Archive" };
+    const labels = { active: "Active", inactive: "Inactive", archived: "Archive" };
     return (
         <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", styles[status])}>
             {labels[status]}

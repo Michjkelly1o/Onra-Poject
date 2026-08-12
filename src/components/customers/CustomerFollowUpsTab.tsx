@@ -154,7 +154,7 @@ export function CustomerFollowUpsTab({ customerId }: { customerId: string }) {
     const staffOptions = [
         { value: "", label: "Unassigned" },
         ...staff
-            .filter(s => s.status !== "archive")
+            .filter(s => s.status !== "archived")
             .map(s => ({
                 value: s.id,
                 label: (s.fullName || `${s.firstName} ${s.lastName}`).trim() || s.email,

@@ -146,7 +146,7 @@ export const roles: RoleSeed[] = [
         name: "Operator (legacy)",
         description: "Retired role kept for historical permission reference",
         type: "operator",
-        status: "archive",
+        status: "archived",
         grant_limits: OPERATOR_GRANT_LIMITS,
         permissions: PERM_OPERATOR,
         locked: false,

@@ -67,11 +67,11 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-type StatusFilter = "active" | "inactive" | "archive";
+type StatusFilter = "active" | "inactive" | "archived";
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
     { value: "active",   label: "Active"   },
     { value: "inactive", label: "Inactive" },
-    { value: "archive",  label: "Archive"  },
+    { value: "archived", label: "Archive"  },
 ];
 
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"] as const;
@@ -218,11 +218,11 @@ export default function BusinessLocationsPage() {
         if (!pendingConfirm) return;
         const { id, kind, action, label } = pendingConfirm;
         if (kind === "branch") {
-            if      (action === "archive") updateBranch(id, { status: "archive" });
+            if      (action === "archive") updateBranch(id, { status: "archived" });
             else if (action === "recover") updateBranch(id, { status: "active"  });
             else if (action === "delete")  deleteBranch(id);
         } else {
-            if      (action === "archive") updateRoom(id, { status: "archive" });
+            if      (action === "archive") updateRoom(id, { status: "archived" });
             else if (action === "recover") updateRoom(id, { status: "active"  });
             else if (action === "delete")  deleteRoom(id);
         }
@@ -664,7 +664,7 @@ function BranchRow({
     onView, onEdit, onAddRoom, onArchive, onRecover, onDelete,
 }: {
     branch: Branch;
-    status: "active" | "inactive" | "archive";
+    status: "active" | "inactive" | "archived";
     hours: BusinessHours[];
     roomCount: number;
     expanded: boolean;
@@ -772,7 +772,7 @@ function RoomRow({
     onView, onEdit, onArchive, onRecover, onDelete,
 }: {
     room: Room;
-    status: "active" | "inactive" | "archive";
+    status: "active" | "inactive" | "archived";
     onToggleEnable: () => void;
     actionMenuOpen: boolean;
     onOpenActionMenu: () => void;
@@ -841,7 +841,7 @@ function RoomRow({
 function BranchActionMenu({
     status, canDelete, onView, onEdit, onAddRoom, onToggleEnable, onArchive, onRecover, onDelete,
 }: {
-    status: "active" | "inactive" | "archive";
+    status: "active" | "inactive" | "archived";
     /** True when the branch has zero rooms — delete is only offered then. */
     canDelete: boolean;
     onView: () => void;
@@ -857,7 +857,7 @@ function BranchActionMenu({
     onRecover: () => void;
     onDelete: () => void;
 }) {
-    const archived = status === "archive";
+    const archived = status === "archived";
     return (
         <div className="absolute right-2 top-[calc(100%+4px)] z-30 w-[200px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
             <MenuItem icon={<Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}        label="View details" onClick={onView} />
@@ -888,7 +888,7 @@ function BranchActionMenu({
 function RoomActionMenu({
     status, onView, onEdit, onToggleEnable, onArchive, onRecover, onDelete,
 }: {
-    status: "active" | "inactive" | "archive";
+    status: "active" | "inactive" | "archived";
     onView: () => void;
     onEdit: () => void;
     /** Enable toggle moved into this menu Jul 2026 (was a dedicated
@@ -899,7 +899,7 @@ function RoomActionMenu({
     onRecover: () => void;
     onDelete: () => void;
 }) {
-    const archived = status === "archive";
+    const archived = status === "archived";
     return (
         <div className="absolute right-2 top-[calc(100%+4px)] z-30 w-[180px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] flex flex-col py-1">
             <MenuItem icon={<Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}      label="View details" onClick={onView} />

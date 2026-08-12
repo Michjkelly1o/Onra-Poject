@@ -92,8 +92,8 @@ interface BranchRoomGroup {
  *  "real options the admin can pick" rule). `usedByOther` is left false
  *  here — the schedule-conflict pass below sets it per row when needed. */
 function buildBranchRooms(
-    branches: { id: string; name: string; status: "active" | "inactive" | "archive"; is_main: boolean }[],
-    rooms: { id: string; branch_id: string; name: string; capacity: number; status: "active" | "inactive" | "archive" }[],
+    branches: { id: string; name: string; status: "active" | "inactive" | "archived"; is_main: boolean }[],
+    rooms: { id: string; branch_id: string; name: string; capacity: number; status: "active" | "inactive" | "archived" }[],
 ): BranchRoomGroup[] {
     return branches
         .filter(b => b.status === "active")

@@ -68,24 +68,24 @@ type TabId = "roles" | "staff";
 // ─── Role status labels & badge styles ─────────────────────────────────────
 
 const ROLE_STATUS_LABEL: Record<RoleStatus, string> = {
-    active: "Active", inactive: "Inactive", archive: "Archive",
+    active: "Active", inactive: "Inactive", archived: "Archive",
 };
 const ROLE_STATUS_BADGE: Record<RoleStatus, string> = {
     active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    archived:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
 };
 
 // ─── Staff status labels & badge styles ────────────────────────────────────
 
 const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
-    pending: "Pending", active: "Active", inactive: "Inactive", archive: "Archive",
+    pending: "Pending", active: "Active", inactive: "Inactive", archived: "Archive",
 };
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
-    archive:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
+    archived:  "bg-[#f9fafb] border-1 border-[#e4e7ec] text-[#344054]",
 };
 
 // ─── Role-type badge palette (per Figma staff tab) ─────────────────────────
@@ -329,7 +329,7 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
         ? pendingRole.statuses.length > 0
         : pendingStaff.statuses.length > 0 || pendingStaff.roleIds.length > 0;
 
-    const roleFilterOptions = roles.filter(r => r.status !== "archive");
+    const roleFilterOptions = roles.filter(r => r.status !== "archived");
     void branches;
 
     function handleApply() {
@@ -376,12 +376,12 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {isRoleTab
-                                ? (["active", "inactive", "archive"] as RoleStatus[]).map(s => (
+                                ? (["active", "inactive", "archived"] as RoleStatus[]).map(s => (
                                     <FilterPill key={s} label={ROLE_STATUS_LABEL[s]}
                                         selected={pendingRole.statuses.includes(s)}
                                         onClick={() => toggleRoleStatus(s)} />
                                 ))
-                                : (["active", "pending", "inactive", "archive"] as StaffStatus[]).map(s => (
+                                : (["active", "pending", "inactive", "archived"] as StaffStatus[]).map(s => (
                                     <FilterPill key={s} label={STAFF_STATUS_LABEL[s]}
                                         selected={pendingStaff.statuses.includes(s)}
                                         onClick={() => toggleStaffStatus(s)} />
@@ -456,7 +456,7 @@ function RoleRowActions({ role, staffCount, onAction }: {
     role: Role; staffCount: number; onAction: (kind: RoleRowActionKind) => void;
 }) {
     const isActive = role.status === "active";
-    const isArchived = role.status === "archive";
+    const isArchived = role.status === "archived";
     // Per audit: delete only when zero assigned staff AND not locked AND not archived.
     const canDelete = !role.locked && !isArchived && staffCount === 0;
     return (
@@ -590,7 +590,7 @@ function StaffRowActions({ staff, hasHistory, isOwner = false, onAction }: {
     const isPending  = staff.status === "pending";
     const isActive   = staff.status === "active";
     const isInactive = staff.status === "inactive";
-    const isArchive  = staff.status === "archive";
+    const isArchive  = staff.status === "archived";
     // Owner is the studio account holder — no lifecycle actions. Only view +
     // "Account settings" (edits the owner's details from Settings → Account, the
     // single source of truth). Client 2026-08.
@@ -884,8 +884,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     }, [staff, branchId, search, staffFilter]);
 
     // ─── Sort ────────────────────────────────────────────────────────────
-    const ROLE_STATUS_ORDER: Record<RoleStatus, number> = { active: 0, inactive: 1, archive: 2 };
-    const STAFF_STATUS_ORDER: Record<StaffStatus, number> = { active: 0, pending: 1, inactive: 2, archive: 3 };
+    const ROLE_STATUS_ORDER: Record<RoleStatus, number> = { active: 0, inactive: 1, archived: 2 };
+    const STAFF_STATUS_ORDER: Record<StaffStatus, number> = { active: 0, pending: 1, inactive: 2, archived: 3 };
     function branchSortName(id: string | null): string {
         if (id === null) return "All locations";
         return branches.find(b => b.id === id)?.name ?? "";
@@ -922,18 +922,18 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     // Roles bulk gating — Owner row (locked) is excluded from every bulk
     // operation. Delete only applies to non-locked rows with zero assigned
     // staff (same XOR rule as the row menu).
-    const bulkRoleArchivable    = selectedRoleRows.some(r => !r.locked && r.status !== "archive");
+    const bulkRoleArchivable    = selectedRoleRows.some(r => !r.locked && r.status !== "archived");
     const bulkRoleReactivatable = selectedRoleRows.some(r => !r.locked && r.status === "inactive");
-    const bulkRoleRecoverable   = selectedRoleRows.some(r => !r.locked && r.status === "archive");
+    const bulkRoleRecoverable   = selectedRoleRows.some(r => !r.locked && r.status === "archived");
     const bulkRoleDeletable     = selectedRoleRows.length > 0
-        && selectedRoleRows.every(r => !r.locked && r.status !== "archive" && (staffByRole.get(r.id) ?? 0) === 0);
+        && selectedRoleRows.every(r => !r.locked && r.status !== "archived" && (staffByRole.get(r.id) ?? 0) === 0);
 
     // Staff bulk gating — Pending rows are never destructively bulkable
     // (Resend invitation is a single-row action). Delete only applies when
     // every selected row has no first-login history.
-    const bulkStaffArchivable    = selectedStaffRows.some(s => s.status !== "archive" && s.status !== "pending");
+    const bulkStaffArchivable    = selectedStaffRows.some(s => s.status !== "archived" && s.status !== "pending");
     const bulkStaffReactivatable = selectedStaffRows.some(s => s.status === "inactive");
-    const bulkStaffRecoverable   = selectedStaffRows.some(s => s.status === "archive");
+    const bulkStaffRecoverable   = selectedStaffRows.some(s => s.status === "archived");
     const bulkStaffDeletable     = selectedStaffRows.length > 0
         && selectedStaffRows.every(s => canDeleteStaff(s.id));
 
@@ -989,7 +989,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 showToast("Cannot delete", "Role has assigned staff or is locked — archive instead.", "error");
             }
         } else if (kind === "archive") {
-            setRolesStatus([row.id], "archive");
+            setRolesStatus([row.id], "archived");
             showToast("Role archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setRolesStatus([row.id], "active");
@@ -1006,7 +1006,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
 
     function handleRoleToggle(role: Role) {
         if (role.locked) return;
-        if (role.status === "archive") return; // archived rows can't toggle directly
+        if (role.status === "archived") return; // archived rows can't toggle directly
         // Open the same confirm modal pattern used by row actions —
         // deactivate (destructive) or reactivate (success). The actual
         // status flip happens inside `performRoleConfirm`. The modal will
@@ -1065,7 +1065,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 showToast("Cannot delete", "Staff has historical records — archive instead.", "error");
             }
         } else if (kind === "archive") {
-            setStaffStatus([row.id], "archive");
+            setStaffStatus([row.id], "archived");
             showToast("Staff archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setStaffStatus([row.id], "active");
@@ -1087,7 +1087,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         if (rows.length === 0) { setPendingBulk(null); return; }
         const ids = rows.map(r => r.id);
         if (kind === "archive") {
-            setRolesStatus(ids, "archive");
+            setRolesStatus(ids, "archived");
             showToast("Roles archived", `${rows.length} role${rows.length === 1 ? "" : "s"} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setRolesStatus(ids, "active");
@@ -1112,7 +1112,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         if (rows.length === 0) { setPendingBulk(null); return; }
         const ids = rows.map(s => s.id);
         if (kind === "archive") {
-            setStaffStatus(ids, "archive");
+            setStaffStatus(ids, "archived");
             showToast("Staff archived", `${rows.length} staff moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setStaffStatus(ids, "active");
@@ -1239,7 +1239,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             { value: "", label: "All statuses" },
                             { value: "active",   label: ROLE_STATUS_LABEL.active },
                             { value: "inactive", label: ROLE_STATUS_LABEL.inactive },
-                            { value: "archive",  label: ROLE_STATUS_LABEL.archive },
+                            { value: "archived",  label: ROLE_STATUS_LABEL.archived },
                         ]}
                         value={roleFilter.statuses[0] ?? ""}
                         onChange={v => setRoleFilter(v ? { statuses: [v as RoleStatus] } : { statuses: [] })}
@@ -1505,7 +1505,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                             <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <ToggleSwitch
                                                     on={r.status === "active"}
-                                                    disabled={r.locked || r.status === "archive"}
+                                                    disabled={r.locked || r.status === "archived"}
                                                     onChange={() => handleRoleToggle(r)}
                                                 />
                                             </td>

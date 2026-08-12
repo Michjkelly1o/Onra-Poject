@@ -109,7 +109,7 @@ export default function PaymentsReportPage() {
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches
-            .filter(b => b.status !== "archive")
+            .filter(b => b.status !== "archived")
             .map(b => ({ id: b.id, name: b.name })),
         [branches],
     );

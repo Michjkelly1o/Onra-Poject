@@ -56,7 +56,7 @@ import {
 
 // ─── Badges ─────────────────────────────────────────────────────────────────
 
-const PAY_RATE_STATUS_LABEL = { active: "Active", archive: "Archive" } as const;
+const PAY_RATE_STATUS_LABEL = { active: "Active", archived: "Archive" } as const;
 
 function PayRateStatusBadge({ status }: { status: PayRate["status"] }) {
     const styles = status === "active"
@@ -89,13 +89,13 @@ function TypeBadge({ type }: { type: PayRateType }) {
 }
 
 const INSTRUCTOR_STATUS_LABEL: Record<InstructorStatus, string> = {
-    active: "Active", inactive: "Inactive", archive: "Archive",
+    active: "Active", inactive: "Inactive", archived: "Archive",
 };
 function InstructorStatusBadge({ status }: { status: InstructorStatus }) {
     const styles: Record<InstructorStatus, string> = {
         active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
         inactive: "bg-[#fef3f2] border-1 border-[#fecdca] text-[#b42318]",
-        archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
+        archived:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
     };
     return (
         <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", styles[status])}>
@@ -188,7 +188,7 @@ function InstructorRowActions({ status, onAction }: {
                         <Edit02 className="w-4 h-4 text-[#667085]" />Edit instructor
                     </button>
                 )}
-                {status !== "archive" && (
+                {status !== "archived" && (
                     <button type="button" onClick={() => trigger("archive")}
                         className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         <Archive className="w-4 h-4 text-[#667085]" />Archive
@@ -200,7 +200,7 @@ function InstructorRowActions({ status, onAction }: {
                         <Check className="w-4 h-4 text-[#667085]" />Reactivate
                     </button>
                 )}
-                {status === "archive" && (
+                {status === "archived" && (
                     <button type="button" onClick={() => trigger("recover")}
                         className="flex items-center gap-2 w-full px-4 py-[10px] text-[14px] font-medium text-[#344054] hover:bg-[var(--colors-bg-secondary)] transition-colors">
                         <RefreshCcw01 className="w-4 h-4 text-[#667085]" />Recover
@@ -400,7 +400,7 @@ function InstructorFilterPanel({ open, onClose, applied, onApply, branches }: {
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
-                            {(["active", "inactive", "archive"] as InstructorStatus[]).map(s => (
+                            {(["active", "inactive", "archived"] as InstructorStatus[]).map(s => (
                                 <FilterPill key={s} label={INSTRUCTOR_STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
                                     onClick={() => toggleStatus(s)} />
                             ))}
@@ -511,7 +511,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
     //    Default pay rate (no-op since every row shares this pay rate's
     //    name, kept for visual header consistency) / Status. ──
     const INSTR_STATUS_ORDER: Record<InstructorStatus, number> = {
-        active: 0, inactive: 1, archive: 2,
+        active: 0, inactive: 1, archived: 2,
     } as Record<InstructorStatus, number>;
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Instructor>(filtered, {
         name:    (a, b) => a.name.localeCompare(b.name),
@@ -537,9 +537,9 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
     // Role/Shift detail pages). Actions apply to every selected instructor.
     const selectedRows = sortedRows.filter(r => selectedIds.has(r.id));
     const selectionCount = selectedRows.length;
-    const hasArchivable    = selectedRows.some(r => r.status !== "archive");
+    const hasArchivable    = selectedRows.some(r => r.status !== "archived");
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
-    const hasRecoverable   = selectedRows.some(r => r.status === "archive");
+    const hasRecoverable   = selectedRows.some(r => r.status === "archived");
     const clearSelection = () => setSelectedIds(new Set());
 
     function toggleAllOnPage() {
@@ -574,7 +574,7 @@ function AssignedInstructorTab({ payRateId, payRateName, onPlaceholderAction }: 
             delete: "deleted",
         };
         const nextStatus: InstructorStatus | null =
-            kind === "archive"    ? "archive"  :
+            kind === "archive"    ? "archived"  :
             kind === "deactivate" ? "inactive" :
             kind === "recover"    ? "active"   :
             kind === "reactivate" ? "active"   : null;
@@ -879,7 +879,7 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
                 showToast("Cannot delete", "Pay rate has usage history — archive instead.", "error");
             }
         } else if (kind === "archive") {
-            setPayRatesStatus([payRate.id], "archive");
+            setPayRatesStatus([payRate.id], "archived");
             showToast("Pay rate archived", `"${payRate.name}" moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setPayRatesStatus([payRate.id], "active");

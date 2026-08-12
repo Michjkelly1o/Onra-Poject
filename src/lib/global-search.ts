@@ -199,7 +199,7 @@ export function useSearchIndex(
         // ── Instructors ──────────────────────────────────────────────────
         if (category === "All" || category === "Instructors") {
             for (const i of instructors) {
-                if (i.status === "archive") continue; // hide archived
+                if (i.status === "archived") continue; // hide archived
                 const s = Math.max(
                     score(i.name, q),
                     score(i.email, q),

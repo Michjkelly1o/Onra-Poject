@@ -101,7 +101,7 @@ export function ConfigureStockPanel({ open, onClose, product }: {
     // re-fire the drafts-seeding effect below, tripping React's re-render
     // limit the moment the panel deep-links open.
     const activeBranches = useMemo(
-        () => branches.filter(b => b.status !== "archive"),
+        () => branches.filter(b => b.status !== "archived"),
         [branches],
     );
 

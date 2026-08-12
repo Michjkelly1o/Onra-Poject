@@ -58,22 +58,22 @@ import { Sliders } from "@/components/icons/Sliders";
 // ─── Tokens — status/role badges (lifted from RoleDetailPage) ─────────────
 
 const SHIFT_STATUS_LABEL: Record<Shift["status"], string> = {
-    active: "Active", inactive: "Inactive", archive: "Archive",
+    active: "Active", inactive: "Inactive", archived: "Archive",
 };
 const SHIFT_STATUS_BADGE: Record<Shift["status"], string> = {
     active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
-    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archived:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
-    pending: "Pending", active: "Active", inactive: "Inactive", archive: "Archive",
+    pending: "Pending", active: "Active", inactive: "Inactive", archived: "Archive",
 };
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
-    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archived:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const ROLE_TYPE_BADGE: Record<Role["type"], string> = {
@@ -174,7 +174,7 @@ const STATUS_FILTER_OPTIONS: { value: StaffStatus; label: string }[] = [
     { value: "active",   label: "Active" },
     { value: "pending",  label: "Pending" },
     { value: "inactive", label: "Inactive" },
-    { value: "archive",  label: "Archive" },
+    { value: "archived",  label: "Archive" },
 ];
 
 function StatusFilterDropdown({ value, onChange }: {
@@ -326,7 +326,7 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor }: {
         });
     }, [scoped, search, statusFilter]);
 
-    const STATUS_ORDER: Record<StaffStatus, number> = { active: 0, pending: 1, inactive: 2, archive: 3 };
+    const STATUS_ORDER: Record<StaffStatus, number> = { active: 0, pending: 1, inactive: 2, archived: 3 };
     const { sorted: filtered, sortKey, sortDir, toggle: toggleSort } = useSort<Staff>(searched, {
         name:   (a, b) => a.fullName.localeCompare(b.fullName),
         branch: (a, b) => {
@@ -387,7 +387,7 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor }: {
             if (deleted.length > 0) showToast("Staff deleted", `${subject} permanently removed.`, "success", "trash");
             else if (blocked.length > 0) showToast("Cannot delete", "Staff has historical records — archive instead.", "error");
         } else if (kind === "archive") {
-            setStaffStatus([row.id], "archive");
+            setStaffStatus([row.id], "archived");
             showToast("Staff archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setStaffStatus([row.id], "active");
@@ -414,16 +414,16 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor }: {
 
     const selectedRows = useMemo(() => scoped.filter(s => selectedIds.has(s.id)), [scoped, selectedIds]);
     const selectionCount = selectedRows.length;
-    const hasArchivable    = selectedRows.some(s => s.status !== "archive");
+    const hasArchivable    = selectedRows.some(s => s.status !== "archived");
     const hasReactivatable = selectedRows.some(s => s.status === "inactive");
-    const hasRecoverable   = selectedRows.some(s => s.status === "archive");
-    const allDeletable     = selectionCount > 0 && selectedRows.every(s => !hasHistory(s) && s.status !== "archive");
+    const hasRecoverable   = selectedRows.some(s => s.status === "archived");
+    const allDeletable     = selectionCount > 0 && selectedRows.every(s => !hasHistory(s) && s.status !== "archived");
 
     function performBulk(kind: BulkKind) {
         if (selectionCount === 0) return;
         const ids = selectedRows.map(s => s.id);
         if (kind === "archive") {
-            setStaffStatus(ids, "archive");
+            setStaffStatus(ids, "archived");
             showToast("Staff archived", `${selectionCount} staff moved to archive.`, "success", "archive");
         } else if (kind === "deactivate") {
             setStaffStatus(ids, "inactive");
@@ -544,7 +544,7 @@ function AssignedStaffsTab({ shift, returnTo, onChangeRoleFor }: {
                                                         { label: "Remove from shift", icon: LogOut01,      onClick: () => handleAction(s, "remove_from_shift"), hidden: s.status !== "active" },
                                                         { label: "Archive",           icon: Archive,       onClick: () => handleAction(s, "archive"),       hidden: !(s.status === "active" || s.status === "inactive") },
                                                         { label: "Reactivate",        icon: Check,         onClick: () => handleAction(s, "reactivate"),    hidden: s.status !== "inactive" },
-                                                        { label: "Recover",           icon: RefreshCcw01,  onClick: () => handleAction(s, "recover"),       hidden: s.status !== "archive" },
+                                                        { label: "Recover",           icon: RefreshCcw01,  onClick: () => handleAction(s, "recover"),       hidden: s.status !== "archived" },
                                                         { label: "Deactivate",        icon: SlashCircle01, onClick: () => handleAction(s, "deactivate"),    hidden: s.status !== "active", danger: true },
                                                     ]}
                                                 />
@@ -665,7 +665,7 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
 }) {
     const isActive   = shift.status === "active";
     const isInactive = shift.status === "inactive";
-    const isArchive  = shift.status === "archive";
+    const isArchive  = shift.status === "archived";
 
     return (
         <aside className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
@@ -816,7 +816,7 @@ export default function ShiftDetailPage({ shiftId, returnTo = "/admin/staff" }: 
         if (!shift) return;
         const subject = `"${shift.name}"`;
         if (kind === "archive") {
-            setShiftsStatus([shift.id], "archive");
+            setShiftsStatus([shift.id], "archived");
             showToast("Shift archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setShiftsStatus([shift.id], "active");

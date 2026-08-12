@@ -792,7 +792,7 @@ export interface ScheduleInstructor {
 
 /** Status for a directory instructor. Mirrors the customer/staff status model:
  *  active → working; inactive → temporary leave; archive → left the studio. */
-export type InstructorStatus = "active" | "inactive" | "archive";
+export type InstructorStatus = "active" | "inactive" | "archived";
 
 /** Full instructor record — extends ScheduleInstructor with the contact +
  *  pay rate relationship needed by the pay rate detail page ("Assigned
@@ -3413,7 +3413,7 @@ function ratingFromSeed(r: SeedClassRating): ClassRating {
 // `branchId` is single per the existing list shape. Status is active/archive
 // only — pay rates have no inactive state (PRD 10 §6.1).
 
-export type PayRateStatus = "active" | "archive";
+export type PayRateStatus = "active" | "archived";
 export type PayRateType = "flat" | "tiered" | "revenue" | "hybrid" | "monthly";
 
 export interface PayRateTier {
@@ -11295,7 +11295,7 @@ export const useAppStore = create<AppState>()(persist(
             ),
         }));
         // Audit verb mirrors the toast — keeps the activity feed legible.
-        const verb = status === "archive"  ? "Archived shift"
+        const verb = status === "archived"  ? "Archived shift"
                    : status === "inactive" ? "Deactivated shift"
                                            : "Reactivated shift";
         for (const s of before) get().recordAudit(verb, "shift", s.id, s.name);
@@ -11846,7 +11846,7 @@ export const useAppStore = create<AppState>()(persist(
         const state = get();
         const staff = state.staff.find(s => s.id === id);
         if (!staff) return false;
-        if (staff.status !== "pending" && staff.status !== "archive") return false;
+        if (staff.status !== "pending" && staff.status !== "archived") return false;
         if (state.payrollEntries.some(p => p.instructorId === id)) return false;
         if (state.classSchedules.some(s => s.instructorId === id)) return false;
         if (state.classRatings.some(r => r.instructorId === id)) return false;

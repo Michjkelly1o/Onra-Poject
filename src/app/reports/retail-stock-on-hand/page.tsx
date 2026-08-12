@@ -54,7 +54,7 @@ export default function StockOnHandReportPage() {
     const rows = useMemo<StockOnHandDisplayRow[]>(() => raw.map(r => ({ ...r }) satisfies StockOnHandDisplayRow), [raw]);
 
     const branchOptions = useMemo<BranchOption[]>(
-        () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
+        () => branches.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 

@@ -50,12 +50,12 @@ import { Sliders } from "@/components/icons/Sliders";
 
 const STATUS_LABEL: Record<PayRateStatus, string> = {
     active: "Active",
-    archive: "Archive",
+    archived: "Archive",
 };
 
 const STATUS_BADGE_STYLE: Record<PayRateStatus, string> = {
     active:  "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
-    archive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
+    archived: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[#344054]",
 };
 
 const TYPE_LABEL: Record<PayRateType, string> = {
@@ -147,7 +147,7 @@ function StatusFilterDropdown({ value, onChange }: {
 
     const OPTIONS: { value: PayRateStatus; label: string }[] = [
         { value: "active",  label: "Active"  },
-        { value: "archive", label: "Archive" },
+        { value: "archived", label: "Archive" },
     ];
 
     return (
@@ -334,7 +334,7 @@ export default function PayRatePage() {
     //    Branch / Status. The Rate comparator falls back to the display
     //    string when an item doesn't have a sortable numeric amount
     //    (e.g. Hybrid rates show a phrase, not a single number). ──
-    const STATUS_ORDER: Record<PayRateStatus, number> = { active: 0, inactive: 1, archive: 2 } as Record<PayRateStatus, number>;
+    const STATUS_ORDER: Record<PayRateStatus, number> = { active: 0, inactive: 1, archived: 2 } as Record<PayRateStatus, number>;
     function rateSortValue(r: PayRate): number {
         if (r.type === "flat")    return r.flatAmount ?? 0;
         if (r.type === "monthly") return r.fixedSalary ?? 0;
@@ -386,7 +386,7 @@ export default function PayRatePage() {
     const selectedRows = useMemo(() => payRates.filter(r => selectedIds.has(r.id)), [payRates, selectedIds]);
     const bulkFlags: BulkFlags = useMemo(() => ({
         hasActive:    selectedRows.some(r => r.status === "active"),
-        hasArchive:   selectedRows.some(r => r.status === "archive"),
+        hasArchive:   selectedRows.some(r => r.status === "archived"),
         allZeroUsage: selectedRows.length > 0
             && selectedRows.every(r => r.status === "active" && r.usageCount === 0),
     }), [selectedRows]);
@@ -403,7 +403,7 @@ export default function PayRatePage() {
             showToast("Pay rate deleted", `${subject} permanently removed.`, "success", "trash");
         } else {
             const subject = subjectOf(ids);
-            const nextStatus: PayRateStatus = kind === "archive" ? "archive" : "active";
+            const nextStatus: PayRateStatus = kind === "archive" ? "archived" : "active";
             setPayRatesStatus(ids, nextStatus);
             if (kind === "archive") {
                 showToast("Pay rate archived", `${subject} moved to archive.`, "success", "archive");

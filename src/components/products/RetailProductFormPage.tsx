@@ -725,7 +725,7 @@ export function RetailProductFormPage({ mode, productId, returnTo }: {
 
     // Active branches only — archived branches shouldn't get seeded stock.
     const activeBranches = useMemo(
-        () => branchesAll.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
+        () => branchesAll.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),
         [branchesAll],
     );
 

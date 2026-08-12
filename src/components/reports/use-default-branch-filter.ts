@@ -22,6 +22,6 @@ import { useAppStore } from "@/lib/store";
 export function useDefaultBranchFilter() {
     const branches = useAppStore(s => s.branches);
     return useState<Set<string>>(
-        () => new Set(branches.filter(b => b.status !== "archive").map(b => b.id)),
+        () => new Set(branches.filter(b => b.status !== "archived").map(b => b.id)),
     );
 }

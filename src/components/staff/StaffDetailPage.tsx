@@ -53,13 +53,13 @@ import {
 // ─── Status badges ─────────────────────────────────────────────────────────
 
 const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
-    pending: "Pending", active: "Active", inactive: "Inactive", archive: "Archive",
+    pending: "Pending", active: "Active", inactive: "Inactive", archived: "Archive",
 };
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
-    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archived:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 const ROLE_TYPE_BADGE: Record<RoleType, string> = {
     owner:        "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
@@ -141,7 +141,7 @@ function Sidebar({ staff, role, payRateName, onAction, branches, hasHistory, isO
     const isPending  = staff.status === "pending";
     const isActive   = staff.status === "active";
     const isInactive = staff.status === "inactive";
-    const isArchive  = staff.status === "archive";
+    const isArchive  = staff.status === "archived";
     const branchLabel = staff.branchId === null
         ? "All locations"
         : branches.find(b => b.id === staff.branchId)?.name ?? "—";
@@ -936,7 +936,7 @@ export default function StaffDetailPage({ staffId, returnTo = "/admin/staff" }: 
         if (!staff) return;
         const subject = `"${staff.fullName}"`;
         if (kind === "archive") {
-            setStaffStatus([staff.id], "archive");
+            setStaffStatus([staff.id], "archived");
             showToast("Staff archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setStaffStatus([staff.id], "active");

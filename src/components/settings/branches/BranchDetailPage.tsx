@@ -157,7 +157,7 @@ function Sidebar({
 }) {
     const isActive   = branch.status === "active";
     const isInactive = branch.status === "inactive";
-    const isArchive  = branch.status === "archive";
+    const isArchive  = branch.status === "archived";
 
     return (
         <aside className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
@@ -392,7 +392,7 @@ function DetailsTab({
                                 </div>
                                 {/* Col 3 — enable toggle (only when not archived) */}
                                 <div onClick={e => e.stopPropagation()} className="px-6 py-4">
-                                    {room.status !== "archive" ? (
+                                    {room.status !== "archived" ? (
                                         <Toggle
                                             on={room.status === "active"}
                                             onChange={() => onRoomToggle(room)}
@@ -415,7 +415,7 @@ function DetailsTab({
                                         <div className="absolute right-2 top-[calc(100%-4px)] z-30 w-[200px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1">
                                             <RoomMenuItem icon={<Eye className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}      label="View details" onClick={() => onRoomView(room)} />
                                             <RoomMenuItem icon={<Pencil01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Edit room"     onClick={() => onRoomEdit(room)} />
-                                            {room.status !== "archive"
+                                            {room.status !== "archived"
                                                 ? <RoomMenuItem icon={<Archive className="w-4 h-4 text-[var(--colors-text-quaternary)]" />}     label="Archive"  onClick={() => onRoomAction(room, "archive")} />
                                                 : <RoomMenuItem icon={<RefreshCcw01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" />} label="Recover"  onClick={() => onRoomAction(room, "recover")} />
                                             }
@@ -512,7 +512,7 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
         if (!branch) return;
         const subject = `"${branch.name}"`;
         if (kind === "archive") {
-            updateBranch(branch.id, { status: "archive" });
+            updateBranch(branch.id, { status: "archived" });
             showToast("Branch archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             updateBranch(branch.id, { status: "active" });
@@ -536,7 +536,7 @@ export function BranchDetailPage({ branchId, returnTo = "/admin/settings/busines
     function performRoomConfirm(room: Room, kind: ConfirmKind) {
         const subject = `"${room.name}"`;
         if (kind === "archive") {
-            updateRoom(room.id, { status: "archive" });
+            updateRoom(room.id, { status: "archived" });
             showToast("Room archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             updateRoom(room.id, { status: "active" });

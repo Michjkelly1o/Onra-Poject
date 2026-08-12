@@ -113,7 +113,7 @@ export default function MRRReportPage() {
     }, [raw, monthsByProduct]);
 
     const branchOptions = useMemo<BranchOption[]>(
-        () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
+        () => branches.filter(b => b.status !== "archived").map(b => ({ id: b.id, name: b.name })),
         [branches],
     );
 

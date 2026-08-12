@@ -57,22 +57,22 @@ import { Sliders } from "@/components/icons/Sliders";
 // ─── Tokens — status badges + role-type badge colors ──────────────────────
 
 const ROLE_STATUS_LABEL: Record<RoleStatus, string> = {
-    active: "Active", inactive: "Inactive", archive: "Archive",
+    active: "Active", inactive: "Inactive", archived: "Archive",
 };
 const ROLE_STATUS_BADGE: Record<RoleStatus, string> = {
     active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
-    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archived:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const STAFF_STATUS_LABEL: Record<StaffStatus, string> = {
-    pending: "Pending", active: "Active", inactive: "Inactive", archive: "Archive",
+    pending: "Pending", active: "Active", inactive: "Inactive", archived: "Archive",
 };
 const STAFF_STATUS_BADGE: Record<StaffStatus, string> = {
     pending:  "bg-[#fffaeb] border-1 border-[#fedf89] text-[#b54708]",
     active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
     inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
-    archive:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
+    archived:  "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
 };
 
 const ROLE_TYPE_BADGE: Record<RoleType, string> = {
@@ -159,7 +159,7 @@ function Sidebar({ role, totalStaffs, onAction }: {
 }) {
     const isActive  = role.status === "active";
     const isInactive = role.status === "inactive";
-    const isArchive = role.status === "archive";
+    const isArchive = role.status === "archived";
     const isLocked  = role.locked;
     const canDelete = !isLocked && !isArchive && totalStaffs === 0;
 
@@ -399,7 +399,7 @@ const STATUS_FILTER_OPTIONS: { value: StaffStatus; label: string }[] = [
     { value: "active",   label: "Active"   },
     { value: "pending",  label: "Pending"  },
     { value: "inactive", label: "Inactive" },
-    { value: "archive",  label: "Archive"  },
+    { value: "archived",  label: "Archive"  },
 ];
 
 function StatusFilterDropdown({ value, onChange }: {
@@ -517,7 +517,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
     }, [scoped, search, statusFilter]);
 
     // Sort state — clickable column headers cycle desc → asc → off.
-    const STATUS_ORDER: Record<StaffStatus, number> = { active: 0, pending: 1, inactive: 2, archive: 3 };
+    const STATUS_ORDER: Record<StaffStatus, number> = { active: 0, pending: 1, inactive: 2, archived: 3 };
     const { sorted: filtered, sortKey, sortDir, toggle: toggleSort } = useSort<Staff>(searched, {
         name:   (a, b) => a.fullName.localeCompare(b.fullName),
         branch: (a, b) => {
@@ -575,7 +575,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
             if (deleted.length > 0) showToast("Staff deleted", `${subject} permanently removed.`, "success", "trash");
             else if (blocked.length > 0) showToast("Cannot delete", "Staff has historical records — archive instead.", "error");
         } else if (kind === "archive") {
-            setStaffStatus([row.id], "archive");
+            setStaffStatus([row.id], "archived");
             showToast("Staff archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setStaffStatus([row.id], "active");
@@ -597,19 +597,19 @@ function StaffListTab({ role, onChangeRoleFor }: {
         [scoped, selectedIds],
     );
     const selectionCount = selectedRows.length;
-    const hasArchivable    = selectedRows.some(s => s.status !== "archive");
+    const hasArchivable    = selectedRows.some(s => s.status !== "archived");
     const hasReactivatable = selectedRows.some(s => s.status === "inactive");
-    const hasRecoverable   = selectedRows.some(s => s.status === "archive");
+    const hasRecoverable   = selectedRows.some(s => s.status === "archived");
     // Delete is offered when every selected staff has no history. Otherwise
     // the secondary destructive becomes Deactivate (same XOR rule as the
     // /admin/staff list and the gift-card module).
-    const allDeletable = selectionCount > 0 && selectedRows.every(s => !hasHistory(s) && s.status !== "archive");
+    const allDeletable = selectionCount > 0 && selectedRows.every(s => !hasHistory(s) && s.status !== "archived");
 
     function performBulk(kind: BulkKind) {
         if (selectionCount === 0) return;
         const ids = selectedRows.map(s => s.id);
         if (kind === "archive") {
-            setStaffStatus(ids, "archive");
+            setStaffStatus(ids, "archived");
             showToast("Staff archived", `${selectionCount} staff moved to archive.`, "success", "archive");
         } else if (kind === "deactivate") {
             setStaffStatus(ids, "inactive");
@@ -732,7 +732,7 @@ function StaffListTab({ role, onChangeRoleFor }: {
                                                         { label: "Change role",       icon: UserSquare,    onClick: () => handleAction(s, "change_role"),   hidden: s.status !== "active" },
                                                         { label: "Archive",           icon: Archive,       onClick: () => handleAction(s, "archive"),       hidden: !(s.status === "active" || s.status === "inactive") },
                                                         { label: "Reactivate",        icon: Check,         onClick: () => handleAction(s, "reactivate"),    hidden: s.status !== "inactive" },
-                                                        { label: "Recover",           icon: RefreshCcw01,  onClick: () => handleAction(s, "recover"),       hidden: s.status !== "archive" },
+                                                        { label: "Recover",           icon: RefreshCcw01,  onClick: () => handleAction(s, "recover"),       hidden: s.status !== "archived" },
                                                         { label: "Deactivate",        icon: SlashCircle01, onClick: () => handleAction(s, "deactivate"),    danger: true, hidden: !(s.status === "active" && hasHistory(s)) },
                                                         { label: "Delete",            icon: Trash01,       onClick: () => handleAction(s, "delete"),        danger: true, hidden: !(s.status === "active" && !hasHistory(s)) },
                                                         { label: "Delete",            icon: Trash01,       onClick: () => handleAction(s, "delete"),        danger: true, hidden: !(s.status === "inactive" && !hasHistory(s)) },
@@ -919,7 +919,7 @@ export default function RoleDetailPage({ roleId, returnTo = "/admin/staff" }: Ro
         if (!role) return;
         const subject = `"${role.name}"`;
         if (kind === "archive") {
-            setRolesStatus([role.id], "archive");
+            setRolesStatus([role.id], "archived");
             showToast("Role archived", `${subject} moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
             setRolesStatus([role.id], "active");

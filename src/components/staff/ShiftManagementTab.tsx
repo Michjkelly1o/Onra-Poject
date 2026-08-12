@@ -51,7 +51,7 @@ import { SlidePanel } from "@/components/ui/SlidePanel";
 const STATUS_LABEL: Record<Shift["status"], string> = {
     active:   "Active",
     inactive: "Inactive",
-    archive:  "Archived",
+    archived:  "Archived",
 };
 
 // Local StatusBadge removed — uses canonical `@/components/patterns/StatusBadge`
@@ -525,7 +525,7 @@ function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onAppl
                             <div className="flex flex-col gap-2">
                                 <p className="text-[14px] font-medium text-[#344054]">Status</p>
                                 <div className="flex flex-wrap gap-2">
-                                    {(["active", "inactive", "archive"] as const).map(s => (
+                                    {(["active", "inactive", "archived"] as const).map(s => (
                                         <PillBtn key={s} label={STATUS_LABEL[s]}
                                             selected={pendingList.statuses.includes(s)}
                                             onClick={() => setPendingList(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
@@ -729,7 +729,7 @@ export function ShiftManagementTab({
     // ── Pagination slice ──────────────────────────────────────────────────
     // ── Shift sort — Name / Branch / Days (count) / Hours (start) /
     //    Staff count / Status. ──
-    const SHIFT_STATUS_ORDER: Record<Shift["status"], number> = { active: 0, inactive: 1, archive: 2 };
+    const SHIFT_STATUS_ORDER: Record<Shift["status"], number> = { active: 0, inactive: 1, archived: 2 };
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Shift>(filtered, {
         name:   (a, b) => a.name.localeCompare(b.name),
         branch: (a, b) => {
@@ -768,9 +768,9 @@ export function ShiftManagementTab({
         () => filtered.filter(r => selectedIds.has(r.id)),
         [filtered, selectedIds],
     );
-    const hasArchivable    = selectedRows.some(r => r.status !== "archive");
+    const hasArchivable    = selectedRows.some(r => r.status !== "archived");
     const hasReactivatable = selectedRows.some(r => r.status === "inactive");
-    const hasRecoverable   = selectedRows.some(r => r.status === "archive");
+    const hasRecoverable   = selectedRows.some(r => r.status === "archived");
     const hasDeletable     = selectedRows.length > 0 &&
         selectedRows.every(r => r.status === "active");
 
@@ -789,8 +789,8 @@ export function ShiftManagementTab({
             switch (kind) {
                 case "deactivate": return selectedRows.filter(r => r.status === "active");
                 case "reactivate": return selectedRows.filter(r => r.status === "inactive");
-                case "archive":    return selectedRows.filter(r => r.status !== "archive");
-                case "recover":    return selectedRows.filter(r => r.status === "archive");
+                case "archive":    return selectedRows.filter(r => r.status !== "archived");
+                case "recover":    return selectedRows.filter(r => r.status === "archived");
                 case "delete":     return selectedRows.filter(r => r.status === "active");
                 default:           return [];
             }
@@ -816,7 +816,7 @@ export function ShiftManagementTab({
             );
         } else {
             const nextStatus: Shift["status"] =
-                kind === "archive"    ? "archive"  :
+                kind === "archive"    ? "archived"  :
                 kind === "deactivate" ? "inactive" :
                                         "active"; // reactivate / recover
             setShiftsStatus(ids, nextStatus);
@@ -851,7 +851,7 @@ export function ShiftManagementTab({
     //    chrome the row dropdown's Deactivate / Reactivate actions use,
     //    just spawned from the inline toggle. ─────────────────────────────
     function handleEnableToggle(row: Shift, next: boolean) {
-        if (row.status === "archive") return; // archived rows can't be toggled
+        if (row.status === "archived") return; // archived rows can't be toggled
         // next=true → currently inactive, flipping to active → "reactivate"
         // next=false → currently active, flipping to inactive → "deactivate"
         setPendingConfirm({ mode: "row", row, kind: next ? "reactivate" : "deactivate" });
@@ -1005,9 +1005,9 @@ export function ShiftManagementTab({
                                                     { label: "View details", icon: Eye, onClick: () => handleRowAction(s, "view") },
                                                     { label: "Edit details", icon: Edit02, onClick: () => handleRowAction(s, "edit"), hidden: s.status !== "active" },
                                                     { label: "Assign staff", icon: UserPlus01, onClick: () => handleRowAction(s, "assign_staff"), hidden: s.status !== "active" },
-                                                    { label: "Archive", icon: Archive, onClick: () => handleRowAction(s, "archive"), hidden: s.status === "archive" },
+                                                    { label: "Archive", icon: Archive, onClick: () => handleRowAction(s, "archive"), hidden: s.status === "archived" },
                                                     { label: "Reactivate", icon: Check, onClick: () => handleRowAction(s, "reactivate"), hidden: s.status !== "inactive" },
-                                                    { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(s, "recover"), hidden: s.status !== "archive" },
+                                                    { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(s, "recover"), hidden: s.status !== "archived" },
                                                     { label: "Deactivate", icon: SlashCircle01, onClick: () => handleRowAction(s, "deactivate"), danger: true, hidden: !(s.status === "active" && assignedCount > 0) },
                                                     { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true, hidden: s.status !== "active" },
                                                 ]} />
