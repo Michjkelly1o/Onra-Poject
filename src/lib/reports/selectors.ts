@@ -1332,17 +1332,22 @@ export function selectRetailSales(state: AppState): RetailSalesRow[] {
  *  stock aggregate + period metrics. Period window is a rolling 30 days
  *  from "today"; the shell's period picker can filter further downstream
  *  but the source metrics stay stable. */
-export function selectRetailStockOnHand(state: AppState): RetailStockOnHandRow[] {
+export function selectRetailStockOnHand(
+    state: AppState,
+    window?: { fromISO: string; toISO: string },
+): RetailStockOnHandRow[] {
     const categoryById = new Map(state.retailCategories.map(c => [c.id, c] as const));
     const loc = makeLocationLookup(state);
 
-    // Rolling 12-month window for the period metrics (Units received / sold /
-    // Sell-through / Turnover). Wide enough to include the historical demo
-    // stock adjustments (a 30-day window from "today" now misses them entirely,
-    // so those columns read 0 — misleading "no movement").
+    // Period window for the MOVEMENT metrics (Units received / sold /
+    // Sell-through / Turnover). Follows the report's date range when the page
+    // passes one; otherwise a rolling 12 months (wide enough to include the
+    // historical demo adjustments — a 30-day default would read 0). Units on
+    // hand / value / reorder threshold are always "current" (not windowed).
     const now = new Date();
-    const windowStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-    const windowStartISO = windowStart.toISOString();
+    const defaultStartISO = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const winStartISO = window?.fromISO ?? defaultStartISO;
+    const winEndISO = window?.toISO ?? now.toISOString().slice(0, 10);
 
     const rows: RetailStockOnHandRow[] = [];
     for (const p of state.retailProducts) {
@@ -1364,7 +1369,10 @@ export function selectRetailStockOnHand(state: AppState): RetailStockOnHandRow[]
             const adjsForBranch = state.retailStockAdjustments.filter(
                 a => a.productId === p.id && a.branchId === branchId,
             );
-            const adjsInWindow = adjsForBranch.filter(a => a.createdAt >= windowStartISO);
+            const adjsInWindow = adjsForBranch.filter(a => {
+                const d = a.createdAt.slice(0, 10);
+                return d >= winStartISO && d <= winEndISO;
+            });
 
             let unitsReceived = 0;
             let unitsSold = 0;

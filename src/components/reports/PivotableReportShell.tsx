@@ -190,6 +190,42 @@ function formatCell(value: unknown, kind: ColumnDef["kind"]): string {
     return String(value);
 }
 
+// List-mode grouping — aggregate rows by a break-down dimension into one row per
+// group: numeric/currency columns are summed, a text/date/status column shows
+// its value when uniform across the group (else blank), and ratio (percent)
+// columns are left blank (a rate can't be summed). This lets "Group by" work
+// standalone in the flat list — no period pivot required — so it works on every
+// report, including snapshots like Stock on Hand that have no period.
+function groupListRows(
+    rows: readonly Record<string, unknown>[],
+    dimension: { extract: (r: Record<string, unknown>) => unknown },
+    columns: readonly ColumnDef[],
+): Record<string, unknown>[] {
+    const groups = new Map<string, Record<string, unknown>[]>();
+    for (const r of rows) {
+        const key = String(dimension.extract(r) ?? "—");
+        let arr = groups.get(key);
+        if (!arr) { arr = []; groups.set(key, arr); }
+        arr.push(r);
+    }
+    return Array.from(groups.values()).map(groupRows => {
+        const out: Record<string, unknown> = {};
+        for (const c of columns) {
+            if (c.kind === "currency" || c.kind === "number") {
+                let sum = 0; let any = false;
+                for (const r of groupRows) { const n = Number(r[c.key]); if (Number.isFinite(n)) { sum += n; any = true; } }
+                out[c.key] = any ? sum : "";
+            } else if (c.kind === "percent") {
+                out[c.key] = "";
+            } else {
+                const vals = new Set(groupRows.map(r => String(r[c.key] ?? "")));
+                out[c.key] = vals.size === 1 ? Array.from(vals)[0] : "";
+            }
+        }
+        return out;
+    });
+}
+
 // ═════════════════════════════════════════════════════════════════════════
 // The shell
 // ═════════════════════════════════════════════════════════════════════════
@@ -257,13 +293,21 @@ export function PivotableReportShell({
         });
     }, [dateISO.fromISO, dateISO.toISO, visibleBranchIds, onScopeChange]);
 
+    // Base list rows — grouped by the break-down dimension when one is picked in
+    // list mode (so "Group by" works without a period pivot, incl. on snapshot
+    // reports); otherwise the flat filtered set.
+    const listBaseRows = useMemo<Record<string, unknown>[]>(() => {
+        if (period !== "none" || !dimension) return filteredRows as Record<string, unknown>[];
+        return groupListRows(filteredRows, dimension, report.columns);
+    }, [filteredRows, period, dimension, report.columns]);
+
     // Sort for list mode.
     const sortedRows = useMemo(() => {
         if (period !== "none") return filteredRows;
-        if (!sortKey) return filteredRows;
+        if (!sortKey) return listBaseRows;
         const col = report.columns.find(c => c.key === sortKey);
-        if (!col) return filteredRows;
-        const copy = [...filteredRows];
+        if (!col) return listBaseRows;
+        const copy = [...listBaseRows];
         copy.sort((a, b) => {
             const va = a[sortKey]; const vb = b[sortKey];
             const na = Number(va); const nb = Number(vb);
@@ -273,7 +317,7 @@ export function PivotableReportShell({
                 : String(vb ?? "").localeCompare(String(va ?? ""));
         });
         return copy;
-    }, [filteredRows, period, sortKey, sortDir, report.columns]);
+    }, [filteredRows, listBaseRows, period, sortKey, sortDir, report.columns]);
 
     // Pivot.
     const pivot = useMemo(() => {
@@ -314,7 +358,7 @@ export function PivotableReportShell({
     function handleExportCsv() {
         const cols = report.columns.filter(c => visibleCols.has(c.key));
         if (period === "none" || !pivot) {
-            const csv = buildListCsv({ columns: cols, rows: filteredRows, filename: buildFilename("csv") });
+            const csv = buildListCsv({ columns: cols, rows: listBaseRows, filename: buildFilename("csv") });
             triggerCsvDownload(csv, buildFilename("csv"));
         } else {
             const colHeaders = pivot.colKeys.map(k => periodLabelFor(k, period, period === "month"));
@@ -326,7 +370,7 @@ export function PivotableReportShell({
         const cols = report.columns.filter(c => visibleCols.has(c.key));
         const meta = stamp(buildMetadata());
         if (period === "none" || !pivot) {
-            exportListXlsx({ columns: cols, rows: filteredRows, filename: buildFilename("xlsx"), meta, sheetName: report.title });
+            exportListXlsx({ columns: cols, rows: listBaseRows, filename: buildFilename("xlsx"), meta, sheetName: report.title });
         } else {
             const colHeaders = pivot.colKeys.map(k => periodLabelFor(k, period, period === "month"));
             exportPivotXlsx({

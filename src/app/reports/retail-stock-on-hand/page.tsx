@@ -10,8 +10,9 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
-import { getReportById, resolveSelector } from "@/config/reports-registry";
-import type { RetailStockOnHandRow } from "@/lib/reports/selectors";
+import { getReportById } from "@/config/reports-registry";
+import { selectRetailStockOnHand, type RetailStockOnHandRow } from "@/lib/reports/selectors";
+import { useReportScope } from "@/lib/reports/use-report-scope";
 
 interface StockOnHandDisplayRow {
     [k: string]: unknown;
@@ -40,12 +41,15 @@ export default function StockOnHandReportPage() {
     const branches               = useAppStore(s => s.branches);
 
     const report = getReportById("retail-stock-on-hand");
+    const { scope, onScopeChange } = useReportScope();
 
     const raw = useMemo<RetailStockOnHandRow[]>(() => {
-        if (!report) return [];
-        const fn = resolveSelector(report) as unknown as (state: unknown) => RetailStockOnHandRow[];
-        return fn({ retailProducts, retailCategories, retailStock, retailStockAdjustments, branches });
-    }, [report, retailProducts, retailCategories, retailStock, retailStockAdjustments, branches]);
+        const state = {
+            retailProducts, retailCategories, retailStock, retailStockAdjustments, branches,
+        } as unknown as import("@/lib/store").AppState;
+        // Movement columns follow the toolbar date range; units-on-hand stays current.
+        return selectRetailStockOnHand(state, scope ? { fromISO: scope.fromISO, toISO: scope.toISO } : undefined);
+    }, [retailProducts, retailCategories, retailStock, retailStockAdjustments, branches, scope]);
 
     const rows = useMemo<StockOnHandDisplayRow[]>(() => raw.map(r => ({ ...r }) satisfies StockOnHandDisplayRow), [raw]);
 
@@ -63,6 +67,6 @@ export default function StockOnHandReportPage() {
     }
 
     return (
-        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />
+        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" onScopeChange={onScopeChange} />
     );
 }
