@@ -596,6 +596,9 @@ export interface ShiftManagementTabProps {
     /** Tells the parent whether the Filter button should render the
      *  green active-dot. */
     onFilterStateChange?: (hasActive: boolean) => void;
+    /** Reports the toolbar total for this sub-tab: shift count in List view,
+     *  staff-row count in Week view (client 2026-08-12). */
+    onCountChange?: (count: number, noun: string) => void;
     /** Tells the parent the table is mounted so it can enable / wire its
      *  Filter button click handler. */
     filterOpen: boolean;
@@ -610,11 +613,13 @@ export interface ShiftManagementTabProps {
     weekStart?: Date;
     /** Staff-schedule — a quick-action flyout opened, so close the main panel. */
     onFlyoutOpen?: () => void;
+    /** Staff-schedule — the main Add-shift panel opened, so close any flyout. */
+    mainPanelOpen?: boolean;
 }
 
 export function ShiftManagementTab({
-    returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange,
-    viewMode = "list", weekStart, onFlyoutOpen,
+    returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange, onCountChange,
+    viewMode = "list", weekStart, onFlyoutOpen, mainPanelOpen,
 }: ShiftManagementTabProps) {
     const router = useRouter();
     const shifts            = useAppStore(s => s.shifts);
@@ -715,6 +720,13 @@ export function ShiftManagementTab({
             return true;
         });
     }, [shifts, branchId, search, appliedList]);
+
+    // List view reports the filtered SHIFT count; the week view forwards its own
+    // staff-row count (via ShiftsWeekView's onCountChange) so the parent toolbar
+    // shows "Total N shifts" vs "Total N staff" correctly (client 2026-08-12).
+    useEffect(() => {
+        if (viewMode !== "week") onCountChange?.(filtered.length, filtered.length === 1 ? "shift" : "shifts");
+    }, [viewMode, filtered.length, onCountChange]);
 
     // Options for the WEEK-view filter panel.
     const weekRoleOptions = useMemo(
@@ -866,7 +878,8 @@ export function ShiftManagementTab({
         <>
             {viewMode === "week" ? (
                 <div className="relative flex flex-col flex-1 min-h-0">
-                    <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart}
+                    <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart} mainPanelOpen={mainPanelOpen}
+                        onCountChange={(n) => onCountChange?.(n, "staff")}
                         roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds}
                         onFlyoutOpen={onFlyoutOpen} />
                 </div>

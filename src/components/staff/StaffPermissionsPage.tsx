@@ -768,6 +768,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
      *  Filter button. Lifted up so the existing toolbar code path can
      *  read it without re-subscribing inside the table component. */
     const [shiftFilterActive, setShiftFilterActive] = useState(false);
+    // Per-sub-tab toolbar total, reported up by the Shift / Time-off child tabs
+    // so the "Total" reads "N shifts" / "N staff" / "N time off" (client 2026-08-12).
+    const [subCount, setSubCount] = useState<{ count: number; noun: string } | null>(null);
     const [branchId, setBranchId] = useState<string>(staffUi.branchId);
     const [search, setSearch] = useState(staffUi.search);
     const [filterOpen, setFilterOpen] = useState(false);
@@ -1178,12 +1181,21 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const staffSomeChecked = !staffAllChecked && staffPageIds.some(id => selectedStaffIds.has(id));
 
     // ─── Counts for the toolbar total ─────────────────────────────────────
-    const totalCount = tab === "roles" ? filteredRoles.length : filteredStaff.length;
-    const totalNoun = tab === "roles"
-        ? (totalCount === 1 ? "role" : "roles")
-        // Pluralization fix — "staff" is the same singular AND plural form;
-        // never render "staffs" on any surface.
-        : "staff";
+    // The Shift (list/week) + Time off sub-tabs report their own count/noun via
+    // `subCount` — "N shifts" / "N staff" / "N time off". Staff + Roles compute here.
+    const usesSubCount = forceTab === "staff"
+        && (staffSubTab === "shift-management" || staffSubTab === "blocked-time")
+        && subCount !== null;
+    const totalCount = usesSubCount
+        ? subCount!.count
+        : tab === "roles" ? filteredRoles.length : filteredStaff.length;
+    const totalNoun = usesSubCount
+        ? subCount!.noun
+        : tab === "roles"
+            ? (totalCount === 1 ? "role" : "roles")
+            // Pluralization fix — "staff" is the same singular AND plural form;
+            // never render "staffs" on any surface.
+            : "staff";
 
     // ─── Active-filter dot for the Filter button ──────────────────────────
     //
@@ -1420,9 +1432,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         filterOpen={filterOpen}
                         onCloseFilter={() => setFilterOpen(false)}
                         onFilterStateChange={setShiftFilterActive}
+                        onCountChange={(count, noun) => setSubCount({ count, noun })}
                         viewMode={shiftsViewMode}
                         weekStart={shiftsWeekStart}
                         onFlyoutOpen={() => setStaffSchedPanel({ open: false })}
+                        mainPanelOpen={staffSchedPanel.open}
                     />
                 )}
                 {/* Blocked time sub-tab — fully wired (Figma 7413:239407). Same
@@ -1434,6 +1448,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         search={search}
                         viewMode={timeOffViewMode}
                         monthCursor={timeOffMonthCursor}
+                        onCountChange={(count, noun) => setSubCount({ count, noun })}
                     />
                 )}
                 {/* Table — roles

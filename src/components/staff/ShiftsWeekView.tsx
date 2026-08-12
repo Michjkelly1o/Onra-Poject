@@ -343,14 +343,12 @@ function DayAddShiftMenu({ staffName, staffBranchId, dayIdx, shifts, staffDayShi
         sh.status === "active"
         && ((sh.type ?? "recurring") === "single" || sh.working_days[dayIdx]),
     );
-    // Exclude only shifts already worked THIS day + any that would clash on time.
-    const available = branchDayShifts.filter(sh =>
-        !staffDayShiftIds.has(sh.id)
-        // Single/one-off shifts are always offered (even when they overlap a shift
-        // already on this day) — picking one that clashes opens the replace modal.
-        && ((sh.type ?? "recurring") === "single"
-            || !staffDayShifts.some(held => timeRangesOverlap(sh.start_time, sh.end_time, held.start_time, held.end_time))),
-    );
+    // Offer every active shift running THIS day that the staff doesn't already
+    // work today — INCLUDING ones whose time overlaps a shift already on the day.
+    // Time conflicts are resolved at pick time via the replace modal, so a day
+    // swapped Morning → Half day still lists Morning (swap it back), and single
+    // shifts still appear on a day that already holds a recurring shift.
+    const available = branchDayShifts.filter(sh => !staffDayShiftIds.has(sh.id));
 
     return (
         <>
@@ -560,9 +558,12 @@ interface ShiftsWeekViewProps {
      *  per-day "+" flyout closes — the reverse of `onFlyoutOpen`, so the two are
      *  mutually exclusive in both directions (matches the Day view). */
     mainPanelOpen?: boolean;
+    /** Reports the number of visible staff rows so the parent toolbar can show
+     *  "Total N staff" for the Staff Schedule (week) view (client 2026-08-12). */
+    onCountChange?: (count: number) => void;
 }
 
-export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [], onFlyoutOpen, mainPanelOpen }: ShiftsWeekViewProps) {
+export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart, roleIds = [], shiftIds = [], onFlyoutOpen, mainPanelOpen, onCountChange }: ShiftsWeekViewProps) {
     const staff            = useAppStore(s => s.staff);
     const router = useRouter();
     const addShiftAssignment    = useAppStore(s => s.addShiftAssignment);
@@ -652,6 +653,9 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
             { key: "instructors", title: "INSTRUCTORS",      rows: instructorBucket },
         ];
     }, [filteredStaff, roleTypeById]);
+
+    // Report the visible staff-row count up to the parent toolbar total.
+    useEffect(() => { onCountChange?.(filteredStaff.length); }, [filteredStaff.length, onCountChange]);
 
     // ── Cell-content selectors ────────────────────────────────────────────
     const shiftsById = useMemo(() => new Map(shifts.map(sh => [sh.id, sh] as const)), [shifts]);

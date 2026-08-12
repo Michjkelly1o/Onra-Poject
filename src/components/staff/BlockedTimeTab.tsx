@@ -71,17 +71,24 @@ function todayISO(): string {
  *  blue, purple, amber) so the tone reads consistent with sibling
  *  chrome (StatusBadge / SessionTypeTag). */
 const REASON_STYLE: Record<
-    "sick" | "vacation" | "training" | "other",
+    "annual_leave" | "sick" | "personal" | "training" | "religious_leave" | "other",
     { label: string; className: string }
 > = {
-    sick:     { label: "Sick",     className: "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" },
-    vacation: { label: "Vacation", className: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" },
-    training: { label: "Training", className: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]" },
-    other:    { label: "Other",    className: "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[#344054]" },
+    annual_leave:   { label: "Annual Leave",   className: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" },
+    sick:           { label: "Sick",           className: "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" },
+    personal:       { label: "Personal",       className: "bg-[#f0f9f6] border-[#a6e0cd] text-[#107569]" },
+    training:       { label: "Training",       className: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]" },
+    religious_leave:{ label: "Religious Leave", className: "bg-[#fffaeb] border-[#fedf89] text-[#b54708]" },
+    other:          { label: "Other",          className: "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[#344054]" },
 };
+// Defensive lookup — tolerates any stale/legacy reason (e.g. a persisted
+// "vacation" from before the list changed) by falling back to "Other".
+function reasonStyle(reason: string | undefined) {
+    return REASON_STYLE[(reason ?? "other") as keyof typeof REASON_STYLE] ?? REASON_STYLE.other;
+}
 
 function ReasonChip({ reason }: { reason: BlockedTime["reason"] | undefined }) {
-    const spec = REASON_STYLE[reason ?? "other"];
+    const spec = reasonStyle(reason);
     return (
         <span className={cn(
             "inline-flex items-center px-2 py-[2px] rounded-full text-[12px] font-medium border-1 whitespace-nowrap",
@@ -211,9 +218,12 @@ export interface BlockedTimeTabProps {
     viewMode?: "list" | "month";
     /** Month cursor owned by the parent (client 2026-07-22). */
     monthCursor?: { year: number; month: number };
+    /** Reports the filtered time-off count for the parent toolbar total
+     *  ("Total N time off") — client 2026-08-12. */
+    onCountChange?: (count: number, noun: string) => void;
 }
 
-export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCursor }: BlockedTimeTabProps) {
+export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCursor, onCountChange }: BlockedTimeTabProps) {
     const router = useRouter();
     const blockedTimes      = useAppStore(s => s.blockedTimes);
     const staff             = useAppStore(s => s.staff);
@@ -268,13 +278,16 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
     // ── Time off sort — Date & time / Reason / Staff count / Note. ─────
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<BlockedTime>(filtered, {
         date:   (a, b) => `${a.date_from_iso ?? a.date} ${a.start_time}`.localeCompare(`${b.date_from_iso ?? b.date} ${b.start_time}`),
-        reason: (a, b) => (REASON_STYLE[a.reason ?? "other"].label).localeCompare(REASON_STYLE[b.reason ?? "other"].label),
+        reason: (a, b) => reasonStyle(a.reason).label.localeCompare(reasonStyle(b.reason).label),
         staff:  (a, b) => a.staff_ids.length - b.staff_ids.length,
         note:   (a, b) => a.note.localeCompare(b.note),
     });
 
     const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clamped = Math.min(Math.max(1, page), totalPages);
+    // Report the filtered time-off count to the parent toolbar total.
+    useEffect(() => { onCountChange?.(filtered.length, "time off"); }, [filtered.length, onCountChange]);
+
     const pageRows = sortedRows.slice((clamped - 1) * pageSize, clamped * pageSize);
     const pageIds = pageRows.map(r => r.id);
     const allChecked  = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
@@ -421,7 +434,7 @@ export function BlockedTimeTab({ branchId, search, viewMode = "list", monthCurso
                                         const staffList = b.staff_ids
                                             .map(id => staffById.get(id))
                                             .filter((s): s is Staff => Boolean(s));
-                                        const title = b.title.trim() || REASON_STYLE[b.reason ?? "other"].label;
+                                        const title = b.title.trim() || reasonStyle(b.reason).label;
                                         const note = b.note.trim() || "–";
                                         // Client 2026-07-22: date cell now
                                         // renders a RANGE for multi-day
