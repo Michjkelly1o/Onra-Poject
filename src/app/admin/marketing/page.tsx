@@ -38,6 +38,8 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 
 // Card-embedded kebab menu actions — mirrors the detail-page action set so
 // the list can drive Archive / Deactivate / Delete / Recover / Reactivate
@@ -343,7 +345,8 @@ interface MarketingFilter {
 }
 const EMPTY_FILTER: MarketingFilter = { statuses: [], startDate: "", endDate: "" };
 
-const FILTER_STATUSES: StoredStatus[] = ["active", "inactive", "archived"];
+// Archived is a place (the Archived section), not a filter value (policy §3).
+const FILTER_STATUSES: StoredStatus[] = ["active", "inactive"];
 
 function FilterPanel({ open, applied, onClose, onApply }: {
     open: boolean;
@@ -486,18 +489,23 @@ export default function MarketingListPage() {
                 if (ids.length > 0 && !ids.includes(locationId)) return false;
             }
             if (deliveryTab !== "all" && (m.delivery_status ?? "sent") !== deliveryTab) return false;
-            if (filter.statuses.length > 0 && !filter.statuses.includes(m.status)) return false;
+            // Status pill filters only the active grid; archived campaigns are
+            // exempt — they always render in the Archived section below (policy §3).
+            if (m.status !== "archived" && filter.statuses.length > 0 && !filter.statuses.includes(m.status)) return false;
             if (filter.startDate && (!m.expiry_date || m.expiry_date.slice(0, 10) < filter.startDate)) return false;
             if (filter.endDate && (!m.expiry_date || m.expiry_date.slice(0, 10) > filter.endDate)) return false;
             return true;
         });
     }, [campaigns, search, locationId, filter, deliveryTab]);
+    // Archived campaigns leave the grid → the shared Archived section (card grid,
+    // no pagination) below the active view card.
+    const { active: activeCampaigns, archived: archivedCampaigns } = useArchiveView(visible);
 
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={visible.length} entitySingular="campaign" />
+                <ToolbarTotal count={activeCampaigns.length} entitySingular="campaign" />
 
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-5 h-5" />}
@@ -522,9 +530,13 @@ export default function MarketingListPage() {
                 </Button>
             </div>
 
-            {/* ── View card — segmented tabs + card grid inside a bordered
-                container that fills the viewport (matches the Class module). ── */}
-            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            {/* Scroll region — active view card fills the viewport; the Archived
+                section sits below and is reached by scrolling THIS region (matches
+                the Class module). */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+            {/* ── Active view card — segmented tabs + card grid inside a bordered
+                container. ── */}
+            <div className="shrink-0 h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 flex items-center px-6 py-4">
                     <SegmentedTabs
@@ -541,7 +553,7 @@ export default function MarketingListPage() {
 
                 {/* Content body */}
                 <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide px-6 pb-6">
-                    {visible.length === 0 ? (
+                    {activeCampaigns.length === 0 ? (
                         <div className="relative h-full" style={{ minHeight: 400 }}>
                             <EmptyState
                                 title={campaigns.length === 0 ? "No campaigns yet" : "No campaigns found"}
@@ -552,13 +564,27 @@ export default function MarketingListPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-4 gap-4">
-                            {visible.map(m => (
+                            {activeCampaigns.map(m => (
                                 <MarketingCardView key={m.id} item={m} totalBranches={totalBranches}
                                     onOpen={() => router.push(`/marketing/${m.id}?returnTo=${encodeURIComponent("/admin/marketing")}`)} />
                             ))}
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* ── Archived section — card grid, no pagination (policy §3). Renders
+                   only when archived campaigns exist in the current scope. */}
+            <ArchivedSection entitySingular="campaign" count={archivedCampaigns.length}>
+                <div className="px-6 py-4">
+                    <div className="grid grid-cols-4 gap-4">
+                        {archivedCampaigns.map(m => (
+                            <MarketingCardView key={m.id} item={m} totalBranches={totalBranches}
+                                onOpen={() => router.push(`/marketing/${m.id}?returnTo=${encodeURIComponent("/admin/marketing")}`)} />
+                        ))}
+                    </div>
+                </div>
+            </ArchivedSection>
             </div>
 
             <FilterPanel
