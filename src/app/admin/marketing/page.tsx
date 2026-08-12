@@ -494,7 +494,7 @@ export default function MarketingListPage() {
     }, [campaigns, search, locationId, filter, deliveryTab]);
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
                 <ToolbarTotal count={visible.length} entitySingular="campaign" />
@@ -523,8 +523,8 @@ export default function MarketingListPage() {
             </div>
 
             {/* ── View card — segmented tabs + card grid inside a bordered
-                container (matches the Membership & Package view). ── */}
-            <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden min-h-[760px]">
+                container that fills the viewport (matches the Class module). ── */}
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 {/* Tab nav row */}
                 <div className="shrink-0 flex items-center px-6 py-4">
                     <SegmentedTabs
