@@ -5088,6 +5088,9 @@ export interface AppState {
     /** Patch a pay rate. Caller supplies the same `type` (or no `type` change)
      *  — switching types is a "replace" semantically and goes through add+delete. */
     updatePayRate: (id: string, patch: Partial<PayRate>) => void;
+    /** How many instructors currently hold this pay rate — drives the
+     *  "can't archive while staff are on it → reassign first" guard (client). */
+    payRateAssignedCount: (id: string) => number;
     setPayRatesStatus: (ids: string[], status: PayRateStatus) => void;
     /** Hard-delete only allowed when every selected row is Active AND
      *  zero-usage. Returns the list of ids that were actually deleted. */
@@ -10517,10 +10520,19 @@ export const useAppStore = create<AppState>()(persist(
         });
         get().recordAudit("Edited pay rate", "pay_rate", id, after.name);
     },
+    payRateAssignedCount: (id) =>
+        get().instructors.filter(i => i.payRateId === id).length,
     setPayRatesStatus: (ids, status) => {
-        const targets = get().payRates.filter(p => ids.includes(p.id));
+        // Archiving is blocked while staff hold the rate (client reassign-first
+        // guard) — the UI enforces + messages this before calling, so this is a
+        // backstop that skips any still-assigned rate when archiving.
+        const effective = status === "archived"
+            ? ids.filter(id => get().payRateAssignedCount(id) === 0)
+            : ids;
+        if (effective.length === 0) return;
+        const targets = get().payRates.filter(p => effective.includes(p.id));
         set(state => ({
-            payRates: state.payRates.map(p => ids.includes(p.id) ? { ...p, status } : p),
+            payRates: state.payRates.map(p => effective.includes(p.id) ? { ...p, status } : p),
         }));
         const verb = status === "active" ? "Reactivated" : "Archived";
         targets.forEach(t => get().recordAudit(`${verb} pay rate`, "pay_rate", t.id, t.name, { status }));

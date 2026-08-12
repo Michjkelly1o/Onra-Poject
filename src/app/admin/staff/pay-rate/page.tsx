@@ -109,7 +109,7 @@ const CONFIRM_CFG: Record<ConfirmKind, {
 }> = {
     archive: {
         title: s => `Archive ${s}?`,
-        description: s => `${s} will be moved to the archive. You can recover it any time — staff already on this rate keep it until reassigned.`,
+        description: s => `${s} will be moved to the archive and is no longer assignable. Existing payroll history is preserved — you can recover it any time.`,
         confirmLabel: "Archive",
         destructive: false,
         Icon: Archive, iconBg: "bg-[#eff6f3]", iconColor: "text-[#164e52]",
@@ -410,6 +410,7 @@ export default function PayRatePage() {
     const payRates           = useAppStore(s => s.payRates);
     const branches           = useAppStore(s => s.branches);
     const setPayRatesStatus  = useAppStore(s => s.setPayRatesStatus);
+    const payRateAssignedCount = useAppStore(s => s.payRateAssignedCount);
     const deletePayRatesAction = useAppStore(s => s.deletePayRates);
     const showToast          = useAppStore(s => s.showToast);
 
@@ -541,6 +542,23 @@ export default function PayRatePage() {
     }
 
     function openConfirm(kind: "archive" | "recover" | "delete", ids: string[]) {
+        // Client reassign-first guard — can't archive a rate while staff are on
+        // it. Block those ids with a "N staff use this rate — reassign first"
+        // toast; proceed with any rate that has 0 assigned staff.
+        if (kind === "archive") {
+            const blocked = ids.filter(id => payRateAssignedCount(id) > 0);
+            if (blocked.length > 0) {
+                if (blocked.length === 1) {
+                    const r = payRates.find(x => x.id === blocked[0]);
+                    const n = payRateAssignedCount(blocked[0]);
+                    showToast("Can’t archive this pay rate", `${n} staff use "${r?.name ?? "this rate"}" — reassign first.`, "error", "slash");
+                } else {
+                    showToast("Can’t archive these pay rates", `${blocked.length} rates still have staff assigned — reassign first.`, "error", "slash");
+                }
+                ids = ids.filter(id => payRateAssignedCount(id) === 0);
+                if (ids.length === 0) return;
+            }
+        }
         setPendingConfirm({ kind, ids });
     }
 

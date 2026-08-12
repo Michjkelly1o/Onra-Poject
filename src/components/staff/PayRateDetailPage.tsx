@@ -841,6 +841,7 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
     const payRates           = useAppStore(s => s.payRates);
     const branches           = useAppStore(s => s.branches);
     const setPayRatesStatus  = useAppStore(s => s.setPayRatesStatus);
+    const payRateAssignedCount = useAppStore(s => s.payRateAssignedCount);
     const deletePayRatesAction = useAppStore(s => s.deletePayRates);
     const showToast          = useAppStore(s => s.showToast);
 
@@ -879,6 +880,13 @@ export default function PayRateDetailPage({ payRateId, returnTo = "/admin/staff/
                 showToast("Cannot delete", "Pay rate has usage history — archive instead.", "error");
             }
         } else if (kind === "archive") {
+            // Client reassign-first guard — can't archive while staff hold the rate.
+            const assigned = payRateAssignedCount(payRate.id);
+            if (assigned > 0) {
+                showToast("Can’t archive this pay rate", `${assigned} staff use "${payRate.name}" — reassign first.`, "error", "slash");
+                setSidebarConfirm(null);
+                return;
+            }
             setPayRatesStatus([payRate.id], "archived");
             showToast("Pay rate archived", `"${payRate.name}" moved to archive.`, "success", "archive");
         } else if (kind === "recover") {
