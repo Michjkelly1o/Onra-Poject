@@ -536,14 +536,12 @@ export default function PromoListPage() {
 
             {/* ── Archived section — card grid, no pagination, hugging layout
                    (policy §3). Renders only when archived promos exist. */}
-            <ArchivedSection entitySingular="promotion" count={archivedPromos.length} fill={false}>
-                <div className="p-4">
-                    <div className="grid grid-cols-4 gap-4">
-                        {archivedPromos.map(p => (
-                            <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
-                                onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
-                        ))}
-                    </div>
+            <ArchivedSection entitySingular="promotion" count={archivedPromos.length} fill={false} bordered={false}>
+                <div className="grid grid-cols-4 gap-4">
+                    {archivedPromos.map(p => (
+                        <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
+                            onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
+                    ))}
                 </div>
             </ArchivedSection>
 

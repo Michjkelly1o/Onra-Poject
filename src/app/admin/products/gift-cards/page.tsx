@@ -759,6 +759,7 @@ export default function GiftCardsPage() {
             {/* ── Archived section (policy §3) — its own table + pagination;
                    selection shared with the active list. */}
             <ArchivedSection
+                bordered={false}
                 entitySingular="gift card"
                 count={archivedRows.length}
                 pagination={

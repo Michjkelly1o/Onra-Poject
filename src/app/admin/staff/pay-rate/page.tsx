@@ -650,6 +650,7 @@ export default function PayRatePage() {
             {/* ── Archived section (policy §6) — its own table + pagination;
                    selection shared with the active list. */}
             <ArchivedSection
+                bordered={false}
                 entitySingular="pay rate"
                 count={archivedRows.length}
                 pagination={

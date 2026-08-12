@@ -35,6 +35,7 @@ export function ArchivedSection({
     pagination,
     defaultExpanded = true,
     fill = true,
+    bordered = true,
 }: {
     /** Singular entity noun for the label — "customer" → "Archived customer". */
     entitySingular: string;
@@ -55,6 +56,14 @@ export function ArchivedSection({
      * renders naturally below the active grid.
      */
     fill?: boolean;
+    /**
+     * true (default) — wrap the archived content in a bordered white card
+     * (matches modules whose ACTIVE list sits in a bordered view card).
+     * false — no border/rounded/bg, so the archived content sits flush like the
+     * borderless active lists (promotions / announcements / gift cards / services
+     * / pay rates / agreements render their active table flush on the chrome).
+     */
+    bordered?: boolean;
 }) {
     const [collapsed, setCollapsed] = useState(!defaultExpanded);
     if (count === 0) return null;
@@ -83,13 +92,14 @@ export function ArchivedSection({
 
             {!collapsed && (
                 <div className={cn(
-                    "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden",
+                    "flex flex-col overflow-hidden",
+                    bordered && "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px]",
                     fill && "flex-1 min-h-0",
                 )}>
                     <div className={cn(fill && "flex-auto min-h-0 overflow-y-auto scrollbar-hide")}>
                         {children}
                     </div>
-                    {pagination && <div className="shrink-0 px-6">{pagination}</div>}
+                    {pagination && <div className={cn("shrink-0", bordered && "px-6")}>{pagination}</div>}
                 </div>
             )}
         </div>

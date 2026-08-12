@@ -866,6 +866,7 @@ function ServicesPageInner() {
             {/* ── Archived section (policy §3) — its own table + pagination;
                    selection shared with the active list. */}
             <ArchivedSection
+                bordered={false}
                 entitySingular={typeScope === "private" ? "private session" : typeScope === "recovery" ? "recovery session" : "service"}
                 count={archivedRows.length}
                 pagination={

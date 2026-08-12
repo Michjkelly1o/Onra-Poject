@@ -498,14 +498,12 @@ export default function AnnouncementsListPage() {
 
             {/* ── Archived section — card grid, no pagination, hugging layout
                    (policy §3). Renders only when archived announcements exist. */}
-            <ArchivedSection entitySingular="announcement" count={archivedAnnouncements.length} fill={false}>
-                <div className="p-4">
-                    <div className="grid grid-cols-4 gap-4">
-                        {archivedAnnouncements.map(m => (
-                            <AnnouncementCardView key={m.id} item={m} totalBranches={totalBranches}
-                                onOpen={() => router.push(`/announcements/${m.id}?returnTo=${encodeURIComponent(LIST_PATH)}`)} />
-                        ))}
-                    </div>
+            <ArchivedSection entitySingular="announcement" count={archivedAnnouncements.length} fill={false} bordered={false}>
+                <div className="grid grid-cols-4 gap-4">
+                    {archivedAnnouncements.map(m => (
+                        <AnnouncementCardView key={m.id} item={m} totalBranches={totalBranches}
+                            onOpen={() => router.push(`/announcements/${m.id}?returnTo=${encodeURIComponent(LIST_PATH)}`)} />
+                    ))}
                 </div>
             </ArchivedSection>
 

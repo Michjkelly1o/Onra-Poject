@@ -863,6 +863,7 @@ export default function AgreementsPage() {
                        (no delete / no deactivate — legal records). Its own table
                        + pagination; selection shared with the active list. */}
                 <ArchivedSection
+                    bordered={false}
                     entitySingular="agreement"
                     count={archivedRows.length}
                     pagination={
