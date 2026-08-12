@@ -39,6 +39,8 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { RowActions } from "@/components/patterns/RowActions";
@@ -382,7 +384,8 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
                                         selected={pendingRole.statuses.includes(s)}
                                         onClick={() => toggleRoleStatus(s)} />
                                 ))
-                                : (["active", "pending", "inactive", "archived"] as StaffStatus[]).map(s => (
+                                /* Archived is the Archived section, not a filter value (policy §7). */
+                                : (["active", "pending", "inactive"] as StaffStatus[]).map(s => (
                                     <FilterPill key={s} label={STAFF_STATUS_LABEL[s]}
                                         selected={pendingStaff.statuses.includes(s)}
                                         onClick={() => toggleStaffStatus(s)} />
@@ -810,6 +813,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const [roleFilter,  setRoleFilter]  = useState<RoleFilter>(staffUi.roleFilter);
     const [staffFilter, setStaffFilter] = useState<StaffFilter>(staffUi.staffFilter);
     const [page, setPage] = useState(staffUi.page);
+    const [archStaffPage, setArchStaffPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
     // Sync the sub-tab + shift view with the sidebar deep-link (?subtab / ?view)
@@ -890,11 +894,16 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         return staff.filter(s => {
             if (branchId && s.branchId !== null && s.branchId !== branchId) return false;
             if (staffFilter.roleIds.length > 0 && !staffFilter.roleIds.includes(s.roleId)) return false;
-            if (staffFilter.statuses.length > 0 && !staffFilter.statuses.includes(s.status)) return false;
+            // Status pill filters only the active table; archived staff are exempt
+            // — they always render in the Archived section below (policy §7).
+            if (s.status !== "archived" && staffFilter.statuses.length > 0 && !staffFilter.statuses.includes(s.status)) return false;
             if (q && !s.fullName.toLowerCase().includes(q) && !s.email.toLowerCase().includes(q)) return false;
             return true;
         });
     }, [staff, branchId, search, staffFilter]);
+    // Archived staff leave the active table → the shared Archived section (policy
+    // §7). Staff keep archive; Deactivate (temporary leave) is unchanged.
+    const { active: activeStaff, archived: archivedStaff } = useArchiveView(filteredStaff);
 
     // ─── Sort ────────────────────────────────────────────────────────────
     const ROLE_STATUS_ORDER: Record<RoleStatus, number> = { active: 0, inactive: 1, archived: 2 };
@@ -908,7 +917,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         staffs:  (a, b) => (staffByRole.get(a.id) ?? 0) - (staffByRole.get(b.id) ?? 0),
         status:  (a, b) => ROLE_STATUS_ORDER[a.status] - ROLE_STATUS_ORDER[b.status],
     });
-    const { sorted: sortedStaff, sortKey: staffSortKey, sortDir: staffSortDir, toggle: toggleStaffSort } = useSort<Staff>(filteredStaff, {
+    const STAFF_COMPARATORS: Record<string, (a: Staff, b: Staff) => number> = {
         name:   (a, b) => a.fullName.localeCompare(b.fullName),
         role:   (a, b) => {
             const an = rolesById.get(a.roleId)?.name ?? "";
@@ -917,7 +926,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         },
         branch: (a, b) => branchSortName(a.branchId).localeCompare(branchSortName(b.branchId)),
         status: (a, b) => STAFF_STATUS_ORDER[a.status] - STAFF_STATUS_ORDER[b.status],
-    });
+    };
+    const { sorted: sortedStaff, sortKey: staffSortKey, sortDir: staffSortDir, toggle: toggleStaffSort } = useSort<Staff>(activeStaff, STAFF_COMPARATORS);
+    const { sorted: archSortedStaff, sortKey: archStaffSortKey, sortDir: archStaffSortDir, toggle: toggleArchStaffSort } = useSort<Staff>(archivedStaff, STAFF_COMPARATORS);
 
     // ─── Pagination ───────────────────────────────────────────────────────
     const rolesPages = Math.max(1, Math.ceil(sortedRoles.length / pageSize));
@@ -927,6 +938,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         : Math.min(Math.max(1, page), staffPages);
     const rolePageRows  = sortedRoles.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
     const staffPageRows = sortedStaff.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
+
+    // Archived staff paginate independently of the shared roles/staff paginator.
+    const archStaffPages     = Math.max(1, Math.ceil(archSortedStaff.length / pageSize));
+    const clampedArchStaffPg = Math.min(Math.max(1, archStaffPage), archStaffPages);
+    const pagedArchivedStaff = archSortedStaff.slice((clampedArchStaffPg - 1) * pageSize, clampedArchStaffPg * pageSize);
 
     // ─── Bulk-selection derived values ──────────────────────────────────
     const selectedRoleRows  = useMemo(() => roles.filter(r => selectedRoleIds.has(r.id)),  [roles, selectedRoleIds]);
@@ -1169,14 +1185,115 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             return next;
         });
     }
-    function toggleAllStaffOnPage(checked: boolean) {
-        const ids = staffPageRows.map(s => s.id);
+    function toggleAllStaffRows(rows: Staff[], checked: boolean) {
+        const ids = rows.map(s => s.id);
         setSelectedStaffIds(prev => {
             const next = new Set(prev);
             if (checked) ids.forEach(id => next.add(id));
             else         ids.forEach(id => next.delete(id));
             return next;
         });
+    }
+
+    // One staff table row — rendered by BOTH the active table and the Archived
+    // section (policy §7), so they stay identical from one source.
+    function renderStaffRow(s: Staff) {
+        const role = rolesById.get(s.roleId);
+        // "Has history" = store refuses hard-delete (canDeleteStaff checks
+        // payroll / schedule / rating references before allowing Delete).
+        const hasHistory = !canDeleteStaff(s.id);
+        const isSelected = selectedStaffIds.has(s.id);
+        const isOwnerRow = role?.type === "owner";
+        const cuName = `${currentUser.first_name ?? ""} ${currentUser.last_name ?? ""}`.trim();
+        const disp = isOwnerRow
+            ? {
+                  fullName: cuName || s.fullName,
+                  email: currentUser.email || s.email,
+                  imageUrl: currentUser.avatar_url ?? s.imageUrl,
+                  initials:
+                      `${(currentUser.first_name?.[0] ?? "").toUpperCase()}${(currentUser.last_name?.[0] ?? "").toUpperCase()}` ||
+                      s.initials,
+                  color: s.color,
+              }
+            : { fullName: s.fullName, email: s.email, imageUrl: s.imageUrl, initials: s.initials, color: s.color };
+        return (
+            <tr key={s.id}
+                onClick={() => router.push(`/staff/members/${s.id}?returnTo=${encodeURIComponent(returnTo)}`)}
+                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
+                <td className={TD} onClick={e => e.stopPropagation()}>
+                    <CheckboxCell
+                        checked={isSelected}
+                        onChange={() => toggleStaffSelection(s.id)}
+                        ariaLabel={`Select staff ${s.fullName}`}
+                    />
+                </td>
+                <td className={TD}>
+                    <div className="flex items-center gap-3">
+                        <Avatar a={{ imageUrl: disp.imageUrl, initials: disp.initials, color: disp.color, name: disp.fullName }} />
+                        <div className="flex flex-col">
+                            <span className="text-[14px] font-medium text-[#101828]">{disp.fullName}</span>
+                            <span className="text-[13px] text-[#667085]">{disp.email}</span>
+                        </div>
+                    </div>
+                </td>
+                <td className={TD}>
+                    {role && (
+                        <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", ROLE_TYPE_BADGE[role.type])}>
+                            {role.name}
+                        </span>
+                    )}
+                </td>
+                <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
+                <td className={TD}>
+                    {(() => {
+                        const seenId = new Set<string>();
+                        const ids: string[] = [];
+                        for (const a of shiftAssignments) {
+                            if (a.staff_id === s.id && !seenId.has(a.shift_id)) { seenId.add(a.shift_id); ids.push(a.shift_id); }
+                        }
+                        if (s.shiftId && !seenId.has(s.shiftId)) { seenId.add(s.shiftId); ids.push(s.shiftId); }
+                        const seenName = new Set<string>();
+                        const names: string[] = [];
+                        for (const id of ids) {
+                            const sh = shifts.find(x => x.id === id);
+                            if (sh && sh.status === "active" && !seenName.has(sh.name)) { seenName.add(sh.name); names.push(sh.name); }
+                        }
+                        return names.length > 0
+                            ? <span className="text-[14px] leading-5 text-[#475467]">{names.join(", ")}</span>
+                            : <span className="text-[14px] leading-5 text-[#98a2b3]">—</span>;
+                    })()}
+                </td>
+                <td className={TD}>
+                    <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
+                        {STAFF_STATUS_LABEL[s.status]}
+                    </span>
+                </td>
+                <td className={TD} onClick={e => e.stopPropagation()}>
+                    <StaffRowActions staff={s} hasHistory={hasHistory}
+                        isOwner={role?.type === "owner"}
+                        onAction={k => handleStaffAction(s, k)} />
+                </td>
+            </tr>
+        );
+    }
+
+    // Staff table thead (checkbox + sortable headers) — shared by both tables.
+    function staffThead(allChecked: boolean, someChecked: boolean, onToggleAll: (c: boolean) => void, sk: string | null, sd: typeof staffSortDir, onSort: (k: string) => void) {
+        return (
+            <thead>
+                <tr>
+                    <th className={cn(TH, "w-[44px]")}>
+                        <CheckboxCell checked={allChecked} indeterminate={someChecked} onChange={onToggleAll} ariaLabel="Select all staff on this page" />
+                    </th>
+                    <th className={TH}><SortableHeader sortKey="name" currentSort={sk} dir={sd} onSort={onSort}>Name</SortableHeader></th>
+                    <th className={cn(TH, "w-[160px]")}><SortableHeader sortKey="role" currentSort={sk} dir={sd} onSort={onSort}>Role</SortableHeader></th>
+                    <th className={cn(TH, "w-[180px]")}><SortableHeader sortKey="branch" currentSort={sk} dir={sd} onSort={onSort}>Branch location</SortableHeader></th>
+                    <th className={cn(TH, "w-[210px]")}>Assigned shift</th>
+                    <th className={cn(TH, "w-[120px]")}><SortableHeader sortKey="status" currentSort={sk} dir={sd} onSort={onSort}>Status</SortableHeader></th>
+                    <th className={cn(TH, "w-[52px]")} />
+                </tr>
+            </thead>
+        );
     }
 
     // ─── Header checkbox states (current page only) ─────────────────────
@@ -1186,6 +1303,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const staffPageIds = staffPageRows.map(s => s.id);
     const staffAllChecked  = staffPageIds.length > 0 && staffPageIds.every(id => selectedStaffIds.has(id));
     const staffSomeChecked = !staffAllChecked && staffPageIds.some(id => selectedStaffIds.has(id));
+    const archStaffAllChecked  = pagedArchivedStaff.length > 0 && pagedArchivedStaff.every(s => selectedStaffIds.has(s.id));
+    const archStaffSomeChecked = !archStaffAllChecked && pagedArchivedStaff.some(s => selectedStaffIds.has(s.id));
 
     // ─── Counts for the toolbar total ─────────────────────────────────────
     // The Shift (list/week) + Time off sub-tabs report their own count/noun via
@@ -1195,7 +1314,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         && subCount !== null;
     const totalCount = usesSubCount
         ? subCount!.count
-        : tab === "roles" ? filteredRoles.length : filteredStaff.length;
+        : tab === "roles" ? filteredRoles.length : activeStaff.length;
     const totalNoun = usesSubCount
         ? subCount!.noun
         : tab === "roles"
@@ -1581,117 +1700,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     <div className={cn(forceTab !== "roles" && "px-6")}>
                         <div>
                             <table className="w-full border-collapse">
-                                <thead>
-                                    <tr>
-                                        <th className={cn(TH, "w-[44px]")}>
-                                            <CheckboxCell
-                                                checked={staffAllChecked}
-                                                indeterminate={staffSomeChecked}
-                                                onChange={toggleAllStaffOnPage}
-                                                ariaLabel="Select all staff on this page"
-                                            />
-                                        </th>
-                                        <th className={TH}>
-                                            <SortableHeader sortKey="name" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Name</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[160px]")}>
-                                            <SortableHeader sortKey="role" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Role</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[180px]")}>
-                                            <SortableHeader sortKey="branch" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Branch location</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[210px]")}>Assigned shift</th>
-                                        <th className={cn(TH, "w-[120px]")}>
-                                            <SortableHeader sortKey="status" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Status</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[52px]")} />
-                                    </tr>
-                                </thead>
+                                {staffThead(staffAllChecked, staffSomeChecked, (c) => toggleAllStaffRows(staffPageRows, c), staffSortKey, staffSortDir, toggleStaffSort)}
                                 <tbody>
-                                    {staffPageRows.map(s => {
-                                        const role = rolesById.get(s.roleId);
-                                        // "Has history" = store refuses hard-delete. The
-                                        // single source of truth for the XOR lives in
-                                        // `canDeleteStaff`, which checks payroll / schedule /
-                                        // rating references before allowing the Delete branch.
-                                        const hasHistory = !canDeleteStaff(s.id);
-                                        const isSelected = selectedStaffIds.has(s.id);
-                                        // Owner identity is mirrored from the account profile.
-                                        const isOwnerRow = role?.type === "owner";
-                                        const cuName = `${currentUser.first_name ?? ""} ${currentUser.last_name ?? ""}`.trim();
-                                        const disp = isOwnerRow
-                                            ? {
-                                                  fullName: cuName || s.fullName,
-                                                  email: currentUser.email || s.email,
-                                                  imageUrl: currentUser.avatar_url ?? s.imageUrl,
-                                                  initials:
-                                                      `${(currentUser.first_name?.[0] ?? "").toUpperCase()}${(currentUser.last_name?.[0] ?? "").toUpperCase()}` ||
-                                                      s.initials,
-                                                  color: s.color,
-                                              }
-                                            : { fullName: s.fullName, email: s.email, imageUrl: s.imageUrl, initials: s.initials, color: s.color };
-                                        return (
-                                            <tr key={s.id}
-                                                onClick={() => router.push(`/staff/members/${s.id}?returnTo=${encodeURIComponent(returnTo)}`)}
-                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[#f9fafb]" : "hover:bg-[#f9fafb]")}>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <CheckboxCell
-                                                        checked={isSelected}
-                                                        onChange={() => toggleStaffSelection(s.id)}
-                                                        ariaLabel={`Select staff ${s.fullName}`}
-                                                    />
-                                                </td>
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-3">
-                                                        <Avatar a={{ imageUrl: disp.imageUrl, initials: disp.initials, color: disp.color, name: disp.fullName }} />
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[14px] font-medium text-[#101828]">{disp.fullName}</span>
-                                                            <span className="text-[13px] text-[#667085]">{disp.email}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className={TD}>
-                                                    {role && (
-                                                        <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", ROLE_TYPE_BADGE[role.type])}>
-                                                            {role.name}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
-                                                <td className={TD}>
-                                                    {/* Assigned shift — the distinct active shift names this staff
-                                                        member holds, comma-joined text (client 2026-08-11). */}
-                                                    {(() => {
-                                                        const seenId = new Set<string>();
-                                                        const ids: string[] = [];
-                                                        for (const a of shiftAssignments) {
-                                                            if (a.staff_id === s.id && !seenId.has(a.shift_id)) { seenId.add(a.shift_id); ids.push(a.shift_id); }
-                                                        }
-                                                        if (s.shiftId && !seenId.has(s.shiftId)) { seenId.add(s.shiftId); ids.push(s.shiftId); }
-                                                        const seenName = new Set<string>();
-                                                        const names: string[] = [];
-                                                        for (const id of ids) {
-                                                            const sh = shifts.find(x => x.id === id);
-                                                            if (sh && sh.status === "active" && !seenName.has(sh.name)) { seenName.add(sh.name); names.push(sh.name); }
-                                                        }
-                                                        return names.length > 0
-                                                            ? <span className="text-[14px] leading-5 text-[#475467]">{names.join(", ")}</span>
-                                                            : <span className="text-[14px] leading-5 text-[#98a2b3]">—</span>;
-                                                    })()}
-                                                </td>
-                                                <td className={TD}>
-                                                    <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
-                                                        {STAFF_STATUS_LABEL[s.status]}
-                                                    </span>
-                                                </td>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <StaffRowActions staff={s} hasHistory={hasHistory}
-                                                        isOwner={role?.type === "owner"}
-                                                        onAction={k => handleStaffAction(s, k)} />
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {staffPageRows.map(renderStaffRow)}
                                 </tbody>
                             </table>
                         </div>
@@ -1711,7 +1722,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     <div className={cn(forceTab !== "roles" && "px-6 shrink-0")}>
                         <Pagination
                             page={clampedPage}
-                            total={tab === "roles" ? filteredRoles.length : filteredStaff.length}
+                            total={tab === "roles" ? filteredRoles.length : activeStaff.length}
                             pageSize={pageSize}
                             onPage={setPage}
                             onPageSize={n => { setPageSize(n); setPage(1); }}
@@ -1733,6 +1744,32 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     />
                 )}
             </div>
+
+            {/* ── Archived staff section (policy §7) — staff keep archive; archived
+                   staff move here (Staff sub-tab only). Its own table + pagination;
+                   selection shared with the active list. */}
+            {tab === "staff" && (forceTab !== "staff" || staffSubTab === "staff") && (
+                <ArchivedSection
+                    entitySingular="staff"
+                    count={archivedStaff.length}
+                    fill={false}
+                    pagination={
+                        <Pagination
+                            page={clampedArchStaffPg} total={archSortedStaff.length} pageSize={pageSize}
+                            onPage={setArchStaffPage} onPageSize={n => { setPageSize(n); setArchStaffPage(1); }}
+                        />
+                    }
+                >
+                    <div className="px-6">
+                        <table className="w-full border-collapse">
+                            {staffThead(archStaffAllChecked, archStaffSomeChecked, (c) => toggleAllStaffRows(pagedArchivedStaff, c), archStaffSortKey, archStaffSortDir, toggleArchStaffSort)}
+                            <tbody>
+                                {pagedArchivedStaff.map(renderStaffRow)}
+                            </tbody>
+                        </table>
+                    </div>
+                </ArchivedSection>
+            )}
 
             <FilterPanel
                 open={filterOpen}
