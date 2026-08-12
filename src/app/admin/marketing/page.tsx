@@ -129,6 +129,24 @@ function branchLabel(branchIds: string[] | undefined, totalBranches: number): st
 
 // ─── Marketing card (Figma 6160:197552) ──────────────────────────────────────
 
+// ─── Delivery status (Campaign send lifecycle) ───────────────────────────────
+
+type DeliveryTab = "all" | "sent" | "scheduled" | "draft";
+const DELIVERY_TABS: { id: DeliveryTab; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "sent", label: "Sent" },
+    { id: "scheduled", label: "Scheduled" },
+    { id: "draft", label: "Drafts" },
+];
+
+/** Bottom-of-card delivery line — legacy rows (no delivery_status) read "Sent". */
+function deliveryLine(m: MarketingItem): { label: string; value: string } {
+    const ds = m.delivery_status ?? "sent";
+    if (ds === "draft") return { label: "Status", value: "Draft" };
+    if (ds === "scheduled") return { label: "Scheduled for", value: formatValidUntil(m.scheduled_at) };
+    return { label: "Sent", value: formatValidUntil(m.sent_at ?? m.publish_date) };
+}
+
 function MarketingAttribute({ icon, label }: { icon: React.ReactNode; label: string }) {
     return (
         <div className="flex items-center gap-1 min-w-0">
@@ -265,11 +283,16 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
                 {/* Dashed divider */}
                 <div className="border-t border-dashed border-[var(--colors-border-secondary)]" />
 
-                {/* Valid until */}
-                <div className="flex items-center gap-1 text-[14px]">
-                    <span className="text-[var(--colors-text-quaternary)]">Valid until</span>
-                    <span className="font-medium text-[var(--colors-text-primary)]">{formatValidUntil(item.expiry_date)}</span>
-                </div>
+                {/* Delivery — Sent on / Scheduled for / Draft */}
+                {(() => {
+                    const d = deliveryLine(item);
+                    return (
+                        <div className="flex items-center gap-1 text-[14px]">
+                            <span className="text-[var(--colors-text-quaternary)]">{d.label}</span>
+                            <span className="font-medium text-[var(--colors-text-primary)]">{d.value}</span>
+                        </div>
+                    );
+                })()}
             </div>
         </div>
         {confirmAction && (() => {
@@ -425,6 +448,7 @@ export default function MarketingListPage() {
     const [locationId, setLocationId] = usePersistedListState<string>("marketing:locationId", "");
     const [filter, setFilter] = usePersistedListState<MarketingFilter>("marketing:filter", EMPTY_FILTER);
     const [filterOpen, setFilterOpen] = useState(false);
+    const [deliveryTab, setDeliveryTab] = usePersistedListState<DeliveryTab>("marketing:deliveryTab", "all");
 
     const hasActiveFilter = filter.statuses.length > 0 || !!filter.startDate || !!filter.endDate;
 
@@ -460,12 +484,13 @@ export default function MarketingListPage() {
                 // Empty branch_ids = available everywhere.
                 if (ids.length > 0 && !ids.includes(locationId)) return false;
             }
+            if (deliveryTab !== "all" && (m.delivery_status ?? "sent") !== deliveryTab) return false;
             if (filter.statuses.length > 0 && !filter.statuses.includes(m.status)) return false;
             if (filter.startDate && (!m.expiry_date || m.expiry_date.slice(0, 10) < filter.startDate)) return false;
             if (filter.endDate && (!m.expiry_date || m.expiry_date.slice(0, 10) > filter.endDate)) return false;
             return true;
         });
-    }, [campaigns, search, locationId, filter]);
+    }, [campaigns, search, locationId, filter, deliveryTab]);
 
     return (
         <div className="flex flex-col gap-6">
@@ -494,6 +519,28 @@ export default function MarketingListPage() {
                     onClick={() => router.push(`/marketing/new?returnTo=${encodeURIComponent("/admin/marketing")}`)}>
                     Add
                 </Button>
+            </div>
+
+            {/* ── Delivery-status tabs ── */}
+            <div className="flex items-center gap-1 border-b border-[var(--colors-border-secondary)]">
+                {DELIVERY_TABS.map(t => {
+                    const count = t.id === "all"
+                        ? campaigns.length
+                        : campaigns.filter(c => (c.delivery_status ?? "sent") === t.id).length;
+                    const active = deliveryTab === t.id;
+                    return (
+                        <button key={t.id} type="button" onClick={() => setDeliveryTab(t.id)}
+                            className={cn(
+                                "px-4 py-2.5 text-[14px] font-medium border-b-2 -mb-px transition-colors",
+                                active
+                                    ? "border-[var(--colors-secondary-600)] text-[var(--colors-text-primary)]"
+                                    : "border-transparent text-[var(--colors-text-quaternary)] hover:text-[var(--colors-text-secondary)]",
+                            )}>
+                            {t.label}
+                            <span className="ml-1.5 text-[13px] text-[var(--colors-text-quaternary)]">{count}</span>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* ── Card grid ── */}

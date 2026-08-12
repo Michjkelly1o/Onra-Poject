@@ -64,6 +64,16 @@ export interface MarketingFormData {
     singleBranchId: string | null;
     productIds: string[];
     customerTargeting: "all" | "new_users" | "";
+    // ── Campaign send model (marketing rework 2026-08) ──────────────────────
+    /** Who the campaign is sent to. */
+    audienceKind: "everyone" | "membership" | "segment" | "specific" | "";
+    audienceMembershipIds: string[];
+    audienceSegments: ("lead" | "member" | "inactive")[];
+    audienceCustomerIds: string[];
+    /** Consent topic the send is gated by. */
+    topic: "new_class_launch" | "special_offers" | "promo_code_offers" | "";
+    /** Send now, or schedule for later (uses startDate/startTime as the send time). */
+    scheduleMode: "now" | "later" | "";
 }
 
 /** Current local time as "HH:MM" — used to bar past start-time slots today. */

@@ -79,6 +79,13 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
         singleBranchId: initial?.singleBranchId ?? null,
         productIds: [],
         customerTargeting: "",
+        // Campaign-only fields — unused by announcements (broadcast).
+        audienceKind: "",
+        audienceMembershipIds: [],
+        audienceSegments: [],
+        audienceCustomerIds: [],
+        topic: "",
+        scheduleMode: "",
     });
     const patch = (p: Partial<MarketingFormData>) => setForm(prev => ({ ...prev, ...p }));
 

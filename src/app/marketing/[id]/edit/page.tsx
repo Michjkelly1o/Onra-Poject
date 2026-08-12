@@ -33,10 +33,11 @@ function EditMarketingRouteInner() {
         );
     }
 
-    const start = splitIso(item.publish_date);
-    const end = splitIso(item.expiry_date);
     const branchIds = item.branch_ids ?? [];
     const multiLocation = item.multi_location ?? (branchIds.length !== 1);
+    // A scheduled campaign restores its send time; sent/draft start blank.
+    const scheduled = item.delivery_status === "scheduled";
+    const sched = splitIso(scheduled ? item.scheduled_at : undefined);
 
     return (
         <MarketingFormPage
@@ -46,22 +47,21 @@ function EditMarketingRouteInner() {
             initial={{
                 bannerPreview: item.cover_image_url ?? "",
                 name: item.title,
-                type: item.type,
                 description: item.short_description,
                 action: item.action_type,
-                ticketPrice: item.ticket_price != null ? String(item.ticket_price) : "",
                 ctaClassId: item.cta_class_id ?? "",
                 externalUrl: (item.external_url ?? "").replace(/^https?:\/\//i, ""),
-                startDate: start.date,
-                startTime: start.time,
-                endDate: end.date,
-                endTime: end.time,
-                countdown: item.countdown ?? false,
+                startDate: sched.date,
+                startTime: sched.time,
                 multiLocation,
                 branchIds,
                 singleBranchId: multiLocation ? null : (branchIds[0] ?? null),
-                productIds: item.target_package_ids ?? [],
-                customerTargeting: item.customer_targeting ?? "",
+                audienceKind: item.audience_kind ?? "everyone",
+                audienceMembershipIds: item.audience_membership_ids ?? [],
+                audienceSegments: item.audience_segments ?? [],
+                audienceCustomerIds: item.audience_customer_ids ?? [],
+                topic: item.topic ?? "",
+                scheduleMode: scheduled ? "later" : "now",
             }}
         />
     );
