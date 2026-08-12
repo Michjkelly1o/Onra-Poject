@@ -13391,7 +13391,7 @@ export const useAppStore = create<AppState>()(persist(
         //   also adds the customer guest-booking fields (guest phone, guest
         //   booking limit). Fresh bump so every persisted demo re-seeds with the
         //   combined data + branding.
-        version: 112,
+        version: 113,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days

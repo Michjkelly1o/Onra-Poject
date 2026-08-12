@@ -209,7 +209,9 @@ export function PivotableReportShell({
     // Measure is always the report's primary measure. The measure dropdown was
     // removed (client 2026-08 — switching it changed nothing on screen).
     const meaIdx = 0;
-    const [dateFilter, setDateFilter] = useState<DateFilter | undefined>(undefined);
+    // Default to a wide window so the historical demo data is visible on open —
+    // "Last 30 days" showed almost nothing now that the seed runs 2025-08→2026-07.
+    const [dateFilter, setDateFilter] = useState<DateFilter | undefined>({ type: "month", label: "Last 12 months" });
     const [visibleBranchIds, setVisibleBranchIds] = useState<Set<string>>(
         () => new Set(branches.map(b => b.id)),
     );
