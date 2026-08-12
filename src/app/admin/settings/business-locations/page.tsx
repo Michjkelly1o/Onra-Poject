@@ -62,16 +62,18 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { timezoneLabel, resolveBranchTimezone } from "@/lib/data/locales";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 type StatusFilter = "active" | "inactive" | "archived";
+// Archived is a place (the Archived section), not a filter value (policy §3).
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
     { value: "active",   label: "Active"   },
     { value: "inactive", label: "Inactive" },
-    { value: "archived", label: "Archive"  },
 ];
 
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"] as const;
@@ -148,13 +150,20 @@ export default function BusinessLocationsPage() {
     const visibleBranches = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
         return branches.filter(b => {
-            if (statusFilter && b.status !== statusFilter) return false;
+            // Status filter applies only to the active list; archived branches are
+            // exempt — they always render in the Archived section below (policy §3).
+            // `statusFilter !== "archived"` guards a stale persisted value now that
+            // Archived is no longer a selectable option.
+            if (statusFilter && statusFilter !== "archived" && b.status !== "archived" && b.status !== statusFilter) return false;
             if (q && !`${b.name} ${b.address ?? ""}`.toLowerCase().includes(q)) {
                 return false;
             }
             return true;
         });
     }, [branches, searchQuery, statusFilter]);
+    // Archived branches leave the active list → the shared Archived section
+    // (policy §3). Rooms stay nested under their branch either way.
+    const { active: activeBranches, archived: archivedBranches } = useArchiveView(visibleBranches);
 
     // ── Action handlers (toast placeholders) ─────────────────────────────
 
@@ -277,7 +286,59 @@ export default function BusinessLocationsPage() {
         setFilterOpen(false);
     }
 
-    const isEmpty = visibleBranches.length === 0;
+    const isEmpty = activeBranches.length === 0;
+
+    // One branch row + its nested (expanded) room rows — rendered for BOTH the
+    // active list and the Archived section (policy §3).
+    function renderBranchRow(branch: Branch) {
+        const branchStatus = branch.status;
+        const branchRooms = rooms.filter(r => r.branch_id === branch.id);
+        const branchHours = businessHours.filter(h => h.branch_id === branch.id);
+        const expanded = expandedBranches.has(branch.id);
+        return (
+            <div key={branch.id}>
+                <BranchRow
+                    branch={branch}
+                    status={branchStatus}
+                    hours={branchHours}
+                    roomCount={branchRooms.length}
+                    canDelete={canDeleteBranch(branch.id)}
+                    expanded={expanded}
+                    onToggleExpand={() => toggleExpand(branch.id)}
+                    onToggleEnable={() => requestToggle(branch.id, branchStatus === "active" ? "active" : "inactive", branch.name, "branch")}
+                    actionMenuOpen={actionMenuId === `branch:${branch.id}`}
+                    onOpenActionMenu={() => setActionMenuId(`branch:${branch.id}`)}
+                    onCloseActionMenu={() => setActionMenuId(null)}
+                    onView={() => viewBranch(branch)}
+                    onEdit={() => editBranch(branch)}
+                    onAddRoom={() => addRoom(branch.id)}
+                    onArchive={() => archiveBranch(branch)}
+                    onRecover={() => recoverBranch(branch)}
+                    onDelete={() => deleteBranchRow(branch)}
+                />
+                {expanded && branchRooms.map(room => {
+                    const roomStatus = room.status;
+                    return (
+                        <RoomRow
+                            key={room.id}
+                            room={room}
+                            status={roomStatus}
+                            canDelete={canDeleteRoom(room.id)}
+                            onToggleEnable={() => requestToggle(room.id, roomStatus === "active" ? "active" : "inactive", room.name, "room")}
+                            actionMenuOpen={actionMenuId === `room:${room.id}`}
+                            onOpenActionMenu={() => setActionMenuId(`room:${room.id}`)}
+                            onCloseActionMenu={() => setActionMenuId(null)}
+                            onView={() => viewRoom(room)}
+                            onEdit={() => editRoom(room)}
+                            onArchive={() => archiveRoom(room)}
+                            onRecover={() => recoverRoom(room)}
+                            onDelete={() => deleteRoomRow(room)}
+                        />
+                    );
+                })}
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-5 w-full">
@@ -341,58 +402,19 @@ export default function BusinessLocationsPage() {
                             />
                         </div>
                     ) : (
-                        visibleBranches.map(branch => {
-                            const branchStatus = branch.status;
-                            const branchRooms = rooms.filter(r => r.branch_id === branch.id);
-                            const branchHours = businessHours.filter(h => h.branch_id === branch.id);
-                            const expanded = expandedBranches.has(branch.id);
-                            return (
-                                <div key={branch.id}>
-                                    <BranchRow
-                                        branch={branch}
-                                        status={branchStatus}
-                                        hours={branchHours}
-                                        roomCount={branchRooms.length}
-                                        canDelete={canDeleteBranch(branch.id)}
-                                        expanded={expanded}
-                                        onToggleExpand={() => toggleExpand(branch.id)}
-                                        onToggleEnable={() => requestToggle(branch.id, branchStatus === "active" ? "active" : "inactive", branch.name, "branch")}
-                                        actionMenuOpen={actionMenuId === `branch:${branch.id}`}
-                                        onOpenActionMenu={() => setActionMenuId(`branch:${branch.id}`)}
-                                        onCloseActionMenu={() => setActionMenuId(null)}
-                                        onView={() => viewBranch(branch)}
-                                        onEdit={() => editBranch(branch)}
-                                        onAddRoom={() => addRoom(branch.id)}
-                                        onArchive={() => archiveBranch(branch)}
-                                        onRecover={() => recoverBranch(branch)}
-                                        onDelete={() => deleteBranchRow(branch)}
-                                    />
-                                    {expanded && branchRooms.map(room => {
-                                        const roomStatus = room.status;
-                                        return (
-                                            <RoomRow
-                                                key={room.id}
-                                                room={room}
-                                                status={roomStatus}
-                                                canDelete={canDeleteRoom(room.id)}
-                                                onToggleEnable={() => requestToggle(room.id, roomStatus === "active" ? "active" : "inactive", room.name, "room")}
-                                                actionMenuOpen={actionMenuId === `room:${room.id}`}
-                                                onOpenActionMenu={() => setActionMenuId(`room:${room.id}`)}
-                                                onCloseActionMenu={() => setActionMenuId(null)}
-                                                onView={() => viewRoom(room)}
-                                                onEdit={() => editRoom(room)}
-                                                onArchive={() => archiveRoom(room)}
-                                                onRecover={() => recoverRoom(room)}
-                                                onDelete={() => deleteRoomRow(room)}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })
+                        activeBranches.map(renderBranchRow)
                     )}
                 </div>
             </div>
+
+            {/* ── Archived section (policy §3) — archived branches (with their
+                   nested rooms) live here; search/status filter apply to both. */}
+            <ArchivedSection entitySingular="branch" count={archivedBranches.length} fill={false}>
+                <div className="p-6 flex flex-col w-full">
+                    <TableHeader />
+                    {archivedBranches.map(renderBranchRow)}
+                </div>
+            </ArchivedSection>
 
             {/* ── Room detail modal ───────────────────────────────────── */}
             {roomDetailId && (() => {
