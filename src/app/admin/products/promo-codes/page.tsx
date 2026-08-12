@@ -31,6 +31,8 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type PromoCode } from "@/lib/store";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
@@ -335,7 +337,8 @@ interface PromoFilter {
 }
 const EMPTY_FILTER: PromoFilter = { statuses: [], startDate: "", endDate: "" };
 
-const FILTER_STATUSES: StoredStatus[] = ["active", "inactive", "archived"];
+// Archived is a place (the Archived section), not a filter value (policy §3).
+const FILTER_STATUSES: StoredStatus[] = ["active", "inactive"];
 
 function FilterPanel({ open, applied, onClose, onApply }: {
     open: boolean;
@@ -470,18 +473,23 @@ export default function PromoListPage() {
                 // Empty branch_ids = available everywhere.
                 if (ids.length > 0 && !ids.includes(locationId)) return false;
             }
-            if (filter.statuses.length > 0 && !filter.statuses.includes(p.status)) return false;
+            // Status pill filters only the active grid; archived promos are
+            // exempt — they always render in the Archived section below (policy §3).
+            if (p.status !== "archived" && filter.statuses.length > 0 && !filter.statuses.includes(p.status)) return false;
             if (filter.startDate && (!p.valid_until || p.valid_until.slice(0, 10) < filter.startDate)) return false;
             if (filter.endDate && (!p.valid_until || p.valid_until.slice(0, 10) > filter.endDate)) return false;
             return true;
         });
     }, [promoCodes, search, locationId, filter]);
+    // Archived promos leave the grid → the shared Archived section (card grid,
+    // no pagination, hugging layout for this bare-flow page).
+    const { active: activePromos, archived: archivedPromos } = useArchiveView(visible);
 
     return (
         <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={visible.length} entitySingular="promotion" />
+                <ToolbarTotal count={activePromos.length} entitySingular="promotion" />
 
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-5 h-5" />}
@@ -507,8 +515,8 @@ export default function PromoListPage() {
                 </Button>
             </div>
 
-            {/* ── Card grid ── */}
-            {visible.length === 0 ? (
+            {/* ── Active card grid ── */}
+            {activePromos.length === 0 ? (
                 <div className="relative flex-1" style={{ minHeight: 400 }}>
                     <EmptyState
                         title={promoCodes.length === 0 ? "No promotions yet" : "No promotions found"}
@@ -519,12 +527,25 @@ export default function PromoListPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-4 gap-4">
-                    {visible.map(p => (
+                    {activePromos.map(p => (
                         <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
                             onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
                     ))}
                 </div>
             )}
+
+            {/* ── Archived section — card grid, no pagination, hugging layout
+                   (policy §3). Renders only when archived promos exist. */}
+            <ArchivedSection entitySingular="promotion" count={archivedPromos.length} fill={false}>
+                <div className="p-4">
+                    <div className="grid grid-cols-4 gap-4">
+                        {archivedPromos.map(p => (
+                            <PromoCardView key={p.id} promo={p} totalBranches={totalBranches}
+                                onOpen={() => router.push(`/products/promo-codes/${p.id}?returnTo=${encodeURIComponent("/admin/products/promo-codes")}`)} />
+                        ))}
+                    </div>
+                </div>
+            </ArchivedSection>
 
             <FilterPanel
                 open={filterOpen}

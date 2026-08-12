@@ -34,6 +34,7 @@ export function ArchivedSection({
     children,
     pagination,
     defaultExpanded = true,
+    fill = true,
 }: {
     /** Singular entity noun for the label — "customer" → "Archived customer". */
     entitySingular: string;
@@ -45,15 +46,24 @@ export function ArchivedSection({
     pagination?: ReactNode;
     /** Default open on first render. */
     defaultExpanded?: boolean;
+    /**
+     * true (default) — fill-viewport modules: the expanded card takes `h-full`
+     * and scrolls internally (used inside a flex scroll region, e.g. customers /
+     * products / retail / class-types).
+     * false — bare-flow card-grid pages (e.g. promo codes) with no height
+     * context: the card HUGS its content (no internal scroll / no h-full) so it
+     * renders naturally below the active grid.
+     */
+    fill?: boolean;
 }) {
     const [collapsed, setCollapsed] = useState(!defaultExpanded);
     if (count === 0) return null;
 
     return (
-        // Expanded → h-full so the archived card fills a viewport exactly like
-        // the active one (table scrolls internally, pagination pinned) instead of
-        // growing long. Collapsed → hug (just the header row).
-        <div className={cn("shrink-0 flex flex-col gap-3", !collapsed && "h-full")}>
+        // fill + expanded → h-full so the archived card fills a viewport exactly
+        // like the active one (scrolls internally, pagination pinned). Collapsed
+        // or !fill → hug (header row, then a natural-height card).
+        <div className={cn("shrink-0 flex flex-col gap-3", fill && !collapsed && "h-full")}>
             <button
                 type="button"
                 onClick={() => setCollapsed(v => !v)}
@@ -72,8 +82,11 @@ export function ArchivedSection({
             </button>
 
             {!collapsed && (
-                <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
-                    <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide">
+                <div className={cn(
+                    "bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden",
+                    fill && "flex-1 min-h-0",
+                )}>
+                    <div className={cn(fill && "flex-auto min-h-0 overflow-y-auto scrollbar-hide")}>
                         {children}
                     </div>
                     {pagination && <div className="shrink-0 px-6">{pagination}</div>}
