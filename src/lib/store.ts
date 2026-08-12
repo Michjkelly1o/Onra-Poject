@@ -4623,6 +4623,9 @@ export interface AppState {
     addService:    (service: Omit<Service, "id">) => string;
     updateService: (id: string, updates: Partial<Omit<Service, "id">>) => void;
     setServiceStatus: (id: string, status: ServiceStatus) => void;
+    /** History guard — a service is hard-deletable ONLY when no appointment
+     *  (past or future) references it. Archive instead once it has bookings. */
+    canDeleteService: (id: string) => boolean;
     deleteService: (id: string) => void;
 
     /** ── Appointments (Phase 4) ────────────────────────────────────────────
@@ -6834,7 +6837,15 @@ export const useAppStore = create<AppState>()(persist(
                    : /* Archived */           "Archived";
         get().recordAudit(`${verb} service`, "service", id, target.name);
     },
+    canDeleteService: (id) => {
+        // Blocked once any appointment (past or future) references the service —
+        // those rows carry denormalized service-name/type snapshots that would
+        // dangle. Archive/deactivate instead. Mirrors the list's `hasHistory`.
+        return !get().appointments.some(a => a.serviceId === id);
+    },
     deleteService: (id) => {
+        // Store-side backstop mirroring `canDeleteService` (UI gates too).
+        if (!get().canDeleteService(id)) return;
         const target = get().services.find(s => s.id === id);
         set((state) => ({ services: state.services.filter(s => s.id !== id) }));
         if (target) get().recordAudit("Deleted service", "service", id, target.name);
@@ -10992,19 +11003,19 @@ export const useAppStore = create<AppState>()(persist(
             };
         }),
     deleteTaxRates: (ids) => {
-        // Phase 1 had no usage gate. Phase 3 wires the real gate at the page
-        // layer via `hasUsage()`, and this action mirrors the gift-card /
-        // pay-rate pattern: it accepts all ids the caller passed, but the
-        // sync below also clears any `tax_rules.taxRateId` that referenced
-        // a deleted rate so the rule drops to the placeholder state.
-        const idSet = new Set(ids);
+        // Store-side history guard (defense in depth — the UI also gates on
+        // `hasUsage`): a rate referenced by any tax rule is in use and blocked
+        // from hard-delete (archive instead), so a stray call can't orphan a
+        // rule. Non-in-use deletes still succeed.
+        const inUse = (id: string) => get().taxRules.some(r => r.taxRateId === id);
         const deleted: string[] = [];
         const blocked: string[] = [];
         for (const id of ids) {
             const existing = get().taxRates.find(t => t.id === id);
-            if (existing) deleted.push(id);
+            if (existing && !inUse(id)) deleted.push(id);
             else blocked.push(id);
         }
+        const idSet = new Set(deleted);
         if (deleted.length > 0) {
             set(state => ({
                 taxRates: state.taxRates.filter(t => !idSet.has(t.id)),
