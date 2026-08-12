@@ -201,32 +201,27 @@ function Sidebar({ role, totalStaffs, onAction }: {
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
                     <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Role actions</p>
                     <div className="flex flex-col gap-4">
-                        {/* Active non-locked → full action set */}
+                        {/* Roles are delete-only (policy §5, D-4) — no Archive / Recover.
+                            Inactive is managed via Deactivate / Reactivate. */}
                         {isActive && !isLocked && (
                             <>
                                 <ActionBtn icon={<UserPlus01 className="w-5 h-5" />} label="Add staff" onClick={() => onAction("add_staff")} />
                                 <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit details" onClick={() => onAction("edit_details")} />
                                 <ActionBtn icon={<UserSquare className="w-5 h-5" />} label="Edit permissions" onClick={() => onAction("edit_permissions")} />
-                                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive role" onClick={() => onAction("archive")} />
                                 {canDelete
                                     ? <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete role" danger onClick={() => onAction("delete")} />
                                     : <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label="Deactivate role" danger onClick={() => onAction("deactivate")} />
                                 }
                             </>
                         )}
-                        {/* Inactive non-locked → reactivate + archive (+ delete if 0 staff) */}
+                        {/* Inactive non-locked → reactivate (+ delete if 0 staff) */}
                         {isInactive && !isLocked && (
                             <>
                                 <ActionBtn icon={<Check className="w-5 h-5" />} label="Reactivate role" onClick={() => onAction("reactivate")} />
-                                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive role" onClick={() => onAction("archive")} />
                                 {canDelete && (
                                     <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete role" danger onClick={() => onAction("delete")} />
                                 )}
                             </>
-                        )}
-                        {/* Archived → recover only */}
-                        {isArchive && (
-                            <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover role" onClick={() => onAction("recover")} />
                         )}
                         {/* Locked Owner → note */}
                         {isLocked && (

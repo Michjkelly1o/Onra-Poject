@@ -376,7 +376,8 @@ function FilterPanel({ open, onClose, tab, appliedRole, appliedStaff, onApplyRol
                         <p className="text-[14px] font-medium text-[#344054]">Status</p>
                         <div className="flex flex-wrap gap-2">
                             {isRoleTab
-                                ? (["active", "inactive", "archived"] as RoleStatus[]).map(s => (
+                                /* Roles are delete-only — no Archived filter (policy §5, D-4). */
+                                ? (["active", "inactive"] as RoleStatus[]).map(s => (
                                     <FilterPill key={s} label={ROLE_STATUS_LABEL[s]}
                                         selected={pendingRole.statuses.includes(s)}
                                         onClick={() => toggleRoleStatus(s)} />
@@ -467,8 +468,7 @@ function RoleRowActions({ role, staffCount, onAction }: {
             { label: "Edit permissions", icon: UserSquare, onClick: () => onAction("edit_permissions"), hidden: !(isActive && !role.locked) },
             { label: "Deactivate", icon: SlashCircle01, onClick: () => onAction("deactivate"), danger: true, hidden: !(isActive && !role.locked && staffCount > 0) },
             { label: "Reactivate", icon: RefreshCcw01, onClick: () => onAction("reactivate"), hidden: role.status !== "inactive" },
-            { label: "Archive", icon: Archive, onClick: () => onAction("archive"), hidden: !(!isArchived && !role.locked) },
-            { label: "Recover", icon: RefreshCcw01, onClick: () => onAction("recover"), hidden: !(isArchived && !role.locked) },
+            // Roles are delete-only (policy §5, D-4) — no Archive / Recover.
             { label: "Delete", icon: Trash01, onClick: () => onAction("delete"), danger: true, hidden: !canDelete },
         ]} />
     );
@@ -1803,25 +1803,12 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             <XClose className="w-5 h-5 text-[#667085]" />
                         </button>
                         <div className="flex items-center gap-3">
-                            {bulkRoleArchivable && (
-                                <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<Archive className="w-5 h-5 text-[#667085]" />}
-                                    onClick={() => setPendingBulk({ entity: "role", kind: "archive" })}>
-                                    Archive
-                                </Button>
-                            )}
+                            {/* Roles are delete-only (policy §5, D-4) — no Archive / Recover. */}
                             {bulkRoleReactivatable && (
                                 <Button variant="secondary-gray" size="sm"
                                     leftIcon={<Check className="w-5 h-5 text-[#164e52]" />}
                                     onClick={() => setPendingBulk({ entity: "role", kind: "reactivate" })}>
                                     Reactivate
-                                </Button>
-                            )}
-                            {bulkRoleRecoverable && (
-                                <Button variant="secondary-gray" size="sm"
-                                    leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />}
-                                    onClick={() => setPendingBulk({ entity: "role", kind: "recover" })}>
-                                    Recover
                                 </Button>
                             )}
                             {bulkRoleArchivable && (
