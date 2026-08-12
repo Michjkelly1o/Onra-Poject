@@ -79,10 +79,9 @@ const NAV_ITEMS: NavItemDef[] = [
         children: [
             { label: "Campaigns",     href: "/admin/marketing"               },
             { label: "Promotions",    href: "/admin/products/promo-codes"    },
-            // Announcements + Events — each its own single menu, split out of
-            // Campaigns. Campaigns are now New class promotions only.
+            // Announcements — its own single menu, split out of Campaigns.
+            // (Events removed — bookable events live in Schedule, not Marketing.)
             { label: "Announcements", href: "/admin/marketing/announcements" },
-            { label: "Events",        href: "/admin/marketing/events"        },
             { label: "Referrals",     href: "/admin/settings/referral"       },
         ],
     },

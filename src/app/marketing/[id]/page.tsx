@@ -69,7 +69,6 @@ function formatDateTime(iso?: string): string {
 const TYPE_LABEL: Record<MarketingItem["type"], string> = {
     new_class: "New class",
     announcement: "Announcement",
-    event: "Event",
 };
 
 const ACTION_LABEL: Record<MarketingItem["action_type"], string> = {
@@ -246,7 +245,7 @@ function LeftSidebar({ vm, onAction, branches }: {
                         <SidebarField label="Campaign action" value={ACTION_LABEL[vm.actionType]} />
                         {vm.actionType === "book_event" && vm.ctaClassLabel && (
                             <SidebarField
-                                label={vm.type === "event" ? "Booked event" : "Booked class"}
+                                label="Booked class"
                                 value={vm.ctaClassLabel} />
                         )}
                         <SidebarField label="Start date & time" value={formatDateTime(vm.publishDate)} />

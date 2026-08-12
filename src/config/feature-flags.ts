@@ -24,7 +24,7 @@
 // ── Current state ──
 //   ENABLED (admin): Dashboard, Class template, Class schedule, POS,
 //   Membership & Package, Gift Cards, Promo codes, Campaigns,
-//   Announcements, Events, Customer, Services (incl. appointments),
+//   Announcements, Customer, Services (incl. appointments),
 //   Insights, Pay rate, Payroll, Staff & Permissions (full), Agreements,
 //   Booking rules, Tax, Branding, Reports, Notifications, Customer
 //   notifications, Account settings, Business & Locations, Integrations
@@ -75,15 +75,13 @@ export const DISABLED_ROUTE_PREFIXES: string[] = [
     //"/admin/marketing",              // list view
     //"/marketing",                    // create / detail / edit
 
-    // ── Announcements ── (ENABLED — shipped as its own single menu, split out
-    // of Campaigns/Marketing. List at /admin/marketing/announcements; create/
+    // ── Announcements ── (ENABLED — its own single menu, split out of
+    // Campaigns/Marketing. List at /admin/marketing/announcements; create/
     // detail/edit at the top-level /announcements namespace.)
     //"/admin/marketing/announcements",
 
-    // ── Events ── (ENABLED — shipped as its own single menu, split out of
-    // Campaigns/Marketing. List at /admin/marketing/events; create/detail/edit
-    // at the top-level /events namespace. Campaigns are now New class only.)
-    //"/admin/marketing/events",
+    // ── Events ── (REMOVED — bookable events live in Schedule, not Marketing.
+    // The module + its routes were deleted; nothing to flag.)
 
     // ── Gift Cards module ── (ENABLED — pushed)
     //"/admin/products/gift-cards",    // list view

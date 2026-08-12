@@ -13,9 +13,9 @@ import { useAppStore } from "@/lib/store";
 import type { MarketingItem } from "@/data/mock";
 
 const TYPE_LABEL: Record<MarketingItem["type"], string> = {
+    // (event removed — bookable events live in Schedule)
     new_class: "New class",
     announcement: "Announcement",
-    event: "Event",
 };
 
 const ACTION_LABEL: Record<MarketingItem["action_type"], string> = {

@@ -1213,7 +1213,7 @@ export interface MarketingItem {
     /** Member-facing headline / display name ("New: Aerial Yoga"). */
     title: string;
     /** Visual template — also gates which CTA options the form offers. */
-    type: "new_class" | "announcement" | "event";
+    type: "new_class" | "announcement";
     /** 1-3 sentence card copy. */
     short_description: string;
     /** Card hero image. Missing → gradient banner fallback. */

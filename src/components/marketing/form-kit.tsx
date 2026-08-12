@@ -26,14 +26,13 @@ import type { Branch } from "@/lib/store";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
-export type MarketingType = "new_class" | "announcement" | "event";
+export type MarketingType = "new_class" | "announcement";
 export type MarketingAction = "book_event" | "buy_ticket" | "external_link" | "no_action";
 
 /** Which CTA options each marketing type offers (Figma 7046:* variants). */
 export const ACTIONS_BY_TYPE: Record<MarketingType, MarketingAction[]> = {
     new_class: ["book_event"],
     announcement: ["external_link", "no_action"],
-    event: ["book_event", "buy_ticket", "external_link"],
 };
 
 export const ACTION_META: Record<MarketingAction, { label: string; Icon: React.ElementType }> = {
@@ -570,7 +569,7 @@ function PreviewAttr({ icon, label, muted }: {
 }
 
 /** Right-hand live preview card. `noun` tailors the placeholder copy per module
- *  ("campaign" / "announcement" / "event"); everything else is identical. */
+ *  ("campaign" / "announcement"); everything else is identical. */
 export function MarketingPreviewPanel({ form, branches, noun = "campaign" }: {
     form: MarketingFormData; branches: Branch[]; noun?: string;
 }) {

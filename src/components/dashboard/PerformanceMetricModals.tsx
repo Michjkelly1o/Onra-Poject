@@ -263,7 +263,7 @@ export function PerfRevenueModal({ open, onClose, branchIds, period }: PerfModal
                             <th className={TH}><SortableHeader sortKey="customer" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Customer</SortableHeader></th>
                             <th className={TH}><SortableHeader sortKey="product" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Products</SortableHeader></th>
                             <th className={TH}>Basis</th>
-                            <th className={TH}><SortableHeader sortKey="accrued" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Accrued</SortableHeader></th>
+                            <th className={TH}><SortableHeader sortKey="accrued" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Earned</SortableHeader></th>
                         </tr>
                     </thead>
                     <tbody>

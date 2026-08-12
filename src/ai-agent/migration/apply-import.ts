@@ -1513,11 +1513,9 @@ export function applyImportToStore(
         for (const rec of records) {
             if (!rec.title) continue;
             const t = (rec.type ?? "").toLowerCase();
-            const type: "new_class" | "announcement" | "event" = /new.?class|launch/.test(t)
+            const type: "new_class" | "announcement" = /new.?class|launch/.test(t)
                 ? "new_class"
-                : /event/.test(t)
-                  ? "event"
-                  : "announcement";
+                : "announcement";
             const url = (rec.external_url ?? "").trim();
             deps.addMarketingItem({
                 title: rec.title,

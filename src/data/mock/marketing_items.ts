@@ -10,16 +10,13 @@
 // (`mem_*` / `pkg_*`) and class templates (`tpl_*`) — so the detail page
 // resolves real names.
 //
-// The rows cover every status badge + every action type across the three
-// marketing modules (Campaigns = new_class / event, Announcements, Events):
-//   • mkt_aerial_yoga        — Active   · New class    · Book an event
-//   • mkt_appreciation_night — Inactive · Event        · External link
-//   • mkt_studio_closure     — Archived · Announcement · No action
-//   • mkt_yoga_pack          — Active   · Event        · Buy a ticket
-//   • mkt_summer_hiit        — Active   · New class    · Book an event
-//   • mkt_new_year           — Active but past expiry_date → "Expired" · Event · Buy a ticket
-//   • mkt_holiday_hours      — Active   · Announcement · External link
-//   • mkt_app_maintenance    — Inactive · Announcement · No action
+// Marketing has two concepts: Campaigns (type new_class today) + Announcements.
+// Events were removed (bookable events live in Schedule, not Marketing).
+//   • mkt_aerial_yoga     — Active   · Campaign     · Book a class
+//   • mkt_summer_hiit     — Active   · Campaign     · Book a class
+//   • mkt_studio_closure  — Archived · Announcement · No action
+//   • mkt_holiday_hours   — Active   · Announcement · External link
+//   • mkt_app_maintenance — Inactive · Announcement · No action
 
 import type { MarketingItem } from "./_types";
 
@@ -49,29 +46,6 @@ export const marketing_items: MarketingItem[] = [
         created_at: "2026-05-15T09:00:00Z",
     },
     {
-        // ── Inactive — Event, External link ──
-        id: "mkt_appreciation_night",
-        title: "Member Appreciation Night",
-        type: "event",
-        short_description: "Join us for an exclusive evening with complimentary refreshments and mini sessions.",
-        cover_image_url: "/images/marketing/member-appreciation-night.webp",
-        action_type: "external_link",
-        external_url: "https://onrastudio.com/events/appreciation-night",
-        publish_date: "2026-06-01T00:00:00Z",
-        expiry_date: "2026-06-20T00:00:00Z",
-        countdown: false,
-        branch_ids: ALL_BRANCHES,
-        multi_location: true,
-        target_package_ids: [],
-        target_class_ids: [],
-        customer_targeting: "all",
-        status: "inactive",
-        view_count: 0,
-        click_count: 0,
-        conversion_count: 0,
-        created_at: "2026-05-10T10:00:00Z",
-    },
-    {
         // ── Archived — Announcement, No action ──
         id: "mkt_studio_closure",
         title: "Studio Closure Notice",
@@ -94,29 +68,6 @@ export const marketing_items: MarketingItem[] = [
         created_at: "2026-04-08T11:00:00Z",
     },
     {
-        // ── Active — Event, Buy a ticket ──
-        id: "mkt_yoga_pack",
-        title: "Exclusive Yoga Pack — This Week Only",
-        type: "event",
-        short_description: "A members-only deal on our 5-class yoga pack — this week only, while spots last.",
-        cover_image_url: "/images/marketing/member-appreciation-night.webp",
-        action_type: "buy_ticket",
-        ticket_price: 320,
-        publish_date: "2026-05-21T00:00:00Z",
-        expiry_date: "2026-05-28T00:00:00Z",
-        countdown: true,
-        branch_ids: ["branch_forma_south"],
-        multi_location: false,
-        target_package_ids: ["pkg_5_class", "pkg_10_class"],
-        target_class_ids: [],
-        customer_targeting: "new_users",
-        status: "active",
-        view_count: 21,
-        click_count: 9,
-        conversion_count: 4,
-        created_at: "2026-05-20T08:00:00Z",
-    },
-    {
         // ── Active — New class, Book an event ──
         id: "mkt_summer_hiit",
         title: "Summer HIIT Challenge",
@@ -136,29 +87,6 @@ export const marketing_items: MarketingItem[] = [
         click_count: 0,
         conversion_count: 0,
         created_at: "2026-05-19T09:00:00Z",
-    },
-    {
-        // ── Expired — Event, Buy a ticket (valid window in the past) ──
-        id: "mkt_new_year",
-        title: "New Year New You — January Promo",
-        type: "event",
-        short_description: "Kick off the year with a fresh start — special January pricing on annual memberships.",
-        cover_image_url: "/images/marketing/studio-closure-notice.webp",
-        action_type: "buy_ticket",
-        ticket_price: 4800,
-        publish_date: "2026-01-01T00:00:00Z",
-        expiry_date: "2026-01-31T00:00:00Z",
-        countdown: true,
-        branch_ids: ALL_BRANCHES,
-        multi_location: true,
-        target_package_ids: ["mem_annual_unlimited"],
-        target_class_ids: [],
-        customer_targeting: "all",
-        status: "active",
-        view_count: 312,
-        click_count: 145,
-        conversion_count: 67,
-        created_at: "2025-12-20T10:00:00Z",
     },
     {
         // ── Active — Announcement, External link ──
