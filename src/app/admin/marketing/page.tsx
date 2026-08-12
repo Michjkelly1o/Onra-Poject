@@ -440,10 +440,10 @@ export default function MarketingListPage() {
         })), [branches]);
     const totalBranches = branches.length;
 
-    // Base pool — a Campaign is a New class promotion. Announcements and Events
-    // are their own modules now, so the Campaigns list shows new_class only.
+    // Base pool — Campaigns (a message sent to a chosen segment). Announcements
+    // are their own module; Events moved to Schedule.
     const campaigns = useMemo(
-        () => marketingItems.filter(m => m.type === "new_class"),
+        () => marketingItems.filter(m => m.type === "campaign"),
         [marketingItems],
     );
 

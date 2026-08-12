@@ -26,12 +26,12 @@ import type { Branch } from "@/lib/store";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
-export type MarketingType = "new_class" | "announcement";
+export type MarketingType = "campaign" | "announcement";
 export type MarketingAction = "book_event" | "buy_ticket" | "external_link" | "no_action";
 
 /** Which CTA options each marketing type offers (Figma 7046:* variants). */
 export const ACTIONS_BY_TYPE: Record<MarketingType, MarketingAction[]> = {
-    new_class: ["book_event"],
+    campaign: ["book_event", "external_link", "no_action"],
     announcement: ["external_link", "no_action"],
 };
 

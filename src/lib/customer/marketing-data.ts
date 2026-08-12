@@ -14,7 +14,7 @@ import type { MarketingItem } from "@/data/mock";
 
 const TYPE_LABEL: Record<MarketingItem["type"], string> = {
     // (event removed — bookable events live in Schedule)
-    new_class: "New class",
+    campaign: "Campaign",
     announcement: "Announcement",
 };
 

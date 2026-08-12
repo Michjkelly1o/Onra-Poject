@@ -10,10 +10,10 @@
 // (`mem_*` / `pkg_*`) and class templates (`tpl_*`) — so the detail page
 // resolves real names.
 //
-// Marketing has two concepts: Campaigns (type new_class today) + Announcements.
-// Events were removed (bookable events live in Schedule, not Marketing).
-//   • mkt_aerial_yoga     — Active   · Campaign     · Book a class
-//   • mkt_summer_hiit     — Active   · Campaign     · Book a class
+// Marketing has two concepts: Campaigns (a message sent to a chosen segment) +
+// Announcements (info broadcast). Events moved to Schedule.
+//   • mkt_aerial_yoga     — Sent · Campaign     · Book a class · Everyone
+//   • mkt_summer_hiit     — Sent · Campaign     · Book a class · Everyone
 //   • mkt_studio_closure  — Archived · Announcement · No action
 //   • mkt_holiday_hours   — Active   · Announcement · External link
 //   • mkt_app_maintenance — Inactive · Announcement · No action
@@ -24,26 +24,31 @@ const ALL_BRANCHES = ["branch_forma_south", "branch_forma_east", "branch_forma_w
 
 export const marketing_items: MarketingItem[] = [
     {
-        // ── Active — New class, Book an event ──
+        // ── Sent — Campaign, Book a class, Everyone ──
         id: "mkt_aerial_yoga",
         title: "New: Aerial Yoga",
-        type: "new_class",
+        type: "campaign",
         short_description: "Introducing aerial yoga — limited spots per session. Try your first class free.",
         cover_image_url: "/images/marketing/new-aerial-yoga.webp",
         action_type: "book_event",
+        cta_class_id: undefined,
         publish_date: "2026-05-18T08:00:00Z",
         expiry_date: "2026-06-04T20:00:00Z",
         countdown: true,
         branch_ids: ALL_BRANCHES,
         multi_location: true,
         target_package_ids: [],
-        target_class_ids: ["tpl_reformer_pilates", "tpl_barre", "tpl_hot_yoga"],
-        customer_targeting: "all",
+        target_class_ids: [],
         status: "active",
         view_count: 87,
         click_count: 34,
         conversion_count: 18,
         created_at: "2026-05-15T09:00:00Z",
+        // Campaign send model — sent to everyone, New class launch topic.
+        audience_kind: "everyone",
+        delivery_status: "sent",
+        sent_at: "2026-05-18T08:00:00Z",
+        topic: "new_class_launch",
     },
     {
         // ── Archived — Announcement, No action ──
@@ -68,25 +73,30 @@ export const marketing_items: MarketingItem[] = [
         created_at: "2026-04-08T11:00:00Z",
     },
     {
-        // ── Active — New class, Book an event ──
+        // ── Sent — Campaign, Book a class, Everyone ──
         id: "mkt_summer_hiit",
         title: "Summer HIIT Challenge",
-        type: "new_class",
+        type: "campaign",
         short_description: "Our 6-week summer HIIT challenge is here — book your spot before the cohort fills up.",
         cover_image_url: "/images/marketing/new-aerial-yoga.webp",
         action_type: "book_event",
+        cta_class_id: undefined,
         publish_date: "2026-05-19T00:00:00Z",
         countdown: false,
         branch_ids: ["branch_forma_south", "branch_forma_east"],
         multi_location: true,
         target_package_ids: [],
-        target_class_ids: ["tpl_barre", "tpl_hot_yoga"],
-        customer_targeting: "all",
+        target_class_ids: [],
         status: "active",
         view_count: 0,
         click_count: 0,
         conversion_count: 0,
         created_at: "2026-05-19T09:00:00Z",
+        // Campaign send model — sent to everyone, New class launch topic.
+        audience_kind: "everyone",
+        delivery_status: "sent",
+        sent_at: "2026-05-19T00:00:00Z",
+        topic: "new_class_launch",
     },
     {
         // ── Active — Announcement, No action (information only) ──

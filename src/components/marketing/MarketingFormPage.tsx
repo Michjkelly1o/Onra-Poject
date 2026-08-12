@@ -74,7 +74,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         bannerPreview: initial?.bannerPreview ?? "",
         name: initial?.name ?? "",
         // Type is fixed — a campaign is always a New class promotion.
-        type: "new_class",
+        type: "campaign",
         description: initial?.description ?? "",
         // New class's only CTA is Book an event — default it selected so the
         // class picker shows straight away (it's the only option).
@@ -162,7 +162,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         // counts are excluded so editing never resets a live item.
         const fields: Omit<MarketingItem, "id" | "status" | "view_count" | "click_count" | "conversion_count"> = {
             title: form.name.trim(),
-            type: "new_class",
+            type: "campaign",
             short_description: form.description.trim(),
             cover_image_url: form.bannerPreview || undefined,
             action_type: "book_event",

@@ -1212,8 +1212,10 @@ export interface MarketingItem {
     id: string;
     /** Member-facing headline / display name ("New: Aerial Yoga"). */
     title: string;
-    /** Visual template — also gates which CTA options the form offers. */
-    type: "new_class" | "announcement";
+    /** Marketing concept: a Campaign (a message sent to a chosen segment) or an
+     *  Announcement (information broadcast to a branch — no action, no revenue).
+     *  Bookable Events live in Schedule, not Marketing. */
+    type: "campaign" | "announcement";
     /** 1-3 sentence card copy. */
     short_description: string;
     /** Card hero image. Missing → gradient banner fallback. */
@@ -1256,6 +1258,28 @@ export interface MarketingItem {
     conversion_count: number;
     /** ISO 8601 — when the item was created. */
     created_at: string;
+
+    // ── Campaign send model (marketing rework 2026-08) ──────────────────────
+    // Campaigns are "something to send: a message to a chosen segment". These
+    // fields are Campaign-only; Announcements broadcast to a branch and leave
+    // them unset.
+    /** Audience the campaign is sent to. */
+    audience_kind?: "everyone" | "membership" | "segment" | "specific";
+    /** audience_kind = "membership" → membership product ids targeted. */
+    audience_membership_ids?: string[];
+    /** audience_kind = "segment" → wallet segments (Lead / Member / Inactive). */
+    audience_segments?: ("lead" | "member" | "inactive")[];
+    /** audience_kind = "specific" → hand-picked customer ids. */
+    audience_customer_ids?: string[];
+    /** Send lifecycle. Draft → Scheduled → Sent. */
+    delivery_status?: "draft" | "scheduled" | "sent";
+    /** ISO — when a scheduled campaign is set to send. */
+    scheduled_at?: string;
+    /** ISO — when the campaign was actually sent. */
+    sent_at?: string;
+    /** Consent topic the send is gated by (channel + topic must both be opted
+     *  in for a customer to receive it). */
+    topic?: "new_class_launch" | "special_offers" | "promo_code_offers";
 }
 
 // ─── Payments ───────────────────────────────────────────────────────────────
