@@ -22,6 +22,8 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Toast } from "@/components/ui/Toast";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import {
     useClassCategoriesController,
     ClassCategoriesToolbar,
@@ -75,7 +77,9 @@ type LocationType = "Group" | "Private";
 // ─── Removed mock data (now in Zustand store) ─────────────────────────────────
 
 
-const ALL_STATUSES: TemplateStatus[] = ["active", "archived", "inactive"];
+// Status pills — archived is NOT a filter value (it's the Archived section
+// below the grid now, policy §3). Only active/inactive filter the grid.
+const FILTER_STATUSES: TemplateStatus[] = ["active", "inactive"];
 // Filter categories come from the LIVE `classCategories` store slice
 // (Phase 4 wiring) so adding / editing / deleting categories in the
 // Booking Rules module reflects here on the same render.
@@ -311,7 +315,7 @@ function FilterPanel({ open, onClose, applied, onApply }: FilterPanelProps) {
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Status</p>
                         <div className="flex flex-wrap gap-2">
-                            {ALL_STATUSES.map(s => (
+                            {FILTER_STATUSES.map(s => (
                                 <Pill
                                     key={s}
                                     label={s}
@@ -408,10 +412,15 @@ export default function ClassTypesPage() {
 
     const visible = classTemplates.filter(t => {
         const matchesSearch   = t.name.toLowerCase().includes(search.toLowerCase()) || t.category.toLowerCase().includes(search.toLowerCase());
-        const matchesStatus   = applied.statuses.length === 0 || applied.statuses.includes(t.status);
+        // Status pill filters only the active grid; archived cards are exempt —
+        // they always render in the Archived section below (policy §3).
+        const matchesStatus   = t.status === "archived" || applied.statuses.length === 0 || applied.statuses.includes(t.status);
         const matchesCategory = applied.categories.length === 0 || applied.categories.includes(t.category);
         return matchesSearch && matchesStatus && matchesCategory;
     });
+    // Archived templates leave the grid → the shared Archived section (card grid,
+    // no pagination). Both buckets are already search/category/status scoped.
+    const { active: activeTemplates, archived: archivedTemplates } = useArchiveView(visible);
 
     return (
         <div className="flex-1 min-h-0 flex flex-col gap-6">
@@ -420,7 +429,7 @@ export default function ClassTypesPage() {
                 <ClassCategoriesToolbar ctrl={catCtrl} onAddTemplate={goNewTemplate} />
             ) : (
                 <div className="flex items-center gap-3">
-                    <ToolbarTotal count={visible.length} entitySingular="class template" />
+                    <ToolbarTotal count={activeTemplates.length} entitySingular="class template" />
 
                     {/* Search — icon-only, expands on click (client 2026-07-21). */}
                     <ToolbarSearch value={search} onChange={setSearch} placeholder="Search template..." />
@@ -438,8 +447,12 @@ export default function ClassTypesPage() {
                 </div>
             )}
 
+            {/* Scroll region — active view card fills the viewport; the Archived
+                section (templates tab only) sits below and is reached by scrolling
+                THIS region (matches Memberships & Packages / Customers). */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
             {/* View card with tabs (client 2026-08-07 — matches Memberships & Packages) */}
-            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="shrink-0 h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 flex items-center px-6 py-4">
                     <SegmentedTabs
                         tabs={[
@@ -467,8 +480,8 @@ export default function ClassTypesPage() {
                                 </div>
                             </div>
                         </div>
-                    ) : visible.length === 0 ? (
-                        /* Filtered/search empty */
+                    ) : activeTemplates.length === 0 ? (
+                        /* Filtered/search empty (active grid) */
                         <div className="h-full flex flex-col items-center justify-center py-20 gap-3">
                             <p className="text-[16px] font-medium text-[var(--colors-text-secondary)]">No templates found</p>
                             <p className="text-[14px] text-[var(--colors-text-quaternary)]">
@@ -484,7 +497,7 @@ export default function ClassTypesPage() {
                     ) : (
                         <div className="px-6 py-4">
                             <div className="grid grid-cols-4 gap-4">
-                                {visible.map(t => <ClassTemplateCard key={t.id} template={t} />)}
+                                {activeTemplates.map(t => <ClassTemplateCard key={t.id} template={t} />)}
                             </div>
                         </div>
                     )}
@@ -497,6 +510,19 @@ export default function ClassTypesPage() {
                         <ClassCategoriesPagination ctrl={catCtrl} />
                     </div>
                 )}
+            </div>
+
+            {/* ── Archived section (templates tab only) — card grid, no pagination
+                   (policy §3). Renders only when archived templates exist. */}
+            {tab === "templates" && (
+                <ArchivedSection entitySingular="class template" count={archivedTemplates.length}>
+                    <div className="px-6 py-4">
+                        <div className="grid grid-cols-4 gap-4">
+                            {archivedTemplates.map(t => <ClassTemplateCard key={t.id} template={t} />)}
+                        </div>
+                    </div>
+                </ArchivedSection>
+            )}
             </div>
 
             {/* Filter panel */}
