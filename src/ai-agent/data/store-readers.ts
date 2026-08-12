@@ -590,7 +590,6 @@ export function readClassCategories(state: AppState): Row[] {
         id: c.id,
         name: c.name,
         color_hex: c.color_hex,
-        status: c.status,
     }));
 }
 

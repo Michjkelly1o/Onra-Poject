@@ -1196,7 +1196,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 <div className="flex flex-col gap-[6px]">
                                     <FieldLabel label="Categories" />
                                     <MultiCategoryDropdown
-                                        options={classCategories.filter(c => c.status === "active").map(c => ({ id: c.id, name: c.name }))}
+                                        options={classCategories.map(c => ({ id: c.id, name: c.name }))}
                                         selectedIds={form.categoryIds}
                                         onChange={ids => set({ categoryIds: ids })}
                                         onCreateCategory={() => setCreatingCategory(true)}
@@ -1333,7 +1333,6 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                             id: `cat_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                             name: cleanName,
                             color_hex: "#f9fafb",
-                            status: "active",
                             image_url: image_url || undefined,
                         };
                         addClassCategory(next);

@@ -358,7 +358,6 @@ export function scheduleTools(ctx: AuthContext, snapshot: AiAgentStateSnapshot) 
                 .filter((i) => inScope(ctx, i.branchId))
                 .map((i) => ({ id: i.id, name: i.name, initials: i.initials, imageUrl: i.imageUrl, rating: ratings.get(i.id)?.rating, ratingCount: ratings.get(i.id)?.count, teaches: teachesOf(i.id) })),
             categories: snapshot.classCategories
-                .filter((c) => c.status === "active")
                 .map((c) => ({ id: c.id, name: c.name })),
             payRates: caps.seePayRate
                 ? snapshot.payRates.filter((p) => p.status === "active").map((p) => ({ id: p.id, name: p.name }))

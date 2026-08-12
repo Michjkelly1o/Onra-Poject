@@ -506,7 +506,6 @@ function EditClassTemplatePageInner() {
                             id: `cat_new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                             name: cleanName,
                             color_hex: "#f9fafb",
-                            status: "active",
                             image_url: image_url || undefined,
                         };
                         addClassCategory(next);

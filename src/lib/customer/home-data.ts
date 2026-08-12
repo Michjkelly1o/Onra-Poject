@@ -326,7 +326,6 @@ export function buildHomeViewModel(
 
     // ── Categories — all active categories from the admin (Class Categories) ──
     const categories: HomeCategoryVM[] = classCategories
-        .filter((c) => c.status === "active")
         .map((c) => ({ id: c.id, name: c.name, colorHex: c.color_hex, imageUrl: c.image_url }));
 
     // ── What's on (active, this branch or all, not expired) ──

@@ -1393,7 +1393,6 @@ export function applyImportToStore(
                 id: `cat_import_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
                 name: rec.name,
                 color_hex: validHex ? color : "#f1f2ed",
-                status: "active",
             });
             created++;
         }

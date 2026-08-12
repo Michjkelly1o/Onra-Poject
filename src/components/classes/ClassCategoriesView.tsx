@@ -40,16 +40,6 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] sticky top-0 z-[5] bg-[var(--colors-bg-primary)] shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
-const STATUS_BADGE: Record<ClassCategory["status"], string> = {
-    active:   "bg-[#eff6f3] border-1 border-[#94aeaf] text-[#164e52]",
-    inactive: "bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]",
-};
-const STATUS_LABEL: Record<ClassCategory["status"], string> = {
-    active: "Active", inactive: "Inactive",
-};
-const STATUS_ORDER: Record<ClassCategory["status"], number> = {
-    active: 0, inactive: 1,
-};
 
 // ─── Controller — all state + handlers + derived rows ────────────────────────
 
@@ -123,7 +113,6 @@ export function useClassCategoriesController() {
                 id: `cat_new_${Date.now()}`,
                 name,
                 color_hex: "#f9fafb",
-                status: "active",
                 image_url: image_url || undefined,
             };
             addCategory(newCategory);
@@ -178,7 +167,6 @@ export function useClassCategoriesController() {
 
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<ClassCategory>(filteredCategories, {
         name:   (a, b) => a.name.localeCompare(b.name),
-        status: (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status],
     });
 
     const totalPages   = Math.max(1, Math.ceil(sortedRows.length / pageSize));
@@ -327,9 +315,6 @@ export function ClassCategoriesPanel({ ctrl }: { ctrl: CategoriesController }) {
                                     <th className={TH}>
                                         <SortableHeader sortKey="name"   currentSort={ctrl.sortKey} dir={ctrl.sortDir} onSort={ctrl.toggleSort}>Name</SortableHeader>
                                     </th>
-                                    <th className={cn(TH, "w-[160px]")}>
-                                        <SortableHeader sortKey="status" currentSort={ctrl.sortKey} dir={ctrl.sortDir} onSort={ctrl.toggleSort}>Status</SortableHeader>
-                                    </th>
                                     <th className={cn(TH, "w-[52px]")} />
                                 </tr>
                             </thead>
@@ -351,14 +336,6 @@ export function ClassCategoriesPanel({ ctrl }: { ctrl: CategoriesController }) {
                                                     <CategoryAvatar src={c.image_url} />
                                                     <span className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{c.name}</span>
                                                 </div>
-                                            </td>
-                                            <td className={TD}>
-                                                <span className={cn(
-                                                    "inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap",
-                                                    STATUS_BADGE[c.status],
-                                                )}>
-                                                    {STATUS_LABEL[c.status]}
-                                                </span>
                                             </td>
                                             <td className={TD}>
                                                 <RowActions

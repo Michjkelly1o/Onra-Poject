@@ -19,18 +19,15 @@ export const class_categories: ClassCategory[] = [
         id: "cat_pilates",
         name: "Pilates",
         color_hex: "#eff6f3",
-        status: "active",
     },
     {
         id: "cat_barre",
         name: "Barre",
         color_hex: "#e9fbff",
-        status: "active",
     },
     {
         id: "cat_yoga",
         name: "Yoga",
         color_hex: "#fff8e9",
-        status: "active",
     },
 ];

@@ -1320,7 +1320,9 @@ export interface ClassCategory {
     name: string;          // "Pilates"
     /** Resolved hex from tokens.json (Brand primary/secondary/tertiary or Teal). */
     color_hex: string;
-    status: "active" | "inactive";
+    // No status lifecycle — class categories are edit + delete only (client
+    // 2026-08-12): no Deactivate, no Archive. A category either exists or is
+    // deleted (delete is guarded by `canDeleteClassCategory`).
     /** Optional data-URL or remote URL for the category avatar. Populated by
      *  the Service category modal's "Upload image" flow (Booking Rules
      *  Phase 3). When empty the list row and the modal preview both fall

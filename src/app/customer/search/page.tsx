@@ -133,7 +133,7 @@ export default function SearchPage() {
     const isClasses = tab === "classes";
     const isAll = selectedBranchId === ALL_BRANCHES;
     const studioName = isAll ? "All branches" : branches.find((b) => b.id === selectedBranchId)?.name ?? "Select branch";
-    const activeCategories = categories.filter((c) => c.status === "active").map((c) => c.name);
+    const activeCategories = categories.map((c) => c.name);
     // Shared, branch-scoped instructor list — identical to the Bookings filter.
     const activeInstructors = useFilterInstructors();
 
