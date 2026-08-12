@@ -24,13 +24,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import {
     useRetailCategoriesController,
     RetailCategoriesToolbar,
     RetailCategoriesPanel,
     RetailCategoriesPagination,
 } from "@/components/retail/RetailCategoriesView";
-import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
@@ -331,9 +333,9 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
                 <div className="flex flex-col gap-2">
                     <p className="text-[14px] font-medium text-[#344054]">Status</p>
                     <div className="flex flex-wrap gap-2">
+                        {/* Archived is a place (the Archived section), not a filter value (policy §3). */}
                         <FilterPill label="Active"    selected={pending.statuses.includes("active")}    onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, "active") }))} />
                         <FilterPill label="Inactive"  selected={pending.statuses.includes("inactive")}  onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, "inactive") }))} />
-                        <FilterPill label="Archived"  selected={pending.statuses.includes("archived")}  onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, "archived") }))} />
                     </div>
                 </div>
 
@@ -378,6 +380,180 @@ type PendingConfirm =
     | { mode: "row"; row: RetailRow; kind: RowActionKind }
     | { mode: "bulk"; rows: RetailRow[]; kind: RowActionKind };
 
+// ─── Retail products table — shared by the active list + Archived section ────
+//
+// Extracted so the active list and the Archived section (policy §3) render the
+// same table (header + expandable per-branch subrows) from their own row set +
+// sort + pagination, with a shared selection. Presentation only.
+
+function RetailTable({
+    rows, sortKey, sortDir, onSort,
+    selectedIds, onToggleOne, onToggleAll,
+    expandedIds, onToggleExpanded,
+    onRowClick, onEdit, onConfigure, onRowAction,
+}: {
+    rows: RetailRow[];
+    sortKey: string | null;
+    sortDir: SortDir;
+    onSort: (key: string) => void;
+    selectedIds: Set<string>;
+    onToggleOne: (id: string) => void;
+    onToggleAll: (checked: boolean) => void;
+    expandedIds: Set<string>;
+    onToggleExpanded: (id: string) => void;
+    onRowClick: (id: string) => void;
+    onEdit: (id: string) => void;
+    onConfigure: (id: string) => void;
+    onRowAction: (row: RetailRow, kind: RowActionKind) => void;
+}) {
+    const allChecked  = rows.length > 0 && rows.every(r => selectedIds.has(r.id));
+    const someChecked = !allChecked && rows.some(r => selectedIds.has(r.id));
+    return (
+        <div className="px-6">
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th className={cn(TH, "w-[44px]")}>
+                            <CheckboxCell
+                                checked={allChecked}
+                                indeterminate={someChecked}
+                                onChange={onToggleAll}
+                                ariaLabel="Select all products"
+                            />
+                        </th>
+                        <th className={cn(TH, "w-[36px]")} aria-hidden />
+                        <th className={cn(TH, "w-[340px]")}>
+                            <SortableHeader sortKey="name" currentSort={sortKey} dir={sortDir} onSort={onSort}>Product name</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[140px]")}>
+                            <SortableHeader sortKey="sku" currentSort={sortKey} dir={sortDir} onSort={onSort}>SKU</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[160px]")}>
+                            <SortableHeader sortKey="category" currentSort={sortKey} dir={sortDir} onSort={onSort}>Retail category</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[140px]")}>
+                            <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={onSort}>Price</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[120px]")}>
+                            <SortableHeader sortKey="stock" currentSort={sortKey} dir={sortDir} onSort={onSort}>Stock</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[120px]")}>
+                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[52px]")}></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(r => {
+                        const isSelected = selectedIds.has(r.id);
+                        const stockLabel = r.stockAggregate === 0 ? "Out of stock" : `${r.stockAggregate} units`;
+                        const stockTone = r.stockAggregate === 0
+                            ? "text-[#b42318] font-medium"
+                            : r.hasLowBranch ? "text-[#dc6803] font-medium" : "";
+                        const isExpanded = expandedIds.has(r.id);
+                        return (
+                            <React.Fragment key={r.id}>
+                                <tr
+                                    onClick={() => onRowClick(r.id)}
+                                    className={cn(
+                                        "transition-colors cursor-pointer",
+                                        isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
+                                    )}
+                                >
+                                    <td className={TD} onClick={e => e.stopPropagation()}>
+                                        <CheckboxCell
+                                            checked={isSelected}
+                                            onChange={() => onToggleOne(r.id)}
+                                            ariaLabel={`Select ${r.name}`}
+                                        />
+                                    </td>
+                                    <td className={TD} onClick={e => e.stopPropagation()}>
+                                        <button
+                                            type="button"
+                                            onClick={() => onToggleExpanded(r.id)}
+                                            aria-label={isExpanded ? `Collapse ${r.name}` : `Expand ${r.name}`}
+                                            aria-expanded={isExpanded}
+                                            className="w-6 h-6 flex items-center justify-center rounded-[6px] hover:bg-[#eaecf0] transition-colors text-[#667085]"
+                                        >
+                                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                        </button>
+                                    </td>
+                                    <td className={TD}>
+                                        <div className="flex items-center gap-3">
+                                            <ProductThumb imageUrl={r.imageUrl} alt={r.name} />
+                                            <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
+                                        </div>
+                                    </td>
+                                    <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{r.sku}</td>
+                                    <td className={cn(TD, "whitespace-nowrap")}>{r.categoryLabel}</td>
+                                    <td className={cn(TD, "whitespace-nowrap")}>{formatAed(r.priceAed)}</td>
+                                    <td className={cn(TD, "whitespace-nowrap")}>
+                                        <span className={stockTone}>{stockLabel}</span>
+                                    </td>
+                                    <td className={TD}>
+                                        <StatusBadge type="product" status={r.status} />
+                                    </td>
+                                    <td className={TD} onClick={e => e.stopPropagation()}>
+                                        <RowActions items={[
+                                            { label: "View details",    icon: Eye,          onClick: () => onRowClick(r.id) },
+                                            { label: "Configure stock", icon: Package,      onClick: () => onConfigure(r.id), hidden: r.status === "archived" },
+                                            { label: "Edit",            icon: Edit02,       onClick: () => onEdit(r.id), hidden: r.status !== "active" },
+                                            { label: "Archive",         icon: Archive,      onClick: () => onRowAction(r, "archive"),    hidden: r.status !== "active" && r.status !== "inactive" },
+                                            { label: "Reactivate",      icon: Check,        onClick: () => onRowAction(r, "reactivate"), hidden: r.status !== "inactive" },
+                                            { label: "Recover",         icon: RefreshCcw01, onClick: () => onRowAction(r, "recover"),    hidden: r.status !== "archived" },
+                                            { label: "Deactivate",      icon: SlashCircle01,onClick: () => onRowAction(r, "deactivate"), danger: true, hidden: !(r.status === "active" && r.hasHistory) },
+                                            { label: "Delete",          icon: Trash01,      onClick: () => onRowAction(r, "delete"),     danger: true, hidden: !(r.status === "active" && !r.hasHistory) },
+                                        ]} />
+                                    </td>
+                                </tr>
+                                {isExpanded && (
+                                    <tr>
+                                        <td colSpan={9} className="px-0 py-0 border-b border-[var(--colors-border-secondary)]">
+                                            <div className="pl-12 pr-6">
+                                                <table className="w-full border-collapse">
+                                                    <thead>
+                                                        <tr>
+                                                            <th className={cn(TH, "min-w-[220px]")}>Branch</th>
+                                                            <th className={cn(TH, "w-[160px]")}>Stock on hand</th>
+                                                            <th className={cn(TH, "w-[120px]")}>Sold</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {r.branchBreakdown.map(b => {
+                                                            const isOut = b.unitsOnHand === 0;
+                                                            const isLow = !isOut && b.unitsOnHand <= r.reorderThreshold;
+                                                            return (
+                                                                <tr key={b.branchId}>
+                                                                    <td className={TD}>{b.branchName}</td>
+                                                                    <td className={cn(TD, "whitespace-nowrap")}>
+                                                                        <span className={cn(
+                                                                            isOut && "text-[#b42318] font-medium",
+                                                                            isLow && "text-[#dc6803] font-medium",
+                                                                        )}>
+                                                                            {isOut ? "Out of stock" : `${b.unitsOnHand} units`}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className={cn(TD, "whitespace-nowrap tabular-nums")}>
+                                                                        {b.sold > 0 ? `${b.sold} units` : "—"}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 export default function RetailPage() {
     const router = useRouter();
     const products             = useAppStore(s => s.retailProducts);
@@ -411,6 +587,7 @@ export default function RetailPage() {
         [branches],
     );
     const [page, setPage] = useState(1);
+    const [archPage, setArchPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
@@ -519,7 +696,9 @@ export default function RetailPage() {
         return allRows.filter(r => {
             if (q && !(r.name.toLowerCase().includes(q) || r.sku.toLowerCase().includes(q))) return false;
             if (applied.categoryIds.length > 0 && !applied.categoryIds.includes(r.categoryId)) return false;
-            if (applied.statuses.length > 0 && !applied.statuses.includes(r.status)) return false;
+            // Status pill filters only the active table; archived rows are exempt —
+            // they always render in the Archived section below (policy §3).
+            if (r.status !== "archived" && applied.statuses.length > 0 && !applied.statuses.includes(r.status)) return false;
             if (applied.stockBuckets.length > 0) {
                 const isOut = r.stockAggregate === 0;
                 const isLow = !isOut && r.hasLowBranch;
@@ -534,15 +713,28 @@ export default function RetailPage() {
         });
     }, [allRows, search, applied]);
 
-    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, COMPARATORS);
+    // Split archived rows off to the shared Archived section (policy §3). Both
+    // buckets are already search/category/stock-scoped; the active bucket also
+    // respects the status pill (archived was exempted above).
+    const { active: activeRows, archived: archivedRows } = useArchiveView(filteredRows);
 
-    // ─── Pagination slice ──────────────────────────────────────────────────
+    const { sorted, sortKey, sortDir, toggle: toggleSort } = useSort(activeRows, COMPARATORS);
+    const { sorted: archSorted, sortKey: archSortKey, sortDir: archSortDir, toggle: toggleArchSort } = useSort(archivedRows, COMPARATORS);
+
+    // ─── Pagination slice (active + archived each paginate independently) ────
     const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
     const clampedPage = Math.min(page, totalPages);
     const pagedRows = useMemo(() => {
         const start = (clampedPage - 1) * pageSize;
         return sorted.slice(start, start + pageSize);
     }, [sorted, clampedPage, pageSize]);
+
+    const archTotalPages = Math.max(1, Math.ceil(archSorted.length / pageSize));
+    const clampedArchPage = Math.min(Math.max(1, archPage), archTotalPages);
+    const pagedArchivedRows = useMemo(() => {
+        const start = (clampedArchPage - 1) * pageSize;
+        return archSorted.slice(start, start + pageSize);
+    }, [archSorted, clampedArchPage, pageSize]);
 
     // ─── Selection ─────────────────────────────────────────────────────────
     const toggleOne = (id: string) => {
@@ -553,11 +745,11 @@ export default function RetailPage() {
             return next;
         });
     };
-    const toggleAllOnPage = (checked: boolean) => {
+    const toggleAllRows = (rows: RetailRow[], checked: boolean) => {
         setSelectedIds(prev => {
             const next = new Set(prev);
-            if (checked) pagedRows.forEach(r => next.add(r.id));
-            else pagedRows.forEach(r => next.delete(r.id));
+            if (checked) rows.forEach(r => next.add(r.id));
+            else rows.forEach(r => next.delete(r.id));
             return next;
         });
     };
@@ -576,9 +768,6 @@ export default function RetailPage() {
     // packages bulk pill exactly.
     const hasDeletable     = selectedRows.length > 0
         && selectedRows.every(r => r.status === "active" && !r.hasHistory);
-
-    const allOnPageChecked  = pagedRows.length > 0 && pagedRows.every(r => selectedIds.has(r.id));
-    const someOnPageChecked = !allOnPageChecked && pagedRows.some(r => selectedIds.has(r.id));
 
     // ─── Filter dot ────────────────────────────────────────────────────────
     const hasActiveFilter =
@@ -751,7 +940,7 @@ export default function RetailPage() {
                 <RetailCategoriesToolbar ctrl={catCtrl} />
             ) : (
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={filteredRows.length} entitySingular="product" />
+                <ToolbarTotal count={activeRows.length} entitySingular="product" />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
                     placeholder="Select location"
@@ -796,8 +985,12 @@ export default function RetailPage() {
             </div>
             )}
 
-            {/* ── View card with tabs (client 2026-08-03 — matches Memberships & Packages) ── */}
-            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            {/* Scroll region — active card fills the viewport; the Archived
+                section (products tab only) sits below and is reached by scrolling
+                THIS region (matches Memberships & Packages). */}
+            <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+            {/* ── Active view card with tabs (client 2026-08-03) ── */}
+            <div className="shrink-0 h-full bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 flex items-center px-6 py-4">
                     <SegmentedTabs
                         tabs={[
@@ -822,179 +1015,19 @@ export default function RetailPage() {
                         subtitle="Try adjusting your search or filters."
                     />
                 ) : (
-                    <div className="px-6">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr>
-                                    <th className={cn(TH, "w-[44px]")}>
-                                        <CheckboxCell
-                                            checked={allOnPageChecked}
-                                            indeterminate={someOnPageChecked}
-                                            onChange={toggleAllOnPage}
-                                            ariaLabel="Select all products"
-                                        />
-                                    </th>
-                                    {/* Chevron column — expands per-branch subrows. */}
-                                    <th className={cn(TH, "w-[36px]")} aria-hidden />
-                                    <th className={cn(TH, "w-[340px]")}>
-                                        <SortableHeader sortKey="name" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Product name</SortableHeader>
-                                    </th>
-                                    <th className={cn(TH, "w-[140px]")}>
-                                        <SortableHeader sortKey="sku" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>SKU</SortableHeader>
-                                    </th>
-                                    <th className={cn(TH, "w-[160px]")}>
-                                        <SortableHeader sortKey="category" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Retail category</SortableHeader>
-                                    </th>
-                                    <th className={cn(TH, "w-[140px]")}>
-                                        <SortableHeader sortKey="price" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Price</SortableHeader>
-                                    </th>
-                                    <th className={cn(TH, "w-[120px]")}>
-                                        <SortableHeader sortKey="stock" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Stock</SortableHeader>
-                                    </th>
-                                    <th className={cn(TH, "w-[120px]")}>
-                                        <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                    </th>
-                                    <th className={cn(TH, "w-[52px]")}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pagedRows.map(r => {
-                                    const isSelected = selectedIds.has(r.id);
-                                    const stockLabel =
-                                        r.stockAggregate === 0
-                                            ? "Out of stock"
-                                            : `${r.stockAggregate} units`;
-                                    // Client 2026-07-31 — split the low-stock
-                                    // tone away from the out-of-stock red.
-                                    // Previous `#b54708` amber read too close
-                                    // to `#b42318` red on the row; swapped for
-                                    // `#dc6803` (Untitled DS warning/500) —
-                                    // clearly yellower, still readable on
-                                    // white, WCAG AA vs #101828 background.
-                                    const stockTone = r.stockAggregate === 0
-                                        ? "text-[#b42318] font-medium"
-                                        : r.hasLowBranch
-                                            ? "text-[#dc6803] font-medium"
-                                            : "";
-                                    const isExpanded = expandedIds.has(r.id);
-                                    return (
-                                        <React.Fragment key={r.id}>
-                                            <tr
-                                                onClick={() => router.push(`/products/retail/${r.id}`)}
-                                                className={cn(
-                                                    "transition-colors cursor-pointer",
-                                                    isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]",
-                                                )}
-                                            >
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <CheckboxCell
-                                                        checked={isSelected}
-                                                        onChange={() => toggleOne(r.id)}
-                                                        ariaLabel={`Select ${r.name}`}
-                                                    />
-                                                </td>
-                                                {/* Chevron — toggles per-branch nested rows.
-                                                    stopPropagation so it doesn't also fire the
-                                                    row's navigate-to-detail click. */}
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleExpanded(r.id)}
-                                                        aria-label={isExpanded ? `Collapse ${r.name}` : `Expand ${r.name}`}
-                                                        aria-expanded={isExpanded}
-                                                        className="w-6 h-6 flex items-center justify-center rounded-[6px] hover:bg-[#eaecf0] transition-colors text-[#667085]"
-                                                    >
-                                                        {isExpanded ? (
-                                                            <ChevronDown className="w-4 h-4" />
-                                                        ) : (
-                                                            <ChevronRight className="w-4 h-4" />
-                                                        )}
-                                                    </button>
-                                                </td>
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-3">
-                                                        <ProductThumb imageUrl={r.imageUrl} alt={r.name} />
-                                                        <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className={cn(TD, "whitespace-nowrap text-[#475467]")}>{r.sku}</td>
-                                                <td className={cn(TD, "whitespace-nowrap")}>{r.categoryLabel}</td>
-                                                <td className={cn(TD, "whitespace-nowrap")}>{formatAed(r.priceAed)}</td>
-                                                <td className={cn(TD, "whitespace-nowrap")}>
-                                                    <span className={stockTone}>{stockLabel}</span>
-                                                </td>
-                                                <td className={TD}>
-                                                    <StatusBadge type="product" status={r.status} />
-                                                </td>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    {/* Same action ladder as memberships/packages,
-                                                        plus the retail-specific "Configure stock"
-                                                        entry. Deactivate ↔ Delete swap by history:
-                                                        active + no history → Delete; active + has
-                                                        history → Deactivate. */}
-                                                    <RowActions items={[
-                                                        { label: "View details",    icon: Eye,          onClick: () => router.push(`/products/retail/${r.id}`) },
-                                                        { label: "Configure stock", icon: Package,      onClick: () => setConfigureId(r.id), hidden: r.status === "archived" },
-                                                        { label: "Edit",            icon: Edit02,       onClick: () => router.push(`/products/retail/${r.id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`), hidden: r.status !== "active" },
-                                                        { label: "Archive",         icon: Archive,      onClick: () => openRowConfirm(r, "archive"),    hidden: r.status !== "active" && r.status !== "inactive" },
-                                                        { label: "Reactivate",      icon: Check,        onClick: () => openRowConfirm(r, "reactivate"), hidden: r.status !== "inactive" },
-                                                        { label: "Recover",         icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"),    hidden: r.status !== "archived" },
-                                                        { label: "Deactivate",      icon: SlashCircle01,onClick: () => openRowConfirm(r, "deactivate"), danger: true, hidden: !(r.status === "active" && r.hasHistory) },
-                                                        { label: "Delete",          icon: Trash01,      onClick: () => openRowConfirm(r, "delete"),     danger: true, hidden: !(r.status === "active" && !r.hasHistory) },
-                                                    ]} />
-                                                </td>
-                                            </tr>
-                                            {isExpanded && (
-                                                // Client 2026-07-31 — nested table matches the row
-                                                // rhythm: transparent bg, no extra top/bottom
-                                                // padding, but a 48px left indent (pl-12) so the
-                                                // branch rows visually hang under the parent
-                                                // Product-name column instead of starting flush
-                                                // with the checkbox.
-                                                <tr>
-                                                    <td colSpan={9} className="px-0 py-0 border-b border-[var(--colors-border-secondary)]">
-                                                        <div className="pl-12 pr-6">
-                                                            <table className="w-full border-collapse">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th className={cn(TH, "min-w-[220px]")}>Branch</th>
-                                                                        <th className={cn(TH, "w-[160px]")}>Stock on hand</th>
-                                                                        <th className={cn(TH, "w-[120px]")}>Sold</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {r.branchBreakdown.map(b => {
-                                                                        const isOut = b.unitsOnHand === 0;
-                                                                        const isLow = !isOut && b.unitsOnHand <= r.reorderThreshold;
-                                                                        return (
-                                                                            <tr key={b.branchId}>
-                                                                                <td className={TD}>{b.branchName}</td>
-                                                                                <td className={cn(TD, "whitespace-nowrap")}>
-                                                                                    <span className={cn(
-                                                                                        isOut && "text-[#b42318] font-medium",
-                                                                                        isLow && "text-[#dc6803] font-medium",
-                                                                                    )}>
-                                                                                        {isOut ? "Out of stock" : `${b.unitsOnHand} units`}
-                                                                                    </span>
-                                                                                </td>
-                                                                                <td className={cn(TD, "whitespace-nowrap tabular-nums")}>
-                                                                                    {b.sold > 0 ? `${b.sold} units` : "—"}
-                                                                                </td>
-                                                                            </tr>
-                                                                        );
-                                                                    })}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                    <RetailTable
+                        rows={pagedRows}
+                        sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
+                        selectedIds={selectedIds}
+                        onToggleOne={toggleOne}
+                        onToggleAll={(c) => toggleAllRows(pagedRows, c)}
+                        expandedIds={expandedIds}
+                        onToggleExpanded={toggleExpanded}
+                        onRowClick={(id) => router.push(`/products/retail/${id}`)}
+                        onEdit={(id) => router.push(`/products/retail/${id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`)}
+                        onConfigure={(id) => setConfigureId(id)}
+                        onRowAction={openRowConfirm}
+                    />
                 )}
 
                 <BulkActionBar
@@ -1023,11 +1056,42 @@ export default function RetailPage() {
                 </div>
             </div>
 
+            {/* ── Archived section (products tab only) — shared shell; its own
+                   table + pagination; selection + search/filters shared with the
+                   active list (policy §3). */}
+            {tab === "products" && (
+                <ArchivedSection
+                    entitySingular="product"
+                    count={archivedRows.length}
+                    pagination={
+                        <Pagination
+                            page={clampedArchPage} total={archSorted.length} pageSize={pageSize}
+                            onPage={setArchPage} onPageSize={s => { setPageSize(s); setArchPage(1); }}
+                        />
+                    }
+                >
+                    <RetailTable
+                        rows={pagedArchivedRows}
+                        sortKey={archSortKey} sortDir={archSortDir} onSort={toggleArchSort}
+                        selectedIds={selectedIds}
+                        onToggleOne={toggleOne}
+                        onToggleAll={(c) => toggleAllRows(pagedArchivedRows, c)}
+                        expandedIds={expandedIds}
+                        onToggleExpanded={toggleExpanded}
+                        onRowClick={(id) => router.push(`/products/retail/${id}`)}
+                        onEdit={(id) => router.push(`/products/retail/${id}/edit?returnTo=${encodeURIComponent("/admin/products/retail")}`)}
+                        onConfigure={(id) => setConfigureId(id)}
+                        onRowAction={openRowConfirm}
+                    />
+                </ArchivedSection>
+            )}
+            </div>
+
             <FilterPanel
                 open={filterOpen}
                 onClose={() => setFilterOpen(false)}
                 applied={applied}
-                onApply={f => { setApplied(f); setPage(1); }}
+                onApply={f => { setApplied(f); setPage(1); setArchPage(1); }}
                 categories={categories.filter(c => c.status === "active").map(c => ({ id: c.id, label: c.label }))}
             />
 
