@@ -1270,9 +1270,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 )}
                 {/* Filter button — lifted from the sub-tab row up here
                     (client 2026-07-22). Hidden on empty/placeholder
-                    sub-tabs where filter has no effect. */}
+                    sub-tabs where filter has no effect. The Shift + Time off
+                    sub-tabs carry no filter (client 2026-08-12) — only the
+                    Staff table keeps it. */}
                 {forceTab !== "roles" &&
-                 (forceTab !== "staff" || staffSubTab === "staff" || staffSubTab === "shift-management") && (
+                 (forceTab !== "staff" || staffSubTab === "staff") && (
                     <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
                 )}
                 {/* Import — empty-state only (client 2026-07-31). Only
