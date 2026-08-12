@@ -231,6 +231,7 @@ import {
     type Shift,
     type ShiftAssignment,
     type BlockedTime,
+    type TimeOffReason,
     type StaffStatusSeed,
     type NotificationSettingSeed,
     type NotificationCategorySeed,
@@ -3917,6 +3918,36 @@ const INITIAL_SHIFT_ASSIGNMENTS:   ShiftAssignment[] = SEED_SHIFT_ASSIGNMENTS.fi
     return sb === shb;
 });
 const INITIAL_BLOCKED_TIMES:       BlockedTime[]     = SEED_BLOCKED_TIMES;
+
+// Time-off `reason` normalizer — the Reason field is REQUIRED, but snapshots
+// persisted before the reason list settled (or from a legacy seed) carry a
+// value the current dropdown doesn't offer (e.g. "vacation") or none at all,
+// so the edit form shows "Select a reason" with nothing picked. Coerce every
+// row to a valid TimeOffReason on rehydrate: keep valid values, map known
+// legacy aliases, else infer from the title/note, else "other". Idempotent —
+// re-running never changes an already-valid reason. (client 2026-08-12)
+const _VALID_TIME_OFF_REASONS = new Set<TimeOffReason>([
+    "annual_leave", "sick", "personal", "training", "religious_leave", "other",
+]);
+function normalizeTimeOffReason(bt: BlockedTime): TimeOffReason {
+    const raw = (bt.reason ?? "").toString().trim().toLowerCase();
+    if (_VALID_TIME_OFF_REASONS.has(raw as TimeOffReason)) return raw as TimeOffReason;
+    // Known legacy aliases → current values.
+    if (raw === "vacation" || raw === "annual" || raw === "holiday" || raw === "leave") return "annual_leave";
+    if (raw === "sick_leave" || raw === "illness" || raw === "medical") return "sick";
+    if (raw === "personal_leave") return "personal";
+    if (raw === "religious") return "religious_leave";
+    if (raw === "course" || raw === "workshop") return "training";
+    // Unknown / missing → infer from the human text so the data stays meaningful.
+    const hay = `${bt.title ?? ""} ${bt.note ?? ""}`.toLowerCase();
+    if (/vacation|holiday|annual leave/.test(hay)) return "annual_leave";
+    if (/religious|prayer|pilgrimage|hajj|eid/.test(hay)) return "religious_leave";
+    if (/training|workshop|review|course|seminar/.test(hay)) return "training";
+    if (/\bsick\b|illness|unwell|flu|fever/.test(hay)) return "sick";
+    if (/physio|appointment|dentist|doctor|clinic|medical/.test(hay)) return "other";
+    if (/personal|family|errand/.test(hay)) return "personal";
+    return "other";
+}
 const INITIAL_NOTIFICATION_SETTINGS: NotificationSetting[] = SEED_NOTIFICATION_SETTINGS.map(notificationSettingFromSeed);
 // Admin + instructor notifications live in one initial array — the bell +
 // page components filter by `audience` based on the current user role.
@@ -4423,7 +4454,7 @@ export interface AppState {
      *  `days_of_week` to the parent shift's `working_days` when omitted. Pass
      *  `week_start` (this-week Monday ISO) to scope the assignment to ONE week;
      *  omit it for a recurring/all-weeks baseline. */
-    addShiftAssignment: (input: { shift_id: string; staff_id: string; days_of_week?: boolean[]; week_start?: string }) => string;
+    addShiftAssignment: (input: { shift_id: string; staff_id: string; days_of_week?: boolean[]; week_start?: string; weeks?: number }) => string;
     /** Remove a staff → shift assignment by id. */
     removeShiftAssignment: (id: string) => void;
     /** Update the per-assignment days-of-week subset. */
@@ -11212,14 +11243,20 @@ export const useAppStore = create<AppState>()(persist(
 
     // ── Shift assignment actions (client 2026-07-22 many-to-many) ─────────
     addShiftAssignment: (input) => {
-        const { shift_id, staff_id, days_of_week, week_start } = input;
+        const { shift_id, staff_id, days_of_week, week_start, weeks } = input;
         // Idempotent per (shift, staff, week) — a week-scoped row and the
         // recurring baseline (no week) are distinct, so the same trio returns
-        // the existing row rather than duplicating.
+        // the existing row rather than duplicating. When re-assigning the same
+        // trio, refresh the period (weeks) so a longer pick extends the run.
         const existing = get().shiftAssignments.find(
             a => a.shift_id === shift_id && a.staff_id === staff_id && (a.week_start ?? null) === (week_start ?? null),
         );
-        if (existing) return existing.id;
+        if (existing) {
+            if (weeks !== undefined && weeks !== existing.weeks) {
+                set(state => ({ shiftAssignments: state.shiftAssignments.map(a => a.id === existing.id ? { ...a, weeks } : a) }));
+            }
+            return existing.id;
+        }
         const parent = get().shifts.find(s => s.id === shift_id);
         const defaultDays = parent?.working_days ?? [false, false, false, false, false, false, false];
         // Week-scoped rows carry the week in the id so multiple weeks coexist.
@@ -11230,6 +11267,7 @@ export const useAppStore = create<AppState>()(persist(
             staff_id,
             days_of_week: days_of_week ?? [...defaultDays],
             ...(week_start ? { week_start } : {}),
+            ...(weeks !== undefined ? { weeks } : {}),
             created_at: new Date().toISOString(),
         };
         set(state => ({ shiftAssignments: [...state.shiftAssignments, next] }));
@@ -13265,6 +13303,17 @@ export const useAppStore = create<AppState>()(persist(
                         if (shb !== undefined && shb !== s.branchId) return { ...s, shiftId: undefined };
                     }
                     return s;
+                });
+            }
+            // Time-off reason backfill (client 2026-08-12) — every persisted
+            // time-off row is coerced to a valid TimeOffReason so the edit
+            // form's Reason field is always pre-selected (stale snapshots stored
+            // legacy/blank reasons the current dropdown can't match). Idempotent;
+            // no version bump / state wipe.
+            if (Array.isArray(state.blockedTimes)) {
+                state.blockedTimes = state.blockedTimes.map(bt => {
+                    const reason = normalizeTimeOffReason(bt);
+                    return reason === bt.reason ? bt : { ...bt, reason };
                 });
             }
             state.classSchedules = state.classSchedules.map((c) => ({
