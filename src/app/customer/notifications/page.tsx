@@ -69,6 +69,8 @@ function routeFor(n: CustomerNotification): string {
             return "/customer/profile/payment-methods";
         case "marketing":
             return n.relatedId ? `/customer/marketing/${n.relatedId}` : "/customer";
+        case "promo":
+            return "/customer/profile/promo";
         default:
             return "/customer/bookings";
     }

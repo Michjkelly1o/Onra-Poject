@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore, type MarketingItem } from "@/lib/store";
+import { audienceMatch, marketingReach, MARKETING_CHANNEL_LABEL } from "@/lib/marketing/dispatch";
 import {
     type MarketingFormData,
     StepItem, type FormStep, FormCard, Section, FormField, TextInput, Textarea,
@@ -55,6 +56,9 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
     const showToast           = useAppStore(s => s.showToast);
     const branches            = useAppStore(s => s.branches);
     const customers           = useAppStore(s => s.customers);
+    const customerPlans       = useAppStore(s => s.customerPlans);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const notificationSettings = useAppStore(s => s.notificationSettings);
 
     const [step, setStep] = useState(1);
     const [form, setForm] = useState<MarketingFormData>({
@@ -62,6 +66,8 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
         name: initial?.name ?? "",
         // Type is fixed — announcements are a single-type module.
         type: "announcement",
+        // Content type is fixed — announcements always send under "Studio announcements".
+        topic: "",
         description: initial?.description ?? "",
         // No action — an announcement never carries a CTA.
         action: "no_action",
@@ -140,12 +146,14 @@ export function AnnouncementFormPage({ mode, marketingId, initial, returnTo = "/
                 click_count: 0,
                 conversion_count: 0,
             });
-            // Delivered count — non-archived customers in the selected branches.
-            const reached = customers.filter(c =>
-                c.status !== "archived"
-                && (branchIds.length === 0 || (c.branchId ? branchIds.includes(c.branchId) : true)),
-            ).length;
-            showToast("Announcement published", `Sent to ${reached} customer${reached === 1 ? "" : "s"}.`, "success", "check");
+            // Delivered reach — branch audience ∩ "Studio announcements" opt-in + channels.
+            const audience = audienceMatch(
+                { kind: "everyone", branchIds },
+                customers, customerPlans, customerTransactions,
+            );
+            const r = marketingReach(audience, "studio_announcements", notificationSettings);
+            const viaText = r.channels.length ? ` via ${r.channels.map(ch => MARKETING_CHANNEL_LABEL[ch]).join(", ")}` : "";
+            showToast("Announcement published", `Sent to ${r.total} customer${r.total === 1 ? "" : "s"}${viaText}.`, "success", "check");
             router.push(`/announcements/${newId}`);
         }
     }

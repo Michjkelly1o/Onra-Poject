@@ -32,6 +32,7 @@ import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore, type PromoCode, type Branch } from "@/lib/store";
+import { audienceMatch, marketingReach, MARKETING_CHANNEL_LABEL } from "@/lib/marketing/dispatch";
 
 /** Current local time as "HH:MM" — used to bar past start-time slots today. */
 function nowHHMM(): string {
@@ -467,6 +468,10 @@ interface PromoFormData {
     classIds: string[];
     /** "" until the merchant picks a targeting option. */
     customerTargeting: "all" | "new_users" | "";
+    /** Announce the promo to customers as a "Promo code offers" notification. */
+    announceToCustomers: boolean;
+    /** Preserved announce timestamp so an edit doesn't re-date the feed entry. */
+    announcedAt?: string;
 }
 
 // Banner upload lives in `src/components/ui/ImageBannerUpload.tsx`.
@@ -493,6 +498,10 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
     const retailProducts  = useAppStore(s => s.retailProducts);
     const classTemplates  = useAppStore(s => s.classTemplates);
     const branches        = useAppStore(s => s.branches);
+    const customers       = useAppStore(s => s.customers);
+    const customerPlans   = useAppStore(s => s.customerPlans);
+    const customerTransactions = useAppStore(s => s.customerTransactions);
+    const notificationSettings = useAppStore(s => s.notificationSettings);
 
     const [step, setStep] = useState(1);
     const [form, setForm] = useState<PromoFormData>({
@@ -519,6 +528,8 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
         productIds: initial?.productIds ?? [],
         classIds: initial?.classIds ?? [],
         customerTargeting: initial?.customerTargeting ?? "",
+        announceToCustomers: initial?.announceToCustomers ?? false,
+        announcedAt: initial?.announcedAt,
     });
     const patch = (p: Partial<PromoFormData>) => setForm(prev => ({ ...prev, ...p }));
 
@@ -597,15 +608,28 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
             applies_to_product_ids: form.productIds,
             applies_to_class_ids: form.classIds,
             customer_targeting: form.customerTargeting || undefined,
+            announce_to_customers: form.announceToCustomers,
+            announced_at: form.announceToCustomers ? (form.announcedAt ?? new Date().toISOString()) : undefined,
         };
+
+        // Announce reach — branch audience ∩ "Promo code offers" opt-in + channels.
+        const announceReach = form.announceToCustomers
+            ? marketingReach(
+                audienceMatch({ kind: "everyone", branchIds }, customers, customerPlans, customerTransactions),
+                "promo_code_offers", notificationSettings,
+            )
+            : null;
+        const viaText = announceReach && announceReach.channels.length
+            ? ` · sent to ${announceReach.total} customer${announceReach.total === 1 ? "" : "s"} via ${announceReach.channels.map(ch => MARKETING_CHANNEL_LABEL[ch]).join(", ")}`
+            : "";
 
         if (isEdit && promoId) {
             updatePromoCode(promoId, fields);
-            showToast("Promotion was updated", `${fields.name} has been saved.`, "success", "check");
+            showToast("Promotion was updated", `${fields.name} has been saved${viaText}.`, "success", "check");
             router.push(`/products/promo-codes/${promoId}`);
         } else {
             const newId = addPromoCode({ ...fields, usage_count: 0, status: "active" });
-            showToast("New promotion was created", "Your promotion is ready to publish.", "success", "check");
+            showToast("New promotion was created", `Your promotion is ready${viaText || " to publish"}.`, "success", "check");
             router.push(`/products/promo-codes/${newId}`);
         }
     }
@@ -885,6 +909,16 @@ export function PromoFormPage({ mode, promoId, initial, returnTo = "/admin/produ
                                         </button>
                                     ))}
                                 </div>
+                            </Section>
+
+                            {/* ── Announce ── */}
+                            <Section title="Announce">
+                                <ToggleCard
+                                    title="Announce to customers"
+                                    subtitle="Send this promo as a “Promo code offers” message. Channels + opt-in are set in Settings → Customer notifications."
+                                    on={form.announceToCustomers}
+                                    onChange={v => patch({ announceToCustomers: v })}
+                                />
                             </Section>
                         </FormCard>
                     )}

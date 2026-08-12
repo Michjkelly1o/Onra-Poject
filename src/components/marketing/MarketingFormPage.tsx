@@ -17,12 +17,13 @@
 // are delivered to the customer's notification inbox — NOT the "What's on"
 // banner (that's the Announcement's job).
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { XClose } from "@untitledui/icons";
-import { to12h } from "@/lib/utils";
+import { XClose, ChevronDown } from "@untitledui/icons";
+import { cn, to12h } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
+import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { ImageBannerUpload } from "@/components/ui/ImageBannerUpload";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useAppStore, type MarketingItem } from "@/lib/store";
@@ -33,7 +34,7 @@ import {
     FilledRadio, ActionCard, TimeSelect, ClassCtaSelect,
     ToggleCard, MultiSelectCard, BranchSingleSelect, MarketingPreviewPanel,
 } from "@/components/marketing/form-kit";
-import { audienceMatch, type AudienceSpec } from "@/lib/marketing/dispatch";
+import { audienceMatch, marketingReach, MARKETING_CHANNEL_LABEL, type AudienceSpec } from "@/lib/marketing/dispatch";
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,48 @@ const AUDIENCE_OPTIONS: { value: NonNullable<MarketingFormData["audienceKind"]>;
     { value: "specific",   label: "Specific customers" },
 ];
 
+// A campaign's content type maps to a Customer-notifications row (channel config
+// + the customer's opt-in). Only the two campaign-relevant rows are offered —
+// Announcements + Promotions map to their own rows automatically.
+const TOPIC_OPTIONS: { value: MarketingFormData["topic"]; label: string }[] = [
+    { value: "new_class_launch", label: "New class launch" },
+    { value: "special_offers",   label: "Special offers" },
+];
+
+function TopicSelect({ value, onChange }: { value: MarketingFormData["topic"]; onChange: (v: MarketingFormData["topic"]) => void }) {
+    const [open, setOpen] = useState(false);
+    const [width, setWidth] = useState(0);
+    const btnRef = useRef<HTMLButtonElement>(null);
+    const selected = TOPIC_OPTIONS.find(o => o.value === value);
+    function toggle() {
+        if (btnRef.current) setWidth(btnRef.current.offsetWidth);
+        setOpen(p => !p);
+    }
+    return (
+        <>
+            <button ref={btnRef} type="button" onClick={toggle}
+                className="w-full h-10 px-[14px] flex items-center gap-2 border-1 border-[var(--colors-border-primary)] rounded-[8px] bg-white text-[16px] hover:bg-[var(--colors-bg-secondary)] transition-colors shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                <span className={cn("flex-1 text-left truncate", selected ? "text-[var(--colors-text-primary)]" : "text-[var(--colors-text-quaternary)]")}>
+                    {selected?.label ?? "Select content type"}
+                </span>
+                <ChevronDown className="w-5 h-5 text-[var(--colors-text-quaternary)] shrink-0" />
+            </button>
+            <FixedDropdown triggerRef={btnRef} open={open} onClose={() => setOpen(false)} minWidth={width || 220}>
+                {TOPIC_OPTIONS.map(o => (
+                    <button key={o.value} type="button"
+                        onClick={() => { onChange(o.value); setOpen(false); }}
+                        className={cn(
+                            "flex items-center w-full px-3 py-2 text-[14px] font-medium transition-colors text-left",
+                            value === o.value ? "bg-[var(--colors-bg-secondary)] text-[var(--colors-text-primary)]" : "text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
+                        )}>
+                        {o.label}
+                    </button>
+                ))}
+            </FixedDropdown>
+        </>
+    );
+}
+
 // ─── Shared page component ───────────────────────────────────────────────────
 
 export interface MarketingFormPageProps {
@@ -82,12 +125,14 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
     const customers           = useAppStore(s => s.customers);
     const customerPlans       = useAppStore(s => s.customerPlans);
     const customerTransactions = useAppStore(s => s.customerTransactions);
+    const notificationSettings = useAppStore(s => s.notificationSettings);
 
     const [step, setStep] = useState(1);
     const [form, setForm] = useState<MarketingFormData>({
         bannerPreview: initial?.bannerPreview ?? "",
         name: initial?.name ?? "",
         type: "campaign",
+        topic: initial?.topic ?? "",
         description: initial?.description ?? "",
         action: initial?.action ?? "no_action",
         ticketPrice: "",
@@ -150,11 +195,18 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         customerIds: form.audienceCustomerIds,
         branchIds,
     };
-    const reach = useMemo(
-        () => audienceMatch(audienceSpec, customers, customerPlans, customerTransactions).length,
+    const audienceCustomers = useMemo(
+        () => audienceMatch(audienceSpec, customers, customerPlans, customerTransactions),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [form.audienceKind, form.audienceMembershipIds, form.audienceSegments, form.audienceCustomerIds, form.multiLocation, form.branchIds, form.singleBranchId, customers, customerPlans, customerTransactions],
     );
+    // Consent-gated reach once a content type is chosen (audience ∩ topic opt-in ∩ channels).
+    const reachInfo = useMemo(
+        () => form.topic ? marketingReach(audienceCustomers, form.topic, notificationSettings) : null,
+        [audienceCustomers, form.topic, notificationSettings],
+    );
+    const reach = reachInfo ? reachInfo.total : audienceCustomers.length;
+    const reachChannels = reachInfo ? reachInfo.channels : [];
 
     // ─── Gates ─────────────────────────────────────────────────────────────
     const actionConfigOk =
@@ -163,7 +215,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                 : true;
     const canContinue =
         form.name.trim().length > 0 && form.description.trim().length > 0 &&
-        form.action !== "" && actionConfigOk;
+        form.topic !== "" && form.action !== "" && actionConfigOk;
 
     const branchOk = form.multiLocation ? form.branchIds.length > 0 : !!form.singleBranchId;
     const audienceOk =
@@ -191,6 +243,7 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         const fields: Omit<MarketingItem, "id" | "status" | "view_count" | "click_count" | "conversion_count"> = {
             title: form.name.trim(),
             type: "campaign",
+            topic: form.topic || undefined,
             short_description: form.description.trim(),
             cover_image_url: form.bannerPreview || undefined,
             action_type: form.action || "no_action",
@@ -222,9 +275,10 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
             return;
         }
         const newId = addMarketingItem({ ...fields, status: "active", view_count: 0, click_count: 0, conversion_count: 0 });
+        const viaText = reachChannels.length ? ` via ${reachChannels.map(ch => MARKETING_CHANNEL_LABEL[ch]).join(", ")}` : "";
         if (kind === "draft") showToast("Draft saved", `${fields.title} was saved as a draft.`, "success", "check");
-        else if (scheduling) showToast("Campaign scheduled", `${fields.title} will send to ${reach ?? 0} customer${reach === 1 ? "" : "s"}.`, "success", "check");
-        else showToast("Campaign sent", `${fields.title} was sent to ${reach ?? 0} customer${reach === 1 ? "" : "s"}.`, "success", "check");
+        else if (scheduling) showToast("Campaign scheduled", `${fields.title} will send to ${reach ?? 0} customer${reach === 1 ? "" : "s"}${viaText}.`, "success", "check");
+        else showToast("Campaign sent", `${fields.title} was sent to ${reach ?? 0} customer${reach === 1 ? "" : "s"}${viaText}.`, "success", "check");
         router.push(`/marketing/${newId}`);
     }
 
@@ -265,9 +319,14 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                     onChange={url => patch({ bannerPreview: url ?? "" })}
                                     sizeGuide="Recommended: 1029 × 420 px (ratio ~2.45:1). Off-ratio images are cropped — keep key content centered."
                                 />
-                                <FormField label="Display name">
-                                    <TextInput value={form.name} onChange={v => patch({ name: v })} placeholder="e.g. New: Aerial Yoga" />
-                                </FormField>
+                                <div className="grid grid-cols-2 gap-3 w-full">
+                                    <FormField label="Display name">
+                                        <TextInput value={form.name} onChange={v => patch({ name: v })} placeholder="e.g. New: Aerial Yoga" />
+                                    </FormField>
+                                    <FormField label="Content type" hint="Routes channels + opt-in from Customer notifications.">
+                                        <TopicSelect value={form.topic} onChange={v => patch({ topic: v })} />
+                                    </FormField>
+                                </div>
                                 <FormField label="Message">
                                     <Textarea value={form.description} onChange={v => patch({ description: v })}
                                         placeholder="Write the message customers receive..." />
@@ -363,12 +422,16 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                 )}
 
                                 {/* Live reach */}
-                                <div className="bg-[#f1f2ed] rounded-[12px] px-4 py-3 flex items-center gap-2">
+                                <div className="bg-[#f1f2ed] rounded-[12px] px-4 py-3 flex items-center gap-2 flex-wrap">
                                     <span className="text-[14px] text-[#475467]">This campaign will reach</span>
                                     <span className="text-[14px] font-semibold text-[#10373a]">
                                         {`${reach} customer${reach === 1 ? "" : "s"}`}
                                     </span>
-                                    <span className="text-[14px] text-[#475467]">in the chosen audience.</span>
+                                    <span className="text-[14px] text-[#475467]">
+                                        {reachInfo
+                                            ? (reachChannels.length ? `via ${reachChannels.map(ch => MARKETING_CHANNEL_LABEL[ch]).join(", ")}.` : "— no opted-in channels yet.")
+                                            : "in the chosen audience."}
+                                    </span>
                                 </div>
                             </Section>
 

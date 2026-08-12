@@ -1194,6 +1194,13 @@ export interface PromoCode {
     banner_image_url?: string;
     /** Whether the promo is usable across multiple branches (vs. a single one). */
     multi_location?: boolean;
+    /** Announce this promo to customers — delivered as a "Promo code offers"
+     *  message (Customer notifications module routes channels + opt-in). When
+     *  true, the promo surfaces in the customer notification feed, consent-gated
+     *  by the `promo_code_offers` topic + each channel's opt-in. */
+    announce_to_customers?: boolean;
+    /** ISO 8601 — when the promo was announced (drives the notification feed date). */
+    announced_at?: string;
     // +later: target_segment
 }
 
@@ -1275,6 +1282,11 @@ export interface MarketingItem {
     scheduled_at?: string;
     /** ISO — when the campaign was actually sent. */
     sent_at?: string;
+    /** Campaign content type — maps to a Customer-notifications row (which
+     *  supplies the channel config) + the customer's matching opt-in.
+     *  Campaigns only; Announcements map to "studio_announcements" and
+     *  Promotions to "promo_code_offers" by their module, not this field. */
+    topic?: "new_class_launch" | "special_offers";
 }
 
 // ─── Payments ───────────────────────────────────────────────────────────────

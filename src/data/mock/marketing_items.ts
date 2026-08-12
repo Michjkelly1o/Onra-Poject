@@ -48,6 +48,7 @@ export const marketing_items: MarketingItem[] = [
         audience_kind: "everyone",
         delivery_status: "sent",
         sent_at: "2026-05-18T08:00:00Z",
+        topic: "new_class_launch",
     },
     {
         // ── Archived — Announcement, No action ──
@@ -95,6 +96,7 @@ export const marketing_items: MarketingItem[] = [
         audience_kind: "everyone",
         delivery_status: "sent",
         sent_at: "2026-05-19T00:00:00Z",
+        topic: "new_class_launch",
     },
     {
         // ── Active — Announcement, No action (information only) ──

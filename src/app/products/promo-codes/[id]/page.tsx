@@ -259,6 +259,7 @@ function LeftSidebar({ vm, onAction, branches }: {
                         <SidebarField label="Discount type" value={vm.offerLabel} />
                         <SidebarField label="Discount amount" value={vm.discountValueLabel} />
                         <SidebarField label="Applicable branch" value={branchSummary(vm.branchIds, branches)} />
+                        <SidebarField label="Customer announcement" value={vm.announced ? "Announced · Promo code offers" : "Not announced"} />
                     </div>
                 </div>
 
@@ -507,6 +508,7 @@ interface PromoDetailVM {
     firstTimeUserLabel: string;
     usageLimitLabel: string;
     customerTargeting: PromoCode["customer_targeting"] | "";
+    announced: boolean;
     products: ProductRow[];
     classes: ClassRow[];
 }
@@ -592,6 +594,7 @@ function PromoDetailPageInner() {
         firstTimeUserLabel,
         usageLimitLabel,
         customerTargeting: promo.customer_targeting ?? "",
+        announced: !!promo.announce_to_customers,
         products,
         classes,
     };

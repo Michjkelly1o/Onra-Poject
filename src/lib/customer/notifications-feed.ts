@@ -13,7 +13,8 @@
 // shared seed; version-guarded (bump to re-seed).
 
 import { useSyncExternalStore } from "react";
-import { customerNotificationSink, useAppStore, type MarketingItem, type Customer } from "@/lib/store";
+import { customerNotificationSink, useAppStore, type MarketingItem, type Customer, type PromoCode } from "@/lib/store";
+import { contentTopic, viewerReceivesPush } from "@/lib/marketing/dispatch";
 import { to12h } from "./dates";
 import { DEMO_MEMBER_ID } from "./context";
 import { getAuthSession } from "./auth";
@@ -34,9 +35,11 @@ export type NotifEvent =
     | "freeze_reminder"
     // ── Marketing rework (2026-08) — Studio announcements + campaigns ─
     | "announcement"
-    | "campaign";
+    | "campaign"
+    // ── Promotions announced to customers (Promo code offers topic) ──
+    | "promo";
 
-export type NotifRelatedType = "booking" | "appointment" | "plan" | "product" | "payment_method" | "marketing";
+export type NotifRelatedType = "booking" | "appointment" | "plan" | "product" | "payment_method" | "marketing" | "promo";
 
 export interface CustomerNotification {
     id: string;
@@ -79,9 +82,10 @@ function persistRead() {
     try { window.localStorage.setItem(READ_KEY, JSON.stringify(Array.from(readMarketingIds))); } catch { /* ignore */ }
 }
 
-/** Every marketing item the viewer should see in their bell right now — active
+/** Every marketing item the viewer receives in their bell right now — active
  *  announcements (within show-until) + sent campaigns, scoped to the viewer's
- *  branch. No opt-in / topic gate. Read state comes from the per-id read set. */
+ *  branch, GATED by consent (the viewer opted into the item's content topic +
+ *  the Push channel). Read state comes from the per-id read set. */
 function deriveMarketingNotifications(items: MarketingItem[], viewer: Customer | undefined): CustomerNotification[] {
     if (!viewer) return [];
     hydrateRead();
@@ -93,16 +97,46 @@ function deriveMarketingNotifications(items: MarketingItem[], viewer: Customer |
     const out: CustomerNotification[] = [];
     for (const m of items) {
         if (m.status !== "active" || !branchOk(m)) continue;
-        if (m.type === "announcement") {
-            if (m.expiry_date && new Date(m.expiry_date).getTime() < nowMs) continue;
-            const id = `cn_ann_${m.id}`;
-            out.push({ id, tab: "updates", event: "announcement", title: m.title, message: m.short_description,
-                createdAtISO: m.publish_date ?? m.created_at, isRead: readMarketingIds.has(id), relatedType: "marketing", relatedId: m.id });
-        } else if (m.type === "campaign" && m.delivery_status === "sent") {
-            const id = `cn_camp_${m.id}`;
-            out.push({ id, tab: "updates", event: "campaign", title: m.title, message: m.short_description,
-                createdAtISO: m.sent_at ?? m.publish_date ?? m.created_at, isRead: readMarketingIds.has(id), relatedType: "marketing", relatedId: m.id });
-        }
+        const isAnn = m.type === "announcement";
+        const isSentCampaign = m.type === "campaign" && m.delivery_status === "sent";
+        if (!isAnn && !isSentCampaign) continue;
+        if (isAnn && m.expiry_date && new Date(m.expiry_date).getTime() < nowMs) continue;
+        // Consent gate — the bell IS the Push channel.
+        if (!viewerReceivesPush(viewer, contentTopic(m))) continue;
+        const id = isAnn ? `cn_ann_${m.id}` : `cn_camp_${m.id}`;
+        out.push({
+            id, tab: "updates", event: isAnn ? "announcement" : "campaign",
+            title: m.title, message: m.short_description,
+            createdAtISO: (isAnn ? m.publish_date : m.sent_at ?? m.publish_date) ?? m.created_at,
+            isRead: readMarketingIds.has(id), relatedType: "marketing", relatedId: m.id,
+        });
+    }
+    return out;
+}
+/** Every announced promo the viewer receives in their bell right now — active,
+ *  branch-scoped, not past its validity window, GATED by consent (opted into
+ *  the "Promo code offers" topic + the Push channel). Read state per-id. */
+function derivePromoNotifications(promos: PromoCode[], viewer: Customer | undefined): CustomerNotification[] {
+    if (!viewer) return [];
+    hydrateRead();
+    const nowMs = Date.now();
+    const branchOk = (p: PromoCode) => {
+        const ids = p.branch_ids ?? [];
+        return ids.length === 0 || (viewer.branchId ? ids.includes(viewer.branchId) : true);
+    };
+    if (!viewerReceivesPush(viewer, "promo_code_offers")) return [];
+    const out: CustomerNotification[] = [];
+    for (const p of promos) {
+        if (!p.announce_to_customers || p.status !== "active" || !branchOk(p)) continue;
+        if (p.valid_until && new Date(p.valid_until).getTime() < nowMs) continue;
+        const id = `cn_promo_${p.id}`;
+        out.push({
+            id, tab: "updates", event: "promo",
+            title: p.name ?? p.code,
+            message: p.description ?? `Use code ${p.code} for a limited-time offer.`,
+            createdAtISO: p.announced_at ?? p.created_at ?? p.valid_from ?? new Date(nowMs).toISOString(),
+            isRead: readMarketingIds.has(id), relatedType: "promo", relatedId: p.id,
+        });
     }
     return out;
 }
@@ -283,7 +317,7 @@ export function addCustomerNotification(input: Omit<CustomerNotification, "id" |
 
 export function markNotifRead(id: string): void {
     // Marketing rows are derived (not in `feed`) → route to the read set.
-    if (id.startsWith("cn_ann_") || id.startsWith("cn_camp_")) { markMarketingRead(id); return; }
+    if (id.startsWith("cn_ann_") || id.startsWith("cn_camp_") || id.startsWith("cn_promo_")) { markMarketingRead(id); return; }
     hydrate();
     feed = feed.map((n) => (n.id === id ? { ...n, isRead: true } : n));
     emit();
@@ -303,6 +337,7 @@ export function markAllNotifRead(tab?: NotifTab): void {
             const viewer = st.customers.find((c) => c.id === viewerId);
             const next = new Set(readMarketingIds);
             deriveMarketingNotifications(st.marketingItems, viewer).forEach((n) => next.add(n.id));
+            derivePromoNotifications(st.promoCodes, viewer).forEach((n) => next.add(n.id));
             readMarketingIds = next;
             persistRead();
         }
@@ -326,11 +361,13 @@ export function useCustomerNotifications(): CustomerNotification[] {
     // Live-derive marketing rows from the store so admin-created campaigns /
     // announcements appear instantly (reactive to `marketingItems`).
     const marketingItems = useAppStore((s) => s.marketingItems);
+    const promoCodes = useAppStore((s) => s.promoCodes);
     const customers = useAppStore((s) => s.customers);
     const viewerId = getAuthSession().customerId ?? DEMO_MEMBER_ID;
     const viewer = customers.find((c) => c.id === viewerId);
     const marketing = deriveMarketingNotifications(marketingItems, viewer);
-    return [...marketing, ...stored].sort((a, b) => b.createdAtISO.localeCompare(a.createdAtISO));
+    const promos = derivePromoNotifications(promoCodes, viewer);
+    return [...marketing, ...promos, ...stored].sort((a, b) => b.createdAtISO.localeCompare(a.createdAtISO));
 }
 /** Unread count (for the header bell badge). */
 export function useUnreadNotifCount(): number {

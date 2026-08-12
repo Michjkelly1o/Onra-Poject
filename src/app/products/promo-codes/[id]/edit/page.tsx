@@ -68,6 +68,8 @@ function EditPromoRouteInner() {
                 productIds: promo.applies_to_product_ids ?? [],
                 classIds: promo.applies_to_class_ids ?? [],
                 customerTargeting: promo.customer_targeting ?? "",
+                announceToCustomers: promo.announce_to_customers ?? false,
+                announcedAt: promo.announced_at,
             }}
         />
     );

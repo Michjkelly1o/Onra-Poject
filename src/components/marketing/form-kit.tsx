@@ -67,6 +67,8 @@ export interface MarketingFormData {
     audienceMembershipIds: string[];
     audienceSegments: ("lead" | "member" | "inactive")[];
     audienceCustomerIds: string[];
+    /** Campaign content type — maps to a Customer-notifications row. */
+    topic: "new_class_launch" | "special_offers" | "";
     /** Send now, or schedule for later (uses startDate/startTime as the send time). */
     scheduleMode: "now" | "later" | "";
 }

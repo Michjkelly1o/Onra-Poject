@@ -34,7 +34,14 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { useAppStore, type MarketingItem, type Branch } from "@/lib/store";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
-import { audienceLabel } from "@/lib/marketing/dispatch";
+import { audienceLabel, contentTopic, MARKETING_CHANNEL_LABEL, type MarketingChannel } from "@/lib/marketing/dispatch";
+
+const TOPIC_LABEL: Record<string, string> = {
+    studio_announcements: "Studio announcements",
+    new_class_launch: "New class launch",
+    special_offers: "Special offers",
+    promo_code_offers: "Promo code offers",
+};
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -250,6 +257,8 @@ function LeftSidebar({ vm, onAction, branches }: {
                             value={vm.deliveryStatus === "draft" ? "Draft"
                                 : `${DELIVERY_LABEL[vm.deliveryStatus]} · ${formatDateTime(vm.deliveryDateISO)}`} />
                         <SidebarField label="Audience" value={vm.audience} />
+                        <SidebarField label="Content type" value={vm.topicLabel} />
+                        {vm.deliveryStatus === "sent" && <SidebarField label="Sent via" value={vm.channelsLabel} />}
                         <SidebarField label="Call to action" value={ACTION_LABEL[vm.actionType]} />
                         {vm.actionType === "book_event" && vm.ctaClassLabel && (
                             <SidebarField label="Booked class" value={vm.ctaClassLabel} />
@@ -454,6 +463,10 @@ interface MarketingDetailVM {
     deliveryStatus: NonNullable<MarketingItem["delivery_status"]>;
     deliveryDateISO?: string;
     audience: string;
+    /** Content-type label (routes channels + opt-in from Customer notifications). */
+    topicLabel: string;
+    /** Distinct channels this campaign was actually sent on. */
+    channelsLabel: string;
     sends: number;
     openRate: number;
     clickRate: number;
@@ -556,6 +569,11 @@ function MarketingDetailPageInner() {
             segments: item.audience_segments,
             customerIds: item.audience_customer_ids,
         }),
+        topicLabel: TOPIC_LABEL[contentTopic(item)] ?? "New class launch",
+        channelsLabel: (() => {
+            const chans = Array.from(new Set(stats.map(s => s.channel))) as MarketingChannel[];
+            return chans.length ? chans.map(ch => MARKETING_CHANNEL_LABEL[ch]).join(", ") : "—";
+        })(),
         sends,
         openRate: sends > 0 ? Math.round((opens / sends) * 100) : 0,
         clickRate: sends > 0 ? Math.round((clicks / sends) * 100) : 0,

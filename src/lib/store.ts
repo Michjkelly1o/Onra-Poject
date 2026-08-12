@@ -76,7 +76,7 @@
 
 import { create } from "zustand";
 import { firstFreeSpot, balancedSpotGrid } from "@/lib/spot-layout";
-import { audienceMatch } from "@/lib/marketing/dispatch";
+import { audienceMatch, marketingReach, contentTopic } from "@/lib/marketing/dispatch";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { UserRole, User } from "@/types";
 import { account_profile as adminUser } from "@/data/mock/account_profile";
@@ -10299,7 +10299,7 @@ export const useAppStore = create<AppState>()(persist(
         // exact reach the form previewed.
         if (next.type === "campaign" && next.delivery_status === "sent") {
             const st = get();
-            const sends = audienceMatch(
+            const audience = audienceMatch(
                 {
                     kind: next.audience_kind ?? "everyone",
                     membershipIds: next.audience_membership_ids,
@@ -10308,24 +10308,34 @@ export const useAppStore = create<AppState>()(persist(
                     branchIds: next.branch_ids ?? [],
                 },
                 st.customers, st.customerPlans, st.customerTransactions,
-            ).length;
-            const statRow = {
-                id: `cstat_${id}`,
-                campaign_id: id,
-                campaign_name: next.title,
-                channel: "push" as const,
-                sent_at: next.sent_at ?? new Date().toISOString(),
-                sends,
-                // Simulated engagement (deterministic) — a fresh send has no
-                // attribution yet, so bookings/revenue start at 0.
-                opens_reads: Math.round(sends * 0.45),
-                clicks_taps: Math.round(sends * 0.08),
-                attributed_bookings: 0,
-                attributed_revenue_aed: 0,
-                attribution_window: "7 days",
-                branch_id: next.branch_ids?.[0] ?? DEFAULT_BRANCH_ID,
-            };
-            set(state => ({ marketingCampaignStats: [...state.marketingCampaignStats, statRow] }));
+            );
+            // Fan out across the channels enabled for this content type on the
+            // Customer-notifications row, gated by each customer's topic +
+            // channel opt-in. One stats row PER channel → Campaign Performance
+            // shows the real multi-channel send (email/whatsapp/sms/push).
+            const reach = marketingReach(audience, contentTopic(next), st.notificationSettings);
+            const at = next.sent_at ?? new Date().toISOString();
+            const branch = next.branch_ids?.[0] ?? DEFAULT_BRANCH_ID;
+            const rows = reach.channels.map(ch => {
+                const sends = reach.perChannel[ch];
+                return {
+                    id: `cstat_${id}_${ch}`,
+                    campaign_id: id,
+                    campaign_name: next.title,
+                    channel: ch,
+                    sent_at: at,
+                    sends,
+                    // Simulated engagement (deterministic) — fresh send, no
+                    // attribution yet.
+                    opens_reads: Math.round(sends * 0.45),
+                    clicks_taps: Math.round(sends * 0.08),
+                    attributed_bookings: 0,
+                    attributed_revenue_aed: 0,
+                    attribution_window: "7 days",
+                    branch_id: branch,
+                };
+            });
+            if (rows.length > 0) set(state => ({ marketingCampaignStats: [...state.marketingCampaignStats, ...rows] }));
         }
         return id;
     },
