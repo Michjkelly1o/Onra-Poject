@@ -31,7 +31,7 @@ import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { RowActions } from "@/components/patterns/RowActions";
 import { Toast } from "@/components/ui/Toast";
 import { useAppStore, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type SessionType, type Shift } from "@/lib/store";
-import { findShiftConflict, timeRangesOverlap } from "@/lib/staff/shift-conflict";
+import { decideAssign } from "@/lib/staff/shift-assign-logic";
 import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { branchTzLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill, SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
@@ -42,6 +42,16 @@ import {
     TODAY_ISO, TODAY_MONDAY_ISO, DAY_VIEW_DATE,
 } from "@/components/schedule/ScheduleGridViews";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+
+// ─── Day-view shift assignment — CENTRALIZED to Staff Schedule (client 2026-08-12) ──
+//
+// Shift assignment now lives in ONE place: Staff → Staff Schedule (week view). The
+// Day-view schedule keeps class scheduling + blocked-time (time off) only — it no
+// longer assigns/opens shifts. Flip this flag back to `true` to fully restore the
+// day-view shift layer: the "+ Add shift" button, the floating AddShiftPanel, the
+// per-staff shift slices, and the drag / pick / delete affordances (all their code
+// is preserved — only the wiring below is gated). See memory: day-view-shift-hidden.
+const SHOW_DAYVIEW_SHIFT_ASSIGNMENT = false;
 
 // Month-view / month navigator anchor — derived from the shared TODAY_ISO.
 const TODAY_MONTH_YEAR = TODAY_ISO.slice(0, 7);
@@ -1384,52 +1394,34 @@ function SchedulePage() {
         showToast("Staff assigned", `${assignPeriod.staffName} was assigned to ${assignPeriod.shiftName}.`, "success", "check");
         setAssignPeriod(null);
     }
-    // Find an already-held shift that time-collides with `candidate` (recurring
-    // shifts share the weekday+time rule; a single/one-off candidate — no
-    // weekday pattern — collides on time alone).
-    function findAssignClash(candidate: Shift, mine: typeof shiftAssignments): Shift | null {
-        const clash = findShiftConflict(candidate, mine, id => shifts.find(s => s.id === id));
-        if (clash) return clash;
-        if (!candidate.working_days.some(Boolean)) {
-            for (const a of mine) {
-                if (a.shift_id === candidate.id) continue;
-                const held = shifts.find(s => s.id === a.shift_id);
-                if (held && timeRangesOverlap(candidate.start_time, candidate.end_time, held.start_time, held.end_time)) return held;
-            }
-        }
-        return null;
-    }
     // Single entry point for BOTH drag-drop and the nested Assign-shift picker.
-    //   1. exact shift already held → "Shift already assigned" toast.
-    //   2. different overlapping shift → replace-confirm modal.
-    //   3. no conflict → period modal → assign (multiple non-overlapping OK).
+    // Runs the shared 4-case decision so this surface stays identical to the
+    // Add-shift panel + the Staff-schedule week view.
     function beginAssign(staffId: string, shiftId: string) {
-        const sh = shifts.find(s => s.id === shiftId);
         const st = staff.find(s => s.id === staffId);
-        if (!sh || !st) return;
-        const mine = shiftAssignments.filter(a => a.staff_id === staffId);
-        if (mine.some(a => a.shift_id === shiftId)) {
-            showToast("Shift already assigned", `${st.fullName} is already on ${sh.name}.`, "warning", "alert");
+        if (!st) return;
+        const decision = decideAssign(shiftId, staffId, shifts, shiftAssignments);
+        if (!decision) return;
+        if (decision.kind === "duplicate") {
+            showToast("Shift already assigned", `${st.fullName} is already on ${decision.shift.name}.`, "warning", "alert");
             return;
         }
-        const clash = findAssignClash(sh, mine);
-        if (clash) {
-            const clashRows = mine.filter(a => a.shift_id === clash.id);
+        if (decision.kind === "conflict") {
             setConflictAssign({
-                staffId, staffName: st.fullName, shiftId, shiftName: sh.name,
-                conflictName: clash.name,
-                replaceIds: clashRows.map(a => a.id),
+                staffId, staffName: st.fullName, shiftId, shiftName: decision.shift.name,
+                conflictName: decision.clash.name,
+                replaceIds: decision.replaceIds,
             });
             return;
         }
         // Single/one-off shifts skip the period modal — assign for the viewed day
         // directly (client 2026-08-11). Recurring shifts still confirm the span.
-        if ((sh.type ?? "recurring") === "single") {
-            addShiftAssignment({ shift_id: shiftId, staff_id: staffId, days_of_week: assignDaysFor(sh), week_start: scheduleMondayISO(dayDateISO) });
-            showToast("Staff assigned", `${st.fullName} was assigned to ${sh.name}.`, "success", "check");
+        if (decision.immediate) {
+            addShiftAssignment({ shift_id: shiftId, staff_id: staffId, days_of_week: assignDaysFor(decision.shift), week_start: scheduleMondayISO(dayDateISO) });
+            showToast("Staff assigned", `${st.fullName} was assigned to ${decision.shift.name}.`, "success", "check");
             return;
         }
-        setAssignPeriod({ staffId, staffName: st.fullName, shiftId, shiftName: sh.name });
+        setAssignPeriod({ staffId, staffName: st.fullName, shiftId, shiftName: decision.shift.name });
     }
     // Replace-confirm → drop the conflicting shift and assign the new one.
     function confirmReplaceAssign(weeks: number) {
@@ -1592,7 +1584,7 @@ function SchedulePage() {
                 {/* Day-view "Add shift" floating panel — sticky right, no overlay.
                     The per-staff Assign shift picker is a nested popover inside
                     the Day grid (not this panel), so both can't collide. */}
-                {activeTab === "day" && (
+                {activeTab === "day" && SHOW_DAYVIEW_SHIFT_ASSIGNMENT && (
                     <AddShiftPanel open={addShiftOpen} onClose={() => setAddShiftOpen(false)} shifts={shifts} branchId={location} dateISO={dayDateISO} />
                 )}
                 {/* Period modal — how long a fresh (non-conflicting) assign lasts,
@@ -1673,7 +1665,7 @@ function SchedulePage() {
                     {/* Day view only — "+ Add shift" opens the floating shift panel.
                         (The Filter control lives in the top toolbar; the date
                         navigator stays centered via its own absolute positioning.) */}
-                    {activeTab === "day" && (
+                    {activeTab === "day" && SHOW_DAYVIEW_SHIFT_ASSIGNMENT && (
                         <div className="ml-auto">
                             <Button variant="secondary-gray" leftIcon={<Plus className="w-4 h-4" />}
                                 onClick={() => setAddShiftOpen(o => !o)}>
@@ -1717,7 +1709,15 @@ function SchedulePage() {
                 })()}
 
                 {activeTab === "day" && (
-                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} blockedTimes={blockedTimes} classes={gridClasses} staffColumns={dayStaffColumns} shifts={shifts} shiftAssignments={shiftAssignments} focusInstructorId={applied.instructors[0]} searchQuery={search} onClassClick={handleClassClick} onDeleteShiftAssignment={handleDeleteShiftAssignment} onStaffPickShift={beginAssign} onStaffUnassignShift={setUnassignStaffId} onDropShiftOnStaff={(shiftId, staffId) => beginAssign(staffId, shiftId)} mainPanelOpen={addShiftOpen} onOpenStaffMenu={() => setAddShiftOpen(false)} />
+                    <DayView dateISO={dayDateISO} branchId={location} businessHoursRows={businessHours} activeBranchIds={activeBranchIds} blockedTimes={blockedTimes} classes={gridClasses} staffColumns={dayStaffColumns}
+                        shifts={SHOW_DAYVIEW_SHIFT_ASSIGNMENT ? shifts : undefined}
+                        shiftAssignments={SHOW_DAYVIEW_SHIFT_ASSIGNMENT ? shiftAssignments : undefined}
+                        focusInstructorId={applied.instructors[0]} searchQuery={search} onClassClick={handleClassClick}
+                        onDeleteShiftAssignment={SHOW_DAYVIEW_SHIFT_ASSIGNMENT ? handleDeleteShiftAssignment : undefined}
+                        onStaffPickShift={SHOW_DAYVIEW_SHIFT_ASSIGNMENT ? beginAssign : undefined}
+                        onStaffUnassignShift={SHOW_DAYVIEW_SHIFT_ASSIGNMENT ? setUnassignStaffId : undefined}
+                        onDropShiftOnStaff={SHOW_DAYVIEW_SHIFT_ASSIGNMENT ? ((shiftId, staffId) => beginAssign(staffId, shiftId)) : undefined}
+                        mainPanelOpen={addShiftOpen} onOpenStaffMenu={() => setAddShiftOpen(false)} />
                 )}
 
                 {activeTab === "week" && (
