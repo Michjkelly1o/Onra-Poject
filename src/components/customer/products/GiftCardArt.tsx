@@ -10,12 +10,11 @@
 //   • GiftCardArt  — the full 335×210 card used in the Redeem modal, in two
 //     states: "sent" (large logomark) and "redeemed" (Forma + check + balance).
 
-import { Check } from "@untitledui/icons";
 
 /** Exact Figma card gradient (stops reordered ascending for CSS). Exported so the
  *  Wallet balance card reuses the same Forma card treatment. */
 export const FORMA_GRADIENT =
-    "linear-gradient(178.25deg, rgb(234,239,243) 4%, rgb(216,243,228) 22.7%, rgb(177,231,201) 34.5%, rgb(239,250,244) 69%, rgb(196,237,214) 100%)";
+    "linear-gradient(178.25deg, #eff6f3 4%, #dcebe4 22.7%, #d5e7df 34.5%, #eff6f3 69%, #dcebe4 100%)";
 
 /** Small green gift-card tile (46×32) — the exact Forma payment tile used in the
  *  checkout Pay-with picker and the redeemed-gift-card list row. */
@@ -38,7 +37,8 @@ export function GiftCardMark({ className }: { className?: string }) {
 export interface GiftCardArtProps {
     /** "sent" = pre-redeem (large logomark); "redeemed" = Forma + check + balance. */
     variant: "sent" | "redeemed";
-    /** Face value shown on the redeemed card (e.g. 250 → "AED 250 Gift Card"). */
+    /** Face value shown on the redeemed card (e.g. 250 → "AED 250 Gift Card").
+     *  Omit for a custom-amount card before entry → "Custom Amount Gift Card". */
     value?: number;
     className?: string;
 }
@@ -64,7 +64,7 @@ export function GiftCardArt({ variant, value, className }: GiftCardArtProps) {
                 <img
                     src="/images/pay/forma-logomark.svg"
                     alt="Forma"
-                    className="absolute left-[5.7%] top-1/2 aspect-[11.44/13.73] w-[24.9%] -translate-y-1/2"
+                    className="absolute left-[5.7%] top-1/2 aspect-[11.44/13.73] w-[24.9%] -translate-y-1/2 opacity-30"
                 />
             ) : (
                 <>
@@ -76,16 +76,14 @@ export function GiftCardArt({ variant, value, className }: GiftCardArtProps) {
                         <img src="/images/pay/forma-logomark.svg" alt="" className="h-8 w-[26.67px] shrink-0" />
                         <span className="text-lg font-semibold leading-7 text-[var(--brand-primary)]">Forma</span>
                     </div>
-                    {/* Top-right — check */}
-                    <div className="absolute right-0 top-0 p-5">
-                        <span className="flex size-7 items-center justify-center rounded-full bg-[var(--brand-primary)]">
-                            <Check className="size-[18px] text-white" strokeWidth={3} aria-hidden />
-                        </span>
-                    </div>
                     {/* Bottom-left — balance (padding on the wrapper so the 112px text box
                         wraps to "AED 250" / "Gift Card", not one word per line). */}
                     <div className="absolute bottom-0 left-0 p-6">
-                        <p className="w-28 text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">AED {value} Gift Card</p>
+                        <p className="text-xl font-semibold leading-[30px] text-[var(--brand-primary)]">
+                            {value != null ? `AED ${value}` : "Custom Amount"}
+                            <br />
+                            Gift Card
+                        </p>
                     </div>
                 </>
             )}

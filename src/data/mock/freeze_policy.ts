@@ -78,6 +78,10 @@ export const freeze_policy: FreezePolicy = {
     require_reason: true,
     reasons: defaultReasons(),
 
+    // Members cannot cancel their own membership out of the box — the studio
+    // opts in via Booking rules → Cancel & freeze plan policy (client 2026-08-11).
+    members_can_cancel: false,
+
     apply_to: "all",
     membership_ids: [],
 };

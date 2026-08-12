@@ -16,6 +16,7 @@ import { useAppStore } from "@/lib/store";
 import { useMainScrollable, useMainScrolled } from "@/lib/customer/use-scrollable";
 import { addGiftCardToCart, ensurePurchaseCart, type PlanRow } from "@/lib/customer/purchase";
 import { Button } from "@/components/ui/button";
+import { GiftCardArt } from "@/components/customer/products/GiftCardArt";
 
 const MSG_MAX = 120;
 const FIELD =
@@ -26,15 +27,12 @@ const FIELD_ERR = "border-[#fda29b] focus:border-[#fda29b]";
 export function GiftCardInfoContent({
     designId,
     variant = "page",
-    payNow = false,
     onDone,
     onBack,
     onCheckout,
 }: {
     designId: string;
     variant?: "page" | "sheet";
-    /** Continue to checkout after adding (Pay now intent). */
-    payNow?: boolean;
     /** Close / go back (route: navigate to catalog; sheet: close). */
     onDone: () => void;
     /** Sheet mode — slide BACK to the product detail (forward/back flow). When
@@ -130,13 +128,16 @@ export function GiftCardInfoContent({
     const amountValid =
         !isCustom || (amount.trim() !== "" && Number.isFinite(amountNum) && amountNum >= min && amountNum <= max);
     const amountError = isCustom && amount.trim() !== "" && !amountValid;
+    // Value shown on the card face: the fixed value, or the custom amount once
+    // it's a valid entry (else the card shows its pre-value "sent" look).
+    const cardValue: number | undefined = isCustom ? (amountValid && amountNum > 0 ? amountNum : undefined) : fixed;
 
     const recipient = customers.find((c) => c.email.trim().toLowerCase() === email.trim().toLowerCase());
     const bothFilled = name.trim() !== "" && email.trim() !== "";
     const recipientError = bothFilled && !recipient;
     const valid = bothFilled && !!recipient && amountValid;
 
-    function confirm() {
+    function confirm(pay: boolean) {
         if (!valid || !design || !recipient) return;
         const face = isCustom ? amountNum : fixed;
         const validLabel = design.no_expiry
@@ -163,13 +164,11 @@ export function GiftCardInfoContent({
             message: message.trim() || undefined,
         });
         showToast("Added to cart", `${design.name} added to your cart.`, "success", "check");
-        const wantsCheckout =
-            payNow || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("pay") === "1");
         if (isSheet) {
             onDone();
-            if (wantsCheckout) onCheckout?.();
+            if (pay) onCheckout?.();
         } else {
-            router.push(wantsCheckout ? "/customer/products/checkout" : "/customer/products");
+            router.push(pay ? "/customer/products/checkout" : "/customer/products");
         }
     }
 
@@ -182,6 +181,15 @@ export function GiftCardInfoContent({
                     isSheet ? "min-h-0 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "px-4"
                 }`}
             >
+                {/* Gift-card illustration — shows the amount (fixed value, or the
+                    custom amount once entered). Replaces the separate product-
+                    detail step (client 2026-08-11). */}
+                <GiftCardArt
+                    variant="redeemed"
+                    value={cardValue ?? undefined}
+                    className="shrink-0"
+                />
+
                 <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-medium leading-5 text-[#344054]">Recipient name</label>
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recipient name…" className={`${FIELD} ${recipientError ? FIELD_ERR : FIELD_OK}`} />
@@ -215,10 +223,15 @@ export function GiftCardInfoContent({
                 </div>
             </div>
 
-            <div className={`z-10 pt-4 ${isSheet ? "shrink-0 bg-white" : `sticky bottom-0 px-5 pb-[max(16px,env(safe-area-inset-bottom))] ${scrollable ? "bg-white" : ""}`}`}>
-                <Button variant="primary" size="xl" disabled={!valid} className="w-full rounded-full" onClick={confirm}>
-                    Confirm
-                </Button>
+            <div className={`z-10 ${isSheet ? "shrink-0 border-t border-[var(--colors-bg-tertiary)] bg-white -mx-4 px-4 pt-4" : `sticky bottom-0 px-5 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] ${scrollable ? "bg-white" : ""}`}`}>
+                <div className="flex gap-3">
+                    <Button variant="secondary-gray" size="xl" disabled={!valid} className="flex-1 rounded-full" onClick={() => confirm(false)}>
+                        Add to cart
+                    </Button>
+                    <Button variant="primary" size="xl" disabled={!valid} className="flex-1 rounded-full" onClick={() => confirm(true)}>
+                        Pay now
+                    </Button>
+                </div>
             </div>
         </div>
     );

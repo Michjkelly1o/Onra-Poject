@@ -384,7 +384,7 @@ export function FreezePolicyPanel({ open, onClose }: {
                 {/* Header */}
                 <div className="flex items-center gap-4 px-6 border-b border-[var(--colors-border-secondary)] shrink-0 py-4">
                     <div className="flex-1">
-                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Freeze policy</p>
+                        <p className="font-semibold text-[18px] text-[var(--colors-text-primary)]">Cancel & freeze plan policy</p>
                     </div>
                     <button type="button" onClick={onClose}
                         className="w-10 h-10 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors shrink-0">
@@ -394,8 +394,18 @@ export function FreezePolicyPanel({ open, onClose }: {
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-6 py-5 flex flex-col gap-7">
+                    {/* Cancellation toggle (client 2026-08-11) — sits ABOVE the
+                        freeze toggle. When ON, the customer plan page shows the
+                        Cancel CTA (stops renewal, access until period end). */}
                     <ToggleCard
-                        title="Enable freeze policy"
+                        title="Members can cancel their own membership"
+                        subtitle="Allow customers to cancel their membership from their account. Cancelling stops renewal — access stays until the end of the paid period."
+                        on={form.members_can_cancel}
+                        onChange={v => patch({ members_can_cancel: v })}
+                    />
+
+                    <ToggleCard
+                        title="Members can freeze their own membership"
                         subtitle="Allow customers to pause their membership from their account."
                         on={form.enabled}
                         onChange={v => patch({ enabled: v })}

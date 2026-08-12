@@ -10,7 +10,7 @@
 // waitlisted / attended / no-show / cancelled across screens.
 
 import type { ComponentType, SVGProps } from "react";
-import { CheckCircle, Clock, SlashCircle01, XCircle } from "@untitledui/icons";
+import { CheckCircle, Clock, SlashCircle01, XCircle, Star01 } from "@untitledui/icons";
 
 export type BookingTone = "success" | "warning" | "error" | "neutral";
 
@@ -58,9 +58,14 @@ export interface BookingCardProps {
      *  "Rate class" button on a past booking). Clicks here don't trigger the
      *  card's own onClick. */
     footer?: React.ReactNode;
+    /** When defined, a 5-star row is shown in the status slot INSTEAD of the
+     *  status label — filled up to this value (0 / undefined-as-null = the
+     *  empty rating state). Used by Past bookings on the home screen so rated
+     *  and unrated attended cards read consistently. */
+    rating?: number | null;
 }
 
-export function BookingCard({ name, date, time, location, tzLabel, status, image, imageColor, mutedCover, onClick, footer }: BookingCardProps) {
+export function BookingCard({ name, date, time, location, tzLabel, status, image, imageColor, mutedCover, onClick, footer, rating }: BookingCardProps) {
     const tone = TONE[status.tone];
     const Icon = status.icon ?? tone.Icon;
     const color = status.color ?? tone.color;
@@ -105,11 +110,25 @@ export function BookingCard({ name, date, time, location, tzLabel, status, image
                             )}
                         </div>
 
-                        {/* Status */}
-                        <div className="flex items-center gap-1">
-                            <Icon className="size-3.5 shrink-0" style={{ color }} aria-hidden />
-                            <span className="truncate text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">{status.label}</span>
-                        </div>
+                        {/* Status — or, when `rating` is provided, a 5-star row
+                            sized to sit in the same slot as the status line. */}
+                        {rating !== undefined ? (
+                            <div className="flex items-center gap-0.5" aria-label={rating ? `Rated ${rating} out of 5` : "Not rated yet"}>
+                                {[1, 2, 3, 4, 5].map((n) => (
+                                    <Star01
+                                        key={n}
+                                        className="size-3.5 shrink-0"
+                                        style={n <= (rating ?? 0) ? { fill: "#fdb022", color: "#fdb022" } : { fill: "#d5d9df", color: "#d5d9df" }}
+                                        aria-hidden
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1">
+                                <Icon className="size-3.5 shrink-0" style={{ color }} aria-hidden />
+                                <span className="truncate text-xs font-medium leading-[18px] text-[var(--colors-text-secondary)]">{status.label}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

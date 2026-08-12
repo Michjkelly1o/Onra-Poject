@@ -20,7 +20,7 @@
 // + instructor detail Shift hours line read live from the same slice, so
 // edits here surface everywhere on the same render cycle.
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter } from "next/navigation";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
@@ -596,6 +596,9 @@ export interface ShiftManagementTabProps {
     /** Tells the parent whether the Filter button should render the
      *  green active-dot. */
     onFilterStateChange?: (hasActive: boolean) => void;
+    /** Reports the toolbar total for this sub-tab: shift count in List view,
+     *  staff-row count in Week view (client 2026-08-12). */
+    onCountChange?: (count: number, noun: string) => void;
     /** Tells the parent the table is mounted so it can enable / wire its
      *  Filter button click handler. */
     filterOpen: boolean;
@@ -608,11 +611,15 @@ export interface ShiftManagementTabProps {
      *  parent (StaffPermissionsPage) owns the date navigator on the
      *  sub-tab row so this is a read-only prop. Client 2026-07-22. */
     weekStart?: Date;
+    /** Staff-schedule — a quick-action flyout opened, so close the main panel. */
+    onFlyoutOpen?: () => void;
+    /** Staff-schedule — the main Add-shift panel opened, so close any flyout. */
+    mainPanelOpen?: boolean;
 }
 
 export function ShiftManagementTab({
-    returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange,
-    viewMode = "list", weekStart,
+    returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange, onCountChange,
+    viewMode = "list", weekStart, onFlyoutOpen, mainPanelOpen,
 }: ShiftManagementTabProps) {
     const router = useRouter();
     const shifts            = useAppStore(s => s.shifts);
@@ -704,8 +711,8 @@ export function ShiftManagementTab({
     // ── Filter + search (LIST view — Working days + Status) ─────────────────
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
+        // Shifts are branch-agnostic (client 2026-08) — no branch scoping here.
         return shifts.filter(s => {
-            if (branchId && s.branch_id !== branchId)                 return false;
             if (appliedList.statuses.length && !appliedList.statuses.includes(s.status)) return false;
             // Working-days filter — shift qualifies if it runs on ANY selected day.
             if (appliedList.days.length && !appliedList.days.some(d => s.working_days[d])) return false;
@@ -714,6 +721,16 @@ export function ShiftManagementTab({
         });
     }, [shifts, branchId, search, appliedList]);
 
+    // List view reports the filtered SHIFT count; the week view forwards its own
+    // staff-row count (via ShiftsWeekView's onCountChange) so the parent toolbar
+    // shows "Total N shifts" vs "Total N staff" correctly (client 2026-08-12).
+    useEffect(() => {
+        if (viewMode !== "week") onCountChange?.(filtered.length, filtered.length === 1 ? "shift" : "shifts");
+    }, [viewMode, filtered.length, onCountChange]);
+    // Stable forwarder for the week view's staff-row count — a fresh inline
+    // callback here would re-run ShiftsWeekView's report effect every render.
+    const reportWeekCount = useCallback((n: number) => onCountChange?.(n, "staff"), [onCountChange]);
+
     // Options for the WEEK-view filter panel.
     const weekRoleOptions = useMemo(
         () => roles.filter(r => r.status === "active" && r.type !== "owner").map(r => ({ id: r.id, name: r.name })),
@@ -721,9 +738,9 @@ export function ShiftManagementTab({
     );
     const weekShiftNameOptions = useMemo(
         () => shifts
-            .filter(sh => sh.status === "active" && (!branchId || sh.branch_id === branchId))
+            .filter(sh => sh.status === "active")
             .map(sh => ({ id: sh.id, name: sh.name })),
-        [shifts, branchId],
+        [shifts],
     );
 
     // ── Pagination slice ──────────────────────────────────────────────────
@@ -864,14 +881,16 @@ export function ShiftManagementTab({
         <>
             {viewMode === "week" ? (
                 <div className="relative flex flex-col flex-1 min-h-0">
-                    <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart}
-                        roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds} />
+                    <ShiftsWeekView branchId={branchId} search={search} weekStart={weekStart} mainPanelOpen={mainPanelOpen}
+                        onCountChange={reportWeekCount}
+                        roleIds={appliedWeek.roleIds} shiftIds={appliedWeek.shiftIds}
+                        onFlyoutOpen={onFlyoutOpen} />
                 </div>
             ) : (
             /* Table card — wrapped in px-6 so the table edges line up with
                the surrounding tab nav row + the pagination row below,
                matching the staff table's padding model exactly. */
-            <div className="relative flex flex-col min-h-0">
+            <div className="relative flex flex-col flex-1 min-h-0">
                 {filtered.length === 0 ? (
                     <div className="relative flex-1" style={{ minHeight: 400 }}>
                         <EmptyState
@@ -899,9 +918,7 @@ export function ShiftManagementTab({
                                         <th className={cn(TH, "w-[220px]")}>
                                             <SortableHeader sortKey="name"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Shift name</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[180px]")}>
-                                            <SortableHeader sortKey="branch" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
-                                        </th>
+                                        <th className={cn(TH, "w-[140px]")}>Shift type</th>
                                         <th className={cn(TH, "w-[140px]")}>
                                             <SortableHeader sortKey="days"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Shift days</SortableHeader>
                                         </th>
@@ -920,9 +937,6 @@ export function ShiftManagementTab({
                                             <SortableHeader sortKey="staff"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Staffing</SortableHeader>
                                         </th>
                                         )}
-                                        <th className={cn(TH, "w-[120px]")}>
-                                            <SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                        </th>
                                         <th className={cn(TH, "w-[52px]")}></th>
                                     </tr>
                                 </thead>
@@ -975,7 +989,11 @@ export function ShiftManagementTab({
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className={cn(TD, "whitespace-nowrap")}>{branch?.name ?? "—"}</td>
+                                            <td className={cn(TD, "whitespace-nowrap")}>
+                                                <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium border-1 border-[#e4e7ec] bg-[#f9fafb] text-[#344054]">
+                                                    {(s.type ?? "recurring") === "single" ? "Single" : "Recurring"}
+                                                </span>
+                                            </td>
                                             <td className={cn(TD, "whitespace-nowrap")}>{daysSummary(s.working_days)}</td>
                                             <td className={cn(TD, "whitespace-nowrap")}>
                                                 {fmtTime12(s.start_time)} – {fmtTime12(s.end_time)}
@@ -999,17 +1017,12 @@ export function ShiftManagementTab({
                                                 </div>
                                             </td>
                                             )}
-                                            <td className={TD}><StatusBadge type="shift" status={s.status} /></td>
                                             <td className={TD} onClick={e => e.stopPropagation()}>
                                                 <RowActions items={[
                                                     { label: "View details", icon: Eye, onClick: () => handleRowAction(s, "view") },
-                                                    { label: "Edit details", icon: Edit02, onClick: () => handleRowAction(s, "edit"), hidden: s.status !== "active" },
-                                                    { label: "Assign staff", icon: UserPlus01, onClick: () => handleRowAction(s, "assign_staff"), hidden: s.status !== "active" },
-                                                    { label: "Archive", icon: Archive, onClick: () => handleRowAction(s, "archive"), hidden: s.status === "archived" },
-                                                    { label: "Reactivate", icon: Check, onClick: () => handleRowAction(s, "reactivate"), hidden: s.status !== "inactive" },
-                                                    { label: "Recover", icon: RefreshCcw01, onClick: () => handleRowAction(s, "recover"), hidden: s.status !== "archived" },
-                                                    { label: "Deactivate", icon: SlashCircle01, onClick: () => handleRowAction(s, "deactivate"), danger: true, hidden: !(s.status === "active" && assignedCount > 0) },
-                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true, hidden: s.status !== "active" },
+                                                    { label: "Edit details", icon: Edit02, onClick: () => handleRowAction(s, "edit") },
+                                                    { label: "Assign staff", icon: UserPlus01, onClick: () => handleRowAction(s, "assign_staff") },
+                                                    { label: "Delete", icon: Trash01, onClick: () => handleRowAction(s, "delete"), danger: true },
                                                 ]} />
                                             </td>
                                         </tr>

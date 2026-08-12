@@ -186,7 +186,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                 width: `calc(${absolute.widthPct}% - 4px)`,
                 boxShadow: "0 1px 2px rgba(16, 24, 40, 0.08), 0 1px 3px rgba(16, 24, 40, 0.04)",
             }
-            : { position: "absolute", top: absolute.top, height: absolute.height, minHeight: 72, left: 2, right: 2 })
+            : { position: "absolute", top: absolute.top, height: absolute.height, minHeight: 72, left: 8, right: 8 })
         : {};
 
     // ── LG ───────────────────────────────────────────────────────────────────

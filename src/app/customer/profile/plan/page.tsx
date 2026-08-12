@@ -14,6 +14,7 @@ import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
 import { PlanCard } from "@/components/customer/profile/PlanCard";
 import { FreezePlanSheet, type FreezeReasonOption } from "@/components/customer/profile/FreezePlanSheet";
 import { OptionSheet } from "@/components/customer/profile/OptionSheet";
+import { CancelConfirmSheet } from "@/components/customer/bookings/CancelConfirmSheet";
 import { Button } from "@/components/ui/button";
 import { decideFreezeCta } from "@/lib/customer/freeze-eligibility";
 import { distributePackageCredits } from "@/lib/customer/credit-balance";
@@ -32,6 +33,12 @@ const FALLBACK_CANCEL_REASONS = [
 
 const noun = (p: CustomerPlan) => (p.kind === "membership" ? "membership" : "package");
 const Noun = (p: CustomerPlan) => (p.kind === "membership" ? "Membership" : "Package");
+/** "24 Aug" — the paid-through date shown in the cancel confirmation + toast. */
+function fmtEndDate(iso?: string): string {
+    if (!iso) return "soon";
+    const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? "soon" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
 
 export default function MyPlanPage() {
     useRequireCustomerAuth();
@@ -71,6 +78,9 @@ export default function MyPlanPage() {
     // (client Jul 2026 flipped away from per-branch). Always defined via the
     // singleton seed.
     const policy = freezePolicy;
+    // Admin gate (Booking rules -> Cancel & freeze plan policy). When OFF the
+    // Cancel CTA is hidden on every membership card.
+    const membersCanCancel = freezePolicy.members_can_cancel ?? false;
 
     // Freeze CTA decision — centralised in `freeze-eligibility.ts` so the
     // page, the card, and Phase 5's approval surface all read the same
@@ -165,6 +175,8 @@ export default function MyPlanPage() {
 
     const [freezePlan, setFreezePlan] = useState<CustomerPlan | null>(null);
     const [cancelPlan, setCancelPlan] = useState<CustomerPlan | null>(null);
+    // Second-step confirmation (end-date disclosure) after the reason pick.
+    const [cancelConfirm, setCancelConfirm] = useState<{ plan: CustomerPlan; reason: string } | null>(null);
 
     // Grouped for display: live plans on top ("Active plan"), history below
     // ("Expired plan") — same section style as the Notifications list.
@@ -187,6 +199,7 @@ export default function MyPlanPage() {
                 freezeMode={cta.mode === "request" ? "request" : "direct"}
                 onFreeze={() => setFreezePlan(p)}
                 onUnfreeze={() => doUnfreeze(p)}
+                canCancel={membersCanCancel && p.kind === "membership"}
                 onCancel={() => setCancelPlan(p)}
                 onReactivate={() => doReactivate(p)}
             />
@@ -243,14 +256,15 @@ export default function MyPlanPage() {
             "check",
         );
     }
-    function doCancel(reason: string) {
-        if (!cancelPlan) return;
-        cancelCustomerPlan(cancelPlan.id, "period_end", reason);
+    function doCancel(plan: CustomerPlan, reason: string) {
+        // Membership cancellation stops renewal only — access stays until the
+        // paid period ends, no money moves (period_end mode, no refund).
+        cancelCustomerPlan(plan.id, "period_end", reason);
         showToast(
-            `${Noun(cancelPlan)} has been cancelled`,
-            `All benefits and bookings under this ${noun(cancelPlan)} are no longer active.`,
-            "error",
-            "slash",
+            `${Noun(plan)} cancellation scheduled`,
+            `Your ${noun(plan)} ends ${fmtEndDate(plan.expiryISO)} — you keep full access until then.`,
+            "success",
+            "check",
         );
     }
     function doReactivate(p: CustomerPlan) {
@@ -325,9 +339,19 @@ export default function MyPlanPage() {
                 onClose={() => setCancelPlan(null)}
                 title="Please select a reason"
                 options={cancelReasons}
-                confirmLabel="Cancel"
+                confirmLabel="Continue"
                 destructive
-                onConfirm={doCancel}
+                onConfirm={(reason) => { if (cancelPlan) setCancelConfirm({ plan: cancelPlan, reason }); }}
+            />
+            <CancelConfirmSheet
+                open={!!cancelConfirm}
+                onClose={() => setCancelConfirm(null)}
+                title="Cancel membership"
+                description={cancelConfirm
+                    ? `Your membership ends ${fmtEndDate(cancelConfirm.plan.expiryISO)}. You keep full access until then — no further payments and no partial refund.`
+                    : ""}
+                confirmLabel="Yes, cancel membership"
+                onConfirm={() => { if (cancelConfirm) doCancel(cancelConfirm.plan, cancelConfirm.reason); }}
             />
         </div>
     );

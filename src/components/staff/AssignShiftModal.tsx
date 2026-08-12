@@ -16,9 +16,12 @@ import { useAppStore, type Staff } from "@/lib/store";
 import { findShiftConflict } from "@/lib/staff/shift-conflict";
 import { PickerShiftRow } from "@/components/staff/ShiftsWeekView";
 
-export function AssignShiftModal({ staff, onClose }: {
+export function AssignShiftModal({ staff, onClose, onPick }: {
     staff: Staff;
     onClose: () => void;
+    /** When provided, picking a shift calls this (so the caller can chain the
+     *  period-confirmation modal) INSTEAD of assigning immediately. */
+    onPick?: (shiftId: string, shiftName: string) => void;
 }) {
     const shifts             = useAppStore((s) => s.shifts);
     const shiftAssignments   = useAppStore((s) => s.shiftAssignments);
@@ -33,9 +36,11 @@ export function AssignShiftModal({ staff, onClose }: {
     );
     const assignedIds = useMemo(() => new Set(myAssignments.map((a) => a.shift_id)), [myAssignments]);
 
+    // Shifts are branch-agnostic (client 2026-08) — every active shift is
+    // assignable to this staff member regardless of branch.
     const branchShifts = useMemo(
-        () => shifts.filter((sh) => sh.status === "active" && (!staff.branchId || sh.branch_id === staff.branchId)),
-        [shifts, staff.branchId],
+        () => shifts.filter((sh) => sh.status === "active"),
+        [shifts],
     );
     // Not already held + matches the search.
     const available = branchShifts
@@ -54,6 +59,7 @@ export function AssignShiftModal({ staff, onClose }: {
             );
             return;
         }
+        if (onPick) { onPick(shiftId, shift.name); return; }
         addShiftAssignment({ shift_id: shiftId, staff_id: staff.id });
         showToast(
             "Shift assigned",

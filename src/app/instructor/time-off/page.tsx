@@ -63,14 +63,16 @@ function spanDays(fromISO: string, toISO: string): number {
 type Reason = BlockedTime["reason"];
 
 const REASON_STYLE: Record<Reason, { label: string; className: string }> = {
-    sick:     { label: "Sick",     className: "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" },
-    vacation: { label: "Vacation", className: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" },
-    training: { label: "Training", className: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]" },
-    other:    { label: "Other",    className: "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]" },
+    annual_leave:    { label: "Annual Leave",    className: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" },
+    sick:            { label: "Sick",            className: "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" },
+    personal:        { label: "Personal",        className: "bg-[#f0f9f6] border-[#a6e0cd] text-[#107569]" },
+    training:        { label: "Training",        className: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]" },
+    religious_leave: { label: "Religious Leave", className: "bg-[#fffaeb] border-[#fedf89] text-[#b54708]" },
+    other:           { label: "Other",           className: "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]" },
 };
 
 function ReasonChip({ reason }: { reason: Reason | undefined }) {
-    const spec = REASON_STYLE[reason ?? "other"];
+    const spec = REASON_STYLE[(reason ?? "other") as Reason] ?? REASON_STYLE.other;
     return (
         <span className={cn(
             "inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 whitespace-nowrap",
@@ -82,10 +84,12 @@ function ReasonChip({ reason }: { reason: Reason | undefined }) {
 }
 
 const REASON_OPTIONS: { value: Reason; label: string }[] = [
-    { value: "sick",     label: "Sick"     },
-    { value: "vacation", label: "Vacation" },
-    { value: "training", label: "Training" },
-    { value: "other",    label: "Other"    },
+    { value: "annual_leave",    label: "Annual Leave"    },
+    { value: "sick",            label: "Sick"            },
+    { value: "personal",        label: "Personal"        },
+    { value: "training",        label: "Training"        },
+    { value: "religious_leave", label: "Religious Leave" },
+    { value: "other",           label: "Other"           },
 ];
 
 // ─── Form panel (SlidePanel) ─────────────────────────────────────────────
@@ -103,7 +107,7 @@ interface FormValue {
 
 const EMPTY_FORM = (): FormValue => ({
     title: "", dateFrom: "", dateTo: "", allDay: false,
-    startTime: "09:00", endTime: "10:00", reason: "vacation", note: "",
+    startTime: "09:00", endTime: "10:00", reason: "annual_leave", note: "",
 });
 
 /** 15-minute time options (24h). */

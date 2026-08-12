@@ -531,6 +531,9 @@ export interface PastCardVM extends UpcomingCardVM {
     canRate: boolean;
     /** Route to the rating flow for this booking. */
     rateHref: string;
+    /** The member's star rating (1-5) once submitted; undefined while unrated.
+     *  Drives the star row shown on the card — empty stars when undefined. */
+    ratingValue?: number;
 }
 
 /** Every past booking (classes + private/recovery appointments), most-recent-first. */
@@ -543,12 +546,16 @@ export function usePastBookingsMerged(): PastCardVM[] {
     const appointmentRatings = useAppStore((s) => s.appointmentRatings);
 
     return useMemo(() => {
-        const ratedSchedule = new Set(
-            classRatings.filter((r) => member && r.customerId === member.id && !r.deletedAt).map((r) => r.classScheduleId),
-        );
-        const ratedAppt = new Set(
-            appointmentRatings.filter((r) => member && r.customerId === member.id && !r.deletedAt).map((r) => r.appointmentId),
-        );
+        // Maps (not Sets) so the card can show the ACTUAL star value once rated,
+        // and empty stars while unrated (client 2026-08-11).
+        const ratedSchedule = new Map<string, number>();
+        classRatings
+            .filter((r) => member && r.customerId === member.id && !r.deletedAt)
+            .forEach((r) => ratedSchedule.set(r.classScheduleId, r.score));
+        const ratedAppt = new Map<string, number>();
+        appointmentRatings
+            .filter((r) => member && r.customerId === member.id && !r.deletedAt)
+            .forEach((r) => ratedAppt.set(r.appointmentId, r.score));
 
         const classCards: PastCardVM[] = past.map((b) => {
             const pres = BOOKING_STATUS[b.viewStatus];
@@ -567,6 +574,7 @@ export function usePastBookingsMerged(): PastCardVM[] {
                 attended: b.viewStatus === "attended",
                 canRate: b.viewStatus === "attended" && !ratedSchedule.has(b.scheduleId),
                 rateHref: `/customer/bookings/${b.bookingId}/rate`,
+                ratingValue: ratedSchedule.get(b.scheduleId),
             };
         });
 
@@ -597,6 +605,7 @@ export function usePastBookingsMerged(): PastCardVM[] {
                 attended: true,
                 canRate: !ratedAppt.has(a.adminAppointmentId ?? a.id),
                 rateHref: `/customer/bookings/appointment/${a.id}/rate`,
+                ratingValue: ratedAppt.get(a.adminAppointmentId ?? a.id),
             }));
 
         return [...classCards, ...apptCards].sort((x, y) => y.sortKey.localeCompare(x.sortKey));

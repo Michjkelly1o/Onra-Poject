@@ -98,7 +98,9 @@ export function useCatalogProducts(): CatalogProducts {
                     sub: validLabel,
                     price: base,
                     priceLabel: isCustom ? `Start from AED ${g.min_value_aed ?? 0}` : `AED ${base}`,
-                    creditBadge: { big: String(base), small: "AED" },
+                    // Custom-amount cards show "Custom amount" on the tile instead
+                    // of a misleading fixed number (client 2026-08).
+                    creditBadge: isCustom ? { big: "Custom", small: "amount" } : { big: String(base), small: "AED" },
                     giftCard: {
                         valueType: g.value_type,
                         fixedValue: g.fixed_value_aed,

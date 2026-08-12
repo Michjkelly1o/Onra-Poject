@@ -56,6 +56,7 @@ export function PreviousBookings({
                             time={b.time}
                             location={b.location}
                             status={b.status}
+                            rating={b.attended ? (b.ratingValue ?? null) : undefined}
                             mutedCover={b.mutedCover}
                             image={b.coverImage}
                             imageColor={b.coverColor}

@@ -10,8 +10,12 @@
 // reuses the same two views for its attendance console.
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Calendar } from "@untitledui/icons";
+import { createPortal } from "react-dom";
+import { AssignShiftPickerCard } from "@/components/schedule/AssignShiftPickerCard";
+import { Calendar, Trash01, DotsVertical, UserPlus01, SlashCircle01, Plus, Clock } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import { BlockedStrip } from "@/components/schedule/BlockedStrip";
 import { timeOffTitle, timeOffDuration } from "@/lib/staff/time-off";
 import { ScheduleClassCard } from "@/components/schedule/ScheduleClassCard";
@@ -24,7 +28,51 @@ import {
     type BusinessHours,
     type BlockedTime,
     type HoursWindow,
+    type Shift,
+    type ShiftAssignment,
 } from "@/lib/store";
+
+/** "07:00" → "7:00 AM" (mirrors the Staff module's shift time format). */
+function fmtTime12(t: string): string {
+    const [h, m] = t.split(":").map(Number);
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+// Abbreviated weekday summary for the Assign-shift picker — mirrors the
+// "Add shift" panel cards ("Mon - Sat", "One-off", "Every day").
+const SHORT_DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // 0=Sun..6=Sat
+function daysSummaryShort(days: boolean[]): string {
+    const on = days.map((v, i) => (v ? i : -1)).filter(i => i >= 0);
+    if (on.length === 0) return "One-off";
+    if (on.length === 7) return "Every day";
+    const contiguous = on.every((v, i) => i === 0 || v === on[i - 1] + 1);
+    if (contiguous && on.length > 2) return `${SHORT_DAY_NAMES[on[0]]} - ${SHORT_DAY_NAMES[on[on.length - 1]]}`;
+    return on.map(i => SHORT_DAY_NAMES[i]).join(", ");
+}
+
+// ── Schedule-module shift block colour — a very light warm neutral, two shades
+//    lighter than the sidebar tone (--colors-bg-canvas #F2F1EE →
+//    --colors-bg-secondary #fbfbfa) so the class + time-off blocks clearly read
+//    on top. Every shift block + list card in the SCHEDULE module shares this
+//    tint — the per-shift palette stays in the Staff module.
+const SHIFT_BLOCK_BG = "var(--colors-bg-secondary)";
+const SHIFT_BLOCK_BORDER = "var(--colors-bg-quaternary)";
+// Vertical inset (px) applied to every day-view block so the top/bottom spacing
+// matches the 8px left/right inset (left-2 / right-2) — even margins all round.
+const BLOCK_VPAD = 8;
+
+// Monday-of-week ISO for a "YYYY-MM-DD" date, matching the Staff module's
+// week-scoping so shift assignments resolve identically across both surfaces.
+function mondayISOof(iso: string): string {
+    const d = new Date(`${iso}T00:00:00`);
+    const dow = d.getDay();               // 0=Sun..6=Sat
+    const diff = dow === 0 ? -6 : 1 - dow; // back to Monday
+    d.setDate(d.getDate() + diff);
+    const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
 
 // Alias for compatibility with the code moved out of the schedule page.
 type Instructor = ScheduleInstructor;
@@ -233,13 +281,39 @@ function ClassBlock({ cls, onClick, gridStartHour, gridHeight }: {
                 capacity: cls.capacity,
                 status: cls.status,
             }}
-            absolute={{ top, height }}
+            absolute={{ top: top + BLOCK_VPAD, height: Math.max(48, height - 2 * BLOCK_VPAD) }}
             onClick={onClick}
         />
     );
 }
 
-export function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchIds, blockedTimes, focusInstructorId, searchQuery, onClassClick }: {
+export function DayView({ dateISO, classes, branchId, businessHoursRows, activeBranchIds, blockedTimes, focusInstructorId, searchQuery, staffColumns, shifts, shiftAssignments, onClassClick, onDeleteShiftAssignment, onStaffPickShift, onStaffUnassignShift, onDropShiftOnStaff, mainPanelOpen, onOpenStaffMenu }: {
+    /** All-staff column mode (admin Schedule Day view). When provided, the
+     *  columns are these staff members (instructors first, then other roles) and
+     *  the sub-label under each name is the staff ROLE, not a class count. Omitted
+     *  by the Attendee grid, which keeps the instructor-only + class-count header. */
+    staffColumns?: (Instructor & { roleLabel?: string })[];
+    /** Shift catalog + assignments — rendered as light-tertiary background blocks
+     *  behind the class cards, per staff column (all-staff mode only). */
+    shifts?: Shift[];
+    shiftAssignments?: ShiftAssignment[];
+    /** Hover-delete on a shift block → unassign THAT weekday from the assignment
+     *  (page owns the store mutation + toast). */
+    onDeleteShiftAssignment?: (assignmentId: string, dayIdx: number) => void;
+    /** Staff-column 3-dot → Assign shift opens a nested picker popover (search +
+     *  the staff's UNassigned shifts). Picking a shift calls this — the page runs
+     *  the dedup / time-conflict / period logic. Unassign opens the page modal. */
+    onStaffPickShift?: (staffId: string, shiftId: string) => void;
+    onStaffUnassignShift?: (staffId: string) => void;
+    /** A shift template card was dragged from the Add-shift panel onto this
+     *  staff column — the page opens the period modal to confirm. */
+    onDropShiftOnStaff?: (shiftId: string, staffId: string) => void;
+    /** The main (toolbar) "Add shift" panel's open state. The staff 3-dot menu
+     *  and this panel are mutually exclusive — only one is open at a time. */
+    mainPanelOpen?: boolean;
+    /** Called when the staff 3-dot menu opens, so the page can close the main
+     *  Add-shift panel. */
+    onOpenStaffMenu?: () => void;
     /** ISO date the view is anchored to ("2026-05-15"). Filter is dateISO-based
      *  so newly-created schedules surface regardless of display-string format. */
     dateISO: string;
@@ -269,11 +343,16 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const dayClasses = classes.filter(c => c.dateISO === dateISO);
     const instructorIds = Array.from(new Set(dayClasses.map(c => c.instructorId)));
 
-    // Client 2026-07-24 — the Day view now lists EVERY instructor (not just 4)
-    // in a horizontally-scrollable header/grid so the admin can browse them
-    // all. Instructors with classes today lead, then the rest.
-    const withClasses    = INSTRUCTORS.filter(i => instructorIds.includes(i.id));
-    const withoutClasses = INSTRUCTORS.filter(i => !instructorIds.includes(i.id));
+    // All-staff mode (admin Schedule) uses the caller's staff list (already
+    // ordered instructors-first); attendee mode falls back to the instructor pool.
+    const staffMode = !!staffColumns;
+    const pool: (Instructor & { roleLabel?: string })[] = staffColumns ?? INSTRUCTORS;
+
+    // Client 2026-07-24 — the Day view lists EVERY column in a horizontally-
+    // scrollable header/grid. Attendee (instructor) mode leads with instructors
+    // that have classes today; staff mode keeps the caller's instructors-first order.
+    const withClasses    = pool.filter(i => instructorIds.includes(i.id));
+    const withoutClasses = pool.filter(i => !instructorIds.includes(i.id));
 
     // Client 2026-07-24 — the toolbar Search (shared across every view) drives
     // the Day-view instructor focus: when the query matches an instructor name,
@@ -282,8 +361,9 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const searchMatchId = useMemo(() => {
         const q = (searchQuery ?? "").trim().toLowerCase();
         if (!q) return undefined;
-        return INSTRUCTORS.find(i => i.name.toLowerCase().includes(q))?.id;
-    }, [searchQuery]);
+        return pool.find(i => i.name.toLowerCase().includes(q))?.id;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery, staffMode]);
     // Focus priority: the search-name match, else the toolbar Filter selection.
     const focusId = searchMatchId ?? focusInstructorId;
 
@@ -291,31 +371,33 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     // no instructor assigned — this synthetic "Recovery" lane catches every
     // instructor-less card.
     const hasRecovery = dayClasses.some(c => !c.instructorId);
-    const recoveryColumn: Instructor = {
+    const recoveryColumn: Instructor & { roleLabel?: string } = {
         id: "__recovery__",
         name: "Recovery",
         initials: "RS",
         color: "var(--brand-tertiary)",
         branchId: null,
+        roleLabel: "Open sessions",
     };
     // Base order (with-classes first), then move the focused instructor to the
     // very front so they're immediately visible — item 2.
-    const columns: Instructor[] = useMemo(() => {
+    const columns: (Instructor & { roleLabel?: string })[] = useMemo(() => {
         // A Filter selection (focusInstructorId) NARROWS the Day view to only that
-        // instructor's column. A search-name match just moves them to the front
-        // (all instructors stay visible).
+        // column. A search-name match just moves them to the front (all stay visible).
         if (focusInstructorId) {
-            const only = INSTRUCTORS.find(i => i.id === focusInstructorId);
+            const only = pool.find(i => i.id === focusInstructorId);
             return only ? [only] : [];
         }
-        let ordered = [...withClasses, ...withoutClasses];
+        // Staff mode preserves the caller's instructors-first ordering; attendee
+        // mode leads with instructors that have classes today.
+        let ordered = staffMode ? [...pool] : [...withClasses, ...withoutClasses];
         if (searchMatchId) {
             const idx = ordered.findIndex(i => i.id === searchMatchId);
             if (idx > 0) ordered = [ordered[idx], ...ordered.slice(0, idx), ...ordered.slice(idx + 1)];
         }
         return hasRecovery ? [...ordered, recoveryColumn] : ordered;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [instructorIds.join(","), focusInstructorId, searchMatchId, hasRecovery]);
+    }, [instructorIds.join(","), focusInstructorId, searchMatchId, hasRecovery, staffMode, pool.length]);
 
     // ── Horizontal scroll (item 1) ──────────────────────────────────────────
     // Keep the "4 instructors fit the width" group layout by sizing each column
@@ -327,6 +409,19 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const bodyScrollRef = useRef<HTMLDivElement>(null);
     const vScrollRef = useRef<HTMLDivElement>(null);
     const [colWidth, setColWidth] = useState(240);
+    // Which staff column's header 3-dot menu is open (all-staff mode) + its
+    // viewport position — the menu is portalled to <body> so the header's
+    // horizontal-scroll overflow never clips it.
+    const [menuStaffId, setMenuStaffId] = useState<string | null>(null);
+    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+    const [dragOverStaffId, setDragOverStaffId] = useState<string | null>(null);
+    // Assign-shift picker — a nested "Add shift" popover that flies out to the
+    // right of the 3-dot menu (the staff's UNassigned shifts).
+    const [pickerStaffId, setPickerStaffId] = useState<string | null>(null);
+    function closeStaffMenu() { setMenuStaffId(null); setPickerStaffId(null); }
+    // Mutual exclusion — when the main "Add shift" panel opens, close the staff
+    // 3-dot menu / picker so only one is ever open.
+    useEffect(() => { if (mainPanelOpen) closeStaffMenu(); }, [mainPanelOpen]);
     const colCount = columns.length;
     useEffect(() => {
         const el = rootRef.current;
@@ -358,6 +453,40 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     }, [focusId]);
     const contentWidth = columns.length * colWidth;
 
+    // ── Shift blocks (all-staff mode) — resolve each staff column's assigned
+    //    shifts for this day using the SAME week-scoping rule as the Staff
+    //    module: a week_start-scoped assignment shows only on its own week; a
+    //    baseline (no week_start) shows only on the current week. Deduped by
+    //    shift (week override wins). Rendered behind the class cards. ──────────
+    const dayIdx = new Date(`${dateISO}T00:00:00`).getDay(); // 0=Sun..6=Sat
+    const viewWeekISO = mondayISOof(dateISO);
+    const todayISO = (() => { const d = new Date(); const m = String(d.getMonth() + 1).padStart(2, "0"); const day = String(d.getDate()).padStart(2, "0"); return `${d.getFullYear()}-${m}-${day}`; })();
+    const currentWeekISO = mondayISOof(todayISO);
+    const shiftsById = useMemo(() => new Map((shifts ?? []).map(s => [s.id, s] as const)), [shifts]);
+    function shiftBlocksForStaff(staffId: string): { shift: Shift; assignment: ShiftAssignment }[] {
+        if (!staffMode || !shiftAssignments) return [];
+        const byShift = new Map<string, { shift: Shift; assignment: ShiftAssignment }>();
+        for (const a of shiftAssignments) {
+            if (a.staff_id !== staffId) continue;
+            // Period scope: a week-scoped row spans `weeks` weeks from week_start
+            // (1w=1 · 1m=4 · 1y=52); a baseline row (no week_start) covers this week.
+            if (a.week_start) {
+                const span = a.weeks ?? 1;
+                const off = Math.round((new Date(`${viewWeekISO}T00:00:00`).getTime() - new Date(`${a.week_start}T00:00:00`).getTime()) / (7 * 86400000));
+                if (off < 0 || off >= span) continue;
+            } else if (viewWeekISO !== currentWeekISO) continue;
+            if (!a.days_of_week[dayIdx]) continue;
+            const sh = shiftsById.get(a.shift_id);
+            if (!sh) continue;
+            // Recurring shifts gate on the shift's own working_days; single shifts
+            // have no weekday pattern, so the assignment's day is authoritative.
+            if ((sh.type ?? "recurring") === "recurring" && !sh.working_days[dayIdx]) continue;
+            const prev = byShift.get(a.shift_id);
+            if (!prev || (a.week_start && !prev.assignment.week_start)) byShift.set(a.shift_id, { shift: sh, assignment: a });
+        }
+        return Array.from(byShift.values()).sort((x, y) => x.shift.start_time.localeCompare(y.shift.start_time));
+    }
+
     // Grid hour range = the branch's open hours for this weekday (or the
     // union envelope across every active branch when "All locations" is
     // selected), rounded out to whole-hour bounds. Falls back to 7am–9pm
@@ -388,8 +517,9 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
 
     return (
         <div ref={rootRef} className="flex flex-col overflow-hidden flex-1">
-            {/* Instructor column headers — horizontally scrollable (synced). */}
-            <div className="flex shrink-0 border-b border-[var(--colors-border-secondary)] pl-6">
+            {/* Instructor column headers — horizontally scrollable (synced).
+                Own layer above the grid so nothing overlaps the names / 3-dot. */}
+            <div className="relative z-10 flex shrink-0 border-b border-[var(--colors-border-secondary)] bg-white pl-6">
                 <div className="w-16 shrink-0" />
                 <div ref={headerScrollRef} onScroll={() => syncScroll("header")} className="flex-1 overflow-x-auto scrollbar-hide">
                     <div className="flex" style={{ width: contentWidth }}>
@@ -407,15 +537,41 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                                     <InstructorAvatar initials={instructor.initials} color={instructor.color} size={36} />
                                     <div className="min-w-0">
                                         <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] truncate">{instructor.name}</p>
-                                        <div className="flex items-center gap-1">
-                                            <Calendar className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)]" />
-                                            <span className="text-[12px] text-[var(--colors-text-quaternary)]">
-                                                {count} {isRecoveryCol
-                                                    ? (count === 1 ? "appointment" : "appointments")
-                                                    : (count === 1 ? "class" : "classes")}
-                                            </span>
-                                        </div>
+                                        {staffMode ? (
+                                            // All-staff mode: the ROLE name (Instructor / Branch admin /
+                                            // Operator …) sits under the name instead of a class count.
+                                            <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate">
+                                                {instructor.roleLabel ?? "Staff"}
+                                            </p>
+                                        ) : (
+                                            <div className="flex items-center gap-1">
+                                                <Calendar className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)]" />
+                                                <span className="text-[12px] text-[var(--colors-text-quaternary)]">
+                                                    {count} {isRecoveryCol
+                                                        ? (count === 1 ? "appointment" : "appointments")
+                                                        : (count === 1 ? "class" : "classes")}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
+                                    {/* Staff-column 3-dot — Assign / Unassign shift. The menu
+                                        itself is portalled to <body> (below) so the header's
+                                        overflow never clips it. */}
+                                    {staffMode && !isRecoveryCol && (onStaffPickShift || onStaffUnassignShift) && (
+                                        <button type="button" aria-label="Staff shift actions"
+                                            onClick={(e) => {
+                                                if (menuStaffId === instructor.id) { closeStaffMenu(); return; }
+                                                // Opening the menu closes the main Add-shift panel.
+                                                onOpenStaffMenu?.();
+                                                const r = e.currentTarget.getBoundingClientRect();
+                                                setMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 184) });
+                                                setPickerStaffId(null);
+                                                setMenuStaffId(instructor.id);
+                                            }}
+                                            className="w-8 h-8 ml-auto shrink-0 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                                            <DotsVertical className="w-4 h-4 text-[var(--colors-text-quaternary)]" />
+                                        </button>
+                                    )}
                                 </div>
                             );
                         })}
@@ -485,22 +641,79 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                                         const to   = b.date_to_iso   ?? b.date;
                                         return dateISO >= from && dateISO <= to && b.staff_ids.includes(instructor.id);
                                     });
+                                // Shift blocks (all-staff mode) — behind classes.
+                                const instrShifts = isRecoveryCol ? [] : shiftBlocksForStaff(instructor.id);
                                 return (
-                                    <div key={instructor.id} style={{ width: colWidth, minHeight: gridHeight }} className="shrink-0 relative border-l border-[var(--colors-bg-tertiary)]">
-                                        {/* Per-instructor blocked strips —
-                                            label is centered within the
-                                            column the block belongs to. */}
-                                        {instrBlocks.map(b => (
-                                            <BlockedStrip
-                                                key={b.id}
-                                                blockStart={b.all_day ? `${String(gridStartHour).padStart(2, "0")}:00` : b.start_time}
-                                                blockEnd={b.all_day ? `${String(gridEndHour).padStart(2, "0")}:00` : b.end_time}
-                                                gridStartHour={gridStartHour}
-                                                hourHeight={HOUR_HEIGHT}
-                                                title={timeOffTitle(b)}
-                                                subtitle={timeOffDuration(b)}
-                                            />
-                                        ))}
+                                    <div key={instructor.id} style={{ width: colWidth, minHeight: gridHeight }}
+                                        className={cn(
+                                            "shrink-0 relative border-l border-[var(--colors-bg-tertiary)]",
+                                            dragOverStaffId === instructor.id && "ring-2 ring-inset ring-[var(--colors-secondary-400)] bg-[var(--colors-bg-secondary)]",
+                                        )}
+                                        onDragOver={staffMode && !isRecoveryCol && onDropShiftOnStaff ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; if (dragOverStaffId !== instructor.id) setDragOverStaffId(instructor.id); } : undefined}
+                                        onDragLeave={staffMode && !isRecoveryCol && onDropShiftOnStaff ? (e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverStaffId(null); } : undefined}
+                                        onDrop={staffMode && !isRecoveryCol && onDropShiftOnStaff ? (e) => { e.preventDefault(); const shiftId = e.dataTransfer.getData("text/shift-id"); setDragOverStaffId(null); if (shiftId) onDropShiftOnStaff(shiftId, instructor.id); } : undefined}>
+                                        {/* Shift blocks — light-tertiary background
+                                            behind the class cards + time-off strips. */}
+                                        {instrShifts.map(({ shift, assignment }) => {
+                                            const raw = clampToGrid(
+                                                topFromTime(shift.start_time, gridStartHour),
+                                                heightFromTime(shift.start_time, shift.end_time),
+                                                gridHeight,
+                                            );
+                                            if (raw.height <= 0) return null;
+                                            return (
+                                                <div key={shift.id} className="group/shift absolute left-2 right-2 z-0 rounded-[10px] overflow-hidden border px-2.5 py-2 flex flex-col gap-1"
+                                                    style={{ top: raw.top + BLOCK_VPAD, height: Math.max(24, raw.height - 2 * BLOCK_VPAD), backgroundColor: SHIFT_BLOCK_BG, borderColor: SHIFT_BLOCK_BORDER }}>
+                                                    <p className="text-[14px] font-medium leading-[20px] text-[var(--colors-text-secondary)] truncate pr-6">{shift.name}</p>
+                                                    <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate">
+                                                        {fmtTime12(shift.start_time)} – {fmtTime12(shift.end_time)}
+                                                    </p>
+                                                    {onDeleteShiftAssignment && (
+                                                        <button type="button" aria-label="Unassign shift"
+                                                            onClick={(e) => { e.stopPropagation(); onDeleteShiftAssignment(assignment.id, dayIdx); }}
+                                                            className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-[6px] bg-white/80 border border-[var(--colors-border-secondary)] opacity-0 group-hover/shift:opacity-100 transition-opacity hover:bg-white">
+                                                            <Trash01 className="w-3.5 h-3.5 text-[#b42318]" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {/* Time off. Admin Schedule (staff mode) renders a
+                                            ROUNDED inset block — same shape as the shift
+                                            blocks, generic "Time off" copy, diagonal hatch to
+                                            signal "unavailable", behind the class cards. The
+                                            Attendee grid keeps the shared BlockedStrip. */}
+                                        {instrBlocks.map(b => {
+                                            if (!staffMode) {
+                                                return (
+                                                    <BlockedStrip
+                                                        key={b.id}
+                                                        blockStart={b.all_day ? `${String(gridStartHour).padStart(2, "0")}:00` : b.start_time}
+                                                        blockEnd={b.all_day ? `${String(gridEndHour).padStart(2, "0")}:00` : b.end_time}
+                                                        gridStartHour={gridStartHour}
+                                                        hourHeight={HOUR_HEIGHT}
+                                                        title={timeOffTitle(b)}
+                                                        subtitle={timeOffDuration(b)}
+                                                    />
+                                                );
+                                            }
+                                            const bStart = b.all_day ? `${String(gridStartHour).padStart(2, "0")}:00` : b.start_time;
+                                            const bEnd = b.all_day ? `${String(gridEndHour).padStart(2, "0")}:00` : b.end_time;
+                                            const raw = clampToGrid(topFromTime(bStart, gridStartHour), heightFromTime(bStart, bEnd), gridHeight);
+                                            if (raw.height <= 0) return null;
+                                            return (
+                                                <div key={b.id} className="absolute left-2 right-2 z-0 rounded-[10px] overflow-hidden border border-[var(--colors-border-secondary)] px-2.5 py-2 flex flex-col gap-1"
+                                                    style={{
+                                                        top: raw.top + BLOCK_VPAD,
+                                                        height: Math.max(24, raw.height - 2 * BLOCK_VPAD),
+                                                        backgroundColor: "#f9fafb",
+                                                        backgroundImage: "repeating-linear-gradient(45deg, rgba(208, 213, 221, 0.45) 0, rgba(208, 213, 221, 0.45) 1px, transparent 1px, transparent 12px)",
+                                                    }}>
+                                                    <p className="text-[14px] font-medium leading-[20px] text-[var(--colors-text-secondary)] truncate">Time off</p>
+                                                    <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate">{timeOffDuration(b)}</p>
+                                                </div>
+                                            );
+                                        })}
                                         {instrClasses.map(cls => (
                                             <ClassBlock key={cls.id} cls={cls} gridStartHour={gridStartHour} gridHeight={gridHeight} onClick={(e) => onClassClick(cls, e)} />
                                         ))}
@@ -512,6 +725,62 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                 </div>
                 </div>
             </div>
+
+            {/* Staff-column 3-dot menu — portalled to <body> so the header's
+                horizontal-scroll overflow can't clip it. Clicking "Assign shift"
+                flies out a nested picker to the right (search + unassigned
+                shifts) instead of opening a separate right-side modal. */}
+            {menuStaffId && menuPos && typeof document !== "undefined" && createPortal(
+                <>
+                    {/* Backdrop — only when the picker is closed; the picker owns
+                        the outside-click when it's open (so it can cover the menu). */}
+                    {!pickerStaffId && <div className="fixed inset-0 z-[200]" onClick={closeStaffMenu} />}
+                    <div className="fixed z-[201] w-[184px] bg-white border-1 border-[var(--colors-border-secondary)] rounded-[10px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5"
+                        style={{ top: menuPos.top, left: menuPos.left }}>
+                        {onStaffPickShift && (
+                            <button type="button" onClick={() => setPickerStaffId(menuStaffId)}
+                                className={cn(
+                                    "w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
+                                    pickerStaffId === menuStaffId && "bg-[var(--colors-bg-secondary)]",
+                                )}>
+                                <UserPlus01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Assign shift
+                            </button>
+                        )}
+                        {onStaffUnassignShift && (
+                            <button type="button" onClick={() => { const id = menuStaffId; closeStaffMenu(); onStaffUnassignShift(id); }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left text-[14px] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]">
+                                <Trash01 className="w-4 h-4 text-[var(--colors-text-quaternary)]" /> Unassign shift
+                            </button>
+                        )}
+                    </div>
+                    {/* Nested Assign-shift picker — same look as the "Add shift"
+                        panel (title + subtitle + "+ Add shift" + neutral cards),
+                        just anchored to the 3-dot menu. No search bar. */}
+                    {pickerStaffId && onStaffPickShift && (() => {
+                        const CARD_W = 380, MENU_W = 184, GAP = 8;
+                        const vw = typeof window !== "undefined" ? window.innerWidth : 1440;
+                        const rightLeft = menuPos.left + MENU_W + GAP;
+                        const left = rightLeft + CARD_W + 8 > vw ? Math.max(8, menuPos.left - CARD_W - GAP) : rightLeft;
+                        const staffName = pool.find(c => c.id === pickerStaffId)?.name ?? "";
+                        const assignedIds = new Set((shiftAssignments ?? []).filter(a => a.staff_id === pickerStaffId).map(a => a.shift_id));
+                        const pickList = (shifts ?? []).filter(s => s.status === "active" && !assignedIds.has(s.id));
+                        return (
+                            <>
+                                <div className="fixed inset-0 z-[210]" onClick={closeStaffMenu} />
+                                <div className="fixed z-[211]" style={{ top: menuPos.top, left }}>
+                                    <AssignShiftPickerCard
+                                        staffName={staffName}
+                                        pickList={pickList}
+                                        onAddShift={() => { closeStaffMenu(); openStaffFormPanel({ kind: "shift", mode: "create" }); }}
+                                        onPick={(id) => { const staffId = pickerStaffId; closeStaffMenu(); onStaffPickShift(staffId, id); }}
+                                    />
+                                </div>
+                            </>
+                        );
+                    })()}
+                </>,
+                document.body,
+            )}
         </div>
     );
 }

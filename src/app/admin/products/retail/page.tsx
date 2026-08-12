@@ -797,7 +797,7 @@ export default function RetailPage() {
             )}
 
             {/* ── View card with tabs (client 2026-08-03 — matches Memberships & Packages) ── */}
-            <div className="min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
                 <div className="shrink-0 flex items-center px-6 py-4">
                     <SegmentedTabs
                         tabs={[

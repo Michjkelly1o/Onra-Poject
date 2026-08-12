@@ -174,7 +174,12 @@ export default function Header() {
     // Session-type deep-link on /admin/services — the "Private sessions" and
     // "Recovery" nav entries share the route, so the header title
     // reads the type off the query to show the right module name.
-    const typeParam = useSearchParams().get("type");
+    const searchParams = useSearchParams();
+    const typeParam = searchParams.get("type");
+    // Staff & Shift now live under separate sidebar entries that share the
+    // /admin/staff route — the header title reads the sub-tab off the query so
+    // it says "Staff" or "Shift" (never the combined "Staff & shifts").
+    const subtabParam = searchParams.get("subtab");
     // Dashboard title greets the studio by name (client 2026-07-21).
     // Reads from brandingSettings.displayName so editing it in
     // Settings → Branding flips the greeting in the same render cycle.
@@ -184,7 +189,9 @@ export default function Header() {
             ? SESSION_TYPE_LABEL[typeParam]
             : pathname === "/admin/dashboard"
               ? `Welcome ${studioDisplayName}`
-              : getPageTitle(pathname);
+              : pathname === "/admin/staff"
+                ? (subtabParam === "shift-management" || subtabParam === "blocked-time" ? "Shift" : "Staff")
+                : getPageTitle(pathname);
     const [searchOpen, setSearchOpen] = useState(false);
     const isInstructor = pathname.startsWith("/instructor");
     // Global search is dashboard-only (client 2026-07-21). Every other admin

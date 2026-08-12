@@ -127,7 +127,15 @@
       "Bash(python3 -)",
       "Bash(grep -rn \"^[[:space:]]*Add new[[:space:]]*$\" src/app src/components)",
       "Bash(size)",
-      "Bash(retailSize)"
+      "Bash(retailSize)",
+      "Bash(echo \"started pid $!\")",
+      "Bash(echo \"tsc exit $?\")",
+      "Bash(echo \"dev pid $!\")",
+      "Bash(sed -i '' 's/console.log\\(\"onClassDetail:\", onDetail, location||\"\"\\);/console.log\\(\"onClassDetail:\", onDetail\\);/' /private/tmp/claude-502/-Users-macbook-Projects-Onra-Poject/cae1b2f8-90ac-4f90-ac6a-11d0fbd6a8cd/scratchpad/qa-rb.mjs)",
+      "Bash(node /private/tmp/claude-502/-Users-macbook-Projects-Onra-Poject/cae1b2f8-90ac-4f90-ac6a-11d0fbd6a8cd/scratchpad/qa-rb.mjs)",
+      "Bash(curl -s -o /dev/null \"http://localhost:3000/customer/search\")",
+      "Bash(node /private/tmp/claude-502/-Users-macbook-Projects-Onra-Poject/cae1b2f8-90ac-4f90-ac6a-11d0fbd6a8cd/scratchpad/qa-datebug.mjs)",
+      "Bash(echo \"tsc $?\")"
     ],
     "additionalDirectories": [
       "/Users/hizkiast/Desktop/Syncfit/src/app/admin/products/retail/[id]",

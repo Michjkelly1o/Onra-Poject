@@ -58,7 +58,7 @@ export function ProductCreditTile({
                 className="relative flex flex-col items-center text-center leading-none"
                 style={{ color: disabled ? "#98a2b3" : t.text }}
             >
-                <span style={{ fontSize: 16 * scale, fontWeight: 600, lineHeight: `${24 * scale}px` }}>{big}</span>
+                <span style={{ fontSize: 14 * scale, fontWeight: 600, lineHeight: `${20 * scale}px` }}>{big}</span>
                 <span style={{ fontSize: 10 * scale, fontWeight: 400, lineHeight: `${16 * scale}px` }}>{small}</span>
             </div>
         </div>

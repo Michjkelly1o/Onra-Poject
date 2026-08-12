@@ -680,21 +680,26 @@ function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n
     );
 }
 
-function PayConfigCard({ title, subtitle, enabled, onToggle, toggleDisabled, children }: {
-    title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; toggleDisabled?: boolean; children?: React.ReactNode;
+/** A single toggle row (title + subtitle + switch) for the "Pay rate
+ *  configuration" section. The toggles are grouped at the top now; each enabled
+ *  track renders its own titled config section below (Figma 8132:481109). */
+function PayToggleRow({ title, subtitle, enabled, onToggle, disabled }: {
+    title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; disabled?: boolean;
 }) {
     return (
-        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#457175]" : "border-1 border-[#e4e7ec]")}>
-            <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
-                </div>
-                <PayToggle value={enabled} onChange={onToggle} disabled={toggleDisabled} />
+        <div className="flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
             </div>
-            {enabled && children && <div className="flex flex-col gap-4">{children}</div>}
+            <PayToggle value={enabled} onChange={onToggle} disabled={disabled} />
         </div>
     );
+}
+
+/** 18px section header for the pay-rate configuration groups. */
+function PaySectionHeader({ title }: { title: string }) {
+    return <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{title}</p>;
 }
 
 /** AED-prefixed amount input (matches PayRateFormPage's AedInput chrome). */
@@ -988,25 +993,45 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
     // instructor may use all three, every other role only Default. At least
     // one track must stay enabled, and every enabled track needs a rate.
     const pc = form.payConfig;
+    // Valid pay config (client 2026-08-10): the Default rate is the primary —
+    // at least one must be on. Disabling Default is only allowed for instructors
+    // when BOTH per-booking tracks (Pay per class + Pay per appointment) are on.
+    const isValidPayConfig = pc.default.enabled || (isInstructor && pc.perClass.enabled && pc.perAppointment.enabled);
     const enabledTracks = [
         pc.default.enabled ? pc.default : null,
         isInstructor && pc.perClass.enabled ? pc.perClass : null,
         isInstructor && pc.perAppointment.enabled ? pc.perAppointment : null,
     ].filter(Boolean) as { enabled: boolean; payRateId?: string }[];
-    const enabledCount = enabledTracks.length;
     // Every enabled track needs a rate — but only for instructors. A
-    // non-instructor's Default rate stays optional (pre-existing contract), so
-    // an Operator / Front Desk can be saved without picking a rate.
-    const step2Valid = enabledCount >= 1 && (!isInstructor || enabledTracks.every(t => !!t.payRateId));
+    // non-instructor's Default rate stays optional (pre-existing contract).
+    const step2Valid = isValidPayConfig && (!isInstructor || enabledTracks.every(t => !!t.payRateId));
     const formValid = step1Valid && step2Valid;
 
-    /** Toggle a track on/off, enforcing "at least one enabled". */
+    // Toggle lock states (mirror the change-pay-rate modal):
+    //  • Default: non-instructors can never turn it off (their only track).
+    //  • Pay per class / appointment: while Default is off, BOTH stay locked on
+    //    (else the config collapses to a single booking type).
+    const defaultToggleDisabled  = !isInstructor;
+    const perClassToggleDisabled = pc.perClass.enabled && !pc.default.enabled;
+    const perApptToggleDisabled  = pc.perAppointment.enabled && !pc.default.enabled;
+
+    /** Toggle a track, enforcing the valid-config rules. Disabling Default
+     *  AUTO-ENABLES both per-booking tracks; invalid transitions are rejected. */
     function toggleTrack(key: keyof StaffPayConfig, next: boolean) {
-        if (!next && enabledCount <= 1 && pc[key].enabled) {
-            showToast("At least one required", "Keep at least one pay rate configuration enabled.", "error");
+        let updated: StaffPayConfig = { ...pc, [key]: { ...pc[key], enabled: next } };
+        if (key === "default" && !next && isInstructor) {
+            updated = {
+                ...updated,
+                perClass:       { ...updated.perClass, enabled: true },
+                perAppointment: { ...updated.perAppointment, enabled: true },
+            };
+        }
+        const valid = updated.default.enabled || (isInstructor && updated.perClass.enabled && updated.perAppointment.enabled);
+        if (!valid) {
+            showToast("At least one required", "Keep the Default pay rate on, or enable both Pay per class and Pay per appointment.", "error");
             return;
         }
-        setPayTrack(key, { enabled: next } as never);
+        setForm(prev => ({ ...prev, payConfig: updated, payRateId: updated.default.payRateId ?? prev.payRateId }));
     }
 
     return (
@@ -1211,33 +1236,60 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                 other role only the Default track (always on).
                                 At least one track must stay enabled. */}
                             {step === 2 && (
-                                <div className="flex flex-col gap-4">
-                                    <PayConfigCard
-                                        title="Default pay rate"
-                                        subtitle="Provide a base salary for this staff."
-                                        enabled={form.payConfig.default.enabled}
-                                        onToggle={n => toggleTrack("default", n)}
-                                        toggleDisabled={!isInstructor}
-                                    >
-                                        <div className="flex flex-col gap-[6px]">
-                                            <FieldLabel label="Pay rate" />
-                                            <SelectInput
-                                                placeholder="Select pay rate"
-                                                options={payRateOptions}
-                                                value={form.payConfig.default.payRateId ?? ""}
-                                                onChange={v => setPayTrack("default", { payRateId: v })}
-                                                width="w-full"
+                                <div className="flex flex-col gap-8">
+                                    {/* Section 1 — the toggles, grouped (Figma 8132:481109) */}
+                                    <div className="flex flex-col gap-4">
+                                        <PaySectionHeader title="Pay rate configuration" />
+                                        <div className="flex flex-col gap-4">
+                                            <PayToggleRow
+                                                title="Fixed salary"
+                                                subtitle="Base salary for this staff."
+                                                enabled={form.payConfig.default.enabled}
+                                                onToggle={n => toggleTrack("default", n)}
+                                                disabled={defaultToggleDisabled}
                                             />
+                                            {isInstructor && (
+                                                <PayToggleRow
+                                                    title="Pay per class"
+                                                    subtitle="Salary for every class taught."
+                                                    enabled={form.payConfig.perClass.enabled}
+                                                    onToggle={n => toggleTrack("perClass", n)}
+                                                    disabled={perClassToggleDisabled}
+                                                />
+                                            )}
+                                            {isInstructor && (
+                                                <PayToggleRow
+                                                    title="Pay per appointment"
+                                                    subtitle="Salary for every appointment completed."
+                                                    enabled={form.payConfig.perAppointment.enabled}
+                                                    onToggle={n => toggleTrack("perAppointment", n)}
+                                                    disabled={perApptToggleDisabled}
+                                                />
+                                            )}
                                         </div>
-                                    </PayConfigCard>
+                                    </div>
 
+                                    {/* Section 2 — Default pay rate config (always shown) */}
+                                    {(
+                                        <div className="flex flex-col gap-4">
+                                            <PaySectionHeader title="Default pay rate" />
+                                            <div className="flex flex-col gap-[6px]">
+                                                <FieldLabel label="Pay rate" />
+                                                <SelectInput
+                                                    placeholder="Select pay rate"
+                                                    options={payRateOptions}
+                                                    value={form.payConfig.default.payRateId ?? ""}
+                                                    onChange={v => setPayTrack("default", { payRateId: v })}
+                                                    width="w-full"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Section 3 — Pay per class config (always shown for instructors) */}
                                     {isInstructor && (
-                                        <PayConfigCard
-                                            title="Pay per class"
-                                            subtitle="Add compensation for every class taught."
-                                            enabled={form.payConfig.perClass.enabled}
-                                            onToggle={n => toggleTrack("perClass", n)}
-                                        >
+                                        <div className="flex flex-col gap-4">
+                                            <PaySectionHeader title="Pay per class" />
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div className="flex flex-col gap-[6px]">
                                                     <FieldLabel label="Pay rate" />
@@ -1268,16 +1320,13 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                                 />
                                                 <p className="text-[14px] text-[#475467]">Per class for which the instructor is added as a substitute.</p>
                                             </div>
-                                        </PayConfigCard>
+                                        </div>
                                     )}
 
+                                    {/* Section 4 — Pay per appointment config (always shown for instructors) */}
                                     {isInstructor && (
-                                        <PayConfigCard
-                                            title="Pay per Private"
-                                            subtitle="Add compensation for every private session completed."
-                                            enabled={form.payConfig.perAppointment.enabled}
-                                            onToggle={n => toggleTrack("perAppointment", n)}
-                                        >
+                                        <div className="flex flex-col gap-4">
+                                            <PaySectionHeader title="Pay per appointment" />
                                             <div className="flex flex-col gap-[6px]">
                                                 <FieldLabel label="Pay rate" />
                                                 <SelectInput
@@ -1288,7 +1337,7 @@ export default function StaffFormPage({ mode, staffId, returnTo = "/admin/staff"
                                                     width="w-full"
                                                 />
                                             </div>
-                                        </PayConfigCard>
+                                        </div>
                                     )}
                                 </div>
                             )}

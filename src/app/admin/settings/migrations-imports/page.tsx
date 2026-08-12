@@ -409,7 +409,7 @@ export default function MigrationsImportsPage() {
                 `min-h` on the wrapper keeps the empty state and the
                 populated table at the same footprint so the layout
                 doesn't jump when filters narrow to zero. */}
-            <div className="flex flex-col min-h-0">
+            <div className="flex flex-col flex-1 min-h-0">
                 {totalRows === 0 ? (
                     // Empty state — Figma 196:99884.
                     <div className="relative flex-1 min-h-[400px]">

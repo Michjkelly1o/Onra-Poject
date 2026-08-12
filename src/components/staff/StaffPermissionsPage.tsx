@@ -23,7 +23,7 @@
 //
 // State source of truth: useAppStore(s => s.roles) + useAppStore(s => s.staff).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -51,8 +51,8 @@ import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import ChangeRoleModal from "@/components/staff/ChangeRoleModal";
 import { AssignShiftModal } from "@/components/staff/AssignShiftModal";
 import { ShiftManagementTab } from "@/components/staff/ShiftManagementTab";
+import { AddShiftPanel } from "@/components/schedule/AddShiftPanel";
 import { BlockedTimeTab } from "@/components/staff/BlockedTimeTab";
-import { TodayScheduleCell } from "@/components/staff/TodayScheduleCell";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
@@ -768,6 +768,16 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
      *  Filter button. Lifted up so the existing toolbar code path can
      *  read it without re-subscribing inside the table component. */
     const [shiftFilterActive, setShiftFilterActive] = useState(false);
+    // Per-sub-tab toolbar total, reported up by the Shift / Time-off child tabs
+    // so the "Total" reads "N shifts" / "N staff" / "N time off" (client 2026-08-12).
+    const [subCount, setSubCount] = useState<{ count: number; noun: string } | null>(null);
+    // STABLE + idempotent — the child effects depend on this reference, and it
+    // no-ops when the count/noun are unchanged. Without both, a fresh inline
+    // callback each render + a new-object setState would loop forever (Maximum
+    // update depth) and freeze the page. (client 2026-08-12 regression fix)
+    const handleSubCount = useCallback((count: number, noun: string) => {
+        setSubCount(prev => (prev && prev.count === count && prev.noun === noun) ? prev : { count, noun });
+    }, []);
     const [branchId, setBranchId] = useState<string>(staffUi.branchId);
     const [search, setSearch] = useState(staffUi.search);
     const [filterOpen, setFilterOpen] = useState(false);
@@ -790,6 +800,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         d.setDate(d.getDate() - monIdx);
         return d;
     });
+    // Staff-schedule "Add shift" panel — ports the day-view flow. `assignToStaff`
+    // set → the panel opens in "pick a shift for {name}" mode from a row 3-dot.
+    const [staffSchedPanel, setStaffSchedPanel] = useState<{ open: boolean; assignToStaff?: { id: string; name: string } }>({ open: false });
     const [timeOffMonthCursor, setTimeOffMonthCursor] = useState<{ year: number; month: number }>(() => {
         const d = new Date();
         return { year: d.getFullYear(), month: d.getMonth() };
@@ -1175,12 +1188,21 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const staffSomeChecked = !staffAllChecked && staffPageIds.some(id => selectedStaffIds.has(id));
 
     // ─── Counts for the toolbar total ─────────────────────────────────────
-    const totalCount = tab === "roles" ? filteredRoles.length : filteredStaff.length;
-    const totalNoun = tab === "roles"
-        ? (totalCount === 1 ? "role" : "roles")
-        // Pluralization fix — "staff" is the same singular AND plural form;
-        // never render "staffs" on any surface.
-        : "staff";
+    // The Shift (list/week) + Time off sub-tabs report their own count/noun via
+    // `subCount` — "N shifts" / "N staff" / "N time off". Staff + Roles compute here.
+    const usesSubCount = forceTab === "staff"
+        && (staffSubTab === "shift-management" || staffSubTab === "blocked-time")
+        && subCount !== null;
+    const totalCount = usesSubCount
+        ? subCount!.count
+        : tab === "roles" ? filteredRoles.length : filteredStaff.length;
+    const totalNoun = usesSubCount
+        ? subCount!.noun
+        : tab === "roles"
+            ? (totalCount === 1 ? "role" : "roles")
+            // Pluralization fix — "staff" is the same singular AND plural form;
+            // never render "staffs" on any surface.
+            : "staff";
 
     // ─── Active-filter dot for the Filter button ──────────────────────────
     //
@@ -1248,9 +1270,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                 )}
                 {/* Filter button — lifted from the sub-tab row up here
                     (client 2026-07-22). Hidden on empty/placeholder
-                    sub-tabs where filter has no effect. */}
+                    sub-tabs where filter has no effect. The Shift + Time off
+                    sub-tabs carry no filter (client 2026-08-12) — only the
+                    Staff table keeps it. */}
                 {forceTab !== "roles" &&
-                 (forceTab !== "staff" || staffSubTab === "staff" || staffSubTab === "shift-management") && (
+                 (forceTab !== "staff" || staffSubTab === "staff") && (
                     <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
                 )}
                 {/* Import — empty-state only (client 2026-07-31). Only
@@ -1290,9 +1314,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     so the tab strip pins and only the inner body scrolls while
                     the outer <main> canvas scrolls the page. */}
             <div className={cn(
+                "relative",
                 forceTab === "roles"
-                    ? "min-h-0 flex flex-col overflow-hidden"
-                    : "min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
+                    ? "flex-1 min-h-0 flex flex-col overflow-hidden"
+                    : "flex-1 min-h-0 bg-white border-1 border-[#e4e7ec] rounded-[20px] flex flex-col overflow-hidden",
             )}>
                 {/* Inner tab row — only rendered when there are tabs to
                     show OR a Filter button to host. Hidden entirely on
@@ -1366,6 +1391,15 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                             );
                         })()}
                         <div className="flex-1" />
+                        {/* Staff-schedule "+ Add shift" — day-view secondary
+                            button, top-right, aligned with the tabs. */}
+                        {forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "week" && (
+                            <Button variant="secondary" size="sm" className="relative z-10 shrink-0"
+                                leftIcon={<Plus className="w-4 h-4" />}
+                                onClick={() => setStaffSchedPanel({ open: true })}>
+                                Add shift
+                            </Button>
+                        )}
                         {/* Date navigator — center-aligned via `absolute
                             left-1/2 -translate-x-1/2` inside the relative
                             parent (matches the /admin/schedule Week + Month
@@ -1407,8 +1441,11 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         filterOpen={filterOpen}
                         onCloseFilter={() => setFilterOpen(false)}
                         onFilterStateChange={setShiftFilterActive}
+                        onCountChange={handleSubCount}
                         viewMode={shiftsViewMode}
                         weekStart={shiftsWeekStart}
+                        onFlyoutOpen={() => setStaffSchedPanel({ open: false })}
+                        mainPanelOpen={staffSchedPanel.open}
                     />
                 )}
                 {/* Blocked time sub-tab — fully wired (Figma 7413:239407). Same
@@ -1420,6 +1457,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         search={search}
                         viewMode={timeOffViewMode}
                         monthCursor={timeOffMonthCursor}
+                        onCountChange={handleSubCount}
                     />
                 )}
                 {/* Table — roles
@@ -1562,7 +1600,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                         <th className={cn(TH, "w-[180px]")}>
                                             <SortableHeader sortKey="branch" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Branch location</SortableHeader>
                                         </th>
-                                        <th className={cn(TH, "w-[210px]")}>Today&apos;s schedule</th>
+                                        <th className={cn(TH, "w-[210px]")}>Assigned shift</th>
                                         <th className={cn(TH, "w-[120px]")}>
                                             <SortableHeader sortKey="status" currentSort={staffSortKey} dir={staffSortDir} onSort={toggleStaffSort}>Status</SortableHeader>
                                         </th>
@@ -1621,17 +1659,25 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                                                 </td>
                                                 <td className={cn(TD, "text-[#475467]")}>{branchName(s.branchId, branches)}</td>
                                                 <td className={TD}>
-                                                    <TodayScheduleCell
-                                                        staff={s}
-                                                        isInstructor={role?.type === "instructor"}
-                                                        shifts={shifts}
-                                                        shiftAssignments={shiftAssignments}
-                                                        blockedTimes={blockedTimes}
-                                                        classSchedules={classSchedules}
-                                                        appointments={appointmentsAll}
-                                                        todayISO={todayISO}
-                                                        todayDow={todayDow}
-                                                    />
+                                                    {/* Assigned shift — the distinct active shift names this staff
+                                                        member holds, comma-joined text (client 2026-08-11). */}
+                                                    {(() => {
+                                                        const seenId = new Set<string>();
+                                                        const ids: string[] = [];
+                                                        for (const a of shiftAssignments) {
+                                                            if (a.staff_id === s.id && !seenId.has(a.shift_id)) { seenId.add(a.shift_id); ids.push(a.shift_id); }
+                                                        }
+                                                        if (s.shiftId && !seenId.has(s.shiftId)) { seenId.add(s.shiftId); ids.push(s.shiftId); }
+                                                        const seenName = new Set<string>();
+                                                        const names: string[] = [];
+                                                        for (const id of ids) {
+                                                            const sh = shifts.find(x => x.id === id);
+                                                            if (sh && sh.status === "active" && !seenName.has(sh.name)) { seenName.add(sh.name); names.push(sh.name); }
+                                                        }
+                                                        return names.length > 0
+                                                            ? <span className="text-[14px] leading-5 text-[#475467]">{names.join(", ")}</span>
+                                                            : <span className="text-[14px] leading-5 text-[#98a2b3]">—</span>;
+                                                    })()}
                                                 </td>
                                                 <td className={TD}>
                                                     <span className={cn("inline-flex items-center px-[10px] py-[2px] rounded-full text-[13px] font-medium whitespace-nowrap", STAFF_STATUS_BADGE[s.status])}>
@@ -1673,6 +1719,19 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     </div>
                 )}
                 </div>
+                {/* Staff-schedule "Add shift" panel — the day-view AddShiftPanel,
+                    floating top-right inside the (relative) view card. */}
+                {forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "week" && (
+                    <AddShiftPanel
+                        open={staffSchedPanel.open}
+                        onClose={() => setStaffSchedPanel({ open: false })}
+                        shifts={shifts}
+                        branchId={branchId}
+                        dateISO={`${shiftsWeekStart.getFullYear()}-${String(shiftsWeekStart.getMonth() + 1).padStart(2, "0")}-${String(shiftsWeekStart.getDate()).padStart(2, "0")}`}
+                        assignToStaff={staffSchedPanel.assignToStaff}
+                        topClass="top-[72px]"
+                    />
+                )}
             </div>
 
             <FilterPanel

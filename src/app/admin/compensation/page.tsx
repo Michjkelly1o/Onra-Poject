@@ -41,6 +41,7 @@ import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
 import { RowActions } from "@/components/patterns/RowActions";
 import { RoleBadge } from "@/components/staff/RoleBadge";
+import { ChangePayRateModal } from "@/components/staff/PayrollInstructorDetailPage";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Pagination } from "@/components/ui/Pagination";
@@ -172,6 +173,7 @@ export default function CompensationPage() {
     const instructors    = useAppStore(s => s.instructors);
     const branches       = useAppStore(s => s.branches);
     const showToast      = useAppStore(s => s.showToast);
+    const updateStaff    = useAppStore(s => s.updateStaff);
     // Commission refactor Phase 3B — payroll reopens to ALL staff. Non-
     // instructor staff appear with their categorised commission (+ monthly
     // salary). Commission sources + role join.
@@ -185,6 +187,9 @@ export default function CompensationPage() {
     const issuedGiftCards      = useAppStore(s => s.issuedGiftCards);
 
     const [branchId, setBranchId] = usePersistedListState<string>("compensation:branchId", "");
+    // Change-pay-rate modal opened INLINE from the row action (no detour to the
+    // staff detail page). client 2026-08-10.
+    const [changeRateRow, setChangeRateRow] = useState<CompRow | null>(null);
     const [search, setSearch]     = usePersistedListState("compensation:search", "");
     const [period, setPeriod]     = usePersistedListState<DateFilter>("compensation:period", DEFAULT_PERIOD);
     const [page, setPage]         = usePersistedListState("compensation:page", 1);
@@ -473,7 +478,7 @@ export default function CompensationPage() {
             </div>
 
             {/* Table */}
-            <div className="min-h-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                 <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative">
                     {pageRows.length === 0 ? (
                         <EmptyState
@@ -538,7 +543,7 @@ export default function CompensationPage() {
                                                             // Deep-link to the detail with the modal / export
                                                             // pre-triggered, so the row menu offers the same
                                                             // actions as the detail side panel.
-                                                            { label: "Change pay rate", icon: Edit02, onClick: () => router.push(`/compensation/${r.instructor.id}?returnTo=/admin/compensation&changeRate=1`) },
+                                                            { label: "Change pay rate", icon: Edit02, onClick: () => setChangeRateRow(r) },
                                                             { label: "Export payout report", icon: Download01, onClick: () => router.push(`/compensation/${r.instructor.id}?returnTo=/admin/compensation&export=1`) },
                                                         ]}
                                                     />
@@ -559,6 +564,32 @@ export default function CompensationPage() {
                     />
                 </div>
             </div>
+
+            {changeRateRow && (() => {
+                const st = staff.find(s => s.id === changeRateRow.instructor.id);
+                const rowIsInstructor = roles.find(r => r.id === st?.roleId)?.type === "instructor";
+                const initialConfig = st?.payConfig ?? {
+                    default: { enabled: true, payRateId: st?.payRateId },
+                    perClass: { enabled: false },
+                    perAppointment: { enabled: false },
+                };
+                return (
+                    <ChangePayRateModal
+                        instructor={{ name: changeRateRow.instructor.name }}
+                        isInstructor={rowIsInstructor}
+                        initialConfig={initialConfig}
+                        allRates={payRates}
+                        onCancel={() => setChangeRateRow(null)}
+                        onConfirm={(config) => {
+                            const newDefaultRateId = config.default.payRateId
+                                ?? (config.perClass.enabled ? config.perClass.payRateId : config.perAppointment.payRateId);
+                            updateStaff(changeRateRow.instructor.id, { payConfig: config, payRateId: newDefaultRateId ?? undefined });
+                            setChangeRateRow(null);
+                            showToast("Pay rate updated", `${changeRateRow.instructor.name}'s pay configuration was updated.`, "success", "check");
+                        }}
+                    />
+                );
+            })()}
         </div>
     );
 }

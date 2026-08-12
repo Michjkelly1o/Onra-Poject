@@ -68,10 +68,8 @@ export default function ProductsPage() {
     }, []);
     const [detailId, setDetailId] = useState<string | null>(null);
     const [checkoutOpen, setCheckoutOpen] = useState(false);
-    // Non-null → the gift-card configuration panel is slid IN over the detail
     // (same sheet, forward/back). `pay` carries the Pay-now intent.
-    const [giftConfig, setGiftConfig] = useState<{ pay: boolean } | null>(null);
-    const closeProductSheet = () => { setDetailId(null); setGiftConfig(null); };
+    const closeProductSheet = () => { setDetailId(null); };
     const [branchSheet, setBranchSheet] = useState(false);
     const [, bump] = useReducer((x) => x + 1, 0);
 
@@ -307,7 +305,7 @@ export default function ProductsPage() {
                 )}
 
                 {isEmpty ? (
-                    <div className="flex flex-1 items-center justify-center">
+                    <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh]">
                         <SearchEmptyState
                             icon={ShoppingBag03}
                             title="No products available yet"
@@ -369,45 +367,29 @@ export default function ProductsPage() {
 
             <BranchSelectorSheet open={branchSheet} onClose={() => setBranchSheet(false)} />
 
-            {/* Product detail + gift-card configuration as ONE sheet: a gift card's
-                "Add to cart" / "Pay now" slides FORWARD to the config panel, and
-                its Back slides return to the detail — no close/reopen. */}
-            <CustomerSheet open={detailId != null} onClose={closeProductSheet} tall bleed>
-                {detailId && (
-                    <div className="relative h-full overflow-hidden">
-                        <div
-                            className="flex h-full w-full"
-                            style={{
-                                transform: `translateX(-${giftConfig ? 100 : 0}%)`,
-                                transition: "transform 360ms cubic-bezier(0.32, 0.72, 0, 1)",
-                            }}
-                        >
-                            {/* Panel 0 — product detail (bleeds edge-to-edge) */}
-                            <div className="h-full w-full shrink-0">
-                                <ProductDetailScreen
-                                    productId={detailId}
-                                    originId="products"
-                                    variant="sheet"
-                                    onBack={closeProductSheet}
-                                    afterAdd={closeProductSheet}
-                                    onCheckout={() => { closeProductSheet(); setCheckoutOpen(true); }}
-                                    onGiftConfigure={(intent) => setGiftConfig({ pay: intent === "pay" })}
-                                />
-                            </div>
-                            {/* Panel 1 — gift card configuration (slides in) */}
-                            <div className="h-full w-full shrink-0 px-4 pt-3">
-                                <GiftCardInfoContent
-                                    designId={detailId}
-                                    variant="sheet"
-                                    payNow={giftConfig?.pay ?? false}
-                                    onBack={() => setGiftConfig(null)}
-                                    onDone={closeProductSheet}
-                                    onCheckout={() => { closeProductSheet(); setCheckoutOpen(true); }}
-                                />
-                            </div>
-                        </div>
+            {/* Gift cards open the Gift card information sheet DIRECTLY (illustration
+                + amount + recipient), skipping the product-detail step. Every other
+                product opens the product detail. Client 2026-08-11. */}
+            <CustomerSheet open={detailId != null} onClose={closeProductSheet} tall bleed={!(detailId != null && giftCards.some((g) => g.id === detailId))}>
+                {detailId && (giftCards.some((g) => g.id === detailId) ? (
+                    <GiftCardInfoContent
+                            designId={detailId}
+                            variant="sheet"
+                            onDone={closeProductSheet}
+                            onCheckout={() => { closeProductSheet(); setCheckoutOpen(true); }}
+                        />
+                ) : (
+                    <div className="h-full w-full">
+                        <ProductDetailScreen
+                            productId={detailId}
+                            originId="products"
+                            variant="sheet"
+                            onBack={closeProductSheet}
+                            afterAdd={closeProductSheet}
+                            onCheckout={() => { closeProductSheet(); setCheckoutOpen(true); }}
+                        />
                     </div>
-                )}
+                ))}
             </CustomerSheet>
 
             <CustomerSheet open={checkoutOpen} onClose={() => setCheckoutOpen(false)} tall>

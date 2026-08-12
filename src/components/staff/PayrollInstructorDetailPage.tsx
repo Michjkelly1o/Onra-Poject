@@ -262,25 +262,76 @@ function PayToggle({ value, onChange, disabled }: { value: boolean; onChange: (n
     );
 }
 
-function PayTrackCard({ title, subtitle, enabled, onToggle, toggleDisabled, rateValue, rateOptions, onRateChange }: {
-    title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; toggleDisabled?: boolean;
-    rateValue: string; rateOptions: { value: string; label: string }[]; onRateChange: (v: string) => void;
+/** Toggle-only row for the grouped "Pay rate configuration" section — the
+ *  toggles are separated from the per-track config now (Figma 8132:481109). */
+function PayToggleRow({ title, subtitle, enabled, onToggle, disabled }: {
+    title: string; subtitle: string; enabled: boolean; onToggle: (n: boolean) => void; disabled?: boolean;
 }) {
     return (
-        <div className={cn("w-full bg-white rounded-[12px] p-4 flex flex-col gap-4", enabled ? "border-2 border-[#457175]" : "border-1 border-[var(--colors-border-secondary)]")}>
-            <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
-                    <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
-                </div>
-                <PayToggle value={enabled} onChange={onToggle} disabled={toggleDisabled} />
+        <div className="flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-medium text-[#101828] leading-[20px]">{title}</p>
+                <p className="text-[14px] text-[#667085] leading-[20px]">{subtitle}</p>
             </div>
-            {enabled && (
+            <PayToggle value={enabled} onChange={onToggle} disabled={disabled} />
+        </div>
+    );
+}
+
+/** A titled config section with a single "Pay rate" select. */
+function PayRateSection({ title, value, options, onChange }: {
+    title: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-4">
+            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">{title}</p>
+            <div className="flex flex-col gap-[6px]">
+                <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
+                <SelectInput placeholder="Select pay rate" options={options} value={value} onChange={onChange} width="w-full" />
+            </div>
+        </div>
+    );
+}
+
+/** AED-prefixed amount input (matches StaffFormPage's PayAedInput). */
+function PayAedInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    return (
+        <div className="flex items-stretch border-1 border-[#d0d5dd] rounded-[8px] bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] focus-within:ring-2 focus-within:ring-[var(--colors-secondary-300)] focus-within:border-[var(--colors-secondary-500)] transition-all overflow-hidden">
+            <span className="flex items-center px-[14px] text-[16px] text-[#475467] leading-[24px] border-r border-[#d0d5dd] shrink-0 select-none">AED</span>
+            <input type="text" inputMode="numeric" value={value}
+                onChange={e => onChange(e.target.value.replace(/[^\d.]/g, ""))}
+                placeholder="Enter amount"
+                className="flex-1 h-10 px-[14px] text-[16px] text-[#101828] placeholder:text-[#667085] focus:outline-none bg-transparent" />
+        </div>
+    );
+}
+
+/** Pay per class config — Pay rate + Substitute pay rate + Substitutions
+ *  amount. Mirrors StaffFormPage so the payroll modal and the staff form
+ *  edit the exact same fields (client 2026-08-10). */
+function PayPerClassSection({ payRateId, substitutePayRateId, substitutionAmountAed, options, onChange }: {
+    payRateId: string; substitutePayRateId: string; substitutionAmountAed: string;
+    options: { value: string; label: string }[];
+    onChange: (patch: { payRateId?: string; substitutePayRateId?: string; substitutionAmountAed?: number }) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-4">
+            <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Pay per class</p>
+            <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-[6px]">
                     <p className="text-[14px] font-medium text-[#344054]">Pay rate</p>
-                    <SelectInput placeholder="Select pay rate" options={rateOptions} value={rateValue} onChange={onRateChange} width="w-full" />
+                    <SelectInput placeholder="Select pay rate" options={options} value={payRateId} onChange={v => onChange({ payRateId: v })} width="w-full" />
                 </div>
-            )}
+                <div className="flex flex-col gap-[6px]">
+                    <p className="text-[14px] font-medium text-[#344054]">Substitute pay rate (optional)</p>
+                    <SelectInput placeholder="Select pay rate" options={options} value={substitutePayRateId} onChange={v => onChange({ substitutePayRateId: v })} width="w-full" />
+                </div>
+            </div>
+            <div className="flex flex-col gap-[6px]">
+                <p className="text-[14px] font-medium text-[#344054]">Substitutions</p>
+                <PayAedInput value={substitutionAmountAed} onChange={v => onChange({ substitutionAmountAed: v === "" ? undefined : Number(v) })} />
+                <p className="text-[14px] text-[#475467]">Per class for which the instructor is added as a substitute.</p>
+            </div>
         </div>
     );
 }
@@ -295,8 +346,11 @@ function isValidPayConfig(c: StaffPayConfig): boolean {
     return c.default.enabled || (c.perClass.enabled && c.perAppointment.enabled);
 }
 
-function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates, onCancel, onConfirm }: {
-    instructor: Instructor;
+export function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates, onCancel, onConfirm }: {
+    /** Only the display name is used inside the modal — any object with `name`
+     *  works, so the compensation main page can open it inline without a full
+     *  Instructor record. */
+    instructor: { name: string };
     /** Instructors carry all three tracks; other roles only the Default rate. */
     isInstructor: boolean;
     initialConfig: StaffPayConfig;
@@ -362,19 +416,40 @@ function ChangePayRateModal({ instructor, isInstructor, initialConfig, allRates,
                     </p>
                 </div>
 
-                <div className="px-6 pt-6 pb-2 flex flex-col gap-4 overflow-y-auto scrollbar-hide">
-                    <PayTrackCard title="Default pay rate" subtitle="Provide a base salary for this staff."
-                        enabled={cfg.default.enabled} onToggle={n => toggleTrack("default", n)} toggleDisabled={defaultToggleDisabled}
-                        rateValue={cfg.default.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("default", { payRateId: v })} />
+                <div className="px-6 pt-6 pb-2 flex flex-col gap-8 overflow-y-auto scrollbar-hide">
+                    {/* Section 1 — the toggles, grouped (Figma 8132:481109) */}
+                    <div className="flex flex-col gap-4">
+                        <p className="text-[18px] font-semibold text-[#101828] leading-[28px]">Pay rate configuration</p>
+                        <div className="flex flex-col gap-4">
+                            <PayToggleRow title="Fixed salary" subtitle="Base salary for this staff."
+                                enabled={cfg.default.enabled} onToggle={n => toggleTrack("default", n)} disabled={defaultToggleDisabled} />
+                            {isInstructor && (
+                                <PayToggleRow title="Pay per class" subtitle="Salary for every class taught."
+                                    enabled={cfg.perClass.enabled} onToggle={n => toggleTrack("perClass", n)} disabled={perClassToggleDisabled} />
+                            )}
+                            {isInstructor && (
+                                <PayToggleRow title="Pay per appointment" subtitle="Salary for every appointment completed."
+                                    enabled={cfg.perAppointment.enabled} onToggle={n => toggleTrack("perAppointment", n)} disabled={perApptToggleDisabled} />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Config sections — ALWAYS shown regardless of toggle state
+                        (client 2026-08-10). Non-instructors get only Default. */}
+                    <PayRateSection title="Default pay rate" value={cfg.default.payRateId ?? ""} options={options}
+                        onChange={v => setTrack("default", { payRateId: v })} />
                     {isInstructor && (
-                        <>
-                            <PayTrackCard title="Pay per class" subtitle="Add compensation for every class taught."
-                                enabled={cfg.perClass.enabled} onToggle={n => toggleTrack("perClass", n)} toggleDisabled={perClassToggleDisabled}
-                                rateValue={cfg.perClass.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("perClass", { payRateId: v })} />
-                            <PayTrackCard title="Pay per Private" subtitle="Add compensation for every private session completed."
-                                enabled={cfg.perAppointment.enabled} onToggle={n => toggleTrack("perAppointment", n)} toggleDisabled={perApptToggleDisabled}
-                                rateValue={cfg.perAppointment.payRateId ?? ""} rateOptions={options} onRateChange={v => setTrack("perAppointment", { payRateId: v })} />
-                        </>
+                        <PayPerClassSection
+                            payRateId={cfg.perClass.payRateId ?? ""}
+                            substitutePayRateId={cfg.perClass.substitutePayRateId ?? ""}
+                            substitutionAmountAed={cfg.perClass.substitutionAmountAed != null ? String(cfg.perClass.substitutionAmountAed) : ""}
+                            options={options}
+                            onChange={patch => setTrack("perClass", patch)}
+                        />
+                    )}
+                    {isInstructor && (
+                        <PayRateSection title="Pay per appointment" value={cfg.perAppointment.payRateId ?? ""} options={options}
+                            onChange={v => setTrack("perAppointment", { payRateId: v })} />
                     )}
 
                     {/* Info banner — bg #f1f2ed warm-cream per Figma 7093-347698 */}
