@@ -31,7 +31,7 @@ import {
     type MarketingFormData, type ClassCtaOption, type MultiOption,
     ACTIONS_BY_TYPE, nowHHMM,
     StepItem, type FormStep, FormCard, Section, FormField, TextInput, Textarea,
-    FilledRadio, FilledCheckbox, ActionCard, TimeSelect, ClassCtaSelect,
+    FilledRadio, ActionCard, TimeSelect, ClassCtaSelect,
     ToggleCard, MultiSelectCard, BranchSingleSelect, MarketingPreviewPanel,
 } from "@/components/marketing/form-kit";
 import { campaignRecipients, type AudienceSpec } from "@/lib/marketing/dispatch";
@@ -57,6 +57,8 @@ const SEGMENT_OPTIONS: { value: "lead" | "member" | "inactive"; label: string; s
     { value: "member",   label: "Members",  sub: "Something live right now" },
     { value: "inactive", label: "Inactive", sub: "Bought before, nothing live" },
 ];
+// Segment picker reuses the MultiSelectCard (Select all + filter + accordion).
+const SEGMENT_MULTI_OPTIONS: MultiOption[] = SEGMENT_OPTIONS.map(s => ({ id: s.value, label: s.label, sublabel: s.sub }));
 
 const AUDIENCE_OPTIONS: { value: NonNullable<MarketingFormData["audienceKind"]>; label: string }[] = [
     { value: "everyone",   label: "Everyone" },
@@ -217,12 +219,6 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
     const scheduleOk = form.scheduleMode === "now"
         || (form.scheduleMode === "later" && form.startDate.length > 0 && form.startTime.length > 0);
     const canSend = branchOk && audienceOk && scheduleOk;
-
-    function toggleSegment(s: "lead" | "member" | "inactive") {
-        patch({ audienceSegments: form.audienceSegments.includes(s)
-            ? form.audienceSegments.filter(x => x !== s)
-            : [...form.audienceSegments, s] });
-    }
 
     function handleSubmit(kind: "draft" | "send") {
         const toIso = (date: string, time: string) => date ? `${date}T${time || "00:00"}:00Z` : undefined;
@@ -410,15 +406,9 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
                                         onChange={ids => patch({ audienceMembershipIds: ids })} />
                                 )}
                                 {form.audienceKind === "segment" && (
-                                    <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] p-4 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                                        {SEGMENT_OPTIONS.map(s => (
-                                            <div key={s.value} className="flex items-center gap-2">
-                                                <FilledCheckbox checked={form.audienceSegments.includes(s.value)} onChange={() => toggleSegment(s.value)} />
-                                                <span className="text-[14px] font-medium text-[var(--colors-text-primary)] flex-1">{s.label}</span>
-                                                <span className="text-[13px] text-[var(--colors-text-quaternary)]">{s.sub}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <MultiSelectCard title="Segments" subtitle="Customers in these wallet segments"
+                                        options={SEGMENT_MULTI_OPTIONS} selected={form.audienceSegments}
+                                        onChange={ids => patch({ audienceSegments: ids as ("lead" | "member" | "inactive")[] })} />
                                 )}
                                 {form.audienceKind === "specific" && (
                                     <MultiSelectCard title="Customers" subtitle="Hand-pick who receives this campaign"
