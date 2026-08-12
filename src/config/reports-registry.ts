@@ -39,11 +39,10 @@ import {
     selectRetailStockOnHand,
 } from "@/lib/reports/selectors";
 import { TOTAL_SALES_REPORT }         from "./reports/total-sales";
-import { SALES_BY_CATEGORY_REPORT }   from "./reports/sales-by-category";
+import { SALES_BREAKDOWN_REPORT }     from "./reports/sales-breakdown";
 import { PAYMENTS_REPORT }            from "./reports/payments";
 import { REFUNDS_REPORT }             from "./reports/refunds";
 import { DISCOUNTS_REPORT }           from "./reports/discounts";
-import { SALES_BY_ITEM_REPORT }       from "./reports/sales-by-item";
 import { GIFT_CARDS_REPORT }          from "./reports/gift-cards";
 import { TAX_VAT_EXPORT_REPORT }      from "./reports/tax-vat-export";
 import { REVENUE_RECOGNITION_REPORT } from "./reports/revenue-recognition";
@@ -134,13 +133,12 @@ export const REPORTS_REGISTRY: ReportDefinition[] = [
     TOTAL_SALES_REPORT,
 
     // Phase 4A · Financial batch 1
-    SALES_BY_CATEGORY_REPORT,
+    SALES_BREAKDOWN_REPORT,
     PAYMENTS_REPORT,
     REFUNDS_REPORT,
     DISCOUNTS_REPORT,
 
     // Phase 4B · Financial batch 2
-    SALES_BY_ITEM_REPORT,
     GIFT_CARDS_REPORT,
     TAX_VAT_EXPORT_REPORT,
     REVENUE_RECOGNITION_REPORT,

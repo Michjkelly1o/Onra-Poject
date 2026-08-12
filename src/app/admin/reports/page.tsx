@@ -77,8 +77,7 @@ const CATEGORIES: ReportCategory[] = [
         icon: BankNote01,
         items: [
             { slug: "total-sales",         label: "Sales"                        },
-            { slug: "sales-by-category",   label: "Sales by Category (stream)"   },
-            { slug: "sales-by-item",       label: "Sales by Item"                },
+            { slug: "sales-breakdown",     label: "Sales Breakdown"              },
             { slug: "payments",            label: "Payments"                     },
             { slug: "refunds",             label: "Refunds"                      },
             { slug: "discounts",           label: "Discounts"                    },

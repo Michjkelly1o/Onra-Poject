@@ -67,6 +67,12 @@ export interface PivotableReportShellProps {
      *  most reports don't need it (kept for the legacy Total Sales "Export
      *  invoice" split button). */
     toolbarRight?: React.ReactNode;
+    /** Fired with the resolved date range + visible branch ids whenever they
+     *  change. Lets a page that pre-aggregates its own rows (e.g. Sales
+     *  Breakdown) scope that aggregation to the shell's date + location
+     *  filters — the shell's own row filter no-ops on rows that carry no
+     *  date/branch field, so there's no double-filtering. */
+    onScopeChange?: (scope: { fromISO: string; toISO: string; branchIds: string[] }) => void;
 }
 
 // ─── Period labels ────────────────────────────────────────────────────────
@@ -188,6 +194,7 @@ export function PivotableReportShell({
     branchField = "branchId",
     backHref = "/admin/reports",
     toolbarRight,
+    onScopeChange,
 }: PivotableReportShellProps) {
     const router = useRouter();
 
@@ -232,6 +239,16 @@ export function PivotableReportShell({
             return true;
         });
     }, [allRows, branchField, visibleBranchIds, dateISO, periodField]);
+
+    // Report the resolved scope (date range + visible branches) to a
+    // pre-aggregating page, so it can re-aggregate within the active filters.
+    useEffect(() => {
+        onScopeChange?.({
+            fromISO: dateISO.fromISO,
+            toISO: dateISO.toISO,
+            branchIds: Array.from(visibleBranchIds),
+        });
+    }, [dateISO.fromISO, dateISO.toISO, visibleBranchIds, onScopeChange]);
 
     // Sort for list mode.
     const sortedRows = useMemo(() => {
@@ -478,7 +495,7 @@ export function PivotableReportShell({
 
 type IconCmp = ComponentType<SVGProps<SVGSVGElement>>;
 
-function SingleSelectDropdown({
+export function SingleSelectDropdown({
     icon: Icon, label, caption, options, value, onChange, active,
 }: {
     icon: IconCmp;
