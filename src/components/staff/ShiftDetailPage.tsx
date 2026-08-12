@@ -711,11 +711,12 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)] mb-5" />
                     <p className="text-[14px] text-[var(--colors-text-quaternary)] mb-4">Shift actions</p>
                     <div className="flex flex-col gap-4">
+                        {/* Shifts are delete-only scheduling config (policy §4, D-4) —
+                            no Archive / Recover. Inactive via Deactivate/Reactivate. */}
                         {isActive && (
                             <>
                                 <ActionBtn icon={<Edit02 className="w-5 h-5" />} label="Edit shift" onClick={() => onAction("edit_details")} />
                                 <ActionBtn icon={<UserPlus01 className="w-5 h-5" />} label="Assign staff" onClick={() => onAction("assign_staff")} />
-                                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive shift" onClick={() => onAction("archive")} />
                                 {/* Deactivate stays as the soft option while staff are assigned;
                                     Delete is always available and cascades (unassigns staff). */}
                                 {totalStaffs > 0 && (
@@ -727,12 +728,8 @@ function Sidebar({ shift, totalStaffs, branchName, onAction }: {
                         {isInactive && (
                             <>
                                 <ActionBtn icon={<Check className="w-5 h-5" />} label="Reactivate shift" onClick={() => onAction("reactivate")} />
-                                <ActionBtn icon={<Archive className="w-5 h-5" />} label="Archive shift" onClick={() => onAction("archive")} />
                                 <ActionBtn icon={<Trash01 className="w-5 h-5" />} label="Delete shift" danger onClick={() => onAction("delete")} />
                             </>
-                        )}
-                        {isArchive && (
-                            <ActionBtn icon={<RefreshCcw01 className="w-5 h-5" />} label="Recover shift" onClick={() => onAction("recover")} />
                         )}
                     </div>
                 </div>

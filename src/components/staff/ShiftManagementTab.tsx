@@ -357,19 +357,12 @@ function BulkActionBar({ count, hasArchivable, hasReactivatable, hasRecoverable,
                     {count} selected<XClose className="w-5 h-5 text-[#667085]" />
                 </button>
                 <div className="flex items-center gap-3">
-                    {hasArchivable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<Archive className="w-5 h-5 text-[#667085]" />} onClick={() => onAction("archive")}>
-                            Archive
-                        </Button>
-                    )}
+                    {/* Shifts are delete-only scheduling config (policy §4, D-4) —
+                        no Archive / Recover. Inactive is managed via the Enabled
+                        toggle + Deactivate/Reactivate; Delete is the terminal action. */}
                     {hasReactivatable && (
                         <Button variant="secondary-gray" size="sm" leftIcon={<Check className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("reactivate")}>
                             Reactivate
-                        </Button>
-                    )}
-                    {hasRecoverable && (
-                        <Button variant="secondary-gray" size="sm" leftIcon={<RefreshCcw01 className="w-5 h-5 text-[#164e52]" />} onClick={() => onAction("recover")}>
-                            Recover
                         </Button>
                     )}
                     {hasArchivable && (
@@ -525,7 +518,8 @@ function FilterPanel({ open, onClose, viewMode, appliedList, appliedWeek, onAppl
                             <div className="flex flex-col gap-2">
                                 <p className="text-[14px] font-medium text-[#344054]">Status</p>
                                 <div className="flex flex-wrap gap-2">
-                                    {(["active", "inactive", "archived"] as const).map(s => (
+                                    {/* Shifts are delete-only — no Archived filter (policy §4, D-4). */}
+                                    {(["active", "inactive"] as const).map(s => (
                                         <PillBtn key={s} label={STATUS_LABEL[s]}
                                             selected={pendingList.statuses.includes(s)}
                                             onClick={() => setPendingList(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
