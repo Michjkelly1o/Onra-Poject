@@ -53,7 +53,9 @@ import {
     computeAgreementLastSigned,
     type AgreementCoverage,
 } from "@/lib/agreement-helpers";
-import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
@@ -236,18 +238,8 @@ function FilterPanel({ open, onClose, applied, onApply }: {
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                    {/* Status */}
-                    <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[#344054]">Status</p>
-                        <div className="flex flex-wrap gap-2">
-                            {(["active", "archived"] as AgreementStatus[]).map(s => (
-                                <FilterPill key={s} label={STATUS_LABEL[s]} selected={pending.statuses.includes(s)}
-                                    onClick={() => setPending(p => ({ ...p, statuses: toggle(p.statuses, s) }))} />
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="h-px w-full bg-[#e4e7ec] shrink-0" />
+                    {/* Status filter removed — active/archived is now the active
+                        list vs Archived section split (policy §3). */}
 
                     {/* Type — derived location scope */}
                     <div className="flex flex-col gap-2">
@@ -416,6 +408,128 @@ type PendingConfirm =
     | { mode: "row"; row: Agreement; kind: RowActionKind }
     | { mode: "bulk"; rows: Agreement[]; kind: RowActionKind };
 
+// ─── Agreements table — shared by the active list + Archived section ─────────
+//
+// Extracted so the active list and the Archived section (policy §3) render the
+// same table from their own rows + sort + pagination, with a shared selection.
+
+function AgreementsTable({
+    rows, sortKey, sortDir, onSort,
+    selectedIds, onToggleOne, onToggleAll,
+    onRowClick, onView, onEdit, onNewVersion, onRowAction,
+    branchById, coverageById, lastSignedById,
+}: {
+    rows: Agreement[];
+    sortKey: string | null;
+    sortDir: SortDir;
+    onSort: (key: string) => void;
+    selectedIds: Set<string>;
+    onToggleOne: (id: string) => void;
+    onToggleAll: (checked: boolean) => void;
+    onRowClick: (id: string) => void;
+    onView: (r: Agreement) => void;
+    onEdit: (r: Agreement) => void;
+    onNewVersion: (r: Agreement) => void;
+    onRowAction: (r: Agreement, kind: RowActionKind) => void;
+    branchById: Map<string, Branch>;
+    coverageById: Map<string, AgreementCoverage>;
+    lastSignedById: Map<string, string | undefined>;
+}) {
+    const allChecked  = rows.length > 0 && rows.every(r => selectedIds.has(r.id));
+    const someChecked = !allChecked && rows.some(r => selectedIds.has(r.id));
+    return (
+        <div>
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th className={cn(TH, "w-[44px]")}>
+                            <CheckboxCell
+                                checked={allChecked}
+                                indeterminate={someChecked}
+                                onChange={onToggleAll}
+                                ariaLabel="Select all rows on this page"
+                            />
+                        </th>
+                        <th className={cn(TH, "w-[280px]")}>
+                            <SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={onSort}>Agreement name</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[220px]")}>
+                            <SortableHeader sortKey="branch"    currentSort={sortKey} dir={sortDir} onSort={onSort}>Branch location</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[240px]")}>
+                            <SortableHeader sortKey="coverage"  currentSort={sortKey} dir={sortDir} onSort={onSort}>Coverage</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[140px]")}>
+                            <SortableHeader sortKey="lastSigned" currentSort={sortKey} dir={sortDir} onSort={onSort}>Last signed</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[140px]")}>
+                            <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={onSort}>Effective until</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[120px]")}>
+                            <SortableHeader sortKey="status"    currentSort={sortKey} dir={sortDir} onSort={onSort}>Status</SortableHeader>
+                        </th>
+                        <th className={cn(TH, "w-[52px]")} />
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map(r => {
+                        const isSelected = selectedIds.has(r.id);
+                        return (
+                            <tr key={r.id}
+                                onClick={() => onRowClick(r.id)}
+                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <CheckboxCell
+                                        checked={isSelected}
+                                        onChange={() => onToggleOne(r.id)}
+                                        ariaLabel={`Select ${r.name}`}
+                                    />
+                                </td>
+                                <td className={TD}>
+                                    <div className="flex items-center gap-3">
+                                        <IconAvatar icon={File06} />
+                                        <div className="flex flex-col">
+                                            <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
+                                            <span className="text-[14px] text-[#667085]">Version {r.currentVersion}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className={TD}>{branchLocationText(r, branchById)}</td>
+                                <td className={TD}>
+                                    <CoverageCell coverage={coverageById.get(r.id)} />
+                                </td>
+                                <td className={TD}>
+                                    {(() => {
+                                        const ts = lastSignedById.get(r.id);
+                                        return ts
+                                            ? <span className="whitespace-nowrap">{formatDateISO(ts)}</span>
+                                            : <span className="text-[#98a2b3]">—</span>;
+                                    })()}
+                                </td>
+                                <td className={TD}>
+                                    {r.effectiveDatesMode === "ongoing"
+                                        ? <OngoingPill />
+                                        : formatDateISO(r.effectiveUntil)}
+                                </td>
+                                <td className={TD}><StatusBadge type="agreement" status={r.status} /></td>
+                                <td className={TD} onClick={e => e.stopPropagation()}>
+                                    <RowActions items={[
+                                        { label: "View", icon: Eye, onClick: () => onView(r) },
+                                        { label: "Add new version", icon: Plus, onClick: () => onNewVersion(r), hidden: r.status !== "active" },
+                                        { label: "Edit", icon: Edit02, onClick: () => onEdit(r), hidden: r.status !== "active" },
+                                        { label: "Archive", icon: Archive, onClick: () => onRowAction(r, "archive"), hidden: r.status !== "active" },
+                                        { label: "Recover", icon: RefreshCcw01, onClick: () => onRowAction(r, "recover"), hidden: r.status !== "archived" },
+                                    ]} />
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 export default function AgreementsPage() {
     const router = useRouter();
 
@@ -437,6 +551,7 @@ export default function AgreementsPage() {
     // Hide the FloatingAiButton while bulk-select mode has ≥1 row checked.
     useBulkSelectionSignal(selectedIds.size > 0);
     const [page, setPage] = usePersistedListState("agreements:page", 1);
+    const [archPage, setArchPage] = useState(1);
     const [pageSize, setPageSize] = usePersistedListState("agreements:pageSize", 10);
     const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
@@ -469,8 +584,9 @@ export default function AgreementsPage() {
                 // Branch scope — match agreements that apply to this branch
                 if (branchId && !a.allLocations && !a.locationIds.includes(branchId)) return false;
 
-                // Status filter
-                if (applied.statuses.length > 0 && !applied.statuses.includes(a.status)) return false;
+                // No status filter — active/archived is now the active-list vs
+                // Archived-section split (policy §3); archived rows always flow
+                // to the section below.
 
                 // Type filter (derived scope)
                 if (applied.scopes.length > 0 && !applied.scopes.includes(scopeFor(a))) return false;
@@ -492,6 +608,10 @@ export default function AgreementsPage() {
                 return a.name.localeCompare(b.name);
             });
     }, [agreements, search, branchId, applied]);
+
+    // Archived agreements leave the active table → the shared Archived section
+    // (policy §3). Agreements are archive-only (no delete / no deactivate).
+    const { active: activeRows, archived: archivedRows } = useArchiveView(filtered);
 
     // ── Sortable columns — Name / Branch / Coverage / Effective until
     //    / Status. Coverage sorts by numeric percent so a 0% row lands
@@ -517,7 +637,7 @@ export default function AgreementsPage() {
         return m;
     }, [agreements, customerAgreements]);
 
-    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Agreement>(filtered, {
+    const comparators: Record<string, (a: Agreement, b: Agreement) => number> = {
         name:       (a, b) => a.name.localeCompare(b.name),
         branch:     (a, b) => branchLocationText(a, branchById).localeCompare(branchLocationText(b, branchById)),
         coverage:   (a, b) => (coverageById.get(a.id)?.percent ?? 0) - (coverageById.get(b.id)?.percent ?? 0),
@@ -527,32 +647,33 @@ export default function AgreementsPage() {
             return av.localeCompare(bv);
         },
         lastSigned: (a, b) => {
-            // Never-signed rows sort AFTER dated rows (their "date" is
-            // treated as before any real timestamp on ascending, after
-            // on descending — matches how empty coverage sorts).
             const av = lastSignedById.get(a.id) ?? "";
             const bv = lastSignedById.get(b.id) ?? "";
             return av.localeCompare(bv);
         },
         status:     (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
-    });
+    };
+    const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<Agreement>(activeRows, comparators);
+    const { sorted: archSortedRows, sortKey: archSortKey, sortDir: archSortDir, toggle: toggleArchSort } = useSort<Agreement>(archivedRows, comparators);
 
     const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
     const clampedPage = Math.min(Math.max(1, page), totalPages);
     const pagedRows = sortedRows.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
+    const archTotalPages = Math.max(1, Math.ceil(archSortedRows.length / pageSize));
+    const clampedArchPage = Math.min(Math.max(1, archPage), archTotalPages);
+    const pagedArchivedRows = archSortedRows.slice((clampedArchPage - 1) * pageSize, clampedArchPage * pageSize);
+
     // ─── Selection helpers ──────────────────────────────────────────────────
-    const allChecked = pagedRows.length > 0 && pagedRows.every(r => selectedIds.has(r.id));
-    const someChecked = !allChecked && pagedRows.some(r => selectedIds.has(r.id));
     function toggleOne(id: string) {
         const next = new Set(selectedIds);
         if (next.has(id)) next.delete(id); else next.add(id);
         setSelectedIds(next);
     }
-    function toggleAllOnPage(check: boolean) {
+    function toggleAllRows(rows: Agreement[], check: boolean) {
         const next = new Set(selectedIds);
-        if (check) pagedRows.forEach(r => next.add(r.id));
-        else pagedRows.forEach(r => next.delete(r.id));
+        if (check) rows.forEach(r => next.add(r.id));
+        else rows.forEach(r => next.delete(r.id));
         setSelectedIds(next);
     }
     function clearSelection() { setSelectedIds(new Set()); }
@@ -645,10 +766,10 @@ export default function AgreementsPage() {
             {/* No inner border / bg — the admin layout's white-rounded shell
                 already wraps this page. Toolbar + table + pagination sit
                 flush inside the layout's `<main className="p-6">` padding. */}
-            <div className="min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col gap-6">
                 {/* Toolbar — Figma 4232-52279 */}
                 <div className="shrink-0 flex items-center gap-3">
-                    <ToolbarTotal count={filtered.length} entitySingular="agreement" />
+                    <ToolbarTotal count={activeRows.length} entitySingular="agreement" />
 
                     {/* Branch picker (220px) */}
                     <SelectInput
@@ -688,114 +809,46 @@ export default function AgreementsPage() {
                     </Button>
                 </div>
 
-                {/* Table + pagination — no inner padding now that the outer
-                    card chrome is gone (admin layout's p-6 already provides
-                    the page gutter). */}
-                <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide relative pt-5">
-                    {pagedRows.length === 0 ? (
-                        <EmptyState
-                            absolute={false} className="min-h-[400px]"
-                            title={isTrulyEmpty ? "No agreements yet" : "No agreements found"}
-                            subtitle={isTrulyEmpty
-                                ? "Create your first agreement to start collecting customer signatures."
-                                : hasActiveFilter
-                                    ? "Try adjusting your search or filters."
-                                    : "Try clearing the filter to see all agreements."}
+                {/* Scroll region — active table fills the viewport (pagination
+                    pinned); the Archived section sits below and is reached by
+                    scrolling THIS region. */}
+                <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide flex flex-col gap-6">
+                {/* Active table — relative wrapper anchors the floating bulk pill. */}
+                <div className="relative shrink-0 h-full flex flex-col pt-5">
+                    <div className="flex-auto min-h-0 overflow-y-auto scrollbar-hide">
+                        {pagedRows.length === 0 ? (
+                            <EmptyState
+                                absolute={false} className="min-h-[400px]"
+                                title={isTrulyEmpty ? "No agreements yet" : "No agreements found"}
+                                subtitle={isTrulyEmpty
+                                    ? "Create your first agreement to start collecting customer signatures."
+                                    : hasActiveFilter
+                                        ? "Try adjusting your search or filters."
+                                        : "Try clearing the filter to see all agreements."}
+                            />
+                        ) : (
+                            <AgreementsTable
+                                rows={pagedRows}
+                                sortKey={sortKey} sortDir={sortDir} onSort={toggleSort}
+                                selectedIds={selectedIds}
+                                onToggleOne={toggleOne}
+                                onToggleAll={(c) => toggleAllRows(pagedRows, c)}
+                                onRowClick={(id) => router.push(`/settings/agreements/${id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`)}
+                                onView={handleView}
+                                onEdit={handleEdit}
+                                onNewVersion={(r) => router.push(`/settings/agreements/${r.id}/new-version?returnTo=${encodeURIComponent("/admin/settings/agreements")}`)}
+                                onRowAction={openRowConfirm}
+                                branchById={branchById} coverageById={coverageById} lastSignedById={lastSignedById}
+                            />
+                        )}
+                    </div>
+
+                    <div className="shrink-0">
+                        <Pagination
+                            page={clampedPage} total={sortedRows.length} pageSize={pageSize}
+                            onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
                         />
-                    ) : (
-                        <div>
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr>
-                                        <th className={cn(TH, "w-[44px]")}>
-                                            <CheckboxCell
-                                                checked={allChecked}
-                                                indeterminate={someChecked}
-                                                onChange={toggleAllOnPage}
-                                                ariaLabel="Select all rows on this page"
-                                            />
-                                        </th>
-                                        <th className={cn(TH, "w-[280px]")}>
-                                            <SortableHeader sortKey="name"      currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Agreement name</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[220px]")}>
-                                            <SortableHeader sortKey="branch"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Branch location</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[240px]")}>
-                                            <SortableHeader sortKey="coverage"  currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Coverage</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="lastSigned" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Last signed</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[140px]")}>
-                                            <SortableHeader sortKey="effective" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Effective until</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[120px]")}>
-                                            <SortableHeader sortKey="status"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Status</SortableHeader>
-                                        </th>
-                                        <th className={cn(TH, "w-[52px]")} />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pagedRows.map(r => {
-                                        const isSelected = selectedIds.has(r.id);
-                                        return (
-                                            <tr key={r.id}
-                                                onClick={() => router.push(`/settings/agreements/${r.id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`)}
-                                                className={cn("transition-colors cursor-pointer", isSelected ? "bg-[var(--colors-bg-secondary)]" : "hover:bg-[var(--colors-bg-secondary)]")}>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <CheckboxCell
-                                                        checked={isSelected}
-                                                        onChange={() => toggleOne(r.id)}
-                                                        ariaLabel={`Select ${r.name}`}
-                                                    />
-                                                </td>
-                                                <td className={TD}>
-                                                    <div className="flex items-center gap-3">
-                                                        <IconAvatar icon={File06} />
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[14px] font-medium text-[#101828]">{r.name}</span>
-                                                            <span className="text-[14px] text-[#667085]">Version {r.currentVersion}</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className={TD}>{branchLocationText(r, branchById)}</td>
-                                                <td className={TD}>
-                                                    <CoverageCell coverage={coverageById.get(r.id)} />
-                                                </td>
-                                                <td className={TD}>
-                                                    {/* Last signed — max signature timestamp across
-                                                     *  all versions. `—` when the agreement is
-                                                     *  brand-new / no one has signed yet. */}
-                                                    {(() => {
-                                                        const ts = lastSignedById.get(r.id);
-                                                        return ts
-                                                            ? <span className="whitespace-nowrap">{formatDateISO(ts)}</span>
-                                                            : <span className="text-[#98a2b3]">—</span>;
-                                                    })()}
-                                                </td>
-                                                <td className={TD}>
-                                                    {r.effectiveDatesMode === "ongoing"
-                                                        ? <OngoingPill />
-                                                        : formatDateISO(r.effectiveUntil)}
-                                                </td>
-                                                <td className={TD}><StatusBadge type="agreement" status={r.status} /></td>
-                                                <td className={TD} onClick={e => e.stopPropagation()}>
-                                                    <RowActions items={[
-                                                        { label: "View", icon: Eye, onClick: () => handleView(r) },
-                                                        { label: "Add new version", icon: Plus, onClick: () => router.push(`/settings/agreements/${r.id}/new-version?returnTo=${encodeURIComponent("/admin/settings/agreements")}`), hidden: r.status !== "active" },
-                                                        { label: "Edit", icon: Edit02, onClick: () => handleEdit(r), hidden: r.status !== "active" },
-                                                        { label: "Archive", icon: Archive, onClick: () => openRowConfirm(r, "archive"), hidden: r.status !== "active" },
-                                                        { label: "Recover", icon: RefreshCcw01, onClick: () => openRowConfirm(r, "recover"), hidden: r.status !== "archived" },
-                                                    ]} />
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    </div>
 
                     <BulkActionBar
                         count={selectedIds.size}
@@ -806,11 +859,33 @@ export default function AgreementsPage() {
                     />
                 </div>
 
-                <div className="shrink-0">
-                    <Pagination
-                        page={clampedPage} total={sortedRows.length} pageSize={pageSize}
-                        onPage={setPage} onPageSize={s => { setPageSize(s); setPage(1); }}
+                {/* ── Archived section (policy §3) — agreements are archive-only
+                       (no delete / no deactivate — legal records). Its own table
+                       + pagination; selection shared with the active list. */}
+                <ArchivedSection
+                    entitySingular="agreement"
+                    count={archivedRows.length}
+                    pagination={
+                        <Pagination
+                            page={clampedArchPage} total={archSortedRows.length} pageSize={pageSize}
+                            onPage={setArchPage} onPageSize={s => { setPageSize(s); setArchPage(1); }}
+                        />
+                    }
+                >
+                    <AgreementsTable
+                        rows={pagedArchivedRows}
+                        sortKey={archSortKey} sortDir={archSortDir} onSort={toggleArchSort}
+                        selectedIds={selectedIds}
+                        onToggleOne={toggleOne}
+                        onToggleAll={(c) => toggleAllRows(pagedArchivedRows, c)}
+                        onRowClick={(id) => router.push(`/settings/agreements/${id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`)}
+                        onView={handleView}
+                        onEdit={handleEdit}
+                        onNewVersion={(r) => router.push(`/settings/agreements/${r.id}/new-version?returnTo=${encodeURIComponent("/admin/settings/agreements")}`)}
+                        onRowAction={openRowConfirm}
+                        branchById={branchById} coverageById={coverageById} lastSignedById={lastSignedById}
                     />
+                </ArchivedSection>
                 </div>
             </div>
 
