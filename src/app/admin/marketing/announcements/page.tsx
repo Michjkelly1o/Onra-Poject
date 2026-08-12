@@ -33,6 +33,8 @@ import { RowActions, type RowActionItem } from "@/components/patterns/RowActions
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
+import { ArchivedSection } from "@/components/patterns/ArchivedSection";
+import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 
@@ -301,7 +303,8 @@ interface AnnouncementFilter {
 }
 const EMPTY_FILTER: AnnouncementFilter = { statuses: [], startDate: "", endDate: "" };
 
-const FILTER_STATUSES: StoredStatus[] = ["active", "inactive", "archived"];
+// Archived is a place (the Archived section), not a filter value (policy §3).
+const FILTER_STATUSES: StoredStatus[] = ["active", "inactive"];
 
 function FilterPanel({ open, applied, onClose, onApply }: {
     open: boolean;
@@ -434,18 +437,23 @@ export default function AnnouncementsListPage() {
                 const ids = m.branch_ids ?? [];
                 if (ids.length > 0 && !ids.includes(locationId)) return false;
             }
-            if (filter.statuses.length > 0 && !filter.statuses.includes(m.status)) return false;
+            // Status pill filters only the active grid; archived announcements are
+            // exempt — they always render in the Archived section below (policy §3).
+            if (m.status !== "archived" && filter.statuses.length > 0 && !filter.statuses.includes(m.status)) return false;
             if (filter.startDate && (!m.expiry_date || m.expiry_date.slice(0, 10) < filter.startDate)) return false;
             if (filter.endDate && (!m.expiry_date || m.expiry_date.slice(0, 10) > filter.endDate)) return false;
             return true;
         });
     }, [announcements, search, locationId, filter]);
+    // Archived announcements leave the grid → the shared Archived section (card
+    // grid, no pagination, hugging layout for this bare-flow page).
+    const { active: activeAnnouncements, archived: archivedAnnouncements } = useArchiveView(visible);
 
     return (
         <div className="flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                <ToolbarTotal count={visible.length} entitySingular="announcement" />
+                <ToolbarTotal count={activeAnnouncements.length} entitySingular="announcement" />
 
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-5 h-5" />}
@@ -469,8 +477,8 @@ export default function AnnouncementsListPage() {
                 </Button>
             </div>
 
-            {/* ── Card grid ── */}
-            {visible.length === 0 ? (
+            {/* ── Active card grid ── */}
+            {activeAnnouncements.length === 0 ? (
                 <div className="relative flex-1" style={{ minHeight: 400 }}>
                     <EmptyState
                         title={announcements.length === 0 ? "No announcements yet" : "No announcements found"}
@@ -481,12 +489,25 @@ export default function AnnouncementsListPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-4 gap-4">
-                    {visible.map(m => (
+                    {activeAnnouncements.map(m => (
                         <AnnouncementCardView key={m.id} item={m} totalBranches={totalBranches}
                             onOpen={() => router.push(`/announcements/${m.id}?returnTo=${encodeURIComponent(LIST_PATH)}`)} />
                     ))}
                 </div>
             )}
+
+            {/* ── Archived section — card grid, no pagination, hugging layout
+                   (policy §3). Renders only when archived announcements exist. */}
+            <ArchivedSection entitySingular="announcement" count={archivedAnnouncements.length} fill={false}>
+                <div className="p-4">
+                    <div className="grid grid-cols-4 gap-4">
+                        {archivedAnnouncements.map(m => (
+                            <AnnouncementCardView key={m.id} item={m} totalBranches={totalBranches}
+                                onOpen={() => router.push(`/announcements/${m.id}?returnTo=${encodeURIComponent(LIST_PATH)}`)} />
+                        ))}
+                    </div>
+                </div>
+            </ArchivedSection>
 
             <FilterPanel
                 open={filterOpen}
