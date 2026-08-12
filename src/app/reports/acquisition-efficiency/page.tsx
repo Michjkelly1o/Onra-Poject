@@ -12,6 +12,7 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById } from "@/config/reports-registry";
 import { selectLeads, selectMarketingSpend, selectTransactionLedger } from "@/lib/reports/selectors";
+import { useReportScope } from "@/lib/reports/use-report-scope";
 import { branchTzLabel } from "@/lib/branch-time";
 
 interface AcquisitionRow extends Record<string, unknown> {
@@ -40,6 +41,7 @@ export default function AcquisitionEfficiencyReportPage() {
     const branches       = useAppStore(s => s.branches);
 
     const report = getReportById("acquisition-efficiency");
+    const { onScopeChange, inScope } = useReportScope();
 
     const rows = useMemo<AcquisitionRow[]>(() => {
         const state = {
@@ -64,6 +66,7 @@ export default function AcquisitionEfficiencyReportPage() {
 
         // Leads by source
         for (const l of leadRows) {
+            if (!inScope(l.addedAtISO, l.branchId)) continue;
             const key = `${l.branchId}|${l.source}`;
             const bucket = buckets.get(key) ?? {
                 channel: l.source, branchId: l.branchId, location: l.location,
@@ -83,6 +86,7 @@ export default function AcquisitionEfficiencyReportPage() {
         // needs a cohort model + attribution join.
         const ltvByCustomer = new Map<string, number>();
         for (const t of ledger) {
+            if (!inScope(t.createdAtISO, t.branchId)) continue;
             const prev = ltvByCustomer.get(t.customerId) ?? 0;
             ltvByCustomer.set(t.customerId, prev + t.signedAmount);
         }
@@ -138,7 +142,7 @@ export default function AcquisitionEfficiencyReportPage() {
                 dateAnchorISO: bucket?.dateAnchorISO ?? "",
             } satisfies AcquisitionRow;
         });
-    }, [leads, marketingSpend, transactions, customers, staff, classBookings, branches]);
+    }, [leads, marketingSpend, transactions, customers, staff, classBookings, branches, inScope]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
@@ -146,5 +150,5 @@ export default function AcquisitionEfficiencyReportPage() {
     );
 
     if (!report) return <div className="px-[24px] py-[48px] text-[14px] text-[var(--colors-text-tertiary)]">Acquisition Efficiency report definition is missing from the registry.</div>;
-    return <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />;
+    return <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" onScopeChange={onScopeChange} />;
 }

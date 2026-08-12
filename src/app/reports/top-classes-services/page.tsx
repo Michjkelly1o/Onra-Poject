@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById, resolveSelector } from "@/config/reports-registry";
+import { useReportScope } from "@/lib/reports/use-report-scope";
 import type { ClassSessionRow } from "@/lib/reports/selectors";
 
 interface TopClassesDisplayRow extends Record<string, unknown> {
@@ -35,6 +36,7 @@ export default function TopClassesServicesReportPage() {
     const branches       = useAppStore(s => s.branches);
 
     const report = getReportById("top-classes-services");
+    const { onScopeChange, inScope } = useReportScope();
 
     const raw = useMemo<ClassSessionRow[]>(() => {
         if (!report) return [];
@@ -59,6 +61,7 @@ export default function TopClassesServicesReportPage() {
         }
         const buckets = new Map<string, Bucket>();
         for (const s of raw) {
+            if (!inScope(s.dateISO, s.branchId)) continue;
             const key = `${s.branchId}|${s.className}`;
             const bucket = buckets.get(key) ?? {
                 serviceType: s.classType || "Class",
@@ -92,7 +95,7 @@ export default function TopClassesServicesReportPage() {
             location:        b.location,
             dateAnchorISO:   b.dateAnchorISO,
         } satisfies TopClassesDisplayRow));
-    }, [raw]);
+    }, [raw, inScope]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
@@ -108,6 +111,6 @@ export default function TopClassesServicesReportPage() {
     }
 
     return (
-        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />
+        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" onScopeChange={onScopeChange} />
     );
 }

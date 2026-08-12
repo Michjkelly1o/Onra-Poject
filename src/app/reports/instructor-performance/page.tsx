@@ -14,6 +14,7 @@ import { PivotableReportShell, type BranchOption } from "@/components/reports/Pi
 import { getReportById, resolveSelector } from "@/config/reports-registry";
 import type { ClassSessionRow } from "@/lib/reports/selectors";
 import { useInstructorScope } from "@/lib/reports/use-instructor-scope";
+import { useReportScope } from "@/lib/reports/use-report-scope";
 
 interface InstructorPerfRow extends Record<string, unknown> {
     instructor:         string;
@@ -37,6 +38,7 @@ export default function InstructorPerformanceReportPage() {
     const scope          = useInstructorScope();
 
     const report = getReportById("instructor-performance");
+    const { onScopeChange, inScope } = useReportScope();
 
     const raw = useMemo<ClassSessionRow[]>(() => {
         if (!report) return [];
@@ -46,7 +48,7 @@ export default function InstructorPerformanceReportPage() {
         // aggregation. Admin sees every instructor.
         if (!scope.isInstructor) return all;
         return all.filter(r => r.instructor === scope.instructorFullName);
-    }, [report, classBookings, classSchedules, branches, scope]);
+    }, [report, classBookings, classSchedules, branches, scope, inScope]);
 
     const rows = useMemo<InstructorPerfRow[]>(() => {
         // Rating map — from raw schedules (selector doesn't carry it).
@@ -69,6 +71,7 @@ export default function InstructorPerformanceReportPage() {
         const buckets = new Map<string, Bucket>();
 
         for (const s of raw) {
+            if (!inScope(s.dateISO, s.branchId)) continue;
             const key = `${s.branchId}|${s.instructor}`;
             const bucket = buckets.get(key) ?? {
                 instructor: s.instructor,
@@ -103,7 +106,7 @@ export default function InstructorPerformanceReportPage() {
         for (const b of classBookings) {
             if (b.attendanceStatus !== "present") continue;
             const sched = scheduleById.get(b.classScheduleId);
-            if (!sched) continue;
+            if (!sched || !inScope(sched.dateISO, sched.branchId)) continue;
             const key = `${sched.branchId}|${sched.instructorName}`;
             const inner = returnCountByInstructorCustomer.get(key) ?? new Map<string, number>();
             inner.set(b.customerId, (inner.get(b.customerId) ?? 0) + 1);
@@ -147,6 +150,6 @@ export default function InstructorPerformanceReportPage() {
     }
 
     return (
-        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />
+        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" onScopeChange={onScopeChange} />
     );
 }

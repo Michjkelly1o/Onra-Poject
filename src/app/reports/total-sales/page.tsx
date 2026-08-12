@@ -146,12 +146,14 @@ export default function TotalSalesReportPageV2() {
             const isSale = r.transactionType === "sale";
             const taxPositive = Number(r.taxAed ?? 0);
             const taxOnRow = isSale ? taxPositive : -Math.abs(taxPositive);
-            // Net = amountAed portion excluding tax. Fall back to signed
-            // amount when the seed doesn't carry the breakdown.
-            const netInclTax = signed;
-            const netBeforeTax = r.subtotalAed !== undefined
+            // Real discount (Phase 1) — subtract it so the "after discount"
+            // columns actually reflect it (matches the Discounts report's net).
+            const discount = isSale ? Number(r.discountValue ?? 0) : 0;
+            const grossBeforeTax = r.subtotalAed !== undefined
                 ? (isSale ? Math.abs(r.subtotalAed) : -Math.abs(r.subtotalAed))
-                : netInclTax - taxOnRow;
+                : signed - taxOnRow;
+            const netBeforeTax = grossBeforeTax - discount;
+            const netInclTax = netBeforeTax + taxOnRow;
 
             // Payment cash-flow columns. When the sale is complete the
             // customer has paid → netPaymentAmount = signed, dueBalance = 0.
@@ -184,8 +186,8 @@ export default function TotalSalesReportPageV2() {
                 saleItems: r.name,
                 quantity: 1,
                 grossSales: signed,
-                discountCode: "",       // POS doesn't write back promo FK yet — Phase 4 wires when available
-                discountValue: 0,
+                discountCode: isSale ? (r.discountCode ?? "") : "",
+                discountValue: discount,
                 netBeforeTax,
                 taxCollected: taxOnRow,
                 netInclTax,

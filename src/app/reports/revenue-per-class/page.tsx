@@ -21,6 +21,7 @@ import { useAppStore } from "@/lib/store";
 import { PivotableReportShell, type BranchOption } from "@/components/reports/PivotableReportShell";
 import { getReportById } from "@/config/reports-registry";
 import { selectTransactionLedger } from "@/lib/reports/selectors";
+import { useReportScope } from "@/lib/reports/use-report-scope";
 import { branchTzLabel } from "@/lib/branch-time";
 
 interface RevenuePerClassRow {
@@ -48,6 +49,7 @@ export default function RevenuePerClassReportPage() {
     const staff          = useAppStore(s => s.staff);
 
     const report = getReportById("revenue-per-class");
+    const { onScopeChange, inScope } = useReportScope();
 
     const rows = useMemo<RevenuePerClassRow[]>(() => {
         if (!report) return [];
@@ -76,6 +78,7 @@ export default function RevenuePerClassReportPage() {
 
         // Count sessions run per (branch × class × instructor).
         for (const s of classSchedules) {
+            if (!inScope(s.dateISO, s.branchId)) continue;
             const className = s.name ?? "—";
             const classType = s.category ?? "—";
             const instructor = s.instructorName ?? "—";
@@ -101,13 +104,15 @@ export default function RevenuePerClassReportPage() {
         const totalAttendanceByCustomer = new Map<string, number>();
         for (const b of classBookings) {
             if (b.attendanceStatus !== "present") continue;
+            const sched = scheduleById.get(b.classScheduleId);
+            if (!sched || !inScope(sched.dateISO, sched.branchId)) continue;
             totalAttendanceByCustomer.set(b.customerId, (totalAttendanceByCustomer.get(b.customerId) ?? 0) + 1);
         }
 
         for (const b of classBookings) {
             if (b.attendanceStatus !== "present") continue;
             const sched = scheduleById.get(b.classScheduleId);
-            if (!sched) continue;
+            if (!sched || !inScope(sched.dateISO, sched.branchId)) continue;
             const className = sched.name ?? "—";
             const instructor = sched.instructorName ?? "—";
             const key = `${sched.branchId}|${className}|${instructor}`;
@@ -120,6 +125,7 @@ export default function RevenuePerClassReportPage() {
         // amount evenly across their attended sessions.
         for (const l of ledger) {
             if (l.transactionType !== "sale") continue;
+            if (!inScope(l.createdAtISO, l.branchId)) continue;
             const custAttendances = totalAttendanceByCustomer.get(l.customerId) ?? 0;
             if (custAttendances === 0) continue;
             const perAttendance = Math.abs(l.signedAmount) / custAttendances;
@@ -127,7 +133,7 @@ export default function RevenuePerClassReportPage() {
                 if (b.customerId !== l.customerId) continue;
                 if (b.attendanceStatus !== "present") continue;
                 const sched = scheduleById.get(b.classScheduleId);
-                if (!sched) continue;
+                if (!sched || !inScope(sched.dateISO, sched.branchId)) continue;
                 const className = sched.name ?? "—";
                 const instructor = sched.instructorName ?? "—";
                 const key = `${sched.branchId}|${className}|${instructor}`;
@@ -151,7 +157,7 @@ export default function RevenuePerClassReportPage() {
             location:          b.location,
             dateAnchorISO:     b.dateAnchorISO,
         } satisfies RevenuePerClassRow));
-    }, [report, transactions, customers, branches, staff, classBookings, classSchedules]);
+    }, [report, transactions, customers, branches, staff, classBookings, classSchedules, inScope]);
 
     const branchOptions = useMemo<BranchOption[]>(
         () => branches.filter(b => b.status !== "archive").map(b => ({ id: b.id, name: b.name })),
@@ -167,6 +173,6 @@ export default function RevenuePerClassReportPage() {
     }
 
     return (
-        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" />
+        <PivotableReportShell report={report} rows={rows} branches={branchOptions} backHref="/admin/reports" onScopeChange={onScopeChange} />
     );
 }
