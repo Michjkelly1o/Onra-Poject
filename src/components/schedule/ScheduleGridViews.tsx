@@ -265,6 +265,8 @@ function ClassBlock({ cls, onClick, gridStartHour, gridHeight }: {
     return (
         <ScheduleClassCard
             size="md"
+            hideInstructor
+
             cls={{
                 name: cls.name,
                 type: cls.type,

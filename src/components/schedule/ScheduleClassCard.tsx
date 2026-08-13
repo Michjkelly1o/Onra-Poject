@@ -105,6 +105,10 @@ interface Props {
      *  bookings count — used on the rightmost-visible card of an overlap
      *  group to flag classes that fell into overflow lanes. */
     moreCount?: number;
+    /** Hide the instructor avatar + name row. Used by the Day view, whose
+     *  columns are already grouped per instructor, so repeating the name on
+     *  every card is redundant (client 2026-08-13). */
+    hideInstructor?: boolean;
 }
 
 // ─── Avatar (image + initials fallback) ──────────────────────────────────────
@@ -147,7 +151,7 @@ function instructorShortName(full: string): string {
 
 // ─── Card ────────────────────────────────────────────────────────────────────
 
-export function ScheduleClassCard({ cls, size, onClick, className, absolute, moreCount }: Props) {
+export function ScheduleClassCard({ cls, size, onClick, className, absolute, moreCount, hideInstructor }: Props) {
     const isFull = cls.booked >= cls.capacity;
     // Private / recovery are 1-on-1 appointments — the "1/1 (FULL)" occupancy
     // read-out (and the capacity bar) is meaningless for them, so hide it.
@@ -237,7 +241,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     <span className="shrink-0">{rangeLabel}</span>
                     {/* Instructor — hidden when there's none (e.g. an open
                         recovery session), so no empty gray avatar shows. */}
-                    {cls.instructorName && (
+                    {!hideInstructor && cls.instructorName && (
                         <>
                             <span className="w-px h-3 bg-[var(--colors-border-primary)] shrink-0" />
                             <div className="flex items-center gap-1.5 min-w-0">
@@ -300,7 +304,7 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     <span className={cn("block text-[14px] font-medium leading-[20px] truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
-                {cls.instructorName && (
+                {!hideInstructor && cls.instructorName && (
                     <div className="flex items-center gap-1.5 min-w-0">
                         <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={14} />
                         <span className="text-[12px] text-[var(--colors-text-quaternary)] truncate">{instructorShortName(cls.instructorName)}</span>
@@ -341,10 +345,12 @@ export function ScheduleClassCard({ cls, size, onClick, className, absolute, mor
                     <span className={cn("block text-[13px] font-medium leading-[18px] truncate", isCancelled && "line-through")} style={{ color: isCancelled ? CANCELLED_RED : cls.color.text }}>{cls.name}</span>
                     {cls.type && <SessionTypeTag type={cls.type} />}
                 </div>
-                <div className="flex items-center gap-1 min-w-0">
-                    <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={12} />
-                    <span className="text-[11px] text-[var(--colors-text-quaternary)] truncate">{instructorShortName(cls.instructorName)}</span>
-                </div>
+                {!hideInstructor && (
+                    <div className="flex items-center gap-1 min-w-0">
+                        <MiniAvatar initials={cls.instructorInitials} color={cls.instructorColor} imageUrl={cls.instructorImageUrl} size={12} />
+                        <span className="text-[11px] text-[var(--colors-text-quaternary)] truncate">{instructorShortName(cls.instructorName)}</span>
+                    </div>
+                )}
                 {hasMore && (
                     <span className="inline-flex items-center self-start whitespace-nowrap text-[11px] font-medium text-[var(--colors-text-tertiary)] bg-white border border-[var(--colors-border-secondary)] rounded-full px-2 py-[1px]">
                         +{moreCount} more
