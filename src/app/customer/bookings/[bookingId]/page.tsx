@@ -41,6 +41,9 @@ export default function BookingDetailPage() {
     const [cancelOpen, setCancelOpen] = useState(false);
     const [rateOpen, setRateOpen] = useState(false);
     const cancelClassBooking = useAppStore((st) => st.cancelClassBooking);
+    const cancelClassBookingByCustomer = useAppStore((st) => st.cancelClassBookingByCustomer);
+    const computeCancellationPenalty = useAppStore((st) => st.computeCancellationPenalty);
+    const cancellationPolicy = useAppStore((st) => st.cancellationPolicy);
     const updateAttendance = useAppStore((st) => st.updateAttendance);
     const showToast = useAppStore((st) => st.showToast);
 
@@ -70,25 +73,53 @@ export default function BookingDetailPage() {
 
     const { detail, viewStatus, tab, spot, booking } = vm;
 
-    // Cancel outcome: waitlist (no credit) · on-time ≥24h (credit refunded) ·
-    // late <24h (credit forfeited). Confirmed via the bottom sheet, then → Past.
+    // Cancel outcome follows the studio's Booking-Rules cancellation policy
+    // (Settings), read live — not a hardcoded window. Waitlist = leave (no
+    // credit). On-time (>= the free-cancel window) = credit returned. Late
+    // (< window) = credit forfeited + a membership late-cancel fee once the
+    // policy's cancellation threshold is crossed (computeCancellationPenalty
+    // handles all the gating — plan type, freeze, threshold, fee toggle).
     const isWaitlist = viewStatus === "waitlisted";
     const startMs = new Date(`${detail.dateISO}T${detail.startTime}:00`).getTime();
     const nowMs = new Date(`${REAL_TODAY_ISO}T00:00:00`).getTime();
-    const isLate = !isWaitlist && (startMs - nowMs) / 3_600_000 < 24;
+    const lateWindowHours = cancellationPolicy.credit_within_window_unit === "minutes"
+        ? cancellationPolicy.credit_within_window_value / 60
+        : cancellationPolicy.credit_within_window_value;
+    const windowLabel = `${cancellationPolicy.credit_within_window_value} ${cancellationPolicy.credit_within_window_unit}`;
+    const isLate = !isWaitlist && (startMs - nowMs) / 3_600_000 < lateWindowHours;
+    // Fee preview for a membership late-cancel — returns applies:false for
+    // credit/package members and for members still under the policy threshold.
+    const latePenalty = isLate
+        ? computeCancellationPenalty(booking.customerId, "late_cancel")
+        : { applies: false, amountAed: 0, scenario: "late_cancel" as const };
     const cancelCopy = isWaitlist
         ? { title: "Leave this class?", description: "This will remove you from the waitlist.", confirmLabel: "Yes, leave waitlist", refundNote: undefined as string | undefined }
         : isLate
-          ? { title: "Cancel this class?", description: "This cancellation is within 24 hours. Your credit will not be returned to your package.", confirmLabel: "Yes, cancel booking", refundNote: undefined as string | undefined }
+          ? {
+              title: "Cancel this class?",
+              description: latePenalty.applies
+                ? `This is a late cancellation (within ${windowLabel} of the class). A late-cancellation fee of AED ${latePenalty.amountAed} will be charged to your account.`
+                : `This cancellation is within ${windowLabel} of the class. Your credit will not be returned to your package.`,
+              confirmLabel: "Yes, cancel booking",
+              refundNote: undefined as string | undefined,
+            }
           : { title: "Cancel this class?", description: "This will cancel your booking and free up your spot.", confirmLabel: "Yes, cancel booking", refundNote: "1 credit refunded to your account" };
     function confirmCancel() {
         if (isWaitlist) {
             cancelClassBooking(bookingId, "Left the waitlist", true, "customer_portal");
             showToast("Left the waitlist", "You've been removed from the waitlist.", "success", "slash");
         } else if (isLate) {
-            cancelClassBooking(bookingId, "Cancelled within 24 hours", false, "customer_portal");
+            // Routes through the policy engine: no credit returned + charges the
+            // membership late-cancel fee when the threshold is crossed.
+            const res = cancelClassBookingByCustomer(bookingId, "late_cancel", "Cancelled within the late-cancel window");
             updateAttendance(bookingId, "late_cancel");
-            showToast("Booking cancelled", "No credit was returned — cancelled within 24 hours.", "success", "refresh");
+            showToast(
+                "Booking cancelled",
+                res.penaltyAedCharged
+                    ? `A late-cancellation fee of AED ${res.penaltyAedCharged} was charged to your account.`
+                    : "No credit was returned — this was a late cancellation.",
+                "success", "refresh",
+            );
         } else {
             cancelClassBooking(bookingId, "Cancelled by member", true, "customer_portal");
             showToast("Booking cancelled", "Your credit has been returned to your account.", "success", "refresh");

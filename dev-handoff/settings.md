@@ -23,9 +23,13 @@ Sections covered elsewhere: Integrations → [`integrations.md`](integrations.md
 
 ## Settings that SAVE but are NOT enforced
 
-### 1. Cancellation policy (Booking Rules) — HIGH
-The late-cancel window + outcome, no-show outcome, and late-cancel/no-show **fees** configured under Booking Rules are **not applied**. The live customer cancel flow (`src/app/customer/bookings/[bookingId]/page.tsx:76-95`) uses a **hardcoded 24h window** and hardcoded refund booleans — it never reads `cancellationPolicy`. The Settings-driven engine `computeCancellationPenalty` + `cancelClassBookingByCustomer` (`src/lib/store.ts:8202-8331`) is **correct but dead code** — no UI calls it. The admin class-cancel path (`cancelClassSchedule`, `store.ts:7409`) also ignores the policy (callers pass a manual/hardcoded refund boolean). Also: the advance-booking window reads `booking_open_value` but ignores `booking_open_unit` (`customer/search/page.tsx:64`).
-**Build:** route both the customer and admin cancel flows through `computeCancellationPenalty` so the configured window/outcome/fee actually fire; honor `booking_open_unit`. (See also [`schedule.md`](schedule.md) §2.)
+### 1. Cancellation policy (Booking Rules) — PARTIALLY FIXED
+**Fixed (customer cancel flow):** the customer booking-cancel page now reads the live `cancellationPolicy` — the free-cancel **window** (12h, not a hardcoded 24h), the credit outcome, and the membership **late-cancel fee** all apply via `computeCancellationPenalty` + `cancelClassBookingByCustomer`. The cancel-confirmation copy shows the real window/fee, and an eligible late cancel now actually posts the AED late-cancel penalty. (`src/app/customer/bookings/[bookingId]/page.tsx`.)
+
+**Still open:**
+- **Admin class-cancel path** (`cancelClassSchedule`, `store.ts:7409`) still ignores the policy — callers pass a manual/hardcoded refund boolean. Route it through `computeCancellationPenalty` too. (See [`schedule.md`](schedule.md) §2.)
+- **Advance-booking window** reads `booking_open_value` but ignores `booking_open_unit` (`customer/search/page.tsx:64`).
+- **No-show fee** is defined in the policy but there is no "mark no-show" action to trigger it (see [`schedule.md`](schedule.md) §7).
 
 ### 2. Brand colors → not applied — MEDIUM
 `brandingSettings.primaryColor/backgroundColor/tertiaryColor/textColor` persist, but are **never written to CSS variables** — the `--brand-*` tokens are hardcoded in `src/app/globals.css:30-35`. Editing brand colors in Settings does nothing to the app chrome (studio name + logo DO apply). **Note:** the app is mid brand-migration (`new-prd/color-branding-implementation-plan.md`); a real theming applier must respect that (JSON-driven brand, system colors stay).
