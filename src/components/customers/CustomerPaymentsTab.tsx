@@ -699,8 +699,9 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                     <div className="flex flex-col gap-3">
                         <SectionHeader>Payment method</SectionHeader>
                         {savedCards.length === 0 ? (
-                            <div className="flex items-center justify-center p-4 rounded-[12px] bg-[var(--colors-bg-secondary)] border-1 border-dashed border-[var(--colors-border-secondary)]">
-                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">No saved cards on file</p>
+                            <div className="border-1 border-dashed border-[var(--colors-border-secondary)] rounded-[16px] py-10 flex flex-col items-center gap-1">
+                                <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">No saved cards</p>
+                                <p className="text-[13px] text-[var(--colors-text-quaternary)]">This customer has no saved cards on file.</p>
                             </div>
                         ) : (
                             <div className="flex gap-4">
