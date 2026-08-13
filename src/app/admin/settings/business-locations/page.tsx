@@ -739,7 +739,7 @@ function BranchRow({
                         {branch.name}
                     </p>
                     <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-5 truncate">
-                        {emailFromBranchName(branch.name)}
+                        {branch.email || emailFromBranchName(branch.name)}
                     </p>
                 </div>
             </div>
@@ -1008,9 +1008,9 @@ function to12h(hhmm: string): string {
     return `${String(hr).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")} ${period}`;
 }
 
-/** Cosmetic — derives a synthetic branch email from the branch name so the
- *  Figma's `forma.south@untitled.ui` subtitle has a sensible placeholder
- *  until Phase 4 adds `email` to the seed proper. */
+/** Fallback only — the branch row shows the real stored `branch.email`; this
+ *  derives a synthetic address from the name for the rare branch saved without
+ *  one, so the subtitle never renders blank. */
 function emailFromBranchName(name: string): string {
     const slug = name.toLowerCase()
         .replace(/[^a-z0-9\s]/g, "")

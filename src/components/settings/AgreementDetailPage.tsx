@@ -1106,8 +1106,8 @@ export function AgreementDetailPage({ agreementId, returnTo = "/admin/settings/a
         // stay signed (historical record).
         republishAgreementVersion(v.agreementId, v.versionNumber);
         showToast(
-            "Agreement has been republish",
-            "Agreement has been republish to the customer.",
+            "Agreement republished",
+            "The agreement has been republished to customers.",
             "success", "check",
         );
     }
