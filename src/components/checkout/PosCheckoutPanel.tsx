@@ -28,7 +28,7 @@ const CHECKOUT_STEPS = [
 ] as const;
 import {
     PaymentConfirmationStep, ReceiptStep, ProcessingPaymentCard,
-    describePayment, computeTotals, enabledMethodsFromProviders,
+    describePayment, savedCardsFor, computeTotals, enabledMethodsFromProviders,
     type PaymentMethod,
 } from "@/components/checkout/CheckoutScreen";
 
@@ -119,7 +119,7 @@ function PosCheckoutBody({ onCancel, onComplete }: {
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
-    const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
+    const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum, savedCardsFor(customer?.id));
 
     function canConfirm(): boolean {
         if (total === 0) return true;

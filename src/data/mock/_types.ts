@@ -1307,11 +1307,15 @@ export interface MarketingItem {
 export interface PaymentMethod {
     /** e.g. "pm_master_1234" */
     id: string;
+    /** FK → customers.id — a saved card belongs to exactly one customer.
+     *  The customer profile Payments tab filters on this; checkout shows
+     *  only the paying customer's cards. */
+    customer_id: string;
     brand: "Master Card" | "Visa" | "Amex";
     last4: string;         // "1234"
     exp_month: number;     // 1-12
     exp_year: number;      // e.g. 2027
-    // +later: customer_id, holder_name, is_default
+    // +later: holder_name, is_default
 }
 
 // ─── Class taxonomy ─────────────────────────────────────────────────────────

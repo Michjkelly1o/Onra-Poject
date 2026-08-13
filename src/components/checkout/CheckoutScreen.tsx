@@ -51,12 +51,16 @@ export type PaymentMethod = "cash" | "card" | "applepay" | "googlepay" | "banktr
  *  the entry point's reset effect snaps the selection back to `null`. */
 export const ALL_PAYMENT_METHODS: PaymentMethod[] = ["cash", "card", "applepay", "googlepay", "banktransfer"];
 
-// Sourced from the centralized `payment_methods` seed.
-const SAVED_CARDS = PAYMENT_METHODS.map(pm => ({
-    id: pm.id,
-    brand: pm.brand,
-    last4: pm.last4,
-}));
+// Saved cards for ONE customer, sourced from the centralized `payment_methods`
+// seed via the `customer_id` FK. Checkout shows only the paying customer's
+// cards (empty when they have none) — never the whole studio's cards.
+export type SavedCard = { id: string; brand: (typeof PAYMENT_METHODS)[number]["brand"]; last4: string };
+export function savedCardsFor(customerId: string | null | undefined): SavedCard[] {
+    if (!customerId) return [];
+    return PAYMENT_METHODS
+        .filter(pm => pm.customer_id === customerId)
+        .map(pm => ({ id: pm.id, brand: pm.brand, last4: pm.last4 }));
+}
 
 // ─── Top-level shell (header + 2-step body) ──────────────────────────────────
 
@@ -302,7 +306,7 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                             <CashConfirmation cashReceived={p.cashReceived} setCashReceived={p.setCashReceived} total={p.total} change={p.change} />
                         )}
                         {p.paymentMethod === "card" && (
-                            <CardConfirmation selectedCardId={p.selectedCardId} setSelectedCardId={p.setSelectedCardId} />
+                            <CardConfirmation cards={savedCardsFor(p.customer.id)} selectedCardId={p.selectedCardId} setSelectedCardId={p.setSelectedCardId} />
                         )}
                         {p.paymentMethod === "applepay" && (
                             <ApplePayConfirmation total={p.total} />
@@ -687,7 +691,7 @@ function CashConfirmation({ cashReceived, setCashReceived, total, change }: {
     );
 }
 
-function CardConfirmation({ selectedCardId, setSelectedCardId }: { selectedCardId: string | null; setSelectedCardId: (id: string) => void }) {
+function CardConfirmation({ cards, selectedCardId, setSelectedCardId }: { cards: SavedCard[]; selectedCardId: string | null; setSelectedCardId: (id: string) => void }) {
     return (
         <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -695,7 +699,12 @@ function CardConfirmation({ selectedCardId, setSelectedCardId }: { selectedCardI
                 <p className="text-[16px] font-medium text-[var(--colors-text-primary)]">Card on file</p>
             </div>
             <div className="flex flex-col gap-2 mt-2">
-                {SAVED_CARDS.map(card => {
+                {cards.length === 0 && (
+                    <div className="flex items-center justify-center p-4 rounded-[12px] border-1 border-dashed border-[var(--colors-border-secondary)]">
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">No card on file for this customer</p>
+                    </div>
+                )}
+                {cards.map(card => {
                     const selected = selectedCardId === card.id;
                     return (
                         <button key={card.id} type="button" onClick={() => setSelectedCardId(card.id)}
@@ -1042,8 +1051,10 @@ export function enabledMethodsFromProviders(providers: PaymentProvider[]): Payme
 }
 
 
-/** Resolve the payment-method label + charge target string shown on the receipt. */
-export function describePayment(paymentMethod: PaymentMethod | null, selectedCardId: string | null, cashReceivedNum: number): { label: string; chargedTo: string } {
+/** Resolve the payment-method label + charge target string shown on the receipt.
+ *  `savedCards` are the paying customer's cards (from `savedCardsFor`) so the
+ *  "Charged to" line names the real card, not a global one. */
+export function describePayment(paymentMethod: PaymentMethod | null, selectedCardId: string | null, cashReceivedNum: number, savedCards: SavedCard[] = []): { label: string; chargedTo: string } {
     const label =
         paymentMethod === "cash" ? "Cash"
             : paymentMethod === "card" ? "Card on file"
@@ -1054,7 +1065,7 @@ export function describePayment(paymentMethod: PaymentMethod | null, selectedCar
     const chargedTo =
         paymentMethod === "card" && selectedCardId
             ? (() => {
-                const c = SAVED_CARDS.find(c => c.id === selectedCardId);
+                const c = savedCards.find(c => c.id === selectedCardId);
                 return c ? `${c.brand} ****${c.last4}` : "—";
             })()
             : paymentMethod === "cash" ? `Cash (AED ${cashReceivedNum})`

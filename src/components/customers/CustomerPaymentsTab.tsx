@@ -580,6 +580,13 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
         [issuedGiftCards, customerId],
     );
 
+    // ─── Saved cards on file for THIS customer (FK filter, not the global
+    //     seed) — so each profile shows its own cards, empty state when none.
+    const savedCards = useMemo(
+        () => PAYMENT_METHODS.filter(pm => pm.customer_id === customerId),
+        [customerId],
+    );
+
     // ─── Payment-history filtering + pagination ─────────────────────────────
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -691,18 +698,24 @@ export function CustomerPaymentsTab({ customerId }: { customerId: string }) {
                     {/* Payment method */}
                     <div className="flex flex-col gap-3">
                         <SectionHeader>Payment method</SectionHeader>
-                        <div className="flex gap-4">
-                            {PAYMENT_METHODS.map(pm => (
-                                <div key={pm.id}
-                                    className="flex-1 min-w-0 flex items-center gap-4 p-4 rounded-[12px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)]">
-                                    <CardBrandMark brand={pm.brand} />
-                                    <div className="flex flex-col gap-1 min-w-0">
-                                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{pm.brand}</p>
-                                        <p className="text-[14px] text-[var(--colors-text-quaternary)]">****{pm.last4}</p>
+                        {savedCards.length === 0 ? (
+                            <div className="flex items-center justify-center p-4 rounded-[12px] bg-[var(--colors-bg-secondary)] border-1 border-dashed border-[var(--colors-border-secondary)]">
+                                <p className="text-[14px] text-[var(--colors-text-quaternary)]">No saved cards on file</p>
+                            </div>
+                        ) : (
+                            <div className="flex gap-4">
+                                {savedCards.map(pm => (
+                                    <div key={pm.id}
+                                        className="flex-1 min-w-0 flex items-center gap-4 p-4 rounded-[12px] bg-[var(--colors-bg-secondary)] border-1 border-[var(--colors-border-secondary)]">
+                                        <CardBrandMark brand={pm.brand} />
+                                        <div className="flex flex-col gap-1 min-w-0">
+                                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">{pm.brand}</p>
+                                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">****{pm.last4}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             ) : (

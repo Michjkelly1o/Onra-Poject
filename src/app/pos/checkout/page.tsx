@@ -25,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore, walletBalanceAed } from "@/lib/store";
 import {
     CheckoutShell, PaymentConfirmationStep, ReceiptStep, ProcessingPaymentCard,
-    describePayment, computeTotals, enabledMethodsFromProviders,
+    describePayment, savedCardsFor, computeTotals, enabledMethodsFromProviders,
     type PaymentMethod,
 } from "@/components/checkout/CheckoutScreen";
 
@@ -152,7 +152,7 @@ function POSCheckoutInner() {
     );
     const cashReceivedNum = Number(cashReceived) || 0;
     const change = Math.max(0, cashReceivedNum - total);
-    const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum);
+    const { label: paymentMethodLabel, chargedTo } = describePayment(paymentMethod, selectedCardId, cashReceivedNum, savedCardsFor(customer?.id));
 
     function canConfirm(): boolean {
         // "Credited to" is OPTIONAL (client 2026-08-04) — a sale can complete

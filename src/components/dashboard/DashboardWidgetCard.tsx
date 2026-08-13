@@ -146,14 +146,10 @@ const STATIC: Record<string, object[]> = {
         { name: "Recovery Launch",  sent: 780,  opened: 340, booked: 41, revenueAed: 5600 },
         { name: "Refer a Friend",   sent: 640,  opened: 290, booked: 28, revenueAed: 3200 },
     ],
-    "referral-program": [
-        // Top 5 referrers by unique new-customer sign-ups this period.
-        { name: "Ahmed Zayn",    v: 6 },
-        { name: "Ava Wright",    v: 4 },
-        { name: "Sophia Lee",    v: 3 },
-        { name: "Fatima A.",     v: 2 },
-        { name: "Rosale Martin", v: 1 },
-    ],
+    // "referral-program" — removed from the catalog per client (2026-07-23) and,
+    // when it was shown, always rendered from real referral data via
+    // computeWidgetSeries (widget-series.ts "referral-program" case, which maps
+    // real customers). No hardcoded fake-name fallback is kept.
     "promo-redemptions": [
         { name: "WELCOME15", v: 34, revenueAed: 4200 },
         { name: "FRIEND20",  v: 22, revenueAed: 2900 },
