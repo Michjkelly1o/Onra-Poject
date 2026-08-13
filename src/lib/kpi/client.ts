@@ -185,7 +185,9 @@ export function computeClientKpis(
     const introToPaidPct = introCustomers.length > 0 ? (intoPaidCount / introCustomers.length) * 100 : 0;
 
     // ── 30. Win-back rate — customerReferrals reactivated ───────────────
-    const referrals = state.customerReferrals;
+    // Branch-scope by the referrer's origin branch so the tile responds to the
+    // Location filter like the rest of the tab (was previously read raw).
+    const referrals = state.customerReferrals.filter(r => branchOk(r.originBranchId ?? "", branchFilter));
     const winbackCur = referrals.filter(r => r.reactivated && r.reactivationDateISO && inWindow(r.reactivationDateISO, current)).length;
     const winbackTargetsCur = referrals.filter(r => inWindow(r.referredAtISO, current)).length;
     const winbackRateCur = winbackTargetsCur > 0 ? (winbackCur / winbackTargetsCur) * 100 : 0;

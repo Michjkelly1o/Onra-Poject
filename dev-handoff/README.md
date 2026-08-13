@@ -35,6 +35,7 @@ Because of this, almost everything that would touch an external system in produc
 **Module status:**
 - [`dashboard.md`](dashboard.md) — the widget data migration is **complete** (all 35 widgets + tiles + modals are store-derived); remaining gaps are the Front-Desk `/today` landing (unbuilt), ephemeral widget personalization, and role-derived branch scope.
 - [`schedule.md`](schedule.md) — Class Management is largely real (live grid, real recurring create, correct category gating); gaps are whole-class-cancel customer notifications, admin-cancel Settings window, room double-booking, cancel reason, edit-all-recurring, and mark-no-show.
+- [`reports-and-insights.md`](reports-and-insights.md) — Analytics is real and correct (33 data-driven reports on a shared shell, correct refund model + recognized revenue, real Excel/CSV export, live Insights tiles); gaps are decorative RBAC + branch-admin scope, a few stubbed selector fields (cancellation charge, waitlist conversions, retail tax), and a recognition-engine consistency refactor.
 - [`staff-payroll-rbac-status.md`](staff-payroll-rbac-status.md) — what's real vs. deferred in Staff/Payroll (payroll adjustments UI, create-new-rate model, compensation report, RBAC).
 - [`services-configuration.md`](services-configuration.md) — services module configuration notes (existing).
 

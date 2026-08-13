@@ -180,9 +180,9 @@ export function computeFinancialKpis(
                 && branchOk(p.branchId, branchFilter) && !archivedCustomerIds.has(p.customerId))
             .map(p => p.customerId),
     ).size;
-    const activeMembersPrior = activeMembersCur;  // demo approximation
     const arpmCur   = activeMembersCur   > 0 ? netCur   / activeMembersCur   : 0;
-    const arpmPrior = activeMembersPrior > 0 ? netPrior / activeMembersPrior : 0;
+    // No true prior-period active-member snapshot exists (plan history isn't
+    // retained), so ARPM shows no trend chip rather than a fabricated delta.
 
     // Revenue per class moved to the Classes tab (client Aug 2026) — computed
     // there off the shared revenueTotals() helper, so it's no longer here.
@@ -220,7 +220,7 @@ export function computeFinancialKpis(
         { label: "Recurring revenue (MRR)",      value: aed(mrrNow),                                                                       period: "as of today",
           description: "Monthly recurring revenue from active subscriptions.",
           drillTo: "/reports/mrr" },
-        { label: "Avg revenue per member (ARPM)", value: aed(arpmCur),             change: delta(arpmCur, arpmPrior),                     period,
+        { label: "Avg revenue per member (ARPM)", value: aed(arpmCur),             change: undefined,                                     period,
           description: "Net revenue ÷ active customers.",
           drillTo: "/reports/arpm" },
         // Client Aug 2026 — "Revenue per class" moved to the Classes tab.

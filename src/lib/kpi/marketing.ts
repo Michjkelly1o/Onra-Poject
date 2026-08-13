@@ -47,7 +47,9 @@ export function computeMarketingKpis(
     const leads = state.leads.filter(l => branchOk(l.branch_id, branchFilter));
     const campaigns = state.marketingCampaignStats.filter(c => branchOk(c.branch_id, branchFilter));
     const spend = state.marketingSpend.filter(s => branchOk(s.branch_id, branchFilter));
-    const referrals = state.customerReferrals;
+    // Branch-scope referrals by the referrer's origin branch, like every other
+    // slice on this tab (was previously read raw, ignoring the Location filter).
+    const referrals = state.customerReferrals.filter(r => branchOk(r.originBranchId ?? "", branchFilter));
 
     // ── 46. New leads in window ──────────────────────────────────────────
     const newLeadsCur   = leads.filter(l => inWindow(l.added_at, current)).length;
