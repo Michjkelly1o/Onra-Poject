@@ -414,23 +414,30 @@ function PermissionsTab({ role }: { role: Role }) {
 // ─── Overview tab (instructor) ────────────────────────────────────────────
 
 function PerformanceMetricCard({ label, value, delta }: {
-    label: string; value: string | number; delta: number; // delta as integer %
+    label: string; value: string | number;
+    // Optional week-over-week % trend. Omitted here — a reliable comparison
+    // period isn't derivable from the demo seed dates, so we show the real
+    // metric value without a fabricated trend badge (client "make it real").
+    delta?: number;
 }) {
-    const positive = delta >= 0;
+    const showDelta = typeof delta === "number" && Number.isFinite(delta);
+    const positive = (delta ?? 0) >= 0;
     return (
         <div className="bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] px-4 py-3 flex flex-col gap-1">
             <p className="text-[14px] text-[var(--colors-text-quaternary)]">{label}</p>
             <p className="font-semibold text-[28px] leading-[36px] text-[var(--colors-text-primary)]">{value}</p>
-            <div className="flex items-center gap-1 text-[13px]">
-                {positive
-                    ? <ArrowUp   className="w-3.5 h-3.5 text-[#164e52]" />
-                    : <ArrowDown className="w-3.5 h-3.5 text-[#b42318]" />
-                }
-                <span className={positive ? "text-[#164e52] font-medium" : "text-[#b42318] font-medium"}>
-                    {Math.abs(delta)}%
-                </span>
-                <span className="text-[var(--colors-text-quaternary)]">vs last week</span>
-            </div>
+            {showDelta && (
+                <div className="flex items-center gap-1 text-[13px]">
+                    {positive
+                        ? <ArrowUp   className="w-3.5 h-3.5 text-[#164e52]" />
+                        : <ArrowDown className="w-3.5 h-3.5 text-[#b42318]" />
+                    }
+                    <span className={positive ? "text-[#164e52] font-medium" : "text-[#b42318] font-medium"}>
+                        {Math.abs(delta as number)}%
+                    </span>
+                    <span className="text-[var(--colors-text-quaternary)]">vs last week</span>
+                </div>
+            )}
         </div>
     );
 }
@@ -452,33 +459,17 @@ function ChartEmptyCard({ title, emptyTitle, emptyBody }: {
     );
 }
 
-// ─── Sample chart series (Figma 7127-147606 / 147672 / 147673) ───────────
+// ─── Overview chart series ───────────────────────────────────────────────────
 //
-// Until the instructor analytics pipeline ships, the Overview tab renders
-// representative weekly data — same shape the dashboard cards use. The
-// labels mirror the Figma's "Feb 22 → Feb 28" range so the demo looks
-// consistent across modules.
+// The three Overview charts are derived LIVE from this instructor's real
+// class_schedule + class_bookings, bucketed by day (see `perfSeries` in the
+// Overview tab). No hardcoded sample data — a "Feb 22" label short-formats the
+// class date, "Attendance rate" is present/roster, "Class bookings" sums the
+// booked count, and the Attendance bars split present / cancellations / no-show.
 
-const SAMPLE_DATES = ["Feb 22", "Feb 23", "Feb 24", "Feb 25", "Feb 26", "Feb 27", "Feb 28"];
-
-function buildRetentionSeries(): LinePoint[] {
-    const values = [68, 70, 72, 75, 76, 80, 84];
-    return SAMPLE_DATES.map((date, i) => ({ date, value: values[i] }));
-}
-function buildBookingsSeries(): LinePoint[] {
-    const values = [33, 34, 35, 38, 37, 39, 42];
-    return SAMPLE_DATES.map((date, i) => ({ date, value: values[i] }));
-}
-function buildAttendanceSeries(): AttendancePoint[] {
-    const visits        = [24, 30, 15, 35, 28, 22, 24];
-    const cancellations = [15, 7,  3,  5,  20, 7,  15];
-    const noShow        = [4,  4,  3,  2,  10, 4,  4];
-    return SAMPLE_DATES.map((date, i) => ({
-        date,
-        visits: visits[i],
-        cancellations: cancellations[i],
-        noShow: noShow[i],
-    }));
+/** "2026-02-22" → "Feb 22" for the chart X-axis. */
+function shortDayLabel(iso: string): string {
+    return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 // ─── Personal information helpers ──────────────────────────────────────────
@@ -648,6 +639,42 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
         [classRatings, staff.id],
     );
 
+    // Real per-day chart series — bucket this instructor's COMPLETED classes by
+    // date, then join their bookings for present / no-show / cancellation splits.
+    // Replaces the old hardcoded sample data (client "make it real", 2026-08).
+    const perfSeries = useMemo(() => {
+        const done = myClasses.filter(c => c.status === "Completed");
+        const dayByClassId = new Map<string, string>();
+        const byDay = new Map<string, { booked: number; present: number; noShow: number; cancels: number; roster: number }>();
+        for (const c of done) {
+            dayByClassId.set(c.id, c.dateISO);
+            const cur = byDay.get(c.dateISO) ?? { booked: 0, present: 0, noShow: 0, cancels: 0, roster: 0 };
+            cur.booked += c.booked;
+            byDay.set(c.dateISO, cur);
+        }
+        for (const b of classBookings) {
+            const day = dayByClassId.get(b.classScheduleId);
+            if (!day) continue;
+            const cur = byDay.get(day)!;
+            cur.roster += 1;
+            if (b.attendanceStatus === "present") cur.present += 1;
+            else if (b.attendanceStatus === "no_show") cur.noShow += 1;
+            else if (b.attendanceStatus === "late_cancel") cur.cancels += 1;
+        }
+        // Most recent up to 8 active days, chronological.
+        const days = Array.from(byDay.keys()).sort().slice(-8);
+        const performance: LinePoint[] = days.map(d => {
+            const v = byDay.get(d)!;
+            return { date: shortDayLabel(d), value: v.roster > 0 ? Math.round((v.present / v.roster) * 100) : 0 };
+        });
+        const bookings: LinePoint[] = days.map(d => ({ date: shortDayLabel(d), value: byDay.get(d)!.booked }));
+        const attendance: AttendancePoint[] = days.map(d => {
+            const v = byDay.get(d)!;
+            return { date: shortDayLabel(d), visits: v.present, cancellations: v.cancels, noShow: v.noShow };
+        });
+        return { performance, bookings, attendance };
+    }, [myClasses, classBookings]);
+
     const hasAnyActivity = myClasses.length > 0 || totalAttended > 0 || ratingCount > 0;
 
     return (
@@ -687,10 +714,10 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
             <div className="flex flex-col gap-3">
                 <p className="text-[14px] text-[var(--colors-text-quaternary)]">Overall performance</p>
                 <div className="grid grid-cols-4 gap-3">
-                    <PerformanceMetricCard label="Classes"        value={completedClasses.length} delta={hasAnyActivity ?  3 : 0} />
-                    <PerformanceMetricCard label="Attendance rate" value={`${attendanceRate}%`}    delta={hasAnyActivity ?  3 : 0} />
-                    <PerformanceMetricCard label="Clients taught"  value={totalAttended}            delta={hasAnyActivity ? -2 : 0} />
-                    <PerformanceMetricCard label="Cancellations"   value={cancelledClasses.length}  delta={hasAnyActivity ? -1 : 0} />
+                    <PerformanceMetricCard label="Classes"        value={completedClasses.length} />
+                    <PerformanceMetricCard label="Attendance rate" value={`${attendanceRate}%`} />
+                    <PerformanceMetricCard label="Clients taught"  value={totalAttended} />
+                    <PerformanceMetricCard label="Cancellations"   value={cancelledClasses.length} />
                 </div>
             </div>
 
@@ -698,20 +725,20 @@ function InstructorOverviewTab({ staff }: { staff: Staff }) {
                 <>
                     <PerformanceLineChart
                         title="Overall performance"
-                        data={buildRetentionSeries()}
+                        data={perfSeries.performance}
                         color="#92d1de"
-                        valueLabel="Retention rate"
+                        valueLabel="Attendance rate"
                         valueSuffix="%"
                     />
                     <PerformanceLineChart
                         title="Class bookings"
-                        data={buildBookingsSeries()}
+                        data={perfSeries.bookings}
                         color="#90a099"
                         valueLabel="Total booking"
                     />
                     <AttendanceBarChart
                         title="Attendance overview"
-                        data={buildAttendanceSeries()}
+                        data={perfSeries.attendance}
                     />
                 </>
             ) : (

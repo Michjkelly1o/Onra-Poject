@@ -40,13 +40,14 @@
 //      → `class.status = "Cancelled"` → `earningsForClass` returns 0
 //      → instructor's earnings row shows "—".
 //
-// ── Known approximations ────────────────────────────────────────────────────
+// ── Attendance ──────────────────────────────────────────────────────────────
 //
-// `attendees` for the calculation uses `schedule.booked` (the booked
-// count) as a stand-in for actual attendance. When the prototype evolves
-// to real per-booking attendance, change this ONE function — both
-// surfaces inherit the new behavior for free. Don't add a parallel
-// "real attendance" helper somewhere else.
+// Per-attendee / tiered / revenue rates pay on the number of members marked
+// PRESENT (PRD 10 §"Per attendee"), computed live from class_bookings via
+// `attendeesForClass`. A completed class where attendance was never taken (no
+// marked rows) falls back to `schedule.booked` so it never silently pays 0.
+// This is the ONE place attendance→earnings is defined; every payroll surface
+// passes the same `classBookings` through so the number always agrees.
 
 import type {
     ClassSchedule, CustomerTransaction, PayRate, CommissionCategory, CommissionValueType,
@@ -64,14 +65,33 @@ import type {
  *  `classesInMonth` is only used by the monthly branch — pass 1 for non-
  *  monthly rates (default).
  */
+export function attendeesForClass(s: ClassSchedule, classBookings?: ClassBooking[]): number {
+    // No booking data supplied → legacy behavior (booked count).
+    if (!classBookings) return s.booked;
+    let present = 0, marked = 0;
+    for (const b of classBookings) {
+        if (b.classScheduleId !== s.id) continue;
+        if (b.attendanceStatus && b.attendanceStatus !== "pending") {
+            marked++;
+            if (b.attendanceStatus === "present") present++;
+        }
+    }
+    // Attendance taken → pay on real Present count (excludes no-show / late-
+    // cancel). Never taken → fall back to booked so a completed class isn't 0.
+    return marked > 0 ? present : s.booked;
+}
+
 export function earningsForClass(
     s: ClassSchedule,
     payRate: PayRate | undefined,
     classesInMonth: number = 1,
+    // Real attendee count (Present marks) for per-attendee/tiered/revenue rates.
+    // Defaults to schedule.booked so callers without booking data are unchanged;
+    // payroll surfaces pass attendeesForClass(s, classBookings).
+    attendees: number = s.booked,
 ): number {
     if (!payRate || s.status === "Cancelled") return 0;
     if (s.status !== "Completed") return 0;
-    const attendees = s.booked; // approximation — real attendance comes from class_bookings
     switch (payRate.type) {
         case "flat":    return payRate.flatAmount;
         case "tiered": {
@@ -841,6 +861,8 @@ export interface PayConfigTracks {
     completedAppointments: Appointment[];
     /** Class count for monthly proration inside `earningsForClass`. */
     classesInMonth: number;
+    /** Bookings for real per-class attendance (Present count) in earnings. */
+    classBookings: ClassBooking[];
 }
 
 /** Assemble a staff member's per-track inputs for the period. */
@@ -851,6 +873,7 @@ export function buildPayConfigTracks(
     appointments: Appointment[],
     periodStartISO: string,
     periodEndISO: string,
+    classBookings: ClassBooking[] = [],
 ): PayConfigTracks {
     const inPeriod = (iso: string) => iso >= periodStartISO && iso <= periodEndISO;
     const completedClasses = schedules.filter(
@@ -866,6 +889,7 @@ export function buildPayConfigTracks(
         completedClasses,
         completedAppointments,
         classesInMonth: Math.max(1, completedClasses.length),
+        classBookings,
     };
 }
 
@@ -903,7 +927,7 @@ export function payConfigBase(
             : pc.perClass.enabled ? 0 : baseEarningsFor(defaultRate, entryTotalEarnings);
     const perClassRate = pc.perClass.enabled ? tracks.payRateById(pc.perClass.payRateId) : undefined;
     const perClass = pc.perClass.enabled
-        ? tracks.completedClasses.reduce((s, c) => s + earningsForClass(c, perClassRate, tracks.classesInMonth), 0)
+        ? tracks.completedClasses.reduce((s, c) => s + earningsForClass(c, perClassRate, tracks.classesInMonth, attendeesForClass(c, tracks.classBookings)), 0)
         : 0;
     const perApptRate = pc.perAppointment.enabled ? tracks.payRateById(pc.perAppointment.payRateId) : undefined;
     const perAppointment = pc.perAppointment.enabled

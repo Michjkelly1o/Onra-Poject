@@ -7,7 +7,7 @@
 // via the shared `ask_questions` panel, then calls:
 //
 //   • preview_class_schedule — echoes a live preview card as answers accumulate.
-//     Gated on `scheduleCaps.createSchedule` (docs/ai-agent-rbac.md). Emits the
+//     Gated on `scheduleCaps.createSchedule` (dev-handoff/ai-agent-rbac.md). Emits the
 //     commit `draft` only once every required field is present.
 //   • publish_class_schedule — terminal. Gated on scheduleCaps.createSchedule
 //     (the single matrix cell — NOT canWrite; an Operator holds create too).

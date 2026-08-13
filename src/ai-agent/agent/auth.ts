@@ -31,7 +31,7 @@ export type RoleType =
     | "instructor";
 
 /** Fine-grained capabilities the class-creation wizard gates on. Each maps to
- *  ONE cell of the permission matrix (docs/ai-agent-rbac.md) — never to a role
+ *  ONE cell of the permission matrix (dev-handoff/ai-agent-rbac.md) — never to a role
  *  name — so a studio editing its own roles gets the right behaviour for free. */
 export interface ScheduleCapabilities {
     /** classes.schedule.create — may run the wizard at all. Front Desk = false. */
@@ -56,7 +56,7 @@ function cellTrue(
 }
 
 /** Derive the wizard capabilities for a role by READING the permission cells
- *  (see docs/ai-agent-rbac.md §3). */
+ *  (see dev-handoff/ai-agent-rbac.md §3). */
 export function resolveScheduleCapabilities(roleType: RoleType): ScheduleCapabilities {
     return {
         createSchedule: cellTrue(roleType, "classes", "schedule", "create"),
@@ -86,7 +86,7 @@ export interface AuthContext {
      *  Insight mode is read-only — this flag is currently unused but kept
      *  so Phase 7's migration tools can gate cleanly. */
     canWrite: boolean;
-    /** Per-cell capabilities for the class-creation wizard (docs/ai-agent-rbac.md). */
+    /** Per-cell capabilities for the class-creation wizard (dev-handoff/ai-agent-rbac.md). */
     scheduleCaps: ScheduleCapabilities;
     /** The CLIENT's local "now" (browser wall-clock), forwarded so schedule
      *  validation prunes past-time slots against the studio's real local time,

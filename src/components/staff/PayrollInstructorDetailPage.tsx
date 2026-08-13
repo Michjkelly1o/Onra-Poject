@@ -41,7 +41,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-filter";
 import { dateFilterToRange, isoInRange, spanInRange, type DateRange } from "@/lib/period-filter";
-import { earningsForClass, earningsForAppointment, aed, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
+import { earningsForClass, attendeesForClass, earningsForAppointment, aed, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
 import { TotalEarningsBreakdown, SalesCommissionAccordion } from "@/components/staff/PayrollEarningsBreakdown";
 import { RoleBadge } from "@/components/staff/RoleBadge";
 import { Toast } from "@/components/ui/Toast";
@@ -801,7 +801,7 @@ export default function PayrollInstructorDetailPage({
         const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         const fromISO = iso(range.from), toISO = iso(range.to);
         const staffRow = staff.find(s => s.id === instructorId);
-        const tracks = buildPayConfigTracks(staffRow ?? { id: instructorId }, payRates, classSchedules, appointments, fromISO, toISO);
+        const tracks = buildPayConfigTracks(staffRow ?? { id: instructorId }, payRates, classSchedules, appointments, fromISO, toISO, classBookings);
         return totalEarningsForStaff(
             instructorId, payRate, isRealInstructor ? periodEntryEarnings : undefined,
             { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards },
@@ -864,12 +864,12 @@ export default function PayrollInstructorDetailPage({
                 dateISO: s.dateISO,
                 displayTime: s.displayTime,
                 status: s.status,
-                attendees: s.booked,
+                attendees: attendeesForClass(s, classBookings),
                 capacity: s.capacity,
                 rating: s.rating,
                 ratingCount: s.ratingCount,
                 payRateName: classRate?.name ?? "—",
-                earnings: s.status === "Cancelled" ? 0 : earningsForClass(s, classRate, completedThisMonth || 1),
+                earnings: s.status === "Cancelled" ? 0 : earningsForClass(s, classRate, completedThisMonth || 1, attendeesForClass(s, classBookings)),
             }));
         const privateRows: BookingRow[] = instructorAppointments
             .filter(a => isoInRange(a.dateISO, range) && a.status !== "Upcoming")
@@ -945,7 +945,7 @@ export default function PayrollInstructorDetailPage({
         const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         const fromISO = iso(mFrom), toISO = iso(mTo);
         const staffRow = staff.find(s => s.id === instructorId);
-        const tracks = buildPayConfigTracks(staffRow ?? { id: instructorId }, payRates, classSchedules, appointments, fromISO, toISO);
+        const tracks = buildPayConfigTracks(staffRow ?? { id: instructorId }, payRates, classSchedules, appointments, fromISO, toISO, classBookings);
         return totalEarningsForStaff(
             instructorId, payRate, isRealInstructor ? sidebarThisMonth.entryEarnings : undefined,
             { transactions: customerTransactions, classBookings, classSchedules, appointmentBookings, appointments, issuedGiftCards },

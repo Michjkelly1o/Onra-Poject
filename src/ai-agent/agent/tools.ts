@@ -722,7 +722,7 @@ export function insightTools(
     return {
         ...askQuestionsTool(),
         // Class-creation wizard (Phase 4). Additive — general chat can now
-        // create a class schedule inline. See docs/ai-agent-rbac.md for gating.
+        // create a class schedule inline. See dev-handoff/ai-agent-rbac.md for gating.
         ...scheduleTools(ctx, snapshot),
         analyze: tool({
             description:

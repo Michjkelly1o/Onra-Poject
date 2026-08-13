@@ -269,7 +269,7 @@ export default function CompensationPage() {
 
                 const tracks = buildPayConfigTracks(
                     staffById.get(instructor.id) ?? { id: instructor.id },
-                    payRates, classSchedules, appointments, fromISO, toISO,
+                    payRates, classSchedules, appointments, fromISO, toISO, classBookings,
                 );
                 const { total } = totalEarningsForStaff(
                     instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO, tracks,
@@ -308,7 +308,7 @@ export default function CompensationPage() {
             .filter(st => roles.find(r => r.id === st.roleId)?.type !== "instructor")
             .map(st => {
                 const payRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
-                const tracks = buildPayConfigTracks(st, payRates, classSchedules, appointments, fromISO, toISO);
+                const tracks = buildPayConfigTracks(st, payRates, classSchedules, appointments, fromISO, toISO, classBookings);
                 const { total } = totalEarningsForStaff(st.id, payRate, undefined, sources, fromISO, toISO, tracks);
                 // Look up the materialised payroll entry for this staff member
                 // (created at Run Payroll confirm time) so the row's Status +

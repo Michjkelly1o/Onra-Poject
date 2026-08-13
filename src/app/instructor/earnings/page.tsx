@@ -41,7 +41,7 @@ import { DateRangeFilter, type DateFilter } from "@/components/ui/date-range-fil
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
-import { earningsForClass, fmtAed, defaultRateLabel, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
+import { earningsForClass, attendeesForClass, fmtAed, defaultRateLabel, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
 import { TotalEarningsBreakdown, SalesCommissionAccordion } from "@/components/staff/PayrollEarningsBreakdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { cn } from "@/lib/utils";
@@ -192,7 +192,7 @@ export default function InstructorEarningsPage() {
     const totalsFor = (range: { from: Date; to: Date }) => {
         const myStaff = staff.find(s => s.id === staffId);
         const fromISO = iso(range.from), toISO = iso(range.to);
-        const tracks = buildPayConfigTracks(myStaff ?? { id: staffId }, payRates, classSchedules, appointments, fromISO, toISO);
+        const tracks = buildPayConfigTracks(myStaff ?? { id: staffId }, payRates, classSchedules, appointments, fromISO, toISO, classBookings);
         return totalEarningsForStaff(staffId, payRate, undefined, commissionSources, fromISO, toISO, tracks);
     };
     const periodTotals = useMemo(() => totalsFor(currentRange),
@@ -293,7 +293,7 @@ export default function InstructorEarningsPage() {
         // shares the same label, so sorting by it is a stable no-op (kept
         // here for header consistency).
         payRate:    () => 0,
-        earnings:   (a, b) => earningsForClass(a, classRate) - earningsForClass(b, classRate),
+        earnings:   (a, b) => earningsForClass(a, classRate, undefined, attendeesForClass(a, classBookings)) - earningsForClass(b, classRate, undefined, attendeesForClass(b, classBookings)),
     });
 
     const totalRows = sortedRows.length;
@@ -423,6 +423,7 @@ export default function InstructorEarningsPage() {
                                         schedule={c}
                                         payRate={classRate}
                                         classesInMonth={completedThisMonth || 1}
+                                        attendees={attendeesForClass(c, classBookings)}
                                         onViewDetails={() => handleViewDetails(c.id)}
                                     />
                                 ))}
@@ -534,10 +535,12 @@ interface EarningsRowProps {
     /** Completed-classes-in-month divisor for the monthly-rate salary split
      *  (1 for per-class rate types). */
     classesInMonth: number;
+    /** Real Present-count for this class (from the parent, which holds bookings). */
+    attendees: number;
     onViewDetails: () => void;
 }
-function EarningsRow({ schedule, payRate, classesInMonth, onViewDetails }: EarningsRowProps) {
-    const earnings = earningsForClass(schedule, payRate, classesInMonth);
+function EarningsRow({ schedule, payRate, classesInMonth, attendees, onViewDetails }: EarningsRowProps) {
+    const earnings = earningsForClass(schedule, payRate, classesInMonth, attendees);
     // No per-class rate (Pay per class off) → "—" rate, AED 0 earnings (the
     // Default salary is not per-booking). Cancelled → AED 0. Matches admin.
     const noRate = !payRate;

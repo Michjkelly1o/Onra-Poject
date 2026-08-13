@@ -17,7 +17,7 @@
 // ⚠️ UI ONLY (this phase). The toggles hold local state so the interaction
 // feels real in the demo, but they DON'T persist and DON'T hide anything
 // yet — the store wiring + cascade rules land in a later phase. Every flip
-// is gated behind a confirmation modal. See docs/services-configuration.md
+// is gated behind a confirmation modal. See dev-handoff/services-configuration.md
 // for the full impact map per toggle.
 
 import { useState } from "react";

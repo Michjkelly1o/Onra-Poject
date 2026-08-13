@@ -65,7 +65,7 @@ export interface WizardConfig {
     isScratch: boolean;
     /** Picked template (template path only). */
     template?: WizardTemplate;
-    // ── RBAC (see docs/ai-agent-rbac.md) ──
+    // ── RBAC (see dev-handoff/ai-agent-rbac.md) ──
     /** `staff.pay_rates_payroll.view` — include the pay-rate question (2.5). */
     canSeePayRate: boolean;
     /** `settings.locations_rooms.create` — expose `+ Add room` in the picker. */

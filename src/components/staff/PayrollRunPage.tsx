@@ -571,7 +571,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
                     : undefined;
                 const tracks = buildPayConfigTracks(
                     staffById.get(instructor.id) ?? { id: instructor.id },
-                    payRates, classSchedules, appointments, fromISO, toISO,
+                    payRates, classSchedules, appointments, fromISO, toISO, classBookings,
                 );
                 const { base, commission, total, trackBreakdown } = totalEarningsForStaff(
                     instructor.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO, tracks,
@@ -613,7 +613,7 @@ export default function PayrollRunPage({ returnTo = "/admin/compensation" }: Pay
             .map(st => {
                 const livePayRate = st.payRateId ? payRates.find(p => p.id === st.payRateId) : undefined;
                 const entry = byInstructor.get(st.id);
-                const tracks = buildPayConfigTracks(st, payRates, classSchedules, appointments, fromISO, toISO);
+                const tracks = buildPayConfigTracks(st, payRates, classSchedules, appointments, fromISO, toISO, classBookings);
                 const { base, commission, total, trackBreakdown } = totalEarningsForStaff(
                     st.id, livePayRate, entry?.totalEarnings, sources, fromISO, toISO, tracks,
                 );
