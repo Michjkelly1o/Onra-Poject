@@ -1,19 +1,21 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Module 13 — Attendee list (`/attendee`) — CARD GRID (Figma 7962:40140)
+// Module 13 — Attendee console (`/attendee`)
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The attendance console. Rebuilt to match the Figma "Calendar - This Week"
-// design: a white rounded panel with a studio-logo header + branch dropdown,
-// a Day/Week toggle, a centred date navigator, a week-day strip (Week view),
-// and a responsive GRID of class cards (cover image + overlaid name/status,
-// duration/spots/instructor/room, and a "View details" button).
+// The floor attendance console. A white rounded panel with a studio-logo header
+// + branch dropdown, then a vertical list of TODAY's class cards grouped into
+// Ongoing and Upcoming. Class-only (no appointments); Completed / Cancelled
+// never surface. Tapping a card opens the roster panel to mark attendance.
 //
-// Only Ongoing + Upcoming classes surface — never Past — derived live from the
-// device clock (`liveScheduleStatus` at store boot). Reached from the
+// Status is derived live from the device clock (`liveScheduleStatus` at store
+// boot); Ongoing includes a 30-min lead (`isAttendeeOngoing`). Reached from the
 // "Attendee" button in the Schedule header. Top-level route → bare root layout,
 // so the page builds its own back affordance above the panel.
+//
+// (The earlier Day/Week toggle + week-strip + card-grid design was dropped for
+// this today-only list; some scaffolding from that version remains unused.)
 
 import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
@@ -23,13 +25,11 @@ import {
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Sliders } from "@/components/icons/Sliders";
 import { genderAccessIcon } from "@/components/ui/gender-icons";
 import { InstructorAvatar } from "@/components/ui/InstructorAvatar";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { AttendeeTopBar } from "@/components/attendee/AttendeeTopBar";
 import { AttendeeDetailPanel } from "@/components/attendee/AttendeeDetailPanel";
 import { isAttendeeOngoing } from "@/components/attendee/attendee-status";

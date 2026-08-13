@@ -141,8 +141,9 @@ function InfoField({ label, children }: { label: string; children: React.ReactNo
 }
 
 function LeftPanel({ ci, instructorLabel }: { ci: ClassInstance; instructorLabel: string }) {
-    // Real instructor photo (from the instructor record), initials fallback.
-    const instructorImageUrl = useAppStore(s => s.instructors.find(i => i.id === ci.instructorId)?.imageUrl);
+    // Real instructor photo from the `staff` slice — the SAME source the list
+    // card uses (page.tsx), so list and detail never show mismatched avatars.
+    const instructorImageUrl = useAppStore(s => s.staff.find(st => st.id === ci.instructorId)?.imageUrl);
     return (
         <div className="w-[320px] shrink-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden h-full">
             {/* Banner */}
