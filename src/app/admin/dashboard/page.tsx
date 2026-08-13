@@ -1425,17 +1425,16 @@ export default function AdminDashboard() {
         : activeTab === "coming" ? comingMetrics
             : todayMetrics;
 
-    // Derive today's classes. The seed data centres around end-Feb 2025, so for a
-    // realistic prototype we surface the next 6 upcoming/ongoing classes regardless
-    // of the wall-clock date — keeping the dashboard visually populated. Branch
-    // scoping still applies so picking a location filters the list.
+    // Today's sessions — scoped to the actual wall-clock date so the list agrees
+    // with the "today" KPI tiles above it. Status stays Upcoming/Ongoing so
+    // completed sessions drop off as the day progresses; branch + type filters
+    // still apply. (The container scrolls, so no arbitrary count cap is needed.)
     const todayClasses = useMemo<ScheduleClass[]>(() => {
         return [...scopedSessions]
+            .filter(ci => ci.dateISO === todayISO)
             .filter(ci => ci.status === "Upcoming" || ci.status === "Ongoing")
-            // Type filter — "" = all types.
             .filter(ci => !typeFilter || ci.type === typeFilter)
             .sort((a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`))
-            .slice(0, 6)
             .map(ci => {
                 const palette = CATEGORY_PALETTE[ci.category] ?? FALLBACK_PALETTE;
                 return {
@@ -1456,7 +1455,7 @@ export default function AdminDashboard() {
                     status: ci.status,
                 };
             });
-    }, [scopedSessions, typeFilter]);
+    }, [scopedSessions, typeFilter, todayISO]);
 
     // Group classes by start-time so the timeline matches the original two-column
     // (time | classes) layout, with multiple classes stacked when they share a slot.

@@ -33,6 +33,7 @@ Because of this, almost everything that would touch an external system in produc
 - [`rbac-and-permissions.md`](rbac-and-permissions.md) — the permissions matrix is decorative; real gating is hardcoded on the demo role; **refunds/money-moving actions have no role enforcement**; the 5 studio roles can't be distinguished yet.
 
 **Module status:**
+- [`dashboard.md`](dashboard.md) — the widget data migration is **complete** (all 35 widgets + tiles + modals are store-derived); remaining gaps are the Front-Desk `/today` landing (unbuilt), ephemeral widget personalization, and role-derived branch scope.
 - [`staff-payroll-rbac-status.md`](staff-payroll-rbac-status.md) — what's real vs. deferred in Staff/Payroll (payroll adjustments UI, create-new-rate model, compensation report, RBAC).
 - [`services-configuration.md`](services-configuration.md) — services module configuration notes (existing).
 
