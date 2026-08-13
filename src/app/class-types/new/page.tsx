@@ -32,9 +32,10 @@ type TemplateStatus = "Active" | "Archived" | "Inactive";
 // the Memberships & Packages module.
 type MembershipItem = { id: string; label: string; group: "Membership" | "Class package" };
 function buildMembershipItems(memberships: Membership[], packages: Package[]): MembershipItem[] {
+    // Archived plans are retired — excluded from the picker. Inactive stays.
     return [
-        ...memberships.map(m => ({ id: m.id, label: m.name, group: "Membership"    as const })),
-        ...packages   .map(p => ({ id: p.id, label: p.name, group: "Class package" as const })),
+        ...memberships.filter(m => m.status !== "archived").map(m => ({ id: m.id, label: m.name, group: "Membership"    as const })),
+        ...packages   .filter(p => p.status !== "archived").map(p => ({ id: p.id, label: p.name, group: "Class package" as const })),
     ];
 }
 

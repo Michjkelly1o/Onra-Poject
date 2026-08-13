@@ -643,7 +643,9 @@ export function ServiceFormPage({ mode, serviceId, returnTo = "/admin/services",
             branchName:  branch?.name ?? "",
             // Optional room ("" = no room).
             roomId:      roomId,
-            status:      (existing?.status ?? "Active") as Service["status"],
+            // Lowercase to match ServiceStatus — a capital "Active" breaks the
+            // status badge and every row action (all gated on === "active").
+            status:      existing?.status ?? "active",
             coverImage:  step1.coverPreview ?? undefined,
             coverColor:  cat?.color_hex ?? "#eff6f3",
         };

@@ -2,7 +2,7 @@
 // Onra Studio — `retail_categories` seed
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// The 5 default retail-category rows every studio starts with. Admins can
+// The 4 default retail-category rows every studio starts with. Admins can
 // rename freely; renames cascade to product form dropdowns / POS filter chips
 // / report grouping labels (Phase C behavior). Labels-only for now; image_url
 // stays undefined until the studio uploads a category tile in Settings →

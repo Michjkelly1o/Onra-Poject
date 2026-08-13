@@ -28,12 +28,14 @@ export function buildMembershipItems(
     memberships: Membership[],
     packages: Package[],
 ): MembershipItem[] {
+    // Archived plans are retired — never offer them for NEW associations.
+    // Inactive (seasonally paused) plans stay selectable by design.
     return [
-        ...memberships.map(m => ({
+        ...memberships.filter(m => m.status !== "archived").map(m => ({
             id: m.id, label: m.name,
             group: "Membership" as const,
         })),
-        ...packages.map(p => ({
+        ...packages.filter(p => p.status !== "archived").map(p => ({
             id: p.id, label: p.name,
             group: "Class package" as const,
         })),

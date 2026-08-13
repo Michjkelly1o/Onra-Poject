@@ -677,10 +677,22 @@ function GiftCardDetailPageInner() {
             showToast("Gift card reactivated", `${name} is now active again.`, "success", "check");
             setConfirmAction(null);
         } else if (confirmAction === "delete") {
-            deleteGiftCardDesign(id);
-            showToast("Gift card deleted", `${name} has been deleted.`, "success", "trash");
-            setConfirmAction(null);
-            router.push(returnTo);
+            // Check the store's guard return (mirrors the membership/retail
+            // detail pages) — an issued card on record blocks the delete, and
+            // we must not fire a false "deleted" toast + navigate away.
+            const ok = deleteGiftCardDesign(id);
+            if (ok) {
+                showToast("Gift card deleted", `${name} has been deleted.`, "success", "trash");
+                setConfirmAction(null);
+                router.push(returnTo);
+            } else {
+                showToast(
+                    "Cannot delete",
+                    `${name} has issued cards on record. Archive it instead.`,
+                    "error", "slash",
+                );
+                setConfirmAction(null);
+            }
         }
     }
 

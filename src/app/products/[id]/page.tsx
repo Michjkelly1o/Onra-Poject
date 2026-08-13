@@ -214,7 +214,7 @@ function PatternBanner({ kind }: { kind: ProductKind }) {
 // ─── Left sidebar (Figma 2744:57990) ────────────────────────────────────────
 
 function LeftSidebar({
-    kind, name, priceAed, creditsLabel, durationLabel, customerCount, status, onAction,
+    kind, name, priceAed, creditsLabel, durationLabel, customerCount, canDelete, status, onAction,
 }: {
     kind: ProductKind;
     name: string;
@@ -222,11 +222,14 @@ function LeftSidebar({
     creditsLabel: string;
     durationLabel: string;
     customerCount: number;
+    /** True only when the product has ZERO purchase history (no active holder
+     *  AND no customerPlans row) — mirrors the store delete guard, so the
+     *  Delete affordance matches what the store will actually allow. */
+    canDelete: boolean;
     status: ProductStatus;
     onAction: (a: "edit" | ModalAction) => void;
 }) {
     const productNoun = kind === "package" ? "package" : "membership";
-    const hasHolders = customerCount > 0;
 
     const actions = (() => {
         // Archived products must be Recovered before they can be edited or
@@ -248,10 +251,10 @@ function LeftSidebar({
             <>
                 <ActionBtn icon={<Edit02 className="w-5 h-5" />} label={`Edit ${productNoun}`} onClick={() => onAction("edit")} />
                 <ActionBtn icon={<Archive className="w-5 h-5" />} label={`Archive ${productNoun}`} onClick={() => onAction("archive")} />
-                {hasHolders ? (
-                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label={`Deactivate ${productNoun}`} danger onClick={() => onAction("deactivate")} />
-                ) : (
+                {canDelete ? (
                     <ActionBtn icon={<Trash01 className="w-5 h-5" />} label={`Delete ${productNoun}`} danger onClick={() => onAction("delete")} />
+                ) : (
+                    <ActionBtn icon={<SlashCircle01 className="w-5 h-5" />} label={`Deactivate ${productNoun}`} danger onClick={() => onAction("deactivate")} />
                 )}
             </>
         );
@@ -1227,6 +1230,7 @@ function ProductDetailPageInner() {
     const setPackageStatus    = useAppStore(s => s.setPackageStatus);
     const deleteMembership    = useAppStore(s => s.deleteMembership);
     const deletePackage       = useAppStore(s => s.deletePackage);
+    const customerPlans       = useAppStore(s => s.customerPlans);
     const showToast           = useAppStore(s => s.showToast);
 
     const membership = memberships.find(m => m.id === id) ?? null;
@@ -1243,6 +1247,16 @@ function ProductDetailPageInner() {
         }
         return customers.filter(c => c.planKind === "package" && (c.packageIds ?? []).includes(id));
     }, [customers, product, kind, id]);
+
+    // Delete is allowed only with ZERO purchase history. The store guard blocks
+    // on the flat Customer field OR any customerPlans row (any status), so the
+    // Delete-vs-Deactivate affordance must consider plan history too — otherwise
+    // a product held only via a plan row would wrongly show Delete.
+    const canDelete = useMemo(
+        () => activeCustomers.length === 0
+            && !customerPlans.some(p => p.productId === id && p.kind === kind),
+        [activeCustomers, customerPlans, id, kind],
+    );
 
     if (!product || !kind) {
         return (
@@ -1356,6 +1370,7 @@ function ProductDetailPageInner() {
                         creditsLabel={vm.creditsLabel}
                         durationLabel={vm.durationLabel}
                         customerCount={activeCustomers.length}
+                        canDelete={canDelete}
                         status={product.status}
                         onAction={handleAction}
                     />
