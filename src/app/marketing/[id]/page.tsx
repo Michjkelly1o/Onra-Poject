@@ -207,7 +207,9 @@ function LeftSidebar({ vm, onAction, branches }: {
     onAction: (a: "edit" | ModalAction) => void;
     branches: Branch[];
 }) {
-    const canDelete = vm.viewCount === 0;
+    // Delete only if never sent (campaigns) AND never seen (PRD 08); a sent
+    // campaign is archive-only so its analytics trail survives.
+    const canDelete = !(vm.type === "campaign" && vm.deliveryStatus === "sent") && vm.viewCount === 0;
 
     const actions = (() => {
         // Archived items must be Recovered before they can be edited or
@@ -410,13 +412,19 @@ function RightPanel({ vm, branches }: { vm: MarketingDetailVM; branches: Branch[
                     />
                 </div>
 
-                {/* ── Engagement ── */}
-                <SectionHeading>Engagement</SectionHeading>
-                <div className="grid grid-cols-3 gap-x-4 gap-y-5">
-                    <InlineStat icon={<Send01 className="w-4 h-4" />} label="Sent" value={vm.sends.toLocaleString("en-US")} />
-                    <InlineStat icon={<Eye className="w-4 h-4" />} label="Open rate" value={`${vm.openRate}%`} />
-                    <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Click rate" value={`${vm.clickRate}%`} />
-                </div>
+                {/* ── Engagement (only a SENT campaign has real send stats;
+                    hidden for drafts / scheduled / announcements so we never
+                    show a misleading "Sent 0 / 0% / 0%"). ── */}
+                {vm.type === "campaign" && vm.deliveryStatus === "sent" && (
+                    <>
+                        <SectionHeading>Engagement</SectionHeading>
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-5">
+                            <InlineStat icon={<Send01 className="w-4 h-4" />} label="Sent" value={vm.sends.toLocaleString("en-US")} />
+                            <InlineStat icon={<Eye className="w-4 h-4" />} label="Open rate" value={`${vm.openRate}%`} />
+                            <InlineStat icon={<CursorBox className="w-4 h-4" />} label="Click rate" value={`${vm.clickRate}%`} />
+                        </div>
+                    </>
+                )}
 
                 {/* ── Audience ── */}
                 <SectionHeading>Audience</SectionHeading>

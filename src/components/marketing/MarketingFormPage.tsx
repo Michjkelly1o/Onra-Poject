@@ -269,7 +269,10 @@ export function MarketingFormPage({ mode, marketingId, initial, returnTo = "/adm
         };
 
         if (isEdit && marketingId) {
-            updateMarketingItem(marketingId, fields);
+            // Preserve the original created_at — an edit must not clobber it
+            // with "now" (it drives the campaign's age / sort ordering).
+            const { created_at: _createdAt, ...editFields } = fields;
+            updateMarketingItem(marketingId, editFields);
             showToast("Campaign updated", `${fields.title} has been saved.`, "success", "check");
             router.push(`/marketing/${marketingId}`);
             return;

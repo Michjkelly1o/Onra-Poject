@@ -7,8 +7,10 @@
 // create form (live "will reach N" count) and by the store's send dispatch, so
 // the previewed number is exactly the number recorded.
 //
-// Reach = the chosen audience within the campaign's branch scope. (No opt-in /
-// topic gate — the client's model targets by segment, not by consent.)
+// `audienceMatch` resolves the chosen audience within branch scope (targets by
+// segment, not consent). The final send count then applies each customer's
+// marketing topic + channel opt-in via `marketingReach` — so the previewed
+// "will reach N" already reflects consent.
 
 import type { Customer, CustomerPlan, CustomerTransaction, NotificationSetting, MarketingItem } from "@/lib/store";
 import { customerSegment } from "@/lib/customer/segment";

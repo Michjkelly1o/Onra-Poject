@@ -47,6 +47,7 @@ function EditMarketingRouteInner() {
             initial={{
                 bannerPreview: item.cover_image_url ?? "",
                 name: item.title,
+                topic: item.topic ?? "",
                 description: item.short_description,
                 action: item.action_type,
                 ctaClassId: item.cta_class_id ?? "",

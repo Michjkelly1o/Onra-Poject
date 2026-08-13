@@ -10458,14 +10458,57 @@ export const useAppStore = create<AppState>()(persist(
     },
     updateMarketingItem: (id, patch) => {
         const target = get().marketingItems.find(m => m.id === id);
+        const wasSent = target?.delivery_status === "sent";
         set(state => ({ marketingItems: state.marketingItems.map(m => m.id === id ? { ...m, ...patch } : m) }));
         if (target) get().recordAudit("Edited marketing campaign", "marketing", id, target.title);
+        // If this edit transitions a campaign draft/scheduled → sent, record the
+        // send in marketingCampaignStats — the SAME write-path as
+        // addMarketingItem, so a send-from-edit isn't left with zero engagement.
+        const merged = get().marketingItems.find(m => m.id === id);
+        if (merged && !wasSent && merged.type === "campaign" && merged.delivery_status === "sent"
+            && !get().marketingCampaignStats.some(s => s.campaign_id === id)) {
+            const st = get();
+            const audience = audienceMatch(
+                {
+                    kind: merged.audience_kind ?? "everyone",
+                    membershipIds: merged.audience_membership_ids,
+                    segments: merged.audience_segments,
+                    customerIds: merged.audience_customer_ids,
+                    branchIds: merged.branch_ids ?? [],
+                },
+                st.customers, st.customerPlans, st.customerTransactions,
+            );
+            const reach = marketingReach(audience, contentTopic(merged), st.notificationSettings);
+            const at = merged.sent_at ?? new Date().toISOString();
+            const branch = merged.branch_ids?.[0] ?? DEFAULT_BRANCH_ID;
+            const rows = reach.channels.map(ch => {
+                const sends = reach.perChannel[ch];
+                return {
+                    id: `cstat_${id}_${ch}`,
+                    campaign_id: id,
+                    campaign_name: merged.title,
+                    channel: ch,
+                    sent_at: at,
+                    sends,
+                    opens_reads: Math.round(sends * 0.45),
+                    clicks_taps: Math.round(sends * 0.08),
+                    attributed_bookings: 0,
+                    attributed_revenue_aed: 0,
+                    attribution_window: "7 days",
+                    branch_id: branch,
+                };
+            });
+            if (rows.length > 0) set(state => ({ marketingCampaignStats: [...state.marketingCampaignStats, ...rows] }));
+        }
     },
     deleteMarketingItem: (id) => {
-        // Block deletion once the item has been seen — archive instead so the
-        // analytics trail survives (PRD 08 §8.4 — delete only at 0 views).
+        // Delete only if NEVER sent (campaigns) AND never seen — otherwise
+        // archive so the analytics trail survives (PRD 08 §8.4). A sent campaign
+        // with zero views is still archive-only.
         const item = get().marketingItems.find(m => m.id === id);
-        if (item && item.view_count > 0) return false;
+        if (!item) return false;
+        if (item.type === "campaign" && item.delivery_status === "sent") return false;
+        if (item.view_count > 0) return false;
         set(state => ({ marketingItems: state.marketingItems.filter(m => m.id !== id) }));
         return true;
     },

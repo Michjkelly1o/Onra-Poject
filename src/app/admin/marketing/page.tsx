@@ -172,7 +172,9 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
     const deleteMarketingItem = useAppStore(s => s.deleteMarketingItem);
     const showToast           = useAppStore(s => s.showToast);
     const [confirmAction, setConfirmAction] = useState<CampaignCardAction | null>(null);
-    const canDelete = (item.view_count ?? 0) === 0;
+    // Delete only if never sent AND never seen (PRD 08) — a sent campaign is
+    // archive-only so its analytics survive.
+    const canDelete = item.delivery_status !== "sent" && (item.view_count ?? 0) === 0;
     const editHref  = `/marketing/${item.id}/edit?returnTo=${encodeURIComponent("/admin/marketing")}`;
     const items: RowActionItem[] = (() => {
         const base: RowActionItem[] = [{ label: "View details", icon: Eye, onClick: onOpen }];
