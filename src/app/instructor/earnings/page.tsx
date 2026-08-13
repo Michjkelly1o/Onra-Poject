@@ -558,8 +558,9 @@ function EarningsRow({ schedule, payRate, classesInMonth, attendees, onViewDetai
                 </div>
             </td>
 
-            {/* Attendance — plain "8/8" text */}
-            <td className={TD}>{schedule.booked}/{schedule.capacity}</td>
+            {/* Attendance — Present count / capacity (matches the earnings basis,
+                which pays on real Present via attendeesForClass). */}
+            <td className={TD}>{attendees}/{schedule.capacity}</td>
 
             {/* Rating — 5 stars + count caption (admin's exact JSX) */}
             <td className={TD}>

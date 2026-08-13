@@ -359,7 +359,11 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
 // ─── Page ────────────────────────────────────────────────────────────────
 
 export default function InstructorTimeOffPage() {
-    const meStaffId = instructor_profile.staff_profile_id;
+    const currentUser = useAppStore(s => s.currentUser);
+    // Persona-aware staff id (follows a persona switch) — matches the earnings
+    // and account pages; falls back to the seed persona constant.
+    const meStaffId = (currentUser as typeof currentUser & { staff_profile_id?: string }).staff_profile_id
+        ?? instructor_profile.staff_profile_id;
 
     const blockedTimes       = useAppStore(s => s.blockedTimes);
     const addBlockedTime     = useAppStore(s => s.addBlockedTime);

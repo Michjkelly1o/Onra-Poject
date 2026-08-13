@@ -387,6 +387,7 @@ export default function InstructorClassDetailPage() {
     //    so it can render full-screen, but the active persona still
     //    needs to be the instructor for any audience-scoped readers.
     const currentRole = useAppStore(s => s.currentRole);
+    const currentUser = useAppStore(s => s.currentUser);
     const setCurrentUser = useAppStore(s => s.setCurrentUser);
     useEffect(() => {
         if (currentRole !== "instructor") setCurrentUser(instructor_profile);
@@ -400,6 +401,13 @@ export default function InstructorClassDetailPage() {
     const showToast      = useAppStore(s => s.showToast);
 
     const schedule = classSchedules.find(s => s.id === classId);
+
+    // Ownership guard — this is the instructor's OWN class detail. A hand-typed
+    // deep-link to another instructor's class must not expose or let you mutate
+    // its roster. A non-owned class is treated exactly like a missing one below.
+    const meStaffId = (currentUser as typeof currentUser & { staff_profile_id?: string }).staff_profile_id
+        ?? instructor_profile.staff_profile_id;
+    const isOwnClass = !!schedule && schedule.instructorId === meStaffId;
 
     // ── Local UI state ───────────────────────────────────────────────────
     const [tab, setTab]   = useState<TabId>("booked");
@@ -499,22 +507,22 @@ export default function InstructorClassDetailPage() {
     //    instructor sees the right chrome (Reviews tab + rating summary
     //    + Cancellation badges) instead of a stripped-down view.
     useEffect(() => {
-        if (schedule && (schedule.status === "Completed" || schedule.status === "Cancelled")) {
+        if (schedule && isOwnClass && (schedule.status === "Completed" || schedule.status === "Cancelled")) {
             // Preserve returnTo across the redirect so the earnings
             // detail's X-close lands the user back on the schedule list
             // (where they came from) instead of the earnings list.
             const qs = new URLSearchParams({ returnTo }).toString();
             router.replace(`/earnings/${schedule.id}?${qs}`);
         }
-    }, [schedule, router, returnTo]);
+    }, [schedule, isOwnClass, router, returnTo]);
 
     // ── Class status flags ───────────────────────────────────────────────
-    if (!schedule) {
+    if (!schedule || !isOwnClass) {
         return (
             <div className="h-screen bg-white flex items-center justify-center">
                 <div className="text-center max-w-[360px] px-6">
                     <p className="text-[18px] font-semibold text-[#101828]">Class not found</p>
-                    <p className="text-[14px] text-[#475467] mt-1">The class you tried to open no longer exists.</p>
+                    <p className="text-[14px] text-[#475467] mt-1">This class isn&apos;t on your schedule.</p>
                     <button
                         type="button"
                         onClick={() => router.push(returnTo)}
