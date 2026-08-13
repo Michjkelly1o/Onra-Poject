@@ -57,30 +57,9 @@ function spanDays(fromISO: string, toISO: string): number {
     return Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
 }
 
-// ─── Reason chip palette (matches admin BlockedTimeTab) ─────────────────
-
-type Reason = BlockedTime["reason"];
-
-const REASON_STYLE: Record<Reason, { label: string; className: string }> = {
-    annual_leave:    { label: "Annual Leave",    className: "bg-[#eff8ff] border-[#b2ddff] text-[#175cd3]" },
-    sick:            { label: "Sick",            className: "bg-[#fef3f2] border-[#fecdca] text-[#b42318]" },
-    personal:        { label: "Personal",        className: "bg-[#f0f9f6] border-[#a6e0cd] text-[#107569]" },
-    training:        { label: "Training",        className: "bg-[#f4f3ff] border-[#d9d6fe] text-[#5925dc]" },
-    religious_leave: { label: "Religious Leave", className: "bg-[#fffaeb] border-[#fedf89] text-[#b54708]" },
-    other:           { label: "Other",           className: "bg-[var(--colors-bg-secondary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)]" },
-};
-
-function ReasonChip({ reason }: { reason: Reason | undefined }) {
-    const spec = REASON_STYLE[(reason ?? "other") as Reason] ?? REASON_STYLE.other;
-    return (
-        <span className={cn(
-            "inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 whitespace-nowrap",
-            spec.className,
-        )}>
-            {spec.label}
-        </span>
-    );
-}
+// Reason is captured on the form but NOT surfaced in the instructor list — the
+// table shows only Date & time + Note, matching the admin Time-off table (which
+// also has no Reason column). Client 2026-08.
 
 // ─── Row action menu ──────────────────────────────────────────────────────
 
@@ -155,7 +134,6 @@ export default function InstructorTimeOffPage() {
     // pages read as one voice (client 2026-07-22 audit).
     const { sorted: sortedEntries, sortKey, sortDir, toggle: toggleSort } = useSort<BlockedTime>(myEntries, {
         date:   (a, b) => (a.date_from_iso ?? a.date).localeCompare(b.date_from_iso ?? b.date),
-        reason: (a, b) => (a.reason ?? "other").localeCompare(b.reason ?? "other"),
         note:   (a, b) => a.note.localeCompare(b.note),
     });
 
@@ -199,9 +177,6 @@ export default function InstructorTimeOffPage() {
                                     <th className={cn(TH, "w-[280px]")}>
                                         <SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Date &amp; time</SortableHeader>
                                     </th>
-                                    <th className={cn(TH, "w-[120px]")}>
-                                        <SortableHeader sortKey="reason" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Reason</SortableHeader>
-                                    </th>
                                     <th className={TH}>
                                         <SortableHeader sortKey="note"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Note</SortableHeader>
                                     </th>
@@ -216,7 +191,6 @@ export default function InstructorTimeOffPage() {
                                     const isRange = days > 1;
                                     const isPast = toISO < todayISO();
                                     const isShared = b.staff_ids.length > 1;
-                                    const otherCount = b.staff_ids.length - 1;
                                     return (
                                         <tr key={b.id} className={cn("transition-colors hover:bg-[var(--colors-bg-secondary)]", isPast && "opacity-70")}>
                                             <td className={TD}>
@@ -238,21 +212,6 @@ export default function InstructorTimeOffPage() {
                                                             ? `All day${isRange ? ` · ${days} days` : ""}`
                                                             : `${fmtTime12(b.start_time)} – ${fmtTime12(b.end_time)}`}
                                                     </span>
-                                                </div>
-                                            </td>
-                                            <td className={TD}>
-                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <ReasonChip reason={b.reason} />
-                                                    {isPast && (
-                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[var(--colors-bg-tertiary)] border-[var(--colors-border-secondary)] text-[var(--colors-text-tertiary)] whitespace-nowrap">
-                                                            Past
-                                                        </span>
-                                                    )}
-                                                    {isShared && (
-                                                        <span className="inline-flex items-center px-[10px] py-[2px] rounded-full text-[12px] font-medium border-1 bg-[#eff8ff] border-[#b2ddff] text-[#175cd3] whitespace-nowrap">
-                                                            Group · {otherCount} other{otherCount === 1 ? "" : "s"}
-                                                        </span>
-                                                    )}
                                                 </div>
                                             </td>
                                             <td className={cn(TD, "text-[var(--colors-text-quaternary)] max-w-[400px] truncate")}>

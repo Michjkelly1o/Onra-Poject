@@ -585,7 +585,7 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
                     {fields}
                 </div>
-                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-end gap-3">
+                <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
                     <Button variant="secondary-gray" size="md" onClick={exit}>Cancel</Button>
                     {submitBtn}
                 </div>

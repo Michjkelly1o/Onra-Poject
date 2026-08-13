@@ -10,6 +10,7 @@ import {
     ChevronDown, User01, HeartHand, Shuffle01,
 } from "@untitledui/icons";
 import { cn, formatTimeRange12 } from "@/lib/utils";
+import { registerFilterResetter } from "@/lib/list-ui-cache";
 import { buildMonthGrid } from "@/lib/calendar-utils";
 import { AttendanceBar } from "@/components/patterns/AttendanceBar";
 import { Button } from "@/components/ui/button";
@@ -1105,6 +1106,11 @@ const scheduleUi: {
     weekStart: "",
     monthYear: "",
 };
+// Reset the Schedule toolbar to defaults whenever a module is opened from the
+// sidebar (client 2026-08) — so the location filter / search / view / date all
+// start fresh instead of restoring the last-viewed state.
+const SCHEDULE_UI_DEFAULTS = { ...scheduleUi };
+registerFilterResetter(() => { Object.assign(scheduleUi, SCHEDULE_UI_DEFAULTS); });
 
 export default function SchedulePageRoute() {
     // Suspense wrapper is required by Next.js App Router because
