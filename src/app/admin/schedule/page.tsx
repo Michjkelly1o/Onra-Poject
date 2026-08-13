@@ -38,7 +38,7 @@ import { branchTzLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill, SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
 import { SESSION_TYPE_FILTER_LABEL, SESSION_TYPE_ORDER } from "@/lib/session-type";
 import {
-    DayView, WeekView, getCategoryColor, INSTRUCTORS,
+    DayView, WeekView, getCategoryColor,
     isoAddDays, isoToDisplay, formatWeekRange, isoToMonday,
     TODAY_ISO, TODAY_MONDAY_ISO, DAY_VIEW_DATE,
 } from "@/components/schedule/ScheduleGridViews";
@@ -419,7 +419,12 @@ function FilterPanel({ open, onClose, applied, onApply, categories }: {
         applied.timeOfDay.length > 0 ||
         applied.instructors.length > 0 || applied.categories.length > 0;
 
-    const instructorOptions = INSTRUCTORS.map(i => ({ value: i.id, label: i.name, initials: i.initials, color: i.color }));
+    // Live instructor options from the staff slice (not the frozen seed pool)
+    // so renamed / newly-added / re-coloured instructors appear correctly.
+    const filterStaff = useAppStore(s => s.staff);
+    const instructorOptions = filterStaff
+        .filter(s => s.roleId === "role_instructor")
+        .map(s => ({ value: s.id, label: s.fullName, initials: s.initials, color: s.color }));
 
     const Divider = () => <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />;
     const SectionLabel = ({ label }: { label: string }) => (

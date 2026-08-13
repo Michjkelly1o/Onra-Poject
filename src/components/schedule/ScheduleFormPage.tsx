@@ -474,23 +474,18 @@ function LocationDropdown({ classCapacity, value, onChange, branchRooms, onAddRo
 
 // ─── Instructor card ──────────────────────────────────────────────────────────
 
-const INSTRUCTOR_RATINGS: Record<string, { score: number; reviews: string }> = {
-    i1: { score: 4.8, reviews: "2K reviews" },
-    i2: { score: 4.8, reviews: "3K reviews" },
-    i3: { score: 5.0, reviews: "6K reviews" },
-    i4: { score: 4.7, reviews: "1K reviews" },
-};
-
-function InstructorCard({ instructor, selected, disabled = false, disabledReason, onClick }: {
+function InstructorCard({ instructor, selected, disabled = false, disabledReason, rating, onClick }: {
     instructor: typeof SCHEDULE_INSTRUCTORS[0];
     selected: boolean;
     disabled?: boolean;
     /** Tooltip text describing why the card is disabled (category mismatch,
      *  outside shift, blocked time, etc.). Rendered via title attr. */
     disabledReason?: string;
+    /** Real average rating for this instructor, derived from classRatings;
+     *  null when they have no reviews yet (no fabricated star line). */
+    rating: { score: number; count: number } | null;
     onClick: () => void;
 }) {
-    const rating = INSTRUCTOR_RATINGS[instructor.id] ?? { score: 4.5, reviews: "1K reviews" };
     return (
         <button type="button"
             disabled={disabled}
@@ -517,10 +512,13 @@ function InstructorCard({ instructor, selected, disabled = false, disabledReason
             {/* Info */}
             <div className="w-full p-4 pt-3 flex flex-col gap-1">
                 <p className="text-[14px] font-medium text-[var(--colors-text-primary)] truncate">{instructor.name}</p>
-                <div className="flex items-center gap-1">
-                    <Star01 className="w-3.5 h-3.5 text-[#f79009]" />
-                    <span className="text-[12px] text-[var(--colors-text-quaternary)]">{rating.score} ({rating.reviews})</span>
-                </div>
+                {rating
+                    ? <div className="flex items-center gap-1">
+                        <Star01 className="w-3.5 h-3.5 text-[#f79009]" />
+                        <span className="text-[12px] text-[var(--colors-text-quaternary)]">{rating.score} ({rating.count} review{rating.count === 1 ? "" : "s"})</span>
+                    </div>
+                    : <span className="text-[12px] text-[var(--colors-text-quaternary)]">No ratings yet</span>
+                }
             </div>
         </button>
     );
@@ -948,6 +946,7 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Live category list — drives the "Class category" SimpleSelect below.
     // Phase 4 wiring (Booking Rules → schedule form).
     const classCategories   = useAppStore(s => s.classCategories);
+    const classRatings      = useAppStore(s => s.classRatings);
     const categoryOptions   = classCategories.map(c => c.name);
     // Live memberships + packages — drive the Applicable memberships step
     // picker so every active/inactive product the admin has just touched
@@ -978,6 +977,19 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
     // Every branch is a real physical location that can host classes.
     const liveBranches      = useAppStore(s => s.branches);
     const liveRooms         = useAppStore(s => s.rooms);
+
+    // Real per-instructor average rating (excludes soft-deleted reviews) for the
+    // instructor picker cards — replaces the old hardcoded INSTRUCTOR_RATINGS.
+    const ratingByInstructor = useMemo(() => {
+        const m = new Map<string, { sum: number; count: number }>();
+        for (const r of classRatings) {
+            if (!r.instructorId || r.deletedAt) continue;
+            const cur = m.get(r.instructorId) ?? { sum: 0, count: 0 };
+            cur.sum += r.score; cur.count += 1;
+            m.set(r.instructorId, cur);
+        }
+        return m;
+    }, [classRatings]);
     const classBranches     = useMemo(
         () => liveBranches,
         [liveBranches],
@@ -2552,6 +2564,12 @@ export function ScheduleFormPage({ editingId, returnTo = "/admin/schedule" }: { 
                                                         selected={instructorId === instr.id}
                                                         disabled={!canTeach}
                                                         disabledReason={`${instr.name} doesn't teach ${category}.`}
+                                                        rating={(() => {
+                                                            const rt = ratingByInstructor.get(instr.id);
+                                                            return rt && rt.count > 0
+                                                                ? { score: Math.round((rt.sum / rt.count) * 10) / 10, count: rt.count }
+                                                                : null;
+                                                        })()}
                                                         onClick={() => setInstructorId(instr.id)} />
                                                 );
                                             })}
