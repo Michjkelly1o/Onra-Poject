@@ -537,22 +537,18 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
                                     <InstructorAvatar initials={instructor.initials} color={instructor.color} size={36} />
                                     <div className="min-w-0">
                                         <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] truncate">{instructor.name}</p>
-                                        {staffMode ? (
-                                            // All-staff mode: the ROLE name (Instructor / Branch admin /
-                                            // Operator …) sits under the name instead of a class count.
-                                            <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate">
-                                                {instructor.roleLabel ?? "Staff"}
-                                            </p>
-                                        ) : (
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)]" />
-                                                <span className="text-[12px] text-[var(--colors-text-quaternary)]">
-                                                    {count} {isRecoveryCol
-                                                        ? (count === 1 ? "appointment" : "appointments")
-                                                        : (count === 1 ? "class" : "classes")}
-                                                </span>
-                                            </div>
-                                        )}
+                                        {/* Sub-line: the instructor's total schedules for the
+                                            selected day (calendar icon + "N schedule(s)") — replaces
+                                            the role name so the day grid reads as a per-instructor
+                                            schedule count (client 2026-08-13). */}
+                                        <div className="flex items-center gap-1">
+                                            <Calendar className="w-[12px] h-[12px] text-[var(--colors-text-quaternary)]" />
+                                            <span className="text-[12px] text-[var(--colors-text-quaternary)]">
+                                                {count} {isRecoveryCol
+                                                    ? (count === 1 ? "appointment" : "appointments")
+                                                    : (count === 1 ? "schedule" : "schedules")}
+                                            </span>
+                                        </div>
                                     </div>
                                     {/* Staff-column 3-dot — Assign / Unassign shift. The menu
                                         itself is portalled to <body> (below) so the header's

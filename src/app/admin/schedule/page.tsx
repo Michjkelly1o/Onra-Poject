@@ -1532,12 +1532,12 @@ function SchedulePage() {
         <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                {/* Schedule's pre-existing chrome hardcodes "classes" plural;
-                    preserve that with identical entitySingular + entityPlural. */}
+                {/* Total scheduled sessions — labelled "schedules" per client
+                    2026-08-13 (was "classes"). */}
                 <ToolbarTotal
                     count={activeTab === "list" ? tabbedClasses.length : gridClasses.length}
-                    entitySingular="classes"
-                    entityPlural="classes"
+                    entitySingular="schedule"
+                    entityPlural="schedules"
                 />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}
