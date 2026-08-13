@@ -28,7 +28,7 @@ export const staff: StaffSeed[] = [
     {
         id: "user_alex_owen",
         first_name: "Alex", last_name: "Owen", full_name: "Alex Owen",
-        email: "alex@fitlab.com", phone: "+971 55 100 0001",
+        email: "alex@fitlab.demo", phone: "+971 55 100 0001",
         initials: "AO", color_hex: "#164e52",
         role_id: "role_owner",
         branch_id: null, // All locations
@@ -45,7 +45,7 @@ export const staff: StaffSeed[] = [
     {
         id: "user_sam_admin",
         first_name: "Sam", last_name: "Admin", full_name: "Sam Admin",
-        email: "sam@fitlab.com", phone: "+971 55 100 0002",
+        email: "sam@fitlab.demo", phone: "+971 55 100 0002",
         initials: "SA", color_hex: "#3538cd",
         role_id: "role_branch_admin",
         branch_id: "branch_forma_south",
@@ -89,7 +89,7 @@ export const staff: StaffSeed[] = [
     {
         id: "user_jordan_ops",
         first_name: "Jordan", last_name: "Ops", full_name: "Jordan Ops",
-        email: "jordan@fitlab.com", phone: "+971 55 100 0003",
+        email: "jordan@fitlab.demo", phone: "+971 55 100 0003",
         initials: "JO", color_hex: "#175cd3",
         role_id: "role_operator",
         branch_id: "branch_forma_south",
@@ -118,7 +118,7 @@ export const staff: StaffSeed[] = [
     {
         id: "user_casey_desk",
         first_name: "Casey", last_name: "Desk", full_name: "Casey Desk",
-        email: "casey@fitlab.com", phone: "+971 55 100 0004",
+        email: "casey@fitlab.demo", phone: "+971 55 100 0004",
         initials: "CD", color_hex: "#c4458b",
         role_id: "role_front_desk",
         branch_id: "branch_forma_south",

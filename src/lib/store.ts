@@ -11979,14 +11979,21 @@ export const useAppStore = create<AppState>()(persist(
         return true;
     },
     canDeleteStaff: (id) => {
-        // Hard-delete rule: status is Pending or Archive AND zero references
-        // in payrollEntries / classSchedules / classRatings (classBookings
-        // carries no instructor FK in this codebase). Mirrors deleteMembership's
-        // "block when history exists" pattern.
+        // Hard-delete rule: zero references in payrollEntries / classSchedules /
+        // classRatings (classBookings carries no instructor FK in this codebase).
+        // Mirrors deleteMembership's "block when history exists" pattern — a
+        // history-free staff can be deleted from any lifecycle state (active /
+        // inactive / pending / archived), exactly like a history-free customer.
+        // (An earlier status gate that also required Pending/Archived made the
+        // whole Delete affordance unreachable, since hasHistory = !canDelete was
+        // then always true for active rows.)
         const state = get();
         const staff = state.staff.find(s => s.id === id);
         if (!staff) return false;
-        if (staff.status !== "pending" && staff.status !== "archived") return false;
+        // Never hard-delete the studio owner account (belt-and-suspenders — the
+        // UI already hides lifecycle actions on the owner row).
+        const role = state.roles.find(r => r.id === staff.roleId);
+        if (role?.type === "owner") return false;
         if (state.payrollEntries.some(p => p.instructorId === id)) return false;
         if (state.classSchedules.some(s => s.instructorId === id)) return false;
         if (state.classRatings.some(r => r.instructorId === id)) return false;

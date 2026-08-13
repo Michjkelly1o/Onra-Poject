@@ -616,7 +616,9 @@ function StaffRowActions({ staff, hasHistory, isOwner = false, onAction }: {
             { label: "Reactivate", icon: Check, onClick: () => onAction("reactivate"), hidden: !isInactive },
             { label: "Recover", icon: RefreshCcw01, onClick: () => onAction("recover"), hidden: !isArchive },
             { label: "Deactivate", icon: SlashCircle01, onClick: () => onAction("deactivate"), danger: true, hidden: !(isActive && hasHistory) },
-            { label: "Delete", icon: Trash01, onClick: () => onAction("delete"), danger: true, hidden: !(isActive && !hasHistory) },
+            // Delete a history-free staff from active OR inactive (matches the
+            // detail-page sidebar). Archived rows Recover first.
+            { label: "Delete", icon: Trash01, onClick: () => onAction("delete"), danger: true, hidden: !((isActive || isInactive) && !hasHistory) },
         ]} />
     );
 }
@@ -1015,7 +1017,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
             if (deleted.length > 0) {
                 showToast("Role deleted", `${subject} permanently removed.`, "success", "trash");
             } else if (blocked.length > 0) {
-                showToast("Cannot delete", "Role has assigned staff or is locked — archive instead.", "error");
+                showToast("Cannot delete", "Role has assigned staff or is locked — reassign the staff first.", "error");
             }
         } else if (kind === "archive") {
             setRolesStatus([row.id], "archived");
@@ -1130,7 +1132,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         } else if (kind === "delete") {
             const { deleted, blocked } = deleteRolesAction(ids);
             if (deleted.length > 0) showToast("Roles deleted", `${deleted.length} role${deleted.length === 1 ? "" : "s"} permanently removed.`, "success", "trash");
-            if (blocked.length > 0) showToast("Some skipped", `${blocked.length} had assigned staff — archive them instead.`, "error");
+            if (blocked.length > 0) showToast("Some skipped", `${blocked.length} had assigned staff — reassign the staff first.`, "error");
         }
         setSelectedRoleIds(new Set());
         setPendingBulk(null);
@@ -1382,10 +1384,10 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     <SelectInput
                         placeholder="All statuses"
                         options={[
+                            // Roles are delete-only (no archive) — no "Archived" filter value.
                             { value: "", label: "All statuses" },
                             { value: "active",   label: ROLE_STATUS_LABEL.active },
                             { value: "inactive", label: ROLE_STATUS_LABEL.inactive },
-                            { value: "archived",  label: ROLE_STATUS_LABEL.archived },
                         ]}
                         value={roleFilter.statuses[0] ?? ""}
                         onChange={v => setRoleFilter(v ? { statuses: [v as RoleStatus] } : { statuses: [] })}
