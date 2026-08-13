@@ -35,9 +35,10 @@ Sections covered elsewhere: Integrations → [`integrations.md`](integrations.md
 `brandingSettings.primaryColor/backgroundColor/tertiaryColor/textColor` persist, but are **never written to CSS variables** — the `--brand-*` tokens are hardcoded in `src/app/globals.css:30-35`. Editing brand colors in Settings does nothing to the app chrome (studio name + logo DO apply). **Note:** the app is mid brand-migration (`new-prd/color-branding-implementation-plan.md`); a real theming applier must respect that (JSON-driven brand, system colors stay).
 **Build:** a runtime theming applier that sets the `--brand-*` custom properties from `brandingSettings` on load/change.
 
-### 3. Referral — friend reward + monthly cap not enforced — MEDIUM
-The **referred/friend** reward (`friendEarnType`/`friendEarnAmount`) is used only for display/substitution — it is **never issued**; the friend never receives their configured reward. The **monthly program budget cap** (`monthlyProgramBudgetAed`) is a soft cap explicitly "not yet enforced in the redemption flow" (`store.ts:2078`). (The referrer reward and the per-member lifetime cap DO work.)
-**Build:** pass the friend reward + monthly budget into `evaluateReferralRewards` and issue/limit accordingly.
+### 3. Referral — friend reward + monthly cap — FIXED
+The **referred/friend** reward is now issued on the friend's first purchase (approach A — a direct grant): a `wallet_credit` friend reward lands in their account credit, and the default `free_credits` reward is granted as a "Referral bonus" class-credit plan (via the atomic comp-credit mechanism, so the credit-total invariant holds). The **monthly program budget cap** (`monthlyProgramBudgetAed`) is now enforced on `wallet_credit` payouts (free_credits carry no AED, so they never hit the cap). The referrer reward + per-member cap are unchanged. (`src/lib/referral-helpers.ts` + `applyPurchase` in `store.ts`.)
+
+Note: a gift-card-only purchase doesn't count as the friend's converting first purchase (existing behavior) — the reward fires on a plan/package/membership purchase.
 
 ### 4. Operator refund limit — the setting doesn't exist — HIGH (security)
 There is no `operator_refund_limit` anywhere in the code, and `refundTransaction` enforces no role or amount cap — any user who sees the Refund action can refund any refundable transaction. Documented in [`payments-and-pos.md`](payments-and-pos.md) §4 and [`rbac-and-permissions.md`](rbac-and-permissions.md) §3.

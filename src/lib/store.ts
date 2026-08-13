@@ -12714,18 +12714,29 @@ export const useAppStore = create<AppState>()(persist(
                     t.customerId === customerId &&
                     (t.transactionType ?? "sale") === "sale" &&
                     !t.id.startsWith(thisRunPrefix));
+                // Referral wallet AED already paid out this calendar month —
+                // feeds the soft monthly budget cap (wallet_credit rewards only).
+                const nowMonthKey = new Date(txnStamp).toISOString().slice(0, 7);
+                const monthToDateReferralAed = stateNow.walletTransactions
+                    .filter(w => w.referenceType === "referral" && w.type === "credit"
+                        && w.createdAtISO.slice(0, 7) === nowMonthKey)
+                    .reduce((sum, w) => sum + w.amountAed, 0);
                 const payouts = evaluateReferralRewards({
                     buyerCustomerId: customerId,
                     buyerEmail: buyer.email ?? "",
                     purchaseTotalAed: purchaseTotal,
                     isFirstPurchase: priorSales.length === 0,
                     referrals: stateNow.customerReferrals,
+                    monthToDateReferralAed,
                     settings: {
                         referrerEarnType:      stateNow.referralSettings.referrerEarnType,
                         referrerEarnAmount:    stateNow.referralSettings.referrerEarnAmount,
+                        friendEarnType:        stateNow.referralSettings.friendEarnType,
+                        friendEarnAmount:      stateNow.referralSettings.friendEarnAmount,
                         rewardUnlockTrigger:   stateNow.referralSettings.rewardUnlockTrigger,
                         maxReferralsPerMember: stateNow.referralSettings.maxReferralsPerMember,
                         minFirstSpendAed:      stateNow.referralSettings.minFirstSpendAed,
+                        monthlyProgramBudgetAed: stateNow.referralSettings.monthlyProgramBudgetAed,
                         preventSelfReferral:   stateNow.referralSettings.preventSelfReferral,
                     },
                     emailForCustomer: (id: string) =>
@@ -12733,48 +12744,71 @@ export const useAppStore = create<AppState>()(persist(
                 });
                 for (const payout of payouts) {
                     if (payout.rewardType === "wallet_credit") {
-                        // AED lands in the referrer's account-credit balance —
-                        // spendable at POS + customer checkout on any product
-                        // type, same as any other credit.
+                        // AED lands in the RECIPIENT's account-credit balance
+                        // (referrer or friend) — spendable at POS + customer
+                        // checkout on any product type, like any other credit.
                         get().creditWallet({
-                            customerId: payout.referrerCustomerId,
+                            customerId: payout.recipientCustomerId,
                             amountAed: payout.amount,
                             reason: payout.reason,
                             referenceType: "referral",
                             referenceId: payout.referralId,
                             silent: true,
                         });
+                    } else if (payout.rewardType === "free_credits" && payout.recipientKind === "friend") {
+                        // Approach A — the FRIEND's class-credit welcome bonus is
+                        // granted directly + atomically (usable immediately),
+                        // keeping the credit-total invariant. The referrer's
+                        // free_credits stay row-recorded (redemption-gated) below.
+                        const expiryDays = stateNow.referralSettings.earnedRewardExpiryDays || 90;
+                        get().addComplimentaryPlan({
+                            customerId: payout.recipientCustomerId,
+                            name: "Referral bonus",
+                            creditsLabel: `${payout.amount} free ${payout.amount === 1 ? "credit" : "credits"}`,
+                            purchasedAtISO: new Date(txnStamp).toISOString().slice(0, 10),
+                            expiryISO: new Date(new Date(txnStamp).getTime() + expiryDays * 86_400_000).toISOString(),
+                            freeCredits: payout.amount,
+                            grantReason: "Referral welcome bonus",
+                            grantIssuedBy: "System",
+                            grantIssuedRole: "System",
+                        });
                     }
-                    // `free_credits` (class credits) + `discount` need no
-                    // ledger write — the referral row itself IS the record,
-                    // and the customer-detail Referrals tab + customer portal
-                    // both read `benefitType`/`benefitAmount` off it.
-                    //
-                    // Stamp the row so this referral can never pay out twice,
-                    // and freeze the reward terms as they were at issue time
-                    // (a later settings change must not retroactively rewrite
-                    // what someone already earned).
-                    set(s => ({
-                        customerReferrals: s.customerReferrals.map(r =>
-                            r.id === payout.referralId
-                                ? {
-                                      ...r,
-                                      rewardIssuedAtISO: new Date(txnStamp).toISOString(),
-                                      benefitType: payout.rewardType,
-                                      benefitAmount: payout.amount,
-                                      benefitCredits: payout.rewardType === "free_credits"
-                                          ? payout.amount
-                                          : r.benefitCredits,
-                                  }
-                                : r),
-                    }));
-                    get().recordAudit(
-                        "Referral reward issued",
-                        "customer",
-                        payout.referrerCustomerId,
-                        payout.reason,
-                        { amount: payout.amount },
-                    );
+                    // The REFERRER payout stamps the referral row (freezes the
+                    // reward terms + prevents re-fire); `free_credits`/`discount`
+                    // referrer rewards need no ledger write — the row IS the
+                    // record (customer-detail Referrals tab reads it). The
+                    // FRIEND payout only logs its own bonus (no row stamp).
+                    if (payout.recipientKind === "referrer") {
+                        set(s => ({
+                            customerReferrals: s.customerReferrals.map(r =>
+                                r.id === payout.referralId
+                                    ? {
+                                          ...r,
+                                          rewardIssuedAtISO: new Date(txnStamp).toISOString(),
+                                          benefitType: payout.rewardType,
+                                          benefitAmount: payout.amount,
+                                          benefitCredits: payout.rewardType === "free_credits"
+                                              ? payout.amount
+                                              : r.benefitCredits,
+                                      }
+                                    : r),
+                        }));
+                        get().recordAudit(
+                            "Referral reward issued",
+                            "customer",
+                            payout.referrerCustomerId,
+                            payout.reason,
+                            { amount: payout.amount },
+                        );
+                    } else {
+                        get().recordAudit(
+                            "Referral welcome bonus issued",
+                            "customer",
+                            payout.recipientCustomerId,
+                            payout.reason,
+                            { amount: payout.amount },
+                        );
+                    }
                 }
             }
         } catch {

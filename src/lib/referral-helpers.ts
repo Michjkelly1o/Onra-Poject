@@ -198,8 +198,14 @@ export function canRedeemReferralCreditsAt(
 export interface ReferralPayout {
     /** The referral row to stamp `rewardIssuedAtISO` on. */
     referralId: string;
-    /** Who gets paid — the existing customer who shared their code. */
+    /** The referrer of this referral — used for the row stamp + audit context.
+     *  (Payout recipient is `recipientCustomerId`, which may be the friend.) */
     referrerCustomerId: string;
+    /** Who actually receives THIS payout. */
+    recipientCustomerId: string;
+    /** Whether this payout is the referrer's reward or the friend's welcome
+     *  bonus — the caller stamps the referral row only for the referrer. */
+    recipientKind: "referrer" | "friend";
     /** What they get. Mirrors `referralSettings.referrerEarnType`. */
     rewardType: ReferralRewardType;
     /** AED for `wallet_credit`, class-credit count for `free_credits`. */
@@ -226,12 +232,19 @@ export interface ReferralEvaluationInput {
      *  `friend_first_purchase` trigger. */
     isFirstPurchase: boolean;
     referrals: CustomerReferral[];
+    /** AED already paid out via referral wallet credits this calendar month —
+     *  combined with `monthlyProgramBudgetAed` to enforce the soft budget cap.
+     *  Only wallet_credit rewards carry AED; free_credits never hit the cap. */
+    monthToDateReferralAed: number;
     settings: {
         referrerEarnType: ReferralRewardType;
         referrerEarnAmount: number;
+        friendEarnType: ReferralRewardType;
+        friendEarnAmount: number;
         rewardUnlockTrigger: ReferralUnlockTrigger;
         maxReferralsPerMember: number;
         minFirstSpendAed: number;
+        monthlyProgramBudgetAed: number;
         preventSelfReferral: boolean;
     };
     /** Email lookup for the self-referral guard. */
@@ -294,6 +307,17 @@ export function evaluateReferralRewards(
     }
 
     const payouts: ReferralPayout[] = [];
+    // Soft monthly AED budget. Only wallet_credit rewards consume it —
+    // free_credits / discount carry no AED value so they never hit the cap
+    // (0 budget = unlimited). Running total starts from this month's spend.
+    let budgetSpent = input.monthToDateReferralAed;
+    const budget = settings.monthlyProgramBudgetAed;
+    const fitsBudget = (type: ReferralRewardType, amount: number): boolean => {
+        if (type !== "wallet_credit" || budget <= 0) return true;
+        if (budgetSpent + amount > budget) return false;
+        budgetSpent += amount;
+        return true;
+    };
     for (const r of pending) {
         // Gate 4 — self-referral. Same email on both sides = blocked.
         if (settings.preventSelfReferral) {
@@ -308,9 +332,14 @@ export function evaluateReferralRewards(
             if (already >= settings.maxReferralsPerMember) continue;
         }
 
+        // Gate 6 — monthly budget for the referrer reward. If it can't be
+        // funded this month, skip the whole referral (don't stamp — it retries).
+        if (!fitsBudget(settings.referrerEarnType, settings.referrerEarnAmount)) continue;
         payouts.push({
             referralId: r.id,
             referrerCustomerId: r.referrerCustomerId,
+            recipientCustomerId: r.referrerCustomerId,
+            recipientKind: "referrer",
             rewardType: settings.referrerEarnType,
             amount: settings.referrerEarnAmount,
             originBranchId: r.originBranchId,
@@ -322,6 +351,20 @@ export function evaluateReferralRewards(
             r.referrerCustomerId,
             (paidCountByReferrer.get(r.referrerCustomerId) ?? 0) + 1,
         );
+        // Friend welcome bonus — the referred customer's own reward (approach A:
+        // the caller issues it directly to the friend on this first purchase).
+        if (settings.friendEarnAmount > 0 && fitsBudget(settings.friendEarnType, settings.friendEarnAmount)) {
+            payouts.push({
+                referralId: r.id,
+                referrerCustomerId: r.referrerCustomerId,
+                recipientCustomerId: input.buyerCustomerId,
+                recipientKind: "friend",
+                rewardType: settings.friendEarnType,
+                amount: settings.friendEarnAmount,
+                originBranchId: r.originBranchId,
+                reason: "Referral welcome bonus — first purchase",
+            });
+        }
     }
     return payouts;
 }
