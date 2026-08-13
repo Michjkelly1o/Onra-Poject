@@ -8613,9 +8613,15 @@ export const useAppStore = create<AppState>()(persist(
         const deleted: string[] = [];
         const blocked: string[] = [];
         for (const id of ids) {
-            // A customer with any booking on record is history-bearing — it
-            // can only be archived, never hard-deleted (CLAUDE.md archive rule).
-            const hasHistory = state.classBookings.some(b => b.customerId === id);
+            // A customer with any booking OR financial record on file is
+            // history-bearing — it can only be archived, never hard-deleted
+            // (CLAUDE.md archive rule). Covers class bookings, appointment
+            // bookings, and purchase/refund transactions, so a customer with
+            // history in any of those can't slip through the class-only check.
+            const hasHistory =
+                state.classBookings.some(b => b.customerId === id) ||
+                state.appointmentBookings.some(b => b.customerId === id) ||
+                state.customerTransactions.some(t => t.customerId === id);
             if (hasHistory) blocked.push(id);
             else deleted.push(id);
         }
@@ -9183,7 +9189,21 @@ export const useAppStore = create<AppState>()(persist(
             status: "active",
             planTypeLabel: "Free credit",
         };
-        set(state => ({ customerPlans: [plan, ...state.customerPlans] }));
+        // Add the plan row AND credit the customer's balance in one atomic
+        // write — symmetric with removeComplimentaryPlan, which revokes the
+        // same freeCredits. Keeping the balance bump inside the action means
+        // every caller stays consistent (the grant used to bump the balance
+        // in the UI page, so any other caller would have drifted).
+        set(state => ({
+            customerPlans: [plan, ...state.customerPlans],
+            customers: input.freeCredits
+                ? state.customers.map(c =>
+                    c.id === input.customerId
+                        ? { ...c, creditsRemaining: (c.creditsRemaining ?? 0) + (input.freeCredits ?? 0) }
+                        : c,
+                )
+                : state.customers,
+        }));
         const targetCustomer = get().customers.find(c => c.id === input.customerId);
         const customerName = targetCustomer ? capitalizeName(`${targetCustomer.firstName} ${targetCustomer.lastName}`) : "a customer";
         get().recordAudit(`Added complimentary credit to ${customerName}`, "customer_plan", id, input.name, { credits: input.freeCredits ?? 0 });

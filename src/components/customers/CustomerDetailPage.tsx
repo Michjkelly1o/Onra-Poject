@@ -38,7 +38,7 @@ import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
-import { useAppStore, type Customer, type CustomerPlan } from "@/lib/store";
+import { useAppStore, demoRoleToStaffType, type Customer, type CustomerPlan } from "@/lib/store";
 import { resolveReasonExceptions, previewFreezeBilling } from "@/lib/customer/freeze-eligibility";
 import { shortDate as customerShortDate } from "@/lib/customer/profile-format";
 import { CustomerBookingsTab } from "./CustomerBookingsTab";
@@ -962,6 +962,16 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
     const removeComplimentaryPlan = useAppStore(s => s.removeComplimentaryPlan);
     const showToast = useAppStore(s => s.showToast);
     const currentUser = useAppStore(s => s.currentUser);
+    const currentRole = useAppStore(s => s.currentRole);
+    const roles = useAppStore(s => s.roles);
+    // Resolve the signed-in demo role to its Staff role record so the
+    // "Removed by" badge reflects who actually revoked the credit — mirrors
+    // the Add-complimentary flow (AddComplimentaryCreditPage), never hardcoded.
+    const currentStaffRole = useMemo(() => {
+        const type = demoRoleToStaffType(currentRole);
+        if (!type) return undefined;
+        return roles.find(r => r.type === type && r.status === "active");
+    }, [currentRole, roles]);
 
     const customer = customers.find(c => c.id === customerId);
 
@@ -1194,7 +1204,7 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
         );
     }
     function handleRemoveComplimentary(plan: CustomerPlan, reason: string) {
-        removeComplimentaryPlan(plan.id, reason, `${currentUser.first_name} ${currentUser.last_name}`, "Owner");
+        removeComplimentaryPlan(plan.id, reason, `${currentUser.first_name} ${currentUser.last_name}`, currentStaffRole?.name ?? "Owner");
         setPlanModal(null);
         showToast(
             "Complimentary credit removed",

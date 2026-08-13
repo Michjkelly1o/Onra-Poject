@@ -573,6 +573,7 @@ export default function CustomersPage() {
     // function and stay in agreement by construction.
     const customerPlans = useAppStore(s => s.customerPlans);
     const customerTransactions = useAppStore(s => s.customerTransactions);
+    const appointmentBookings = useAppStore(s => s.appointmentBookings);
 
     // ─── Local UI state ─────────────────────────────────────────────────────
     // Branch filter defaults to "" ("All locations") — Owner + Branch Admin
@@ -624,7 +625,15 @@ export default function CustomersPage() {
 
     // ─── Build rows (history flag derived live from bookings) ───────────────
     const allRows = useMemo<CustomerRow[]>(() => {
-        const bookedCustomerIds = new Set(classBookings.map(b => b.customerId));
+        // History-bearing = any class booking, appointment booking, or
+        // purchase/refund transaction. Mirrors the store's deleteCustomers
+        // guard so the Delete option only appears for truly history-free
+        // customers (not those with appointment or financial history).
+        const historyCustomerIds = new Set<string>([
+            ...classBookings.map(b => b.customerId),
+            ...appointmentBookings.map(b => b.customerId),
+            ...customerTransactions.map(t => t.customerId),
+        ]);
         const liveState = { customers, classBookings, customerPlans, customerTransactions };
         // Newest customers first so a just-created customer lands at the top.
         return [...customers]
@@ -648,13 +657,13 @@ export default function CustomersPage() {
                     lastVisitISO: c.lastVisitISO,
                     planExpiryISO: c.planExpiryISO,
                     branchId: c.branchId,
-                    hasHistory: bookedCustomerIds.has(c.id),
+                    hasHistory: historyCustomerIds.has(c.id),
                     lifecycleTag: lc?.tag ?? c.lifecycleTag ?? "Lead",
                     isVip: c.isVip,
                     assignedTo: c.assignedTo,
                 };
             });
-    }, [customers, classBookings, customerPlans, customerTransactions]);
+    }, [customers, classBookings, appointmentBookings, customerPlans, customerTransactions]);
 
     // ─── Apply branch + search + filter ─────────────────────────────────────
     const today = todayISO();

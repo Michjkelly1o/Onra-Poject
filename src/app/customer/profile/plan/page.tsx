@@ -192,7 +192,7 @@ export default function MyPlanPage() {
             <PlanCard
                 key={p.id}
                 plan={p}
-                creditsRemaining={p.kind === "package" ? pkgRemaining.get(p.id) : member?.creditsRemaining}
+                creditsRemaining={p.kind === "package" ? pkgRemaining.get(p.id) : p.kind === "complimentary" ? p.freeCredits : member?.creditsRemaining}
                 priceAed={resolvePrice(p)}
                 canReactivate={canReactivate(p)}
                 canFreeze={cta.mode !== "hidden"}

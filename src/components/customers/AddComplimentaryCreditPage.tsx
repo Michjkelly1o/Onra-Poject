@@ -166,7 +166,7 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
     const searchParams = useSearchParams();
     const returnTo = searchParams.get("returnTo");
     const {
-        customers, updateCustomer, addComplimentaryPlan, showToast,
+        customers, addComplimentaryPlan, showToast,
         currentUser, currentRole, roles, customerPlans,
     } = useAppStore();
 
@@ -259,11 +259,10 @@ export function AddComplimentaryCreditPage({ customerId }: { customerId: string 
     function handleConfirmGrant() {
         if (!customer || !canConfirm) return;
         const creditWord = credits === 1 ? "credit" : "credits";
-        updateCustomer(customer.id, {
-            creditsRemaining: (customer.creditsRemaining ?? 0) + credits,
-        });
         // Record the grant as a complimentary plan row so it shows up in the
         // customer's Plan tab — where it can later be viewed or removed.
+        // addComplimentaryPlan also credits the customer's balance atomically
+        // (symmetric with removeComplimentaryPlan), so no separate bump here.
         addComplimentaryPlan({
             customerId: customer.id,
             name: "Free credit",
