@@ -113,6 +113,7 @@ import { useAppStore, hourFloatFromTime, appointmentToClassInstance, isAppointme
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 import { BlockedStrip } from "@/components/schedule/BlockedStrip";
+import { timeOffDuration } from "@/lib/staff/time-off";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { buildMonthGrid } from "@/lib/calendar-utils";
@@ -342,9 +343,10 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
     }
 
     if (size === "sm") {
-        // Week view — admin's sm chrome: rounded-[6px], px-1.5 py-1.5, gap-0.5.
-        // Card surfaces the same meta line the day view shows (start time +
-        // booked/capacity + FULL badge) so the instructor can read class
+        // Week view — matches the time-off block padding (px-2.5 py-2, gap-1)
+        // so every card in the day + week views is the same size (client
+        // 2026-08). Card surfaces the same meta line the day view shows (start
+        // time + booked/capacity + FULL badge) so the instructor can read class
         // load at a glance without opening the detail page. When this card
         // hosts the "+N more" badge for an overlap group, the meta row is
         // swapped for the badge (the same trade-off the admin week view
@@ -355,7 +357,7 @@ function ClassCard({ cls, size, absolute, moreCount, onClick }: ClassCardProps) 
                 onClick={onClick}
                 style={baseStyle}
                 className={cn(
-                    "rounded-[6px] px-1.5 py-1.5 flex flex-col gap-0.5 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden",
+                    "rounded-[6px] px-2.5 py-2 flex flex-col gap-1 text-left cursor-pointer hover:brightness-95 transition-all overflow-hidden",
                     !absolute && "w-full",
                     cancelled && "opacity-60 line-through",
                 )}
@@ -860,10 +862,12 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, blockedTimes, 
                     {dayBlocks.map(b => (
                         <BlockedStrip
                             key={b.id}
+                            variant="block"
                             blockStart={b.start_time}
                             blockEnd={b.end_time}
                             gridStartHour={gridStartHour}
                             hourHeight={HOUR_HEIGHT}
+                            subtitle={timeOffDuration(b)}
                         />
                     ))}
 
@@ -919,50 +923,9 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * WEEK_HOUR_HEIGHT;
 
-    // Personal blocked-time spans — merge contiguous days that share
-    // the same (start, end) tuple into a single centered overlay.
-    //
-    // A staff can have multiple blocks per day (e.g. morning sick day +
-    // afternoon training). Each (start, end) tuple gets its own span,
-    // so we group by `${date}|${start}|${end}` and emit one span per
-    // tuple. Contiguous days that share the SAME tuple merge into a
-    // single wider overlay.
-    type BlockSpan = { startIdx: number; endIdx: number; block: { start: string; end: string } };
-    const personalBlockSpans: BlockSpan[] = [];
-    // Build a per-day list of (start, end) tuples for blocks that fall
-    // on this week. Skips days outside the week.
-    type Tuple = { start: string; end: string };
-    const dayTuples: Tuple[][] = cols.map(c =>
-        blockedTimes
-            // Audit fix 2026-07-22 — range-inclusive.
-            .filter(b => {
-                const from = b.date_from_iso ?? b.date;
-                const to   = b.date_to_iso   ?? b.date;
-                return c.iso >= from && c.iso <= to;
-            })
-            .map(b => ({ start: b.start_time, end: b.end_time })),
-    );
-    // Collect every distinct tuple across the week (set keyed by string),
-    // then for each tuple sweep the columns building contiguous runs.
-    const tupleKeySet = new Set<string>();
-    for (const tuples of dayTuples) {
-        for (const t of tuples) tupleKeySet.add(`${t.start}|${t.end}`);
-    }
-    const tupleKeys = Array.from(tupleKeySet);
-    for (const key of tupleKeys) {
-        const [start, end] = key.split("|");
-        let current: BlockSpan | null = null;
-        for (let i = 0; i < dayTuples.length; i++) {
-            const hasTuple = dayTuples[i].some(t => t.start === start && t.end === end);
-            if (!hasTuple) {
-                if (current) { personalBlockSpans.push(current); current = null; }
-                continue;
-            }
-            if (current) current.endIdx = i;
-            else current = { startIdx: i, endIdx: i, block: { start, end } };
-        }
-        if (current) personalBlockSpans.push(current);
-    }
+    // Personal time-off now renders as a per-column inset "Time off" block
+    // (BlockedStrip variant="block"), which carries its own label — so the old
+    // merged centered-overlay span computation is no longer needed.
 
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes() - gridStartHour * 60;
@@ -1060,11 +1023,12 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
                                             }).map(b => (
                                                 <BlockedStrip
                                                     key={b.id}
+                                                    variant="block"
                                                     blockStart={b.start_time}
                                                     blockEnd={b.end_time}
                                                     gridStartHour={gridStartHour}
                                                     hourHeight={WEEK_HOUR_HEIGHT}
-                                                    hideLabel
+                                                    subtitle={timeOffDuration(b)}
                                                 />
                                             ))}
                                             {dayClasses.map(cls => {
@@ -1092,23 +1056,10 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
                                 })}
                             </div>
 
-                            {/* Personal blocked-time label overlays — one
-                                per (start, end) tuple-day-run. Same
-                                `labelOnly` chrome whether the block is
-                                isolated to one column or spans several
-                                contiguous days. */}
-                            {personalBlockSpans.map((span, i) => (
-                                <BlockedStrip
-                                    key={`personal-blockspan-${i}`}
-                                    blockStart={span.block.start}
-                                    blockEnd={span.block.end}
-                                    gridStartHour={gridStartHour}
-                                    hourHeight={WEEK_HOUR_HEIGHT}
-                                    labelOnly
-                                    leftPct={(span.startIdx / cols.length) * 100}
-                                    widthPct={((span.endIdx - span.startIdx + 1) / cols.length) * 100}
-                                />
-                            ))}
+                            {/* Each day column now renders its own inset "Time off"
+                                block (variant="block") carrying the label, so the
+                                separate centered-label overlay is no longer needed —
+                                matches the admin staff-mode time-off block. */}
                         </div>
                     </div>
                 )}
@@ -1127,10 +1078,6 @@ function MonthView({ classes, monthYear, branchId, businessHoursRows, blockedTim
     blockedTimes: BlockedTime[];
     onClassClick: (cls: ClassSchedule, e: React.MouseEvent) => void;
 }) {
-    // Per-date set of dates with personal blocked-time entries — drives a
-    // small "Blocked" pill on the month tile so the instructor can spot
-    // their unavailability at a glance without opening Day view.
-    const blockedDates = new Set(blockedTimes.map(b => b.date));
     const grid = buildMonthGrid(monthYear);
 
     const DAY_CLASSES: Record<string, ClassSchedule[]> = {};
@@ -1154,6 +1101,13 @@ function MonthView({ classes, monthYear, branchId, businessHoursRows, blockedTim
                     const isToday = day.iso === TODAY_ISO;
                     const closed = isBranchClosed(businessHoursRows, branchId, day.iso);
                     const dayClasses: ClassSchedule[] = DAY_CLASSES[day.iso] || [];
+                    // Personal time off on this day (range-inclusive) — rendered
+                    // as a card matching the class rows (time + label, same height).
+                    const dayBlocked = blockedTimes.filter(b => {
+                        const from = b.date_from_iso ?? b.date;
+                        const to   = b.date_to_iso   ?? b.date;
+                        return day.iso >= from && day.iso <= to;
+                    });
 
                     return (
                         <div key={i} className="border-r border-b border-[var(--colors-bg-tertiary)] p-2 min-h-[110px] relative overflow-hidden">
@@ -1173,18 +1127,18 @@ function MonthView({ classes, monthYear, branchId, businessHoursRows, blockedTim
                                 </>
                             ) : (
                                 <div className="flex flex-col gap-0.5">
-                                    {/* "Blocked" pill — surfaces personal
-                                        blocked-time entries on the month
-                                        tile without taking a class card
-                                        slot. Same diagonal-stripe vibe
-                                        as the BlockedStrip used in Day +
-                                        Week views below. */}
-                                    {blockedDates.has(day.iso) && (
-                                        <div className="text-[10px] font-semibold text-[var(--colors-text-tertiary)] px-1.5 py-0.5 rounded border-1 border-[var(--colors-border-primary)] bg-[repeating-linear-gradient(45deg,_#f2f4f7_0,_#f2f4f7_3px,_transparent_0,_transparent_6px)] truncate"
-                                            title="Time off on this day">
-                                            Blocked
+                                    {/* Time off — same chrome as the class rows
+                                        (xs ClassCard): "TIME • Time off" on one
+                                        line, same padding/height, with the
+                                        diagonal hatch to read as "unavailable". */}
+                                    {dayBlocked.map(b => (
+                                        <div key={b.id} title="Time off"
+                                            className="w-full rounded-[4px] px-1.5 py-[3px] flex items-center gap-1 overflow-hidden border-1 border-[var(--colors-border-secondary)] bg-[repeating-linear-gradient(45deg,_#f2f4f7_0,_#f2f4f7_3px,_transparent_0,_transparent_6px)]">
+                                            <span className="text-[11px] font-medium whitespace-nowrap shrink-0 text-[var(--colors-text-tertiary)]">{b.all_day ? "All day" : fmt12(b.start_time)}</span>
+                                            <span className="text-[11px] text-[var(--colors-fg-quaternary)] shrink-0">•</span>
+                                            <span className="text-[11px] font-medium truncate text-[var(--colors-text-secondary)]">Time off</span>
                                         </div>
-                                    )}
+                                    ))}
                                     {dayClasses.slice(0, 2).map(cls => (
                                         <ClassCard
                                             key={cls.id}

@@ -33,6 +33,7 @@ import {
     UserSquare, ClockPlus, AlarmClockOff, Settings01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
+import { registerFilterResetter } from "@/lib/list-ui-cache";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
@@ -716,6 +717,9 @@ const staffUiByRoute: Record<string, StaffUiState> = {};
 function getStaffUi(key: string): StaffUiState {
     return (staffUiByRoute[key] ??= defaultStaffUi());
 }
+// Opening a module from the sidebar wipes the Staff toolbar caches so every
+// sub-tab (Staff / Shift / Time off) reopens with fresh filters (client 2026-08).
+registerFilterResetter(() => { for (const k of Object.keys(staffUiByRoute)) delete staffUiByRoute[k]; });
 
 export interface StaffPermissionsPageProps {
     /** When set, the page renders ONLY the matching tab + adjusts the toolbar:

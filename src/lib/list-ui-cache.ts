@@ -24,6 +24,32 @@ import { useEffect, useRef, useState } from "react";
 
 const cache = new Map<string, unknown>();
 
+// ── Module-open reset ────────────────────────────────────────────────────────
+//
+// Every time the admin/instructor opens a module from the sidebar, all filters
+// should start fresh (client 2026-08). Most modules keep their toolbar state in
+// this cache, but a few own a separate module-scoped object (Schedule's
+// `scheduleUi`, Staff's `staffUi`). Those register a resetter here so a single
+// `resetAllFilters()` call clears every surface at once — and, because the
+// sidebar fires it BEFORE navigating, the target page reads the cleared state on
+// mount and renders fresh.
+const resetters = new Set<() => void>();
+
+/** Register a callback that restores a module's own (non-cache) toolbar state to
+ *  its defaults. Returns an unregister function. */
+export function registerFilterResetter(fn: () => void): () => void {
+    resetters.add(fn);
+    return () => { resetters.delete(fn); };
+}
+
+/** Reset EVERY module's cached toolbar / filter state to defaults — the shared
+ *  cache plus every registered module resetter. Called when a module is opened
+ *  from the sidebar so it starts from a clean slate. */
+export function resetAllFilters(): void {
+    cache.clear();
+    resetters.forEach(fn => { try { fn(); } catch { /* a bad resetter never blocks the rest */ } });
+}
+
 /** Read the cached value for `key`, or `initial` if none has been stored yet. */
 export function getListUi<T>(key: string, initial: T): T {
     return cache.has(key) ? (cache.get(key) as T) : initial;

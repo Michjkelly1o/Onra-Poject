@@ -51,11 +51,19 @@ interface BlockedStripProps {
      *  `leftPct` for the per-span label rendering. */
     widthPct?: number;
     /** Card title — the time-off REASON ("Vacation", "Sick"…) for a staff
-     *  time-off block. Defaults to "Blocked" (branch block-time windows). */
+     *  time-off block. Defaults to "Blocked" (branch block-time windows), or
+     *  "Time off" for the `block` variant. */
     title?: string;
     /** Card subtext — the DURATION ("All day" / "07:00 – 09:00 AM"). Defaults
      *  to the block's start–end range. */
     subtitle?: string;
+    /** Visual style:
+     *   • "strip" (default) — full-width diagonal band with a centered pill
+     *     label (branch block-time windows + the Attendee grid).
+     *   • "block" — a ROUNDED, inset, left-aligned hatch card ("Time off" +
+     *     duration), matching the admin Schedule staff-mode time-off block, so
+     *     the instructor schedule reads identically. */
+    variant?: "strip" | "block";
 }
 
 function toMinutes(time: string): number {
@@ -81,8 +89,9 @@ export function BlockedStrip({
     widthPct,
     title,
     subtitle,
+    variant = "strip",
 }: BlockedStripProps) {
-    const labelTitle = title ?? "Blocked";
+    const labelTitle = title ?? (variant === "block" ? "Time off" : "Blocked");
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
     if (!mounted) return null;
@@ -93,6 +102,33 @@ export function BlockedStrip({
 
     const top    = (startMins * hourHeight) / 60;
     const height = ((endMins - startMins) * hourHeight) / 60;
+
+    // ─── Block variant — rounded inset hatch card (admin staff-mode look) ──
+    //
+    // Same shape as the admin Schedule time-off block: a rounded, inset card
+    // (8px left/right + 8px top/bottom) with a diagonal hatch, "Time off" on
+    // top and the duration below, both left-aligned. Used by the instructor
+    // schedule so its time-off reads identically to admin.
+    if (variant === "block") {
+        const VPAD = 8;
+        return (
+            <div
+                className="absolute left-2 right-2 z-10 rounded-[10px] overflow-hidden border border-[var(--colors-border-secondary)] px-2.5 py-2 flex flex-col gap-1 pointer-events-none"
+                style={{
+                    top: top + VPAD,
+                    height: Math.max(24, height - 2 * VPAD),
+                    backgroundColor: "#f9fafb",
+                    backgroundImage:
+                        "repeating-linear-gradient(45deg, rgba(208, 213, 221, 0.45) 0, rgba(208, 213, 221, 0.45) 1px, transparent 1px, transparent 12px)",
+                }}
+            >
+                <p className="text-[14px] font-medium leading-[20px] text-[var(--colors-text-secondary)] truncate">{labelTitle}</p>
+                <p className="text-[12px] text-[var(--colors-text-quaternary)] truncate">
+                    {subtitle ?? `${fmt12(blockStart)} – ${fmt12(blockEnd)}`}
+                </p>
+            </div>
+        );
+    }
 
     // ─── Label-only overlay ───────────────────────────────────────────────
     //

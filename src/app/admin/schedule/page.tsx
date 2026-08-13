@@ -10,6 +10,7 @@ import {
     ChevronDown, User01, HeartHand, Shuffle01,
 } from "@untitledui/icons";
 import { cn, formatTimeRange12 } from "@/lib/utils";
+import { registerFilterResetter } from "@/lib/list-ui-cache";
 import { buildMonthGrid } from "@/lib/calendar-utils";
 import { AttendanceBar } from "@/components/patterns/AttendanceBar";
 import { Button } from "@/components/ui/button";
@@ -1110,6 +1111,11 @@ const scheduleUi: {
     weekStart: "",
     monthYear: "",
 };
+// Reset the Schedule toolbar to defaults whenever a module is opened from the
+// sidebar (client 2026-08) — so the location filter / search / view / date all
+// start fresh instead of restoring the last-viewed state.
+const SCHEDULE_UI_DEFAULTS = { ...scheduleUi };
+registerFilterResetter(() => { Object.assign(scheduleUi, SCHEDULE_UI_DEFAULTS); });
 
 export default function SchedulePageRoute() {
     // Suspense wrapper is required by Next.js App Router because
@@ -1352,25 +1358,24 @@ function SchedulePage() {
     // scoped to the toolbar location (staff with no branch = all-locations show).
     const dayStaffColumns = useMemo(() => {
         const roleNameById = new Map(roles.map(r => [r.id, r.name] as const));
-        // Owners can't hold shifts — exclude every owner-type role from the columns.
-        const ownerRoleIds = new Set(roles.filter(r => r.type === "owner").map(r => r.id));
+        // Schedule day view shows INSTRUCTOR columns only (client 2026-08-13) —
+        // classes are taught by instructors, so other roles (Owner / Branch admin /
+        // Front desk / Operator) are excluded from the day grid.
+        const instructorRoleIds = new Set(roles.filter(r => r.type === "instructor").map(r => r.id));
         const inScope = staff.filter(s =>
             s.status === "active" &&
-            !ownerRoleIds.has(s.roleId) &&
+            instructorRoleIds.has(s.roleId) &&
             (!location || s.branchId === location || s.branchId == null),
         );
-        const toCol = (s: (typeof inScope)[number]) => ({
+        return inScope.map(s => ({
             id: s.id,
             name: s.fullName,
             initials: s.initials,
             color: s.color,
             imageUrl: s.imageUrl,
             branchId: s.branchId,
-            roleLabel: roleNameById.get(s.roleId) ?? "Staff",
-        });
-        const instructors = inScope.filter(s => s.roleId === "role_instructor").map(toCol);
-        const others = inScope.filter(s => s.roleId !== "role_instructor").map(toCol);
-        return [...instructors, ...others];
+            roleLabel: roleNameById.get(s.roleId) ?? "Instructor",
+        }));
     }, [staff, roles, location]);
 
     // ── Day-view shift actions (hover-delete + staff-column 3-dot) ──────────
@@ -1538,12 +1543,12 @@ function SchedulePage() {
         <div className="flex-1 min-h-0 flex flex-col gap-6">
             {/* ── Toolbar ── */}
             <div className="flex items-center gap-3">
-                {/* Schedule's pre-existing chrome hardcodes "classes" plural;
-                    preserve that with identical entitySingular + entityPlural. */}
+                {/* Total scheduled sessions — labelled "schedules" per client
+                    2026-08-13 (was "classes"). */}
                 <ToolbarTotal
                     count={activeTab === "list" ? tabbedClasses.length : gridClasses.length}
-                    entitySingular="classes"
-                    entityPlural="classes"
+                    entitySingular="schedule"
+                    entityPlural="schedules"
                 />
                 <SelectInput
                     triggerIcon={<MarkerPin01 className="w-4 h-4" />}

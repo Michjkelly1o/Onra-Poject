@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { resetAllFilters } from "@/lib/list-ui-cache";
 import {
     BarChartSquare02,
     CalendarCheck01,
@@ -300,7 +301,7 @@ function SlimFlyout({ label, items, activeHref, children }: {
                             <Link
                                 key={child.href}
                                 href={child.href}
-                                onClick={() => setPos(null)}
+                                onClick={() => { setPos(null); resetAllFilters(); }}
                                 className={cn(
                                     "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                                     active
@@ -609,7 +610,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                         )}
                                     </button>
                                 ) : (
-                                    <Link href={item.href!} className={rowCls}>
+                                    <Link href={item.href!} onClick={resetAllFilters} className={rowCls}>
                                         {isSelfActive && (
                                             <span className="absolute left-0 top-[7px] w-1 h-6 bg-[var(--brand-tertiary)] rounded-r" />
                                         )}
@@ -660,6 +661,7 @@ export default function Sidebar({ navItems, accountHref, showSettings = true }: 
                                             <div key={child.href} className="relative">
                                                 <Link
                                                     href={child.href}
+                                                    onClick={resetAllFilters}
                                                     className={cn(
                                                         "relative flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-md text-sm font-medium transition-colors",
                                                         childActive
@@ -880,7 +882,7 @@ function SidebarSettingsChip({ slim, closeSignal = 0 }: { slim: boolean; closeSi
                             <Link
                                 key={g.id}
                                 href={g.tabs[0].href}
-                                onClick={() => setOpen(false)}
+                                onClick={() => { setOpen(false); resetAllFilters(); }}
                                 className={cn(
                                     "flex items-center gap-3 px-4 py-3 text-[14px] font-medium transition-colors",
                                     isGroupActive
