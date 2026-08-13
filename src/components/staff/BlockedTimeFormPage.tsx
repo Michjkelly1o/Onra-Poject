@@ -226,9 +226,13 @@ export interface BlockedTimeFormPageProps {
     /** When provided the form renders as SIDE-PANEL content and this closes the
      *  panel instead of navigating (client 2026-07-30). */
     onClose?: () => void;
+    /** Self-service mode (instructor side, client 2026-08-13): pins the entry to
+     *  THIS staff member and hides the Staff picker. Everything else — order,
+     *  reason list, time-window rules, sync — is identical to the admin form. */
+    lockedStaffId?: string;
 }
 
-export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/staff", onClose }: BlockedTimeFormPageProps) {
+export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/staff", onClose, lockedStaffId }: BlockedTimeFormPageProps) {
     const router = useRouter();
     const panel = !!onClose;
     const exit = onClose ?? (() => router.push(returnTo));
@@ -261,7 +265,9 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
         staffIds:  [...existing!.staff_ids],
     });
     const [form, setForm] = useState<FormValue>(() =>
-        existing ? seedFormFromExisting() : EMPTY_FORM(),
+        existing
+            ? seedFormFromExisting()
+            : (lockedStaffId ? { ...EMPTY_FORM(), staffIds: [lockedStaffId] } : EMPTY_FORM()),
     );
 
     useEffect(() => {
@@ -442,17 +448,21 @@ export function BlockedTimeFormPage({ mode, blockedTimeId, returnTo = "/admin/st
         <>
             <h2 className="font-semibold text-[18px] leading-[28px] text-[var(--colors-text-primary)]">Time off details</h2>
 
-            {/* Staff — picked first; drives the available time window below. */}
-            <div className="flex flex-col gap-[6px]">
-                <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Staff</label>
-                <MultiStaffDropdown
-                    options={availableStaff}
-                    selectedIds={form.staffIds}
-                    onChange={ids => set({ staffIds: ids })}
-                    placeholder="Search and select staff members"
-                />
-                <p className="text-[13px] text-[var(--colors-text-quaternary)]">Search and select staff members</p>
-            </div>
+            {/* Staff — picked first; drives the available time window below.
+                Hidden in self-service mode (instructor side) where the entry is
+                pinned to the logged-in staff member. */}
+            {!lockedStaffId && (
+                <div className="flex flex-col gap-[6px]">
+                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Staff</label>
+                    <MultiStaffDropdown
+                        options={availableStaff}
+                        selectedIds={form.staffIds}
+                        onChange={ids => set({ staffIds: ids })}
+                        placeholder="Search and select staff members"
+                    />
+                    <p className="text-[13px] text-[var(--colors-text-quaternary)]">Search and select staff members</p>
+                </div>
+            )}
 
             {/* Date — a single day. `dateFrom` and `dateTo` write the same day. */}
             <div className="flex flex-col gap-[6px]">

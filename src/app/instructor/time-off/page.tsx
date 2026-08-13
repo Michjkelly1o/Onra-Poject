@@ -14,16 +14,15 @@
 //   • Reason / Range / Group / Past pills all use the same fit-width
 //     pill shape the app uses everywhere (rounded-full, non-uppercase).
 
-import { useEffect, useMemo, useState } from "react";
-import { Plus, XClose, Edit02, Trash01, Clock, DotsVertical } from "@untitledui/icons";
+import { useMemo, useState } from "react";
+import { Plus, Edit02, Trash01, Clock, DotsVertical } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SelectInput } from "@/components/ui/select-input";
-import { DatePicker } from "@/components/ui/DatePicker";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import { SlidePanel } from "@/components/ui/SlidePanel";
+import { BlockedTimeFormPage } from "@/components/staff/BlockedTimeFormPage";
 import { TABLE_TH as TH, TABLE_TD as TD } from "@/lib/table-styles";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { useAppStore, type BlockedTime } from "@/lib/store";
@@ -83,249 +82,6 @@ function ReasonChip({ reason }: { reason: Reason | undefined }) {
     );
 }
 
-const REASON_OPTIONS: { value: Reason; label: string }[] = [
-    { value: "annual_leave",    label: "Annual Leave"    },
-    { value: "sick",            label: "Sick"            },
-    { value: "personal",        label: "Personal"        },
-    { value: "training",        label: "Training"        },
-    { value: "religious_leave", label: "Religious Leave" },
-    { value: "other",           label: "Other"           },
-];
-
-// ─── Form panel (SlidePanel) ─────────────────────────────────────────────
-
-interface FormValue {
-    title: string;
-    dateFrom: string;
-    dateTo:   string;
-    allDay: boolean;
-    startTime: string;
-    endTime:   string;
-    reason: Reason;
-    note: string;
-}
-
-const EMPTY_FORM = (): FormValue => ({
-    title: "", dateFrom: "", dateTo: "", allDay: false,
-    startTime: "09:00", endTime: "10:00", reason: "annual_leave", note: "",
-});
-
-/** 15-minute time options (24h). */
-const TIME_OPTIONS: { value: string; label: string }[] = (() => {
-    const out: { value: string; label: string }[] = [];
-    for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 15) {
-            const hh = String(h).padStart(2, "0");
-            const mm = String(m).padStart(2, "0");
-            const value = `${hh}:${mm}`;
-            const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-            const period = h < 12 ? "AM" : "PM";
-            out.push({ value, label: `${String(h12).padStart(2, "0")}:${mm} ${period}` });
-        }
-    }
-    return out;
-})();
-
-function TimeOffPanel({
-    open, mode, existing, onClose, onSubmit,
-}: {
-    open: boolean;
-    mode: "create" | "edit";
-    existing?: BlockedTime;
-    onClose: () => void;
-    onSubmit: (v: FormValue) => void;
-}) {
-    const seedFromExisting = (): FormValue => existing
-        ? {
-            title:     existing.title,
-            dateFrom:  existing.date_from_iso ?? existing.date,
-            dateTo:    existing.date_to_iso   ?? existing.date,
-            allDay:    existing.all_day       ?? false,
-            startTime: existing.start_time,
-            endTime:   existing.end_time,
-            reason:    existing.reason        ?? "other",
-            note:      existing.note,
-        }
-        : EMPTY_FORM();
-
-    const [form, setForm] = useState<FormValue>(seedFromExisting);
-    useEffect(() => {
-        if (!open) return;
-        setForm(seedFromExisting());
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [existing?.id, open, mode]);
-
-    function set(patch: Partial<FormValue>) {
-        setForm(prev => ({ ...prev, ...patch }));
-    }
-
-    const today = todayISO();
-    const isPast = !!form.dateFrom && form.dateFrom < today;
-    const isInverted = !!form.dateFrom && !!form.dateTo && form.dateTo < form.dateFrom;
-    const missingOtherNote = form.reason === "other" && !form.note.trim();
-    const isValid = (() => {
-        if (!form.dateFrom || !form.dateTo) return false;
-        if (isPast || isInverted) return false;
-        if (!form.allDay) {
-            if (!form.startTime || !form.endTime) return false;
-            if (form.startTime >= form.endTime) return false;
-        }
-        if (missingOtherNote) return false;
-        return true;
-    })();
-
-    return (
-        <SlidePanel open={open} onClose={onClose} width={440}>
-            {/* Header */}
-            <div className="shrink-0 px-6 py-4 border-b border-[var(--colors-border-secondary)] flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                    <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">
-                        {mode === "edit" ? "Edit time off" : "Add time off"}
-                    </p>
-                </div>
-                <button type="button" onClick={onClose} aria-label="Close"
-                    className="w-9 h-9 flex items-center justify-center rounded-[8px] hover:bg-[var(--colors-bg-secondary)] transition-colors text-[var(--colors-text-quaternary)]">
-                    <XClose className="w-5 h-5" />
-                </button>
-            </div>
-
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-                <div className="flex flex-col gap-[6px]">
-                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Reason</label>
-                    <SelectInput
-                        placeholder="Select a reason"
-                        value={form.reason}
-                        onChange={v => set({ reason: v as Reason })}
-                        options={REASON_OPTIONS}
-                        width="w-full"
-                    />
-                </div>
-
-                <div className="flex flex-col gap-[6px]">
-                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Title (optional)</label>
-                    <input
-                        type="text" value={form.title}
-                        onChange={e => set({ title: e.target.value })}
-                        placeholder="Enter title"
-                        className="h-10 w-full px-[14px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white"
-                    />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-[6px]">
-                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">From</label>
-                        <DatePicker
-                            value={form.dateFrom}
-                            onChange={iso => {
-                                const nextTo = form.dateTo && form.dateTo < iso ? iso : form.dateTo || iso;
-                                set({ dateFrom: iso, dateTo: nextTo });
-                            }}
-                            placeholder="Select date"
-                            minDate={today}
-                        />
-                        {isPast && (
-                            <p className="text-[13px] text-[#b42318]">Date can&apos;t be in the past.</p>
-                        )}
-                    </div>
-                    <div className="flex flex-col gap-[6px]">
-                        <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">To</label>
-                        <DatePicker
-                            value={form.dateTo}
-                            onChange={iso => set({ dateTo: iso })}
-                            placeholder="Select date"
-                            minDate={form.dateFrom || today}
-                        />
-                        {isInverted && (
-                            <p className="text-[13px] text-[#b42318]">End date must be on or after the start date.</p>
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-white p-3">
-                    <button
-                        type="button"
-                        role="switch"
-                        aria-checked={form.allDay}
-                        aria-label="All day"
-                        onClick={() => set({ allDay: !form.allDay })}
-                        className={cn(
-                            "w-11 h-6 rounded-full p-0.5 flex items-center shrink-0 transition-colors",
-                            form.allDay ? "bg-[var(--colors-secondary-600)]" : "bg-[var(--colors-bg-tertiary)]",
-                        )}
-                    >
-                        <span className={cn(
-                            "w-5 h-5 rounded-full bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.15)] transition-transform",
-                            form.allDay ? "translate-x-5" : "translate-x-0",
-                        )} />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-5">All day</p>
-                        <p className="text-[13px] text-[var(--colors-text-quaternary)] leading-[18px] mt-0.5">Runs full days across the picked range.</p>
-                    </div>
-                </div>
-
-                {!form.allDay && (
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Start time</label>
-                            <SelectInput
-                                triggerIcon={<Clock className="w-4 h-4" />}
-                                placeholder="Select time"
-                                value={form.startTime}
-                                onChange={v => set({ startTime: v })}
-                                options={TIME_OPTIONS}
-                                width="w-full"
-                            />
-                        </div>
-                        <div className="flex flex-col gap-[6px]">
-                            <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">End time</label>
-                            <SelectInput
-                                triggerIcon={<Clock className="w-4 h-4" />}
-                                placeholder="Select time"
-                                value={form.endTime}
-                                onChange={v => set({ endTime: v })}
-                                options={TIME_OPTIONS}
-                                width="w-full"
-                            />
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex flex-col gap-[6px]">
-                    <label className="text-[14px] font-medium text-[var(--colors-text-secondary)]">
-                        {form.reason === "other" ? "Note" : "Note (optional)"}
-                    </label>
-                    <textarea
-                        value={form.note}
-                        onChange={e => set({ note: e.target.value })}
-                        placeholder={form.reason === "other"
-                            ? "Describe the reason..."
-                            : "Enter note..."
-                        }
-                        rows={3}
-                        className="w-full px-[14px] py-[10px] border-1 border-[var(--colors-border-primary)] rounded-[8px] text-[14px] text-[var(--colors-text-primary)] placeholder:text-[var(--colors-text-quaternary)] focus:outline-none focus:ring-2 focus:ring-[var(--colors-secondary-300)] focus:border-[var(--colors-secondary-500)] transition-all shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)] bg-white resize-y"
-                    />
-                    {missingOtherNote && (
-                        <p className="text-[13px] text-[#b42318]">A note is required when the reason is Other.</p>
-                    )}
-                </div>
-            </div>
-
-            {/* Footer */}
-            <div className="shrink-0 px-6 py-4 border-t border-[var(--colors-border-secondary)] flex justify-end gap-3">
-                <Button variant="secondary-gray" size="md" onClick={onClose}>
-                    Cancel
-                </Button>
-                <Button variant="primary" size="md" disabled={!isValid}
-                    onClick={() => onSubmit(form)}>
-                    {mode === "edit" ? "Save changes" : "Add time off"}
-                </Button>
-            </div>
-        </SlidePanel>
-    );
-}
-
 // ─── Row action menu ──────────────────────────────────────────────────────
 
 function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
@@ -361,17 +117,11 @@ function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => voi
 export default function InstructorTimeOffPage() {
     const meStaffId = instructor_profile.staff_profile_id;
 
+    // Adds/edits go through the SHARED admin BlockedTimeFormPage (self-service
+    // mode), so this page only needs the read + delete actions now.
     const blockedTimes       = useAppStore(s => s.blockedTimes);
-    const addBlockedTime     = useAppStore(s => s.addBlockedTime);
-    const updateBlockedTime  = useAppStore(s => s.updateBlockedTime);
     const deleteBlockedTimes = useAppStore(s => s.deleteBlockedTimes);
     const showToast          = useAppStore(s => s.showToast);
-    const staff              = useAppStore(s => s.staff);
-
-    const myBranchId = useMemo(() => {
-        const me = staff.find(s => s.id === meStaffId);
-        return me?.branchId ?? "";
-    }, [staff, meStaffId]);
 
     const [panel, setPanel] = useState<{ open: boolean; mode: "create" | "edit"; row?: BlockedTime }>({ open: false, mode: "create" });
     const [pendingDelete, setPendingDelete] = useState<BlockedTime | null>(null);
@@ -393,36 +143,6 @@ export default function InstructorTimeOffPage() {
                 return bFrom.localeCompare(aFrom);
             });
     }, [blockedTimes, meStaffId]);
-
-    function handleSubmit(form: FormValue) {
-        const effStart = form.allDay ? "00:00" : form.startTime;
-        const effEnd   = form.allDay ? "23:59" : form.endTime;
-        const row = {
-            title:         form.title.trim(),
-            date:          form.dateFrom,
-            date_from_iso: form.dateFrom,
-            date_to_iso:   form.dateTo,
-            all_day:       form.allDay,
-            start_time:    effStart,
-            end_time:      effEnd,
-            reason:        form.reason,
-            note:          form.note.trim(),
-            staff_ids:     [meStaffId],
-            branch_id:     myBranchId,
-        };
-        if (panel.mode === "edit" && panel.row) {
-            updateBlockedTime(panel.row.id, row);
-            showToast("Time off updated", "Admin can see your update right away.", "success", "check");
-        } else {
-            addBlockedTime(row);
-            showToast(
-                "Time off added",
-                "Your time off is logged. Admin can see it right away — no approval needed.",
-                "success", "check",
-            );
-        }
-        setPanel({ open: false, mode: "create" });
-    }
 
     function handleDelete() {
         if (!pendingDelete) return;
@@ -558,15 +278,20 @@ export default function InstructorTimeOffPage() {
                 )}
             </div>
 
-            {/* Slide panel — replaces the earlier centered modal
-                (client 2026-07-22 audit: side panel, not modal). */}
-            <TimeOffPanel
-                open={panel.open}
-                mode={panel.mode}
-                existing={panel.row}
-                onClose={() => setPanel({ open: false, mode: "create" })}
-                onSubmit={handleSubmit}
-            />
+            {/* Slide panel — REUSES the shared admin BlockedTimeFormPage in
+                self-service mode (lockedStaffId), so the instructor form has the
+                exact same fields / order / reason list as admin — just without
+                the Staff picker — and writes to the same store (client 2026-08-13). */}
+            <SlidePanel open={panel.open} onClose={() => setPanel({ open: false, mode: "create" })} width={480}>
+                {panel.open && (
+                    <BlockedTimeFormPage
+                        mode={panel.mode}
+                        blockedTimeId={panel.row?.id}
+                        lockedStaffId={meStaffId}
+                        onClose={() => setPanel({ open: false, mode: "create" })}
+                    />
+                )}
+            </SlidePanel>
 
             {/* Delete confirm */}
             {pendingDelete && (
