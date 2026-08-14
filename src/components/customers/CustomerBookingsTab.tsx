@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     SearchMd, FilterLines, Eye, XClose,
-    MarkerPin01, Users01, AlignLeft, Star01,
+    MarkerPin01, Users01, AlignLeft,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import { SelectInput } from "@/components/ui/select-input";
 import { useAppStore, type SessionType } from "@/lib/store";
 import { SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
 import { SESSION_TYPE_ORDER, SESSION_TYPE_FILTER_LABEL } from "@/lib/session-type";
+import { StarRating } from "@/components/patterns/StarRating";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
@@ -686,22 +687,22 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr>
-                                            <th className={cn(TH, "w-[180px]")}>
+                                            <th className={cn(TH, "w-[160px]")}>
                                                 <SortableHeader sortKey="date"     currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Date &amp; time</SortableHeader>
                                             </th>
-                                            <th className={TH}>
+                                            <th className={cn(TH, "w-[220px]")}>
                                                 <SortableHeader sortKey="name"     currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Class name</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[130px]")}>
                                                 <SortableHeader sortKey="type"     currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Type</SortableHeader>
                                             </th>
-                                            <th className={cn(TH, "w-[170px]")}>
+                                            <th className={cn(TH, "w-[140px]")}>
                                                 <SortableHeader sortKey="location" currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Location</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[160px]")}>
                                                 <SortableHeader sortKey="rating"   currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Rating</SortableHeader>
                                             </th>
-                                            <th className={cn(TH, "w-[140px]")}>
+                                            <th className={cn(TH, "w-[120px]")}>
                                                 <SortableHeader sortKey="status"   currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Status</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[52px]")} />
@@ -732,21 +733,8 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                                 <td className={TD}><SessionTypeTag type={r.type} /></td>
                                                 {/* Location */}
                                                 <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{r.location}</td>
-                                                {/* Rating */}
-                                                <td className={TD}>
-                                                    {r.ratingCount > 0 ? (
-                                                        <div className="flex flex-col">
-                                                            <div className="flex items-center gap-1">
-                                                                {[0, 1, 2, 3, 4].map(i => (
-                                                                    <Star01 key={i} className={cn("w-3.5 h-3.5", i < Math.round(r.rating) ? "text-[#fdb022] fill-[#fdb022]" : "text-[#e4e7ec]")} />
-                                                                ))}
-                                                            </div>
-                                                            <span className="text-[12px] text-[var(--colors-text-tertiary)]">{r.rating.toFixed(1)} ({r.ratingCount} ratings)</span>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-[13px] text-[var(--colors-text-tertiary)]">No ratings</span>
-                                                    )}
-                                                </td>
+                                                {/* Rating — shared StarRating: placeholder stars + "0 (0 ratings)". */}
+                                                <td className={TD}><StarRating rating={r.rating} count={r.ratingCount} /></td>
                                                 {/* Status */}
                                                 <td className={TD}><BookingStatusBadge status={r.displayStatus} waitlistPosition={r.waitlistPosition} /></td>
                                                 {/* Actions */}
