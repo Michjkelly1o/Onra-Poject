@@ -40,6 +40,8 @@ import { cn, to12h } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Toast } from "@/components/ui/Toast";
 import { UnitSuffixSelect } from "@/components/patterns/UnitSuffixSelect";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { notificationSettingsExportData } from "@/lib/export/specs/notifications";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
 import {
     PhoneCountryDropdown,
@@ -1628,6 +1630,17 @@ export default function CustomerNotificationsPage() {
                                 Quiet hours {to12h(delivery.quietHoursStart)}-{to12h(delivery.quietHoursEnd)}
                             </span>
                         </Pill>
+                        <ToolbarExport
+                            disabled={settings.length === 0}
+                            exportData={() => {
+                                if (settings.length === 0) return null;
+                                const branchNameById = new Map(branches.map(b => [b.id, b.name]));
+                                return notificationSettingsExportData(settings, id => branchNameById.get(id) ?? "");
+                            }}
+                            onExported={(fmt) => {
+                                showToast("Notification settings exported", `${settings.length} setting${settings.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                            }}
+                        />
                         <Button variant="secondary-gray" size="md"
                             leftIcon={<Clock className="w-4 h-4" />}
                             onClick={() => setDeliveryOpen(true)}>

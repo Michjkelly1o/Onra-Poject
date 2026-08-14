@@ -37,6 +37,8 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { classCategoriesExportData } from "@/lib/export/specs/classes";
 
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[var(--colors-text-quaternary)] sticky top-0 z-[5] bg-[var(--colors-bg-primary)] shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
 const TD = "px-4 py-4 text-[14px] text-[var(--colors-text-secondary)] border-b border-[var(--colors-bg-tertiary)]";
@@ -203,7 +205,7 @@ export function useClassCategoriesController() {
     const isFilteredEmpty = !isTrulyEmpty && sortedRows.length === 0;
 
     return {
-        categories, search, setSearch,
+        categories, search, setSearch, showToast,
         sortKey, sortDir, toggleSort, sortedRows, pageRows,
         selectedIds, allChecked, someChecked, selectedRows,
         toggleAllOnPage, toggleOne, clearSelection,
@@ -273,6 +275,14 @@ export function ClassCategoriesToolbar({ ctrl, onAddTemplate }: {
         <div className="flex items-center gap-3 w-full">
             <ToolbarTotal count={ctrl.categories.length} entitySingular="category" entityPlural="categories" />
             <ToolbarSearch value={ctrl.search} onChange={ctrl.setSearch} placeholder="Search category..." />
+            <ToolbarExport
+                disabled={ctrl.sortedRows.length === 0}
+                exportData={() => (ctrl.sortedRows.length === 0 ? null : classCategoriesExportData(ctrl.sortedRows))}
+                onExported={(fmt) => {
+                    const n = ctrl.sortedRows.length;
+                    ctrl.showToast("Categories exported", `${n} categor${n === 1 ? "y" : "ies"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                }}
+            />
             <ToolbarImportButton visible={ctrl.categories.length === 0 && !ctrl.search.trim()} />
             {onAddTemplate ? (
                 <ClassAddMenu onAddTemplate={onAddTemplate} onAddCategory={ctrl.handleAddCategory} />

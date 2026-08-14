@@ -62,6 +62,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { branchesExportData } from "@/lib/export/specs/locations";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { timezoneLabel, resolveBranchTimezone } from "@/lib/data/locales";
@@ -369,6 +371,17 @@ export default function BusinessLocationsPage() {
                             value={searchQuery}
                             onChange={setSearchQuery}
                             placeholder="Search location..."
+                        />
+                        <ToolbarExport
+                            disabled={activeBranches.length + archivedBranches.length === 0}
+                            exportData={() => {
+                                const rows = [...activeBranches, ...archivedBranches];
+                                return rows.length === 0 ? null : branchesExportData(rows);
+                            }}
+                            onExported={(fmt) => {
+                                const n = activeBranches.length + archivedBranches.length;
+                                showToast("Locations exported", `${n} location${n === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                            }}
                         />
                         <FilterDropdown
                             open={filterOpen}

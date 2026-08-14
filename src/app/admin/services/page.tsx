@@ -45,6 +45,8 @@ import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { servicesExportData } from "@/lib/export/specs/classes";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { Toast } from "@/components/ui/Toast";
@@ -531,6 +533,7 @@ function ServicesPageInner() {
 
     // ─── Store subscriptions ───────────────────────────────────────────────
     const services         = useAppStore(s => s.services);
+    const rooms            = useAppStore(s => s.rooms);
     const appointments     = useAppStore(s => s.appointments);
     const branches         = useAppStore(s => s.branches);
     const classCategories  = useAppStore(s => s.classCategories);
@@ -794,6 +797,23 @@ function ServicesPageInner() {
                 />
 
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search service..." />
+
+                <ToolbarExport
+                    disabled={activeRows.length + archivedRows.length === 0}
+                    exportData={() => {
+                        const byId = new Map(services.map(sv => [sv.id, sv]));
+                        const rows = [...activeRows, ...archivedRows]
+                            .map(r => byId.get(r.id))
+                            .filter((sv): sv is Service => !!sv);
+                        if (rows.length === 0) return null;
+                        const roomNameById = new Map(rooms.map(rm => [rm.id, rm.name]));
+                        return servicesExportData(rows, id => roomNameById.get(id) ?? "");
+                    }}
+                    onExported={(fmt) => {
+                        const n = activeRows.length + archivedRows.length;
+                        showToast("Services exported", `${n} service${n === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
+                />
 
                 {filtersEnabled && (
                     <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />

@@ -11,8 +11,10 @@
 // timestamps. A role export without its permission matrix cannot be re-imported;
 // this is the fix for that.
 
-import type { Staff, Role } from "@/lib/store";
+import type { Staff, Role, Shift } from "@/lib/store";
 import type { ExportColumn, ExportData } from "@/lib/export/export-data";
+
+const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export interface StaffExportLookups {
     /** role id → display name (readable column alongside `role_id`). */
@@ -49,6 +51,28 @@ export function staffExportData(rows: Staff[], look: StaffExportLookups): Export
         { key: "color", value: s => s.color },
     ];
     return { entity: "staff", columns, rows };
+}
+
+// ─── Shifts ──────────────────────────────────────────────────────────────────
+
+export function shiftsExportData(rows: Shift[], branchName: (id: string) => string, assignedCount?: (shiftId: string) => number): ExportData<Shift> {
+    const workingDayNames = (days: boolean[]) => days.map((on, i) => (on ? DAY_ABBR[i] : null)).filter(Boolean).join("; ");
+    const columns: ExportColumn<Shift>[] = [
+        { key: "id", value: s => s.id },
+        { key: "name", value: s => s.name },
+        { key: "branch_id", value: s => s.branch_id },
+        { key: "branch_name", value: s => branchName(s.branch_id) },
+        { key: "status", value: s => s.status },
+        { key: "type", value: s => s.type ?? "" },
+        { key: "repeat_every", value: s => s.repeat_every ?? "" },
+        { key: "start_time", value: s => s.start_time },
+        { key: "end_time", value: s => s.end_time },
+        { key: "working_days", value: s => workingDayNames(s.working_days) },
+        { key: "staffing_target", value: s => s.staffing_target },
+        { key: "assigned_count", value: s => (assignedCount ? assignedCount(s.id) : "") },
+        { key: "created_at", value: s => s.created_at },
+    ];
+    return { entity: "shifts", columns, rows };
 }
 
 // ─── Compensation (payroll entries, one row per instructor × period) ─────────

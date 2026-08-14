@@ -38,6 +38,8 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { payRatesExportData } from "@/lib/export/specs/pay-rates";
 import { RowActions } from "@/components/patterns/RowActions";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import {
@@ -619,6 +621,19 @@ export default function PayRatePage() {
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search pay rate..." />
                 {/* Status filter removed — active/archived is now the active-list
                     vs Archived-section split (policy §6). */}
+                <ToolbarExport
+                    disabled={activeRows.length + archivedRows.length === 0}
+                    exportData={() => {
+                        const rows = [...activeRows, ...archivedRows];
+                        if (rows.length === 0) return null;
+                        const branchNameById = new Map(branches.map(b => [b.id, b.name]));
+                        return payRatesExportData(rows, id => branchNameById.get(id) ?? "");
+                    }}
+                    onExported={(fmt) => {
+                        const n = activeRows.length + archivedRows.length;
+                        showToast("Pay rates exported", `${n} pay rate${n === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
+                />
                 {/* Import — empty-state only (client 2026-07-31). Hidden
                     once pay rates exist so admins default to "Add pay rate". */}
                 <ToolbarImportButton visible={payRates.length === 0 && !search.trim() && filter === null} />

@@ -48,7 +48,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
-import { staffExportData, rolesExportData } from "@/lib/export/specs/staff";
+import { staffExportData, rolesExportData, shiftsExportData } from "@/lib/export/specs/staff";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
@@ -951,10 +951,25 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const returnTo = forceTab === "roles" ? "/admin/staff/roles" : "/admin/staff";
     function handleAddRole()  { router.push(`/staff/roles/new?returnTo=${encodeURIComponent(returnTo)}`); }
     function handleAddStaff() { openStaffFormPanel({ kind: "staff", mode: "create" }); }
+    // Shifts (branch-agnostic) filtered by the toolbar search — mirrors
+    // ShiftManagementTab's name-search predicate. The child's status/day filter
+    // panel state lives inside that component, so the export honours search only.
+    const exportShiftRows = () => {
+        const q = search.trim().toLowerCase();
+        return q ? shifts.filter(s => s.name.toLowerCase().includes(q)) : shifts;
+    };
+    const onShiftSubTab = forceTab === "staff" && staffSubTab === "shift-management";
+
     function buildExportData() {
         if (tab === "roles") {
             if (filteredRoles.length === 0) return null;
             return rolesExportData(filteredRoles, staffByRole);
+        }
+        if (onShiftSubTab) {
+            const rows = exportShiftRows();
+            if (rows.length === 0) return null;
+            const assignedCount = (shiftId: string) => shiftAssignments.filter(a => a.shift_id === shiftId).length;
+            return shiftsExportData(rows, id => branchName(id, branches), assignedCount);
         }
         if (filteredStaff.length === 0) return null;
         return staffExportData(filteredStaff, {
@@ -966,6 +981,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         const F = fmt.toUpperCase();
         if (tab === "roles") {
             showToast("Roles exported", `${filteredRoles.length} role${filteredRoles.length === 1 ? "" : "s"} exported to ${F}.`, "success", "check");
+        } else if (onShiftSubTab) {
+            const n = exportShiftRows().length;
+            showToast("Shifts exported", `${n} shift${n === 1 ? "" : "s"} exported to ${F}.`, "success", "check");
         } else {
             showToast("Staff exported", `${filteredStaff.length} staff member${filteredStaff.length === 1 ? "" : "s"} exported to ${F}.`, "success", "check");
         }

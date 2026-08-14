@@ -36,6 +36,8 @@ import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { promoCodesExportData } from "@/lib/export/specs/marketing";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
@@ -438,6 +440,7 @@ export default function PromoListPage() {
     const router = useRouter();
     const promoCodes = useAppStore(s => s.promoCodes);
     const branches = useAppStore(s => s.branches);
+    const showToast = useAppStore(s => s.showToast);
 
     const [search, setSearch] = usePersistedListState("promoCodes:search", "");
     // "" = "All locations" — promo codes default to the aggregate view
@@ -501,6 +504,20 @@ export default function PromoListPage() {
                 />
 
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search promotions..." />
+
+                <ToolbarExport
+                    disabled={activePromos.length + archivedPromos.length === 0}
+                    exportData={() => {
+                        const rows = [...activePromos, ...archivedPromos];
+                        if (rows.length === 0) return null;
+                        const branchNameById = new Map(branches.map(b => [b.id, b.name]));
+                        return promoCodesExportData(rows, id => branchNameById.get(id) ?? "");
+                    }}
+                    onExported={(fmt) => {
+                        const n = activePromos.length + archivedPromos.length;
+                        showToast("Promotions exported", `${n} promotion${n === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
+                />
 
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
 

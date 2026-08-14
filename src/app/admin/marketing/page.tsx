@@ -34,6 +34,8 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { marketingExportData } from "@/lib/export/specs/marketing";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
@@ -448,6 +450,7 @@ export default function MarketingListPage() {
     const router = useRouter();
     const marketingItems = useAppStore(s => s.marketingItems);
     const branches = useAppStore(s => s.branches);
+    const showToast = useAppStore(s => s.showToast);
 
     const [search, setSearch] = usePersistedListState("marketing:search", "");
     // "" = "All locations" — marketing items default to the aggregate view.
@@ -519,6 +522,20 @@ export default function MarketingListPage() {
                 />
 
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search campaigns..." />
+
+                <ToolbarExport
+                    disabled={activeCampaigns.length + archivedCampaigns.length === 0}
+                    exportData={() => {
+                        const rows = [...activeCampaigns, ...archivedCampaigns];
+                        if (rows.length === 0) return null;
+                        const branchNameById = new Map(branches.map(b => [b.id, b.name]));
+                        return marketingExportData(rows, "campaigns", id => branchNameById.get(id) ?? "");
+                    }}
+                    onExported={(fmt) => {
+                        const n = activeCampaigns.length + archivedCampaigns.length;
+                        showToast("Campaigns exported", `${n} campaign${n === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
+                />
 
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
 

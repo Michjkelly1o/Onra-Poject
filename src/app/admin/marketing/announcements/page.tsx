@@ -32,6 +32,8 @@ import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { marketingExportData } from "@/lib/export/specs/marketing";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ArchivedSection } from "@/components/patterns/ArchivedSection";
 import { useArchiveView } from "@/lib/hooks/useArchiveView";
@@ -402,6 +404,7 @@ export default function AnnouncementsListPage() {
     const router = useRouter();
     const marketingItems = useAppStore(s => s.marketingItems);
     const branches = useAppStore(s => s.branches);
+    const showToast = useAppStore(s => s.showToast);
 
     const [search, setSearch] = usePersistedListState("announcements:search", "");
     const [locationId, setLocationId] = usePersistedListState<string>("announcements:locationId", "");
@@ -465,6 +468,20 @@ export default function AnnouncementsListPage() {
                 />
 
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search announcements..." />
+
+                <ToolbarExport
+                    disabled={activeAnnouncements.length + archivedAnnouncements.length === 0}
+                    exportData={() => {
+                        const rows = [...activeAnnouncements, ...archivedAnnouncements];
+                        if (rows.length === 0) return null;
+                        const branchNameById = new Map(branches.map(b => [b.id, b.name]));
+                        return marketingExportData(rows, "announcements", id => branchNameById.get(id) ?? "");
+                    }}
+                    onExported={(fmt) => {
+                        const n = activeAnnouncements.length + archivedAnnouncements.length;
+                        showToast("Announcements exported", `${n} announcement${n === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
+                />
 
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
 
