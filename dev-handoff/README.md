@@ -40,6 +40,7 @@ Because of this, almost everything that would touch an external system in produc
 - [`marketing.md`](marketing.md) — Marketing is real and store-wired (live campaigns/announcements/promos, real consent-gated reach, targeting against live data, customer-facing surfaces); the campaign **send is simulated** (opens/clicks are hardcoded multipliers — real engagement needs provider webhooks), and the What's-on banner isn't consent-gated (a design decision).
 - [`staff-payroll-rbac-status.md`](staff-payroll-rbac-status.md) — what's real vs. deferred in Staff/Payroll (payroll adjustments UI, create-new-rate model, compensation report, RBAC).
 - [`services-configuration.md`](services-configuration.md) — services module configuration notes (existing).
+- [`pdf-export.md`](pdf-export.md) — PDF export is wired in the AI-agent card (real jspdf) but stubbed on the admin module toolbars + reports dropdown; how to wire it. (CSV/Excel migration completeness is a separate plan in `../new-prd/export-migration-completeness-implementation-plan.md`.)
 
 ---
 
