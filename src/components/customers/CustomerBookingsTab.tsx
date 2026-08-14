@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { matrixToExportData } from "@/lib/export/export-data";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -306,6 +308,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
     const classSchedules       = useAppStore(s => s.classSchedules);
     const appointmentBookings  = useAppStore(s => s.appointmentBookings);
     const appointments         = useAppStore(s => s.appointments);
+    const showToast            = useAppStore(s => s.showToast);
 
     const [inner, setInner] = useState<"overview" | "history">("overview");
     const [search, setSearch] = useState("");
@@ -650,7 +653,30 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                             value={search}
                             onChange={setSearch}
                             placeholder="Search booking..."
-                           
+
+                        />
+                        <ToolbarExport
+                            disabled={filteredHistory.length === 0}
+                            exportData={() => {
+                                if (filteredHistory.length === 0) return null;
+                                // Merged on-screen rows (class + appointment): booking id +
+                                // its kind + the parent route id (class_schedule_id /
+                                // appointment_id) + the shared display detail.
+                                const header = [
+                                    "booking_id", "kind", "parent_id", "class_name", "instructor_name",
+                                    "room", "date", "start_time", "end_time", "booked", "capacity",
+                                    "booking_status", "class_status", "display_status", "waitlist_position",
+                                ];
+                                const matrix = filteredHistory.map(r => [
+                                    r.bookingId, r.kind, r.routeId, r.className, r.instructorName,
+                                    r.room, r.dateISO, r.startTime, r.endTime, r.booked, r.capacity,
+                                    r.bookingStatus, r.classStatus, r.displayStatus, r.waitlistPosition ?? "",
+                                ]);
+                                return matrixToExportData("customer-bookings", header, matrix);
+                            }}
+                            onExported={(fmt) => {
+                                showToast("Bookings exported", `${filteredHistory.length} booking${filteredHistory.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                            }}
                         />
                         <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
                     </div>

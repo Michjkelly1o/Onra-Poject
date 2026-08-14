@@ -31,6 +31,8 @@ import { TableAvatar } from "@/components/ui/avatar";
 import { DetailPageShell } from "@/components/patterns/DetailPageShell";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { customerPlansExportData } from "@/lib/export/specs/customer-records";
 import { DatePicker, todayISO } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import { FixedDropdown } from "@/components/ui/FixedDropdown";
@@ -1425,6 +1427,18 @@ export function CustomerDetailPage({ customerId, returnTo = "/admin/customers" }
                                         onChange={v => { setSearch(v); setPage(1); }}
                                         placeholder="Search product..."
                                         size="sm"
+                                    />
+                                    <ToolbarExport
+                                        size="sm"
+                                        disabled={filteredPlans.length === 0}
+                                        exportData={() => {
+                                            if (filteredPlans.length === 0) return null;
+                                            const name = customer ? (`${customer.firstName} ${customer.lastName}`.trim() || customer.email) : "";
+                                            return customerPlansExportData(filteredPlans, () => name);
+                                        }}
+                                        onExported={(fmt) => {
+                                            showToast("Plans exported", `${filteredPlans.length} plan${filteredPlans.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                                        }}
                                     />
                                     <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} size="sm" />
                                 </div>

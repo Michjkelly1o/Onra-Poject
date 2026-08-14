@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { customerAgreementsExportData } from "@/lib/export/specs/customer-records";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
 import {
@@ -228,6 +230,8 @@ const TD = "px-4 py-4 text-[14px] text-[#344054] border-b border-[#f2f4f7] align
 
 export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
     const customerAgreements = useAppStore(s => s.customerAgreements);
+    const customers = useAppStore(s => s.customers);
+    const showToast = useAppStore(s => s.showToast);
     const branches = useAppStore(s => s.branches);
     // Phase 4 — live joins back to the Agreements module so renames /
     // archives propagate, the View modal can read the published content
@@ -361,7 +365,18 @@ export function CustomerAgreementsTab({ customerId }: { customerId: string }) {
                     value={search}
                     onChange={setSearch}
                     placeholder="Search agreement..."
-                   
+
+                />
+                <ToolbarExport
+                    disabled={filtered.length === 0}
+                    exportData={() => {
+                        if (filtered.length === 0) return null;
+                        const nameById = new Map(customers.map(c => [c.id, `${c.firstName} ${c.lastName}`.trim() || c.email]));
+                        return customerAgreementsExportData(filtered, id => nameById.get(id) ?? "");
+                    }}
+                    onExported={(fmt) => {
+                        showToast("Agreements exported", `${filtered.length} agreement${filtered.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
             </div>

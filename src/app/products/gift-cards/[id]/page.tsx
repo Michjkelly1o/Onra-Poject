@@ -41,6 +41,8 @@ import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { issuedGiftCardsExportData } from "@/lib/export/specs/products";
 
 // ─── Types & helpers ────────────────────────────────────────────────────────
 
@@ -419,6 +421,7 @@ function HelpTooltip({ text }: { text: string }) {
 function ActiveCustomersTab({ holders, cardName }: {
     holders: GiftCardHolder[]; cardName: string;
 }) {
+    const exportToast = useAppStore(s => s.showToast);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -461,6 +464,19 @@ function ActiveCustomersTab({ holders, cardName }: {
                     </p>
                 </div>
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search customer..." size="sm" />
+                <ToolbarExport
+                    size="sm"
+                    disabled={filtered.length === 0}
+                    exportData={() => {
+                        if (filtered.length === 0) return null;
+                        const cardRows = filtered.map(h => h.issuedCard);
+                        const nameById = new Map(filtered.map(h => [h.issuedCard.customer_id, `${h.customer.firstName} ${h.customer.lastName}`.trim() || h.customer.email]));
+                        return issuedGiftCardsExportData(cardRows, { customerName: id => nameById.get(id) ?? "" });
+                    }}
+                    onExported={(fmt) => {
+                        exportToast("Gift cards exported", `${filtered.length} issued gift card${filtered.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
+                />
             </div>
 
             {/* Body */}

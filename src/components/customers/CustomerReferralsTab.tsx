@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
+import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { referralsExportData } from "@/lib/export/specs/customer-records";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -325,7 +327,18 @@ export function CustomerReferralsTab({ customerId }: { customerId: string }) {
                     value={search}
                     onChange={setSearch}
                     placeholder="Search customer..."
-                   
+
+                />
+                <ToolbarExport
+                    disabled={filtered.length === 0}
+                    exportData={() => {
+                        if (filtered.length === 0) return null;
+                        const nameById = new Map(customers.map(c => [c.id, `${c.firstName} ${c.lastName}`.trim() || c.email]));
+                        return referralsExportData(filtered, id => nameById.get(id) ?? "");
+                    }}
+                    onExported={(fmt) => {
+                        showToast("Referrals exported", `${filtered.length} referral${filtered.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+                    }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />
             </div>
