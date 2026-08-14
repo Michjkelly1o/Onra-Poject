@@ -44,6 +44,8 @@ import { dateFilterToRange, isoInRange } from "@/lib/period-filter";
 import { earningsForClass, attendeesForClass, fmtAed, defaultRateLabel, totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
 import { TotalEarningsBreakdown, SalesCommissionAccordion } from "@/components/staff/PayrollEarningsBreakdown";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
+import { SESSION_TYPE_ORDER } from "@/lib/session-type";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 
@@ -286,6 +288,7 @@ export default function InstructorEarningsPage() {
     const STATUS_ORDER: Record<ClassStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort<ClassSchedule>(filteredRows, {
         name:       (a, b) => a.name.localeCompare(b.name),
+        type:       (a, b) => SESSION_TYPE_ORDER.indexOf(a.type) - SESSION_TYPE_ORDER.indexOf(b.type),
         attendance: (a, b) => (a.booked ?? 0) - (b.booked ?? 0),
         rating:     (a, b) => (a.rating ?? 0) - (b.rating ?? 0),
         status:     (a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99),
@@ -397,6 +400,9 @@ export default function InstructorEarningsPage() {
                                 <tr>
                                     <th className={cn(TH, "w-[280px]")}>
                                         <SortableHeader sortKey="name"       currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class name</SortableHeader>
+                                    </th>
+                                    <th className={cn(TH, "w-[130px]")}>
+                                        <SortableHeader sortKey="type"       currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Type</SortableHeader>
                                     </th>
                                     <th className={cn(TH, "w-[120px]")}>
                                         <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
@@ -557,6 +563,10 @@ function EarningsRow({ schedule, payRate, classesInMonth, attendees, onViewDetai
                     </span>
                 </div>
             </td>
+
+            {/* Type — Class / Private / Recovery (canonical SessionTypeTag,
+                matches the schedule list). */}
+            <td className={TD}><SessionTypeTag type={schedule.type} /></td>
 
             {/* Attendance — Present count / capacity (matches the earnings basis,
                 which pays on real Present via attendeesForClass). */}

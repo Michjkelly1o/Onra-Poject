@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     SearchMd, FilterLines, Eye, XClose,
-    MarkerPin01, Users01, AlignLeft,
+    MarkerPin01, Users01, AlignLeft, Star01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,9 @@ import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { TableAvatar } from "@/components/ui/avatar";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { SelectInput } from "@/components/ui/select-input";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, type SessionType } from "@/lib/store";
+import { SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
+import { SESSION_TYPE_ORDER, SESSION_TYPE_FILTER_LABEL } from "@/lib/session-type";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { FilterPill } from "@/components/ui/FilterPill";
@@ -66,6 +68,14 @@ interface BookingRow {
     instructorName: string;
     instructorInitials: string;
     room: string;
+    /** Canonical session type — Class / Private / Recovery (client 2026-08-14). */
+    type: SessionType;
+    /** Branch name (Location column), e.g. "Forma Studio (South)". */
+    location: string;
+    /** Class category (Categories filter) — undefined for appointments. */
+    category?: string;
+    rating: number;
+    ratingCount: number;
     dateISO: string;
     startTime: string;
     endTime: string;
@@ -83,21 +93,20 @@ interface BookingRow {
 }
 
 interface BookingFilter {
-    /** Type filter (Figma reference — matches the class schedule filter
-     *  panel's segmented Group/Appointments toggle). Single-select; "" =
-     *  no filter applied (show both). */
-    type: "" | BookingKind;
+    /** Canonical session-type filter — Classes / Private / Recovery
+     *  (multi-select, matches the schedule module). */
+    types: SessionType[];
     dateStart: string;
     dateEnd: string;
     statuses: BookingFilterStatus[];
     times: TimeOfDay[];
     instructor: string;
-    className: string;
+    /** Class-category filter (multi-select) — matches the schedule module. */
+    categories: string[];
 }
 const EMPTY_BOOKING_FILTER: BookingFilter = {
-    type: "", dateStart: "", dateEnd: "", statuses: [], times: [], instructor: "", className: "",
+    types: [], dateStart: "", dateEnd: "", statuses: [], times: [], instructor: "", categories: [],
 };
-const ALL_BOOKING_KINDS: BookingKind[] = ["Group", "Appointment"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -107,15 +116,9 @@ function to12h(hhmm: string): string {
     const h12 = h % 12 || 12;
     return `${h12}:${String(m ?? 0).padStart(2, "0")} ${ap}`;
 }
-function fmtDateTime(dateISO: string, startTime: string): string {
-    return `${dateISO}, ${to12h(startTime)}`;
-}
 function timeOfDay(startTime: string): TimeOfDay {
     const h = Number(startTime.split(":")[0]);
     return h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
-}
-function classInitials(name: string): string {
-    return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
@@ -148,10 +151,10 @@ function BookingStatusBadge({ status, waitlistPosition }: { status: BookingDispl
 
 // ─── Booking history filter panel (Figma 2481:113769) ────────────────────────
 
-function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions, classOptions }: {
+function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions, categoryOptions }: {
     open: boolean; onClose: () => void;
     applied: BookingFilter; onApply: (f: BookingFilter) => void;
-    instructorOptions: string[]; classOptions: string[];
+    instructorOptions: string[]; categoryOptions: string[];
 }) {
     const [pending, setPending] = useState<BookingFilter>(EMPTY_BOOKING_FILTER);
     useEffect(() => { if (open) setPending({ ...applied }); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -163,12 +166,13 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
 
     function toggle<T>(arr: T[], v: T): T[] { return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]; }
     const hasAny =
-        !!pending.type ||
+        pending.types.length > 0 ||
         pending.statuses.length > 0 || pending.times.length > 0 ||
         pending.dateStart !== "" || pending.dateEnd !== "" ||
-        pending.instructor !== "" || pending.className !== "";
+        pending.instructor !== "" || pending.categories.length > 0;
 
-    const STATUSES: BookingFilterStatus[] = ["Ongoing", "Upcoming", "Completed", "Cancelled", "No show"];
+    // Booking HISTORY is past-only, so only terminal statuses are offered.
+    const STATUSES: BookingFilterStatus[] = ["Completed", "Cancelled", "No show"];
     const TIMES: TimeOfDay[] = ["Morning", "Afternoon", "Evening"];
 
     return (
@@ -180,24 +184,23 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-5">
-                    {/* Type — single-select 2-button toggle (Group /
-                        Appointment). Mirrors the class schedule filter
-                        panel pattern. Click the active option to clear. */}
+                    {/* Type — Classes / Private / Recovery (canonical, multi-select,
+                        matches the schedule module filter). */}
                     <div className="flex flex-col gap-2">
                         <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Type</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            {ALL_BOOKING_KINDS.map(k => {
-                                const selected = pending.type === k;
+                        <div className="grid grid-cols-3 gap-2">
+                            {SESSION_TYPE_ORDER.map(t => {
+                                const selected = pending.types.includes(t);
                                 return (
-                                    <button key={k} type="button"
-                                        onClick={() => setPending(p => ({ ...p, type: selected ? "" : k }))}
+                                    <button key={t} type="button"
+                                        onClick={() => setPending(p => ({ ...p, types: toggle(p.types, t) }))}
                                         className={cn(
-                                            "h-10 px-3 rounded-[8px] text-[14px] font-medium border transition-all whitespace-nowrap",
+                                            "h-10 px-2 rounded-[8px] text-[13px] font-medium border transition-all whitespace-nowrap",
                                             selected
                                                 ? "bg-[#f5fffa] border-2 border-[var(--colors-secondary-500)] text-[var(--colors-text-primary)] shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                                                 : "bg-white border-1 border-[var(--colors-border-secondary)] text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)]",
                                         )}>
-                                        {k}
+                                        {SESSION_TYPE_FILTER_LABEL[t]}
                                     </button>
                                 );
                             })}
@@ -249,12 +252,15 @@ function BookingFilterPanel({ open, onClose, applied, onApply, instructorOptions
                             onChange={v => setPending(p => ({ ...p, instructor: v }))} width="w-full" />
                     </div>
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)] shrink-0" />
-                    {/* Class */}
+                    {/* Categories — multi-select (matches the schedule module). */}
                     <div className="flex flex-col gap-2">
-                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Class</p>
-                        <SelectInput value={pending.className} placeholder="All classes"
-                            options={[{ value: "", label: "All classes" }, ...classOptions.map(c => ({ value: c, label: c }))]}
-                            onChange={v => setPending(p => ({ ...p, className: v }))} width="w-full" />
+                        <p className="text-[14px] font-medium text-[var(--colors-text-secondary)]">Categories</p>
+                        <div className="flex flex-wrap gap-2">
+                            {categoryOptions.map(c => (
+                                <FilterPill key={c} label={c} selected={pending.categories.includes(c)}
+                                    onClick={() => setPending(p => ({ ...p, categories: toggle(p.categories, c) }))} />
+                            ))}
+                        </div>
                     </div>
                 </div>
                 <div className="shrink-0 border-t border-[var(--colors-border-secondary)] px-6 py-4 flex items-center justify-between gap-3">
@@ -306,6 +312,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
     const classSchedules       = useAppStore(s => s.classSchedules);
     const appointmentBookings  = useAppStore(s => s.appointmentBookings);
     const appointments         = useAppStore(s => s.appointments);
+    const classCategories      = useAppStore(s => s.classCategories);
 
     const [inner, setInner] = useState<"overview" | "history">("overview");
     const [search, setSearch] = useState("");
@@ -373,6 +380,11 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                     instructorName: s.instructorName,
                     instructorInitials: s.instructorInitials,
                     room: s.room,
+                    type: s.type,
+                    location: s.location,
+                    category: s.category,
+                    rating: s.rating,
+                    ratingCount: s.ratingCount,
                     dateISO: s.dateISO,
                     startTime: s.startTime,
                     endTime: s.endTime,
@@ -427,6 +439,10 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                     instructorName: a.instructorName ?? (a.openSession ? "Open session" : "—"),
                     instructorInitials: a.instructorInitials ?? "—",
                     room: a.roomName,
+                    type: a.type,
+                    location: a.branchName,
+                    rating: a.rating,
+                    ratingCount: a.ratingCount,
                     dateISO: a.dateISO,
                     startTime: a.startTime,
                     endTime: a.endTime,
@@ -461,9 +477,9 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
         () => Array.from(new Set(rows.map(r => r.instructorName).filter(Boolean))).sort(),
         [rows],
     );
-    const classOptions = useMemo(
-        () => Array.from(new Set(rows.map(r => r.className))).sort(),
-        [rows],
+    const categoryOptions = useMemo(
+        () => classCategories.map(c => c.name).sort((a, b) => a.localeCompare(b)),
+        [classCategories],
     );
 
     // ─── Booking-history filtering + sort + pagination ──────────────────────
@@ -472,11 +488,11 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
         return rows
             .filter(r => {
                 if (q && !r.className.toLowerCase().includes(q)) return false;
-                if (applied.type && r.kind !== applied.type) return false;
+                if (applied.types.length > 0 && !applied.types.includes(r.type)) return false;
                 if (applied.dateStart && r.dateISO < applied.dateStart) return false;
                 if (applied.dateEnd && r.dateISO > applied.dateEnd) return false;
                 if (applied.instructor && r.instructorName !== applied.instructor) return false;
-                if (applied.className && r.className !== applied.className) return false;
+                if (applied.categories.length > 0 && (!r.category || !applied.categories.includes(r.category))) return false;
                 if (applied.times.length > 0 && !applied.times.includes(timeOfDay(r.startTime))) return false;
                 if (applied.statuses.length > 0) {
                     // "Cancelled (late)" matches the "Cancelled" filter; a
@@ -498,11 +514,12 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
         Upcoming: 0, Ongoing: 1, Completed: 2, "No show": 3, "Cancelled (late)": 4, Cancelled: 5, Waitlisted: 6,
     };
     const { sorted: sortedHistory, sortKey: historySortKey, sortDir: historySortDir, toggle: toggleHistorySort } = useSort<BookingRow>(filteredHistory, {
-        className:  (a, b) => a.className.localeCompare(b.className),
-        type:       (a, b) => a.kind.localeCompare(b.kind),
-        instructor: (a, b) => a.instructorName.localeCompare(b.instructorName),
-        status:     (a, b) => (HISTORY_STATUS_ORDER[a.displayStatus] ?? 99) - (HISTORY_STATUS_ORDER[b.displayStatus] ?? 99),
         date:       (a, b) => `${a.dateISO} ${a.startTime}`.localeCompare(`${b.dateISO} ${b.startTime}`),
+        name:       (a, b) => a.className.localeCompare(b.className),
+        type:       (a, b) => SESSION_TYPE_ORDER.indexOf(a.type) - SESSION_TYPE_ORDER.indexOf(b.type),
+        location:   (a, b) => a.location.localeCompare(b.location),
+        rating:     (a, b) => (a.rating ?? 0) - (b.rating ?? 0),
+        status:     (a, b) => (HISTORY_STATUS_ORDER[a.displayStatus] ?? 99) - (HISTORY_STATUS_ORDER[b.displayStatus] ?? 99),
     });
 
     const totalPages = Math.max(1, Math.ceil(sortedHistory.length / pageSize));
@@ -510,10 +527,10 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
     const pagedHistory = sortedHistory.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
 
     const hasActiveFilter =
-        !!applied.type ||
+        applied.types.length > 0 ||
         applied.statuses.length > 0 || applied.times.length > 0 ||
         applied.dateStart !== "" || applied.dateEnd !== "" ||
-        applied.instructor !== "" || applied.className !== "";
+        applied.instructor !== "" || applied.categories.length > 0;
 
     // Metric cards — Waitlist only appears when the customer has waitlisted bookings.
     const metrics: { label: string; value: number }[] = [
@@ -669,20 +686,23 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr>
+                                            <th className={cn(TH, "w-[180px]")}>
+                                                <SortableHeader sortKey="date"     currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Date &amp; time</SortableHeader>
+                                            </th>
                                             <th className={TH}>
-                                                <SortableHeader sortKey="className"  currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Class name</SortableHeader>
+                                                <SortableHeader sortKey="name"     currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Class name</SortableHeader>
                                             </th>
-                                            <th className={cn(TH, "w-[140px]")}>
-                                                <SortableHeader sortKey="type"       currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Type</SortableHeader>
+                                            <th className={cn(TH, "w-[130px]")}>
+                                                <SortableHeader sortKey="type"     currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Type</SortableHeader>
                                             </th>
-                                            <th className={cn(TH, "w-[220px]")}>
-                                                <SortableHeader sortKey="instructor" currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Instructor</SortableHeader>
+                                            <th className={cn(TH, "w-[170px]")}>
+                                                <SortableHeader sortKey="location" currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Location</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[160px]")}>
-                                                <SortableHeader sortKey="status"     currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Status</SortableHeader>
+                                                <SortableHeader sortKey="rating"   currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Rating</SortableHeader>
                                             </th>
-                                            <th className={cn(TH, "w-[200px]")}>
-                                                <SortableHeader sortKey="date"       currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Date &amp; Time</SortableHeader>
+                                            <th className={cn(TH, "w-[140px]")}>
+                                                <SortableHeader sortKey="status"   currentSort={historySortKey} dir={historySortDir} onSort={toggleHistorySort}>Status</SortableHeader>
                                             </th>
                                             <th className={cn(TH, "w-[52px]")} />
                                         </tr>
@@ -692,23 +712,44 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
                                             <tr key={r.bookingId}
                                                 onClick={() => router.push(r.kind === "Group" ? `/schedule/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}` : `/appointments/${r.routeId}?returnTo=${encodeURIComponent(`/customers/${customerId}`)}`)}
                                                 className="hover:bg-[var(--colors-bg-secondary)] transition-colors cursor-pointer">
+                                                {/* Date & time */}
                                                 <td className={TD}>
-                                                    <div className="flex items-center gap-3">
-                                                        <TableAvatar initials={classInitials(r.className)} imageUrl={r.coverImage} size={40} />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[14px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{r.dateISO}</span>
+                                                        <span className="text-[13px] text-[var(--colors-text-tertiary)] whitespace-nowrap">{to12h(r.startTime)} – {to12h(r.endTime)}</span>
+                                                    </div>
+                                                </td>
+                                                {/* Class name + instructor */}
+                                                <td className={TD}>
+                                                    <div className="flex flex-col">
                                                         <span className="text-[14px] font-medium text-[var(--colors-text-primary)]">{r.className}</span>
+                                                        <span className="text-[13px] text-[var(--colors-text-tertiary)]">
+                                                            {r.instructorName && r.instructorName !== "—" ? `with ${r.instructorName}` : "Open session"}
+                                                        </span>
                                                     </div>
                                                 </td>
-                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>
-                                                    {r.kind}
-                                                </td>
+                                                {/* Type */}
+                                                <td className={TD}><SessionTypeTag type={r.type} /></td>
+                                                {/* Location */}
+                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)]")}>{r.location}</td>
+                                                {/* Rating */}
                                                 <td className={TD}>
-                                                    <div className="flex items-center gap-2">
-                                                        <TableAvatar initials={r.instructorInitials} size={24} />
-                                                        <span className="text-[14px] text-[var(--colors-text-tertiary)]">{r.instructorName}</span>
-                                                    </div>
+                                                    {r.ratingCount > 0 ? (
+                                                        <div className="flex flex-col">
+                                                            <div className="flex items-center gap-1">
+                                                                {[0, 1, 2, 3, 4].map(i => (
+                                                                    <Star01 key={i} className={cn("w-3.5 h-3.5", i < Math.round(r.rating) ? "text-[#fdb022] fill-[#fdb022]" : "text-[#e4e7ec]")} />
+                                                                ))}
+                                                            </div>
+                                                            <span className="text-[12px] text-[var(--colors-text-tertiary)]">{r.rating.toFixed(1)} ({r.ratingCount} ratings)</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[13px] text-[var(--colors-text-tertiary)]">No ratings</span>
+                                                    )}
                                                 </td>
+                                                {/* Status */}
                                                 <td className={TD}><BookingStatusBadge status={r.displayStatus} waitlistPosition={r.waitlistPosition} /></td>
-                                                <td className={cn(TD, "text-[var(--colors-text-tertiary)] whitespace-nowrap")}>{fmtDateTime(r.dateISO, r.startTime)}</td>
+                                                {/* Actions */}
                                                 <td className={TD} onClick={e => e.stopPropagation()}>
                                                     <RowActions
                                                         minWidth={190}
@@ -736,7 +777,7 @@ export function CustomerBookingsTab({ customerId }: { customerId: string }) {
 
             <BookingFilterPanel open={filterOpen} onClose={() => setFilterOpen(false)}
                 applied={applied} onApply={f => { setApplied(f); setPage(1); }}
-                instructorOptions={instructorOptions} classOptions={classOptions} />
+                instructorOptions={instructorOptions} categoryOptions={categoryOptions} />
         </div>
     );
 }
