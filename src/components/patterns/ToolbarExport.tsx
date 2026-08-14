@@ -33,6 +33,10 @@ export interface ToolbarExportProps {
     /** PREFERRED — column-spec data → real CSV AND Excel. Computed lazily on the
      *  click so it reflects the current rows. Takes precedence over onExportCsv. */
     exportData?: () => ExportData<unknown> | null;
+    /** Fired after a successful `exportData` export (CSV or Excel) — use it to
+     *  show the success toast. Not called on the legacy `onExportCsv` path
+     *  (those modules fire their own toast). */
+    onExported?: (format: "csv" | "xlsx") => void;
     disabled?: boolean;
     /** Tooltip label on hover. Defaults to "Export". */
     label?: string;
@@ -40,7 +44,7 @@ export interface ToolbarExportProps {
     size?: "md" | "sm";
 }
 
-export function ToolbarExport({ onExportCsv, exportData, disabled = false, label = "Export", size = "md" }: ToolbarExportProps) {
+export function ToolbarExport({ onExportCsv, exportData, onExported, disabled = false, label = "Export", size = "md" }: ToolbarExportProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -62,13 +66,13 @@ export function ToolbarExport({ onExportCsv, exportData, disabled = false, label
         if (fmt === "CSV") {
             if (exportData) {
                 const d = exportData();
-                if (d) await exportRows(d, "csv");
+                if (d) { await exportRows(d, "csv"); onExported?.("csv"); }
             } else {
                 onExportCsv?.();
             }
         } else if (fmt === "Excel" && exportData) {
             const d = exportData();
-            if (d) await exportRows(d, "xlsx");
+            if (d) { await exportRows(d, "xlsx"); onExported?.("xlsx"); }
         }
     }
 

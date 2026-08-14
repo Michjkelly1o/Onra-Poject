@@ -50,6 +50,7 @@ import { useArchiveView } from "@/lib/hooks/useArchiveView";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { customersExportData } from "@/lib/export/specs/customers";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { computeLifecycleTag } from "@/lib/customer/lifecycle";
@@ -396,44 +397,6 @@ type CustomerRow = {
     /** v83 Phase 3 — used by the "Assigned to me" chip filter. */
     assignedTo?: string;
 };
-
-// ─── CSV export ──────────────────────────────────────────────────────────────
-
-function exportCustomersCsv(rows: CustomerRow[], staffLookup: Map<string, string>) {
-    // v83 audit fix — Lifecycle + VIP + Assigned to added to the export
-    // per the plan's Phase 2 verify pass. Staff name resolved via a
-    // caller-supplied lookup so the row's `assignedTo` id becomes a
-    // human name in the CSV (a bare staff id isn't useful downstream).
-    // "Assigned to" column is included only while lead assignment is on —
-    // hidden for the boutique that doesn't assign leads (see
-    // @/lib/lead-assignment). Header + body gate together so columns align.
-    const header = [
-        "Name", "Email", "Phone", "Plan", "Lifecycle", "VIP",
-        ...(LEAD_ASSIGNMENT_ENABLED ? ["Assigned to"] : []),
-        "Joined", "Last visit",
-    ];
-    const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
-    const body = rows.map(r => [
-        r.name, r.email, r.phone,
-        PLAN_LABEL[r.planType],
-        r.lifecycleTag ?? "Lead",
-        r.isVip ? "Yes" : "No",
-        ...(LEAD_ASSIGNMENT_ENABLED
-            ? [r.assignedTo ? (staffLookup.get(r.assignedTo) ?? "—") : "Unassigned"]
-            : []),
-        fmtDate(r.joinedISO), r.lastVisitISO ? fmtDate(r.lastVisitISO) : "Never visited",
-    ]);
-    const csv = [header, ...body].map(line => line.map(esc).join(",")).join("\r\n");
-    const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `customers-${todayISO()}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-}
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
@@ -946,16 +909,27 @@ export default function CustomersPage() {
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search customer..." />
                 <ToolbarExport
                     disabled={activeRows.length + archivedRows.length === 0}
-                    onExportCsv={() => {
-                        const exportRows = [...activeRows, ...archivedRows];
-                        exportCustomersCsv(
-                            exportRows,
-                            new Map(staff.map(s => [
-                                s.id,
-                                (s.fullName || `${s.firstName} ${s.lastName}`).trim() || s.email,
-                            ])),
-                        );
-                        showToast("Customer list exported", `${exportRows.length} customer${exportRows.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
+                    exportData={() => {
+                        // Map the filtered display rows (active + archived, all
+                        // that pass the current filters) back to their full store
+                        // records so the export carries the migration column set.
+                        const byId = new Map(customers.map(c => [c.id, c]));
+                        const rows = [...activeRows, ...archivedRows]
+                            .map(r => byId.get(r.id))
+                            .filter((c): c is Customer => !!c);
+                        const branchName = new Map(branches.map(b => [b.id, b.name]));
+                        const staffName = new Map(staff.map(s => [
+                            s.id,
+                            (s.fullName || `${s.firstName} ${s.lastName}`).trim() || s.email,
+                        ]));
+                        return customersExportData(rows, {
+                            branchName: id => branchName.get(id) ?? "",
+                            staffName: id => staffName.get(id) ?? "",
+                        });
+                    }}
+                    onExported={(fmt) => {
+                        const n = activeRows.length + archivedRows.length;
+                        showToast("Customer list exported", `${n} customer${n === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`, "success", "check");
                     }}
                 />
                 <ToolbarFilter onClick={() => setFilterOpen(true)} active={hasActiveFilter} />

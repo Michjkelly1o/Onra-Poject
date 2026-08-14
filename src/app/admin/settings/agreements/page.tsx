@@ -65,6 +65,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { agreementsExportData } from "@/lib/export/specs/settings";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
 import { SlidePanel } from "@/components/ui/SlidePanel";
@@ -349,59 +350,6 @@ function CheckboxCell({ checked, onChange, indeterminate = false, ariaLabel }: {
     );
 }
 
-// ─── CSV export ──────────────────────────────────────────────────────────────
-
-function exportAgreementsCsv(
-    rows: Agreement[],
-    branchById: Map<string, Branch>,
-    coverageById: Map<string, AgreementCoverage>,
-    lastSignedById: Map<string, string | undefined>,
-) {
-    // v24 columns match the new list view: Branch, Coverage, Effective
-    // until (Ongoing or date), plus the v24 policy toggles for
-    // completeness so admins can pull an audit trail. Last signed added
-    // per client feedback so the audit trail includes recency at a glance.
-    const headers = [
-        "Name", "Version", "Branches", "Coverage %", "Pending re-accept",
-        "Last signed", "Effective mode", "Issue date", "Expiry date",
-        "Re-acceptance required", "Guardian consent required",
-        "Status", "Required",
-    ];
-    const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-    const lines = [headers.join(",")];
-    for (const r of rows) {
-        const branches = r.allLocations
-            ? "All locations"
-            : r.locationIds.map(id => branchById.get(id)?.name ?? id).join("; ");
-        const cov = coverageById.get(r.id);
-        const lastSigned = lastSignedById.get(r.id);
-        lines.push([
-            r.name,
-            String(r.currentVersion),
-            branches,
-            cov ? String(cov.percent) : "0",
-            cov ? String(cov.pendingReAccept) : "0",
-            lastSigned ? lastSigned.slice(0, 10) : "",
-            r.effectiveDatesMode,
-            r.effectiveDatesMode === "expiry" ? r.effectiveFrom.slice(0, 10) : "",
-            r.effectiveDatesMode === "expiry" ? r.effectiveUntil.slice(0, 10) : "",
-            r.requireReAcceptance ? "Yes" : "No",
-            r.requireGuardianConsent ? "Yes" : "No",
-            r.status,
-            r.required ? "Yes" : "No",
-        ].map(escape).join(","));
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `agreements-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 type PendingConfirm =
@@ -535,6 +483,7 @@ export default function AgreementsPage() {
 
     // ─── Store subscriptions ────────────────────────────────────────────────
     const agreements         = useAppStore(s => s.agreements);
+    const agreementVersions  = useAppStore(s => s.agreementVersions);
     const branches           = useAppStore(s => s.branches);
     // v24 — Coverage column reads live customerAgreements to compute
     // the signed-current-version percentage + re-accept pending count.
@@ -742,12 +691,17 @@ export default function AgreementsPage() {
         router.push(`/settings/agreements/${row.id}?returnTo=${encodeURIComponent("/admin/settings/agreements")}`);
     }
 
-    function handleExportCsv() {
-        if (filtered.length === 0) return;
-        exportAgreementsCsv(filtered, branchById, coverageById, lastSignedById);
+    function buildAgreementsExport() {
+        if (filtered.length === 0) return null;
+        return agreementsExportData(filtered, {
+            branchName: id => branchById.get(id)?.name ?? "",
+            currentVersion: a => agreementVersions.find(v => v.agreementId === a.id && v.versionNumber === a.currentVersion),
+        });
+    }
+    function handleExported(fmt: "csv" | "xlsx") {
         showToast(
             "Agreements exported",
-            `${filtered.length} agreement${filtered.length === 1 ? "" : "s"} exported to CSV.`,
+            `${filtered.length} agreement${filtered.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`,
             "success", "check",
         );
     }
@@ -793,7 +747,7 @@ export default function AgreementsPage() {
                         />
                     </div>
 
-                    <ToolbarExport disabled={filtered.length === 0} onExportCsv={handleExportCsv} />
+                    <ToolbarExport disabled={filtered.length === 0} exportData={buildAgreementsExport} onExported={handleExported} />
 
                     <ToolbarFilter
                         onClick={() => setFilterOpen(true)}

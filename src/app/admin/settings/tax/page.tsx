@@ -63,6 +63,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { RowActions } from "@/components/patterns/RowActions";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { taxRatesExportData } from "@/lib/export/specs/settings";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
 import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { IconAvatar } from "@/components/patterns/IconAvatar";
@@ -359,39 +360,6 @@ function formatEffectiveWindow(rate: TaxRate): string {
     if (from && until)   return `${from} - ${until}`;
     if (from)            return `${from} - Ongoing`;
     return `Any - ${until}`;
-}
-
-// ─── CSV export ──────────────────────────────────────────────────────────────
-
-function exportTaxRatesCsv(rows: TaxRate[]) {
-    const headers = [
-        "Tax name", "Kind", "Type", "Tax rate (%)", "Calculation mode",
-        "Effective date", "Status", "Description", "Created",
-    ];
-    const escape = (v: string) => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
-    const lines = [headers.join(",")];
-    for (const r of rows) {
-        lines.push([
-            r.name,
-            r.kind,
-            r.type,
-            r.type === "exempt" ? "" : String(r.ratePercentage),
-            r.calculationMode,
-            formatEffectiveWindow(r),
-            r.status,
-            r.description ?? "",
-            r.createdAt.slice(0, 10),
-        ].map(escape).join(","));
-    }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `tax-rates-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -775,12 +743,10 @@ export default function TaxPage() {
             );
         }
     }
-    function handleExportCsv() {
-        if (filtered.length === 0) return;
-        exportTaxRatesCsv(filtered);
+    function handleExported(fmt: "csv" | "xlsx") {
         showToast(
             "Tax rates exported",
-            `${filtered.length} tax rate${filtered.length === 1 ? "" : "s"} exported to CSV.`,
+            `${filtered.length} tax rate${filtered.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`,
             "success", "check",
         );
     }
@@ -1031,7 +997,11 @@ export default function TaxPage() {
                     {/* Toolbar */}
                     <div className="shrink-0 flex items-center gap-3 px-6 py-5">
                         <ToolbarTotal count={activeRows.length} entitySingular="tax rate" />
-                        <ToolbarExport disabled={filtered.length === 0} onExportCsv={handleExportCsv} />
+                        <ToolbarExport
+                            disabled={filtered.length === 0}
+                            exportData={() => (filtered.length === 0 ? null : taxRatesExportData(filtered))}
+                            onExported={handleExported}
+                        />
                         <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
                         {/* Import — empty-state only (client 2026-07-31).
                             Hidden once tax rates exist so admins default

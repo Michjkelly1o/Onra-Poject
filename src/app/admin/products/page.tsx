@@ -29,7 +29,7 @@ import {
     CreditCard02, Package as PackageIcon,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
+import { productsExportData } from "@/lib/export/specs/products";
 import { Button } from "@/components/ui/button";
 import { SelectInput } from "@/components/ui/select-input";
 import { RangeSlider } from "@/components/ui/RangeSlider";
@@ -409,22 +409,6 @@ function ValueChip({ prefix, value }: { prefix: string; value: number }) {
             {prefix}{value.toLocaleString()}
         </div>
     );
-}
-
-// ─── CSV export ──────────────────────────────────────────────────────────────
-
-function exportProductsCsv(rows: ProductRow[]) {
-    const header = ["Type", "Name", "Price (AED)", "Credits", "Duration", "Branches", "Status"];
-    const body = rows.map(r => [
-        r.kind === "membership" ? "Membership" : "Class package",
-        r.name,
-        String(r.priceAed),
-        r.creditsLabel,
-        r.durationLabel,
-        r.branchesLabel,
-        r.status,
-    ]);
-    downloadCsv(`memberships-packages-${todayISO()}.csv`, buildCsv(header, body));
 }
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
@@ -988,11 +972,24 @@ export default function ProductsPage() {
                 />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search products..." />
                 <ToolbarExport
-                    onExportCsv={() => {
-                        exportProductsCsv(filteredRows);
+                    disabled={filteredRows.length === 0}
+                    exportData={() => {
+                        // Map the filtered display rows back to their full source
+                        // records so the export carries the migration column set.
+                        const memById = new Map(memberships.map(m => [m.id, m]));
+                        const pkgById = new Map(packages.map(p => [p.id, p]));
+                        const selMems = filteredRows.filter(r => r.kind === "membership")
+                            .map(r => memById.get(r.id)).filter((m): m is Membership => !!m);
+                        const selPkgs = filteredRows.filter(r => r.kind === "package")
+                            .map(r => pkgById.get(r.id)).filter((p): p is Package => !!p);
+                        if (selMems.length + selPkgs.length === 0) return null;
+                        const branchNameById = new Map(branches.map(b => [b.id, b.name]));
+                        return productsExportData(selMems, selPkgs, id => branchNameById.get(id) ?? "");
+                    }}
+                    onExported={(fmt) => {
                         showToast(
                             "Products exported",
-                            `${filteredRows.length} product${filteredRows.length === 1 ? "" : "s"} exported to CSV.`,
+                            `${filteredRows.length} product${filteredRows.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`,
                             "success", "check",
                         );
                     }}

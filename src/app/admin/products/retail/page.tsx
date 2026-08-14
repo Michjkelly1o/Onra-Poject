@@ -49,7 +49,7 @@ import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { Toast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfigureStockPanel } from "@/components/retail/ConfigureStockPanel";
-import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
+import { matrixToExportData } from "@/lib/export/export-data";
 import { useAppStore, type RetailProduct } from "@/lib/store";
 import { useBulkSelectionSignal } from "@/lib/hooks/useBulkSelectionSignal";
 
@@ -844,7 +844,8 @@ export default function RetailPage() {
         clearSelection();
     }
 
-    function exportCsv() {
+    function buildRetailExport() {
+        if (sorted.length === 0) return null;
         // Client 2026-07-31 — CSV now round-trips through the AI Agent
         // migrate wizard. Two changes over the older "one Stock column"
         // shape:
@@ -867,8 +868,13 @@ export default function RetailPage() {
             .filter(b => b.status !== "archived")
             .map(b => ({ id: b.id, name: b.name }));
         const stockHeaders = activeBranchesForExport.map(b => `stock_${b.name}`);
+        // `id` + `category_id` are prepended for migration completeness (the
+        // importer ignores unknown columns, so the round-trip is unaffected);
+        // every other header stays verbatim so the AI-agent import mapper keeps
+        // recognising them. Branch stock stays name-keyed (`stock_<Branch>`) —
+        // the importer resolves each branch by name, preserving the FK on import.
         const headers = [
-            "Name", "SKU", "Retail category", "Description",
+            "id", "Name", "SKU", "category_id", "Retail category", "Description",
             "Price AED", "Unit cost AED", "Reorder threshold",
             "Image URL", "Status", "Sizes",
             ...stockHeaders,
@@ -905,8 +911,10 @@ export default function RetailPage() {
                 return units > 0 ? units.toString() : "";
             });
             return [
+                r.id,
                 r.name,
                 r.sku,
+                r.categoryId,
                 r.categoryLabel,
                 p?.description ?? "",
                 r.priceAed.toString(),
@@ -918,9 +926,10 @@ export default function RetailPage() {
                 ...perBranch,
             ];
         });
-        const csv = buildCsv(headers, rows);
-        downloadCsv(`retail-products-${todayISO()}.csv`, csv);
-        showToast("Products exported", `${sorted.length} ${sorted.length === 1 ? "row" : "rows"} exported to CSV.`, "success", "check");
+        return matrixToExportData("retail-products", headers, rows);
+    }
+    function handleExported(fmt: "csv" | "xlsx") {
+        showToast("Products exported", `${sorted.length} ${sorted.length === 1 ? "row" : "rows"} exported to ${fmt.toUpperCase()}.`, "success", "check");
     }
 
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
@@ -950,7 +959,7 @@ export default function RetailPage() {
                     width="w-[220px]"
                 />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search product..." />
-                <ToolbarExport onExportCsv={exportCsv} />
+                <ToolbarExport disabled={sorted.length === 0} exportData={buildRetailExport} onExported={handleExported} />
                 <IconTooltip label="Filter">
                     <Button
                         variant="secondary-gray"

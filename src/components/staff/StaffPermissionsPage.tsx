@@ -48,6 +48,7 @@ import { RowActions } from "@/components/patterns/RowActions";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { staffExportData, rolesExportData } from "@/lib/export/specs/staff";
 import { ToolbarSearch } from "@/components/patterns/ToolbarSearch";
 import { ToolbarFilter } from "@/components/patterns/ToolbarFilter";
 import { ToolbarImportButton } from "@/components/patterns/ToolbarImportButton";
@@ -626,46 +627,6 @@ function StaffRowActions({ staff, hasHistory, isOwner = false, onAction }: {
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
-// ─── CSV export helper ─────────────────────────────────────────────────────
-
-function exportRolesCsv(rows: Role[], staffByRole: Map<string, number>) {
-    const header = ["Role name", "Description", "Type", "Staff", "Status"];
-    const escape = (v: string | number) => {
-        const s = String(v);
-        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = rows.map(r => [
-        r.name, r.description, r.type,
-        staffByRole.get(r.id) ?? 0, ROLE_STATUS_LABEL[r.status],
-    ].map(escape).join(","));
-    const csv = [header.join(","), ...lines].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url; a.download = `roles-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-}
-
-function exportStaffCsv(rows: Staff[], rolesById: Map<string, Role>, branches: Branch[]) {
-    const header = ["Name", "Email", "Phone", "Role", "Branch location", "Status", "Joined"];
-    const escape = (v: string | number) => {
-        const s = String(v);
-        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = rows.map(s => [
-        s.fullName, s.email, s.phone,
-        rolesById.get(s.roleId)?.name ?? "—",
-        branchName(s.branchId, branches),
-        STAFF_STATUS_LABEL[s.status], s.joinedDate,
-    ].map(escape).join(","));
-    const csv = [header.join(","), ...lines].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url; a.download = `staff-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-}
-
 // ─── Table chrome ──────────────────────────────────────────────────────────
 
 const TH = "px-4 py-3 text-left text-[12px] font-medium text-[#475467] sticky top-0 z-[5] bg-[var(--colors-bg-primary)] shadow-[inset_0_-1px_0_0_var(--colors-border-secondary)]";
@@ -990,15 +951,23 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const returnTo = forceTab === "roles" ? "/admin/staff/roles" : "/admin/staff";
     function handleAddRole()  { router.push(`/staff/roles/new?returnTo=${encodeURIComponent(returnTo)}`); }
     function handleAddStaff() { openStaffFormPanel({ kind: "staff", mode: "create" }); }
-    function handleExport() {
+    function buildExportData() {
         if (tab === "roles") {
-            if (filteredRoles.length === 0) return;
-            exportRolesCsv(filteredRoles, staffByRole);
-            showToast("Roles exported", `${filteredRoles.length} role${filteredRoles.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
+            if (filteredRoles.length === 0) return null;
+            return rolesExportData(filteredRoles, staffByRole);
+        }
+        if (filteredStaff.length === 0) return null;
+        return staffExportData(filteredStaff, {
+            roleName: id => rolesById.get(id)?.name ?? "",
+            branchName: id => branchName(id, branches),
+        });
+    }
+    function handleExported(fmt: "csv" | "xlsx") {
+        const F = fmt.toUpperCase();
+        if (tab === "roles") {
+            showToast("Roles exported", `${filteredRoles.length} role${filteredRoles.length === 1 ? "" : "s"} exported to ${F}.`, "success", "check");
         } else {
-            if (filteredStaff.length === 0) return;
-            exportStaffCsv(filteredStaff, rolesById, branches);
-            showToast("Staff exported", `${filteredStaff.length} staff member${filteredStaff.length === 1 ? "" : "s"} exported to CSV.`, "success", "check");
+            showToast("Staff exported", `${filteredStaff.length} staff member${filteredStaff.length === 1 ? "" : "s"} exported to ${F}.`, "success", "check");
         }
     }
 
@@ -1377,7 +1346,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                     CSV. Kept for the Staff & shift route (still useful
                     for HR exports). */}
                 {forceTab !== "roles" && (
-                    <ToolbarExport disabled={totalCount === 0} onExportCsv={handleExport} />
+                    <ToolbarExport disabled={totalCount === 0} exportData={buildExportData} onExported={handleExported} />
                 )}
                 {/* Role & permissions route: the only role filter left is
                     Status (roles are branch-agnostic), so it's a direct

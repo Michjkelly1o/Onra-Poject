@@ -39,6 +39,7 @@ import { dateFilterToRange, spanInRange } from "@/lib/period-filter";
 import { totalEarningsForStaff, buildPayConfigTracks } from "@/lib/payroll-calc";
 import { NeutralAvatar } from "@/components/patterns/NeutralAvatar";
 import { ToolbarExport } from "@/components/patterns/ToolbarExport";
+import { compensationExportData } from "@/lib/export/specs/staff";
 import { RowActions } from "@/components/patterns/RowActions";
 import { RoleBadge } from "@/components/staff/RoleBadge";
 import { ChangePayRateModal } from "@/components/staff/PayrollInstructorDetailPage";
@@ -46,7 +47,7 @@ import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
 import { Pagination } from "@/components/ui/Pagination";
 import {
-    useAppStore, type Branch,
+    useAppStore,
     type Instructor, type PayrollEntry,
 } from "@/lib/store";
 
@@ -129,36 +130,6 @@ interface CompRow {
 // Period filter math lives in @/lib/period-filter — shared across every page
 // that uses DateRangeFilter so the presets behave identically everywhere.
 
-// ─── CSV export helper ─────────────────────────────────────────────────────
-
-function exportCompensationCsv(rows: CompRow[], branches: Branch[]) {
-    const header = [
-        "Staff", "Email", "Branch", "Default pay rate",
-        "Completed classes", "Earnings (AED)", "Status", "Period",
-    ];
-    const branchName = (id: string) => branches.find(b => b.id === id)?.name ?? "—";
-    const escape = (v: string | number) => {
-        const s = String(v);
-        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = rows.map(r => [
-        r.instructor.name,
-        r.instructor.email,
-        branchName(r.branchId),
-        r.payRateName,
-        r.classesCount,
-        Math.round(r.earnings),
-        r.status === "paid" ? "Paid" : "Pending",
-        `${r.periodStart} → ${r.periodEnd}`,
-    ].map(escape).join(","));
-    const csv = [header.join(","), ...lines].join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `compensation-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-}
 
 // ─── Table header/cell constants ───────────────────────────────────────────
 
@@ -462,11 +433,32 @@ export default function CompensationPage() {
                     Filter is the DateRangeFilter (period selector). */}
                 <ToolbarExport
                     disabled={filteredRows.length === 0}
-                    onExportCsv={() => {
-                        exportCompensationCsv(filteredRows, branches);
+                    exportData={() => {
+                        if (filteredRows.length === 0) return null;
+                        const branchNameById = new Map(branches.map(b => [b.id, b.name]));
+                        return compensationExportData(
+                            filteredRows.map(r => ({
+                                entryId: r.entryId,
+                                instructorId: r.instructor.id,
+                                instructorName: r.instructor.name,
+                                instructorEmail: r.instructor.email,
+                                branchId: r.branchId,
+                                payRateId: r.instructor.payRateId,
+                                payRateName: r.payRateName,
+                                classesCount: r.classesCount,
+                                grossRevenue: r.grossRevenue,
+                                earnings: r.earnings,
+                                status: r.status === "paid" ? "Paid" : "Pending",
+                                periodStart: r.periodStart,
+                                periodEnd: r.periodEnd,
+                            })),
+                            id => branchNameById.get(id) ?? "",
+                        );
+                    }}
+                    onExported={(fmt) => {
                         showToast(
                             "Compensation exported",
-                            `${filteredRows.length} ${filteredRows.length === 1 ? "staff member" : "staff"} exported to CSV.`,
+                            `${filteredRows.length} ${filteredRows.length === 1 ? "staff member" : "staff"} exported to ${fmt.toUpperCase()}.`,
                             "success", "check",
                         );
                     }}

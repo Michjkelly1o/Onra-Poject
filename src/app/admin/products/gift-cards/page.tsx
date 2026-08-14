@@ -27,7 +27,7 @@ import {
     Gift01,
 } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
-import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
+import { giftCardDesignsExportData } from "@/lib/export/specs/products";
 import { Button } from "@/components/ui/button";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { usePersistedListState } from "@/lib/list-ui-cache";
@@ -240,20 +240,6 @@ const MODAL_CONFIG: Record<ModalAction, {
 
 // Local ActionModal removed — uses canonical `<ConfirmModal>` driven by
 // MODAL_CONFIG above.
-
-// ─── CSV export ──────────────────────────────────────────────────────────────
-
-function exportGiftCardsCsv(rows: GiftCardRow[]) {
-    const header = ["Design name", "Price", "Active customers", "Valid until", "Status"];
-    const body = rows.map(r => [
-        r.name,
-        r.priceLabel,
-        String(r.activeCustomers),
-        r.validUntil,
-        STATUS_LABEL[r.status],
-    ]);
-    downloadCsv(`gift-cards-${todayISO()}.csv`, buildCsv(header, body));
-}
 
 // Local Pagination removed — uses canonical `@/components/ui/Pagination`.
 
@@ -691,11 +677,17 @@ export default function GiftCardsPage() {
                 <ToolbarTotal count={activeRows.length} entitySingular="gift card" />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search product..." />
                 <ToolbarExport
-                    onExportCsv={() => {
-                        exportGiftCardsCsv(filteredRows);
+                    disabled={filteredRows.length === 0}
+                    exportData={() => {
+                        if (filteredRows.length === 0) return null;
+                        const byId = new Map(giftCardDesigns.map(d => [d.id, d]));
+                        const rows = filteredRows.map(r => byId.get(r.id)).filter((d): d is GiftCardDesign => !!d);
+                        return giftCardDesignsExportData(rows);
+                    }}
+                    onExported={(fmt) => {
                         showToast(
                             "Gift cards exported",
-                            `${filteredRows.length} gift card${filteredRows.length === 1 ? "" : "s"} exported to CSV.`,
+                            `${filteredRows.length} gift card${filteredRows.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`,
                             "success", "check",
                         );
                     }}

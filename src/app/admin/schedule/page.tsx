@@ -9,7 +9,7 @@ import {
     Calendar, UserPlus01, Copy01, ClockFastForward, Tag01, Building01,
     ChevronDown, User01, HeartHand, Shuffle01,
 } from "@untitledui/icons";
-import { cn, formatTimeRange12 } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { registerFilterResetter } from "@/lib/list-ui-cache";
 import { buildMonthGrid } from "@/lib/calendar-utils";
 import { AttendanceBar } from "@/components/patterns/AttendanceBar";
@@ -34,7 +34,7 @@ import { Toast } from "@/components/ui/Toast";
 import { useAppStore, appointmentToClassInstance, isAppointmentId, type ClassInstance, type ClassSchedule, type ClassStatus, type SessionType, type Shift } from "@/lib/store";
 import { shortCustomerName, cancelNotifyLine, cancelTitle, CANCEL_KEEP_LABEL, CANCEL_CONFIRM_LABEL } from "@/lib/cancel-copy";
 import { decideAssign } from "@/lib/staff/shift-assign-logic";
-import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
+import { scheduleExportData } from "@/lib/export/specs/schedule";
 import { branchTzLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill, SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
 import { SESSION_TYPE_FILTER_LABEL, SESSION_TYPE_ORDER } from "@/lib/session-type";
@@ -1059,25 +1059,6 @@ function AddSessionMenu({ router }: { router: ReturnType<typeof useRouter> }) {
     );
 }
 
-// ─── CSV export ──────────────────────────────────────────────────────────────
-
-function exportScheduleCsv(rows: ClassSchedule[]) {
-    const header = ["Class", "Category", "Date", "Time", "Instructor", "Branch", "Room", "Capacity", "Booked", "Status"];
-    const body = rows.map(c => [
-        c.name,
-        c.category,
-        c.dateISO,
-        formatTimeRange12(c.startTime, c.endTime),
-        c.instructorName,
-        c.location,
-        c.room,
-        String(c.capacity),
-        String(c.booked),
-        c.status,
-    ]);
-    downloadCsv(`schedule-${todayISO()}.csv`, buildCsv(header, body));
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type ViewTab = "list" | "day" | "week" | "month";
@@ -1581,11 +1562,12 @@ function SchedulePage() {
                     Search → Export → Filter → Primary action. Green dot on
                     Filter marks any active filter. */}
                 <ToolbarExport
-                    onExportCsv={() => {
-                        exportScheduleCsv(filteredClasses);
+                    disabled={filteredClasses.length === 0}
+                    exportData={() => (filteredClasses.length === 0 ? null : scheduleExportData(filteredClasses))}
+                    onExported={(fmt) => {
                         showToast(
                             "Schedule exported",
-                            `${filteredClasses.length} class${filteredClasses.length === 1 ? "" : "es"} exported to CSV.`,
+                            `${filteredClasses.length} class${filteredClasses.length === 1 ? "" : "es"} exported to ${fmt.toUpperCase()}.`,
                             "success", "check",
                         );
                     }}

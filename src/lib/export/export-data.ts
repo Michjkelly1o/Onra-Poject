@@ -41,6 +41,20 @@ export interface ExportData<Row> {
 export type ExportFormat = "csv" | "xlsx";
 
 /**
+ * Wrap a pre-built `header + matrix` into an `ExportData` so a DYNAMIC-column
+ * export (columns whose count/labels are known only at runtime — e.g. one stock
+ * column per active branch) can still flow through the shared CSV/Excel path.
+ * Static entities should prefer an explicit `ExportColumn[]` spec instead.
+ */
+export function matrixToExportData(entity: string, header: string[], matrix: (string | number)[][]): ExportData<(string | number)[]> {
+    return {
+        entity,
+        rows: matrix,
+        columns: header.map((h, i) => ({ key: h, value: (row: (string | number)[]) => row[i] })),
+    };
+}
+
+/**
  * THE single entry point for a module's list export. One column spec → both
  * CSV and Excel. CSV goes through the shared `csv-export` primitive (UTF-8 BOM +
  * CRLF); Excel is a real `.xlsx` via SheetJS, lazy-loaded so CSV-only pages
