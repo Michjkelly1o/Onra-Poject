@@ -9,7 +9,9 @@
 // store, reactive via useSyncExternalStore — seeded with demo history on first
 // load, then appended to as real purchases complete (PaymentProcessing).
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import { useAppStore, type CustomerTransaction } from "@/lib/store";
+import { useCurrentCustomer } from "@/lib/customer/context";
 
 export type PaymentType = "products" | "service";
 export type PaymentMethod = "apple" | "google" | "gift_card" | "card";
@@ -44,6 +46,11 @@ export interface PaymentRecord {
     tax: number;
     /** Account Credit (AED) redeemed on this payment (0 / absent when none). */
     accountCredit?: number;
+    /** Shared-store `customerTransactions` ids this local record represents
+     *  (a portal purchase creates one store txn per line via `applyPurchase`).
+     *  Used to DEDUPE: linked store txns are hidden in favour of this richer
+     *  local record, while every other store txn (admin POS / seeded) shows. */
+    txnStoreIds?: string[];
 }
 
 /** Human labels for a payment type + method (shared by list + receipt). */
@@ -67,53 +74,46 @@ export function methodKind(label: string): PaymentMethod {
     return "card";
 }
 
-// Demo seed — a couple of months of history so the page is never empty.
-const SEED: PaymentRecord[] = [
-    {
-        id: "ph_seed_1", type: "products", method: "apple", methodLabel: "Apple pay",
-        amount: 2520, status: "success", dateISO: "2026-07-04", timeLabel: "16:30",
-        txnId: "#P203958672",
-        items: [{ name: "10-Class Package for One Month", quantity: 1, price: 2560 }],
-        totalItems: 1, subtotal: 2560, discount: 600, tax: 560,
-    },
-    {
-        id: "ph_seed_2", type: "products", method: "card", methodLabel: "Other card",
-        amount: 15000, status: "success", dateISO: "2026-07-04", timeLabel: "16:30",
-        txnId: "#P203958655",
-        items: [{ name: "Annual Unlimited Membership", quantity: 1, price: 15000 }],
-        totalItems: 1, subtotal: 13636, discount: 0, tax: 1364,
-    },
-    {
-        id: "ph_seed_3", type: "service", method: "gift_card", methodLabel: "Gift card",
-        amount: 15000, status: "success", dateISO: "2026-07-02", timeLabel: "16:30",
-        txnId: "#P203958640",
-        items: [{ name: "Private Reformer Session", quantity: 1, price: 15000 }],
-        totalItems: 1, subtotal: 13636, discount: 0, tax: 1364,
-    },
-    {
-        id: "ph_seed_4", type: "products", method: "apple", methodLabel: "Apple pay",
-        amount: 2520, status: "failed", dateISO: "2026-06-18", timeLabel: "16:30",
-        txnId: "#P203851102",
-        items: [{ name: "10-Class Package for One Month", quantity: 1, price: 2560 }],
-        totalItems: 1, subtotal: 2560, discount: 600, tax: 560,
-    },
-    {
-        id: "ph_seed_5", type: "products", method: "google", methodLabel: "Google pay",
-        amount: 15000, status: "failed", dateISO: "2026-06-11", timeLabel: "16:30",
-        txnId: "#P203850071",
-        items: [{ name: "Annual Unlimited Membership", quantity: 1, price: 15000 }],
-        totalItems: 1, subtotal: 13636, discount: 0, tax: 1364,
-    },
-    {
-        id: "ph_seed_6", type: "service", method: "card", methodLabel: "Other card",
-        amount: 15000, status: "success", dateISO: "2026-06-04", timeLabel: "16:30",
-        txnId: "#P203849980",
-        items: [{ name: "Private Reformer Session", quantity: 1, price: 15000 }],
-        totalItems: 1, subtotal: 13636, discount: 0, tax: 1364,
-    },
-];
+/** Map a shared-store CustomerTransaction to the payment-history row shape, so
+ *  Admin POS sales / refunds + the customer's seeded history all appear. Store
+ *  transactions record card/cash (no Apple/Google granularity) — those show as a
+ *  card row; the customer's own portal purchases keep their finer method via the
+ *  local record. */
+function mapTransaction(t: CustomerTransaction): PaymentRecord {
+    const dateISO = (t.createdAtISO ?? "").slice(0, 10);
+    const d = new Date(t.createdAtISO ?? "");
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const timeLabel = Number.isNaN(d.getTime()) ? "" : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const isService = t.kind === "private" || t.kind === "recovery";
+    const methodLabel = t.paymentMethod === "cash"
+        ? "Cash"
+        : (t.cardType ? `${t.cardType[0].toUpperCase()}${t.cardType.slice(1)} card` : "Card");
+    const subtotal = t.subtotalAed ?? t.amountAed;
+    return {
+        id: t.id,
+        type: isService ? "service" : "products",
+        method: "card",
+        methodLabel,
+        amount: t.amountAed,
+        status: t.status === "failed" ? "failed" : "success",
+        dateISO,
+        timeLabel,
+        txnId: `#${t.id}`,
+        items: [{ name: t.name, quantity: 1, price: subtotal }],
+        totalItems: 1,
+        subtotal,
+        discount: t.discountValue ?? 0,
+        tax: t.taxAed ?? 0,
+    };
+}
+
+// Local store holds ONLY the customer's own portal purchases (rich method);
+// all historical / admin / seeded history is derived from the shared store.
 
 const KEY = "onra-customer-payment-history";
+// Bump to purge the legacy hardcoded-seed payload from a device (v2 = empty
+// local store; real history is derived from the shared `customerTransactions`).
+const HISTORY_VERSION = 2;
 let records: PaymentRecord[] = [];
 let hydrated = false;
 const listeners = new Set<() => void>();
@@ -122,11 +122,16 @@ function hydrate() {
     if (hydrated || typeof window === "undefined") return;
     hydrated = true;
     try {
+        if (window.localStorage.getItem(`${KEY}-v`) !== String(HISTORY_VERSION)) {
+            window.localStorage.removeItem(KEY);
+            window.localStorage.setItem(`${KEY}-v`, String(HISTORY_VERSION));
+            records = [];
+            return;
+        }
         const raw = window.localStorage.getItem(KEY);
-        records = raw ? (JSON.parse(raw) as PaymentRecord[]) : SEED;
-        if (!raw) persist();
+        records = raw ? (JSON.parse(raw) as PaymentRecord[]) : [];
     } catch {
-        records = SEED;
+        records = [];
     }
 }
 function persist() {
@@ -159,5 +164,18 @@ function snapshot(): PaymentRecord[] {
 }
 
 export function usePaymentHistory(): PaymentRecord[] {
-    return useSyncExternalStore(subscribe, snapshot, () => records);
+    const local = useSyncExternalStore(subscribe, snapshot, () => records);
+    const meId = useCurrentCustomer()?.id ?? null;
+    const txns = useAppStore((s) => s.customerTransactions);
+    return useMemo(() => {
+        // Store txns already represented by a local portal record are hidden so
+        // the purchase isn't listed twice (the local record wins — richer method).
+        const linked = new Set(local.flatMap((r) => r.txnStoreIds ?? []));
+        const fromStore = meId
+            ? txns.filter((t) => t.customerId === meId && !linked.has(t.id)).map(mapTransaction)
+            : [];
+        return [...local, ...fromStore].sort((a, b) =>
+            `${b.dateISO}T${b.timeLabel}`.localeCompare(`${a.dateISO}T${a.timeLabel}`),
+        );
+    }, [local, txns, meId]);
 }

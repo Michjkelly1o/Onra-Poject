@@ -1,10 +1,19 @@
 "use client";
 
-// Customer — redeem-a-gift-card flow (UI-only) — persisted client store.
-// A small set of demo redeemable codes (not in the shared seed) + the list of
-// cards this customer has redeemed. Reactive via useSyncExternalStore.
+// Customer — gift-card wallet + redeem-a-code flow.
+//
+// The customer's gift cards ARE the shared `issuedGiftCards` store slice — the
+// SAME rows the admin Customer → Payments tab shows — so the wallet reflects
+// admin exactly (issue / spend / refund on either side stays in step; there is
+// no separate local list to drift out of sync).
+//
+// A small set of demo redeemable codes lets the redeem flow be exercised in the
+// prototype; redeeming one ISSUES a real card into the store for the current
+// customer, so it appears in the customer wallet AND on the admin side.
 
-import { useSyncExternalStore } from "react";
+import { useMemo } from "react";
+import { useAppStore, type IssuedGiftCard } from "@/lib/store";
+import { useCurrentCustomer } from "@/lib/customer/context";
 
 export interface RedeemableGift {
     code: string;
@@ -26,8 +35,9 @@ export interface RedeemedGiftCard {
 
 /** Demo gift codes a customer can redeem (UI-only — not part of the seed).
  *  Enter any of these on the Gift card page ("Enter gift card code") to run the
- *  redeem flow. Codes are case-insensitive. Mix of amounts + senders so the demo
- *  shows variety; each can only be redeemed once (resets on a store version bump). */
+ *  redeem flow. Codes are case-insensitive. Redeeming one issues a real card
+ *  into the shared store for the current customer, so it can only be redeemed
+ *  once per customer (a second attempt is a no-op). */
 const REDEEMABLE: RedeemableGift[] = [
     {
         code: "WELCOME50",
@@ -77,116 +87,89 @@ export function lookupGift(code: string): RedeemableGift | null {
     return REDEEMABLE.find((g) => g.code.toLowerCase() === code.trim().toLowerCase()) ?? null;
 }
 
-const KEY = "onra-customer-redeemed-gift-cards";
-// Bump to force-reset previously-redeemed cards back to empty (demo re-test).
-const VERSION = 3;
-let redeemed: RedeemedGiftCard[] = [];
-let hydrated = false;
-const listeners = new Set<() => void>();
-
-function hydrate() {
-    if (hydrated || typeof window === "undefined") return;
-    hydrated = true;
-    try {
-        if (window.localStorage.getItem(`${KEY}-v`) !== String(VERSION)) {
-            // Version bump — discard old redeemed cards so the flow can be re-tested.
-            window.localStorage.removeItem(KEY);
-            window.localStorage.setItem(`${KEY}-v`, String(VERSION));
-            redeemed = [];
-            return;
-        }
-        const raw = window.localStorage.getItem(KEY);
-        if (raw) redeemed = JSON.parse(raw) as RedeemedGiftCard[];
-    } catch {
-        /* start empty */
-    }
-}
-function emit() {
-    try {
-        window.localStorage.setItem(KEY, JSON.stringify(redeemed));
-    } catch {
-        /* ignore */
-    }
-    listeners.forEach((l) => l());
-}
-
-export function isRedeemed(code: string): boolean {
-    hydrate();
-    return redeemed.some((r) => r.code.toLowerCase() === code.trim().toLowerCase());
-}
-export function redeemGift(g: RedeemableGift): string {
-    hydrate();
-    if (isRedeemed(g.code)) return "";
-    const id = `rgc_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
-    redeemed = [
-        { id, code: g.code, senderName: g.senderName, message: g.message, faceValue: g.faceValue, balance: g.faceValue, expiresISO: g.expiresISO, redeemedAtISO: new Date().toISOString() },
-        ...redeemed,
-    ];
-    emit();
-    return id;
-}
-
-/** Spend `amountAed` across the customer's redeemed cards, oldest-expiry
- *  first so a card closest to lapsing gets used before one with runway.
- *  Client 2026-07-31 — before this, the checkout's "Forma gift card"
- *  payment chip selected fine and the order completed, but NOTHING ever
- *  debited the balance, so a card could be "spent" forever.
- *
- *  Partial redemption falls out naturally: a card that can't cover the
- *  whole amount contributes what it has and the next card picks up the
- *  rest. Returns the total actually applied (capped at the available
- *  balance, so over-requesting is safe).
- *
- *  Fully-spent cards stay in the list with `balance: 0` so the customer's
- *  Gift cards page can still show them as used history rather than having
- *  them silently vanish. */
-export function spendGiftCards(amountAed: number): number {
-    hydrate();
-    const want = Math.max(0, Math.round(amountAed));
-    if (want <= 0) return 0;
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const order = [...redeemed]
-        .filter((r) => r.balance > 0 && r.expiresISO >= todayISO)
-        .sort((a, b) => a.expiresISO.localeCompare(b.expiresISO));
-
-    const debits = new Map<string, number>();
-    let remaining = want;
-    for (const card of order) {
-        if (remaining <= 0) break;
-        const take = Math.min(card.balance, remaining);
-        debits.set(card.id, take);
-        remaining -= take;
-    }
-    const applied = want - remaining;
-    if (applied <= 0) return 0;
-
-    redeemed = redeemed.map((r) => {
-        const take = debits.get(r.id);
-        return take === undefined ? r : { ...r, balance: Math.max(0, r.balance - take) };
-    });
-    emit();
-    return applied;
-}
-
-/** Combined spendable balance across every unexpired card with value left. */
-export function giftCardBalance(): number {
-    hydrate();
-    const todayISO = new Date().toISOString().slice(0, 10);
-    return redeemed
-        .filter((r) => r.balance > 0 && r.expiresISO >= todayISO)
-        .reduce((sum, r) => sum + r.balance, 0);
-}
-
-function subscribe(cb: () => void) {
-    listeners.add(cb);
-    return () => {
-        listeners.delete(cb);
+/** Map a shared-store issued gift card to the wallet display shape. */
+function issuedToWallet(c: IssuedGiftCard): RedeemedGiftCard {
+    return {
+        id: c.id,
+        code: c.code,
+        senderName: c.sender_name ?? "",
+        message: c.message ?? "",
+        faceValue: c.face_value_aed,
+        balance: c.current_balance_aed,
+        expiresISO: (c.expires_at ?? "").slice(0, 10),
+        redeemedAtISO: c.issued_at ?? "",
     };
 }
-function snap(): RedeemedGiftCard[] {
-    hydrate();
-    return redeemed;
+
+/** True when the current customer already holds a card issued for `code`. Used
+ *  to gate the redeem flow so a code can't be redeemed twice. */
+export function isRedeemed(code: string, customerId: string | null): boolean {
+    if (!customerId) return false;
+    const c = code.trim().toLowerCase();
+    return useAppStore
+        .getState()
+        .issuedGiftCards.some((g) => g.customer_id === customerId && g.code.toLowerCase() === c);
 }
-export function useRedeemedGiftCards(): RedeemedGiftCard[] {
-    return useSyncExternalStore(subscribe, snap, () => redeemed);
+
+/** Redeem a demo code → issue a real gift card into the shared store for the
+ *  current customer. No-op (returns "") for a guest or an already-redeemed code.
+ *  The new card appears in the customer wallet AND on the admin Payments tab. */
+export function redeemGift(g: RedeemableGift, customerId: string | null): string {
+    if (!customerId || isRedeemed(g.code, customerId)) return "";
+    return useAppStore.getState().addIssuedGiftCard({
+        design_id: "gcd_demo_redeem",
+        customer_id: customerId,
+        code: g.code,
+        face_value_aed: g.faceValue,
+        current_balance_aed: g.faceValue,
+        issued_at: new Date().toISOString(),
+        expires_at: `${g.expiresISO}T23:59:59.000Z`,
+        status: "active",
+        sender_name: g.senderName,
+        message: g.message,
+    });
+}
+
+/** The customer's gift-card wallet — a live projection of their `issuedGiftCards`
+ *  (admin-issued at POS + self-service purchases + redeemed demo codes), newest
+ *  first. Excludes refunded/voided cards. Empty for a guest. */
+export function useGiftCardWallet(): RedeemedGiftCard[] {
+    const meId = useCurrentCustomer()?.id ?? null;
+    const issued = useAppStore((s) => s.issuedGiftCards);
+    return useMemo(() => {
+        if (!meId) return [];
+        return issued
+            .filter((c) => c.customer_id === meId && c.status !== "refunded")
+            .map(issuedToWallet)
+            .sort((a, b) => (b.redeemedAtISO ?? "").localeCompare(a.redeemedAtISO ?? ""));
+    }, [issued, meId]);
+}
+
+/** Spendable balance across the current customer's active, unexpired issued
+ *  cards. 0 for a guest. */
+export function useGiftCardSpendableBalance(): number {
+    const meId = useCurrentCustomer()?.id ?? null;
+    const issued = useAppStore((s) => s.issuedGiftCards);
+    return useMemo(() => {
+        if (!meId) return 0;
+        const today = new Date().toISOString().slice(0, 10);
+        return issued
+            .filter(
+                (c) =>
+                    c.customer_id === meId &&
+                    c.status === "active" &&
+                    c.current_balance_aed > 0 &&
+                    (c.expires_at ?? "").slice(0, 10) >= today,
+            )
+            .reduce((sum, c) => sum + c.current_balance_aed, 0);
+    }, [issued, meId]);
+}
+
+/** Spend `amountAed` across the customer's issued gift cards through the store
+ *  (oldest-expiry first, partial redemption supported), so admin balances
+ *  reflect the redemption. Returns the total actually applied. */
+export function spendGiftCards(customerId: string, amountAed: number): number {
+    const want = Math.max(0, Math.round(amountAed));
+    if (want <= 0) return 0;
+    return useAppStore.getState().redeemGiftCards(customerId, want).applied;
 }

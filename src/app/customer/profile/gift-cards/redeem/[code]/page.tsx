@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { XClose } from "@untitledui/icons";
 import { isRedeemed, lookupGift, redeemGift } from "@/lib/customer/gift-cards";
+import { useCurrentCustomer } from "@/lib/customer/context";
 import { GiftCardArt } from "@/components/customer/products/GiftCardArt";
 import { Button } from "@/components/ui/button";
 
@@ -14,8 +15,9 @@ export default function RedeemGiftCardPage() {
     const router = useRouter();
     const { code } = useParams<{ code: string }>();
     const decoded = decodeURIComponent(code);
+    const memberId = useCurrentCustomer()?.id ?? null;
     const gift = lookupGift(decoded);
-    const [done, setDone] = useState(() => isRedeemed(decoded));
+    const [done, setDone] = useState(() => isRedeemed(decoded, memberId));
 
     function close() {
         // Pop back to the Gift card page (which re-reads the store and shows the
@@ -25,7 +27,7 @@ export default function RedeemGiftCardPage() {
     }
     function redeem() {
         if (gift) {
-            redeemGift(gift);
+            redeemGift(gift, memberId);
             setDone(true);
         }
     }

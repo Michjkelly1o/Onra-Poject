@@ -46,6 +46,7 @@ export default function AppointmentBookingDetailPage() {
     const appointments = useAppStore(s => s.appointments);
     const cancelAdminAppointment = useAppStore(s => s.cancelAppointment);
     const showToast = useAppStore(s => s.showToast);
+    const cancellationPolicy = useAppStore(s => s.cancellationPolicy);
     // Effectively cancelled if the customer cancelled OR an admin cancelled the
     // linked shared appointment — drives the Back target (Past vs Upcoming).
     const backIsCancelled =
@@ -124,13 +125,19 @@ export default function AppointmentBookingDetailPage() {
     // Dual-timezone Date & time for the info grid — same as the class detail.
     const apptTime = classTimeDisplay(booking.slotISO, booking.slotTime, branch, timezone);
 
-    // Cancel outcome — on-time (≥24h → full AED refund) vs late (<24h → forfeited).
-    const isLate = (startMs - Date.now()) / 3_600_000 < 24;
+    // Cancel outcome follows the studio's Booking-Rules cancellation window
+    // (Settings), read live — not a hardcoded 24h. On-time (≥ window → full AED
+    // refund) vs late (< window → forfeited).
+    const lateWindowHours = cancellationPolicy.credit_within_window_unit === "minutes"
+        ? cancellationPolicy.credit_within_window_value / 60
+        : cancellationPolicy.credit_within_window_value;
+    const windowLabel = `${cancellationPolicy.credit_within_window_value} ${cancellationPolicy.credit_within_window_unit}`;
+    const isLate = (startMs - Date.now()) / 3_600_000 < lateWindowHours;
     const cancelFullDate = new Date(`${booking.slotISO}T00:00:00`).toLocaleDateString("en-US", {
         weekday: "long", day: "numeric", month: "short", year: "numeric",
     });
     const cancelCopy = isLate
-        ? { title: "Cancel this appointment?", description: "This cancellation is within 24 hours. No refund will be issued.", confirmLabel: "Yes, cancel appointment", refundNote: undefined as string | undefined }
+        ? { title: "Cancel this appointment?", description: `This cancellation is within ${windowLabel} of the appointment. No refund will be issued.`, confirmLabel: "Yes, cancel appointment", refundNote: undefined as string | undefined }
         : { title: "Cancel this appointment?", description: "This will cancel your appointment.", confirmLabel: "Yes, cancel appointment", refundNote: `AED ${booking.price} refunded to your account` };
     function confirmCancel() {
         if (!booking) return;
@@ -150,7 +157,7 @@ export default function AppointmentBookingDetailPage() {
         });
         showToast(
             "Appointment cancelled",
-            isLate ? "No refund was issued — cancelled within 24 hours." : `AED ${booking.price} has been refunded to your account.`,
+            isLate ? `No refund was issued — cancelled within ${windowLabel}.` : `AED ${booking.price} has been refunded to your account.`,
             "success",
             isLate ? "slash" : "check",
         );
@@ -242,7 +249,7 @@ export default function AppointmentBookingDetailPage() {
                 <p className="text-xs font-normal leading-[18px] text-[var(--colors-text-secondary)]">
                     {isCancelled
                         ? booking.lateCancel
-                            ? "This appointment was cancelled within 24 hours — no refund was issued."
+                            ? `This appointment was cancelled within ${windowLabel} — no refund was issued.`
                             : "This appointment was cancelled and your refund has been processed."
                         : isAttended
                           ? "Your attendance has been recorded."
@@ -300,7 +307,7 @@ export default function AppointmentBookingDetailPage() {
     // late cancel forfeits the fee, an on-time cancel refunds it in full.
     const refund: BookingRefund | null = isCancelled
         ? booking.lateCancel
-            ? { amount: "AED 0", status: "Not refunded — cancelled within 24 hours" }
+            ? { amount: "AED 0", status: `Not refunded — cancelled within ${windowLabel}` }
             : { amount: `AED ${booking.price}`, status: "Refunded" }
         : null;
 
