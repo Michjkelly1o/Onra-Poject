@@ -803,8 +803,11 @@ function DayView({ dateISO, classes, branchId, businessHoursRows, blockedTimes, 
     });
 
     const businessHours = branchId ? lookupBusinessHours(businessHoursRows, branchId, dateISO) : null;
-    const gridStartHour = businessHours ? Math.floor(hourFloatFromTime(businessHours.open))  : FALLBACK_START_HOUR;
-    const gridEndHour   = businessHours ? Math.ceil(hourFloatFromTime(businessHours.close))  : FALLBACK_END_HOUR;
+    const baseStartHour = businessHours ? Math.floor(hourFloatFromTime(businessHours.open))  : FALLBACK_START_HOUR;
+    const baseEndHour   = businessHours ? Math.ceil(hourFloatFromTime(businessHours.close))  : FALLBACK_END_HOUR;
+    // Extend so a class before open / past close is never clipped by the grid bottom.
+    const gridStartHour = Math.min(baseStartHour, ...dayClasses.map(c => Math.floor(hourFloatFromTime(c.startTime))));
+    const gridEndHour   = Math.max(baseEndHour,   ...dayClasses.map(c => Math.ceil(hourFloatFromTime(c.endTime))));
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * HOUR_HEIGHT;
 
@@ -918,8 +921,14 @@ function WeekView({ classes, weekStart, branchId, businessHoursRows, blockedTime
         if (openMin === null  || h.open  < openMin)  openMin  = h.open;
         if (closeMax === null || h.close > closeMax) closeMax = h.close;
     }
-    const gridStartHour = openMin  ? Math.floor(hourFloatFromTime(openMin))  : FALLBACK_START_HOUR;
-    const gridEndHour   = closeMax ? Math.ceil(hourFloatFromTime(closeMax))  : FALLBACK_END_HOUR;
+    const baseStartHour = openMin  ? Math.floor(hourFloatFromTime(openMin))  : FALLBACK_START_HOUR;
+    const baseEndHour   = closeMax ? Math.ceil(hourFloatFromTime(closeMax))  : FALLBACK_END_HOUR;
+    // Extend so a class before open / past close is never clipped — scoped to
+    // the classes that fall in the visible week.
+    const weekIsoSet = new Set(cols.map(col => col.iso));
+    const weekClasses = classes.filter(c => weekIsoSet.has(c.dateISO));
+    const gridStartHour = Math.min(baseStartHour, ...weekClasses.map(c => Math.floor(hourFloatFromTime(c.startTime))));
+    const gridEndHour   = Math.max(baseEndHour,   ...weekClasses.map(c => Math.ceil(hourFloatFromTime(c.endTime))));
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * WEEK_HOUR_HEIGHT;
 

@@ -496,8 +496,13 @@ export function DayView({ dateISO, classes, branchId, businessHoursRows, activeB
     const businessHours = branchId
         ? lookupBusinessHours(businessHoursRows, branchId, dateISO)
         : lookupUnionBusinessHours(businessHoursRows, activeBranchIds, dateISO);
-    const gridStartHour = businessHours ? Math.floor(hourFloatFromTime(businessHours.open)) : FALLBACK_START_HOUR;
-    const gridEndHour   = businessHours ? Math.ceil(hourFloatFromTime(businessHours.close)) : FALLBACK_END_HOUR;
+    const baseStartHour = businessHours ? Math.floor(hourFloatFromTime(businessHours.open)) : FALLBACK_START_HOUR;
+    const baseEndHour   = businessHours ? Math.ceil(hourFloatFromTime(businessHours.close)) : FALLBACK_END_HOUR;
+    // Extend the range to also cover any class/appointment that starts before
+    // open or runs past close, so a card (e.g. a 9:30pm class ending 10:30pm
+    // when the studio closes at 10pm) is never clipped by the grid bottom.
+    const gridStartHour = Math.min(baseStartHour, ...dayClasses.map(c => Math.floor(hourFloatFromTime(c.startTime))));
+    const gridEndHour   = Math.max(baseEndHour,   ...dayClasses.map(c => Math.ceil(hourFloatFromTime(c.endTime))));
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * HOUR_HEIGHT;
 
@@ -821,8 +826,14 @@ export function WeekView({ classes, weekStart, branchId, businessHoursRows, acti
         if (openMin === null  || h.open  < openMin)  openMin  = h.open;
         if (closeMax === null || h.close > closeMax) closeMax = h.close;
     }
-    const gridStartHour = openMin  ? Math.floor(hourFloatFromTime(openMin))  : (weekHours ? Math.floor(hourFloatFromTime(weekHours.open))  : FALLBACK_START_HOUR);
-    const gridEndHour   = closeMax ? Math.ceil(hourFloatFromTime(closeMax))  : (weekHours ? Math.ceil(hourFloatFromTime(weekHours.close)) : FALLBACK_END_HOUR);
+    const baseStartHour = openMin  ? Math.floor(hourFloatFromTime(openMin))  : (weekHours ? Math.floor(hourFloatFromTime(weekHours.open))  : FALLBACK_START_HOUR);
+    const baseEndHour   = closeMax ? Math.ceil(hourFloatFromTime(closeMax))  : (weekHours ? Math.ceil(hourFloatFromTime(weekHours.close)) : FALLBACK_END_HOUR);
+    // Extend so a class running before open / past close is never clipped —
+    // scoped to the classes that actually fall in the visible week.
+    const weekIsoSet = new Set(cols.map(col => col.iso));
+    const weekClasses = classes.filter(c => weekIsoSet.has(c.dateISO));
+    const gridStartHour = Math.min(baseStartHour, ...weekClasses.map(c => Math.floor(hourFloatFromTime(c.startTime))));
+    const gridEndHour   = Math.max(baseEndHour,   ...weekClasses.map(c => Math.ceil(hourFloatFromTime(c.endTime))));
     const hours = Array.from({ length: gridEndHour - gridStartHour }, (_, i) => gridStartHour + i);
     const gridHeight = hours.length * WEEK_HOUR_HEIGHT;
 
