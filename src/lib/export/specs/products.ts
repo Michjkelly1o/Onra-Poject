@@ -40,7 +40,10 @@ export function productsExportData(
         { key: "description", value: r => r.rec.description ?? "" },
         { key: "status", value: r => r.rec.status },
         { key: "price_aed", value: r => r.rec.price_aed },
-        { key: "credits", value: r => String(r.rec.credits) },
+        // Membership credits can be the literal "unlimited"; packages are always
+        // numeric. Return the raw value so Excel keeps numeric package credits as
+        // numbers (only "unlimited" lands as text).
+        { key: "credits", value: r => r.rec.credits },
         { key: "duration_months", value: r => (r.type === "membership" ? r.rec.duration_months : "") },
         { key: "validity_days", value: r => (r.type === "package" ? r.rec.validity_days : "") },
         { key: "branch_ids", value: r => r.rec.branch_ids.join("; ") },

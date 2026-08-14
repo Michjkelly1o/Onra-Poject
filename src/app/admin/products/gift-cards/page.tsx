@@ -60,12 +60,6 @@ import { Sliders } from "@/components/icons/Sliders";
 
 type GiftCardStatus = GiftCardDesign["status"]; // "active" | "inactive" | "archived"
 
-const STATUS_LABEL: Record<GiftCardStatus, string> = {
-    active: "Active",
-    inactive: "Inactive",
-    archived: "Archive",
-};
-
 const STATUS_ORDER: Record<GiftCardStatus, number> = {
     active: 0, inactive: 1, archived: 2,
 };

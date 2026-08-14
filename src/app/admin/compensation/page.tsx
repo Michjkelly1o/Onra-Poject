@@ -448,7 +448,7 @@ export default function CompensationPage() {
                                 classesCount: r.classesCount,
                                 grossRevenue: r.grossRevenue,
                                 earnings: r.earnings,
-                                status: r.status === "paid" ? "Paid" : "Pending",
+                                status: r.status,
                                 periodStart: r.periodStart,
                                 periodEnd: r.periodEnd,
                             })),

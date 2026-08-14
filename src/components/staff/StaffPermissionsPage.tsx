@@ -62,7 +62,7 @@ import { openStaffFormPanel } from "@/lib/staff-form-panel";
 import {
     useAppStore, type Branch,
     type Role, type RoleStatus, type RoleType,
-    type Staff, type StaffStatus,
+    type Staff, type StaffStatus, type Shift,
 } from "@/lib/store";
 
 // ─── Tabs config ───────────────────────────────────────────────────────────
@@ -770,6 +770,9 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         d.setDate(d.getDate() - monIdx);
         return d;
     });
+    // Filtered shift set pushed up from ShiftManagementTab (list view) so the
+    // shared toolbar's Export emits exactly the shifts on screen.
+    const [shiftExportRows, setShiftExportRows] = useState<Shift[]>([]);
     // Staff-schedule "Add shift" panel — ports the day-view flow. `assignToStaff`
     // set → the panel opens in "pick a shift for {name}" mode from a row 3-dot.
     const [staffSchedPanel, setStaffSchedPanel] = useState<{ open: boolean; assignToStaff?: { id: string; name: string } }>({ open: false });
@@ -951,25 +954,21 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
     const returnTo = forceTab === "roles" ? "/admin/staff/roles" : "/admin/staff";
     function handleAddRole()  { router.push(`/staff/roles/new?returnTo=${encodeURIComponent(returnTo)}`); }
     function handleAddStaff() { openStaffFormPanel({ kind: "staff", mode: "create" }); }
-    // Shifts (branch-agnostic) filtered by the toolbar search — mirrors
-    // ShiftManagementTab's name-search predicate. The child's status/day filter
-    // panel state lives inside that component, so the export honours search only.
-    const exportShiftRows = () => {
-        const q = search.trim().toLowerCase();
-        return q ? shifts.filter(s => s.name.toLowerCase().includes(q)) : shifts;
-    };
-    const onShiftSubTab = forceTab === "staff" && staffSubTab === "shift-management";
+    // Shift export is offered ONLY on the shift-management LIST view (the Week
+    // view is a staff-schedule calendar, not a shift list). `shiftExportRows` is
+    // pushed up from ShiftManagementTab so it's the EXACT on-screen filtered set
+    // (search + status + working-day panel), keeping export == count == toast.
+    const onShiftListView = forceTab === "staff" && staffSubTab === "shift-management" && shiftsViewMode === "list";
 
     function buildExportData() {
         if (tab === "roles") {
             if (filteredRoles.length === 0) return null;
             return rolesExportData(filteredRoles, staffByRole);
         }
-        if (onShiftSubTab) {
-            const rows = exportShiftRows();
-            if (rows.length === 0) return null;
+        if (onShiftListView) {
+            if (shiftExportRows.length === 0) return null;
             const assignedCount = (shiftId: string) => shiftAssignments.filter(a => a.shift_id === shiftId).length;
-            return shiftsExportData(rows, id => branchName(id, branches), assignedCount);
+            return shiftsExportData(shiftExportRows, id => branchName(id, branches), assignedCount);
         }
         if (filteredStaff.length === 0) return null;
         return staffExportData(filteredStaff, {
@@ -981,8 +980,8 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
         const F = fmt.toUpperCase();
         if (tab === "roles") {
             showToast("Roles exported", `${filteredRoles.length} role${filteredRoles.length === 1 ? "" : "s"} exported to ${F}.`, "success", "check");
-        } else if (onShiftSubTab) {
-            const n = exportShiftRows().length;
+        } else if (onShiftListView) {
+            const n = shiftExportRows.length;
             showToast("Shifts exported", `${n} shift${n === 1 ? "" : "s"} exported to ${F}.`, "success", "check");
         } else {
             showToast("Staff exported", `${filteredStaff.length} staff member${filteredStaff.length === 1 ? "" : "s"} exported to ${F}.`, "success", "check");
@@ -1565,6 +1564,7 @@ export function StaffPermissionsPage({ forceTab }: StaffPermissionsPageProps = {
                         onCloseFilter={() => setFilterOpen(false)}
                         onFilterStateChange={setShiftFilterActive}
                         onCountChange={handleSubCount}
+                        onListChange={setShiftExportRows}
                         viewMode={shiftsViewMode}
                         weekStart={shiftsWeekStart}
                         onFlyoutOpen={() => setStaffSchedPanel({ open: false })}

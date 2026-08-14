@@ -845,7 +845,11 @@ export default function RetailPage() {
     }
 
     function buildRetailExport() {
-        if (sorted.length === 0) return null;
+        // Export the active + archived union (like every other list page) so the
+        // Archived products the admin sees aren't silently dropped, and the button
+        // stays usable when only archived rows exist.
+        const exportSourceRows = [...sorted, ...archSorted];
+        if (exportSourceRows.length === 0) return null;
         // Client 2026-07-31 — CSV now round-trips through the AI Agent
         // migrate wizard. Two changes over the older "one Stock column"
         // shape:
@@ -890,7 +894,7 @@ export default function RetailPage() {
             const key = `${s.productId}|${s.branchId}|${s.size ?? ""}`;
             stockByPBS.set(key, (stockByPBS.get(key) ?? 0) + (s.unitsOnHand ?? 0));
         }
-        const rows = sorted.map(r => {
+        const rows = exportSourceRows.map(r => {
             const p = productsById.get(r.id);
             const sizes = p?.sizes ?? [];
             const perBranch = activeBranchesForExport.map(b => {
@@ -929,7 +933,8 @@ export default function RetailPage() {
         return matrixToExportData("retail-products", headers, rows);
     }
     function handleExported(fmt: "csv" | "xlsx") {
-        showToast("Products exported", `${sorted.length} ${sorted.length === 1 ? "row" : "rows"} exported to ${fmt.toUpperCase()}.`, "success", "check");
+        const n = sorted.length + archSorted.length;
+        showToast("Products exported", `${n} ${n === 1 ? "row" : "rows"} exported to ${fmt.toUpperCase()}.`, "success", "check");
     }
 
     function modalSubject(p: PendingConfirm): { count: number; subject: React.ReactNode } {
@@ -959,7 +964,7 @@ export default function RetailPage() {
                     width="w-[220px]"
                 />
                 <ToolbarSearch value={search} onChange={setSearch} placeholder="Search product..." />
-                <ToolbarExport disabled={sorted.length === 0} exportData={buildRetailExport} onExported={handleExported} />
+                <ToolbarExport disabled={sorted.length + archSorted.length === 0} exportData={buildRetailExport} onExported={handleExported} />
                 <IconTooltip label="Filter">
                     <Button
                         variant="secondary-gray"

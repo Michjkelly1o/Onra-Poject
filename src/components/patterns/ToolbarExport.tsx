@@ -63,16 +63,23 @@ export function ToolbarExport({ onExportCsv, exportData, onExported, disabled = 
 
     async function pick(fmt: ExportFmt) {
         setOpen(false);
-        if (fmt === "CSV") {
-            if (exportData) {
+        try {
+            if (fmt === "CSV") {
+                if (exportData) {
+                    const d = exportData();
+                    if (d) { await exportRows(d, "csv"); onExported?.("csv"); }
+                } else {
+                    onExportCsv?.();
+                }
+            } else if (fmt === "Excel" && exportData) {
                 const d = exportData();
-                if (d) { await exportRows(d, "csv"); onExported?.("csv"); }
-            } else {
-                onExportCsv?.();
+                if (d) { await exportRows(d, "xlsx"); onExported?.("xlsx"); }
             }
-        } else if (fmt === "Excel" && exportData) {
-            const d = exportData();
-            if (d) { await exportRows(d, "xlsx"); onExported?.("xlsx"); }
+        } catch (err) {
+            // Surface the failure to the console instead of an unhandled promise
+            // rejection (e.g. if the lazy xlsx import fails). onExported (the
+            // success toast) only fires after a resolved export, never here.
+            console.error("[ToolbarExport] export failed", err);
         }
     }
 

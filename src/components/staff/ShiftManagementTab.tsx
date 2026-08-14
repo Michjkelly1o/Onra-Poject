@@ -593,6 +593,10 @@ export interface ShiftManagementTabProps {
     /** Reports the toolbar total for this sub-tab: shift count in List view,
      *  staff-row count in Week view (client 2026-08-12). */
     onCountChange?: (count: number, noun: string) => void;
+    /** Reports the LIST view's filtered shift set (search + status + working-day
+     *  panel filters applied) up to the parent so the shared toolbar's Export
+     *  emits exactly the shifts on screen. Empty on the Week view. */
+    onListChange?: (rows: Shift[]) => void;
     /** Tells the parent the table is mounted so it can enable / wire its
      *  Filter button click handler. */
     filterOpen: boolean;
@@ -612,7 +616,7 @@ export interface ShiftManagementTabProps {
 }
 
 export function ShiftManagementTab({
-    returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange, onCountChange,
+    returnTo, branchId, search, filterOpen, onCloseFilter, onFilterStateChange, onCountChange, onListChange,
     viewMode = "list", weekStart, onFlyoutOpen, mainPanelOpen,
 }: ShiftManagementTabProps) {
     const router = useRouter();
@@ -721,6 +725,11 @@ export function ShiftManagementTab({
     useEffect(() => {
         if (viewMode !== "week") onCountChange?.(filtered.length, filtered.length === 1 ? "shift" : "shifts");
     }, [viewMode, filtered.length, onCountChange]);
+    // Push the exact filtered shift set up for the shared toolbar's Export, so it
+    // matches the on-screen list. Cleared on the Week view (no shift list shown).
+    useEffect(() => {
+        onListChange?.(viewMode === "week" ? [] : filtered);
+    }, [viewMode, filtered, onListChange]);
     // Stable forwarder for the week view's staff-row count — a fresh inline
     // callback here would re-run ShiftsWeekView's report effect every render.
     const reportWeekCount = useCallback((n: number) => onCountChange?.(n, "staff"), [onCountChange]);
