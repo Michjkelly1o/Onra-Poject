@@ -38,6 +38,7 @@ import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
 import { branchTzLabel } from "@/lib/branch-time";
 import { ScheduleClassCard, ScheduleMorePill, SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
 import { SESSION_TYPE_FILTER_LABEL, SESSION_TYPE_ORDER } from "@/lib/session-type";
+import { useHasMounted } from "@/lib/use-has-mounted";
 import {
     DayView, WeekView, getCategoryColor,
     isoAddDays, isoToDisplay, formatWeekRange, isoToMonday,
@@ -1125,6 +1126,11 @@ export default function SchedulePageRoute() {
 
 function SchedulePage() {
     const router = useRouter();
+    // Class statuses (Upcoming/Ongoing/Completed) + their counts are derived
+    // from the live clock and the localStorage-backed store, so the server and
+    // client disagree — render a stable shell until mounted to avoid a
+    // hydration mismatch on the "N schedules" total + the grid.
+    const mounted = useHasMounted();
     const { classSchedules, classTemplates, classBookings, classCategories, cancelClassSchedule, showToast, appointmentBookings, cancelAppointment } = useAppStore();
     const customers = useAppStore(s => s.customers);
     // Categories pill list for the FilterPanel — names only, matching the
@@ -1534,6 +1540,10 @@ function SchedulePage() {
             </button>
         );
     }
+
+    // Stable shell for SSR + first client paint (see `mounted` above) — the real
+    // content mounts on the next tick with the live, clock-accurate data.
+    if (!mounted) return <div className="flex-1 min-h-0" />;
 
     return (
         // Fill-to-viewport: the view card fills the remaining height (flex-1

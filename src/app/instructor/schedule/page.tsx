@@ -110,6 +110,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAppStore, hourFloatFromTime, appointmentToClassInstance, isAppointmentId, type ClassSchedule, type ClassStatus, type BusinessHours, type HoursWindow, type BlockedTime } from "@/lib/store";
+import { useHasMounted } from "@/lib/use-has-mounted";
 import { instructor_profile } from "@/data/mock/instructor_profile";
 import { computeOverlapLanes } from "@/components/schedule/lane-overlap";
 import { BlockedStrip } from "@/components/schedule/BlockedStrip";
@@ -1180,6 +1181,9 @@ const TAB_ITEMS: { id: ViewMode; label: string }[] = [
 
 export default function InstructorSchedulePage() {
     const router = useRouter();
+    // Clock-derived class statuses + counts differ between server and client —
+    // render a stable shell until mounted to avoid a hydration mismatch.
+    const mounted = useHasMounted();
     const currentUser    = useAppStore(s => s.currentUser);
     const classSchedules = useAppStore(s => s.classSchedules);
     const appointments   = useAppStore(s => s.appointments);
@@ -1342,6 +1346,9 @@ export default function InstructorSchedulePage() {
             </button>
         );
     }
+
+    // Stable shell for SSR + first client paint (see `mounted` above).
+    if (!mounted) return <div className="flex-1 min-h-0" />;
 
     return (
         // Fill the InstructorLayout main height — `flex-1 min-h-0` lets the
