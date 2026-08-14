@@ -18,9 +18,10 @@ Every export carries: the record **`id`** first, **every FK as its `*_id`** (`br
 ## What ships an export (by phase)
 
 - **Phase 1 — existing exports rebuilt to contract:** Customers (incl. the active/archived merge fix + 8 marketing prefs), Staff, Roles (serialized permissions matrix + grant limits), Memberships + Packages, Gift-card designs, Schedule, Tax rates, Agreements (with the current-version document body), Compensation, Retail (id + category_id added; importer-tuned columns kept verbatim).
-- **Phase 2 — modules that had none:** Business/Locations (branches), Pay rates (full discriminated union), Promo codes, Marketing campaigns + Announcements, Services, Class categories, Notification settings. Also fixed the Staff page's shift sub-tab (it was exporting staff rows instead of shifts).
+- **Phase 2 — modules that had none:** Business/Locations (branches), Pay rates (full discriminated union), Promo codes, Marketing campaigns + Announcements, Services, Class categories. Also fixed the Staff page's shift sub-tab (it was exporting staff rows instead of shifts). *(A Notification-settings export was added then removed per client feedback — a settings page shouldn't carry a data export.)*
 - **Phase 3 — child / relationship tables:** class-bookings, appointment-bookings, customer-plans, wallet-transactions, customer-transactions, referrals, customer-agreements, issued-gift-cards, rooms, business-hours. Surfaced per-record exports on the gift-card detail tab + the customer-profile tabs (Plan, Payments, Bookings, Referrals, Agreements).
-- **Phase 4 — Reports migration mode:** the reports export dropdown gained a **"Migration export (all IDs)"** group (Excel + CSV) that emits raw per-record rows with *every* id/FK column (incl. the `hiddenByDefault` ones) and injects a `branch_id` column centrally when rows carry it. The normal Excel/CSV export (visible columns, pivot-aware) is unchanged.
+- **Phase 4 — Reports export UX:** the reports export dropdown matches the other modules — **CSV · Excel · PDF** (PDF disabled "soon"). Reports keep their richer exporter (number formats + metadata sheet + pivot). *(An earlier "Migration export (all IDs)" option was removed as confusing UX — the id/FK columns are still reachable per-report via the "Select columns" toggle, which un-hides the `hiddenByDefault` id columns.)*
+- **Dashboard performance:** the snapshot export is a jagged multi-section sheet (not entity data), so it uses the shared `exportAoa()` primitive via a new `onExport(format)` hook on `ToolbarExport` — now offers CSV **and** Excel.
 
 ### Specs with no toolbar surface (migration-layer only)
 `wallet-transactions`, `rooms`, and `business-hours` have complete specs but **no admin list page** to hang a button on. They're built for a bulk export / Supabase-seed script that calls the spec with the full store array. Same for the full child tables (a real migration exports the whole table, not one customer at a time).
@@ -50,7 +51,7 @@ Verified empirically by feeding each export's CSV through the **real AI-agent im
 
 ## Files
 
-- Specs: [`src/lib/export/specs/`](../src/lib/export/specs/) — `customers`, `staff`, `products`, `schedule`, `settings`, `locations`, `pay-rates`, `marketing`, `classes`, `notifications`, `bookings`, `customer-records`.
+- Specs: [`src/lib/export/specs/`](../src/lib/export/specs/) — `customers`, `staff`, `products`, `schedule`, `settings`, `locations`, `pay-rates`, `marketing`, `classes`, `bookings`, `customer-records`.
 - Core: [`src/lib/export/export-data.ts`](../src/lib/export/export-data.ts) (`ExportColumn`, `exportRows`, `matrixToExportData`).
 - Toolbar: [`src/components/patterns/ToolbarExport.tsx`](../src/components/patterns/ToolbarExport.tsx).
 - Reports migration mode: [`src/components/reports/PivotableReportShell.tsx`](../src/components/reports/PivotableReportShell.tsx).

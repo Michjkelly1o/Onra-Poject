@@ -15,7 +15,7 @@
 //     not display labels
 // so an export → import round-trip reconstructs records + relationships.
 
-import { buildCsv, downloadCsv, todayISO } from "@/lib/csv-export";
+import { buildCsv, csvEscape, downloadCsv, todayISO } from "@/lib/csv-export";
 
 /** One column in an export. `value` returns the cell for a given row. */
 export interface ExportColumn<Row> {
@@ -39,6 +39,27 @@ export interface ExportData<Row> {
 }
 
 export type ExportFormat = "csv" | "xlsx";
+
+/**
+ * Export a jagged array-of-arrays (multi-section reports with title/blank rows,
+ * e.g. the dashboard performance snapshot) to CSV or Excel. These don't fit the
+ * uniform column-spec model, so they get their own primitive that shares the
+ * same CSV escaping + xlsx path. Empty inner arrays render as blank rows.
+ */
+export async function exportAoa(entity: string, aoa: (string | number)[][], format: ExportFormat): Promise<void> {
+    const filename = `${entity}-${todayISO()}`;
+    if (format === "csv") {
+        const csv = aoa.map(line => (line.length === 0 ? "" : line.map(csvEscape).join(","))).join("\r\n");
+        downloadCsv(`${filename}.csv`, csv);
+        return;
+    }
+    const mod = (await import("xlsx")) as unknown as XlsxModule;
+    const XLSX = mod.utils ? mod : (mod as unknown as { default: XlsxModule }).default;
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName(entity));
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+}
 
 /**
  * Wrap a pre-built `header + matrix` into an `ExportData` so a DYNAMIC-column

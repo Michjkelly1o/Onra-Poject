@@ -28,7 +28,7 @@ import { IconTooltip } from "@/components/patterns/IconTooltip";
 import { useRouter } from "next/navigation";
 import { cn, to12hParts } from "@/lib/utils";
 import { computeRecognizedRevenue } from "@/lib/reports/recognized-revenue";
-import { downloadCsv, todayISO as csvTodayISO } from "@/lib/csv-export";
+import { exportAoa } from "@/lib/export/export-data";
 import { getWidgetCsvSection } from "@/components/dashboard/DashboardWidgetCard";
 import { computeWidgetSeries } from "@/lib/dashboard/widget-series";
 import { format } from "date-fns";
@@ -160,12 +160,13 @@ interface DashboardMetric {
  *       mirror what's on screen. Hidden widgets are skipped.
  *  Each section is `[title row, header row, ...body rows, blank row]`. The
  *  trailing blank row is dropped so the file doesn't end on whitespace. */
-function exportPerformanceCsv(
+function exportPerformance(
     metrics: DashboardMetric[],
     activeWidgets: string[],
     period: DateFilter,
+    format: "csv" | "xlsx",
     /** Real store-driven series per widget id (branch-filtered) for widgets
-     *  wired to live data — so the CSV matches what's on screen. */
+     *  wired to live data — so the export matches what's on screen. */
     realSeriesById: Record<string, Record<string, string | number>[] | null> = {},
 ) {
     const sections: { title: string; header: string[]; body: string[][] }[] = [];
@@ -199,13 +200,12 @@ function exportPerformanceCsv(
     // Drop the trailing blank if any.
     if (lines.length && lines[lines.length - 1].length === 0) lines.pop();
 
-    const csv = lines
-        .map(line => line.length === 0 ? "" : line.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(","))
-        .join("\r\n");
-
-    downloadCsv(
-        `dashboard-performance-${period.label.toLowerCase().replace(/\s+/g, "-")}-${csvTodayISO()}.csv`,
-        csv,
+    // One jagged sheet (title / header / body rows per section) → CSV or Excel
+    // via the shared array-of-arrays exporter.
+    return exportAoa(
+        `dashboard-performance-${period.label.toLowerCase().replace(/\s+/g, "-")}`,
+        lines,
+        format,
     );
 }
 
@@ -1740,9 +1740,9 @@ export default function AdminDashboard() {
                                     with the filters; the primary Add widget
                                     button lives on the far right below. */}
                                 <ToolbarExport
-                                    onExportCsv={() => {
+                                    onExport={(fmt) => {
                                         // Real per-widget series (branch-scoped exactly as the
-                                        // on-screen widgets) so the CSV matches the charts.
+                                        // on-screen widgets) so the export matches the charts.
                                         const realSeriesById = Object.fromEntries(
                                             activeWidgets.map(id => [id, computeWidgetSeries(id, period, {
                                                 transactions: customerTransactions,
@@ -1761,10 +1761,12 @@ export default function AdminDashboard() {
                                                 branchIds: branchScopeIds ?? undefined,
                                             })]),
                                         );
-                                        exportPerformanceCsv(metrics, activeWidgets, period, realSeriesById);
+                                        return exportPerformance(metrics, activeWidgets, period, fmt, realSeriesById);
+                                    }}
+                                    onExported={(fmt) => {
                                         showToast(
                                             "Performance report exported",
-                                            `${metrics.length} metric${metrics.length === 1 ? "" : "s"} + ${activeWidgets.length} widget${activeWidgets.length === 1 ? "" : "s"} exported to CSV.`,
+                                            `${metrics.length} metric${metrics.length === 1 ? "" : "s"} + ${activeWidgets.length} widget${activeWidgets.length === 1 ? "" : "s"} exported to ${fmt.toUpperCase()}.`,
                                             "success", "check",
                                         );
                                     }}

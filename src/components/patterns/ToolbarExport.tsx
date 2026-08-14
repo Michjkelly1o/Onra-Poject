@@ -33,9 +33,14 @@ export interface ToolbarExportProps {
     /** PREFERRED — column-spec data → real CSV AND Excel. Computed lazily on the
      *  click so it reflects the current rows. Takes precedence over onExportCsv. */
     exportData?: () => ExportData<unknown> | null;
-    /** Fired after a successful `exportData` export (CSV or Excel) — use it to
-     *  show the success toast. Not called on the legacy `onExportCsv` path
-     *  (those modules fire their own toast). */
+    /** CUSTOM per-format handler — for exports that don't fit the column-spec
+     *  model (e.g. the dashboard's jagged multi-section snapshot). When provided,
+     *  CSV + Excel are both live and call `onExport(format)`; the caller builds +
+     *  downloads the file itself. `onExported` still fires afterwards. */
+    onExport?: (format: "csv" | "xlsx") => void | Promise<void>;
+    /** Fired after a successful `exportData` / `onExport` export (CSV or Excel) —
+     *  use it to show the success toast. Not called on the legacy `onExportCsv`
+     *  path (those modules fire their own toast). */
     onExported?: (format: "csv" | "xlsx") => void;
     disabled?: boolean;
     /** Tooltip label on hover. Defaults to "Export". */
@@ -44,7 +49,7 @@ export interface ToolbarExportProps {
     size?: "md" | "sm";
 }
 
-export function ToolbarExport({ onExportCsv, exportData, onExported, disabled = false, label = "Export", size = "md" }: ToolbarExportProps) {
+export function ToolbarExport({ onExportCsv, exportData, onExport, onExported, disabled = false, label = "Export", size = "md" }: ToolbarExportProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
@@ -56,8 +61,8 @@ export function ToolbarExport({ onExportCsv, exportData, onExported, disabled = 
         return () => document.removeEventListener("mousedown", h);
     }, []);
 
-    const canCsv = !!exportData || !!onExportCsv;
-    const canExcel = !!exportData;
+    const canCsv = !!exportData || !!onExport || !!onExportCsv;
+    const canExcel = !!exportData || !!onExport;
     const isEnabled = (fmt: ExportFmt): boolean =>
         fmt === "CSV" ? canCsv : fmt === "Excel" ? canExcel : false; // PDF not wired yet
 
@@ -68,12 +73,18 @@ export function ToolbarExport({ onExportCsv, exportData, onExported, disabled = 
                 if (exportData) {
                     const d = exportData();
                     if (d) { await exportRows(d, "csv"); onExported?.("csv"); }
+                } else if (onExport) {
+                    await onExport("csv"); onExported?.("csv");
                 } else {
                     onExportCsv?.();
                 }
-            } else if (fmt === "Excel" && exportData) {
-                const d = exportData();
-                if (d) { await exportRows(d, "xlsx"); onExported?.("xlsx"); }
+            } else if (fmt === "Excel") {
+                if (exportData) {
+                    const d = exportData();
+                    if (d) { await exportRows(d, "xlsx"); onExported?.("xlsx"); }
+                } else if (onExport) {
+                    await onExport("xlsx"); onExported?.("xlsx");
+                }
             }
         } catch (err) {
             // Surface the failure to the console instead of an unhandled promise
