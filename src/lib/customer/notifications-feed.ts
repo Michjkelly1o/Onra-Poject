@@ -60,7 +60,7 @@ const KEY = "onra-customer-notifications";
 // Bump to re-seed the demo feed (clears live-appended + read state).
 // v5 — marketing notifications (announcements + campaigns) are now LIVE-derived
 // from `marketingItems` in the hook, so the seeded feed no longer carries them.
-const VERSION = 5;
+const VERSION = 6;
 
 // ── Live-derived marketing notifications ─────────────────────────────────────
 // Marketing rows aren't stored in the feed — they're derived from the LIVE
@@ -177,8 +177,11 @@ function seedFeed(): CustomerNotification[] {
     }
 
     if (st) {
+        // Scope to the signed-in customer (falls back to the demo member while
+        // GUEST) — matches `useCustomerNotifications` + the store sink.
+        const viewerId = getAuthSession().customerId ?? DEMO_MEMBER_ID;
         const schedById = new Map(st.classSchedules.map((c) => [c.id, c]));
-        const mine = st.classBookings.filter((b) => b.customerId === DEMO_MEMBER_ID);
+        const mine = st.classBookings.filter((b) => b.customerId === viewerId);
 
         // Two most-recently-booked upcoming classes → "Booking confirmed".
         const booked = mine
@@ -222,7 +225,7 @@ function seedFeed(): CustomerNotification[] {
         }
 
         // Active membership → "Membership purchase" (→ My plan).
-        const plans = st.customerPlans.filter((p) => p.customerId === DEMO_MEMBER_ID);
+        const plans = st.customerPlans.filter((p) => p.customerId === viewerId);
         const mem =
             plans.find((p) => p.kind === "membership" && (p.status === "active" || p.status === "frozen")) ??
             plans.find((p) => p.kind === "membership");

@@ -94,9 +94,10 @@ export function CustomerToastHost({ duration = 4000 }: { duration?: number }) {
     const { Icon, color } = resolveIcon(toast.icon, toast.type);
 
     // z-[120] clears the CustomerSheet portal (z-[60]); centred at the 402px
-    // phone-frame width so it reads inside the simulated device.
+    // phone-frame width with 16px (px-4) side gutters so the card insets inside
+    // the simulated device rather than spanning edge-to-edge.
     return createPortal(
-        <div className="pointer-events-none fixed inset-x-0 top-0 z-[120] flex justify-center px-4 pt-[max(12px,env(safe-area-inset-top))]">
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-[120] flex justify-center pt-[max(12px,env(safe-area-inset-top))]">
             <div
                 role="status"
                 aria-live="polite"
@@ -104,7 +105,7 @@ export function CustomerToastHost({ duration = 4000 }: { duration?: number }) {
                     setShown(false);
                     clearToast();
                 }}
-                className="pointer-events-auto w-full max-w-[402px] transition-all duration-300 ease-out"
+                className="pointer-events-auto w-full max-w-[402px] px-4 transition-all duration-300 ease-out"
                 style={{ opacity: shown ? 1 : 0, transform: shown ? "translateY(0)" : "translateY(-8px)" }}
             >
                 <CustomerToast icon={Icon} iconColor={color} title={toast.title} subtext={toast.message} />

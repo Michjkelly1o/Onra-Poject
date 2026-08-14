@@ -8,7 +8,7 @@
 // shared by the Branch selector sheet and the BranchLocationCard (class /
 // appointment / instructor details) so every surface reads identically.
 
-import { business_hours } from "@/data/mock";
+import { useAppStore } from "@/lib/store";
 import { DEMO_TODAY_ISO } from "@/lib/customer/home-data";
 
 // Day-of-week anchored to the seed's reference date (matches the demo carousel).
@@ -25,7 +25,9 @@ export function to12h(time: string): string {
 
 /** Today's operational state for a branch (open flag + "07:00 AM - 08:00 PM"). */
 export function branchHoursToday(branchId: string): { isOpen: boolean; hoursLabel: string } {
-    const row = business_hours.find((bh) => bh.branch_id === branchId && bh.day_of_week === TODAY_DOW);
+    // Read the LIVE store slice (not the static seed) so an Admin edit to a
+    // branch's hours (Settings → Business & Locations) reflects on the customer.
+    const row = useAppStore.getState().businessHours.find((bh) => bh.branch_id === branchId && bh.day_of_week === TODAY_DOW);
     if (!row || row.is_closed) return { isOpen: false, hoursLabel: "Closed today" };
     return { isOpen: true, hoursLabel: `${to12h(row.open_time)} - ${to12h(row.close_time)}` };
 }

@@ -11,6 +11,8 @@
 
 import { useSyncExternalStore } from "react";
 import { payment_methods as SEED } from "@/data/mock/payment_methods";
+import { useAppStore } from "@/lib/store";
+import { DEMO_MEMBER_ID } from "@/lib/customer/context";
 
 export interface CustomerCard {
     id: string;
@@ -31,15 +33,21 @@ interface PayState {
 }
 
 const KEY = "onra-customer-payment-methods";
+// Bump to drop a device's legacy payload (all-customers cards + "Kelly M" holder).
+const METHODS_VERSION = 2;
 
 function seedState(): PayState {
+    // The demo customer's OWN cards from the shared seed (never other customers'),
+    // with the holder derived from their real name (was hardcoded "Kelly M").
+    const me = useAppStore.getState().customers.find((c) => c.id === DEMO_MEMBER_ID);
+    const holder = me ? `${me.firstName} ${me.lastName}`.trim() : "";
     return {
-        cards: SEED.map((c) => ({
+        cards: SEED.filter((c) => c.customer_id === DEMO_MEMBER_ID).map((c) => ({
             id: c.id,
             brand: c.brand,
             last4: c.last4,
             number: `${c.brand.toLowerCase().includes("visa") ? "4" : "5"}00000000000${c.last4}`,
-            holder: "Kelly M",
+            holder,
             expMonth: c.exp_month,
             expYear: c.exp_year,
         })),
@@ -55,6 +63,12 @@ function hydrate() {
     if (hydrated || typeof window === "undefined") return;
     hydrated = true;
     try {
+        if (window.localStorage.getItem(`${KEY}-v`) !== String(METHODS_VERSION)) {
+            window.localStorage.removeItem(KEY);
+            window.localStorage.setItem(`${KEY}-v`, String(METHODS_VERSION));
+            state = seedState();
+            return;
+        }
         const raw = window.localStorage.getItem(KEY);
         if (raw) state = JSON.parse(raw) as PayState;
     } catch {

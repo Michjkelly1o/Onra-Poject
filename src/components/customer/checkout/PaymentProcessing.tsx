@@ -77,6 +77,10 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
             const totals = computeTotals(cartTotal(), promo, vatPct, purchaseCart.redeemAccountCredit ? balance : 0, inclusive);
             const kinds = Array.from(new Set(items.map((it) => it.kind)));
 
+            // Snapshot the shared txn ids so we can link the ones applyPurchase
+            // is about to create to the local Payment-history record (dedupe).
+            const txnIdsBefore = new Set(useAppStore.getState().customerTransactions.map((t) => t.id));
+
             applyPurchase(
                 member.id,
                 items.map((it) => ({
@@ -101,6 +105,13 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
                 promo ? { code: promo.code, discountAed: totals.discount } : undefined,
             );
 
+            // The store txns applyPurchase just created (one per line) — linked
+            // onto the local record so the merged history lists the order once.
+            const newTxnIds = useAppStore
+                .getState()
+                .customerTransactions.filter((t) => !txnIdsBefore.has(t.id))
+                .map((t) => t.id);
+
             const now = new Date();
             const orderLines = items.map((it) => ({ name: it.name, quantity: it.quantity, price: it.price }));
             const txnId = `#P${Math.floor(100000000 + Math.random() * 900000000)}`;
@@ -123,7 +134,9 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
             // supported). Only fires when the customer actually chose the
             // gift-card method — any other method leaves the balance alone.
             if (method.toLowerCase().includes("gift") && totals.total > 0) {
-                spendGiftCards(totals.total);
+                // Real issued cards debit through the store (admin balances
+                // reflect); the local demo cards cover any remainder.
+                spendGiftCards(member.id, totals.total);
             }
 
             // NOTE: `applyPurchase` above already debited the wallet ledger
@@ -149,6 +162,7 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
                 discount: totals.discount,
                 tax: totals.tax,
                 accountCredit: totals.accountCredit,
+                txnStoreIds: newTxnIds,
             });
 
             purchaseCart.classId = null;

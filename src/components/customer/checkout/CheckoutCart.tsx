@@ -31,7 +31,7 @@ import {
 import { ProductArt } from "@/components/customer/products/ProductArt";
 import { ProductCreditTile } from "@/components/customer/products/ProductCreditTile";
 import { RadioDot } from "@/components/customer/shell/SelectIndicators";
-import { useRedeemedGiftCards } from "@/lib/customer/gift-cards";
+import { useGiftCardWallet, useGiftCardSpendableBalance } from "@/lib/customer/gift-cards";
 import { usePaymentMethods } from "@/lib/customer/payment-methods";
 import { useAccountCreditBalance, useAccountCreditEnabled } from "@/lib/customer/account-credit";
 import { AccountCreditInfoSheet } from "@/components/customer/profile/AccountCreditInfoSheet";
@@ -203,9 +203,9 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
 
     // Gift-card payment reflects the customer's currently-redeemed cards: a single
     // "Forma gift card" method carrying the COMBINED balance. Hidden when none.
-    const redeemedCards = useRedeemedGiftCards();
-    const giftCardBalance = redeemedCards.reduce((n, r) => n + r.balance, 0);
-    const hasGiftCard = redeemedCards.length > 0;
+    const walletCards = useGiftCardWallet();
+    const giftCardBalance = useGiftCardSpendableBalance();
+    const hasGiftCard = walletCards.length > 0;
     const giftDisabled = giftCardBalance < totals.total;
 
     // Select the gift-card method when returning from the picker ("Use gift card").

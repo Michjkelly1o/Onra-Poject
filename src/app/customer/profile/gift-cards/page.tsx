@@ -8,7 +8,8 @@ import { useRequireCustomerAuth } from "@/lib/customer/use-require-auth";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Gift01 } from "@untitledui/icons";
 import { useCustomerBack } from "@/lib/customer/use-customer-back";
-import { isRedeemed, lookupGift, useRedeemedGiftCards, type RedeemedGiftCard } from "@/lib/customer/gift-cards";
+import { isRedeemed, lookupGift, useGiftCardWallet, type RedeemedGiftCard } from "@/lib/customer/gift-cards";
+import { useCurrentCustomer } from "@/lib/customer/context";
 import { consumeGiftCardPickMode, requestGiftCardPayment } from "@/lib/customer/purchase";
 import { aed, shortDate } from "@/lib/customer/profile-format";
 import { CustomerHeader } from "@/components/customer/shell/CustomerHeader";
@@ -29,7 +30,8 @@ export default function GiftCardPage() {
     useRequireCustomerAuth();
     const router = useRouter();
     const goBack = useCustomerBack("/customer/profile");
-    const redeemed = useRedeemedGiftCards();
+    const memberId = useCurrentCustomer()?.id ?? null;
+    const redeemed = useGiftCardWallet();
     const [code, setCode] = useState("");
     const [error, setError] = useState<string | null>(null);
     // Opened as a payment-method picker from a checkout ("Add gift card")?
@@ -55,7 +57,7 @@ export default function GiftCardPage() {
             setError("Gift card not found");
             return;
         }
-        if (isRedeemed(c)) {
+        if (isRedeemed(c, memberId)) {
             setError("This gift card is already redeemed");
             return;
         }

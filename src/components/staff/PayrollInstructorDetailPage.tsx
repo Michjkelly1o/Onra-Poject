@@ -47,11 +47,13 @@ import { RoleBadge } from "@/components/staff/RoleBadge";
 import { Toast } from "@/components/ui/Toast";
 import {
     useAppStore, computePayRateDisplay,
-    type Instructor, type ClassSchedule, type PayRate, type StaffPayConfig,
+    type Instructor, type ClassSchedule, type PayRate, type StaffPayConfig, type SessionType,
 } from "@/lib/store";
 import { TaxSuffix } from "@/components/ui/TaxSuffix";
 import { payrollTaxAppliesForCountry } from "@/lib/payroll-tax";
 import { SortableHeader, useSort } from "@/components/ui/SortableHeader";
+import { SessionTypeTag } from "@/components/schedule/ScheduleClassCard";
+import { SESSION_TYPE_ORDER } from "@/lib/session-type";
 import { Pagination } from "@/components/ui/Pagination";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ToolbarTotal } from "@/components/patterns/ToolbarTotal";
@@ -506,6 +508,8 @@ function scheduleInRange(s: ClassSchedule, r: DateRange): boolean {
 // side by side, each priced on its own configured pay rate (client 2026-07-28).
 interface BookingRow {
     kind: "class" | "private";
+    /** Canonical session type — Class / Private / Recovery (client 2026-08-14). */
+    type: SessionType;
     id: string;
     name: string;
     dateISO: string;
@@ -859,6 +863,7 @@ export default function PayrollInstructorDetailPage({
             .filter(s => scheduleInRange(s, range) && s.status !== "Upcoming")
             .map(s => ({
                 kind: "class",
+                type: s.type,
                 id: s.id,
                 name: s.name,
                 dateISO: s.dateISO,
@@ -875,6 +880,7 @@ export default function PayrollInstructorDetailPage({
             .filter(a => isoInRange(a.dateISO, range) && a.status !== "Upcoming")
             .map(a => ({
                 kind: "private",
+                type: a.type,
                 id: a.id,
                 name: a.serviceName,
                 dateISO: a.dateISO,
@@ -960,6 +966,7 @@ export default function PayrollInstructorDetailPage({
     const CLASS_STATUS_ORDER: Record<ClassStatus, number> = { Upcoming: 0, Ongoing: 1, Completed: 2, Cancelled: 3 };
     const { sorted: sortedRows, sortKey, sortDir, toggle: toggleSort } = useSort(filteredRows, {
         name:       (a, b) => a.name.localeCompare(b.name),
+        type:       (a, b) => SESSION_TYPE_ORDER.indexOf(a.type) - SESSION_TYPE_ORDER.indexOf(b.type),
         attendance: (a, b) => a.attendees - b.attendees,
         rating:     (a, b) => (a.rating ?? 0) - (b.rating ?? 0),
         status:     (a, b) => CLASS_STATUS_ORDER[a.status] - CLASS_STATUS_ORDER[b.status],
@@ -1213,6 +1220,9 @@ export default function PayrollInstructorDetailPage({
                                                     <th className={cn(TH, "w-[280px]")}>
                                                         <SortableHeader sortKey="name"       currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Class name</SortableHeader>
                                                     </th>
+                                                    <th className={cn(TH, "w-[130px]")}>
+                                                        <SortableHeader sortKey="type"       currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Type</SortableHeader>
+                                                    </th>
                                                     <th className={cn(TH, "w-[120px]")}>
                                                         <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
                                                     </th>
@@ -1244,6 +1254,7 @@ export default function PayrollInstructorDetailPage({
                                                                 </span>
                                                             </div>
                                                         </td>
+                                                        <td className={TD}><SessionTypeTag type={r.type} /></td>
                                                         <td className={TD}>{r.attendees}/{r.capacity}</td>
                                                         <td className={TD}>
                                                             {r.ratingCount > 0 ? (

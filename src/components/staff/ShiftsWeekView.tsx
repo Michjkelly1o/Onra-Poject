@@ -131,7 +131,7 @@ function shiftPalette(shift: Shift, index: number) {
 // evenly-spaced dividers mark each hour. Shift name + time sit below. A staff
 // member with nothing booked (or any non-instructor role) shows an empty bar
 // with just the hour dividers.
-const SLICE_FILL  = "var(--colors-secondary-50)"; // soft light brand green (#eff6f3) — client 2026-08-12
+const SLICE_FILL  = "#e7f1ed"; // Figma 8203:111109 — secondary-100 green; overlay removed so it no longer washes out, client 2026-08-13
 const SLICE_HATCH = "repeating-linear-gradient(115deg, #e4e7ec 0px, #e4e7ec 3px, #f9fafb 3px, #f9fafb 4px)";
 
 /** "07:30" → 7.5 */
