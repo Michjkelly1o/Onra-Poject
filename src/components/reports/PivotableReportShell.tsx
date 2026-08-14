@@ -336,11 +336,26 @@ export function PivotableReportShell({
     }, [filteredRows.length, dateISO.label, period]);
 
     // Export handlers.
-    function buildFilename(ext: "csv" | "xlsx"): string {
-        return `${report.id}_${dateISO.fromISO}_${dateISO.toISO}.${ext}`;
+    function buildFilename(ext: "csv" | "xlsx", migration = false): string {
+        return `${report.id}${migration ? "_migration" : ""}_${dateISO.fromISO}_${dateISO.toISO}.${ext}`;
+    }
+    // Migration export column set — EVERY declared column (including the
+    // hiddenByDefault id/FK columns), plus a synthetic `branch_id` FK when the
+    // rows carry `branchId` but the config only exposes the Location name. This
+    // keeps the id/FK contract central instead of editing 31 report configs.
+    function migrationColumns(): ColumnDef[] {
+        const cols = [...report.columns];
+        const rows = filteredRows as unknown as Record<string, unknown>[];
+        if (!cols.some(c => c.key === "branchId") && rows.length > 0 && "branchId" in rows[0]) {
+            const branchCol: ColumnDef = { key: "branchId", label: "Branch ID", kind: "id", minWidth: 160 };
+            const locIdx = cols.findIndex(c => c.key === "location");
+            if (locIdx >= 0) cols.splice(locIdx, 0, branchCol);
+            else cols.push(branchCol);
+        }
+        return cols;
     }
     function stamp(m: ExportMetadata): ExportMetadata { return { ...m, exportedAtISO: new Date().toISOString() }; }
-    function buildMetadata(): ExportMetadata {
+    function buildMetadata(migration = false): ExportMetadata {
         const activeBranches = branches.filter(b => visibleBranchIds.has(b.id)).map(b => b.name);
         const locFilter = activeBranches.length === branches.length
             ? "All locations"
@@ -348,14 +363,23 @@ export function PivotableReportShell({
         return {
             reportTitle: report.title,
             dateRange:   `${dateISO.fromISO} → ${dateISO.toISO} (${dateISO.label})`,
-            filters:     `Location: ${locFilter}`,
-            period:      period === "none" ? "None (list)" : PERIOD_LABEL[period],
-            breakdown:   dimension?.label ?? "None",
+            filters:     migration ? `Location: ${locFilter} · Migration export (all id / FK columns)` : `Location: ${locFilter}`,
+            period:      migration ? "None (raw records)" : (period === "none" ? "None (list)" : PERIOD_LABEL[period]),
+            breakdown:   migration ? "None" : (dimension?.label ?? "None"),
             exportedAtISO: "",
-            rowCount:    period === "none" ? filteredRows.length : (pivot?.rowKeys.length ?? 0),
+            rowCount:    migration ? filteredRows.length : (period === "none" ? filteredRows.length : (pivot?.rowKeys.length ?? 0)),
         };
     }
-    function handleExportCsv() {
+    // Migration export ALWAYS emits raw per-record rows (never the grouped/
+    // pivoted view) with the full id/FK column set, so an export → import
+    // round-trip reconstructs every record + relationship.
+    function handleExportCsv(migration = false) {
+        if (migration) {
+            const rows = filteredRows as unknown as Record<string, unknown>[];
+            const csv = buildListCsv({ columns: migrationColumns(), rows, filename: buildFilename("csv", true) });
+            triggerCsvDownload(csv, buildFilename("csv", true));
+            return;
+        }
         const cols = report.columns.filter(c => visibleCols.has(c.key));
         if (period === "none" || !pivot) {
             const csv = buildListCsv({ columns: cols, rows: listBaseRows, filename: buildFilename("csv") });
@@ -366,9 +390,14 @@ export function PivotableReportShell({
             triggerCsvDownload(csv, buildFilename("csv"));
         }
     }
-    function handleExportXlsx() {
+    function handleExportXlsx(migration = false) {
+        const meta = stamp(buildMetadata(migration));
+        if (migration) {
+            const rows = filteredRows as unknown as Record<string, unknown>[];
+            exportListXlsx({ columns: migrationColumns(), rows, filename: buildFilename("xlsx", true), meta, sheetName: report.title });
+            return;
+        }
         const cols = report.columns.filter(c => visibleCols.has(c.key));
-        const meta = stamp(buildMetadata());
         if (period === "none" || !pivot) {
             exportListXlsx({ columns: cols, rows: listBaseRows, filename: buildFilename("xlsx"), meta, sheetName: report.title });
         } else {
@@ -502,7 +531,12 @@ export function PivotableReportShell({
                         {toolbarRight}
 
                         {/* Export — green primary */}
-                        <ExportInlineDropdown onExcel={handleExportXlsx} onCsv={handleExportCsv} />
+                        <ExportInlineDropdown
+                            onExcel={() => handleExportXlsx(false)}
+                            onCsv={() => handleExportCsv(false)}
+                            onMigrationExcel={() => handleExportXlsx(true)}
+                            onMigrationCsv={() => handleExportCsv(true)}
+                        />
                     </div>
                 </div>
 
@@ -674,7 +708,10 @@ function CheckListDropdown({
 // Export dropdown (green primary — matches existing ExportDropdown chrome)
 // ═════════════════════════════════════════════════════════════════════════
 
-function ExportInlineDropdown({ onExcel, onCsv }: { onExcel: () => void; onCsv: () => void; }) {
+function ExportInlineDropdown({ onExcel, onCsv, onMigrationExcel, onMigrationCsv }: {
+    onExcel: () => void; onCsv: () => void;
+    onMigrationExcel: () => void; onMigrationCsv: () => void;
+}) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -682,6 +719,7 @@ function ExportInlineDropdown({ onExcel, onCsv }: { onExcel: () => void; onCsv: 
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
     }, []);
+    const item = "w-full text-left px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors";
     return (
         <div ref={ref} className="relative">
             {/* Icon-only trigger — matches ToolbarExport used across the other
@@ -693,14 +731,24 @@ function ExportInlineDropdown({ onExcel, onCsv }: { onExcel: () => void; onCsv: 
                 </Button>
             </IconTooltip>
             {open && (
-                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[180px]">
-                    <button type="button" onClick={() => { onExcel(); setOpen(false); }}
-                        className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                <div className="absolute right-0 top-[calc(100%+6px)] z-50 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[12px] shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)] py-1.5 min-w-[220px]">
+                    <button type="button" onClick={() => { onExcel(); setOpen(false); }} className={item}>
                         Excel (.xlsx)
                     </button>
-                    <button type="button" onClick={() => { onCsv(); setOpen(false); }}
-                        className="w-full text-left px-4 py-[10px] text-[14px] font-medium text-[var(--colors-text-secondary)] hover:bg-[var(--colors-bg-secondary)] transition-colors">
+                    <button type="button" onClick={() => { onCsv(); setOpen(false); }} className={item}>
                         CSV
+                    </button>
+                    {/* Migration export — raw per-record rows with EVERY id / FK
+                        column (branch_id, customer_id, …), for a re-importable
+                        migration dump. Distinct from the human report above. */}
+                    <p className="px-4 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--colors-text-quaternary)]">
+                        Migration export (all IDs)
+                    </p>
+                    <button type="button" onClick={() => { onMigrationExcel(); setOpen(false); }} className={item}>
+                        Excel — all id / FK columns
+                    </button>
+                    <button type="button" onClick={() => { onMigrationCsv(); setOpen(false); }} className={item}>
+                        CSV — all id / FK columns
                     </button>
                 </div>
             )}
