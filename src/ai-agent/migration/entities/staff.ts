@@ -44,6 +44,7 @@ export const staffEntity: EntityDef = {
         "job title":     "role",
         title:           "role",
         branch:          "branch",
+        "branch name":   "branch",
         location:        "branch",
         club:            "branch",
     },

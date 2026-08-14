@@ -24,6 +24,7 @@ export const roomsEntity: EntityDef = {
         room:              "name",
         title:             "name",
         branch:            "branch",
+        "branch name":     "branch",
         location:          "branch",
         club:              "branch",
         capacity:          "capacity",

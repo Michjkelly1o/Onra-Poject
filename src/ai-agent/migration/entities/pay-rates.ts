@@ -30,6 +30,7 @@ export const payRatesEntity: EntityDef = {
         value:           "amount",
         pay:             "amount",
         branch:          "branch",
+        "branch name":   "branch",
         location:        "branch",
         club:            "branch",
     },

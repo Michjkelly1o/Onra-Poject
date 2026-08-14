@@ -41,6 +41,7 @@ Because of this, almost everything that would touch an external system in produc
 - [`staff-payroll-rbac-status.md`](staff-payroll-rbac-status.md) — what's real vs. deferred in Staff/Payroll (payroll adjustments UI, create-new-rate model, compensation report, RBAC).
 - [`services-configuration.md`](services-configuration.md) — services module configuration notes (existing).
 - [`pdf-export.md`](pdf-export.md) — PDF export is wired in the AI-agent card (real jspdf) but stubbed on the admin module toolbars + reports dropdown; how to wire it. (CSV/Excel migration completeness is a separate plan in `../new-prd/export-migration-completeness-implementation-plan.md`.)
+- [`export-migration.md`](export-migration.md) — CSV/Excel export is **done**: one column-spec per entity drives both formats with the id + FK contract, across every module + child table + a Reports "Migration export" mode. Records the round-trip verification (id-first exports feed the Supabase seed; the AI-agent importer is the name-based ingest path — compatible, not conflicting) and what a real dev does next.
 
 ---
 

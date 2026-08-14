@@ -66,6 +66,7 @@ export const customersEntity: EntityDef = {
         membership:        "plan_name",
         plan:              "plan_name",
         branch:            "branch_id",
+        "branch name":     "branch_id",
         location:          "branch_id",
         club:              "branch_id",
     },
