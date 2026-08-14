@@ -8,7 +8,7 @@
 
 - **One column-spec per entity** in [`src/lib/export/specs/`](../src/lib/export/specs/). A module declares its columns once (`ExportColumn[]`); `exportRows(data, "csv" | "xlsx")` in [`src/lib/export/export-data.ts`](../src/lib/export/export-data.ts) produces both formats from that single spec.
 - **CSV** goes through the shared `csv-export` primitive (UTF-8 BOM + CRLF). **Excel** is a real `.xlsx` via SheetJS, lazy-loaded so CSV-only pages don't ship the bundle.
-- **`ToolbarExport`** ([`src/components/patterns/ToolbarExport.tsx`](../src/components/patterns/ToolbarExport.tsx)) takes an `exportData` prop → live CSV + Excel; the legacy `onExportCsv` (CSV-only) path is retired across migrated modules. PDF stays a disabled "soon" item (see [`pdf-export.md`](pdf-export.md)).
+- **`ToolbarExport`** ([`src/components/patterns/ToolbarExport.tsx`](../src/components/patterns/ToolbarExport.tsx)) takes an `exportData` prop → live CSV + Excel; the legacy `onExportCsv` (CSV-only) path is retired across migrated modules. PDF stays a disabled "soon" item (see [`export.md`](export.md)).
 
 ### The column contract (applied everywhere)
 Every export carries: the record **`id`** first, **every FK as its `*_id`** (`branch_id`, `category_id`, `instructor_id`, `room_id`, `customer_id`, …) alongside a readable `*_name`, the **`status`**, and the full field set as **machine values** (ISO dates, raw numbers, JSON for structured sub-objects) — not display labels. An export → import round-trip reconstructs records and relationships.
