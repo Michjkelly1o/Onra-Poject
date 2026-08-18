@@ -99,10 +99,10 @@ const NAV_ITEMS: NavItemDef[] = [
         // categories" is likewise a tab on /admin/products/retail, not a
         // standalone entry.
         children: [
-            { label: "Class",                  href: "/admin/class-types"           },
+            { label: "Classes",                href: "/admin/class-types"           },
             { label: "Private sessions",       href: "/admin/services?type=private" },
             { label: "Recovery",               href: "/admin/services?type=recovery" },
-            { label: "Memberships & packages", href: "/admin/products"              },
+            { label: "Plans",                  href: "/admin/products"              },
             { label: "Retail",                 href: "/admin/products/retail"        },
             { label: "Gift cards",             href: "/admin/products/gift-cards"    },
         ],

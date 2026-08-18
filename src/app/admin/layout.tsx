@@ -12,6 +12,10 @@ import { account_profile } from "@/data/mock/account_profile";
 // Staff & Shifts create/edit forms open as side panels (client 2026-07-30) —
 // this host renders them, driven by the staff-form-panel store.
 import { StaffFormPanelHost } from "@/components/staff/StaffFormPanelHost";
+// Marketing create/edit forms (Campaign, Promotion, Announcement) also open as
+// side panels (client 2026-08-18) — this host renders them, driven by the
+// marketing-form-panel store.
+import { MarketingFormPanelHost } from "@/components/marketing/MarketingFormPanelHost";
 
 export default function AdminLayout({
     children,
@@ -76,6 +80,7 @@ export default function AdminLayout({
             </div>
             <Toast />
             <StaffFormPanelHost />
+            <MarketingFormPanelHost />
         </>
     );
 }
