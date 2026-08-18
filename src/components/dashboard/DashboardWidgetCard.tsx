@@ -717,16 +717,23 @@ function computeFailedPaymentsStats(
 // like the other widgets do.
 
 /** Y-axis time-of-day band (rows). */
-type HeatmapBand = "AM" | "MID" | "PM" | "EVE";
-const BANDS: readonly HeatmapBand[] = ["AM", "MID", "PM", "EVE"] as const;
+type HeatmapBand = "Morning" | "Afternoon" | "Evening";
+const BANDS: readonly HeatmapBand[] = ["Morning", "Afternoon", "Evening"] as const;
 
 /** Cell coordinate — one per (band, col). `col` matches a string in
  *  `HeatmapResult.cols`. */
 interface HeatmapCell {
     band: HeatmapBand;
     col: string;
+    /** Class Utilization — booked seats ÷ capacity, 0–100. */
     pct: number;
-    count: number;
+    /** Booked seats standing at class time — no-shows count, cancellations
+     *  (including late cancels) don't. */
+    booked: number;
+    /** Summed capacity of the classes in this (band × col) bucket. */
+    capacity: number;
+    /** How many classes fell in the bucket (0 → no class → "—" cell). */
+    sessions: number;
 }
 
 /** Payload returned to the renderer. */
@@ -742,15 +749,14 @@ interface HeatmapResult {
     cells: HeatmapCell[];
 }
 
-/** Map an ISO time (`HH:MM`) → time-of-day band. AM = 05:00-10:59,
- *  MID = 11:00-14:59, PM = 15:00-17:59, EVE = 18:00+. */
+/** Map an ISO time (`HH:MM`) → time-of-day band. Morning = before 12:00,
+ *  Afternoon = 12:00-16:59, Evening = 17:00+. Matches the Coming Up band
+ *  heatmap so both "Class Utilization" surfaces bucket the same way. */
 function timeBand(startTime: string): HeatmapBand {
     const hh = Number((startTime ?? "").slice(0, 2));
-    if (Number.isNaN(hh)) return "AM";
-    if (hh >= 5 && hh < 11) return "AM";
-    if (hh >= 11 && hh < 15) return "MID";
-    if (hh >= 15 && hh < 18) return "PM";
-    return "EVE";
+    if (Number.isNaN(hh) || hh < 12) return "Morning";
+    if (hh < 17) return "Afternoon";
+    return "Evening";
 }
 
 /** Bucket a (bookingDate, startTime) into the SAME X-axis label the chart's
@@ -772,9 +778,12 @@ function heatmapColFor(dateISO: string, startTime: string, period: DateFilter): 
                 const weekStart = new Date(from); weekStart.setDate(weekStart.getDate() + weekIdx * 7);
                 return `Wk of ${fmtMMMD(weekStart)}`;
             }
-            // Today / Yesterday → hourly bucket from the class's startTime.
+            // Today / Yesterday → 4-hour bucket (00:00, 04:00, …, 20:00) so the
+            // heatmap stays 6 columns instead of 24, matching the other Today
+            // widgets' axis density.
             const hh = Number((startTime ?? "").slice(0, 2));
-            return `${String(Number.isNaN(hh) ? 0 : hh).padStart(2, "0")}:00`;
+            const base = Math.floor((Number.isNaN(hh) ? 0 : hh) / 4) * 4;
+            return `${String(base).padStart(2, "0")}:00`;
         case "week":
             return fmtMMMD(d);
         case "month":
@@ -801,7 +810,19 @@ function computeAttendanceHeatmap(
     const scoped = branchIds && branchIds.length > 0 ? branchIds : null;
     // Cols + interval come straight from pointsForPeriod so the heatmap's
     // axis is byte-identical to the chart X-axis for the same filter.
-    const { labels: cols, interval } = pointsForPeriod(period);
+    let { labels: cols, interval } = pointsForPeriod(period);
+    // Today / Yesterday: pointsForPeriod emits 24 hourly cols, but the heatmap
+    // buckets into 4-hour columns (see heatmapColFor) — override the axis to the
+    // matching 6 labels so it's not a busy 24-cell row.
+    const periodLabel = period.type !== "custom" ? period.label.toLowerCase() : "";
+    const isHourly = period.type === "day"
+        && !periodLabel.includes("last 7 days")
+        && !periodLabel.includes("last 30 days")
+        && !periodLabel.includes("last 90 days");
+    if (isHourly) {
+        cols = ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"];
+        interval = 0;
+    }
 
     // Only schedules within the period + branch scope are considered. Building
     // a quick id → schedule map so the per-booking lookup stays O(1).
@@ -813,38 +834,165 @@ function computeAttendanceHeatmap(
         scheduleMap.set(s.id, s);
     }
 
-    // present / total buckets per (band, col) so we can compute the rate at
-    // the end without holding every booking in memory twice.
-    const present: Record<string, number> = {};
-    const total: Record<string, number> = {};
+    // Class Utilization = booked seats ÷ capacity per (band, col) bucket.
+    //   • capacity + session count come from the CLASSES in the bucket.
+    //   • a "booked seat" is a confirmed booking that still stands at class
+    //     time — a no-show is a seat that was held (counts); a cancellation or
+    //     a late cancel freed the seat (doesn't count); waitlist entries never
+    //     held a seat (don't count).
+    const capacityByKey: Record<string, number> = {};
+    const sessionsByKey: Record<string, number> = {};
+    const bookedByKey:   Record<string, number> = {};
     const key = (band: string, col: string) => `${band}|${col}`;
+
+    for (const s of Array.from(scheduleMap.values())) {
+        const k = key(timeBand(s.startTime), heatmapColFor(s.dateISO, s.startTime, period));
+        capacityByKey[k] = (capacityByKey[k] ?? 0) + (s.capacity ?? 0);
+        sessionsByKey[k] = (sessionsByKey[k] ?? 0) + 1;
+    }
 
     for (const b of bookings) {
         const s = scheduleMap.get(b.classScheduleId);
         if (!s) continue;
-        const band = timeBand(s.startTime);
-        const col  = heatmapColFor(s.dateISO, s.startTime, period);
-        const k = key(band, col);
-        total[k] = (total[k] ?? 0) + 1;
-        if (b.attendanceStatus === "present") present[k] = (present[k] ?? 0) + 1;
+        // Seats standing at class time only — drop waitlist + cancelled seats,
+        // and drop late cancels (a cancellation, even if late).
+        if (b.status !== "booked") continue;
+        if (b.attendanceStatus === "late_cancel") continue;
+        const k = key(timeBand(s.startTime), heatmapColFor(s.dateISO, s.startTime, period));
+        bookedByKey[k] = (bookedByKey[k] ?? 0) + 1;
     }
 
     const cells: HeatmapCell[] = [];
     for (const band of BANDS) {
         for (const col of cols) {
-            const tot = total[key(band, col)] ?? 0;
-            const pre = present[key(band, col)] ?? 0;
+            const k = key(band, col);
+            const capacity = capacityByKey[k] ?? 0;
+            const booked   = bookedByKey[k] ?? 0;
+            const sessions = sessionsByKey[k] ?? 0;
             cells.push({
                 band,
                 col,
-                pct: tot === 0 ? 0 : Math.round((pre / tot) * 100),
-                count: tot,
+                pct: capacity > 0 ? Math.round((booked / capacity) * 100) : 0,
+                booked,
+                capacity,
+                sessions,
             });
         }
     }
     return { cols, interval, cells };
 }
 export type { HeatmapResult, HeatmapBand };
+
+/** Class Utilization heatmap body — one row per time-of-day band × period col,
+ *  cell tint keyed to utilization %. Fills the widget card's height (rows share
+ *  the vertical space equally) and shows a cursor-following "Booked / Total
+ *  capacity" tooltip on hover. Extracted from the renderChart switch so it can hold the
+ *  tooltip's hover state (renderChart is a plain function, not a component). */
+function ClassUtilizationHeatmapBody({ heatmapResult }: { heatmapResult: HeatmapResult | null }) {
+    const [tip, setTip] = useState<{ x: number; y: number; title: string; text: string } | null>(null);
+
+    const cols = heatmapResult?.cols ?? [];
+    const step = (heatmapResult?.interval ?? 0) + 1;
+    const cellByKey = new Map<string, HeatmapCell>();
+    for (const c of heatmapResult?.cells ?? []) cellByKey.set(`${c.band}|${c.col}`, c);
+
+    // 5-stop sage-green palette (lightest → darkest) shared with every widget.
+    const PALETTE = ["#eff6f3", "var(--brand-tertiary)", "#94aeaf", "#457175", "#164e52"];
+    const tintFor = (v: number, hasData: boolean): string => {
+        if (!hasData) return "#f9fafb";
+        if (v >= 75) return PALETTE[4];
+        if (v >= 55) return PALETTE[3];
+        if (v >= 35) return PALETTE[2];
+        if (v >= 15) return PALETTE[1];
+        return PALETTE[0];
+    };
+    // White number once the tint is dark enough (two darkest stops) so it stays legible.
+    const textOn = (v: number, hasData: boolean): string =>
+        !hasData ? "#d0d5dd" : v >= 55 ? "#ffffff" : "#475467";
+
+    const isDense = cols.length >= 15;
+    // `gridAutoRows: 1fr` lets each cell stretch to the (flex-grown) row height
+    // so the grid fills the card instead of hugging a fixed cell height.
+    const gridStyle: React.CSSProperties = {
+        display: "grid",
+        gridTemplateColumns: `repeat(${cols.length}, minmax(0, 1fr))`,
+        gridAutoRows: "minmax(0, 1fr)",
+        gap: isDense ? "3px" : "8px",
+        flex: "1 1 0%",
+    };
+    const cellTextClass = isDense ? "text-[10px]" : "text-[12px]";
+    const labelTextClass = isDense ? "text-[10px]" : "text-[12px]";
+
+    function tipPos(e: React.MouseEvent): { x: number; y: number } {
+        const W = 220;
+        const x = e.clientX + W > window.innerWidth ? e.clientX - W - 14 : e.clientX + 14;
+        return { x, y: e.clientY + 14 };
+    }
+
+    return (
+        <div className="flex-1 min-h-0 flex flex-col gap-2 mt-1">
+            {/* Bands share the vertical space equally so the grid fills the card */}
+            <div className="flex-1 min-h-0 flex flex-col gap-2">
+                {BANDS.map(band => (
+                    <div key={band} className="flex-1 min-h-0 flex items-stretch gap-2">
+                        <div className="w-20 shrink-0 flex items-center justify-end text-[12px] font-medium text-[var(--colors-text-quaternary)]">
+                            {band}
+                        </div>
+                        <div style={gridStyle}>
+                            {cols.map(col => {
+                                const cell = cellByKey.get(`${band}|${col}`);
+                                const v = cell?.pct ?? 0;
+                                const hasData = (cell?.sessions ?? 0) > 0;
+                                const text = hasData
+                                    ? `Booked / Total capacity: ${cell?.booked ?? 0} / ${cell?.capacity ?? 0} (${v}%)`
+                                    : "No class scheduled";
+                                return (
+                                    <div
+                                        key={col}
+                                        onMouseEnter={(e) => setTip({ ...tipPos(e), title: `${band} · ${col}`, text })}
+                                        onMouseMove={(e) => setTip(prev => prev ? { ...prev, ...tipPos(e) } : prev)}
+                                        onMouseLeave={() => setTip(null)}
+                                        className={cn(
+                                            cellTextClass,
+                                            "h-full min-h-[28px] rounded-[6px] flex items-center justify-center font-medium overflow-hidden cursor-default transition-transform hover:scale-[1.02]",
+                                        )}
+                                        style={{ backgroundColor: tintFor(v, hasData), color: textOn(v, hasData) }}
+                                    >
+                                        {hasData ? `${v}%` : "—"}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {/* X-axis labels — mirrors chart ticks; `step` hides all but every Nth. */}
+            <div className="flex items-center gap-2 shrink-0">
+                <div className="w-20 shrink-0" />
+                <div style={gridStyle}>
+                    {cols.map((col, i) => (
+                        <div
+                            key={col}
+                            className={cn(labelTextClass, "text-[var(--colors-text-quaternary)] text-center truncate")}
+                        >
+                            {i % step === 0 ? col : ""}
+                        </div>
+                    ))}
+                </div>
+            </div>
+            {tip && (
+                <div
+                    role="tooltip"
+                    className="fixed z-50 bg-white border border-[var(--colors-border-secondary)] rounded-lg shadow-lg text-[12px] leading-[16px] px-3 py-2 min-w-[160px] pointer-events-none"
+                    style={{ left: tip.x, top: tip.y }}
+                >
+                    <p className="font-semibold text-[var(--colors-text-primary)] mb-0.5">{tip.title}</p>
+                    <p className="text-[var(--colors-text-tertiary)]">{tip.text}</p>
+                </div>
+            )}
+        </div>
+    );
+}
 
 /** Top recovery services ranked by total booked seats in period + branch
  *  scope. Reads live from the `services` slice (so any service the studio
@@ -1524,103 +1672,10 @@ function renderChart(
         // Year presets. `interval` (also from pointsForPeriod) says
         // how many labels to skip between visible ticks — keeps dense
         // grids readable without dropping cells.
-        case "attendance-heatmap": {
-            const cols  = heatmapResult?.cols     ?? [];
-            const step  = (heatmapResult?.interval ?? 0) + 1;
-            // Look up a cell by (band, col). Empty when heatmapResult is
-            // null — never happens on the live widget, but keeps this
-            // renderer resilient.
-            const cellByKey = new Map<string, HeatmapCell>();
-            for (const c of heatmapResult?.cells ?? []) {
-                cellByKey.set(`${c.band}|${c.col}`, c);
-            }
-            // 5-stop palette from lightest → darkest. Same sage-green
-            // family every widget uses so the widget palette stays
-            // coherent across the dashboard.
-            const PALETTE = ["#eff6f3", "var(--brand-tertiary)", "#94aeaf", "#457175", "#164e52"];
-            const tintFor = (v: number, hasData: boolean): string => {
-                if (!hasData) return "#f9fafb";
-                if (v >= 75) return PALETTE[4];
-                if (v >= 55) return PALETTE[3];
-                if (v >= 35) return PALETTE[2];
-                if (v >= 15) return PALETTE[1];
-                return PALETTE[0];
-            };
-            const textOn = (v: number, hasData: boolean): string =>
-                !hasData ? "#d0d5dd" : v >= 55 ? "#101828" : "#475467";
-            // Grid template — `repeat(N, minmax(0, 1fr))` handles any
-            // column count (6 hourly buckets, 7 daily, 12 monthly, 13
-            // weekly, 24 hourly, 30 daily). One rule, no per-count
-            // Tailwind classes. Tighter gap + smaller text at ≥ 15
-            // cols so 24 hourly / 30 daily still read cleanly.
-            const isDense = cols.length >= 15;
-            const gridStyle: React.CSSProperties = {
-                display: "grid",
-                gridTemplateColumns: `repeat(${cols.length}, minmax(0, 1fr))`,
-                gap: isDense ? "3px" : "8px",
-                flex: "1 1 0%",
-            };
-            const cellTextClass = isDense ? "text-[10px]" : "text-[12px]";
-            const cellHeightClass = isDense ? "h-8" : "h-9";
-            const labelTextClass = isDense ? "text-[10px]" : "text-[12px]";
-            return (
-                <div className="flex flex-col gap-3 mt-1">
-                    {/* Legend */}
-                    <div className="flex items-center justify-end gap-1.5 text-xs text-[var(--colors-text-quaternary)]">
-                        <span className="inline-block w-2 h-2 rounded-full bg-[var(--brand-tertiary)]" />
-                        <span>Light = Lower</span>
-                        <span className="text-[var(--colors-fg-quaternary)]">·</span>
-                        <span>Dark = Higher</span>
-                    </div>
-                    {/* Grid — first column band label, then N col cells */}
-                    <div className="flex flex-col gap-2">
-                        {BANDS.map(band => (
-                            <div key={band} className="flex items-center gap-2">
-                                <div className="w-10 shrink-0 text-[12px] font-medium text-[var(--colors-text-quaternary)] text-right">
-                                    {band}
-                                </div>
-                                <div style={gridStyle}>
-                                    {cols.map(col => {
-                                        const cell = cellByKey.get(`${band}|${col}`);
-                                        const v = cell?.pct ?? 0;
-                                        const hasData = (cell?.count ?? 0) > 0;
-                                        return (
-                                            <div
-                                                key={col}
-                                                title={`${band} · ${col} — Attendance ${v}%${hasData ? ` (${cell?.count})` : " (no bookings)"}`}
-                                                className={cn(
-                                                    cellHeightClass, cellTextClass,
-                                                    "rounded-[6px] flex items-center justify-center font-medium overflow-hidden",
-                                                )}
-                                                style={{ backgroundColor: tintFor(v, hasData), color: textOn(v, hasData) }}
-                                            >
-                                                {hasData ? `${v}%` : "—"}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ))}
-                        {/* X-axis labels — mirrors chart ticks. `step` from
-                            pointsForPeriod hides all but every Nth label so
-                            30-day / 24-hour grids stay legible. */}
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <div className="w-10 shrink-0" />
-                            <div style={gridStyle}>
-                                {cols.map((col, i) => (
-                                    <div
-                                        key={col}
-                                        className={cn(labelTextClass, "text-[var(--colors-text-quaternary)] text-center truncate")}
-                                    >
-                                        {i % step === 0 ? col : ""}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
+        case "attendance-heatmap":
+            // Own component so it can fill the card height AND hold the
+            // per-cell hover-tooltip state (renderChart is a plain function).
+            return <ClassUtilizationHeatmapBody heatmapResult={heatmapResult} />;
 
         // ── Intro → member funnel (Memberships) ──────────────────────
         //
