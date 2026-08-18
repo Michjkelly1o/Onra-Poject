@@ -926,7 +926,7 @@ export interface Staff {
      *  reads still use this single field. */
     payRateId?: string;
     /** Multi-track pay configuration. Instructors get Default + Pay per class +
-     *  Pay per appointment; other roles get Default only. */
+     *  Pay per private; other roles get Default only. */
     payConfig?: StaffPayConfig;
     /** Short introduction (instructor-only). Surfaces on the instructor
      *  detail page + (later) the customer-facing instructor portal. */
