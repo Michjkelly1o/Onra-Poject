@@ -19,6 +19,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { useAppStore, type ClassInstance, type ClassBooking, type Customer, type Membership as MembershipType, type Package as PackageType, type GenderAccess } from "@/lib/store";
 import { shortCustomerName, cancelNotifyLine, cancelTitle, CANCEL_KEEP_LABEL, CANCEL_CONFIRM_LABEL } from "@/lib/cancel-copy";
 import { getFrozenActiveMembership } from "@/lib/customer/freeze-eligibility";
+import { isAttendeeOngoing } from "@/components/attendee/attendee-status";
 import { shortDate } from "@/lib/customer/profile-format";
 import { SortableHeader, useSort, type SortDir } from "@/components/ui/SortableHeader";
 import { FilterPill } from "@/components/ui/FilterPill";
@@ -1972,6 +1973,10 @@ export default function ClassDetailPage() {
 
     const isUpcoming = ci.status === "Upcoming";
     const isOngoing = ci.status === "Ongoing";
+    // Attendance marking opens 30 min before start (client 2026-08-14) — same
+    // rule as the attendee check-in console (isAttendeeOngoing), so a class
+    // that's Upcoming-but-imminent is markable here too.
+    const attendanceOpen = isAttendeeOngoing(ci.status, ci.dateISO, ci.startTime);
     const isCancelled = ci.status === "Cancelled";
     const isCompleted = ci.status === "Completed";
     const canCancelClass = isUpcoming || isOngoing;
@@ -2559,7 +2564,7 @@ export default function ClassDetailPage() {
                                         // by class state (client 2026-07-28).
                                         const showSpot = tab === "booked" || tab === "waitlisted";
                                         const showWaitlistPos = tab === "waitlisted";
-                                        const showStatus = (tab === "booked" && (isOngoing || isCancelled || isCompleted)) || tab === "cancelled";
+                                        const showStatus = (tab === "booked" && (attendanceOpen || isCancelled || isCompleted)) || tab === "cancelled";
                                         // Ongoing rows now expose "Present" as an INLINE button inside
                                         // the Status column (client feedback Jul 2026 — matches the
                                         // instructor variant). The kebab column stays only for
@@ -2691,12 +2696,12 @@ export default function ClassDetailPage() {
                                                                             the badge-only readout. */}
                                                                         {tab === "booked" && isCancelled
                                                                             ? <BookingStatusBadge kind="class" />
-                                                                            : tab === "booked" && (isOngoing || isCompleted)
+                                                                            : tab === "booked" && (attendanceOpen || isCompleted)
                                                                                 ? (b.attendanceStatus === "present"
                                                                                     ? <PresentBadge />
                                                                                     : b.attendanceStatus === "no_show"
                                                                                         ? <NoShowBadge />
-                                                                                        : isOngoing
+                                                                                        : attendanceOpen
                                                                                             ? <PresentButton onClick={() => handleMarkPresent(b)} />
                                                                                             // Completed + never marked → the session is over,
                                                                                             // so an unmarked customer reads as a No-show. Every
@@ -2741,7 +2746,7 @@ export default function ClassDetailPage() {
                         )}
 
                         {/* Bulk-action floating bar */}
-                        {tab === "booked" && isUpcoming && (
+                        {tab === "booked" && isUpcoming && !attendanceOpen && (
                             <BulkActionBar
                                 variant="upcoming"
                                 count={selectedIds.size}
@@ -2750,7 +2755,7 @@ export default function ClassDetailPage() {
                                 onRemove={() => setBulkRemoveOpen(true)}
                             />
                         )}
-                        {tab === "booked" && isOngoing && (
+                        {tab === "booked" && attendanceOpen && (
                             <BulkActionBar
                                 variant="ongoing"
                                 count={selectedIds.size}
