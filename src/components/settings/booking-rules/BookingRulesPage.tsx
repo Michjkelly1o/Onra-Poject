@@ -300,14 +300,10 @@ export default function BookingRulesPage() {
                 />
                 <div className="grid grid-cols-3 gap-x-6 gap-y-5">
                     <SummaryField label="Members can cancel their own membership" value={freezePolicy.members_can_cancel ? "Yes" : "No"} />
-                    {freezePolicy.members_can_cancel && (
-                        <>
-                            <SummaryField label="Who can cancel"    value={cancelWhoValue} />
-                            <SummaryField label="Cancellation fee"  value={cancelFeeValue} />
-                            <SummaryField label="Allowed reasons"   value={cancelReasonsValue} />
-                            <SummaryField label="Apply to"          value={cancelApplyToValue} />
-                        </>
-                    )}
+                    <SummaryField label="Who can cancel"    value={cancelWhoValue} />
+                    <SummaryField label="Cancellation fee"  value={cancelFeeValue} />
+                    <SummaryField label="Allowed reasons"   value={cancelReasonsValue} />
+                    <SummaryField label="Apply to"          value={cancelApplyToValue} />
                 </div>
             </SettingsCard>
 

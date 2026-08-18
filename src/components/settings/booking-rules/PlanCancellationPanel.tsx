@@ -252,9 +252,10 @@ export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClos
                         onChange={v => patch({ members_can_cancel: v })}
                     />
 
-                    {form.members_can_cancel && (
-                        <>
-                            <Section title="Who can cancel">
+                    {/* Full configuration always visible — the toggle above governs
+                        whether customers can SELF-cancel; these settings still apply
+                        (Who can cancel, fee, reasons, scope) client 2026-08-14. */}
+                    <Section title="Who can cancel">
                                 <RadioCardGroup
                                     ariaLabel="Who can cancel"
                                     options={WHO_CAN_CANCEL_OPTIONS}
@@ -336,8 +337,6 @@ export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClos
                                     />
                                 )}
                             </Section>
-                        </>
-                    )}
                 </div>
 
                 {/* Footer */}
