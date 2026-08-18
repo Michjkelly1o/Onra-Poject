@@ -1049,7 +1049,7 @@ export function ShiftsWeekView({ branchId, search, weekStart: externalWeekStart,
                                                     onPick={(shiftId) => requestAssign(s, shiftId)}
                                                     onAddShift={() => openStaffFormPanel({ kind: "shift", mode: "create" })}
                                                     onUnassign={() => setUnassignStaff(s)}
-                                                    onViewSchedule={() => router.push(`/admin/schedule?instructorId=${s.id}`)}
+                                                    onViewSchedule={() => router.push(`/admin/schedule?instructorId=${s.id}&view=day`)}
                                                     onOpen={onFlyoutOpen}
                                                     mainPanelOpen={mainPanelOpen}
                                                 />

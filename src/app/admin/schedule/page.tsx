@@ -1167,15 +1167,19 @@ function SchedulePage() {
     // day/week the admin clicked, not on today's default.
     const initialDate     = searchParams?.get("date") ?? "";
     const initialDateFrom = searchParams?.get("dateFrom") ?? "";
-    // ?date deep-links open on the Day tab; ?dateFrom+dateTo deep-links
-    // open on the Week tab. Otherwise land on the default List view.
-    // Initial values resolve deep-link params first, then the cross-navigation
-    // cache, then the module default — so returning from a detail restores the
-    // exact view the admin left, while a fresh deep-link still wins.
+    // ?view=day|week|month|list forces a specific tab (e.g. staff schedule's
+    // "View schedule" always lands on Day). ?date deep-links open on the Day
+    // tab; ?dateFrom+dateTo deep-links open on the Week tab. Otherwise land on
+    // the default List view. Initial values resolve deep-link params first,
+    // then the cross-navigation cache, then the module default — so returning
+    // from a detail restores the exact view the admin left, while a fresh
+    // deep-link still wins.
+    const initialView = searchParams?.get("view") ?? "";
     const [activeTab, setActiveTab] = useState<ViewTab>(
-        initialDate     ? "day"  :
-        initialDateFrom ? "week" :
-        scheduleUi.activeTab,
+        (["list", "day", "week", "month"].includes(initialView) ? initialView as ViewTab : null) ??
+        (initialDate     ? "day"  :
+         initialDateFrom ? "week" :
+         scheduleUi.activeTab),
     );
     const [scheduleTab, setScheduleTab] = useState<ScheduleTab>(scheduleUi.scheduleTab);
     const [applied, setApplied] = useState<FilterState>(
