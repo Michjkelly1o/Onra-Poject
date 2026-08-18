@@ -29,6 +29,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectInput } from "@/components/ui/select-input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { useAppStore, type MarketingItem } from "@/lib/store";
+import { openMarketingFormPanel } from "@/lib/marketing-form-panel";
 import { SlidePanel } from "@/components/ui/SlidePanel";
 import { StatusBadge } from "@/components/patterns/StatusBadge";
 import { RowActions, type RowActionItem } from "@/components/patterns/RowActions";
@@ -177,7 +178,6 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
     // Delete only if never sent AND never seen (PRD 08) — a sent campaign is
     // archive-only so its analytics survive.
     const canDelete = item.delivery_status !== "sent" && (item.view_count ?? 0) === 0;
-    const editHref  = `/marketing/${item.id}/edit?returnTo=${encodeURIComponent("/admin/marketing")}`;
     const items: RowActionItem[] = (() => {
         const base: RowActionItem[] = [{ label: "View details", icon: Eye, onClick: onOpen }];
         if (item.status === "archived") {
@@ -190,7 +190,7 @@ function MarketingCardView({ item, onOpen, totalBranches }: { item: MarketingIte
             return base;
         }
         // Active
-        base.push({ label: "Edit campaign", icon: Edit02, onClick: () => router.push(editHref) });
+        base.push({ label: "Edit campaign", icon: Edit02, onClick: () => openMarketingFormPanel({ kind: "campaign", mode: "edit", id: item.id }) });
         base.push({ label: "Archive campaign", icon: Archive, onClick: () => setConfirmAction("archive") });
         if (canDelete) {
             base.push({ label: "Delete campaign", icon: Trash02, danger: true, onClick: () => setConfirmAction("delete") });
@@ -544,7 +544,7 @@ export default function MarketingListPage() {
                 <ToolbarImportButton visible={campaigns.length === 0 && !search.trim() && !hasActiveFilter} />
 
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={() => router.push(`/marketing/new?returnTo=${encodeURIComponent("/admin/marketing")}`)}>
+                    onClick={() => openMarketingFormPanel({ kind: "campaign", mode: "create" })}>
                     Add
                 </Button>
             </div>

@@ -7,16 +7,8 @@
 
 import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { AnnouncementFormPage } from "@/components/marketing/AnnouncementFormPage";
+import { AnnouncementFormPage, announcementItemToInitial } from "@/components/marketing/AnnouncementFormPage";
 import { useAppStore } from "@/lib/store";
-
-/** Split an ISO "2026-02-20T12:00:00Z" into "2026-02-20" + "12:00". */
-function splitIso(iso?: string): { date: string; time: string } {
-    if (!iso) return { date: "", time: "" };
-    const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(iso);
-    if (!m) return { date: iso.slice(0, 10), time: "" };
-    return { date: m[1], time: m[2] };
-}
 
 function EditAnnouncementRouteInner() {
     const params = useParams<{ id: string }>();
@@ -33,33 +25,12 @@ function EditAnnouncementRouteInner() {
         );
     }
 
-    const start = splitIso(item.publish_date);
-    const end = splitIso(item.expiry_date);
-    const branchIds = item.branch_ids ?? [];
-    const multiLocation = item.multi_location ?? (branchIds.length !== 1);
-
     return (
         <AnnouncementFormPage
             mode="edit"
             marketingId={id}
             returnTo={returnTo}
-            initial={{
-                bannerPreview: item.cover_image_url ?? "",
-                name: item.title,
-                description: item.short_description,
-                action: item.action_type,
-                externalUrl: (item.external_url ?? "").replace(/^https?:\/\//i, ""),
-                startDate: start.date,
-                startTime: start.time,
-                endDate: end.date,
-                endTime: end.time,
-                countdown: item.countdown ?? false,
-                multiLocation,
-                branchIds,
-                singleBranchId: multiLocation ? null : (branchIds[0] ?? null),
-                productIds: item.target_package_ids ?? [],
-                customerTargeting: item.customer_targeting ?? "",
-            }}
+            initial={announcementItemToInitial(item)}
         />
     );
 }
