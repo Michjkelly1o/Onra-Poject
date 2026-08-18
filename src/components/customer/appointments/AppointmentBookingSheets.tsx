@@ -24,9 +24,10 @@ import {
     useAvailableSlots,
     useFlexibleAvailableSlots,
     useInstructorsWithWeekAvailability,
+    useDaysWithAvailability,
 } from "@/lib/customer/slot-availability";
 import { appointmentDraft, ensureAppointmentDraft } from "@/lib/customer/booking-flow";
-import { formatMonth, REAL_TODAY_ISO } from "@/lib/customer/dates";
+import { addDaysISO, formatMonth, REAL_TODAY_ISO } from "@/lib/customer/dates";
 import { timeInZoneLabel } from "@/lib/customer/class-time";
 import { branchTimezone } from "@/lib/branch-time";
 import { CustomerSheet } from "@/components/customer/shell/CustomerSheet";
@@ -126,18 +127,35 @@ function SlotContent({ appointment, active, onPickedSlot }: {
     const [dateISO, setDateISO] = useState<string>(REAL_TODAY_ISO);
     const [tzOpen, setTzOpen] = useState(false);
     // Bumped every time this step becomes active so the DateStrip snaps its scroll
-    // back to today's week (a drag-scrolled strip can otherwise reopen on a later week).
+    // back to the selected day's week (a drag-scrolled strip can otherwise reopen
+    // on a later week).
     const [dateResetSignal, setDateResetSignal] = useState(0);
 
-    // EXACTLY like the Classes flow: always open on TODAY (current week). Never a
-    // "first available" future day and never a stale carried-over slot — so the
-    // strip opens on the current week and the user never has to scroll back.
+    // Which days (today … +6 weeks) have ≥1 bookable slot. Days NOT in this set are
+    // greyed out + non-tappable in the strip, and the default selection lands on
+    // the first available day rather than dropping the shopper on an empty day.
+    const availableDays = useDaysWithAvailability(appointment, instructorId, isFlexible);
+    // The first available day WITHIN the bookable window (today → +7, matching the
+    // DateStrip's bookingOpenDays). Falls back to today when the whole window is
+    // fully booked (the slot list then shows the "No available times" state).
+    const firstBookableDay = useMemo(() => {
+        const lastBookable = addDaysISO(REAL_TODAY_ISO, 7);
+        return (
+            Array.from(availableDays)
+                .filter((d) => d >= REAL_TODAY_ISO && d <= lastBookable)
+                .sort()[0] ?? REAL_TODAY_ISO
+        );
+    }, [availableDays]);
+
+    // On entry, land the selection on the first available day (never a stale
+    // carried-over slot) and snap the strip's scroll to that week.
     useEffect(() => {
         if (active) {
-            setDateISO(REAL_TODAY_ISO);
+            setDateISO(firstBookableDay);
             setDateResetSignal((n) => n + 1);
         }
-    }, [active]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [active, firstBookableDay]);
 
     const singleSlots = useAvailableSlots(appointment, instructorId, dateISO);
     const flexibleSlots = useFlexibleAvailableSlots(appointment, dateISO);
@@ -157,12 +175,13 @@ function SlotContent({ appointment, active, onPickedSlot }: {
             </div>
 
             <div className="mt-4 shrink-0">
-                {/* Same DateStrip the Search Classes tab uses — forward-only, current
-                    week, TODAY selected. Accessible range is today → +7 days
-                    (bookingOpenDays), and scroll is capped at this week + next
-                    (maxWeeks). Days with no slots are NOT disabled; the slot list
-                    shows the "No available times" empty state instead. */}
-                <DateStrip selectedISO={dateISO} onSelect={setDateISO} bookingOpenDays={7} maxWeeks={2} resetSignal={dateResetSignal} />
+                {/* Same DateStrip the Search Classes tab uses — forward-only, opens
+                    on the first available day. Accessible range is today → +7 days
+                    (bookingOpenDays), scroll capped at this week + next (maxWeeks).
+                    Days with no bookable slot are greyed out + non-tappable via
+                    `enabledDays`; only a fully-booked window falls through to the
+                    "No available times" empty state. */}
+                <DateStrip selectedISO={dateISO} onSelect={setDateISO} bookingOpenDays={7} maxWeeks={2} enabledDays={availableDays} resetSignal={dateResetSignal} />
             </div>
 
             <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

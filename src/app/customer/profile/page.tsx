@@ -45,7 +45,7 @@ const GROUP_A: Row[] = [
 ];
 const GROUP_B: Row[] = [
     { icon: Gift01, label: "Gift cards", href: "/customer/profile/gift-cards" },
-    { icon: Users01, label: "Invite friends", href: "/customer/profile/referrals" },
+    { icon: Users01, label: "Refer a friend", href: "/customer/profile/referrals" },
 ];
 
 const CARD = "rounded-2xl border border-[var(--colors-border-tertiary)] bg-white";

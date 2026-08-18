@@ -9,7 +9,7 @@
 // booking flow, "View plan" / "View gift card" for the Products flow.
 
 import { useRef, type ReactNode } from "react";
-import { Check, XClose } from "@untitledui/icons";
+import { Check, MarkerPin01, XClose } from "@untitledui/icons";
 import { lastOrder } from "@/lib/customer/purchase";
 import { PaymentReceiptCard } from "@/components/customer/checkout/PaymentReceiptCard";
 import { ReceiptActions } from "@/components/customer/checkout/ReceiptActions";
@@ -50,6 +50,17 @@ export function PaymentSuccess({ footer, onClose }: { footer: ReactNode; onClose
                         Your payment of AED {order?.total ?? 0} has been successfully processed.
                     </p>
                 </div>
+
+                {/* Retail is collected in person → tell the shopper where + that the
+                    order acts as their pickup proof at the front desk. */}
+                {order?.pickupBranchName && (
+                    <div className="flex w-full items-start gap-2 rounded-xl border border-[#a6f4c5] bg-[#f6fef9] p-3">
+                        <MarkerPin01 className="mt-0.5 size-4 shrink-0 text-[#164e52]" aria-hidden />
+                        <p className="text-left text-sm leading-5 text-[#164e52]">
+                            Collect at {order.pickupBranchName}. Show this order at the front desk.
+                        </p>
+                    </div>
+                )}
 
                 {/* Order + payment detail card */}
                 <PaymentReceiptCard

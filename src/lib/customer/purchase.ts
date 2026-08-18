@@ -81,6 +81,13 @@ export interface CartItem extends PlanRow {
     lineId: string;
     /** Chosen size variant for a sized retail line. Undefined = sizeless. */
     size?: string;
+    /** Pickup branch for a RETAIL line — the branch the shopper bought it from
+     *  (retail is collected in person). Every retail line in one invoice must
+     *  share this branch (enforced at add time); it's also passed to
+     *  `applyPurchase` as the sale branch so stock decrements + the recorded
+     *  transaction land at the right branch on the Admin side. Undefined on
+     *  non-retail lines. */
+    branchId?: string;
     /** Gift-card recipient + chosen amount + message (Gift Card Information page). */
     recipientName?: string;
     recipientEmail?: string;
@@ -203,7 +210,7 @@ let _giftLineSeq = 0;
  *  gift cards + retail; a package drops any membership but keeps packages +
  *  gift cards + retail; retail stacks by id (like packages do among themselves)
  *  and never touches the plan lines. */
-export function addToCart(item: PlanRow, quantity: number, size?: string): void {
+export function addToCart(item: PlanRow, quantity: number, size?: string, branchId?: string): void {
     const giftCards = purchaseCart.items.filter((i) => i.kind === "gift_card");
     const retails = purchaseCart.items.filter((i) => i.kind === "retail");
     if (item.kind === "gift_card") {
@@ -214,12 +221,14 @@ export function addToCart(item: PlanRow, quantity: number, size?: string): void 
     if (item.kind === "retail") {
         // Retail lines stack per (product id × size) — each size is its own
         // line so quantity folds into the matching lineId. Never displaces
-        // plan lines. Sizeless products keep `size` undefined.
+        // plan lines. Sizeless products keep `size` undefined. Every retail
+        // line carries its pickup `branchId`; the caller enforces that a single
+        // invoice only holds retail from ONE branch (see `retailCartBranchId`).
         const existingRetail = retails.find((i) => i.id === item.id && i.size === size);
         if (existingRetail) {
             existingRetail.quantity += quantity;
         } else {
-            retails.push({ ...item, quantity, size, lineId: size ? `${item.id}-${size}` : item.id });
+            retails.push({ ...item, quantity, size, branchId, lineId: size ? `${item.id}-${size}` : item.id });
         }
         const others = purchaseCart.items.filter((i) => i.kind !== "retail");
         purchaseCart.items = [...others, ...retails];
@@ -235,6 +244,30 @@ export function addToCart(item: PlanRow, quantity: number, size?: string): void 
     if (existing) existing.quantity += quantity;
     else packages.push({ ...item, quantity, lineId: item.id });
     purchaseCart.items = [...packages, ...giftCards, ...retails];
+}
+
+/** The pickup branch shared by the retail lines currently in the cart, or null
+ *  when there are none. A single invoice may only contain retail from ONE branch
+ *  (retail is collected in person), so this is the branch any newly-added retail
+ *  line must match. */
+export function retailCartBranchId(): string | null {
+    const retail = purchaseCart.items.find((i) => i.kind === "retail");
+    return retail?.branchId ?? null;
+}
+
+/** Short apparel size label — "Small" → "S", "Medium" → "M", etc. Falls back to
+ *  the raw value for free-form / numeric sizes. Used wherever a retail size is
+ *  shown compactly (cart line, receipt). */
+const SIZE_ABBR: Record<string, string> = {
+    "extra small": "XS", "x-small": "XS", xs: "XS",
+    small: "S",
+    medium: "M",
+    large: "L",
+    "extra large": "XL", "x-large": "XL", xl: "XL",
+    "2x-large": "XXL", "xx-large": "XXL", xxl: "XXL",
+};
+export function abbrevSize(size: string): string {
+    return SIZE_ABBR[size.trim().toLowerCase()] ?? size;
 }
 
 /** Remove a single cart line (by its lineId). Used by the checkout (−) at qty 1. */
@@ -470,6 +503,10 @@ export interface OrderSnapshot extends CartTotals {
     items: OrderLine[];
     /** Distinct product kinds in the order — drives the success-screen actions. */
     kinds: PlanKind[];
+    /** Pickup branch name for a retail order (retail is collected in person).
+     *  Drives the "Collect at <branch>" note on the success screen. Empty for
+     *  orders with no retail line. */
+    pickupBranchName?: string;
 }
 
 export const lastOrder: { value: OrderSnapshot | null } = { value: null };

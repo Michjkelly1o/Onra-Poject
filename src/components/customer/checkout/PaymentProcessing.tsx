@@ -14,12 +14,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAppStore, walletBalanceAed } from "@/lib/store";
 import { useCurrentCustomerContext } from "@/lib/customer/context";
 import {
+    abbrevSize,
     cartCount,
     cartTotal,
     computeTotals,
     ensurePurchaseCart,
     lastOrder,
     purchaseCart,
+    retailCartBranchId,
     useStandardVatPct,
     usePricesIncludeTax,
     usePromo,
@@ -46,7 +48,8 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
     const search = useSearchParams();
     const method = methodProp ?? search.get("method") ?? "Apple pay";
 
-    const { member } = useCurrentCustomerContext();
+    const { member, selectedBranchId } = useCurrentCustomerContext();
+    const branches = useAppStore((s) => s.branches);
     const applyPurchase = useAppStore((s) => s.applyPurchase);
     // Live wallet balance drives the "Redeem Account Credit" toggle. Reading
     // it once at mount is sufficient — the write is a one-shot on mount.
@@ -97,7 +100,11 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
                 "customer_portal",
                 undefined,
                 totals.accountCredit > 0 ? totals.accountCredit : undefined,
-                undefined,
+                // Retail is collected in person → decrement stock + stamp the
+                // transaction at the pickup branch the shopper bought from (all
+                // retail in one invoice shares it), NOT the buyer's home branch,
+                // so the Admin retail stock + purchase history stay accurate.
+                retailCartBranchId() ?? undefined,
                 undefined,
                 // Applied promo → records the redemption (stamps the txn +
                 // bumps usage_count) so the customer-side sale reflects in the
@@ -113,13 +120,25 @@ function Processing({ originId, successHref, method: methodProp, onDone }: { ori
                 .map((t) => t.id);
 
             const now = new Date();
-            const orderLines = items.map((it) => ({ name: it.name, quantity: it.quantity, price: it.price }));
+            // Keep the size on the receipt for sized retail so the invoice never
+            // loses that detail (e.g. "Onra Studio Tank · Size S").
+            const orderLines = items.map((it) => ({
+                name: it.kind === "retail" && it.size ? `${it.name} · Size ${abbrevSize(it.size)}` : it.name,
+                quantity: it.quantity,
+                price: it.price,
+            }));
             const txnId = `#P${Math.floor(100000000 + Math.random() * 900000000)}`;
+            // Retail is collected in person → capture the pickup branch name so
+            // the success screen can tell the shopper where to collect.
+            const pickupBranchName = kinds.includes("retail")
+                ? branches.find((b) => b.id === selectedBranchId)?.name ?? ""
+                : "";
             lastOrder.value = {
                 ...totals,
                 totalItems,
                 method,
                 kinds,
+                pickupBranchName,
                 items: orderLines,
                 txnId,
                 dateLabel: now.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),

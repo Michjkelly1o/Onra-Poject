@@ -97,7 +97,7 @@ export default function ReferralsPage() {
                 >
                     <ChevronLeft className="size-5 text-[var(--colors-text-secondary)]" aria-hidden />
                 </button>
-                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Invite friends</h1>
+                <h1 className="min-w-0 flex-1 text-center text-xl font-semibold leading-[30px] text-[var(--brand-text)]">Refer a friend</h1>
                 <span aria-hidden className="size-10 shrink-0" />
             </CustomerHeader>
 

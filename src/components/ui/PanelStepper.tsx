@@ -4,12 +4,18 @@
 // Onra Studio — PanelStepper
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Horizontal numbered stepper for side panels (Figma 8223:23016). Restyled from
-// the old text-breadcrumb to numbered circles + connector so it matches the
-// full-page vertical stepper (ProductFormPage StepItem): active step = teal ring
-// + teal number, completed = filled teal + check, upcoming = gray. Each step is
-// a button; pass `onStep` to make them jump-clickable. Sits at the top of the
-// panel body, under the header, above the scrollable content. Client 2026-08-14.
+// Horizontal numbered stepper for side panels (Figma 8223:23016). Numbered
+// circles + connector. The circle uses the EXACT same active/complete/upcoming
+// treatment as the full-page vertical stepper's StepItem (e.g. ScheduleFormPage)
+// so the two read identically across admin:
+//   • active   → FILLED brand circle (secondary-600) + white number + a #457175
+//                ring (white gap + brand halo).
+//   • complete → filled brand circle + white check.
+//   • upcoming → subtle grey circle (bg-tertiary) with a 1px outline + grey number.
+// (The Figma file shows the pre-rebrand sage green #658774 / #3B5446; the project
+// rebranded that to the "Rich blue green" brand, so we use the secondary tokens.)
+// Each step is a button; pass `onStep` to make them jump-clickable. Sits at the
+// top of the panel body, under the header, above the scrollable content.
 
 import { Fragment } from "react";
 import { Check } from "@untitledui/icons";
@@ -40,22 +46,25 @@ export function PanelStepper({ steps, current, onStep }: {
                             disabled={!onStep}
                             className={cn("flex items-center gap-2.5 min-w-0", !onStep && "cursor-default")}
                         >
-                            {/* Numbered circle */}
+                            {/* Numbered circle — identical to the full-page vertical
+                                stepper's StepItem (ScheduleFormPage): active = filled
+                                brand + white number + #457175 ring; complete = filled
+                                brand + check; upcoming = subtle outlined grey. */}
                             <span className={cn(
-                                "w-7 h-7 rounded-full flex items-center justify-center text-[14px] font-semibold shrink-0 transition-colors",
+                                "w-6 h-6 rounded-full flex items-center justify-center text-[14px] font-medium leading-5 shrink-0 transition-colors",
                                 active
-                                    ? "border-2 border-[var(--colors-secondary-600)] text-[#164e52] bg-white"
+                                    ? "bg-[var(--colors-secondary-600)] text-white shadow-[0px_0px_0px_2px_white,0px_0px_0px_4px_#457175]"
                                     : complete
                                         ? "bg-[var(--colors-secondary-600)] text-white"
-                                        : "bg-[var(--colors-bg-tertiary)] border border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
+                                        : "bg-[var(--colors-bg-tertiary)] border-1 border-[var(--colors-border-secondary)] text-[var(--colors-fg-quaternary)]",
                             )}>
-                                {complete ? <Check className="w-3.5 h-3.5" /> : s.n}
+                                {complete ? <Check className="w-3 h-3" /> : s.n}
                             </span>
                             {/* Label */}
                             <span className={cn(
-                                "text-[14px] whitespace-nowrap transition-colors",
+                                "text-[14px] leading-5 whitespace-nowrap transition-colors",
                                 active
-                                    ? "font-semibold text-[#10373a]"
+                                    ? "font-semibold text-[var(--colors-secondary-800)]"
                                     : complete
                                         ? "font-medium text-[var(--colors-text-secondary)]"
                                         : "font-medium text-[var(--colors-text-quaternary)]",
@@ -64,7 +73,7 @@ export function PanelStepper({ steps, current, onStep }: {
                             </span>
                         </button>
                         {i < steps.length - 1 && (
-                            <div className="w-8 h-px bg-[var(--colors-border-secondary)] shrink-0" aria-hidden />
+                            <div className="w-6 h-[2px] rounded-full bg-[var(--colors-border-secondary)] shrink-0" aria-hidden />
                         )}
                     </Fragment>
                 );

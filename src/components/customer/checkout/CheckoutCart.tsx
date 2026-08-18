@@ -14,8 +14,10 @@ import { useEffect, useReducer, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, HelpCircle, Minus, Plus, Ticket01, Wallet02, XClose } from "@untitledui/icons";
 import { useAppStore } from "@/lib/store";
+import { useCurrentCustomerContext } from "@/lib/customer/context";
 import { useMainScrolled } from "@/lib/customer/use-scrollable";
 import {
+    abbrevSize,
     cartTotal,
     computeTotals,
     ensurePurchaseCart,
@@ -153,6 +155,14 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
     const router = useRouter();
     const showToast = useAppStore((s) => s.showToast);
     const scrolled = useMainScrolled();
+    // Retail is collected in person → the cart line shows "Collection — <branch>"
+    // (the line's OWN pickup branch, stamped at add time) instead of a stock
+    // count. Reading it off the item keeps the note correct even if the header
+    // branch changes after the item was added.
+    const { selectedBranchId } = useCurrentCustomerContext();
+    const branches = useAppStore((s) => s.branches);
+    const retailBranchName = (branchId?: string) =>
+        branches.find((b) => b.id === (branchId ?? selectedBranchId))?.name ?? "your branch";
 
     ensurePurchaseCart(originId);
     const [, bump] = useReducer((x) => x + 1, 0);
@@ -358,8 +368,10 @@ export function CheckoutCart({ originId, onBack, processingHref, summary, fixedS
                                             <span className="truncate text-sm font-normal leading-5 text-[#475467]">
                                                 {it.kind === "gift_card" && it.recipientName
                                                     ? `${titleCase(it.recipientName)} • ${it.sub.replace("Valid until ", "")}`
-                                                    : it.kind === "retail" && it.size
-                                                        ? `${it.categoryLabel ?? "Retail"} • Size ${it.size}`
+                                                    : it.kind === "retail"
+                                                        ? it.size
+                                                            ? `Size ${abbrevSize(it.size)} • ${retailBranchName(it.branchId)}`
+                                                            : retailBranchName(it.branchId)
                                                         : it.sub}
                                             </span>
                                         </div>
