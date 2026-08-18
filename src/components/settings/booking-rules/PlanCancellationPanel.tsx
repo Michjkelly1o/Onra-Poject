@@ -19,7 +19,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { XClose, Trash01 } from "@untitledui/icons";
+import { XClose, Trash01, HelpCircle } from "@untitledui/icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SegmentedTabs } from "@/components/patterns/SegmentedTabs";
@@ -103,15 +103,18 @@ function Toggle({ on, onChange, ariaLabel }: { on: boolean; onChange: (n: boolea
     );
 }
 
-function ToggleCard({ title, subtitle, on, onChange }: {
-    title: string; subtitle?: string; on: boolean; onChange: (n: boolean) => void;
+function ToggleCard({ title, subtitle, on, onChange, helpIcon }: {
+    title: string; subtitle?: string; on: boolean; onChange: (n: boolean) => void; helpIcon?: boolean;
 }) {
     return (
         <div className={cn("rounded-[12px] border-1 px-4 py-3 flex gap-4 bg-white transition-colors",
             subtitle ? "items-start" : "items-center",
             on ? "border-[var(--colors-secondary-500)]" : "border-[var(--colors-border-secondary)]")}>
             <div className="flex-1 flex flex-col gap-1 min-w-0">
-                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px]">{title}</p>
+                <p className="text-[14px] font-semibold text-[var(--colors-text-primary)] leading-[20px] flex items-center gap-1.5">
+                    {title}
+                    {helpIcon && <HelpCircle className="w-3.5 h-3.5 text-[var(--colors-fg-quaternary)]" />}
+                </p>
                 {subtitle && <p className="text-[14px] text-[var(--colors-text-quaternary)] leading-[20px]">{subtitle}</p>}
             </div>
             <Toggle on={on} onChange={onChange} ariaLabel={title} />
@@ -138,6 +141,7 @@ interface CancelForm {
     who: WhoCanCancel;
     fee_enabled: boolean;
     fee_aed: number;
+    require_reason: boolean;
     reasons: FreezeReason[];
     apply_to: "all" | "specific";
     membership_ids: string[];
@@ -156,6 +160,7 @@ export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClos
         who:                cancellationPolicy.plan_cancel_who ?? "members_and_admins",
         fee_enabled:        cancellationPolicy.plan_cancel_fee_enabled ?? false,
         fee_aed:            cancellationPolicy.plan_cancel_fee_aed ?? 0,
+        require_reason:     cancellationPolicy.plan_cancel_require_reason ?? true,
         reasons:            (cancellationPolicy.cancellation_reasons ?? []).map(r => ({ ...r })),
         apply_to:           cancellationPolicy.plan_cancel_apply_to ?? "all",
         membership_ids:     [...(cancellationPolicy.plan_cancel_membership_ids ?? [])],
@@ -217,6 +222,7 @@ export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClos
             plan_cancel_who: form.who,
             plan_cancel_fee_enabled: form.fee_enabled,
             plan_cancel_fee_aed: form.fee_aed,
+            plan_cancel_require_reason: form.require_reason,
             cancellation_reasons: form.reasons.filter(r => r.label.trim().length > 0),
             plan_cancel_apply_to: form.apply_to,
             plan_cancel_membership_ids: form.membership_ids,
@@ -286,11 +292,14 @@ export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClos
                             </Section>
 
                             <Section title="Cancellation reasons">
-                                <div className="flex items-start gap-3 px-4 py-3 rounded-[12px] bg-[var(--colors-tertiary-50)] border-1 border-[var(--colors-border-secondary)]">
-                                    <p className="text-[14px] text-[var(--colors-text-tertiary)] leading-[20px]">
-                                        Customers will only see the reasons enabled below when they cancel a plan.
-                                    </p>
-                                </div>
+                                <ToggleCard
+                                    title="Require a reason"
+                                    subtitle="Customers must pick a reason when cancelling. They only see the reasons enabled below."
+                                    on={form.require_reason}
+                                    onChange={v => patch({ require_reason: v })}
+                                    helpIcon
+                                />
+                                {form.require_reason && (
                                 <div className="border-1 border-[var(--colors-border-secondary)] rounded-[12px] bg-white p-4 flex flex-col gap-2">
                                     {form.reasons.length === 0 ? (
                                         <p className="text-[13px] text-[var(--colors-text-quaternary)] italic py-1">No reasons yet — add one below.</p>
@@ -318,6 +327,7 @@ export function PlanCancellationPanel({ open, onClose }: { open: boolean; onClos
                                         <Button variant="secondary-gray" size="md" disabled={!newReason.trim()} onClick={addNewReason}>Add</Button>
                                     </div>
                                 </div>
+                                )}
                             </Section>
 
                             <Section title="Apply to">

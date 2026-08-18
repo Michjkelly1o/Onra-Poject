@@ -82,4 +82,5 @@ export const cancellation_policy: CancellationPolicy = {
     plan_cancel_fee_aed: 0,
     plan_cancel_apply_to: "all",
     plan_cancel_membership_ids: [],
+    plan_cancel_require_reason: true,
 };

@@ -13640,6 +13640,7 @@ export const useAppStore = create<AppState>()(persist(
                 if (cp.plan_cancel_fee_aed === undefined)        cp.plan_cancel_fee_aed = 0;
                 if (cp.plan_cancel_apply_to === undefined)       cp.plan_cancel_apply_to = "all";
                 if (cp.plan_cancel_membership_ids === undefined) cp.plan_cancel_membership_ids = [];
+                if (cp.plan_cancel_require_reason === undefined)    cp.plan_cancel_require_reason = true;
             }
             // v83 (2026-07-24) — same-branch shift invariant. A staff member
             // can only hold shifts at their OWN branch. Drop any persisted

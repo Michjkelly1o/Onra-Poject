@@ -283,6 +283,10 @@ export interface CancellationPolicy {
     /** Which memberships plan-cancellation applies to (self-cancel scope). */
     plan_cancel_apply_to: "all" | "specific";
     plan_cancel_membership_ids: string[];
+    /** Require the customer to pick a reason when cancelling — mirrors
+     *  FreezePolicy.require_reason. When false the customer cancel flow skips
+     *  the reason step entirely (client 2026-08-14). */
+    plan_cancel_require_reason: boolean;
 }
 
 // ─── Freeze Policy (customer settings) ─────────────────────────────────────

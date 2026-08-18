@@ -96,6 +96,9 @@ export default function MyPlanPage() {
 
     // Plan-cancellation fee (client 2026-08-14) — shown on the confirm sheet when
     // the admin enabled a cancellation fee in the Plan cancellation policy.
+    // Require-a-reason gate (client 2026-08-14) — mirrors the freeze flow. When
+    // off, the customer cancel flow skips the reason picker entirely.
+    const cancelRequireReason = cancellationPolicy.plan_cancel_require_reason ?? true;
     const cancelFeeText = (cancellationPolicy.plan_cancel_fee_enabled && (cancellationPolicy.plan_cancel_fee_aed ?? 0) > 0)
         ? ` A cancellation fee of AED ${cancellationPolicy.plan_cancel_fee_aed} applies.`
         : "";
@@ -218,7 +221,10 @@ export default function MyPlanPage() {
                 onFreeze={() => setFreezePlan(p)}
                 onUnfreeze={() => doUnfreeze(p)}
                 canCancel={canCancelPlan(p)}
-                onCancel={() => setCancelPlan(p)}
+                onCancel={() => {
+                    if (cancelRequireReason) setCancelPlan(p);
+                    else setCancelConfirm({ plan: p, reason: "" });
+                }}
                 onReactivate={() => doReactivate(p)}
             />
         );
