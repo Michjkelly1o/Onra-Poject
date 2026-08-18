@@ -82,6 +82,24 @@ export default function MyPlanPage() {
     // Cancel CTA is hidden on every membership card.
     const membersCanCancel = freezePolicy.members_can_cancel ?? false;
 
+    // Per-plan cancel gate — honors the Plan cancellation policy (client
+    // 2026-08-14): members-can-cancel toggle, who-can-cancel (admins_only hides
+    // the customer CTA), and apply-to scope (specific → only selected memberships).
+    const canCancelPlan = (p: CustomerPlan): boolean => {
+        if (!membersCanCancel || p.kind !== "membership") return false;
+        if ((cancellationPolicy.plan_cancel_who ?? "members_and_admins") === "admins_only") return false;
+        if ((cancellationPolicy.plan_cancel_apply_to ?? "all") === "specific") {
+            return !!(p.productId && (cancellationPolicy.plan_cancel_membership_ids ?? []).includes(p.productId));
+        }
+        return true;
+    };
+
+    // Plan-cancellation fee (client 2026-08-14) — shown on the confirm sheet when
+    // the admin enabled a cancellation fee in the Plan cancellation policy.
+    const cancelFeeText = (cancellationPolicy.plan_cancel_fee_enabled && (cancellationPolicy.plan_cancel_fee_aed ?? 0) > 0)
+        ? ` A cancellation fee of AED ${cancellationPolicy.plan_cancel_fee_aed} applies.`
+        : "";
+
     // Freeze CTA decision — centralised in `freeze-eligibility.ts` so the
     // page, the card, and Phase 5's approval surface all read the same
     // gates (policy on, admins_only mode, apply-to scope, freeze-limit
@@ -199,7 +217,7 @@ export default function MyPlanPage() {
                 freezeMode={cta.mode === "request" ? "request" : "direct"}
                 onFreeze={() => setFreezePlan(p)}
                 onUnfreeze={() => doUnfreeze(p)}
-                canCancel={membersCanCancel && p.kind === "membership"}
+                canCancel={canCancelPlan(p)}
                 onCancel={() => setCancelPlan(p)}
                 onReactivate={() => doReactivate(p)}
             />
@@ -348,7 +366,7 @@ export default function MyPlanPage() {
                 onClose={() => setCancelConfirm(null)}
                 title="Cancel membership"
                 description={cancelConfirm
-                    ? `Your membership ends ${fmtEndDate(cancelConfirm.plan.expiryISO)}. You keep full access until then — no further payments and no partial refund.`
+                    ? `Your membership ends ${fmtEndDate(cancelConfirm.plan.expiryISO)}. You keep full access until then — no further payments and no partial refund.${cancelFeeText}`
                     : ""}
                 confirmLabel="Yes, cancel membership"
                 onConfirm={() => { if (cancelConfirm) doCancel(cancelConfirm.plan, cancelConfirm.reason); }}

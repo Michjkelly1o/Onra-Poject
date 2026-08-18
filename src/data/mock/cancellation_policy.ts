@@ -75,4 +75,11 @@ export const cancellation_policy: CancellationPolicy = {
         { id: "financial_reasons", label: "Financial reasons",    enabled: true },
         { id: "switching_plan",    label: "Switching plan",       enabled: true },
     ],
+
+    // ── Plan cancellation (membership self-cancel) — client 2026-08-14 ──
+    plan_cancel_who: "members_and_admins",
+    plan_cancel_fee_enabled: false,
+    plan_cancel_fee_aed: 0,
+    plan_cancel_apply_to: "all",
+    plan_cancel_membership_ids: [],
 };

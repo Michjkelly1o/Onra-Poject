@@ -13617,7 +13617,10 @@ export const useAppStore = create<AppState>()(persist(
         //   policy, so the "Operator (legacy)" seed role moves from the now-
         //   unreachable "archived" status to "inactive". Bump so testers re-seed
         //   and don't keep the orphaned archived role.
-        version: 116,
+        // v117 — the "Single class for 7 days" intro package (`pkg_1_class_intro`)
+        //   is now a genuine SINGLE-class credit (credits 3 → 1). Bump so persisted
+        //   demos re-seed with the 1-credit package instead of the old 3-credit one.
+        version: 117,
         storage: createJSONStorage(() => localStorage),
         // Persisted rows keep whatever status they had when they were written,
         // so a demo session left open across a date boundary (or restored days
@@ -13625,6 +13628,19 @@ export const useAppStore = create<AppState>()(persist(
         // clock on every hydrate — one place, so admin and customer agree.
         onRehydrateStorage: () => (state) => {
             if (!state) return;
+            // Plan-cancellation policy backfill (client 2026-08-14) — the
+            // "Cancel & freeze plan policy" was split into "Plan cancellation"
+            // + "Plan freeze"; cancellationPolicy gains who/fee/apply-to fields.
+            // Backfill defaults on any snapshot written before the split so the
+            // new Plan cancellation panel reads real values. Idempotent.
+            if (state.cancellationPolicy) {
+                const cp = state.cancellationPolicy as typeof state.cancellationPolicy & Record<string, unknown>;
+                if (cp.plan_cancel_who === undefined)            cp.plan_cancel_who = "members_and_admins";
+                if (cp.plan_cancel_fee_enabled === undefined)    cp.plan_cancel_fee_enabled = false;
+                if (cp.plan_cancel_fee_aed === undefined)        cp.plan_cancel_fee_aed = 0;
+                if (cp.plan_cancel_apply_to === undefined)       cp.plan_cancel_apply_to = "all";
+                if (cp.plan_cancel_membership_ids === undefined) cp.plan_cancel_membership_ids = [];
+            }
             // v83 (2026-07-24) — same-branch shift invariant. A staff member
             // can only hold shifts at their OWN branch. Drop any persisted
             // cross-branch assignment + clear a legacy `shiftId` pointing across
