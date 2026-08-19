@@ -133,7 +133,7 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
                             <th className={TABLE_TH}>Class</th>
                             <th className={TABLE_TH}><SortableHeader sortKey="date"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Date</SortableHeader></th>
                             <th className={TABLE_TH}><SortableHeader sortKey="status" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Status</SortableHeader></th>
-                            <th className={TABLE_TH}><SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Booked</SortableHeader></th>
+                            <th className={cn(TABLE_TH, "!text-right")}><SortableHeader sortKey="booked" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} align="right">Booked</SortableHeader></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -156,7 +156,7 @@ export function ClassesModal({ open, onClose, classes }: ClassesModalProps) {
                                         {c.status}
                                     </span>
                                 </td>
-                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)]")}>{c.booked} / {c.capacity}</td>
+                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)] text-right")}>{c.booked} / {c.capacity}</td>
                             </tr>
                         ))}
                         {paged.length === 0 && (

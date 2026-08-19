@@ -404,8 +404,8 @@ export default function InstructorEarningsPage() {
                                     <th className={cn(TH, "w-[130px]")}>
                                         <SortableHeader sortKey="type"       currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Type</SortableHeader>
                                     </th>
-                                    <th className={cn(TH, "w-[120px]")}>
-                                        <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Attendance</SortableHeader>
+                                    <th className={cn(TH, "w-[120px]", "!text-right")}>
+                                        <SortableHeader sortKey="attendance" currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Attendance</SortableHeader>
                                     </th>
                                     <th className={cn(TH, "w-[160px]")}>
                                         <SortableHeader sortKey="rating"     currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Rating</SortableHeader>
@@ -416,8 +416,8 @@ export default function InstructorEarningsPage() {
                                     <th className={cn(TH, "w-[140px]")}>
                                         <SortableHeader sortKey="payRate"    currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Pay rate</SortableHeader>
                                     </th>
-                                    <th className={cn(TH, "w-[140px]")}>
-                                        <SortableHeader sortKey="earnings"   currentSort={sortKey} dir={sortDir} onSort={toggleSort}>Earnings</SortableHeader>
+                                    <th className={cn(TH, "w-[140px]", "!text-right")}>
+                                        <SortableHeader sortKey="earnings"   currentSort={sortKey} dir={sortDir} onSort={toggleSort} align="right">Earnings</SortableHeader>
                                     </th>
                                     <th className={cn(TH, "w-[52px]")} />
                                 </tr>
@@ -570,7 +570,7 @@ function EarningsRow({ schedule, payRate, classesInMonth, attendees, onViewDetai
 
             {/* Attendance — Present count / capacity (matches the earnings basis,
                 which pays on real Present via attendeesForClass). */}
-            <td className={TD}>{attendees}/{schedule.capacity}</td>
+            <td className={cn(TD, "text-right")}>{attendees}/{schedule.capacity}</td>
 
             {/* Rating — 5 stars + count caption (admin's exact JSX) */}
             <td className={TD}>
@@ -600,7 +600,7 @@ function EarningsRow({ schedule, payRate, classesInMonth, attendees, onViewDetai
 
             <td className={TD}><StatusBadge type="class-payroll" status={schedule.status} /></td>
             <td className={TD}>{payRate?.name ?? "—"}</td>
-            <td className={TD}>
+            <td className={cn(TD, "text-right")}>
                 {noRate || schedule.status === "Cancelled"
                     ? aed(0)
                     : earnings > 0 ? aed(earnings) : "—"}

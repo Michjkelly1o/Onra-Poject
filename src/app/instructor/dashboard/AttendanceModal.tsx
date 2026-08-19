@@ -161,9 +161,9 @@ export function AttendanceModal({ open, onClose, classes, bookings }: Attendance
                         <tr>
                             <th className={TABLE_TH}>Class</th>
                             <th className={TABLE_TH}><SortableHeader sortKey="date"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Date</SortableHeader></th>
-                            <th className={TABLE_TH}><SortableHeader sortKey="booked"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Booked</SortableHeader></th>
-                            <th className={TABLE_TH}><SortableHeader sortKey="attended" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Attended</SortableHeader></th>
-                            <th className={TABLE_TH}><SortableHeader sortKey="noShow"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>No-show</SortableHeader></th>
+                            <th className={cn(TABLE_TH, "!text-right")}><SortableHeader sortKey="booked"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} align="right">Booked</SortableHeader></th>
+                            <th className={cn(TABLE_TH, "!text-right")}><SortableHeader sortKey="attended" currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} align="right">Attended</SortableHeader></th>
+                            <th className={cn(TABLE_TH, "!text-right")}><SortableHeader sortKey="noShow"   currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)} align="right">No-show</SortableHeader></th>
                             <th className={TABLE_TH}><SortableHeader sortKey="rate"     currentSort={sortKey} dir={sortDir} onSort={(k) => handleSort(k as SortKey)}>Attendance</SortableHeader></th>
                         </tr>
                     </thead>
@@ -175,9 +175,9 @@ export function AttendanceModal({ open, onClose, classes, bookings }: Attendance
                                     <p className="text-[14px] font-normal text-[var(--colors-text-tertiary)] leading-5 truncate">{r.displayTime}</p>
                                 </td>
                                 <td className={cn(TABLE_TD, "whitespace-nowrap text-[var(--colors-text-tertiary)]")}>{formatDate(r.dateISO)}</td>
-                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)]")}>{r.booked}</td>
-                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)]")}>{r.attended}</td>
-                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)]")}>{r.noShow}</td>
+                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)] text-right")}>{r.booked}</td>
+                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)] text-right")}>{r.attended}</td>
+                                <td className={cn(TABLE_TD, "font-medium text-[var(--colors-text-primary)] text-right")}>{r.noShow}</td>
                                 <td className={TABLE_TD}><RateBadge rate={r.rate} /></td>
                             </tr>
                         ))}
