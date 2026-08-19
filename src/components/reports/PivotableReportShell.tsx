@@ -143,7 +143,11 @@ function resolveDateFilter(f: DateFilter | undefined): DateRangeISO {
 
 // ─── Column visibility persistence ────────────────────────────────────────
 
-const COL_STORAGE_PREFIX = "onra-reports";
+// Versioned key — bumped when the reports' default column visibility changes
+// (client "Report Columns" Column-E pass). Bumping invalidates every browser's
+// stale saved column set so the new hiddenByDefault defaults take effect instead
+// of a pre-change cached selection.
+const COL_STORAGE_PREFIX = "onra-reports-v2";
 function loadColVisibility(reportId: string, columns: readonly ColumnDef[]): Set<string> {
     if (typeof window === "undefined") return new Set(columns.filter(c => !c.hiddenByDefault).map(c => c.key));
     try {
