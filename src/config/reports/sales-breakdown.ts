@@ -75,12 +75,11 @@ export const SALES_BREAKDOWN_REPORT: ReportDefinition = {
     ],
 
     // "Break down by" = Item / Item type, in the standard toolbar slot. Opens
-    // grouped by Item (defaultDimensionKey) so the list is aggregated per item.
+    // on None (flat rows) like every other report — user picks the break-down.
     dimensions: [
         { key: "item",     label: "Item",      extract: r => String(r[K.item]     ?? "—") },
         { key: "itemType", label: "Item type", extract: r => String(r[K.itemType] ?? "—") },
     ],
-    defaultDimensionKey: "item",
 
     measures: [
         { key: "netAfterTax",  label: "Net (after tax)", kind: "currency", extract: r => Number(r[K.netAfterTax] ?? 0) },
