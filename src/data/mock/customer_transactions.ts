@@ -83,6 +83,7 @@ export const customer_transactions: CustomerTransaction[] = [
         created_at: "2025-08-15T14:30:00Z",
         refunded_at: "2025-08-20T11:00:00Z",
         refund_method: "card",
+        refund_reason: "Not satisfied",
     },
     {
         id: "txn_ahmed_4",
@@ -261,6 +262,7 @@ export const customer_transactions: CustomerTransaction[] = [
         created_at: "2025-11-02T11:50:00Z",
         refunded_at: "2025-11-06T10:30:00Z",
         refund_method: "card",
+        refund_reason: "Booked by mistake",
     },
     {
         id: "txn_zahra_3",
@@ -451,6 +453,7 @@ export const customer_transactions: CustomerTransaction[] = [
         created_at: "2025-09-10T13:40:00Z",
         refunded_at: "2025-09-14T10:00:00Z",
         refund_method: "cash",
+        refund_reason: "Studio cancelled",
     },
 
     // ── Notification-backing rows ────────────────────────────────────────────

@@ -440,19 +440,19 @@ function RefundModal({ txn, onClose, onConfirm }: {
                     <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                 </div>
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-4">
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-5 flex flex-col gap-3">
                     {/* Detail refund — item, total, and the paid-with / refunds-to
                         breakdown (each split portion returns to its own source). */}
-                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-5 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Detail refund</p>
+                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
                         <div className="flex items-center justify-between gap-4">
-                            <p className="text-[14px] text-[var(--colors-text-quaternary)]">{txn.name}</p>
+                            <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Detail refund</p>
                             <p className="text-[16px] font-medium text-[var(--colors-text-primary)] whitespace-nowrap">{fmtAed(txn.amountAed)}</p>
                         </div>
+                        <p className="text-[14px] text-[var(--colors-text-quaternary)] -mt-1">{txn.name}</p>
                         <div className="h-px w-full bg-[var(--colors-bg-quaternary)]" />
                         {/* Paid with */}
-                        <div className="flex flex-col gap-2">
-                            <p className="text-[13px] font-medium text-[var(--colors-text-quaternary)] uppercase tracking-wide">Paid with</p>
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[12px] font-medium text-[var(--colors-text-quaternary)] uppercase tracking-wide">Paid with</p>
                             {breakdown.map((b, i) => (
                                 <div key={`paid-${i}`} className="flex items-center justify-between gap-4">
                                     <p className="text-[14px] text-[var(--colors-text-secondary)]">{b.label}</p>
@@ -461,8 +461,8 @@ function RefundModal({ txn, onClose, onConfirm }: {
                             ))}
                         </div>
                         {/* Refunds to — mirrors the original source(s) automatically */}
-                        <div className="flex flex-col gap-2">
-                            <p className="text-[13px] font-medium text-[var(--colors-text-quaternary)] uppercase tracking-wide">Refunds to</p>
+                        <div className="flex flex-col gap-1">
+                            <p className="text-[12px] font-medium text-[var(--colors-text-quaternary)] uppercase tracking-wide">Refunds to</p>
                             {breakdown.map((b, i) => (
                                 <div key={`refund-${i}`} className="flex items-center justify-between gap-4">
                                     <p className="text-[14px] text-[var(--colors-text-secondary)]">{b.label}</p>
@@ -472,8 +472,8 @@ function RefundModal({ txn, onClose, onConfirm }: {
                         </div>
                     </div>
                     {/* Refund reason — standardised list; "Other" opens a required note. */}
-                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[20px] p-6 flex flex-col gap-4 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
-                        <p className="text-[18px] font-semibold text-[var(--colors-text-primary)] leading-[28px]">Refund reason</p>
+                    <div className="border-1 border-[var(--colors-border-secondary)] rounded-[16px] p-5 flex flex-col gap-3 shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]">
+                        <p className="text-[16px] font-semibold text-[var(--colors-text-primary)]">Refund reason</p>
                         <SelectInput
                             value={reason}
                             onChange={v => { setReason(v); if (v !== "Other") setOtherText(""); }}

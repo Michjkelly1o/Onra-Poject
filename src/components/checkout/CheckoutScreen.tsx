@@ -185,6 +185,18 @@ export interface PaymentConfirmationStepProps {
 export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
     const enabled = p.enabledMethods ?? ALL_PAYMENT_METHODS;
     const show = (m: PaymentMethod) => enabled.includes(m);
+    // When account credit + gift card fully cover the order (`total` is the
+    // amount STILL due after those deductions), no external payment method is
+    // needed — the method picker is disabled and a "fully covered" note shows.
+    // Only when a balance remains does the picker enable (client 2026-08-19).
+    const noPaymentDue = (p.total ?? 0) <= 0;
+    const creditApplied = p.accountCreditApplied ?? 0;
+    const giftApplied = p.giftCardApplied ?? 0;
+    const coveredNote =
+        creditApplied > 0 && giftApplied > 0 ? "This order is fully covered by account credit and gift card — no additional payment is needed."
+            : giftApplied > 0 ? "This order is fully covered by the gift card — no additional payment is needed."
+                : creditApplied > 0 ? "This order is fully covered by account credit — no additional payment is needed."
+                    : "No payment is required for this order.";
     return (
         <div className="flex-1 min-h-0 bg-white border-1 border-[var(--colors-border-secondary)] rounded-[20px] flex flex-col overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-6">
@@ -255,6 +267,11 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
 
                 <div className="flex flex-col gap-4">
                     <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Payment method</p>
+                    {noPaymentDue ? (
+                        <div className="rounded-[12px] border-1 border-[var(--colors-border-secondary)] bg-[var(--colors-bg-secondary)] px-4 py-3 text-[14px] text-[var(--colors-text-tertiary)]">
+                            {coveredNote}
+                        </div>
+                    ) : (
                     <div className="grid grid-cols-2 gap-4">
                         {show("cash") && (
                             <PaymentMethodCard
@@ -297,9 +314,10 @@ export function PaymentConfirmationStep(p: PaymentConfirmationStepProps) {
                             />
                         )}
                     </div>
+                    )}
                 </div>
 
-                {p.paymentMethod !== null && show(p.paymentMethod) && (
+                {!noPaymentDue && p.paymentMethod !== null && show(p.paymentMethod) && (
                     <div className="flex flex-col gap-4">
                         <p className="text-[18px] font-semibold text-[var(--colors-text-primary)]">Payment confirmation</p>
                         {p.paymentMethod === "cash" && (
