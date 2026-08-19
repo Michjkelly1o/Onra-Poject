@@ -91,7 +91,7 @@ const CATEGORIES: ReportCategory[] = [
     },
     {
         id: "membership_package",
-        title: "Membership & Package",
+        title: "Plans",
         description:
             "Active plans, frozen packages, intro offers, and plan changes.",
         icon: CreditCard02,
@@ -104,7 +104,7 @@ const CATEGORIES: ReportCategory[] = [
     },
     {
         id: "customer",
-        title: "Customer",
+        title: "Customers",
         description:
             "How customers interact with the studio — active vs inactive, sign-ups, churn, retention, win-back.",
         icon: User01,
@@ -117,7 +117,7 @@ const CATEGORIES: ReportCategory[] = [
     },
     {
         id: "class",
-        title: "Activity / Class",
+        title: "Bookings & Attendance",
         description:
             "Bookings, class performance, cancellations, no-shows, and the top classes and services.",
         icon: Activity,
@@ -130,7 +130,7 @@ const CATEGORIES: ReportCategory[] = [
     },
     {
         id: "staff",
-        title: "Staff / Instructor",
+        title: "Staff",
         description:
             "Instructor performance and staff attendance. Owner / manager / payroll access only.",
         icon: Users01,
@@ -156,7 +156,7 @@ const CATEGORIES: ReportCategory[] = [
     },
     {
         id: "inventory_retail",
-        title: "Inventory / Retail",
+        title: "Inventory",
         description:
             "Retail sales, gross margin, attachment rate, and current stock on hand.",
         icon: ShoppingBag01,

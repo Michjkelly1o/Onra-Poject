@@ -270,10 +270,24 @@ export function PivotableReportShell({
     const [visibleBranchIds, setVisibleBranchIds] = useState<Set<string>>(
         () => new Set(branches.map(b => b.id)),
     );
+    // Column visibility is per-browser (localStorage), but reading it in the
+    // initializer would make the client's first render differ from the server's
+    // (which has no localStorage) → hydration mismatch. So render the SSR-safe
+    // default (Column-E hiddenByDefault) first, then adopt the saved set after
+    // mount. `colsReady` gates the save-back so the default never clobbers the
+    // stored set on the first commit.
     const [visibleCols, setVisibleCols] = useState<Set<string>>(
-        () => loadColVisibility(report.id, report.columns),
+        () => new Set(report.columns.filter(c => !c.hiddenByDefault).map(c => c.key)),
     );
-    useEffect(() => { saveColVisibility(report.id, visibleCols); }, [report.id, visibleCols]);
+    const [colsReady, setColsReady] = useState(false);
+    useEffect(() => {
+        setVisibleCols(loadColVisibility(report.id, report.columns));
+        setColsReady(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [report.id]);
+    useEffect(() => {
+        if (colsReady) saveColVisibility(report.id, visibleCols);
+    }, [report.id, visibleCols, colsReady]);
 
     // List-mode sort + pagination (state kept but ignored in pivot mode).
     const [sortKey, setSortKey] = useState<string | null>(null);

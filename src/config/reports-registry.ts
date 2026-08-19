@@ -233,27 +233,27 @@ export interface CategoryMeta {
 export const CATEGORY_META: CategoryMeta[] = [
     {
         id: "financial",
-        label: "Financial reports",
+        label: "Financial",
         description: "Track studio performance — total sales, payments, refunds, discounts, tax, revenue recognition and per-member / per-class economics.",
     },
     {
         id: "membership_package",
-        label: "Membership & Package",
+        label: "Plans",
         description: "Active plans, freezes, intro offers, and plan changes over time.",
     },
     {
         id: "customer",
-        label: "Customer",
+        label: "Customers",
         description: "Customer lifecycle — active vs inactive, sign-ups, churn, retention, win-back.",
     },
     {
         id: "class",
-        label: "Activity / Class",
+        label: "Bookings & Attendance",
         description: "Bookings, class performance, cancellations, no-shows, and the top classes / services.",
     },
     {
         id: "staff",
-        label: "Staff / Instructor",
+        label: "Staff",
         description: "Instructor performance and staff attendance (owner / manager / payroll only).",
     },
     {
